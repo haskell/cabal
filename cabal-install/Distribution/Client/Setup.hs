@@ -72,7 +72,7 @@ import Distribution.Simple.Setup
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg, optionNumJobs )
+         , optionVerbosity, boolOpt, trueArg, falseArg, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -125,8 +125,6 @@ data GlobalFlags = GlobalFlags {
     globalLocalRepos        :: NubList FilePath,
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
-    globalRequireSandbox    :: Flag Bool,
-    globalIgnoreSandbox     :: Flag Bool,
     globalHttpTransport     :: Flag String
   }
 
@@ -141,8 +139,6 @@ defaultGlobalFlags  = GlobalFlags {
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
-    globalRequireSandbox    = Flag False,
-    globalIgnoreSandbox     = Flag False,
     globalHttpTransport     = mempty
   }
 
@@ -283,16 +279,6 @@ globalCommand commands = CommandUI {
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["require-sandbox"]
-         "requiring the presence of a sandbox for sandbox-aware commands"
-         globalRequireSandbox (\v flags -> flags { globalRequireSandbox = v })
-         (boolOpt' ([], ["require-sandbox"]) ([], ["no-require-sandbox"]))
-
-      ,option [] ["ignore-sandbox"]
-         "Ignore any existing sandbox"
-         globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
-         trueArg
-
       ,option [] ["http-transport"]
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalConfigFile (\v flags -> flags { globalHttpTransport = v })
@@ -336,8 +322,6 @@ instance Monoid GlobalFlags where
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
-    globalRequireSandbox    = mempty,
-    globalIgnoreSandbox     = mempty,
     globalHttpTransport     = mempty
   }
   mappend a b = GlobalFlags {
@@ -350,8 +334,6 @@ instance Monoid GlobalFlags where
     globalLocalRepos        = combine globalLocalRepos,
     globalLogsDir           = combine globalLogsDir,
     globalWorldFile         = combine globalWorldFile,
-    globalRequireSandbox    = combine globalRequireSandbox,
-    globalIgnoreSandbox     = combine globalIgnoreSandbox,
     globalHttpTransport     = combine globalHttpTransport
   }
     where combine field = field a `mappend` field b

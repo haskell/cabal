@@ -220,8 +220,6 @@ instance Monoid SavedConfig where
         globalLocalRepos        = lastNonEmptyNL globalLocalRepos,
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
-        globalRequireSandbox    = combine globalRequireSandbox,
-        globalIgnoreSandbox     = combine globalIgnoreSandbox,
         globalHttpTransport     = combine globalHttpTransport
         }
         where

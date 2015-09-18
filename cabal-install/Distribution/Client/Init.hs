@@ -109,6 +109,8 @@ initCabal :: Verbosity
           -> IO ()
 initCabal verbosity packageDBs repos comp conf initFlags = do
 
+  -- XXX: We need to create a sandbox here
+
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb <- getSourcePackages verbosity repos
 

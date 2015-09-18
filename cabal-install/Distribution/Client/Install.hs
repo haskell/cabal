@@ -88,8 +88,7 @@ import Distribution.Client.Config
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..), UseSandbox(..), isUseSandbox
-         , whenUsingSandbox )
+         ( SandboxPackageInfo(..), UseSandbox(..) )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -105,7 +104,6 @@ import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 import qualified Distribution.Client.ComponentDeps as CD
 
@@ -128,7 +126,7 @@ import qualified Distribution.Simple.Setup as Cabal
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, rawSystemExit, comparing
+         ( createDirectoryIfMissingVerbose, comparing
          , writeFileAtomic, withTempFile , withUTF8FileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
@@ -153,14 +151,14 @@ import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( determineNumJobs, inDir, mergeBy, MergeResult(..)
+         ( determineNumJobs, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, normal, verbose )
+         ( Verbosity, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -189,7 +187,7 @@ install
   -> Platform
   -> ProgramConfiguration
   -> UseSandbox
-  -> Maybe SandboxPackageInfo
+  -> SandboxPackageInfo
   -> GlobalFlags
   -> ConfigFlags
   -> ConfigExFlags
@@ -197,7 +195,7 @@ install
   -> HaddockFlags
   -> [UserTarget]
   -> IO ()
-install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
+install verbosity packageDBs repos comp platform conf useSandbox sandboxPkgInfo
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
@@ -213,15 +211,14 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
             processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
-    args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
+    args = (packageDBs, repos, comp, platform, conf, useSandbox, sandboxPkgInfo,
             globalFlags, configFlags, configExFlags, installFlags,
             haddockFlags)
 
-    die' message = die (message ++ if isUseSandbox useSandbox
-                                   then installFailedInSandbox else [])
+    die' message = die (message ++ installFailedInSandbox)
     -- TODO: use a better error message, remove duplication.
     installFailedInSandbox =
-      "\nNote: when using a sandbox, all packages are required to have "
+      "\nNote: when using a sandbox, all packages are required to have "  -- XXX: Message needs update
       ++ "consistent dependencies. "
       ++ "Try reinstalling/unregistering the offending packages or "
       ++ "recreating the sandbox."
@@ -242,7 +239,7 @@ type InstallArgs = ( PackageDBStack
                    , Platform
                    , ProgramConfiguration
                    , UseSandbox
-                   , Maybe SandboxPackageInfo
+                   , SandboxPackageInfo
                    , GlobalFlags
                    , ConfigFlags
                    , ConfigExFlags
@@ -288,7 +285,7 @@ makeInstallContext verbosity
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                 -> IO (Progress String String InstallPlan)
 makeInstallPlan verbosity
-  (_, _, comp, platform, _, _, mSandboxPkgInfo,
+  (_, _, comp, platform, _, _, sandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -297,7 +294,7 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
+    return $ planPackages comp platform sandboxPkgInfo solver
       configFlags configExFlags installFlags
       installedPkgIndex sourcePkgDb pkgSpecifiers
 
@@ -326,7 +323,7 @@ processInstallPlan verbosity
 
 planPackages :: Compiler
              -> Platform
-             -> Maybe SandboxPackageInfo
+             -> SandboxPackageInfo
              -> Solver
              -> ConfigFlags
              -> ConfigExFlags
@@ -335,7 +332,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages comp platform sandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
@@ -393,7 +390,7 @@ planPackages comp platform mSandboxPkgInfo solver
             in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | pkgSpecifier <- pkgSpecifiers ]
 
-      . maybe id applySandboxInstallPolicy mSandboxPkgInfo
+      . applySandboxInstallPolicy sandboxPkgInfo
 
       . (if reinstall then reinstallTargets else id)
 
@@ -785,7 +782,7 @@ postInstallActions :: Verbosity
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, platform, conf, useSandbox, mSandboxPkgInfo
+  (packageDBs, _, comp, platform, conf, useSandbox, sandboxPkgInfo
   ,globalFlags, configFlags, _, installFlags, _)
   targets installPlan = do
 
@@ -806,14 +803,14 @@ postInstallActions verbosity
   when (reportingLevel == DetailedReports) $
     storeDetailedBuildReports verbosity logsDir buildReports
 
-  regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
+  regenerateHaddockIndex verbosity packageDBs comp platform conf
                          configFlags installFlags installPlan
 
   symlinkBinaries verbosity platform comp configFlags installFlags installPlan
 
   printBuildFailures installPlan
 
-  updateSandboxTimestampsFile useSandbox mSandboxPkgInfo
+  updateSandboxTimestampsFile useSandbox (Just sandboxPkgInfo {- FIXME: inline Just -} )
                               comp platform installPlan
 
   where
@@ -860,12 +857,11 @@ regenerateHaddockIndex :: Verbosity
                        -> Compiler
                        -> Platform
                        -> ProgramConfiguration
-                       -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
                        -> InstallPlan
                        -> IO ()
-regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
+regenerateHaddockIndex verbosity packageDBs comp platform conf
                        configFlags installFlags installPlan
   | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
@@ -893,17 +889,12 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
     -- installed. Since the index can be only per-user or per-sandbox (see
     -- #1337), we don't do it for global installs or special cases where we're
     -- installing into a specific db.
-    shouldRegenerateHaddockIndex = (isUseSandbox useSandbox || normalUserInstall)
-                                && someDocsWereInstalled installPlan
+    shouldRegenerateHaddockIndex = someDocsWereInstalled installPlan
       where
         someDocsWereInstalled = any installedDocs . InstallPlan.toList
-        normalUserInstall     = (UserPackageDB `elem` packageDBs)
-                             && all (not . isSpecificPackageDB) packageDBs
 
         installedDocs (InstallPlan.Installed _ _ (BuildOk DocsOk _ _)) = True
         installedDocs _                                                = False
-        isSpecificPackageDB (SpecificPackageDB _) = True
-        isSpecificPackageDB _                     = False
 
     substHaddockIndexFileName defaultDirs = fromPathTemplate
                                           . substPathTemplate env
@@ -1017,7 +1008,6 @@ updateSandboxTimestampsFile _ _ _ _ _ = return ()
 -- ------------------------------------------------------------
 
 data InstallMisc = InstallMisc {
-    rootCmd    :: Maybe FilePath,
     libVersion :: Maybe Version
   }
 
@@ -1035,11 +1025,11 @@ performInstallations verbosity
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
+  -- XXX: comment + message adjustment
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
-  whenUsingSandbox useSandbox $ \sandboxDir ->
-    when parallelInstall $
-      notice verbosity $ "Notice: installing into a sandbox located at "
-                         ++ sandboxDir
+  when parallelInstall $
+    notice verbosity $ "Notice: installing into a sandbox located at "
+                       ++ (usSandboxDir useSandbox)
 
   jobControl   <- if parallelInstall then newParallelJobControl
                                      else newSerialJobControl
@@ -1062,7 +1052,7 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
-                                 miscOptions configFlags'
+                                 configFlags'
                                  installFlags haddockFlags
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
@@ -1137,11 +1127,6 @@ performInstallations verbosity
                   (compilerInfo comp) platform
 
     miscOptions  = InstallMisc {
-      rootCmd    = if fromFlag (configUserInstall configFlags)
-                      || (isUseSandbox useSandbox)
-                     then Nothing      -- ignore --root-cmd if --user
-                                       -- or working inside a sandbox.
-                     else flagToMaybe (installRootCmd installFlags),
       libVersion = flagToMaybe (configCabalVersion configExFlags)
     }
 
@@ -1364,7 +1349,6 @@ installUnpackedPackage
   -> Int
   -> LibraryName
   -> SetupScriptOptions
-  -> InstallMisc
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
@@ -1376,7 +1360,7 @@ installUnpackedPackage
   -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs libname
-                       scriptOptions miscOptions
+                       scriptOptions
                        configFlags installFlags haddockFlags
                        cinfo platform pkg pkgoverride workingDir useLogFile = do
 
@@ -1439,12 +1423,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
           -- Actual installation
           withWin32SelfUpgrade verbosity libname configFlags
                                cinfo platform pkg $ do
-            case rootCmd miscOptions of
-              (Just cmd) -> reexec cmd
-              Nothing    -> do
-                setup Cabal.copyCommand copyFlags mLogPath
-                when shouldRegister $ do
-                  setup Cabal.registerCommand registerFlags mLogPath
+            setup Cabal.copyCommand copyFlags mLogPath
+            when shouldRegister $ do
+              setup Cabal.registerCommand registerFlags mLogPath
           return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
@@ -1539,19 +1520,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
                         , useWorkingDir    = workingDir }
           (Just pkg)
           cmd flags [])
-
-    reexec cmd = do
-      -- look for our own executable file and re-exec ourselves using a helper
-      -- program like sudo to elevate privileges:
-      self <- getExecutablePath
-      weExist <- doesFileExist self
-      if weExist
-        then inDir workingDir $
-               rawSystemExit verbosity cmd
-                 [self, "install", "--only"
-                 ,"--verbose=" ++ showForCabal verbosity]
-        else die $ "Unable to find cabal executable at: " ++ self
-
 
 -- helper
 onFailure :: (SomeException -> BuildFailure) -> IO BuildResult -> IO BuildResult

@@ -81,11 +81,11 @@ freeze :: Verbosity
       -> Compiler
       -> Platform
       -> ProgramConfiguration
-      -> Maybe SandboxPackageInfo
+      -> SandboxPackageInfo
       -> GlobalFlags
       -> FreezeFlags
       -> IO ()
-freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
+freeze verbosity packageDBs repos comp platform conf sandboxPkgInfo
       globalFlags freezeFlags = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
@@ -101,7 +101,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
 
     sanityCheck pkgSpecifiers
     pkgs  <- planPackages
-               verbosity comp platform mSandboxPkgInfo freezeFlags
+               verbosity comp platform sandboxPkgInfo freezeFlags
                installedPkgIndex sourcePkgDb pkgSpecifiers
 
     if null pkgs
@@ -128,13 +128,13 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
 planPackages :: Verbosity
              -> Compiler
              -> Platform
-             -> Maybe SandboxPackageInfo
+             -> SandboxPackageInfo
              -> FreezeFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> IO [PlanPackage]
-planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
+planPackages verbosity comp platform sandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers = do
 
   solver <- chooseSolver verbosity
@@ -169,7 +169,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
             in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]
 
-      . maybe id applySandboxInstallPolicy mSandboxPkgInfo
+      . applySandboxInstallPolicy sandboxPkgInfo
 
       $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
