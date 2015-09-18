@@ -272,8 +272,8 @@ data ConstraintSource =
   -- | Sandbox config file, which is ./cabal.sandbox.config by default.
   | ConstraintSourceSandboxConfig FilePath
 
-  -- | ./cabal.config.
-  | ConstraintSourceUserConfig
+  -- | User config file, which is ./cabal.config by default.
+  | ConstraintSourceUserConfig FilePath
 
   -- | Flag specified on the command line.
   | ConstraintSourceCommandlineFlag
@@ -306,7 +306,7 @@ showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
 showConstraintSource (ConstraintSourceSandboxConfig path) =
     "sandbox config " ++ path
-showConstraintSource ConstraintSourceUserConfig = "cabal.config"
+showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
 showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
 showConstraintSource ConstraintSourceUserTarget = "user target"
 showConstraintSource ConstraintSourceNonUpgradeablePackage =

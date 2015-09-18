@@ -284,10 +284,10 @@ inheritedPackageEnvironment verbosity pkgEnv = do
 userPackageEnvironment :: Verbosity -> FilePath -> Maybe FilePath -> IO PackageEnvironment
 userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
     let path = pkgEnvDir </> userPackageEnvironmentFile
-    minp <- readPackageEnvironmentFile ConstraintSourceUserConfig mempty path
+    minp <- readPackageEnvironmentFile (ConstraintSourceUserConfig path) mempty path
     case (minp, globalConfigLocation) of
       (Just parseRes, _)  -> processConfigParse path parseRes
-      (_, Just globalLoc) -> maybe (warn verbosity ("no constraints file found at " ++ path) >> return mempty) (processConfigParse globalLoc) =<< readPackageEnvironmentFile ConstraintSourceUserConfig mempty globalLoc
+      (_, Just globalLoc) -> maybe (warn verbosity ("no constraints file found at " ++ globalLoc) >> return mempty) (processConfigParse globalLoc) =<< readPackageEnvironmentFile (ConstraintSourceUserConfig globalLoc) mempty globalLoc
       _ -> return mempty
   where
     processConfigParse path (ParseOk warns parseResult) = do

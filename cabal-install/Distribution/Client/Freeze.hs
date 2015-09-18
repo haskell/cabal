@@ -227,7 +227,7 @@ freezePackages globalFlags verbosity pkgs = do
             }
         }
     constraint pkg =
-        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig)
+        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig userPackageEnvironmentFile)
       where
         pkgIdToConstraint pkgId =
             UserConstraintVersion (packageName pkgId)
