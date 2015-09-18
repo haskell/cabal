@@ -17,7 +17,6 @@ module Distribution.Client.IndexUtils (
   getSourcePackages,
   getSourcePackagesStrict,
 
-  readPackageIndexFile,
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
@@ -59,13 +58,13 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, fromMaybe)
+import Data.Maybe  (mapMaybe)
 import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
 import qualified Data.Map as Map
-import Control.Monad (MonadPlus(mplus), when, liftM)
+import Control.Monad (when, liftM)
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -256,57 +255,36 @@ packageDesc :: PackageEntry -> GenericPackageDescription
 packageDesc (NormalPackage  _ descr _ _) = descr
 packageDesc (BuildTreeRef _ _ descr _ _) = descr
 
--- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
---
--- This is supposed to be an \"all in one\" way to easily get at the info in
--- the Hackage package index.
---
--- It takes a function to map a 'GenericPackageDescription' into any more
--- specific instance of 'Package' that you might want to use. In the simple
--- case you can just use @\_ p -> p@ here.
---
-readPackageIndexFile :: Package pkg
-                     => (PackageEntry -> pkg)
-                     -> FilePath
-                     -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexFile mkPkg indexFile = do
-  (mkPkgs, prefs) <- either fail return
-                     . parsePackageIndex
-                     . maybeDecompress
-                     =<< BS.readFile indexFile
-
-  pkgEntries  <- sequence mkPkgs
-  pkgs <- evaluate $ PackageIndex.fromList (map mkPkg pkgEntries)
-  return (pkgs, prefs)
-
 -- | Parse an uncompressed \"00-index.tar\" repository index file represented
 -- as a 'ByteString'.
 --
-parsePackageIndex :: ByteString
-                  -> Either String ([MkPackageEntry], [Dependency])
-parsePackageIndex = accum 0 [] Map.empty . Tar.read
-  where
-    accum blockNo pkgs prefs es = case es of
-      Tar.Fail err   -> Left  err
-      Tar.Done       -> Right (reverse pkgs, concat (Map.elems prefs))
-      Tar.Next e es' -> blockNo' `seq` prefs' `seq`
-                        accum blockNo' pkgs' prefs' es'
-        where
-          (pkgs', prefs') = extract blockNo pkgs prefs e
-          blockNo'        = blockNo + Tar.entrySizeInBlocks e
 
-    extract blockNo pkgs prefs entry =
-       fromMaybe (pkgs, prefs) $
-                 tryExtractPkg
-         `mplus` tryExtractPrefs
+data PackageOrDep = Pkg PackageEntry | Dep Dependency
+
+parsePackageIndex :: ByteString
+                  -> [IO PackageOrDep]
+parsePackageIndex = accum 0 . Tar.read
+  where
+    accum blockNo es = case es of
+      Tar.Fail err   -> error ("parsePackageIndex: " ++ err)
+      Tar.Done       -> []
+      Tar.Next e es' -> ps ++ accum blockNo' es'
+        where
+          ps       = extract blockNo e
+          blockNo' = blockNo + Tar.entrySizeInBlocks e
+
+    extract blockNo entry = tryExtractPkg ++ tryExtractPrefs
       where
+        maybeToList Nothing  = []
+        maybeToList (Just a) = [a]
+
         tryExtractPkg = do
-          mkPkgEntry <- extractPkg entry blockNo
-          return (mkPkgEntry:pkgs, prefs)
+          mkPkgEntry <- maybeToList $ extractPkg entry blockNo
+          return (fmap Pkg mkPkgEntry)
 
         tryExtractPrefs = do
-          (loc,prefs') <- extractPrefs entry
-          return (pkgs, Map.insert loc prefs' prefs)
+          (_,prefs') <- maybeToList $ extractPrefs entry
+          map (return . Dep) $ prefs'
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
 extractPkg entry blockNo = case Tar.entryContent entry of
@@ -360,23 +338,27 @@ parsePreferredVersions = mapMaybe simpleParse
 -- Reading and updating the index cache
 --
 
+lazySequence :: [IO a] -> IO [a]
+lazySequence [] = return []
+lazySequence (x:xs) = unsafeInterleaveIO $ do
+    x'  <- unsafeInterleaveIO x
+    xs' <- lazySequence xs
+    return (x':xs')
+
 updatePackageIndexCacheFile :: Verbosity -> FilePath -> FilePath -> IO ()
 updatePackageIndexCacheFile verbosity indexFile cacheFile = do
     info verbosity ("Updating index cache file " ++ cacheFile)
-    (mkPkgs, prefs) <- either fail return
-                       . parsePackageIndex
-                       . maybeDecompress
-                       =<< BS.readFile indexFile
-    pkgEntries <- sequence mkPkgs
-    let cache = mkCache pkgEntries prefs
+    pkgsOrPrefs <- return
+                 . parsePackageIndex
+                 . maybeDecompress
+               =<< BS.readFile indexFile
+    entries <- lazySequence pkgsOrPrefs
+    let cache = map toCache entries
     writeFile cacheFile (showIndexCache cache)
   where
-    mkCache pkgs prefs =
-        [ CachePreference pref          | pref <- prefs ]
-     ++ [ CachePackageId pkgid blockNo
-        | (NormalPackage pkgid _ _ blockNo) <- pkgs ]
-     ++ [ CacheBuildTreeRef refType blockNo
-        | (BuildTreeRef refType _ _ _ blockNo) <- pkgs]
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
+    toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
+    toCache (Dep d) = CachePreference d
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
