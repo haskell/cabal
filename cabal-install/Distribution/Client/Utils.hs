@@ -80,6 +80,7 @@ mergeBy cmp = merge
         LT -> OnlyInLeft  x   : merge xs  (y:ys)
 
 data MergeResult a b = OnlyInLeft a | InBoth a b | OnlyInRight b
+                     deriving (Show)
 
 duplicates :: Ord a => [a] -> [[a]]
 duplicates = duplicatesBy compare

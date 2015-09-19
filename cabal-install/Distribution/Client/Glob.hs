@@ -2,7 +2,7 @@
 
 module Distribution.Client.Glob
     ( GlobAtom(..)
-    , Glob
+    , Glob (..)
     , globMatches
     ) where
 
@@ -50,7 +50,7 @@ globMatches' [] (_:_)              = False
 globMatches' (_:_) ""              = False
 
 instance Text Glob where
-  disp  = undefined
+  disp  = error "Glob disp"
   parse = Glob `fmap` many1 globAtom
     where
       wildcard = char '*' >> return WildCard

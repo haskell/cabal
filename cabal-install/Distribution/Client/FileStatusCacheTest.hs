@@ -1,8 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-import System.IO
-import Distribution.Client.FileStatusCache
 import Distribution.Text (simpleParse)
+import Control.Concurrent (threadDelay)
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Control.Monad.Error.Class
@@ -10,6 +9,9 @@ import System.FilePath
 import System.Directory
 import System.Posix.Temp
 import Control.Exception
+
+import Distribution.Client.FileStatusCache
+import Distribution.Client.Glob
 
 main :: IO ()
 main = do
@@ -44,18 +46,43 @@ main = do
     liftIO . removeDirectoryRecursive =<< getPath "dir1"
     assertChanged True
 
-  test "glob match" $ do
+  let glob = [GlobHashPath $ GlobDir (Glob [Literal "dir1"])
+                           $ GlobFile (Glob [Literal "good-", WildCard])]
+  test "glob add match" $ do
     touch "dir1/good-a"
-    updateCache [globHashPath "dir1/good*"]
+    --updateCache [globHashPath "dir1/good*"]
+    updateCache glob
     touch "dir1/good-b"
-    touch "dir1/bad"
     assertChanged True
 
-  test "glob no match" $ do
+  test "glob add nested match" $ do
+    touch "dir1/dir2/good-a"
+    --updateCache [globHashPath "dir1/good*"]
+    updateCache glob
+    touch "dir1/dir2/good-b"
+    --assertChanged True -- FIXME
+
+  test "glob add non-match" $ do
     touch "dir1/good-a"
-    updateCache [globHashPath "dir1/good*"]
+    --updateCache [globHashPath "dir1/good*"]
+    updateCache glob
     touch "dir1/bad"
+    assertChanged False
+
+  test "glob remove match" $ do
+    touch "dir1/good-a"
+    --updateCache [globHashPath "dir1/good*"]
+    updateCache glob
+    remove "dir1/good-a"
     assertChanged True
+
+  test "glob remove non-match" $ do
+    touch "dir1/good-a"
+    touch "dir1/bad"
+    --updateCache [globHashPath "dir1/good*"]
+    updateCache glob
+    remove "dir1/bad"
+    assertChanged False
 
 globHashPath :: String -> FileSpec
 globHashPath glob
@@ -72,10 +99,7 @@ getPath :: FilePath -> TestM FilePath
 getPath fname = (</>) <$> getRoot <*> pure fname
 
 touch :: FilePath -> TestM ()
-touch fname = do
-  file <- getPath fname
-  liftIO $ createDirectoryIfMissing True (takeDirectory file)
-  liftIO $ withFile file WriteMode $ \_->return ()
+touch fname = write fname "hello"
 
 remove :: FilePath -> TestM ()
 remove fname = do
@@ -84,8 +108,10 @@ remove fname = do
 
 write :: FilePath -> String -> TestM ()
 write fname contents = do
-  root <- getRoot
-  liftIO $ writeFile (root</>fname) contents
+  path <- (</> fname) <$> getRoot
+  liftIO $ createDirectoryIfMissing True (takeDirectory path)
+  liftIO $ writeFile path contents
+  liftIO $ threadDelay 10000
 
 getCacheName :: TestM FilePath
 getCacheName = (++".cache") <$> getRoot
@@ -127,5 +153,5 @@ test name action = do
                  clean
                  (\root -> runReaderT (runExceptT $ runTestM action) root)
   case res of
-    Left e -> putStrLn $ "fail, "++e
+    Left e -> putStrLn ("fail, "++e)
     Right _ -> putStrLn "ok"

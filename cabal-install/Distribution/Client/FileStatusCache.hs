@@ -23,7 +23,8 @@ import           Control.Monad.Trans.Class
 import           Control.Exception
 
 import           Distribution.Text
-import           Distribution.Compat.ReadP (char, (+++))
+import           Distribution.Compat.ReadP (satisfy, char, (+++))
+import qualified Distribution.Compat.ReadP as ReadP
 import           Distribution.Client.Glob
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
@@ -47,7 +48,13 @@ instance Text GlobPath where
   disp = error "GlobPath disp"
   parse = dir +++ file
     where
-      dir = GlobDir <$> parse <* char '/' <*> parse
+      dir = do
+        dir <- ReadP.manyTill ReadP.get (satisfy (/= '\\') >> char '/')
+        case filter (null . snd) $ ReadP.readP_to_S parse dir of
+          [] -> fail "couldn't parse directory glob"
+          (x,_):_ -> do void $ char '/'
+                        rest <- parse
+                        return $ GlobDir x rest
       file = GlobFile <$> parse
 
 -- | A list of search paths
@@ -67,6 +74,9 @@ data FileSpec = SingleHashedFile FilePath
               deriving (Show)
 
 -- | invariant: the lists of pairs above are sorted
+--
+-- This is where we preserve the state necessary to determine whether
+-- the files matched by a globbing match has changed.
 data CachedGlobPath = CSubdirs Glob GlobPath ModTime [(FilePath, CachedGlobPath)]
                     | CFiles Glob ModTime [(FilePath, ModTime, Hash)]
                     deriving (Show, Generic, Binary)
@@ -88,6 +98,7 @@ instance Binary CachedFileSpec
 data FileStatusCache = FileStatusCache (Map FilePath CachedFileSpec)
                                        [CachedGlobPath]
                                        [CachedSearchPath]
+                     deriving (Show)
 
 instance Monoid FileStatusCache where
   mempty = FileStatusCache Map.empty [] []
@@ -142,8 +153,8 @@ checkFileStatusChanged statusCacheFile root = do
            return $ FileStatusCache singlePaths' globPaths' searchPaths'
          case res of
            Nothing -> return Changed
-           Just (cache', CacheChanged) ->
-             --writeCache stateCacheFile $ FileStatusCache cachedValue cache'
+           Just (cache', CacheChanged) -> do
+             Binary.encodeFile statusCacheFile (cache', cachedValue)
              return (Unchanged cachedValue)
            Just (_, CacheUnchanged) -> return (Unchanged cachedValue)
   where
@@ -182,17 +193,19 @@ checkFileStatusChanged statusCacheFile root = do
                   -> ChangedT CachedGlobPath
                      -- ^ returns True if previous CachedGlobPath is still valid
     probeGlobPath dirName (CSubdirs glob globPath mtime children) = do
-        same <- liftIO $ probeModificationTime dirName mtime
+        same <- liftIO $ probeModificationTime (root </> dirName) mtime
+
         res <- if same
-                 then sequence [ do cgp' <- probeGlobPath (dirName</>fname) cgp
+                 then sequence [ do cgp' <- probeGlobPath (dirName </> fname) cgp
                                     return (fname, cgp')
                                | (fname, cgp) <- children ]
-                 else do names <- filter (globMatches glob) <$> liftIO (getDirectoryContents dirName)
-                         names' <- filterM (liftIO . doesDirectoryExist) names
+                 else do allEnts <- liftIO $ getDirectoryContents (root </> dirName)
+                         ents <- filterM (liftIO . doesDirectoryExist)
+                                 $ filter (globMatches glob . normalise) allEnts
                          mapM probeMergeResult
-                                $ mergeBy (\(path1,_) path2 -> compare path1 path2)
-                                          children
-                                          (sort names')
+                              $ mergeBy (\(path1,_) path2 -> compare path1 path2)
+                                        children
+                                        (sort ents)
         return $ CSubdirs glob globPath mtime res
       where
         probeMergeResult :: MergeResult (FilePath, CachedGlobPath) FilePath
@@ -221,13 +234,27 @@ checkFileStatusChanged statusCacheFile root = do
           cgp' <- probeGlobPath (dirName </> path) cgp
           return (dirName </> path, cgp')
 
-    probeGlobPath dirName cached@(CFiles _glob mtime children) = do
-        same <- liftIO $ probeModificationTime dirName mtime
-        res <- if same
-                 then forM_ children $ \(file, mtime', hash) ->
-                          probeHashedFile file mtime' hash
-                 else somethingChanged
+    probeGlobPath dirName cached@(CFiles glob mtime children) = do
+        same <- liftIO $ probeModificationTime (root </> dirName) mtime
+        unless same $ do
+            -- Modification time changed:
+            -- a file may have been added or deleted
+            allEnts <- liftIO $ getDirectoryContents (root </> dirName)
+            ents <- filterM (\fname -> liftIO $ doesFileExist $ root </> dirName </> fname)
+                    $ filter (globMatches glob . normalise) allEnts
+            let mergeRes = mergeBy (\(path1,_,_) path2 -> compare path1 path2)
+                            children
+                            (sort ents)
+            unless (all isInBoth mergeRes) somethingChanged
+
+        -- Check that none of the children have changed
+        forM_ children $ \(file, mtime', hash) ->
+            probeHashedFile (root </> dirName </> file) mtime' hash
         return cached -- FIXME?
+      where
+        isInBoth :: MergeResult a b -> Bool
+        isInBoth (InBoth _ _) = True
+        isInBoth _            = False
 
     probeHashedFile :: FilePath -> ModTime -> Hash -> ChangedT ()
     probeHashedFile file mtime hash = do
@@ -265,10 +292,11 @@ buildCachedGlobPath root dir globPath = do
         subdirs <- forM all' $ \subdir -> do
           cgp <- buildCachedGlobPath root (dir </> subdir) globPath'
           return (subdir, cgp)
-        return $ CSubdirs glob globPath dirMTime subdirs
+        return $ CSubdirs glob globPath' dirMTime subdirs
 
       GlobFile glob -> do
-        ents' <- filterM doesFileExist $ filter (globMatches glob) ents
+        ents' <- filterM (\fname -> doesFileExist (root </> dir </> fname))
+                 $ filter (globMatches glob) ents
         files <- forM ents' $ \file -> do
           let path = root </> dir </> file
           mtime <- getModificationTime path
@@ -352,8 +380,8 @@ handleDoesNotExist =
 {-
 instance Binary FileInfo where
   put (FileInfo a b) = do put a >> put b
-  get = do a <- get; b <- get; return $! FileInfo a b
--}
+  get = do a <- get; b <- get; return $! FileInfo a b-}
+{--}
 
 instance Binary UTCTime where
   put (UTCTime (ModifiedJulianDay day) tod) = do
