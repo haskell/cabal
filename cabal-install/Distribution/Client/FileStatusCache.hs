@@ -167,12 +167,12 @@ checkFileStatusChanged statusCacheFile root = do
         else return CSingleFileNotFound
 
     probeSingle file cached@(CSingleFile mtime) = do
-      same <- liftIO $ probeModificationTime (root </> file) mtime
+      same <- liftIO $ probeModificationTime file mtime
       unless same somethingChanged
       return cached
 
     probeSingle file cached@(CSingleHashedFile mtime hash) = do
-      probeHashedFile (root </> file) mtime hash
+      probeHashedFile file mtime hash
       return cached
 
     probeSearch :: CachedSearchPath -> ChangedT CachedSearchPath
@@ -183,7 +183,7 @@ checkFileStatusChanged statusCacheFile root = do
         Just _ -> somethingChanged
         Nothing
           | Just (foundDir, mtime) <- found -> do
-            same <- liftIO $ probeModificationTime (root </> foundDir </> name) mtime
+            same <- liftIO $ probeModificationTime (foundDir </> name) mtime
             unless same somethingChanged
           | otherwise                       -> return ()
       return cached
@@ -235,7 +235,7 @@ checkFileStatusChanged statusCacheFile root = do
           return (dirName </> path, cgp')
 
     probeGlobPath dirName cached@(CFiles glob mtime children) = do
-        same <- liftIO $ probeModificationTime (root </> dirName) mtime
+        same <- liftIO $ probeModificationTime dirName mtime
         unless same $ do
             -- Modification time changed:
             -- a file may have been added or deleted
@@ -249,13 +249,14 @@ checkFileStatusChanged statusCacheFile root = do
 
         -- Check that none of the children have changed
         forM_ children $ \(file, mtime', hash) ->
-            probeHashedFile (root </> dirName </> file) mtime' hash
+            probeHashedFile (dirName </> file) mtime' hash
         return cached -- FIXME?
       where
         isInBoth :: MergeResult a b -> Bool
         isInBoth (InBoth _ _) = True
         isInBoth _            = False
 
+    -- | File name relative to @root@
     probeHashedFile :: FilePath -> ModTime -> Hash -> ChangedT ()
     probeHashedFile file mtime hash = do
       sameMTime <- liftIO $ probeModificationTime file mtime
@@ -263,15 +264,17 @@ checkFileStatusChanged statusCacheFile root = do
            sameHash <- liftIO $ probeFileHash file hash
            unless sameHash somethingChanged
 
+    -- | File name relative to @root@
     probeModificationTime :: FilePath -> ModTime -> IO Bool
     probeModificationTime file mtime =
       handleDoesNotExist (\_ -> return False) $ do
-       mtime' <- getModificationTime file
+       mtime' <- getModificationTime (root </> file)
        return (mtime == mtime')
 
+    -- | File name relative to @root@
     probeFileHash file chash =
       handleDoesNotExist (\_ -> return False) $ do
-        chash' <- readFileHash file
+        chash' <- readFileHash (root </> file)
 
         --TODO: debug only:
         when (chash == chash') $
