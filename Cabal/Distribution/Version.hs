@@ -821,7 +821,10 @@ hasUpperBound (UnionVersionRanges x y) = hasUpperBound x && hasUpperBound y
 hasUpperBound (IntersectVersionRanges x y) = hasUpperBound x || hasUpperBound y
 hasUpperBound (VersionRangeParens x) = hasUpperBound x
 
--- | Does the version range have a lower bound?
+-- | Does the version range have an explicit lower bound?
+--
+-- Note: this function only considers the user-specified lower bounds, but not
+-- the implicit >=0 lower bound.
 --
 -- @since 1.24.0.0
 hasLowerBound :: VersionRange -> Bool
