@@ -751,9 +751,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
         then configFlags' { configTests = toFlag True }
         else configFlags'
 
-testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
+testAction :: ((BuildFlags, BuildExFlags), TestFlags) -> [String] -> GlobalFlags
            -> IO ()
-testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
+testAction ((buildFlags, buildExFlags), testFlags) extraArgs globalFlags = do
   let verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
       addConfigFlags = mempty { configTests = toFlag True }
       noAddSource    = fromFlagOrDefault DontSkipAddSourceDepsCheck
@@ -798,7 +798,7 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
 
       maybeWithSandboxDirOnSearchPath useSandbox $
         setupWrapper verbosity setupOptions Nothing
-          Cabal.testCommand (const testFlags') extraArgs'
+          (Cabal.testCommand (const []) ()) (const ((), testFlags')) extraArgs'
 
 benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
                    -> [String] -> GlobalFlags

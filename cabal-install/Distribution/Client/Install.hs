@@ -1437,7 +1437,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   -- Tests phase
       onFailure TestsFailed $ do
         when (testsEnabled && PackageDescription.hasTests pkg) $
-            setup Cabal.testCommand testFlags mLogPath
+            setup (Cabal.testCommand (const []) ()) testFlags mLogPath
 
         let testsResult | testsEnabled = TestsOk
                         | otherwise = TestsNotTried
@@ -1472,9 +1472,10 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     }
     testsEnabled = fromFlag (configTests configFlags)
                    && fromFlagOrDefault False (installRunTests installFlags)
-    testFlags _ = Cabal.emptyTestFlags {
-      Cabal.testDistPref = configDistPref configFlags
-    }
+    testFlags _ = ((), justTestFlags) where
+      justTestFlags = Cabal.emptyTestFlags {
+        Cabal.testDistPref = configDistPref configFlags
+      }
     copyFlags _ = Cabal.emptyCopyFlags {
       Cabal.copyDistPref   = configDistPref configFlags,
       Cabal.copyDest       = toFlag InstallDirs.NoCopyDest,
