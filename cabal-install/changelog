@@ -24,6 +24,7 @@
 	unnecessary reconfigures (#2633).
 	* Improved error message for unsatisfiable package constraints
 	(#2727).
+	* Fixed a space leak in 'cabal update' (#2826).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
