@@ -1,18 +1,60 @@
 # NB: don't set `language: haskell` here
 
+sudo: false
+
 # The following enables several GHC versions to be tested; often it's enough to test only against the last release in a major GHC version. Feel free to omit lines listings versions you don't need/want testing for.
-env:
- - GHCVER=7.4.2
- - GHCVER=7.6.3
- - GHCVER=7.8.4
- - GHCVER=7.10.1
- - GHCVER=head
+matrix:
+  include:
+    - env: GHCVER=7.4.2
+      addons:
+        apt:
+          sources:
+            - hvr-ghc
+          packages:
+            - cabal-install-1.22
+            - happy
+            - ghc-7.4.2
+    - env: GHCVER=7.6.3
+      addons:
+        apt:
+          sources:
+            - hvr-ghc
+          packages:
+            - cabal-install-1.22
+            - happy
+            - ghc-7.6.3
+    - env: GHCVER=7.8.4
+      addons:
+        apt:
+          sources:
+            - hvr-ghc
+          packages:
+            - cabal-install-1.22
+            - happy
+            - ghc-7.8.4
+    - env: GHCVER=7.10.1
+      addons:
+        apt:
+          sources:
+            - hvr-ghc
+          packages:
+            - cabal-install-1.22
+            - happy
+            - ghc-7.10.1
+    - env: GHCVER=head
+      addons:
+        apt:
+          sources:
+            - hvr-ghc
+          packages:
+            - cabal-install-1.22
+            - happy
+            - ghc-head
+  allow_failures:
+    - env: GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
 
 install:
@@ -32,7 +74,6 @@ script:
 
 # Need extra dependencies for test suite
  - cabal install --only-dependencies --enable-tests
- - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
 
  - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks --ghc-option=-Werror -v2  # -v2 provides useful information for debugging
@@ -65,7 +106,3 @@ script:
  - cabal check
  - cabal sdist
  - install_from_tarball
-
-matrix:
-  allow_failures:
-   - env: GHCVER=head
