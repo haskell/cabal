@@ -88,10 +88,7 @@ newDefaultConfig = do
     sysTmpDir <- getTemporaryDirectory
     withTempDirectory silent sysTmpDir "cabal-test" $ \tmpDir -> do
         let configFile  = tmpDir </> "tmp.config"
-        createDirectoryIfMissing True tmpDir
-        -- Create default config
         createDefaultConfigFile silent configFile
-        -- Check that file was written
         exists <- doesFileExist configFile
         assertBool ("Config file should be written to " ++ configFile) exists
 
