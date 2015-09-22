@@ -286,9 +286,10 @@ foldVersionRange anyv this later earlier union intersect = fold
                    (orLaterVersion v)
                    (earlierVersion (wildcardUpperBound v))
 
--- | An extended variant of 'foldVersionRange' that also provides a view of
--- in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"== v.*\"@ is presented
--- explicitly rather than in terms of the other basic syntax.
+-- | An extended variant of 'foldVersionRange' that also provides a view of the
+-- expression in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"==
+-- v.*\"@ is presented explicitly rather than in terms of the other basic
+-- syntax.
 --
 foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                   -> (Version -> a)            -- ^ @\"== v\"@
@@ -812,14 +813,12 @@ instance Text VersionRange where
 --
 -- @since 1.24.0.0
 hasUpperBound :: VersionRange -> Bool
-hasUpperBound AnyVersion = False
-hasUpperBound (ThisVersion _) = True
-hasUpperBound (LaterVersion _) = False
-hasUpperBound (EarlierVersion _) = True
-hasUpperBound (WildcardVersion _) = True
-hasUpperBound (UnionVersionRanges x y) = hasUpperBound x && hasUpperBound y
-hasUpperBound (IntersectVersionRanges x y) = hasUpperBound x || hasUpperBound y
-hasUpperBound (VersionRangeParens x) = hasUpperBound x
+hasUpperBound = foldVersionRange
+                False
+                (const True)
+                (const False)
+                (const True)
+                (&&) (||)
 
 -- | Does the version range have an explicit lower bound?
 --
@@ -828,11 +827,9 @@ hasUpperBound (VersionRangeParens x) = hasUpperBound x
 --
 -- @since 1.24.0.0
 hasLowerBound :: VersionRange -> Bool
-hasLowerBound AnyVersion = False
-hasLowerBound (ThisVersion _) = True
-hasLowerBound (LaterVersion _) = True
-hasLowerBound (EarlierVersion _) = False
-hasLowerBound (WildcardVersion _) = True
-hasLowerBound (UnionVersionRanges x y) = hasLowerBound x && hasLowerBound y
-hasLowerBound (IntersectVersionRanges x y) = hasLowerBound x || hasLowerBound y
-hasLowerBound (VersionRangeParens x) = hasLowerBound x
+hasLowerBound = foldVersionRange
+                False
+                (const True)
+                (const True)
+                (const False)
+                (&&) (||)
