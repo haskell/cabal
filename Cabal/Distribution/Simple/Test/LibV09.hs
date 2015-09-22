@@ -23,15 +23,14 @@ import Distribution.Simple.Setup
     ( TestFlags(..), TestShowDetails(..), fromFlag, configCoverage )
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
-    ( die, notice, rawSystemIOWithEnv, addLibraryPath )
+    ( die, debug, notice, createProcessWithEnv, addLibraryPath )
 import Distribution.System ( Platform (..) )
 import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity ( normal )
 
-import Control.Concurrent (forkIO)
 import Control.Exception ( bracket )
-import Control.Monad ( when, unless, void )
+import Control.Monad ( when, unless )
 import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
@@ -40,6 +39,7 @@ import System.Directory
 import System.Exit ( ExitCode(..), exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
+import System.Process (StdStream(..), waitForProcess)
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -74,22 +74,11 @@ runTest pkg_descr lbi flags suite = do
 
     suiteLog <- bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
-        (rIn, wIn) <- createPipe
         (rOut, wOut) <- createPipe
 
-        -- Prepare standard input for test executable
-        --appendFile tempInput $ show (tempInput, PD.testName suite)
-        hPutStr wIn $ show (tempLog, PD.testName suite)
-        hClose wIn
-
-        -- Append contents of temporary log file to the final human-
-        -- readable log file
-        logText <- hGetContents rOut
-        -- Force the IO manager to drain the test output pipe
-        void $ forkIO $ length logText `seq` return ()
-
         -- Run test executable
-        _ <- do let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
+        (Just wIn, _, _, process) <- do
+                let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
                     dataDirPath = pwd </> PD.dataDir pkg_descr
                     tixFile = pwd </> tixFilePath distPref way (PD.testName suite)
                     pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
@@ -108,9 +97,22 @@ runTest pkg_descr lbi flags suite = do
                                              True False lbi clbi
                                   return (addLibraryPath os paths shellEnv)
                                 else return shellEnv
-                rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
-                                   -- these handles are closed automatically
-                                   (Just rIn) (Just wOut) (Just wOut)
+                createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')
+                                     -- these handles are closed automatically
+                                     CreatePipe (UseHandle wOut) (UseHandle wOut)
+
+        hPutStr wIn $ show (tempLog, PD.testName suite)
+        hClose wIn
+
+        -- Append contents of temporary log file to the final human-
+        -- readable log file
+        logText <- hGetContents rOut
+        -- Force the IO manager to drain the test output pipe
+        length logText `seq` return ()
+
+        exitcode <- waitForProcess process
+        unless (exitcode == ExitSuccess) $ do
+            debug verbosity $ cmd ++ " returned " ++ show exitcode
 
         -- Generate final log file name
         let finalLogName l = testLogDir

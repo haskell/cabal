@@ -33,6 +33,7 @@ module Distribution.Simple.Utils (
         rawSystemStdout,
         rawSystemStdInOut,
         rawSystemIOWithEnv,
+        createProcessWithEnv,
         maybeExit,
         xargs,
         findProgramLocation,
@@ -197,7 +198,7 @@ import Control.Concurrent (forkIO)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
 import System.Process
-         ( createProcess, rawSystem, runInteractiveProcess
+         ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
          , showCommandForUser, waitForProcess)
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
@@ -450,22 +451,8 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
-    printRawCommandAndArgsAndEnv verbosity path args menv
-    hFlush stdout
-    (_,_,_,ph) <- createProcess $
-                  (Process.proc path args) { Process.cwd           = mcwd
-                                           , Process.env           = menv
-                                           , Process.std_in        = mbToStd inp
-                                           , Process.std_out       = mbToStd out
-                                           , Process.std_err       = mbToStd err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
-                                           , Process.delegate_ctlc = True
-#endif
-#endif
-                                           }
+    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
+                                       (mbToStd inp) (mbToStd out) (mbToStd err)
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
@@ -473,6 +460,37 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
+
+createProcessWithEnv :: Verbosity
+                     -> FilePath
+                     -> [String]
+                     -> Maybe FilePath           -- ^ New working dir or inherit
+                     -> Maybe [(String, String)] -- ^ New environment or inherit
+                     -> Process.StdStream  -- ^ stdin
+                     -> Process.StdStream  -- ^ stdout
+                     -> Process.StdStream  -- ^ stderr
+                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
+                        -- ^ Any handles created for stdin, stdout, or stderr
+                        -- with 'CreateProcess', and a handle to the process.
+createProcessWithEnv verbosity path args mcwd menv inp out err = do
+    printRawCommandAndArgsAndEnv verbosity path args menv
+    hFlush stdout
+    (inp', out', err', ph) <- createProcess $
+                                (Process.proc path args) {
+                                    Process.cwd           = mcwd
+                                  , Process.env           = menv
+                                  , Process.std_in        = inp
+                                  , Process.std_out       = out
+                                  , Process.std_err       = err
+#ifdef MIN_VERSION_process
+#if MIN_VERSION_process(1,2,0)
+-- delegate_ctlc has been added in process 1.2, and we still want to be able to
+-- bootstrap GHC on systems not having that version
+                                  , Process.delegate_ctlc = True
+#endif
+#endif
+                                  }
+    return (inp', out', err', ph)
 
 -- | Run a command and return its output.
 --
