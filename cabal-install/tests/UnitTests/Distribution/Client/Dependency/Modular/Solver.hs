@@ -44,6 +44,7 @@ tests = [
         , runTest $         mkTest db3 "forceFlagOff" ["D"]      (Just [("A", 2), ("B", 1), ("D", 1)])
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] Nothing
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] Nothing
+        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
           runTest $         mkTest db5 "simpleTest1" ["C"]      (Just [("A", 2), ("C", 1)])
@@ -540,6 +541,27 @@ db16 = [
   , Right $ exAv "D" 1 []
   , Right $ exAv "D" 2 []
   , Right $ exAv "E" 1 []
+  ]
+
+-- | When both A and B are installed as independent goals, their dependencies on
+-- C must be linked. The only combination of C's flags that is consistent with
+-- A and B's dependencies on D is -flagA +flagB. This database tests that the
+-- solver can backtrack to find the right combination of flags (requiring F, but
+-- not E or G) and apply it to both 0.C and 1.C.
+db18 :: ExampleDb
+db18 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C", ExFix "D" 2]
+  , Right $ exAv "C" 1 [exFlag "flagA"
+                           [ExFix "D" 1, ExAny "E"]
+                           [exFlag "flagB"
+                               [ExAny "F"]
+                               [ExFix "D" 2, ExAny "G"]]]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  , Right $ exAv "F" 1 []
+  , Right $ exAv "G" 1 []
   ]
 
 dbExts1 :: ExampleDb
