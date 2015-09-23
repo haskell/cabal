@@ -16,7 +16,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
 import Distribution.Text
 import Distribution.Package
-import Distribution.InstalledPackageInfo hiding (includeDirs)
+import Distribution.InstalledUnitInfo hiding (includeDirs)
 import Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
@@ -135,7 +135,7 @@ getInstalledPackages verbosity packagedbs conf =
 
   where
     parsePackages str =
-      let parsed = map parseInstalledPackageInfo (splitPkgs str)
+      let parsed = map parseInstalledUnitInfo (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Right [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Left msgs
@@ -203,7 +203,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
+  -> InstalledUnitInfo
   -> PackageDescription
   -> LocalBuildInfo
   -> Bool
@@ -215,7 +215,7 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   runProgramInvocation verbosity $
     (programInvocation hspkg
       ["update", packageDbOpt $ last packageDbs])
-      { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
+      { progInvokeInput = Just $ showInstalledUnitInfo installedPkgInfo }
 
 initPackageDB :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
 initPackageDB verbosity conf dbPath =

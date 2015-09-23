@@ -55,8 +55,8 @@ import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
@@ -119,7 +119,7 @@ type DependencyResolver = Platform
 --
 -- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
 --
-data ResolverPackage = PreExisting InstalledPackageInfo
+data ResolverPackage = PreExisting InstalledUnitInfo
                      | Configured  ConfiguredPackage
 
 -- | Per-package constraints. Package constraints must be respected by the

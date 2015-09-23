@@ -53,7 +53,8 @@ module Distribution.Simple.Compiler (
         parmakeSupported,
         reexportedModulesSupported,
         renamingPackageFlagsSupported,
-        packageKeySupported,
+        unifiedIPIDRequired,
+        installedUnitIdSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -276,9 +277,13 @@ reexportedModulesSupported = ghcSupported "Support reexported-modules"
 renamingPackageFlagsSupported :: Compiler -> Bool
 renamingPackageFlagsSupported = ghcSupported "Support thinning and renaming package flags"
 
+-- | Does this compiler have unified IPIDs (so no package keys)
+unifiedIPIDRequired :: Compiler -> Bool
+unifiedIPIDRequired = ghcSupported "Requires unified installed package IDs"
+
 -- | Does this compiler support package keys?
-packageKeySupported :: Compiler -> Bool
-packageKeySupported = ghcSupported "Uses package keys"
+installedUnitIdSupported :: Compiler -> Bool
+installedUnitIdSupported = ghcSupported "Uses package keys"
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool

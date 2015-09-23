@@ -22,11 +22,11 @@ import Distribution.PackageDescription as PD
          , Library(..), libModules, exeModules
          , hcOptions, hcProfOptions, hcSharedOptions
          , allExtensions )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
-import Distribution.Package ( LibraryName(..), getHSLibraryName )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
+                                ( InstalledUnitInfo(..) )
+import Distribution.Package ( InstalledUnitId(..), getHSLibraryName )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -228,7 +228,7 @@ getInstalledPackages verbosity packagedbs conf = do
   return $! index
 
 toPackageIndex :: Verbosity
-               -> [(PackageDB, [InstalledPackageInfo])]
+               -> [(PackageDB, [InstalledUnitInfo])]
                -> ProgramConfiguration
                -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss conf = do
@@ -260,7 +260,7 @@ checkPackageDbStack _ =
      ++ "specified first and cannot be specified multiple times"
 
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
-                      -> IO [(PackageDB, [InstalledPackageInfo])]
+                      -> IO [(PackageDB, [InstalledUnitInfo])]
 getInstalledPackages' verbosity packagedbs conf =
   sequence
     [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
@@ -301,7 +301,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  let libName@(LibraryName cname) = componentLibraryName clbi
+  let libName@(InstalledUnitId cname) = componentInstalledUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -312,7 +312,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp
-      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n)))
+      hole_insts = map (\(k,(p,n)) -> (k,(InstalledUnitInfo.installedUnitId p,n)))
                        (instantiatedWith lbi)
       nativeToo = ghcjsNativeToo comp
 
@@ -756,7 +756,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentInstalledUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName
@@ -825,7 +825,7 @@ adjustExts hiSuf objSuf opts =
   }
 
 registerPackage :: Verbosity
-                -> InstalledPackageInfo
+                -> InstalledUnitInfo
                 -> PackageDescription
                 -> LocalBuildInfo
                 -> Bool

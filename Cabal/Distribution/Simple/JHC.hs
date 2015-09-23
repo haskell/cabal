@@ -19,9 +19,9 @@ module Distribution.Simple.JHC (
 import Distribution.PackageDescription as PD
        ( PackageDescription(..), BuildInfo(..), Executable(..)
        , Library(..), libModules, hcOptions, usedExtensions )
-import Distribution.InstalledPackageInfo
-         ( emptyInstalledPackageInfo, )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+import Distribution.InstalledUnitInfo
+         ( emptyInstalledUnitInfo, )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -115,10 +115,10 @@ getInstalledPackages verbosity _packageDBs conf = do
              (skipSpaces >> string "Name:" >> skipSpaces >> parse) ln)
    return $
       PackageIndex.fromList $
-      map (\p -> emptyInstalledPackageInfo {
-                    InstalledPackageInfo.installedPackageId =
+      map (\p -> emptyInstalledUnitInfo {
+                    InstalledUnitInfo.installedPackageId =
                        InstalledPackageId (display p),
-                    InstalledPackageInfo.sourcePackageId = p
+                    InstalledUnitInfo.sourcePackageId = p
                  }) $
       concatMap parseLine $
       lines str

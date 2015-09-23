@@ -291,6 +291,7 @@ instance Monoid SavedConfig where
         configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
+        configIPID                = combine configIPID,
         configDistPref            = combine configDistPref,
         configVerbosity           = combine configVerbosity,
         configUserInstall         = combine configUserInstall,

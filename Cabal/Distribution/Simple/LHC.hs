@@ -45,11 +45,11 @@ import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, hcOptions, hcProfOptions, hcSharedOptions
          , usedExtensions, allExtensions )
-import Distribution.InstalledPackageInfo
-                                ( InstalledPackageInfo
-                                , parseInstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
+import Distribution.InstalledUnitInfo
+                                ( InstalledUnitInfo
+                                , parseInstalledUnitInfo )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
+                                ( InstalledUnitInfo(..) )
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
@@ -59,7 +59,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( Package(..), LibraryName, getHSLibraryName )
+         ( Package(..), getHSLibraryName, InstalledUnitId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -252,7 +252,7 @@ checkPackageDbStack _ =
 --
 getInstalledPackages' :: ConfiguredProgram -> Verbosity
                       -> [PackageDB] -> ProgramConfiguration
-                      -> IO [(PackageDB, [InstalledPackageInfo])]
+                      -> IO [(PackageDB, [InstalledUnitInfo])]
 getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
   sequence
@@ -266,7 +266,7 @@ getInstalledPackages' lhcPkg verbosity packagedbs conf
 
   where
     parsePackages str =
-      let parsed = map parseInstalledPackageInfo (splitPkgs str)
+      let parsed = map parseInstalledUnitInfo (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
@@ -291,21 +291,21 @@ getInstalledPackages' lhcPkg verbosity packagedbs conf
       = "package-db"
 
 
-substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
+substTopDir :: FilePath -> InstalledUnitInfo -> InstalledUnitInfo
 substTopDir topDir ipo
  = ipo {
-       InstalledPackageInfo.importDirs
-           = map f (InstalledPackageInfo.importDirs ipo),
-       InstalledPackageInfo.libraryDirs
-           = map f (InstalledPackageInfo.libraryDirs ipo),
-       InstalledPackageInfo.includeDirs
-           = map f (InstalledPackageInfo.includeDirs ipo),
-       InstalledPackageInfo.frameworkDirs
-           = map f (InstalledPackageInfo.frameworkDirs ipo),
-       InstalledPackageInfo.haddockInterfaces
-           = map f (InstalledPackageInfo.haddockInterfaces ipo),
-       InstalledPackageInfo.haddockHTMLs
-           = map f (InstalledPackageInfo.haddockHTMLs ipo)
+       InstalledUnitInfo.importDirs
+           = map f (InstalledUnitInfo.importDirs ipo),
+       InstalledUnitInfo.libraryDirs
+           = map f (InstalledUnitInfo.libraryDirs ipo),
+       InstalledUnitInfo.includeDirs
+           = map f (InstalledUnitInfo.includeDirs ipo),
+       InstalledUnitInfo.frameworkDirs
+           = map f (InstalledUnitInfo.frameworkDirs ipo),
+       InstalledUnitInfo.haddockInterfaces
+           = map f (InstalledUnitInfo.haddockInterfaces ipo),
+       InstalledUnitInfo.haddockHTMLs
+           = map f (InstalledUnitInfo.haddockHTMLs ipo)
    }
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x
@@ -318,7 +318,7 @@ substTopDir topDir ipo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  let libName = componentLibraryName clbi
+  let libName = componentInstalledUnitId clbi
       pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
@@ -682,7 +682,7 @@ ghcCcOptions lbi bi clbi odir
            _              -> ["-optc-O2"])
      ++ ["-odir", odir]
 
-mkGHCiLibName :: LibraryName -> String
+mkGHCiLibName :: InstalledUnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 -- -----------------------------------------------------------------------------
@@ -757,7 +757,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
   where
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentInstalledUnitId clbi
     vanillaLibName = mkLibName           libName
     profileLibName = mkProfLibName       libName
     ghciLibName    = mkGHCiLibName       libName
@@ -777,7 +777,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
+  -> InstalledUnitInfo
   -> PackageDescription
   -> LocalBuildInfo
   -> Bool

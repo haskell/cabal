@@ -53,7 +53,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     addSourcePackages,
-    hideInstalledPackagesSpecificByInstalledPackageId,
+    hideInstalledPackagesSpecificByInstalledUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds
@@ -84,11 +84,11 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Client.Targets
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.InstalledUnitInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
-         , InstalledPackageId, Dependency(Dependency))
+         , InstalledUnitId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), Library(..), Executable(..)
          , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
@@ -302,14 +302,14 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecificByInstalledPackageId :: [InstalledPackageId]
+hideInstalledPackagesSpecificByInstalledUnitId :: [InstalledUnitId]
                                                      -> DepResolverParams
                                                      -> DepResolverParams
-hideInstalledPackagesSpecificByInstalledPackageId pkgids params =
+hideInstalledPackagesSpecificByInstalledUnitId pkgids params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteInstalledPackageId)
+        foldl' (flip InstalledPackageIndex.deleteInstalledUnitId)
                (depResolverInstalledPkgIndex params) pkgids
     }
 
@@ -337,12 +337,12 @@ hideInstalledPackagesAllVersions pkgnames params =
 
 hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
 hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByInstalledPackageId pkgids params
+    hideInstalledPackagesSpecificByInstalledUnitId pkgids params
   where
-    pkgids = map Installed.installedPackageId
+    pkgids = map Installed.installedUnitId
            . InstalledPackageIndex.reverseDependencyClosure
                             (depResolverInstalledPkgIndex params)
-           . map (Installed.installedPackageId . fst)
+           . map (Installed.installedUnitId . fst)
            . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 

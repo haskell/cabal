@@ -15,12 +15,11 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..)
-         , mkPackageKey, PackageKey, InstalledPackageId(..)
-         , HasInstalledPackageId(..), PackageInstalled(..)
-         , LibraryName, packageKeyLibraryName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( PackageName, PackageId, Package(..), InstalledUnitId(..)
+         , InstalledPackageId(..)
+         , HasInstalledUnitId(..), PackageInstalled(..) )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -33,10 +32,7 @@ import Distribution.Client.ComponentDeps
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Version
          ( VersionRange )
-import Distribution.Simple.Compiler
-         ( Compiler, packageKeySupported )
 import Distribution.Text (display)
-import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
 import Network.URI (URI, nullURI)
@@ -66,9 +62,9 @@ data SourcePackageDb = SourcePackageDb {
 --  dependency graphs) only make sense on this subclass of package types.
 --
 class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [InstalledPackageId]
+  depends :: pkg -> ComponentDeps [InstalledUnitId]
 
-instance PackageFixedDeps InstalledPackageInfo where
+instance PackageFixedDeps InstalledUnitInfo where
   depends = CD.fromInstalled . installedDepends
 
 
@@ -83,6 +79,11 @@ instance PackageFixedDeps InstalledPackageInfo where
 -- plan.
 fakeInstalledPackageId :: PackageId -> InstalledPackageId
 fakeInstalledPackageId = InstalledPackageId . (".fake."++) . display
+
+-- | Sometimes it's a bit difficult to get a package key, so we just
+-- fake something up.  Eventually wire up the real package keys here!
+fakeInstalledUnitId :: PackageId -> InstalledUnitId
+fakeInstalledUnitId = InstalledUnitId . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -114,7 +115,7 @@ data ConfiguredPackage = ConfiguredPackage
 -- and use it consistently instead of InstalledPackageIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: InstalledPackageId
+  , confInstId :: InstalledUnitId
   }
 
 instance Show ConfiguredId where
@@ -126,8 +127,8 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
-instance HasInstalledPackageId ConfiguredPackage where
-  installedPackageId = fakeInstalledPackageId . packageId
+instance HasInstalledUnitId ConfiguredPackage where
+  installedUnitId = fakeInstalledUnitId . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -137,32 +138,18 @@ data GenericReadyPackage srcpkg ipkg
        (ComponentDeps [ipkg])  -- Installed dependencies.
   deriving (Eq, Show)
 
-type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
+type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledUnitInfo
 
 instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
-instance (Package srcpkg, HasInstalledPackageId ipkg) =>
+instance (Package srcpkg, HasInstalledUnitId ipkg) =>
          PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
-  depends (ReadyPackage _ deps) = fmap (map installedPackageId) deps
+  depends (ReadyPackage _ deps) = fmap (map installedUnitId) deps
 
-instance HasInstalledPackageId srcpkg =>
-         HasInstalledPackageId (GenericReadyPackage srcpkg ipkg) where
-  installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
-
-
--- | Extracts a package key from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
-readyPackageKey comp (ReadyPackage pkg deps) =
-    mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.libraryName (CD.nonSetupDeps deps))
-
--- | Extracts a library name from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
-readyLibraryName comp ready@(ReadyPackage pkg _) =
-    packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
+instance HasInstalledUnitId srcpkg =>
+         HasInstalledUnitId (GenericReadyPackage srcpkg ipkg) where
+  installedUnitId (ReadyPackage pkg _) = installedUnitId pkg
 
 
 -- | A package description along with the location of the package sources.
@@ -272,7 +259,7 @@ data BuildFailure = PlanningFailed
                   | TestsFailed     SomeException
                   | InstallFailed   SomeException
 data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    (Maybe InstalledPackageInfo)
+                                    (Maybe InstalledUnitInfo)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
 data TestsResult = TestsNotTried | TestsOk

@@ -16,8 +16,8 @@ module Distribution.Client.Dependency.TopDown.Types where
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
          , OptionalStanza, ConfiguredId(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Package
@@ -51,7 +51,7 @@ type TopologicalSortNumber = Int
 -- | InstalledPackage caches its dependencies as source package IDs.
 data InstalledPackage
    = InstalledPackage
-       InstalledPackageInfo
+       InstalledUnitInfo
        [PackageId]
 
 data InstalledPackageEx
