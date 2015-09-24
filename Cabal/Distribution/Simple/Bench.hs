@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Bench
@@ -34,6 +36,9 @@ import Distribution.Text
 
 import Control.Monad ( forM, unless, when )
 import Data.Maybe (mapMaybe)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid
+#endif
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
