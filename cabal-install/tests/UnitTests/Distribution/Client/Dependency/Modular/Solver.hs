@@ -125,6 +125,9 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db16 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        ]
     ]
   where
     -- | Combinator to turn on --independent-goals behavior, i.e. solve
@@ -507,6 +510,24 @@ db15 = [
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
 
+-- | When A and B are installed as independent goals, the single instance
+-- restriction prevents B from depending on C.  This database tests that the
+-- solver can backtrack after encountering the single instance restriction and
+-- choose the only valid flag assignment (-flagA +flagB).
+db16 :: ExampleDb
+db16 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ ExFix "D" 2
+                       , ExFlag "flagA"
+                             [ExAny "C"]
+                             [ExFlag "flagB"
+                                 [ExAny "E"]
+                                 [ExAny "C"]]]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  ]
 
 dbExts1 :: ExampleDb
 dbExts1 = [
