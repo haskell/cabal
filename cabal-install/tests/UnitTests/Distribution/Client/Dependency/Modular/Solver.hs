@@ -119,6 +119,9 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db20 "indepGoals" ["D", "E", "F"] Nothing -- The target
+        ]
     ]
   where
     indep test      = test { testIndepGoals = True }
@@ -458,6 +461,17 @@ db14 = [
   , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
   , Right $ exAv "D" 1 [ExAny "C"]
   , Right $ exAv "E" 1 []
+  ]
+
+db20 :: ExampleDb
+db20 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
   ]
 
 dbExts1 :: ExampleDb
