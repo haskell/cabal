@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# LANGUAGE PatternSynonyms #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
