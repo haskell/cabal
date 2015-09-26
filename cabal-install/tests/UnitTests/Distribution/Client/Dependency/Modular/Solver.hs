@@ -127,7 +127,8 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
     , testGroup "Independent goals" [
-          runTest $ indep $ mkTest db16 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+          runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        , runTest $ indep $ mkTest db20 "indepGoals2" ["D", "E", "F"] Nothing -- The target order is important.
         ]
     ]
   where
@@ -572,6 +573,17 @@ db18 = [
   , Right $ exAv "E" 1 []
   , Right $ exAv "F" 1 []
   , Right $ exAv "G" 1 []
+  ]
+
+db20 :: ExampleDb
+db20 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
   ]
 
 dbExts1 :: ExampleDb
