@@ -121,6 +121,9 @@ tests = [
         , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (Just [("A", 1), ("B", 2)])
         ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db19 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        ]
     ]
   where
     indep test      = test { testIndepGoals = True }
@@ -567,6 +570,24 @@ db17 = [
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
 
+-- | When A and B are installed as independent goals, the single instance
+-- restriction prevents B from depending on C.  This database tests that the
+-- solver can backtrack after encountering the single instance restriction and
+-- choose the only valid flag assignment (-flagA +flagB).
+db19 :: ExampleDb
+db19 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ ExFix "D" 2
+                       , ExFlag "flagA"
+                             [ExAny "C"]
+                             [ExFlag "flagB"
+                                 [ExAny "E"]
+                                 [ExAny "C"]]]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  ]
 
 dbExts1 :: ExampleDb
 dbExts1 = [
