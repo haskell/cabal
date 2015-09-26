@@ -66,8 +66,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration, addKnownPrograms, reconfigurePrograms
-         , restoreProgramConfiguration, builtinPrograms )
+         ( defaultProgramConfiguration, restoreProgramConfiguration
+         , builtinPrograms )
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
