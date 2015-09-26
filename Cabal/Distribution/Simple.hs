@@ -109,6 +109,7 @@ import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit       (exitWith,ExitCode(..))
+import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
 
 import Control.Monad   (when)
@@ -637,7 +638,8 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- a way to pass its flags too
   let extraPath = fromNubList $ configProgramPathExtra flags
   let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $ lookup "CFLAGS" env
-      pathEnv = maybe (intercalate ";" extraPath) ((intercalate ";" extraPath ++ ";")++) $ lookup "PATH" env
+      spSep = [searchPathSeparator]
+      pathEnv = maybe (intercalate spSep extraPath) ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) : [("PATH", Just pathEnv) | not (null extraPath)]
       args' = args ++ ["--with-gcc=" ++ ccProg]
       shProg = simpleProgram "sh"
