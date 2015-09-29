@@ -27,9 +27,6 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( PackageDescription(..), hasLibs )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), InstallDirs(..)
-         , absoluteInstallDirs, prefixRelativeInstallDirs )
-import Distribution.Simple.Setup ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths
          ( autogenModuleName )
 import Distribution.Simple.Utils
