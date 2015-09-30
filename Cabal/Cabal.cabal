@@ -19,9 +19,9 @@ description:
   organizing, and cataloging Haskell libraries and tools.
 category: Distribution
 cabal-version: >=1.10
-build-type: Custom
--- Even though we do use the default Setup.lhs it's vital to bootstrapping
--- that we build Setup.lhs using our own local Cabal source code.
+build-type: Simple
+-- If we use a new Cabal feature, this needs to be changed to Custom so
+-- we can bootstrap.
 
 extra-source-files:
   README.md tests/README.md changelog
