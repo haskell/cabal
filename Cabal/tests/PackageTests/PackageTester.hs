@@ -47,6 +47,7 @@ import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.BuildPaths (exeExtension)
+import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import Distribution.Simple.Utils (printRawCommandAndArgsAndEnv)
 import Distribution.ReadE (readEOrFail)
@@ -63,6 +64,7 @@ data SuiteConfig = SuiteConfig
     , ghcPkgPath :: FilePath
     , cabalDistPref :: FilePath
     , inplaceSpec :: PackageSpec
+    , packageDBStack :: PackageDBStack
     }
 
 data Success = Failure
@@ -107,8 +109,19 @@ doCabalConfigure config spec = do
     cleanResult@(_, _, _) <- cabal config spec [] ["clean"]
     requireSuccess cleanResult
     res <- cabal config spec []
-           (["configure", "--user", "-w", ghcPath config] ++ configOpts spec)
+           -- Use the package dbs from when we configured cabal rather than any
+           -- defaults.
+           (["configure", "--user", "-w", ghcPath config, "--package-db=clear"]
+            ++ packageDBParams (packageDBStack config)
+            ++ configOpts spec)
     return $ recordRun res ConfigureSuccess nullResult
+
+packageDBParams :: PackageDBStack -> [String]
+packageDBParams = map (("--package-db=" ++) . convert) where
+    convert :: PackageDB -> String
+    convert  GlobalPackageDB         = "global"
+    convert  UserPackageDB           = "user"
+    convert (SpecificPackageDB path) = path
 
 doCabalBuild :: SuiteConfig -> PackageSpec -> IO Result
 doCabalBuild config spec = do
