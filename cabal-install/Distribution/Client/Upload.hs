@@ -5,7 +5,7 @@ module Distribution.Client.Upload (check, upload, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
 import Distribution.Client.HttpUtils
-         ( isOldHackageURI, HttpTransport(..), remoteRepoTryUpgradeToHttps )
+         ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 
 import Distribution.Simple.Utils (notice, warn, info, die)
 import Distribution.Verbosity (Verbosity)
@@ -15,7 +15,7 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
-import Network.URI (URI(uriPath), parseURI)
+import Network.URI (URI(uriPath), parseURI, parseRelativeReference, relativeTo)
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
@@ -26,10 +26,8 @@ import Control.Monad (forM_, when)
 
 type Auth = Maybe (String, String)
 
---FIXME: how do we find this path for an arbitrary hackage server?
--- is it always at some fixed location relative to the server root?
-legacyUploadURI :: URI
-Just legacyUploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/protected/upload-pkg"
+uploadReference :: URI
+Just uploadReference = parseRelativeReference "/upload"
 
 checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
@@ -41,13 +39,7 @@ upload transport verbosity repos mUsername mPassword paths = do
         [] -> die $ "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
-        uploadURI
-          | isOldHackageURI targetRepoURI
-          = legacyUploadURI
-          | otherwise
-          = targetRepoURI {
-              uriPath = uriPath targetRepoURI FilePath.Posix.</> "upload"
-            }
+        uploadURI = uploadReference `relativeTo` targetRepoURI
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
     let auth = Just (username,password)
