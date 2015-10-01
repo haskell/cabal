@@ -15,7 +15,7 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
-import Network.URI (URI(uriPath), parseURI, parseRelativeReference, relativeTo)
+import Network.URI (URI(uriPath), parseURI)
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
@@ -25,9 +25,6 @@ import System.Directory
 import Control.Monad (forM_, when)
 
 type Auth = Maybe (String, String)
-
-uploadReference :: URI
-Just uploadReference = parseRelativeReference "/upload"
 
 checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
@@ -39,7 +36,10 @@ upload transport verbosity repos mUsername mPassword paths = do
         [] -> die $ "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
-        uploadURI = uploadReference `relativeTo` targetRepoURI
+        rootIfEmpty x = if null x then "/" else x
+        uploadURI = targetRepoURI {
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> "upload"
+        }
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
     let auth = Just (username,password)
