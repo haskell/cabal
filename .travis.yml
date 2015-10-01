@@ -65,7 +65,6 @@ script:
 # Also build cabal-install.
  - cd ../cabal-install
  - cabal sandbox init --sandbox ../.cabal-sandbox
- - cabal sandbox add-source ../Cabal
  - cabal install --dependencies-only --enable-tests
  - cabal configure --enable-tests --ghc-option=-Werror
  - cabal build
