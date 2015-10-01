@@ -25,7 +25,7 @@ install:
 # Here starts the actual work to be performed for the package under test; any
 # command which exits with a non-zero exit code causes the build to fail. Using
 # ./dist/setup/setup here instead of cabal-install to avoid breakage when the
-# build config format changed
+# build config format changed.
 script:
  - cabal sandbox init
  - cd Cabal
