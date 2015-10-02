@@ -37,7 +37,8 @@ module Distribution.Client.Config (
     withProgramsFields,
     withProgramOptionsFields,
     userConfigDiff,
-    userConfigUpdate
+    userConfigUpdate,
+    createDefaultConfigFile
   ) where
 
 import Distribution.Client.Types
@@ -531,11 +532,8 @@ loadConfig verbosity configFileFlag = addBaseConf $ do
     Nothing -> do
       notice verbosity $ "Config file path source is " ++ source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
-      notice verbosity $ "Writing default configuration to " ++ configFile
-      commentConf <- commentSavedConfig
-      initialConf <- initialSavedConfig
-      writeConfigFile configFile commentConf initialConf
-      return initialConf
+      createDefaultConfigFile verbosity configFile
+      loadConfig verbosity configFileFlag userInstallFlag
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -562,6 +560,13 @@ readConfigFile initial file = handleNotExists $
       if isDoesNotExistError ioe
         then return Nothing
         else ioError ioe
+
+createDefaultConfigFile :: Verbosity -> FilePath -> IO ()
+createDefaultConfigFile verbosity filePath = do
+  commentConf <- commentSavedConfig
+  initialConf <- initialSavedConfig
+  notice verbosity $ "Writing default configuration to " ++ filePath
+  writeConfigFile filePath commentConf initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do

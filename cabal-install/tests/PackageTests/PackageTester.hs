@@ -29,6 +29,7 @@ module PackageTests.PackageTester
     , cabal_freeze
     , cabal_install
     , cabal_sandbox
+    , cabal_userconfig
     , run
 
     -- * Test helpers
@@ -38,6 +39,8 @@ module PackageTests.PackageTester
     , assertFreezeSucceeded
     , assertInstallSucceeded
     , assertSandboxSucceeded
+    , assertUserConfigSucceeded
+    , assertUserConfigFailed
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -66,6 +69,7 @@ data Success = Failure
              | CleanSuccess
              | ExecSuccess
              | FreezeSuccess
+             | InitConfigSuccess
              | InstallSuccess
              | SandboxSuccess
              deriving (Eq, Show)
@@ -126,6 +130,12 @@ cabal_freeze :: TestsPaths -> FilePath -> [String] -> IO Result
 cabal_freeze paths dir args = do
     res <- cabal paths dir (["freeze"] ++ args)
     return $ recordRun res FreezeSuccess nullResult
+
+-- | Run the init-config command and return its result.
+cabal_userconfig :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_userconfig paths dir args = do
+    res <- cabal paths dir (["user-config"] ++ args)
+    return $ recordRun res InitConfigSuccess nullResult
 
 -- | Run the install command and return its result.
 cabal_install :: TestsPaths -> FilePath -> [String] -> IO Result
@@ -214,6 +224,19 @@ assertSandboxSucceeded result = unless (successful result) $
     assertFailure $
     "expected: \'cabal sandbox\' should succeed\n" ++
     "  output: " ++ outputText result
+
+assertUserConfigSucceeded :: Result -> Assertion
+assertUserConfigSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'cabal user-config\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertUserConfigFailed :: Result -> Assertion
+assertUserConfigFailed result = when (successful result) $
+    assertFailure $
+    "expected: \'cabal user-config\' should fail\n" ++
+    "  output: " ++ outputText result
+
 
 ------------------------------------------------------------------------
 -- Verbosity
