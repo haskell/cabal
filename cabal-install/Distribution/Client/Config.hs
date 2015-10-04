@@ -369,6 +369,7 @@ instance Monoid SavedConfig where
         haddockHoogle        = combine haddockHoogle,
         haddockHtml          = combine haddockHtml,
         haddockHtmlLocation  = combine haddockHtmlLocation,
+        haddockForHackage    = combine haddockForHackage,
         haddockExecutables   = combine haddockExecutables,
         haddockTestSuites    = combine haddockTestSuites,
         haddockBenchmarks    = combine haddockBenchmarks,
