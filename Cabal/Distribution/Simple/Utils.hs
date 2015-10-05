@@ -203,7 +203,7 @@ import System.Process
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
          , setFileOrdinary, setFileExecutable, setDirOrdinary )
-import Distribution.Compat.TempFile
+import Distribution.Compat.Internal.TempFile
          ( openTempFile, createTempDirectory )
 import Distribution.Compat.Exception
          ( tryIO, catchIO, catchExit )

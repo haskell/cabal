@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Distribution.Compat.TempFile (
+module Distribution.Compat.Internal.TempFile (
   openTempFile,
   openBinaryTempFile,
   openNewBinaryFile,
