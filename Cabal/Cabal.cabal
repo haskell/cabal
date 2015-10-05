@@ -173,6 +173,7 @@ library
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
+    Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -247,7 +248,6 @@ library
   other-modules:
     Distribution.Compat.Binary
     Distribution.Compat.CopyFile
-    Distribution.Compat.TempFile
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
