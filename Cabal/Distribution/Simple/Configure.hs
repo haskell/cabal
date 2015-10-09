@@ -1317,7 +1317,11 @@ computeComponentId pkg_descr cname dep_ipids flagAssignment = do
     -- doubly concating list, as it just flatten out the nested list, so
     -- different sources can produce same hash
     let hash = hashToBase62 $
-                (show $ dep_ipids)
+                -- For safety, include the package + version here
+                -- for GHC 7.10, where just the hash is used as
+                -- the package key
+                (display (package pkg_descr))
+                      ++ (show $ dep_ipids)
                       ++ show flagAssignment
     return . ComponentId $
                 display (package pkg_descr)
