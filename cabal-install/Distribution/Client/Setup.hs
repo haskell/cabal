@@ -35,6 +35,7 @@ module Distribution.Client.Setup
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
+    , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..)
     , userConfigCommand, UserConfigFlags(..)
@@ -43,6 +44,7 @@ module Distribution.Client.Setup
     --TODO: stop exporting these:
     , showRepo
     , parseRepo
+    , readRepo
     ) where
 
 import Distribution.Client.Types
@@ -50,7 +52,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( AllowNewer(..), PreSolver(..) )
+         ( AllowNewer(..), PreSolver(..), ConstraintSource(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -79,7 +81,7 @@ import Distribution.Version
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
-         ( RepoKind(..) )
+         ( BuildType(..), RepoKind(..) )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
@@ -124,7 +126,8 @@ data GlobalFlags = GlobalFlags {
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
-    globalIgnoreSandbox     :: Flag Bool
+    globalIgnoreSandbox     :: Flag Bool,
+    globalHttpTransport     :: Flag String
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -139,7 +142,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
-    globalIgnoreSandbox     = Flag False
+    globalIgnoreSandbox     = Flag False,
+    globalHttpTransport     = mempty
   }
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
@@ -258,7 +262,7 @@ globalCommand commands = CommandUI {
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 6; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 7; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -288,6 +292,11 @@ globalCommand commands = CommandUI {
          "Ignore any existing sandbox"
          globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
          trueArg
+
+      ,option [] ["http-transport"]
+         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
+         globalConfigFile (\v flags -> flags { globalHttpTransport = v })
+         (reqArgFlag "HttpTransport")
 
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
@@ -328,7 +337,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = mempty,
-    globalIgnoreSandbox     = mempty
+    globalIgnoreSandbox     = mempty,
+    globalHttpTransport     = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion           = combine globalVersion,
@@ -341,7 +351,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = combine globalLogsDir,
     globalWorldFile         = combine globalWorldFile,
     globalRequireSandbox    = combine globalRequireSandbox,
-    globalIgnoreSandbox     = combine globalIgnoreSandbox
+    globalIgnoreSandbox     = combine globalIgnoreSandbox,
+    globalHttpTransport     = combine globalHttpTransport
   }
     where combine field = field a `mappend` field b
 
@@ -362,16 +373,27 @@ globalRepos globalFlags = remoteRepos ++ localRepos
 -- ------------------------------------------------------------
 
 configureCommand :: CommandUI ConfigFlags
-configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
-    commandDefaultFlags = mempty
+configureCommand = c
+  { commandDefaultFlags = mempty
+  , commandNotes = Just $ \pname -> (case commandNotes c of
+         Nothing -> ""
+         Just n  -> n pname ++ "\n")
+       ++ "Examples:\n"
+       ++ "  " ++ pname ++ " configure\n"
+       ++ "    Configure with defaults;\n"
+       ++ "  " ++ pname ++ " configure --enable-tests -fcustomflag\n"
+       ++ "    Configure building package including tests,\n"
+       ++ "    with some package-specific flag.\n"
   }
+ where
+  c = Cabal.configureCommand defaultProgramConfiguration
 
 configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
-  | cabalLibVersion >= Version [1,22,0] [] = flags_latest
+  | cabalLibVersion >= Version [1,23,0] [] = flags_latest
   -- ^ NB: we expect the latest version to be the most common case.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
@@ -381,13 +403,19 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
   | cabalLibVersion <  Version [1,21,1] [] = flags_1_20_0
   | cabalLibVersion <  Version [1,22,0] [] = flags_1_21_0
+  | cabalLibVersion <  Version [1,23,0] [] = flags_1_22_0
   | otherwise = flags_latest
   where
     -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
+    -- Cabal < 1.23 doesn't know about '--profiling-detail'.
+    flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
+                                , configProfLibDetail = NoFlag
+                                , configIPID          = NoFlag }
+
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
-    flags_1_21_0 = flags_latest { configDebugInfo = NoFlag }
+    flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
 
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
@@ -426,7 +454,7 @@ filterConfigureFlags flags cabalLibVersion
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
-    configExConstraints:: [UserConstraint],
+    configExConstraints:: [(UserConstraint, ConstraintSource)],
     configPreferences  :: [Dependency],
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Flag AllowNewer
@@ -443,14 +471,17 @@ configureExCommand = configureCommand {
          liftOptions fst setFst
          (filter ((`notElem` ["constraint", "dependency", "exact-configuration"])
                   . optionName) $ configureOptions  showOrParseArgs)
-      ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
+      ++ liftOptions snd setSnd
+         (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
   }
   where
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-configureExOptions ::  ShowOrParseArgs -> [OptionField ConfigExFlags]
-configureExOptions _showOrParseArgs =
+configureExOptions :: ShowOrParseArgs
+                   -> ConstraintSource
+                   -> [OptionField ConfigExFlags]
+configureExOptions _showOrParseArgs src =
   [ option [] ["cabal-lib-version"]
       ("Select which version of the Cabal lib to use to build packages "
       ++ "(useful for testing).")
@@ -462,8 +493,8 @@ configureExOptions _showOrParseArgs =
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"
-              (fmap (\x -> [x]) (ReadE readUserConstraint))
-              (map display))
+              ((\x -> [(x, src)]) `fmap` ReadE readUserConstraint)
+              (map $ display . fst))
 
   , option [] ["preference"]
       "Specify preferences (soft constraints) on the version of a package"
@@ -851,11 +882,19 @@ runCommand :: CommandUI (BuildFlags, BuildExFlags)
 runCommand = CommandUI {
     commandName         = "run",
     commandSynopsis     = "Builds and runs an executable.",
-    commandDescription  = Just $ \_ -> wrapText $
+    commandDescription  = Just $ \pname -> wrapText $
          "Builds and then runs the specified executable. If no executable is "
       ++ "specified, but the package contains just one executable, that one "
-      ++ "is built and executed.\n",
-    commandNotes        = Nothing,
+      ++ "is built and executed.\n"
+      ++ "\n"
+      ++ "Use `" ++ pname ++ " test --show-details=streaming` to run a "
+      ++ "test-suite and get its full output.\n",
+    commandNotes        = Just $ \pname ->
+          "Examples:\n"
+       ++ "  " ++ pname ++ " run\n"
+       ++ "    Run the only executable in the current package;\n"
+       ++ "  " ++ pname ++ " run foo -- --fooflag\n"
+       ++ "    Works similar to `./foo --fooflag`.\n",
     commandUsage        = usageAlternatives "run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
@@ -956,7 +995,12 @@ getCommand = CommandUI {
        ++ "the source\ntarball and unpacks it in a local subdirectory. "
        ++ "Alternatively, with -s it will\nget the code from the source "
        ++ "repository specified by the package.\n",
-    commandNotes        = Nothing,
+    commandNotes        = Just $ \pname ->
+          "Examples:\n"
+       ++ "  " ++ pname ++ " get hlint\n"
+       ++ "    Download the latest stable version of hlint;\n"
+       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
+       ++ "    Download the source repository (i.e. git clone from github).\n",
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -1036,7 +1080,10 @@ listCommand = CommandUI {
       ++ "config:ignore-sandbox is False, use the sandbox package database. "
       ++ "Otherwise, use the package database specified with --package-db. "
       ++ "If not specified, use the user package database.\n",
-    commandNotes        = Nothing,
+    commandNotes        = Just $ \pname ->
+         "Examples:\n"
+      ++ "  " ++ pname ++ " list pandoc\n"
+      ++ "    Will find pandoc, pandoc-citeproc, pandoc-lens, ...\n",
     commandUsage        = usageAlternatives "list" [ "[FLAGS]"
                                                    , "[FLAGS] STRINGS"],
     commandDefaultFlags = defaultListFlags,
@@ -1054,7 +1101,12 @@ listCommand = CommandUI {
             trueArg
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           listPackageDBs (\v flags -> flags { listPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1107,7 +1159,12 @@ infoCommand = CommandUI {
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1241,11 +1298,24 @@ installCommand = CommandUI {
      ++ " that, `configure` must be used.)\n"
      ++ " In contrast, without a sandbox, the flags to `install` are saved and"
      ++ " affect future commands such as `build` and `repl`. See the help for"
-     ++ " `configure` for a list of commands being affected.\n",
+     ++ " `configure` for a list of commands being affected.\n"
+     ++ "\n"
+     ++ "Installed executables will by default (and without a sandbox)"
+     ++ " be put into `~/.cabal/bin/`."
+     ++ " If you want installed executable to be available globally, make"
+     ++ " sure that the PATH environment variable contains that directory.\n"
+     ++ "When using a sandbox, executables will be put into"
+     ++ " `$SANDBOX/bin/` (by default: `./.cabal-sandbox/bin/`).\n"
+     ++ "\n"
+     ++ "When specifying --bindir, consider also specifying --datadir;"
+     ++ " this way the sandbox can be deleted and the executable should"
+     ++ " continue working as long as bindir and datadir are left untouched.",
   commandNotes        = Just $ \pname ->
-        ( case commandNotes configureCommand of
-            Just desc -> desc pname ++ "\n"
-            Nothing   -> "" )
+        ( case commandNotes
+               $ Cabal.configureCommand defaultProgramConfiguration
+          of Just desc -> desc pname ++ "\n"
+             Nothing   -> ""
+        )
      ++ "Examples:\n"
      ++ "  " ++ pname ++ " install                 "
      ++ "    Package in the current directory\n"
@@ -1254,7 +1324,11 @@ installCommand = CommandUI {
      ++ "  " ++ pname ++ " install foo-1.0         "
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
-     ++ "    Constrained package version\n",
+     ++ "    Constrained package version\n"
+     ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
+     ++ "  " ++ (map (const ' ') pname)
+                      ++ "                         "
+     ++ "    Change installation destination\n",
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
@@ -1262,7 +1336,7 @@ installCommand = CommandUI {
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
-    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
+    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
@@ -1814,6 +1888,47 @@ instance Monoid Win32SelfUpgradeFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
+-- * ActAsSetup flags
+-- ------------------------------------------------------------
+
+data ActAsSetupFlags = ActAsSetupFlags {
+    actAsSetupBuildType :: Flag BuildType
+}
+
+defaultActAsSetupFlags :: ActAsSetupFlags
+defaultActAsSetupFlags = ActAsSetupFlags {
+    actAsSetupBuildType = toFlag Simple
+}
+
+actAsSetupCommand :: CommandUI ActAsSetupFlags
+actAsSetupCommand = CommandUI {
+  commandName         = "act-as-setup",
+  commandSynopsis     = "Run as-if this was a Setup.hs",
+  commandDescription  = Nothing,
+  commandNotes        = Nothing,
+  commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " act-as-setup\n",
+  commandDefaultFlags = defaultActAsSetupFlags,
+  commandOptions      = \_ ->
+      [option "" ["build-type"]
+         "Use the given build type."
+         actAsSetupBuildType (\v flags -> flags { actAsSetupBuildType = v })
+         (reqArg "BUILD-TYPE" (readP_to_E ("Cannot parse build type: "++)
+                               (fmap toFlag parse))
+                              (map display . flagToList))
+      ]
+}
+
+instance Monoid ActAsSetupFlags where
+  mempty      = ActAsSetupFlags {
+     actAsSetupBuildType = mempty
+    }
+  mappend a b = ActAsSetupFlags {
+    actAsSetupBuildType = combine actAsSetupBuildType
+    }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
 -- * Sandbox-related flags
 -- ------------------------------------------------------------
 
@@ -1851,17 +1966,17 @@ sandboxCommand = CommandUI {
       ++ " commands, e.g. `repl`, `build`, `exec`."
     , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
       ++ " in folders above the current one, so cabal will not see the sandbox"
-      ++ " if you are in a subfolder of a sandboxes."
+      ++ " if you are in a subfolder of a sandbox."
     , paragraph "Subcommands:"
     , headLine "init:"
     , indentParagraph $ "Initialize a sandbox in the current directory."
       ++ " An existing package database will not be modified, but settings"
-      ++ " (such as the location of the database) can be modified this way." 
+      ++ " (such as the location of the database) can be modified this way."
     , headLine "delete:"
     , indentParagraph $ "Remove the sandbox; deleting all the packages"
       ++ " installed inside."
     , headLine "add-source:"
-    , indentParagraph $ "Make one or more local package available in the"
+    , indentParagraph $ "Make one or more local packages available in the"
       ++ " sandbox. PATHS may be relative or absolute."
       ++ " Typical usecase is when you need"
       ++ " to make a (temporary) modification to a dependency: You download"
@@ -1885,9 +2000,23 @@ sandboxCommand = CommandUI {
       ++ " installed in the sandbox. For subcommands, see the help for"
       ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
     ],
-  commandNotes        = Just $ \_ ->
+  commandNotes        = Just $ \pname ->
        relevantConfigValuesText ["require-sandbox"
-                                ,"ignore-sandbox"],
+                                ,"ignore-sandbox"]
+    ++ "\n"
+    ++ "Examples:\n"
+    ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " sandbox add-source ../foo\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  Reset the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox delete\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  List the packages in the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg list\n"
+    ++ "  Unregister the `broken` package from the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg -- --force unregister broken\n",
   commandUsage        = usageAlternatives "sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
@@ -1960,20 +2089,20 @@ execCommand = CommandUI {
     ++ " has more control and can, for example, execute custom scripts which"
     ++ " indirectly execute GHC.\n"
     ++ "\n"
-    ++ "See `" ++ pname ++ " sandbox`.",
+    ++ "Note that `" ++ pname ++ " repl` is different from `" ++ pname
+    ++ " exec -- ghci` as the latter will not forward any additional flags"
+    ++ " being defined in the local package to ghci.\n"
+    ++ "\n"
+    ++ "See `" ++ pname ++ " sandbox`.\n",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
-    ++ "  Install the executable package pandoc into a sandbox and run it:\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " install pandoc\n"
-    ++ "    " ++ pname ++ " exec pandoc foo.md\n\n"
-    ++ "  Install the executable package hlint into the user package database\n"
-    ++ "  and run it:\n"
-    ++ "    " ++ pname ++ " install --user hlint\n"
-    ++ "    " ++ pname ++ " exec hlint Foo.hs\n\n"
-    ++ "  Execute runghc on Foo.hs with runghc configured to use the\n"
-    ++ "  sandbox package database (if a sandbox is being used):\n"
-    ++ "    " ++ pname ++ " exec runghc Foo.hs\n",
+    ++ "  " ++ pname ++ " exec -- ghci -Wall\n"
+    ++ "    Start a repl session with sandbox packages and all warnings;\n"
+    ++ "  " ++ pname ++ " exec gitit -- -f gitit.cnf\n"
+    ++ "    Give gitit access to the sandbox packages, and pass it a flag;\n"
+    ++ "  " ++ pname ++ " exec runghc Foo.hs\n"
+    ++ "    Execute runghc on Foo.hs with runghc configured to use the\n"
+    ++ "    sandbox package database (if a sandbox is being used).\n",
   commandUsage        = \pname ->
        "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
@@ -2143,13 +2272,15 @@ readRepo = readPToMaybe parseRepo
 
 parseRepo :: Parse.ReadP r RemoteRepo
 parseRepo = do
-  name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
-  _ <- Parse.char ':'
+  name   <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
+  _      <- Parse.char ':'
   uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
-  uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
-  return $ RemoteRepo {
-    remoteRepoName = name,
-    remoteRepoURI  = uri
+  uri    <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
+  return RemoteRepo {
+    remoteRepoName           = name,
+    remoteRepoURI            = uri,
+    remoteRepoRootKeys       = (),
+    remoteRepoShouldTryHttps = False
   }
 
 -- ------------------------------------------------------------

@@ -20,13 +20,17 @@ import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
-         ( PlanPackage )
+         ( InstallPlan, PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
+import Distribution.Client.HttpUtils
+         ( configureTransport )
 import Distribution.Client.Sandbox.PackageEnvironment
          ( loadUserConfig, pkgEnvSavedConfig, showPackageEnvironment,
            userPackageEnvironmentFile )
@@ -42,7 +46,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( fromFlag, fromFlagOrDefault )
+         ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( die, notice, debug, writeFileAtomic )
 import Distribution.System
@@ -87,7 +91,10 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    pkgSpecifiers <- resolveUserTargets verbosity
+    transport <- configureTransport verbosity
+                 (flagToMaybe (globalHttpTransport globalFlags))
+
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]
@@ -157,7 +164,9 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
       . setStrongFlags strongFlags
 
       . addConstraints
-          [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
+          [ let pkg = pkgSpecifierTarget pkgSpecifier
+                pc = PackageConstraintStanzas pkg stanzas
+            in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]
 
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo
@@ -189,20 +198,19 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
-pruneInstallPlan :: InstallPlan.InstallPlan
+pruneInstallPlan :: InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
-    mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
+    either (const brokenPkgsErr)
+           (removeSelf pkgIds . PackageIndex.allPackages) $
     InstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    mapLeft f (Left v)  = f v
-    mapLeft _ (Right _) = error "planPackages: installPlan contains broken packages"
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
-    removeSelf _ =
-        error $ "internal error: 'pruneInstallPlan' given "
-           ++ "unexpected package specifiers!"
+    removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
+                         ++ "unexpected package specifiers!"
+    brokenPkgsErr = error "planPackages: installPlan contains broken packages"
 
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
@@ -214,14 +222,15 @@ freezePackages verbosity pkgs = do
     addFrozenConstraints config =
         config {
             savedConfigureExFlags = (savedConfigureExFlags config) {
-                configExConstraints = constraints pkgs
+                configExConstraints = map constraint pkgs
             }
         }
-    constraints = map $ pkgIdToConstraint . packageId
+    constraint pkg =
+        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig)
       where
-        pkgIdToConstraint pkg =
-            UserConstraintVersion (packageName pkg)
-                                  (thisVersion $ packageVersion pkg)
+        pkgIdToConstraint pkgId =
+            UserConstraintVersion (packageName pkgId)
+                                  (thisVersion $ packageVersion pkgId)
     createPkgEnv config = mempty { pkgEnvSavedConfig = config }
     showPkgEnv = BS.Char8.pack . showPackageEnvironment
 

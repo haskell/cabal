@@ -9,8 +9,8 @@ cabal-dev/
 *.prof
 *.tix
 cabal.config
-dist-sandbox
 dist
+dist-*
 
 /Cabal/dist/
 /Cabal/tests/Setup
@@ -38,3 +38,6 @@ Cabal/ghc.mk
 # TAGS files
 TAGS
 tags
+
+# stack artifacts
+/.stack-work/

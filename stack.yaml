@@ -1,0 +1,39 @@
+flags:
+  text:
+    integer-simple: false
+packages:
+- Cabal/
+- cabal-install/
+extra-deps:
+- HTTP-4000.2.20
+- mtl-2.2.1
+- network-2.6.2.0
+- network-uri-2.6.0.3
+- old-locale-1.0.0.7
+- old-time-1.1.0.3
+- parsec-3.1.9
+- random-1.1
+- stm-2.4.4
+- text-1.2.1.1
+- zlib-0.5.4.2
+
+# test suite dependencies
+- QuickCheck-2.8.1
+- extensible-exceptions-0.1.1.4
+- regex-posix-0.95.2
+- tagged-0.8.0.1
+- tasty-0.10.1.2
+- tasty-hunit-0.9.2
+- tasty-quickcheck-0.8.3.2
+- ansi-terminal-0.6.2.1
+- async-2.0.2
+- optparse-applicative-0.11.0.2
+- regex-base-0.93.2
+- regex-tdfa-rc-1.1.8.3
+- tf-random-0.5
+- unbounded-delays-0.1.0.9
+- ansi-wl-pprint-0.6.7.2
+- primitive-0.6
+- transformers-compat-0.4.0.4
+
+resolver: ghc-7.10

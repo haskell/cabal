@@ -9,14 +9,14 @@ import Control.Exception
 import Prelude hiding (catch)
 #endif
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "OrderFlags"
             , configOpts = []
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build config spec
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
       `catch` \exc -> do

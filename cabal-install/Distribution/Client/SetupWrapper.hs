@@ -27,9 +27,9 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
          , withinRange )
-import Distribution.InstalledPackageInfo (installedPackageId)
+import Distribution.InstalledPackageInfo (installedComponentId)
 import Distribution.Package
-         ( InstalledPackageId(..), PackageIdentifier(..), PackageId,
+         ( ComponentId(..), PackageIdentifier(..), PackageId,
            PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -46,6 +46,8 @@ import Distribution.Simple.Compiler
          ( Compiler(compilerId), compilerFlavor, PackageDB(..), PackageDBStack )
 import Distribution.Simple.PreProcess
          ( runSimplePreProcessor, ppUnlit )
+import Distribution.Simple.Build.Macros
+         ( generatePackageVersionMacros )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
@@ -57,6 +59,7 @@ import Distribution.Simple.Program.Run
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.BuildPaths
          ( defaultDistPref, exeExtension )
+
 import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.Program.GHC
@@ -105,6 +108,7 @@ import Control.Monad       ( when, unless )
 import Data.List           ( foldl1' )
 import Data.Maybe          ( fromMaybe, isJust )
 import Data.Char           ( isSpace )
+import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
 
 #ifdef mingw32_HOST_OS
 import Distribution.Simple.Utils
@@ -129,7 +133,7 @@ data SetupScriptOptions = SetupScriptOptions {
     forceExternalSetupMethod :: Bool,
 
     -- | List of dependencies to use when building Setup.hs
-    useDependencies :: [(InstalledPackageId, PackageId)],
+    useDependencies :: [(ComponentId, PackageId)],
 
     -- | Is the list of setup dependencies exclusive?
     --
@@ -222,12 +226,22 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType'
-  | forceExternalSetupMethod options = externalSetupMethod
+    -- This order is picked so that it's stable. The build type and
+    -- required cabal version are external info, coming from .cabal
+    -- files and the command line. Those do switch between the
+    -- external and self & internal methods, but that info itself can
+    -- be considered stable. The logging and force-external conditions
+    -- are internally generated choices but now these only switch
+    -- between the self and internal setup methods, which are
+    -- consistent with each other.
+  | buildType' == Custom             = externalSetupMethod
+  | not (cabalVersion `withinRange`
+         useCabalVersion options)    = externalSetupMethod
   | isJust (useLoggingHandle options)
- || buildType' == Custom             = externalSetupMethod
-  | cabalVersion `withinRange`
-      useCabalVersion options        = internalSetupMethod
-  | otherwise                        = externalSetupMethod
+    -- Forcing is done to use an external process e.g. due to parallel
+    -- build concerns.
+ || forceExternalSetupMethod options = selfExecSetupMethod
+  | otherwise                        = internalSetupMethod
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions
@@ -254,6 +268,34 @@ buildTypeAction Configure = Simple.defaultMainWithHooksArgs
 buildTypeAction Make      = Make.defaultMainArgs
 buildTypeAction Custom               = error "buildTypeAction Custom"
 buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
+
+-- ------------------------------------------------------------
+-- * Self-Exec SetupMethod
+-- ------------------------------------------------------------
+
+selfExecSetupMethod :: SetupMethod
+selfExecSetupMethod verbosity options _pkg bt mkargs = do
+  let args = ["act-as-setup",
+              "--build-type=" ++ display bt,
+              "--"] ++ mkargs cabalVersion
+  debug verbosity $ "Using self-exec internal setup method with build-type "
+                 ++ show bt ++ " and args:\n  " ++ show args
+  path <- getExecutablePath
+  info verbosity $ unwords (path : args)
+  case useLoggingHandle options of
+    Nothing        -> return ()
+    Just logHandle -> info verbosity $ "Redirecting build log to "
+                                    ++ show logHandle
+
+  searchpath <- programSearchPathAsPATHVar
+                (getProgramSearchPath (useProgramConfig options))
+  env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+
+  process <- runProcess path args
+             (useWorkingDir options) env Nothing
+             (useLoggingHandle options) (useLoggingHandle options)
+  exitCode <- waitForProcess process
+  unless (exitCode == ExitSuccess) $ exitWith exitCode
 
 -- ------------------------------------------------------------
 -- * External SetupMethod
@@ -293,7 +335,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing    -> getInstalledPackages verbosity
                     comp (usePackageDB options') conf
 
-  cabalLibVersionToUse :: IO (Version, (Maybe InstalledPackageId)
+  cabalLibVersionToUse :: IO (Version, (Maybe ComponentId)
                              ,SetupScriptOptions)
   cabalLibVersionToUse = do
     savedVer <- savedVersion
@@ -322,7 +364,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           (&&) <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
 
-      installedVersion :: IO (Version, Maybe InstalledPackageId
+      installedVersion :: IO (Version, Maybe ComponentId
                              ,SetupScriptOptions)
       installedVersion = do
         (comp,    conf,    options')  <- configureCompiler options
@@ -369,7 +411,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
-                        -> IO (Version, Maybe InstalledPackageId
+                        -> IO (Version, Maybe ComponentId
                               ,SetupScriptOptions)
   installedCabalVersion options' _ _ | packageName pkg == PackageName "Cabal" =
     return (packageVersion pkg, Nothing, options')
@@ -384,7 +426,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                  ++ " but no suitable version is installed."
       pkgs -> let ipkginfo = head . snd . bestVersion fst $ pkgs
               in return (packageVersion ipkginfo
-                        ,Just . installedPackageId $ ipkginfo, options'')
+                        ,Just . installedComponentId $ ipkginfo, options'')
 
   bestVersion :: (a -> Version) -> [a] -> a
   bestVersion f = firstMaximumBy (comparing (preference . f))
@@ -457,7 +499,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions
-                           -> Version -> Maybe InstalledPackageId
+                           -> Version -> Maybe ComponentId
                            -> IO FilePath
   getCachedSetupExecutable options' cabalLibVersion
                            maybeCabalLibInstalledPkgId = do
@@ -492,7 +534,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- Currently this is GHC/GHCJS only. It should really be generalised.
   --
   compileSetupExecutable :: SetupScriptOptions
-                         -> Version -> Maybe InstalledPackageId -> Bool
+                         -> Version -> Maybe ComponentId -> Bool
                          -> IO FilePath
   compileSetupExecutable options' cabalLibVersion maybeCabalLibInstalledPkgId
                          forceCompile = do
@@ -509,7 +551,16 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                       _     -> (ghcProgram,   ["-threaded"])
           cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
                               maybeCabalLibInstalledPkgId
+
+          -- We do a few things differently once packages opt-in and declare
+          -- a custom-settup stanza. In particular we then enforce the deps
+          -- specified, but also let the Setup.hs use the version macros.
+          newPedanticDeps     = useDependenciesExclusive options'
+          selectedDeps
+            | newPedanticDeps = useDependencies options'
+            | otherwise       = useDependencies options' ++ cabalDep
           addRenaming (ipid, pid) = (ipid, pid, defaultRenaming)
+          cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
@@ -520,16 +571,17 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePathClear = Flag True
             , ghcOptSourcePath      = toNubListR [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
-            , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
-            , ghcOptPackages        = toNubListR $
-                                        map addRenaming $
-                                        if useDependenciesExclusive options'
-                                          then useDependencies options'
-                                          else useDependencies options'
-                                                 ++ cabalDep
+            , ghcOptHideAllPackages = Flag newPedanticDeps
+            , ghcOptCabal           = Flag newPedanticDeps
+            , ghcOptPackages        = toNubListR $ map addRenaming selectedDeps
+            , ghcOptCppIncludes     = toNubListR [ cppMacrosFile
+                                                 | newPedanticDeps ]
             , ghcOptExtra           = toNubListR extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
+      when newPedanticDeps $
+        rewriteFile cppMacrosFile (generatePackageVersionMacros
+                                     [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program conf ghcCmdLine
 

@@ -8,7 +8,7 @@ module Distribution.Client.PlanIndex (
     -- * FakeMap and related operations
     FakeMap
   , fakeDepends
-  , fakeLookupInstalledPackageId
+  , fakeLookupComponentId
     -- * Graph traversal functions
   , brokenPackages
   , dependencyClosure
@@ -27,14 +27,14 @@ import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
 import Data.Maybe (isNothing, fromMaybe, fromJust)
-import Data.Either (lefts)
+import Data.Either (rights)
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
 
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), InstalledPackageId(..)
+         ( PackageName(..), PackageIdentifier(..), ComponentId(..)
          , Package(..), packageName, packageVersion
          )
 import Distribution.Version
@@ -42,33 +42,33 @@ import Distribution.Version
 
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
+import Distribution.Client.Types
          ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, allPackages, insert, lookupInstalledPackageId )
+         ( PackageIndex, allPackages, insert, lookupComponentId )
 import Distribution.Package
-         ( HasInstalledPackageId(..), PackageId )
+         ( HasComponentId(..), PackageId )
 
 -- Note [FakeMap]
 -----------------
 -- We'd like to use the PackageIndex defined in this module for
 -- cabal-install's InstallPlan.  However, at the moment, this
--- data structure is indexed by InstalledPackageId, which we don't
+-- data structure is indexed by ComponentId, which we don't
 -- know until after we've compiled a package (whereas InstallPlan
 -- needs to store not-compiled packages in the index.) Eventually,
--- an InstalledPackageId will be calculatable prior to actually
+-- an ComponentId will be calculatable prior to actually
 -- building the package (making it something of a misnomer), but
 -- at the moment, the "fake installed package ID map" is a workaround
 -- to solve this problem while reusing PackageIndex.  The basic idea
--- is that, since we don't know what an InstalledPackageId is
+-- is that, since we don't know what an ComponentId is
 -- beforehand, we just fake up one based on the package ID (it only
 -- needs to be unique for the particular install plan), and fill
--- it out with the actual generated InstalledPackageId after the
+-- it out with the actual generated ComponentId after the
 -- package is successfully compiled.
 --
 -- However, there is a problem: in the index there may be
 -- references using the old package ID, which are now dangling if
--- we update the InstalledPackageId.  We could map over the entire
+-- we update the ComponentId.  We could map over the entire
 -- index to update these pointers as well (a costly operation), but
 -- instead, we've chosen to parametrize a variety of important functions
 -- by a FakeMap, which records what a fake installed package ID was
@@ -80,24 +80,24 @@ import Distribution.Package
 -- the installed package ID, but I decided this would be hard to
 -- understand.)
 
--- | Map from fake installed package IDs to real ones.  See Note [FakeMap]
-type FakeMap = Map InstalledPackageId InstalledPackageId
+-- | Map from fake package keys to real ones.  See Note [FakeMap]
+type FakeMap = Map ComponentId ComponentId
 
 -- | Variant of `depends` which accepts a `FakeMap`
 --
 -- Analogous to `fakeInstalledDepends`. See Note [FakeMap].
-fakeDepends :: PackageFixedDeps pkg => FakeMap -> pkg -> ComponentDeps [InstalledPackageId]
+fakeDepends :: PackageFixedDeps pkg => FakeMap -> pkg -> ComponentDeps [ComponentId]
 fakeDepends fakeMap = fmap (map resolveFakeId) . depends
   where
-    resolveFakeId :: InstalledPackageId -> InstalledPackageId
+    resolveFakeId :: ComponentId -> ComponentId
     resolveFakeId ipid = Map.findWithDefault ipid ipid fakeMap
 
---- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note
+--- | Variant of 'lookupComponentId' which accepts a 'FakeMap'.  See Note
 --- [FakeMap].
-fakeLookupInstalledPackageId :: FakeMap -> PackageIndex a -> InstalledPackageId
+fakeLookupComponentId :: FakeMap -> PackageIndex a -> ComponentId
                              -> Maybe a
-fakeLookupInstalledPackageId fakeMap index pkg =
-  lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
+fakeLookupComponentId fakeMap index pkg =
+  lookupComponentId index (Map.findWithDefault pkg pkg fakeMap)
 
 -- | All packages that have dependencies that are not in the index.
 --
@@ -106,17 +106,23 @@ fakeLookupInstalledPackageId fakeMap index pkg =
 brokenPackages :: (PackageFixedDeps pkg)
                => FakeMap
                -> PackageIndex pkg
-               -> [(pkg, [InstalledPackageId])]
+               -> [(pkg, [ComponentId])]
 brokenPackages fakeMap index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing =
           [ pkg' | pkg' <- CD.nonSetupDeps (depends pkg)
-                 , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
+                 , isNothing (fakeLookupComponentId fakeMap index pkg') ]
   , not (null missing) ]
 
-
-dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+-- | Compute all roots of the install plan, and verify that the transitive
+-- plans from those roots are all consistent.
+--
+-- NOTE: This does not check for dependency cycles. Moreover, dependency cycles
+-- may be absent from the subplans even if the larger plan contains a dependency
+-- cycle. Such cycles may or may not be an issue; either way, we don't check
+-- for them here.
+dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasComponentId pkg)
                           => FakeMap
                           -> Bool
                           -> PackageIndex pkg
@@ -125,7 +131,7 @@ dependencyInconsistencies fakeMap indepGoals index  =
     concatMap (dependencyInconsistencies' fakeMap) subplans
   where
     subplans :: [PackageIndex pkg]
-    subplans = lefts $
+    subplans = rights $
                  map (dependencyClosure fakeMap index)
                      (rootSets fakeMap indepGoals index)
 
@@ -135,8 +141,8 @@ dependencyInconsistencies fakeMap indepGoals index  =
 -- This is the set of all top-level library roots (taken together normally, or
 -- as singletons sets if we are considering them as independent goals), along
 -- with all setup dependencies of all packages.
-rootSets :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
-         => FakeMap -> Bool -> PackageIndex pkg -> [[InstalledPackageId]]
+rootSets :: (PackageFixedDeps pkg, HasComponentId pkg)
+         => FakeMap -> Bool -> PackageIndex pkg -> [[ComponentId]]
 rootSets fakeMap indepGoals index =
        if indepGoals then map (:[]) libRoots else [libRoots]
     ++ setupRoots index
@@ -147,10 +153,10 @@ rootSets fakeMap indepGoals index =
 --
 -- The library roots are the set of packages with no reverse dependencies
 -- (no reverse library dependencies but also no reverse setup dependencies).
-libraryRoots :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
-             => FakeMap -> PackageIndex pkg -> [InstalledPackageId]
+libraryRoots :: (PackageFixedDeps pkg, HasComponentId pkg)
+             => FakeMap -> PackageIndex pkg -> [ComponentId]
 libraryRoots fakeMap index =
-    map (installedPackageId . toPkgId) roots
+    map (installedComponentId . toPkgId) roots
   where
     (graph, toPkgId, _) = dependencyGraph fakeMap index
     indegree = Graph.indegree graph
@@ -158,7 +164,7 @@ libraryRoots fakeMap index =
     isRoot v = indegree ! v == 0
 
 -- | The setup dependencies of each package in the plan
-setupRoots :: PackageFixedDeps pkg => PackageIndex pkg -> [[InstalledPackageId]]
+setupRoots :: PackageFixedDeps pkg => PackageIndex pkg -> [[ComponentId]]
 setupRoots = filter (not . null)
            . map (CD.setupDeps . depends)
            . allPackages
@@ -174,7 +180,7 @@ setupRoots = filter (not . null)
 -- distinct.
 --
 dependencyInconsistencies' :: forall pkg.
-                              (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+                              (PackageFixedDeps pkg, HasComponentId pkg)
                            => FakeMap
                            -> PackageIndex pkg
                            -> [(PackageName, [(PackageIdentifier, Version)])]
@@ -189,7 +195,7 @@ dependencyInconsistencies' fakeMap index =
     --   and each installed ID of that that package
     --     the associated package instance
     --     and a list of reverse dependencies (as source IDs)
-    inverseIndex :: Map PackageName (Map InstalledPackageId (pkg, [PackageId]))
+    inverseIndex :: Map PackageName (Map ComponentId (pkg, [PackageId]))
     inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
       [ (packageName dep, Map.fromList [(ipid,(dep,[packageId pkg]))])
       | -- For each package @pkg@
@@ -197,7 +203,7 @@ dependencyInconsistencies' fakeMap index =
         -- Find out which @ipid@ @pkg@ depends on
       , ipid <- CD.nonSetupDeps (fakeDepends fakeMap pkg)
         -- And look up those @ipid@ (i.e., @ipid@ is the ID of @dep@)
-      , Just dep <- [fakeLookupInstalledPackageId fakeMap index ipid]
+      , Just dep <- [fakeLookupComponentId fakeMap index ipid]
       ]
 
     -- If, in a single install plan, we depend on more than one version of a
@@ -209,8 +215,8 @@ dependencyInconsistencies' fakeMap index =
     reallyIsInconsistent []       = False
     reallyIsInconsistent [_p]     = False
     reallyIsInconsistent [p1, p2] =
-      let pid1 = installedPackageId p1
-          pid2 = installedPackageId p2
+      let pid1 = installedComponentId p1
+          pid2 = installedComponentId p2
       in Map.findWithDefault pid1 pid1 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p2)
       && Map.findWithDefault pid2 pid2 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p1)
     reallyIsInconsistent _ = True
@@ -225,14 +231,14 @@ dependencyInconsistencies' fakeMap index =
 -- list of groups of packages where within each group they all depend on each
 -- other, directly or indirectly.
 --
-dependencyCycles :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+dependencyCycles :: (PackageFixedDeps pkg, HasComponentId pkg)
                  => FakeMap
                  -> PackageIndex pkg
                  -> [[pkg]]
 dependencyCycles fakeMap index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, installedPackageId pkg, CD.nonSetupDeps (fakeDepends fakeMap pkg))
+    adjacencyList = [ (pkg, installedComponentId pkg, CD.nonSetupDeps (fakeDepends fakeMap pkg))
                     | pkg <- allPackages index ]
 
 
@@ -243,30 +249,30 @@ dependencyCycles fakeMap index =
 --
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
-dependencyClosure :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+dependencyClosure :: (PackageFixedDeps pkg, HasComponentId pkg)
                   => FakeMap
                   -> PackageIndex pkg
-                  -> [InstalledPackageId]
-                  -> Either (PackageIndex pkg)
-                            [(pkg, [InstalledPackageId])]
+                  -> [ComponentId]
+                  -> Either [(pkg, [ComponentId])]
+                            (PackageIndex pkg)
 dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
-  (completed, []) -> Left completed
-  (completed, _)  -> Right (brokenPackages fakeMap completed)
+  (completed, []) -> Right completed
+  (completed, _)  -> Left (brokenPackages fakeMap completed)
  where
     closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) =
-      case fakeLookupInstalledPackageId fakeMap index pkgid of
+      case fakeLookupComponentId fakeMap index pkgid of
         Nothing   -> closure completed (pkgid:failed) pkgids
         Just pkg  ->
-          case fakeLookupInstalledPackageId fakeMap completed
-               (installedPackageId pkg) of
+          case fakeLookupComponentId fakeMap completed
+               (installedComponentId pkg) of
             Just _  -> closure completed  failed pkgids
             Nothing -> closure completed' failed pkgids'
               where completed' = insert pkg completed
                     pkgids'    = CD.nonSetupDeps (depends pkg) ++ pkgids
 
 
-topologicalOrder :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+topologicalOrder :: (PackageFixedDeps pkg, HasComponentId pkg)
                  => FakeMap -> PackageIndex pkg -> [pkg]
 topologicalOrder fakeMap index = map toPkgId
                                . Graph.topSort
@@ -274,7 +280,7 @@ topologicalOrder fakeMap index = map toPkgId
   where (graph, toPkgId, _) = dependencyGraph fakeMap index
 
 
-reverseTopologicalOrder :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+reverseTopologicalOrder :: (PackageFixedDeps pkg, HasComponentId pkg)
                         => FakeMap -> PackageIndex pkg -> [pkg]
 reverseTopologicalOrder fakeMap index = map toPkgId
                                       . Graph.topSort
@@ -287,10 +293,10 @@ reverseTopologicalOrder fakeMap index = map toPkgId
 --
 -- * The given 'PackageIdentifier's must be in the index.
 --
-reverseDependencyClosure :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+reverseDependencyClosure :: (PackageFixedDeps pkg, HasComponentId pkg)
                          => FakeMap
                          -> PackageIndex pkg
-                         -> [InstalledPackageId]
+                         -> [ComponentId]
                          -> [pkg]
 reverseDependencyClosure fakeMap index =
     map vertexToPkg
@@ -310,17 +316,17 @@ reverseDependencyClosure fakeMap index =
 -- Dependencies on other packages that are not in the index are discarded.
 -- You can check if there are any such dependencies with 'brokenPackages'.
 --
-dependencyGraph :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+dependencyGraph :: (PackageFixedDeps pkg, HasComponentId pkg)
                 => FakeMap
                 -> PackageIndex pkg
                 -> (Graph.Graph,
                     Graph.Vertex -> pkg,
-                    InstalledPackageId -> Maybe Graph.Vertex)
+                    ComponentId -> Maybe Graph.Vertex)
 dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
   where
     (graph, vertexToPkg', idToVertex) = Graph.graphFromEdges edges
     vertexToPkg = fromJust
-                . (\((), key, _targets) -> lookupInstalledPackageId index key)
+                . (\((), key, _targets) -> lookupComponentId index key)
                 . vertexToPkg'
 
     pkgs  = allPackages index
@@ -328,6 +334,6 @@ dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
 
     resolve   pid = Map.findWithDefault pid pid fakeMap
     edgesFrom pkg = ( ()
-                    , resolve (installedPackageId pkg)
+                    , resolve (installedComponentId pkg)
                     , CD.nonSetupDeps (fakeDepends fakeMap pkg)
                     )

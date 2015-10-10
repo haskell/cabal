@@ -15,7 +15,8 @@ module Distribution.Client.List (
 
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
-         , Dependency(..), simplifyDependency )
+         , Dependency(..), simplifyDependency
+         , ComponentId )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -30,7 +31,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
-import Distribution.Simple.Setup (fromFlag)
+import Distribution.Simple.Setup (fromFlag, flagToMaybe)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -44,7 +45,7 @@ import Distribution.Text
 import Distribution.Client.Types
          ( SourcePackage(..), Repo, SourcePackageDb(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageConstraint(..), ExtDependency(..) )
+         ( PackageConstraint(..) )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup
@@ -55,6 +56,8 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
          ( isFetched )
+import Distribution.Client.HttpUtils
+        ( configureTransport )
 
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
@@ -187,7 +190,8 @@ info verbosity packageDBs repos comp conf
                       (InstalledPackageIndex.allPackages installedPkgIndex)
                    ++ map packageId
                       (PackageIndex.allPackages sourcePkgIndex)
-    pkgSpecifiers <- resolveUserTargets verbosity
+    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 
@@ -289,6 +293,11 @@ data PackageDisplayInfo = PackageDisplayInfo {
     haveTarball       :: Bool
   }
 
+-- | Covers source dependencies and installed dependencies in
+-- one type.
+data ExtDependency = SourceDependency Dependency
+                   | InstalledDependency ComponentId
+
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
@@ -341,7 +350,7 @@ showPackageDetailedInfo pkginfo =
    , entry "Source repo"   sourceRepo   orNotSpecified text
    , entry "Executables"   executables  hideIfNull     (commaSep text)
    , entry "Flags"         flags        hideIfNull     (commaSep dispFlag)
-   , entry "Dependencies"  dependencies hideIfNull     (commaSep disp)
+   , entry "Dependencies"  dependencies hideIfNull     (commaSep dispExtDep)
    , entry "Documentation" haddockHtml  showIfInstalled text
    , entry "Cached"        haveTarball  alwaysShow     dispYesNo
    , if not (hasLib pkginfo) then empty else
@@ -374,6 +383,9 @@ showPackageDetailedInfo pkginfo =
     dispFlag f = case flagName f of FlagName n -> text n
     dispYesNo True  = text "Yes"
     dispYesNo False = text "No"
+
+    dispExtDep (SourceDependency    dep) = disp dep
+    dispExtDep (InstalledDependency dep) = disp dep
 
     isInstalled = not (null (installedVersions pkginfo))
     hasExes = length (executables pkginfo) >= 2

@@ -21,7 +21,7 @@ module Distribution.Client.Get (
 import Distribution.Package
          ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
-         ( Flag(..), fromFlag, fromFlagOrDefault )
+         ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( notice, die, info, writeFileAtomic )
 import Distribution.Verbosity
@@ -35,6 +35,8 @@ import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
+import Distribution.Client.HttpUtils
+        ( configureTransport, HttpTransport(..) )
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
         ( getSourcePackages )
@@ -90,7 +92,9 @@ get verbosity repos globalFlags getFlags userTargets = do
 
   sourcePkgDb <- getSourcePackages verbosity repos
 
-  pkgSpecifiers <- resolveUserTargets verbosity
+  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+
+  pkgSpecifiers <- resolveUserTargets verbosity transport
                    (fromFlag $ globalWorldFile globalFlags)
                    (packageIndex sourcePkgDb)
                    userTargets
@@ -104,7 +108,7 @@ get verbosity repos globalFlags getFlags userTargets = do
 
   if useFork
     then fork pkgs
-    else unpack pkgs
+    else unpack transport pkgs
 
   where
     resolverParams sourcePkgDb pkgSpecifiers =
@@ -119,10 +123,10 @@ get verbosity repos globalFlags getFlags userTargets = do
       branchers <- findUsableBranchers
       mapM_ (forkPackage verbosity branchers prefix kind) pkgs
 
-    unpack :: [SourcePackage] -> IO ()
-    unpack pkgs = do
+    unpack :: HttpTransport -> [SourcePackage] -> IO ()
+    unpack transport pkgs = do
       forM_ pkgs $ \pkg -> do
-        location <- fetchPackage verbosity (packageSource pkg)
+        location <- fetchPackage transport verbosity (packageSource pkg)
         let pkgid = packageId pkg
             descOverride | usePristine = Nothing
                          | otherwise   = packageDescrOverride pkg

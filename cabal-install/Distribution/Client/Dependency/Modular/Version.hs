@@ -29,6 +29,10 @@ eqVR = CV.thisVersion
 (.&&.) :: VR -> VR -> VR
 (.&&.) = CV.intersectVersionRanges
 
+-- | Union of two version ranges.
+(.||.) :: VR -> VR -> VR
+(.||.) = CV.unionVersionRanges
+
 -- | Simplify a version range.
 simplifyVR :: VR -> VR
 simplifyVR = CV.simplifyVersionRange

@@ -21,6 +21,8 @@ import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
+import Distribution.Client.HttpUtils
+         ( configureTransport, HttpTransport(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..) )
@@ -33,7 +35,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( fromFlag )
+         ( fromFlag, flagToMaybe )
 import Distribution.Simple.Utils
          ( die, notice, debug )
 import Distribution.System
@@ -83,7 +85,9 @@ fetch verbosity packageDBs repos comp platform conf
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    pkgSpecifiers <- resolveUserTargets verbosity
+    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        userTargets
@@ -105,7 +109,7 @@ fetch verbosity packageDBs repos comp platform conf
                      "The following packages would be fetched:"
                    : map (display . packageId) pkgs'
 
-             else mapM_ (fetchPackage verbosity . packageSource) pkgs'
+             else mapM_ (fetchPackage transport verbosity . packageSource) pkgs'
 
   where
     dryRun = fromFlag (fetchDryRun fetchFlags)
@@ -135,7 +139,7 @@ planPackages verbosity comp platform fetchFlags
       -- that are in the 'InstallPlan.Configured' state.
       return
         [ pkg
-        | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _ _))
+        | (InstallPlan.Configured (ConfiguredPackage pkg _ _ _))
             <- InstallPlan.toList installPlan ]
 
   | otherwise =
@@ -181,8 +185,8 @@ checkTarget target = case target of
             ++ "In the meantime you can use the 'unpack' commands."
     _ -> return ()
 
-fetchPackage :: Verbosity -> PackageLocation a -> IO ()
-fetchPackage verbosity pkgsrc = case pkgsrc of
+fetchPackage :: HttpTransport -> Verbosity -> PackageLocation a -> IO ()
+fetchPackage transport verbosity pkgsrc = case pkgsrc of
     LocalUnpackedPackage _dir  -> return ()
     LocalTarballPackage  _file -> return ()
 
@@ -191,5 +195,5 @@ fetchPackage verbosity pkgsrc = case pkgsrc of
          ++ "In the meantime you can use the 'unpack' commands."
 
     RepoTarballPackage repo pkgid _ -> do
-      _ <- fetchRepoTarball verbosity repo pkgid
+      _ <- fetchRepoTarball transport verbosity repo pkgid
       return ()

@@ -11,7 +11,6 @@
 
 module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
-  , IncludeComments(..)
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironmentFile
@@ -36,6 +35,7 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig
                                        , installDirsFields, withProgramsFields
                                        , withProgramOptionsFields
                                        , defaultCompiler )
+import Distribution.Client.Dependency.Types ( ConstraintSource (..) )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
@@ -276,7 +276,7 @@ inheritedPackageEnvironment verbosity pkgEnv = do
   case (pkgEnvInherit pkgEnv) of
     NoFlag                -> return mempty
     confPathFlag@(Flag _) -> do
-      conf <- loadConfig verbosity confPathFlag NoFlag
+      conf <- loadConfig verbosity confPathFlag
       return $ mempty { pkgEnvSavedConfig = conf }
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
@@ -284,7 +284,7 @@ inheritedPackageEnvironment verbosity pkgEnv = do
 userPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
 userPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> userPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile mempty path
+  minp <- readPackageEnvironmentFile ConstraintSourceUserConfig mempty path
   case minp of
     Nothing -> return mempty
     Just (ParseOk warns parseResult) -> do
@@ -327,7 +327,8 @@ tryLoadSandboxPackageEnvironmentFile :: Verbosity -> FilePath -> (Flag FilePath)
                                         -> IO (FilePath, PackageEnvironment)
 tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   let pkgEnvDir = takeDirectory pkgEnvFile
-  minp   <- readPackageEnvironmentFile mempty pkgEnvFile
+  minp   <- readPackageEnvironmentFile
+            (ConstraintSourceSandboxConfig pkgEnvFile) mempty pkgEnvFile
   pkgEnv <- handleParseResult verbosity pkgEnvFile minp
 
   -- Get the saved sandbox directory.
@@ -350,8 +351,7 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   inherited <- inheritedPackageEnvironment verbosity user
 
   -- Layer the package environment settings over settings from ~/.cabal/config.
-  cabalConfig <- fmap unsetSymlinkBinDir $
-                 loadConfig verbosity configFileFlag NoFlag
+  cabalConfig <- fmap unsetSymlinkBinDir $ loadConfig verbosity configFileFlag
   return (sandboxDir,
           updateInstallDirs $
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
@@ -382,35 +382,27 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
              }
           }
 
--- | Should the generated package environment file include comments?
-data IncludeComments = IncludeComments | NoComments
-
 -- | Create a new package environment file, replacing the existing one if it
 -- exists. Note that the path parameters should point to existing directories.
 createPackageEnvironmentFile :: Verbosity -> FilePath -> FilePath
-                                -> IncludeComments
                                 -> Compiler
                                 -> Platform
                                 -> IO ()
-createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
-  compiler platform = do
-  notice verbosity $ "Writing a default package environment file to "
-    ++ pkgEnvFile
-
-  commentPkgEnv <- commentPackageEnvironment sandboxDir
+createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile compiler platform = do
+  notice verbosity $ "Writing a default package environment file to " ++ pkgEnvFile
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
-  writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
+  writePackageEnvironmentFile pkgEnvFile initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
-pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
-pkgEnvFieldDescrs = [
+pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
+pkgEnvFieldDescrs src = [
   simpleField "inherit"
     (fromFlagOrDefault Disp.empty . fmap Disp.text) (optional parseFilePathQ)
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
 
     -- FIXME: Should we make these fields part of ~/.cabal/config ?
   , commaNewLineListField "constraints"
-    Text.disp Text.parse
+    (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
     (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configExConstraints = v }))
@@ -428,7 +420,7 @@ pkgEnvFieldDescrs = [
     configFieldDescriptions' :: [FieldDescr SavedConfig]
     configFieldDescriptions' = filter
       (\(FieldDescr name _ _) -> name /= "preference" && name /= "constraint")
-      configFieldDescriptions
+      (configFieldDescriptions src)
 
     toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
@@ -447,11 +439,11 @@ pkgEnvFieldDescrs = [
       }
 
 -- | Read the package environment file.
-readPackageEnvironmentFile :: PackageEnvironment -> FilePath
+readPackageEnvironmentFile :: ConstraintSource -> PackageEnvironment -> FilePath
                               -> IO (Maybe (ParseResult PackageEnvironment))
-readPackageEnvironmentFile initial file =
+readPackageEnvironmentFile src initial file =
   handleNotExists $
-  fmap (Just . parsePackageEnvironment initial) (readFile file)
+  fmap (Just . parsePackageEnvironment src initial) (readFile file)
   where
     handleNotExists action = catchIO action $ \ioe ->
       if isDoesNotExistError ioe
@@ -459,9 +451,9 @@ readPackageEnvironmentFile initial file =
         else ioError ioe
 
 -- | Parse the package environment file.
-parsePackageEnvironment :: PackageEnvironment -> String
+parsePackageEnvironment :: ConstraintSource -> PackageEnvironment -> String
                            -> ParseResult PackageEnvironment
-parsePackageEnvironment initial str = do
+parsePackageEnvironment src initial str = do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
   pkgEnv <- parse others
@@ -492,7 +484,7 @@ parsePackageEnvironment initial str = do
     isKnownSection _                                                    = False
 
     parse :: [ParseUtils.Field] -> ParseResult PackageEnvironment
-    parse = parseFields pkgEnvFieldDescrs initial
+    parse = parseFields (pkgEnvFieldDescrs src) initial
 
     parseSections :: SectionsAccum -> ParseUtils.Field
                      -> ParseResult SectionsAccum
@@ -535,18 +527,13 @@ type SectionsAccum = (HaddockFlags, InstallDirs (Flag PathTemplate)
                      , [(String, FilePath)], [(String, [String])])
 
 -- | Write out the package environment file.
-writePackageEnvironmentFile :: FilePath -> IncludeComments
-                               -> PackageEnvironment -> PackageEnvironment
-                               -> IO ()
-writePackageEnvironmentFile path incComments comments pkgEnv = do
+writePackageEnvironmentFile :: FilePath -> PackageEnvironment -> IO ()
+writePackageEnvironmentFile path pkgEnv = do
   let tmpPath = (path <.> "tmp")
   writeFile tmpPath $ explanation ++ pkgEnvStr ++ "\n"
   renameFile tmpPath path
   where
-    pkgEnvStr = case incComments of
-      IncludeComments -> showPackageEnvironmentWithComments
-                         (Just comments) pkgEnv
-      NoComments      -> showPackageEnvironment pkgEnv
+    pkgEnvStr = showPackageEnvironment pkgEnv
     explanation = unlines
       ["-- This is a Cabal package environment file."
       ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
@@ -565,7 +552,8 @@ showPackageEnvironmentWithComments :: (Maybe PackageEnvironment)
                                       -> PackageEnvironment
                                       -> String
 showPackageEnvironmentWithComments mdefPkgEnv pkgEnv = Disp.render $
-      ppFields pkgEnvFieldDescrs mdefPkgEnv pkgEnv
+      ppFields (pkgEnvFieldDescrs ConstraintSourceUnknown)
+               mdefPkgEnv pkgEnv
   $+$ Disp.text ""
   $+$ ppSection "install-dirs" "" installDirsFields
                 (fmap installDirsSection mdefPkgEnv) (installDirsSection pkgEnv)

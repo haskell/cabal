@@ -35,14 +35,15 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion, mkPackageKey, packageName )
+         , Dependency(..), thisPackageVersion, packageName
+         , ComponentId(..), ComponentId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDB(..), PackageDBStack, packageKeySupported )
+         , PackageDB(..), PackageDBStack )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..), defaultRenaming )
+         , BenchmarkInterface(..), allBuildInfo, defaultRenaming )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
@@ -54,13 +55,12 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.PreProcess
          ( preprocessComponent, preprocessExtras, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms, pkgKey)
+         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
          , Component(..), componentName, getComponent, componentBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
          , ComponentName(..), showComponentName
-         , ComponentDisabledReason(..), componentDisabledReason
-         , inplacePackageId, LibraryName(..) )
+         , ComponentDisabledReason(..), componentDisabledReason )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -80,8 +80,6 @@ import Distribution.Text
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Maybe
-         ( maybeToList )
 import Data.Either
          ( partitionEithers )
 import Data.List
@@ -208,9 +206,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     -- on internally defined libraries.
     pwd <- getCurrentDirectory
     let -- The in place registration uses the "-inplace" suffix, not an ABI hash
-        ipkgid           = inplacePackageId (packageId installedPkgInfo)
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       ipkgid lib' lbi clbi
+                                                       (IPI.AbiHash "") lib' lbi clbi
 
     registerPackage verbosity
       installedPkgInfo pkg_descr lbi True -- True meaning in place
@@ -389,12 +386,12 @@ testSuiteLibV09AsLibAndExe :: PackageDescription
                            -> (PackageDescription,
                                Library, ComponentLocalBuildInfo,
                                LocalBuildInfo,
-                               IPI.InstalledPackageInfo_ ModuleName,
+                               IPI.InstalledPackageInfo,
                                Executable, ComponentLocalBuildInfo)
 testSuiteLibV09AsLibAndExe pkg_descr
                      test@TestSuite { testInterface = TestSuiteLibV09 _ m }
                      clbi lbi distPref pwd =
-    (pkg, lib, libClbi, lbi', ipi, exe, exeClbi)
+    (pkg, lib, libClbi, lbi, ipi, exe, exeClbi)
   where
     bi  = testBuildInfo test
     lib = Library {
@@ -408,7 +405,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentLibraries = [LibraryName (testName test)]
+                , componentId = ComponentId $ display (packageId pkg)
+                , componentCompatPackageKey = ComponentId $ display (packageId pkg)
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 }
     pkg = pkg_descr {
@@ -420,16 +418,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , library      = Just lib
           }
-    -- Hack to make the library compile with the right package key.
-    -- Probably the "right" way to do this is move this information to
-    -- the ComponentLocalBuildInfo, but it seems odd that a single package
-    -- can define multiple actual packages.
-    lbi' = lbi {
-        pkgKey = mkPackageKey (packageKeySupported (compiler lbi))
-                              (package pkg) [] []
-    }
-    ipkgid = inplacePackageId (packageId pkg)
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi' libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (IPI.AbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
@@ -449,7 +438,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- that exposes the relevant test suite library.
     exeClbi = ExeComponentLocalBuildInfo {
                 componentPackageDeps =
-                    (IPI.installedPackageId ipi, packageId ipi)
+                    (IPI.installedComponentId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi)),
@@ -571,12 +560,10 @@ initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> IO ()
 initialBuildSteps _distPref pkg_descr lbi verbosity = do
   -- check that there's something to build
-  let buildInfos =
-          map libBuildInfo (maybeToList (library pkg_descr)) ++
-          map buildInfo (executables pkg_descr)
-  unless (any buildable buildInfos) $ do
+  unless (not . null $ allBuildInfo pkg_descr) $ do
     let name = display (packageId pkg_descr)
-    die ("Package " ++ name ++ " can't be built on this system.")
+    die $ "No libraries, executables, tests, or benchmarks "
+       ++ "are enabled for package " ++ name ++ "."
 
   createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
 

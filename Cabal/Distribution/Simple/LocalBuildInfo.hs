@@ -20,14 +20,14 @@
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
-        inplacePackageId,
+        localComponentId,
+        localCompatPackageKey,
 
         -- * Buildable package components
         Component(..),
         ComponentName(..),
         showComponentName,
         ComponentLocalBuildInfo(..),
-        LibraryName(..),
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -70,11 +70,11 @@ import Distribution.PackageDescription
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageId, Package(..), InstalledPackageId(..), PackageKey
-         , PackageName )
+         ( PackageId, Package(..), ComponentId(..)
+         , PackageName, ComponentId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
-         , OptimisationLevel )
+         , OptimisationLevel, ProfDetailLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, allPackages )
 import Distribution.ModuleName ( ModuleName )
@@ -128,9 +128,6 @@ data LocalBuildInfo = LocalBuildInfo {
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
-        pkgKey        :: PackageKey,
-                -- ^ The package key for the current build, calculated from
-                -- the package ID and the dependency graph.
         instantiatedWith :: [(ModuleName, (InstalledPackageInfo, ModuleName))],
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
@@ -139,6 +136,8 @@ data LocalBuildInfo = LocalBuildInfo {
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
         withDynExe    :: Bool,  -- ^Whether to link executables dynamically
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
+        withProfLibDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
+        withProfExeDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
@@ -152,9 +151,29 @@ data LocalBuildInfo = LocalBuildInfo {
 
 instance Binary LocalBuildInfo
 
+-- | Extract the 'ComponentId' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
+-- on the package ID.
+localComponentId :: LocalBuildInfo -> ComponentId
+localComponentId lbi =
+    foldr go (ComponentId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_pk = case clbi of
+            LibComponentLocalBuildInfo { componentId = pk } -> pk
+            _ -> old_pk
+
+-- | Extract the compatibility 'ComponentId' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
+-- on the package ID.
+localCompatPackageKey :: LocalBuildInfo -> ComponentId
+localCompatPackageKey lbi =
+    foldr go (ComponentId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_pk = case clbi of
+            LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
+            _ -> old_pk
+
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
-externalPackageDeps :: LocalBuildInfo -> [(InstalledPackageId, PackageId)]
+externalPackageDeps :: LocalBuildInfo -> [(ComponentId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)
@@ -165,12 +184,6 @@ externalPackageDeps lbi =
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
-
--- | The installed package Id we use for local packages registered in the local
--- package db. This is what is used for intra-package deps between components.
---
-inplacePackageId :: PackageId -> InstalledPackageId
-inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- -----------------------------------------------------------------------------
 -- Buildable components
@@ -201,21 +214,22 @@ data ComponentLocalBuildInfo
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
+    componentId :: ComponentId,
+    componentCompatPackageKey :: ComponentId,
     componentExposedModules :: [Installed.ExposedModule],
-    componentPackageRenaming :: Map PackageName ModuleRenaming,
-    componentLibraries :: [LibraryName]
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | TestComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | BenchComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   deriving (Generic, Read, Show)
@@ -232,11 +246,6 @@ foldComponent f _ _ _ (CLib   lib) = f lib
 foldComponent _ f _ _ (CExe   exe) = f exe
 foldComponent _ _ f _ (CTest  tst) = f tst
 foldComponent _ _ _ f (CBench bch) = f bch
-
-data LibraryName = LibraryName String
-    deriving (Generic, Read, Show)
-
-instance Binary LibraryName
 
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =
@@ -476,7 +485,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
-    (pkgKey lbi)
+    (localComponentId lbi)
     (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -488,7 +497,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
-    (pkgKey lbi)
+    (localComponentId lbi)
     (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -499,6 +508,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
-                   (pkgKey lbi)
+                   (localComponentId lbi)
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

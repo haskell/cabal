@@ -1,4 +1,4 @@
-module Dummy where
+module Dummy2 where
 
 import Distribution.TestSuite (Test)
 

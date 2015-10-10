@@ -40,7 +40,7 @@ import Distribution.Simple.Program
 import Distribution.Version
          ( Version(..), orLaterVersion )
 import Distribution.Package
-         ( Package(..), InstalledPackageId(InstalledPackageId),
+         ( Package(..), ComponentId(ComponentId),
            pkgName, pkgVersion, )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, writeFileAtomic
@@ -116,8 +116,8 @@ getInstalledPackages verbosity _packageDBs conf = do
    return $
       PackageIndex.fromList $
       map (\p -> emptyInstalledPackageInfo {
-                    InstalledPackageInfo.installedPackageId =
-                       InstalledPackageId (display p),
+                    InstalledPackageInfo.installedComponentId =
+                       ComponentId (display p),
                     InstalledPackageInfo.sourcePackageId = p
                  }) $
       concatMap parseLine $
@@ -181,8 +181,16 @@ jhcPkgConf pd =
              ,sline "hidden-modules" (comma . otherModules . libBuildInfo . lib)
              ]
 
-installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
-installLib verb dest build_dir pkg_descr _ = do
+installLib :: Verbosity
+           -> LocalBuildInfo
+           -> FilePath
+           -> FilePath
+           -> FilePath
+           -> PackageDescription
+           -> Library
+           -> ComponentLocalBuildInfo
+           -> IO ()
+installLib verb _lbi dest _dyn_dest build_dir pkg_descr _lib _clbi = do
     let p = display (packageId pkg_descr)++".hl"
     createDirectoryIfMissingVerbose verb True dest
     installOrdinaryFile verb (build_dir </> p) (dest </> p)

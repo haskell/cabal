@@ -65,7 +65,7 @@ convIPI sip = mkIndex . convIPI' sip
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  let ipid = IPI.installedPackageId ipi
+  let ipid = IPI.installedComponentId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
@@ -82,9 +82,9 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> SI.InstalledPackageIndex -> InstalledPackageId -> Maybe (FlaggedDep () PN)
+convIPId :: PN -> SI.InstalledPackageIndex -> ComponentId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
-  case SI.lookupInstalledPackageId idx ipid of
+  case SI.lookupComponentId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
@@ -164,7 +164,7 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi fds p comp (c', t', mf') =
+convBranch os arch cinfo pi@(PI pn _) fds p comp (c', t', mf') =
   go c' (          convCondTree os arch cinfo pi fds p comp   t')
         (maybe [] (convCondTree os arch cinfo pi fds p comp) mf')
   where
@@ -198,11 +198,16 @@ convBranch os arch cinfo pi fds p comp (c', t', mf') =
     -- with deferring flag choices will then usually first resolve this package,
     -- and try an already installed version before imposing a default flag choice
     -- that might not be what we want.
+    --
+    -- Note that we make assumptions here on the form of the dependencies that
+    -- can occur at this point. In particular, no occurrences of Fixed, and no
+    -- occurrences of multiple version ranges, as all dependencies below this
+    -- point have been generated using 'convDep'.
     extractCommon :: FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
-    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) comp
-                           | D.Simple (Dep pn  _) _ <- ps
-                           , D.Simple (Dep pn' _) _ <- ps'
-                           , pn == pn'
+    extractCommon ps ps' = [ D.Simple (Dep pn1 (Constrained [(vr1 .||. vr2, Goal (P pn) [])])) comp
+                           | D.Simple (Dep pn1 (Constrained [(vr1, _)])) _ <- ps
+                           , D.Simple (Dep pn2 (Constrained [(vr2, _)])) _ <- ps'
+                           , pn1 == pn2
                            ]
 
 -- | Convert a Cabal dependency to a solver-specific dependency.

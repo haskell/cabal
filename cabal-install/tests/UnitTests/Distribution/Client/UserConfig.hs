@@ -14,7 +14,7 @@ import System.FilePath (takeDirectory)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Distribution.Client.Compat.Environment (lookupEnv, setEnv)
+import Distribution.Compat.Environment (lookupEnv, setEnv)
 import Distribution.Client.Config
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
@@ -31,7 +31,7 @@ tests = [ testCase "nullDiffOnCreate" nullDiffOnCreateTest
 nullDiffOnCreateTest :: Assertion
 nullDiffOnCreateTest = bracketTest . const $ do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty mempty
+    _ <- loadConfig silent mempty
     -- Now we read it in and compare it against the default.
     diff <- userConfigDiff mempty
     assertBool (unlines $ "Following diff should be empty:" : diff) $ null diff
@@ -40,7 +40,7 @@ nullDiffOnCreateTest = bracketTest . const $ do
 canDetectDifference :: Assertion
 canDetectDifference = bracketTest . const $ do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty mempty
+    _ <- loadConfig silent mempty
     cabalFile <- defaultConfigFile
     appendFile cabalFile "verbose: 0\n"
     diff <- userConfigDiff mempty
@@ -57,7 +57,7 @@ canUpdateConfig = bracketTest . const $ do
     -- Update the config file.
     userConfigUpdate silent mempty
     -- Load it again.
-    updated <- loadConfig silent mempty mempty
+    updated <- loadConfig silent mempty
     assertBool ("Field 'tests' should be True") $
         fromFlag (configTests $ savedConfigureFlags updated)
 
@@ -65,12 +65,12 @@ canUpdateConfig = bracketTest . const $ do
 doubleUpdateConfig :: Assertion
 doubleUpdateConfig = bracketTest . const $ do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty mempty
+    _ <- loadConfig silent mempty
     -- Update it.
     userConfigUpdate silent mempty
     userConfigUpdate silent mempty
     -- Load it again.
-    updated <- loadConfig silent mempty mempty
+    updated <- loadConfig silent mempty
 
     assertBool ("Field 'remote-repo' doesn't contain duplicates") $
         listUnique (map show . fromNubList . globalRemoteRepos $ savedGlobalFlags updated)

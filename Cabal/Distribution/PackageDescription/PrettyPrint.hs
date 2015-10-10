@@ -25,7 +25,7 @@ import Distribution.PackageDescription
        ( Benchmark(..), BenchmarkInterface(..), benchmarkType
        , TestSuite(..), TestSuiteInterface(..), testType
        , SourceRepo(..),
-        customFieldsBI, CondTree(..), Condition(..),
+        customFieldsBI, CondTree(..), Condition(..), cNot,
         FlagName(..), ConfVar(..), Executable(..), Library(..),
         Flag(..), PackageDescription(..),
         GenericPackageDescription(..))
@@ -38,7 +38,7 @@ import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDesc
        sourceRepoFieldDescrs,flagFieldDescrs)
 import Distribution.Package (Dependency(..))
 import Distribution.Text (Text(..))
-import Data.Maybe (isJust, fromJust, isNothing)
+import Data.Maybe (isJust)
 
 -- | Recompile with false for regression testing
 simplifiedPrinting :: Bool
@@ -226,18 +226,37 @@ ppCondTree ct@(CondNode it _ ifs) mbIt ppIt =
         else res
   where
     -- TODO: this ends up printing trailing spaces when combined with nest.
-    ppIf (c,thenTree,mElseTree)          =
-        ((emptyLine $ text "if" <+> ppCondition c) $$
-          nest indentWith (ppCondTree thenTree
-                    (if simplifiedPrinting then (Just it) else Nothing) ppIt))
-        $+$ (if isNothing mElseTree
-                then empty
-                else text "else"
-                    $$ nest indentWith (ppCondTree (fromJust mElseTree)
-                        (if simplifiedPrinting then (Just it) else Nothing) ppIt))
+    ppIf (c, thenTree, Just elseTree) = ppIfElse it ppIt c thenTree elseTree
+    ppIf (c, thenTree, Nothing)       = ppIf' it ppIt c thenTree
+
+ppIfCondition :: (Condition ConfVar) -> Doc
+ppIfCondition c = (emptyLine $ text "if" <+> ppCondition c)
+
+ppIf' :: a -> (a -> Maybe a -> Doc)
+           -> Condition ConfVar
+           -> CondTree ConfVar [Dependency] a
+           -> Doc
+ppIf' it ppIt c thenTree = 
+  if isEmpty thenDoc
+     then mempty
+     else ppIfCondition c $$ nest indentWith thenDoc
+  where thenDoc = ppCondTree thenTree (if simplifiedPrinting then (Just it) else Nothing) ppIt
+
+ppIfElse :: a -> (a -> Maybe a -> Doc)
+              -> Condition ConfVar
+              -> CondTree ConfVar [Dependency] a
+              -> CondTree ConfVar [Dependency] a
+              -> Doc
+ppIfElse it ppIt c thenTree elseTree =
+  case (isEmpty thenDoc, isEmpty elseDoc) of
+    (True,  True)  -> mempty
+    (False, True)  -> ppIfCondition c $$ nest indentWith thenDoc
+    (True,  False) -> ppIfCondition (cNot c) $$ nest indentWith elseDoc
+    (False, False) -> (ppIfCondition c $$ nest indentWith thenDoc)
+                      $+$ (text "else" $$ nest indentWith elseDoc)
+  where thenDoc = ppCondTree thenTree (if simplifiedPrinting then (Just it) else Nothing) ppIt
+        elseDoc = ppCondTree elseTree (if simplifiedPrinting then (Just it) else Nothing) ppIt
 
 emptyLine :: Doc -> Doc
 emptyLine d                              = text "" $+$ d
-
-
 

@@ -55,7 +55,7 @@ import Distribution.License
 import Distribution.Simple.CCompiler
          ( filenameCDialect )
 import Distribution.Simple.Utils
-         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..), lowercase )
+         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..), lowercase, startsWithBOM, fromUTF8 )
 
 import Distribution.Version
          ( Version(..)
@@ -77,9 +77,11 @@ import qualified Language.Haskell.Extension as Extension (deprecatedExtensions)
 import Language.Haskell.Extension
          ( Language(UnknownLanguage), knownLanguages
          , Extension(..), KnownExtension(..) )
+import qualified System.Directory (getDirectoryContents)
+import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
          ( (</>), takeExtension, isRelative, isAbsolute
-         , splitDirectories,  splitPath )
+         , splitDirectories,  splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -131,7 +133,6 @@ checkSpecVersion :: PackageDescription -> [Int] -> Bool -> PackageCheck
 checkSpecVersion pkg specver cond pc
   | specVersion pkg >= Version specver [] = Nothing
   | otherwise                             = check cond pc
-
 
 -- ------------------------------------------------------------
 -- * Standard checks
@@ -189,9 +190,12 @@ checkSanity pkg =
   , check (null . versionBranch . packageVersion $ pkg) $
       PackageBuildImpossible "No 'version' field."
 
-  , check (null (executables pkg) && isNothing (library pkg)) $
+  , check (all ($ pkg) [ null . executables
+                       , null . testSuites
+                       , null . benchmarks
+                       , isNothing . library ]) $
       PackageBuildImpossible
-        "No executables and no library found. Nothing to do."
+        "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
   , check (not (null duplicateNames)) $
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
@@ -820,7 +824,7 @@ checkPaths pkg =
   , isOutsideTree path ]
   ++
   [ PackageDistInexcusable $
-      quote (kind ++ ": " ++ path) ++ " is an absolute directory."
+      quote (kind ++ ": " ++ path) ++ " is an absolute path."
   | (path, kind) <- relPaths
   , isAbsolute path ]
   ++
@@ -859,6 +863,7 @@ checkPaths pkg =
       ++ [ (path, "extra-doc-files") | path <- extraDocFiles pkg ]
       ++ [ (path, "data-files")      | path <- dataFiles     pkg ]
       ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
+      ++ [ (path, "license-file")    | path <- licenseFiles  pkg ]
       ++ concat
          [    [ (path, "c-sources")        | path <- cSources        bi ]
            ++ [ (path, "js-sources")       | path <- jsSources       bi ]
@@ -1062,12 +1067,23 @@ checkCabalVersion pkg =
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
-  , check (specVersion pkg >= Version [1,21] []
+  , check (specVersion pkg >= Version [1,23] []
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
       PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.22' with 'build-type: Custom' "
+           "Packages using 'cabal-version: >= 1.23' with 'build-type: Custom' "
         ++ "must use a 'custom-setup' section with a 'setup-depends' field "
+        ++ "that specifies the dependencies of the Setup.hs script itself. "
+        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
+        ++ "so a simple example would be 'setup-depends: base, Cabal'."
+
+  , check (specVersion pkg < Version [1,23] []
+           && isNothing (setupBuildInfo pkg)
+           && buildType pkg == Just Custom) $
+      PackageDistSuspicious $
+           "From version 1.23 cabal supports specifiying explicit dependencies "
+        ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
+        ++ "adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
@@ -1130,7 +1146,7 @@ checkCabalVersion pkg =
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    -- XXX: If the user writes build-depends: foo with (), this is
+    -- TODO: If the user writes build-depends: foo with (), this is
     -- indistinguishable from build-depends: foo, so there won't be an
     -- error even though there should be
     depsUsingThinningRenamingSyntax =
@@ -1446,7 +1462,7 @@ checkDevelopmentOnlyFlags pkg =
                          -> CondTree v c a
                          -> [([Condition v], b)]
     collectCondTreePaths mapData = go []
-      where 
+      where
         go conditions condNode =
             -- the data at this level in the tree:
             (reverse conditions, mapData (condTreeData condNode))
@@ -1471,8 +1487,10 @@ checkPackageFiles :: PackageDescription -> FilePath -> IO [PackageCheck]
 checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
   where
     checkFilesIO = CheckPackageContentOps {
-      doesFileExist      = System.doesFileExist      . relative,
-      doesDirectoryExist = System.doesDirectoryExist . relative
+      doesFileExist        = System.doesFileExist                  . relative,
+      doesDirectoryExist   = System.doesDirectoryExist             . relative,
+      getDirectoryContents = System.Directory.getDirectoryContents . relative,
+      getFileContents      = \f -> openBinaryFile (relative f) ReadMode >>= hGetContents
     }
     relative path = root </> path
 
@@ -1480,8 +1498,10 @@ checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
 -- Used by 'checkPackageContent'.
 --
 data CheckPackageContentOps m = CheckPackageContentOps {
-    doesFileExist      :: FilePath -> m Bool,
-    doesDirectoryExist :: FilePath -> m Bool
+    doesFileExist        :: FilePath -> m Bool,
+    doesDirectoryExist   :: FilePath -> m Bool,
+    getDirectoryContents :: FilePath -> m [FilePath],
+    getFileContents      :: FilePath -> m String
   }
 
 -- | Sanity check things that requires looking at files in the package.
@@ -1495,6 +1515,7 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
+  cabalBomError   <- checkCabalFileBOM    ops
   licenseErrors   <- checkLicensesExist   ops pkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
@@ -1502,9 +1523,48 @@ checkPackageContent ops pkg = do
   vcsLocation     <- checkMissingVcsInfo  ops pkg
 
   return $ licenseErrors
-        ++ catMaybes [setupError, configureError]
+        ++ catMaybes [cabalBomError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
+
+checkCabalFileBOM :: Monad m => CheckPackageContentOps m
+                  -> m (Maybe PackageCheck)
+checkCabalFileBOM ops = do
+  epdfile <- findPackageDesc ops
+  case epdfile of
+    Left pc      -> return $ Just pc
+    Right pdfile -> (flip check pc . startsWithBOM . fromUTF8) `liftM` (getFileContents ops pdfile)
+                       where pc = PackageDistInexcusable $
+                                    pdfile ++ " starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions."
+
+-- |Find a package description file in the given directory.  Looks for
+-- @.cabal@ files.
+findPackageDesc :: Monad m => CheckPackageContentOps m
+                 -> m (Either PackageCheck FilePath) -- ^<pkgname>.cabal
+findPackageDesc ops
+ = do let dir = "."
+      files <- getDirectoryContents ops dir
+      -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
+      -- file we filter to exclude dirs and null base file names:
+      cabalFiles <- filterM (doesFileExist ops)
+                       [ dir </> file
+                       | file <- files
+                       , let (name, ext) = splitExtension file
+                       , not (null name) && ext == ".cabal" ]
+      case cabalFiles of
+        []          -> return (Left $ PackageBuildImpossible noDesc)
+        [cabalFile] -> return (Right cabalFile)
+        multiple    -> return (Left $ PackageBuildImpossible $ multiDesc multiple)
+
+  where
+    noDesc :: String
+    noDesc = "No cabal file found.\n"
+             ++ "Please create a package description file <pkgname>.cabal"
+
+    multiDesc :: [String] -> String
+    multiDesc l = "Multiple cabal files found.\n"
+                  ++ "Please use only one of: "
+                  ++ intercalate ", " l
 
 checkLicensesExist :: Monad m => CheckPackageContentOps m
                    -> PackageDescription
@@ -1523,10 +1583,11 @@ checkLicensesExist ops pkg = do
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
                  -> m (Maybe PackageCheck)
-checkSetupExists ops _ = do
+checkSetupExists ops pkg = do
+  let simpleBuild = buildType pkg == Just Simple
   hsexists  <- doesFileExist ops "Setup.hs"
   lhsexists <- doesFileExist ops "Setup.lhs"
-  return $ check (not hsexists && not lhsexists) $
+  return $ check (not simpleBuild && not hsexists && not lhsexists) $
     PackageDistInexcusable $
       "The package is missing a Setup.hs or Setup.lhs script."
 

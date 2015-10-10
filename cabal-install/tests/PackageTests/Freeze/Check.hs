@@ -42,7 +42,7 @@ tests paths =
               " ghc-prim ==" `isInfixOf` (intercalate " " $ lines $ c)
 
     , testCase "does not freeze packages which are not dependend upon" $ do
-          -- XXX Test this against a package installed in the sandbox but
+          -- TODO: Test this against a package installed in the sandbox but
           -- not depended upon.
           removeCabalConfig
           result <- cabal_freeze paths dir []
@@ -110,4 +110,7 @@ removeCabalConfig = do
 
 readCabalConfig :: IO String
 readCabalConfig = do
-    readFile $ dir </> "cabal.config"
+    config <- readFile $ dir </> "cabal.config"
+    -- Ensure that the file is closed so that it can be
+    -- deleted by the next test on Windows.
+    length config `seq` return config

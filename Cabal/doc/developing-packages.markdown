@@ -1081,9 +1081,7 @@ machine-readable log files.  The `detailed-0.9` interface requires the
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
@@ -1115,12 +1113,10 @@ main = do
 #### Example: Package using `detailed-0.9` interface ####
 
 The example package description and test module source file below demonstrate
-the use of the `detailed-0.9` interface.  For brevity, the example package does
-note include a library or any normal executables, but a real package would be
-required to have at least one library or executable.  The test module below
-also develops a simple implementation of the interface set by
-`Distribution.TestSuite`, but in actual usage the implementation would be
-provided by the library that provides the testing facility.
+the use of the `detailed-0.9` interface.  The test module also develops a simple
+implementation of the interface set by `Distribution.TestSuite`, but in actual
+usage the implementation would be provided by the library that provides the
+testing facility.
 
 bar.cabal:
 
@@ -1208,9 +1204,7 @@ channels.
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
@@ -1334,20 +1328,37 @@ values for these fields.
     For backwards compatibility, the old variant `hs-source-dir` is also
     recognized.
 
-`extensions:` _identifier list_
-:   A list of Haskell extensions used by every module. Extension names
-    are the constructors of the [Extension][extension] type. These
-    determine corresponding compiler options. In particular, `CPP` specifies that
-    Haskell source files are to be preprocessed with a C preprocessor.
+`default-extensions:` _identifier list_
+:   A list of Haskell extensions used by every module. These determine
+    corresponding compiler options enabled for all files. Extension names are
+    the constructors of the [Extension][extension] type. For example, `CPP`
+    specifies that Haskell source files are to be preprocessed with a C
+    preprocessor.
 
-    Extensions used only by one module may be specified by placing a
-    `LANGUAGE` pragma in the source file affected, e.g.:
+`other-extensions:` _identifier list_
+:   A list of Haskell extensions used by some (but not necessarily all) modules.
+    From GHC version 6.6 onward, these may be specified by placing a `LANGUAGE`
+    pragma in the source files affected e.g.
 
     ~~~~~~~~~~~~~~~~
     {-# LANGUAGE CPP, MultiParamTypeClasses #-}
     ~~~~~~~~~~~~~~~~
 
-    Note:  GHC versions prior to 6.6 do not support the `LANGUAGE` pragma.
+    In Cabal-1.24 the dependency solver will use this and `default-extensions` information.
+    Cabal prior to 1.24 will abort compilation if the current compiler doesn't provide
+    the extensions.
+
+    If you use some extensions conditionally, using CPP or conditional module lists,
+    it is good to replicate the condition in `other-extensions` declarations:
+
+    ~~~~~~~~~~~~~~~~
+    other-extensions: CPP
+    if impl(ghc >= 7.5)
+      other-extensions: PolyKinds
+    ~~~~~~~~~~~~~~~~
+
+    You could also omit the conditionally used extensions, as they are for information only,
+    but it is recommended to replicate them in `other-extensions` declarations.
 
 `build-tools:` _program list_
 :   A list of programs, possibly annotated with versions, needed to
@@ -1370,6 +1381,21 @@ values for these fields.
 `ghc-prof-options:` _token list_
 :   Additional options for GHC when the package is built with profiling
     enabled.
+
+    Note that as of Cabal-1.24, the default profiling detail level defaults to
+    `exported-functions` for libraries and `toplevel-funcitons` for
+    executables. For GHC these correspond to the flags `-fprof-auto-exported`
+    and `-fprof-auto-top`. Prior to Cabal-1.24 the level defaulted to `none`.
+    These levels can be adjusted by the person building the package with the
+    `--profiling-detail` and `--library-profiling-detail` flags.
+
+    It is typically better for the person building the package to pick the
+    profiling detail level rather than for the package author. So unless you
+    have special needs it is probably better not to specify any of the GHC
+    `-fprof-auto*` flags here. However if you wish to override the profiling
+    detail level, you can do so using the `ghc-prof-options` field: use
+    `-fno-prof-auto` or one of the other `-fprof-auto*` flags.
+
 
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
@@ -1691,15 +1717,15 @@ and outside then they are combined using the following rules.
     items, for example
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP
+    other-extensions: CPP
     if impl(ghc)
-      Extensions: MultiParamTypeClasses
+      other-extensions: MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     when compiled using GHC will be combined to
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP, MultiParamTypeClasses
+    other-extensions: CPP, MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     Similarly, if two conditional sections appear at the same nesting

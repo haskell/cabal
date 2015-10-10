@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Config
@@ -40,16 +41,18 @@ module Distribution.Client.Config (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo(..), Username(..), Password(..) )
+         ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, defaultGlobalFlags
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
-         , showRepo, parseRepo )
+         , showRepo, parseRepo, readRepo )
 import Distribution.Utils.NubList
          ( NubList, fromNubList, toNubList)
 
@@ -58,7 +61,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
-         , installDirsOptions
+         , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
@@ -73,6 +76,8 @@ import Distribution.ParseUtils
          , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
+import Distribution.Client.HttpUtils
+         ( isOldHackageURI )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import qualified Distribution.Text as Text
@@ -105,10 +110,12 @@ import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Text.PrettyPrint
          ( ($+$) )
+import Text.PrettyPrint.HughesPJ
+         ( text, Doc )
 import System.Directory
          ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
 import Network.URI
-         ( URI(..), URIAuth(..) )
+         ( URI(..), URIAuth(..), parseURI )
 import System.FilePath
          ( (<.>), (</>), takeDirectory )
 import System.IO.Error
@@ -124,6 +131,10 @@ import Data.Version
 import Data.Char
          ( isSpace )
 import qualified Data.Map as M
+import Data.Function
+         ( on )
+import Data.List
+         ( nubBy )
 
 --
 -- * Configuration saved in the config file
@@ -212,7 +223,8 @@ instance Monoid SavedConfig where
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
         globalRequireSandbox    = combine globalRequireSandbox,
-        globalIgnoreSandbox     = combine globalIgnoreSandbox
+        globalIgnoreSandbox     = combine globalIgnoreSandbox,
+        globalHttpTransport     = combine globalHttpTransport
         }
         where
           combine        = combine'        savedGlobalFlags
@@ -264,6 +276,8 @@ instance Monoid SavedConfig where
         configSharedLib           = combine configSharedLib,
         configDynExe              = combine configDynExe,
         configProfExe             = combine configProfExe,
+        configProfDetail          = combine configProfDetail,
+        configProfLibDetail       = combine configProfLibDetail,
         -- TODO: NubListify
         configConfigureArgs       = lastNonEmpty configConfigureArgs,
         configOptimization        = combine configOptimization,
@@ -279,6 +293,7 @@ instance Monoid SavedConfig where
         configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
+        configIPID                = combine configIPID,
         configDistPref            = combine configDistPref,
         configVerbosity           = combine configVerbosity,
         configUserInstall         = combine configUserInstall,
@@ -372,24 +387,6 @@ instance Monoid SavedConfig where
           lastNonEmpty = lastNonEmpty'   savedHaddockFlags
 
 
-updateInstallDirs :: Flag Bool -> SavedConfig -> SavedConfig
-updateInstallDirs userInstallFlag
-  savedConfig@SavedConfig {
-    savedConfigureFlags    = configureFlags,
-    savedUserInstallDirs   = userInstallDirs,
-    savedGlobalInstallDirs = globalInstallDirs
-  } =
-  savedConfig {
-    savedConfigureFlags = configureFlags {
-      configInstallDirs = installDirs
-    }
-  }
-  where
-    installDirs | userInstall = userInstallDirs
-                | otherwise   = globalInstallDirs
-    userInstall = fromFlagOrDefault defaultUserInstall $
-                    configUserInstall configureFlags `mappend` userInstallFlag
-
 --
 -- * Default config
 --
@@ -434,7 +431,7 @@ initialSavedConfig = do
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [defaultRemoteRepo],
+      globalRemoteRepos  = toNubList [addInfoForKnownRepos defaultRemoteRepo],
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
@@ -487,7 +484,7 @@ defaultUserInstall = True
 -- global installs on Windows but that no longer works on Windows Vista or 7.
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo name uri
+defaultRemoteRepo = RemoteRepo name uri () False
   where
     name = "hackage.haskell.org"
     uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
@@ -496,12 +493,30 @@ defaultRemoteRepo = RemoteRepo name uri
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
 
+    -- Use this as a source for crypto credentials when finding old remote-repo
+    -- entries that match repo name and url (not only be used for generating
+    -- fresh config files).
+
+-- For the default repo we know extra information, fill this in.
+--
+-- We need this because the 'defaultRemoteRepo' above is only used for the
+-- first time when a config file is made. So for users with older config files
+-- we might have only have older info. This lets us fill that in even for old
+-- config files.
+--
+addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
+addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
+    tryHttps $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
+  where
+    tryHttps       r = r { remoteRepoShouldTryHttps = True }
+addInfoForKnownRepos other = other
+
 --
 -- * Config file reading
 --
 
-loadConfig :: Verbosity -> Flag FilePath -> Flag Bool -> IO SavedConfig
-loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
+loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
+loadConfig verbosity configFileFlag = addBaseConf $ do
   let sources = [
         ("commandline option",   return . flagToMaybe $ configFileFlag),
         ("env var CABAL_CONFIG", lookup "CABAL_CONFIG" `liftM` getEnvironment),
@@ -536,11 +551,12 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
     addBaseConf body = do
       base  <- baseSavedConfig
       extra <- body
-      return (updateInstallDirs userInstallFlag (base `mappend` extra))
+      return (base `mappend` extra)
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
-  fmap (Just . parseConfig initial) (readFile file)
+  fmap (Just . parseConfig (ConstraintSourceMainConfig file) initial)
+       (readFile file)
 
   where
     handleNotExists action = catchIO action $ \ioe ->
@@ -595,8 +611,8 @@ commentSavedConfig = do
 
 -- | All config file fields.
 --
-configFieldDescriptions :: [FieldDescr SavedConfig]
-configFieldDescriptions =
+configFieldDescriptions :: ConstraintSource -> [FieldDescr SavedConfig]
+configFieldDescriptions src =
 
      toSavedConfig liftGlobalFlag
        (commandOptions (globalCommand []) ParseArgs)
@@ -665,7 +681,7 @@ configFieldDescriptions =
        ]
 
   ++ toSavedConfig liftConfigExFlag
-       (configureExOptions ParseArgs)
+       (configureExOptions ParseArgs src)
        [] []
 
   ++ toSavedConfig liftInstallFlag
@@ -683,6 +699,18 @@ configFieldDescriptions =
        -- But otherwise it masks the upload ones. Either need to
        -- share the options or make then distinct. In any case
        -- they should probably be per-server.
+
+  ++ [ viewAsFieldDescr
+       $ optionDistPref
+       (configDistPref . savedConfigureFlags)
+       (\distPref config ->
+          config
+          { savedConfigureFlags = (savedConfigureFlags config) { configDistPref = distPref }
+          , savedHaddockFlags = (savedHaddockFlags config) { haddockDistPref = distPref }
+          }
+       )
+       ParseArgs
+     ]
 
   where
     toSavedConfig lift options exclusions replacements =
@@ -764,18 +792,31 @@ liftReportFlag :: FieldDescr ReportFlags -> FieldDescr SavedConfig
 liftReportFlag = liftField
   savedReportFlags (\flags conf -> conf { savedReportFlags = flags })
 
-parseConfig :: SavedConfig -> String -> ParseResult SavedConfig
-parseConfig initial = \str -> do
+parseConfig :: ConstraintSource
+            -> SavedConfig
+            -> String
+            -> ParseResult SavedConfig
+parseConfig src initial = \str -> do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
   config <- parse others
   let user0   = savedUserInstallDirs config
       global0 = savedGlobalInstallDirs config
-  (haddockFlags, user, global, paths, args) <-
+  (remoteRepoSections0, haddockFlags, user, global, paths, args) <-
     foldM parseSections
-          (savedHaddockFlags config, user0, global0, [], [])
+          ([], savedHaddockFlags config, user0, global0, [], [])
           knownSections
+
+  let remoteRepoSections =
+          map addInfoForKnownRepos
+        . reverse
+        . nubBy ((==) `on` remoteRepoName)
+        $ remoteRepoSections0
+
   return config {
+    savedGlobalFlags       = (savedGlobalFlags config) {
+       globalRemoteRepos   = toNubList remoteRepoSections
+       },
     savedConfigureFlags    = (savedConfigureFlags config) {
        configProgramPaths  = paths,
        configProgramArgs   = args
@@ -786,43 +827,56 @@ parseConfig initial = \str -> do
   }
 
   where
+    isKnownSection (ParseUtils.Section _ "remote-repo" _ _)             = True
+    isKnownSection (ParseUtils.F _ "remote-repo" _)                     = True
     isKnownSection (ParseUtils.Section _ "haddock" _ _)                 = True
     isKnownSection (ParseUtils.Section _ "install-dirs" _ _)            = True
     isKnownSection (ParseUtils.Section _ "program-locations" _ _)       = True
     isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
     isKnownSection _                                                    = False
 
-    parse = parseFields (configFieldDescriptions
+    parse = parseFields (configFieldDescriptions src
                       ++ deprecatedFieldDescriptions) initial
 
-    parseSections accum@(h,u,g,p,a)
+    parseSections (rs, h, u, g, p, a)
+                 (ParseUtils.Section _ "remote-repo" name fs) = do
+      r' <- parseFields remoteRepoFields (emptyRemoteRepo name) fs
+      return (r':rs, h, u, g, p, a)
+
+    parseSections (rs, h, u, g, p, a)
+                 (ParseUtils.F lno "remote-repo" raw) = do
+      let mr' = readRepo raw
+      r' <- maybe (ParseFailed $ NoParse "remote-repo" lno) return mr'
+      return (r':rs, h, u, g, p, a)
+
+    parseSections accum@(rs, h, u, g, p, a)
                  (ParseUtils.Section _ "haddock" name fs)
       | name == ""        = do h' <- parseFields haddockFlagsFields h fs
-                               return (h', u, g, p, a)
+                               return (rs, h', u, g, p, a)
       | otherwise         = do
           warning "The 'haddock' section should be unnamed"
           return accum
-    parseSections accum@(h,u,g,p,a)
+    parseSections accum@(rs, h, u, g, p, a)
                   (ParseUtils.Section _ "install-dirs" name fs)
       | name' == "user"   = do u' <- parseFields installDirsFields u fs
-                               return (h, u', g, p, a)
+                               return (rs, h, u', g, p, a)
       | name' == "global" = do g' <- parseFields installDirsFields g fs
-                               return (h, u, g', p, a)
+                               return (rs, h, u, g', p, a)
       | otherwise         = do
           warning "The 'install-paths' section should be for 'user' or 'global'"
           return accum
       where name' = lowercase name
-    parseSections accum@(h,u,g,p,a)
+    parseSections accum@(rs, h, u, g, p, a)
                  (ParseUtils.Section _ "program-locations" name fs)
       | name == ""        = do p' <- parseFields withProgramsFields p fs
-                               return (h, u, g, p', a)
+                               return (rs, h, u, g, p', a)
       | otherwise         = do
           warning "The 'program-locations' section should be unnamed"
           return accum
-    parseSections accum@(h, u, g, p, a)
+    parseSections accum@(rs, h, u, g, p, a)
                   (ParseUtils.Section _ "program-default-options" name fs)
       | name == ""        = do a' <- parseFields withProgramOptionsFields a fs
-                               return (h, u, g, p, a')
+                               return (rs, h, u, g, p, a')
       | otherwise         = do
           warning "The 'program-default-options' section should be unnamed"
           return accum
@@ -835,7 +889,12 @@ showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
-      ppFields configFieldDescriptions mcomment vals
+      case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos . savedGlobalFlags $ vals of
+        [] -> Disp.text ""
+        (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
+  $+$ Disp.text ""
+  $+$ ppFields (skipSomeFields (configFieldDescriptions ConstraintSourceUnknown))
+               mcomment vals
   $+$ Disp.text ""
   $+$ ppSection "haddock" "" haddockFlagsFields
                 (fmap savedHaddockFlags mcomment) (savedHaddockFlags vals)
@@ -859,9 +918,28 @@ showConfigWithComments comment vals = Disp.render $
                (fmap (field . savedConfigureFlags) mcomment)
                ((field . savedConfigureFlags) vals)
 
+    -- skip fields based on field name.  currently only skips "remote-repo",
+    -- because that is rendered as a section.  (see 'ppRemoteRepoSection'.)
+    skipSomeFields = filter ((/= "remote-repo") . fieldName)
+
 -- | Fields for the 'install-dirs' sections.
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
+
+ppRemoteRepoSection :: RemoteRepo -> Doc
+ppRemoteRepoSection vals = ppSection "remote-repo" (remoteRepoName vals)
+        remoteRepoFields Nothing vals
+
+remoteRepoFields :: [FieldDescr RemoteRepo]
+remoteRepoFields =
+    [ FieldDescr { fieldName = "url",
+                   fieldGet = text . show . remoteRepoURI,
+                   fieldSet = \ _ uriString remoteRepo -> maybe
+                          (fail $ "remote-repo: no parse on " ++ show uriString)
+                          (\ uri -> return $ remoteRepo { remoteRepoURI = uri })
+                          (parseURI uriString)
+                 }
+    ]
 
 -- | Fields for the 'haddock' section.
 haddockFlagsFields :: [FieldDescr HaddockFlags]
@@ -890,7 +968,7 @@ withProgramOptionsFields =
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
 userConfigDiff :: GlobalFlags -> IO [String]
 userConfigDiff globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags) mempty
+  userConfig <- loadConfig normal (globalConfigFile globalFlags)
   testConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   return $ reverse . foldl' createDiff [] . M.toList
                 $ M.unionWith combine
@@ -933,7 +1011,7 @@ userConfigDiff globalFlags = do
 -- | Update the user's ~/.cabal/config' keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> IO ()
 userConfigUpdate verbosity globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags) mempty
+  userConfig <- loadConfig normal (globalConfigFile globalFlags)
   newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   commentConf <- commentSavedConfig
   cabalFile <- defaultConfigFile

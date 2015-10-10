@@ -15,21 +15,25 @@ module Distribution.Client.Configure (
     configure,
     configureSetupScript,
     chooseCabalVersion,
+    checkConfigExFlags
   ) where
 
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types (AllowNewer(..), isAllowNewer)
+import Distribution.Client.Dependency.Types
+         ( AllowNewer(..), isAllowNewer, ConstraintSource(..)
+         , LabeledPackageConstraint(..), showConstraintSource )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
+import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
-         ( userToPackageConstraint )
+         ( userToPackageConstraint, userConstraintPackageName )
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Package (PackageId)
 import Distribution.Client.JobControl (Lock)
@@ -39,12 +43,13 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
-import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import Distribution.Simple.PackageIndex
+         ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( Package(..), InstalledPackageId, packageName
+         ( Package(..), ComponentId, packageName
          , Dependency(..), thisPackageVersion
          )
 import qualified Distribution.PackageDescription as PkgDesc
@@ -55,14 +60,16 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, debug, die )
+         ( warn, notice, info, debug, die )
 import Distribution.System
          ( Platform )
+import Distribution.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 import Distribution.Version
          ( Version(..), VersionRange, orLaterVersion )
 
+import Control.Monad (unless)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
@@ -99,6 +106,8 @@ configure verbosity packageDBs repos comp platform conf
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb       <- getSourcePackages    verbosity repos
+  checkConfigExFlags verbosity installedPkgIndex
+                     (packageIndex sourcePkgDb) configExFlags
 
   progress <- planLocalPackage verbosity comp platform configFlags configExFlags
                                installedPkgIndex sourcePkgDb
@@ -112,14 +121,16 @@ configure verbosity packageDBs repos comp platform conf
            "Warning: solver failed to find a solution:\n"
         ++ message
         ++ "Trying configure anyway."
-      setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing) Nothing
-        configureCommand (const configFlags) extraArgs
+      setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
+        Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] -> do
+      [pkg@(ReadyPackage
+             (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
+                                 _ _ _)
+             _)] -> do
         configurePackage verbosity
-          (InstallPlan.planPlatform installPlan)
-          (InstallPlan.planCompiler installPlan)
+          platform (compilerInfo comp)
           (setupScriptOptions installedPkgIndex (Just pkg))
           configFlags pkg extraArgs
 
@@ -127,7 +138,9 @@ configure verbosity packageDBs repos comp platform conf
               ++ "one local ready package."
 
   where
-    setupScriptOptions :: InstalledPackageIndex -> Maybe ReadyPackage -> SetupScriptOptions
+    setupScriptOptions :: InstalledPackageIndex
+                       -> Maybe ReadyPackage
+                       -> SetupScriptOptions
     setupScriptOptions =
       configureSetupScript
         packageDBs
@@ -204,17 +217,43 @@ configureSetupScript packageDBs
         -- but if the user is using an odd db stack, don't touch it
         _otherwise -> (packageDBs, Just index)
 
-    explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
+    explicitSetupDeps :: Maybe [(ComponentId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (SourcePackage _ gpkg _ _) _ _ deps <- mpkg
+      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
+                 <- mpkg
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
       -- Return the setup dependencies computed by the solver
-      return [ ( Installed.installedPackageId deppkg
+      return [ ( Installed.installedComponentId deppkg
                , Installed.sourcePackageId    deppkg
                )
              | deppkg <- CD.setupDeps deps
              ]
+
+-- | Warn if any constraints or preferences name packages that are not in the
+-- source package index or installed package index.
+checkConfigExFlags :: Package pkg
+                   => Verbosity
+                   -> InstalledPackageIndex
+                   -> PackageIndex pkg
+                   -> ConfigExFlags
+                   -> IO ()
+checkConfigExFlags verbosity installedPkgIndex sourcePkgIndex flags = do
+  unless (null unknownConstraints) $ warn verbosity $
+             "Constraint refers to an unknown package: "
+          ++ showConstraint (head unknownConstraints)
+  unless (null unknownPreferences) $ warn verbosity $
+             "Preference refers to an unknown package: "
+          ++ display (head unknownPreferences)
+  where
+    unknownConstraints = filter (unknown . userConstraintPackageName . fst) $
+                         configExConstraints flags
+    unknownPreferences = filter (unknown . \(Dependency name _) -> name) $
+                         configPreferences flags
+    unknown pkg = null (lookupPackageName installedPkgIndex pkg)
+               && not (elemByPackageName sourcePkgIndex pkg)
+    showConstraint (uc, src) =
+        display uc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
@@ -225,10 +264,12 @@ planLocalPackage :: Verbosity -> Compiler
                  -> InstalledPackageIndex
                  -> SourcePackageDb
                  -> IO (Progress String String InstallPlan)
-planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex
+planLocalPackage verbosity comp platform configFlags configExFlags
+  installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
-  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags) (compilerInfo comp)
+  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
+            (compilerInfo comp)
 
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {
@@ -255,19 +296,23 @@ planLocalPackage verbosity comp platform configFlags configExFlags installedPkgI
             -- version constraints from the config file or command line
             -- TODO: should warn or error on constraints that are not on direct
             -- deps or flag constraints not on the package in question.
-            (map userToPackageConstraint (configExConstraints configExFlags))
+            [ LabeledPackageConstraint (userToPackageConstraint uc) src
+            | (uc, src) <- configExConstraints configExFlags ]
 
         . addConstraints
             -- package flags from the config file or command line
-            [ PackageConstraintFlags (packageName pkg)
-                                     (configConfigurationsFlags configFlags) ]
+            [ let pc = PackageConstraintFlags (packageName pkg)
+                       (configConfigurationsFlags configFlags)
+              in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+            ]
 
         . addConstraints
             -- '--enable-tests' and '--enable-benchmarks' constraints from
-            -- command line
-            [ PackageConstraintStanzas (packageName pkg) $
-                [ TestStanzas  | testsEnabled ] ++
-                [ BenchStanzas | benchmarksEnabled ]
+            -- the config file or command line
+            [ let pc = PackageConstraintStanzas (packageName pkg) $
+                       [ TestStanzas  | testsEnabled ] ++
+                       [ BenchStanzas | benchmarksEnabled ]
+              in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
             ]
 
         $ standardInstallPolicy
@@ -294,7 +339,10 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ReadyPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
+                 (ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _)
+                                                  flags stanzas _)
+                               deps)
+                 extraArgs =
 
   setupWrapper verbosity
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs
@@ -308,7 +356,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configConstraints  = [ thisPackageVersion (packageId deppkg)
                            | deppkg <- CD.nonSetupDeps deps ],
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                              Installed.installedPackageId deppkg)
+                              Installed.installedComponentId deppkg)
                            | deppkg <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,

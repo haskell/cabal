@@ -13,21 +13,25 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
-    ExtDependency(..),
-
     PreSolver(..),
     Solver(..),
     DependencyResolver,
+    ResolverPackage(..),
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
-    debugPackageConstraint,
+    showPackageConstraint,
     PackagePreferences(..),
     InstalledPreference(..),
     PackagesPreferenceDefault(..),
 
     Progress(..),
     foldProgress,
+
+    LabeledPackageConstraint(..),
+    ConstraintSource(..),
+    unlabelPackageConstraint,
+    showConstraintSource
   ) where
 
 #if !MIN_VERSION_base(4,8,0)
@@ -45,21 +49,19 @@ import Data.Monoid
 #endif
 
 import Distribution.Client.Types
-         ( OptionalStanza(..), SourcePackage(..) )
-import qualified Distribution.Client.InstallPlan as InstallPlan
-
-import Distribution.Compat.ReadP
-         ( (<++) )
+         ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
-         ( Dependency, PackageName, InstalledPackageId )
+         ( PackageName )
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -74,16 +76,6 @@ import Text.PrettyPrint
 
 import Prelude hiding (fail)
 
--- | Covers source dependencies and installed dependencies in
--- one type.
-data ExtDependency = SourceDependency Dependency
-                   | InstalledDependency InstalledPackageId
-
-instance Text ExtDependency where
-  disp (SourceDependency    dep) = disp dep
-  disp (InstalledDependency dep) = disp dep
-
-  parse = (SourceDependency `fmap` parse) <++ (InstalledDependency `fmap` parse)
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysTopDown | AlwaysModular | Choose
@@ -118,9 +110,17 @@ type DependencyResolver = Platform
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
-                       -> [PackageConstraint]
+                       -> [LabeledPackageConstraint]
                        -> [PackageName]
-                       -> Progress String String [InstallPlan.PlanPackage]
+                       -> Progress String String [ResolverPackage]
+
+-- | The dependency resolver picks either pre-existing installed packages
+-- or it picks source packages along with package configuration.
+--
+-- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
+--
+data ResolverPackage = PreExisting InstalledPackageInfo
+                     | Configured  ConfiguredPackage
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
@@ -138,19 +138,19 @@ data PackageConstraint
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.
 --
-debugPackageConstraint :: PackageConstraint -> String
-debugPackageConstraint (PackageConstraintVersion pn vr) =
+showPackageConstraint :: PackageConstraint -> String
+showPackageConstraint (PackageConstraintVersion pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
-debugPackageConstraint (PackageConstraintInstalled pn) =
+showPackageConstraint (PackageConstraintInstalled pn) =
   display pn ++ " installed"
-debugPackageConstraint (PackageConstraintSource pn) =
+showPackageConstraint (PackageConstraintSource pn) =
   display pn ++ " source"
-debugPackageConstraint (PackageConstraintFlags pn fs) =
+showPackageConstraint (PackageConstraintFlags pn fs) =
   "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
   where
     showFlag (FlagName f) True  = "+" ++ f
     showFlag (FlagName f) False = "-" ++ f
-debugPackageConstraint (PackageConstraintStanzas pn ss) =
+showPackageConstraint (PackageConstraintStanzas pn ss) =
   "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
   where
     showStanza TestStanzas  = "test"
@@ -255,3 +255,65 @@ instance Applicative (Progress step fail) where
 instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
+
+-- | 'PackageConstraint' labeled with its source.
+data LabeledPackageConstraint
+   = LabeledPackageConstraint PackageConstraint ConstraintSource
+
+unlabelPackageConstraint :: LabeledPackageConstraint -> PackageConstraint
+unlabelPackageConstraint (LabeledPackageConstraint pc _) = pc
+
+-- | Source of a 'PackageConstraint'.
+data ConstraintSource =
+
+  -- | Main config file, which is ~/.cabal/config by default.
+  ConstraintSourceMainConfig FilePath
+
+  -- | Sandbox config file, which is ./cabal.sandbox.config by default.
+  | ConstraintSourceSandboxConfig FilePath
+
+  -- | ./cabal.config.
+  | ConstraintSourceUserConfig
+
+  -- | Flag specified on the command line.
+  | ConstraintSourceCommandlineFlag
+
+  -- | Target specified by the user, e.g., @cabal install package-0.1.0.0@
+  -- implies @package==0.1.0.0@.
+  | ConstraintSourceUserTarget
+
+  -- | Internal requirement to use installed versions of packages like ghc-prim.
+  | ConstraintSourceNonUpgradeablePackage
+
+  -- | Internal requirement to use the add-source version of a package when that
+  -- version is installed and the source is modified.
+  | ConstraintSourceModifiedAddSourceDep
+
+  -- | Internal constraint used by @cabal freeze@.
+  | ConstraintSourceFreeze
+
+  -- | Constraint specified by a config file, a command line flag, or a user
+  -- target, when a more specific source is not known.
+  | ConstraintSourceConfigFlagOrTarget
+
+  -- | The source of the constraint is not specified.
+  | ConstraintSourceUnknown
+  deriving (Eq, Show)
+
+-- | Description of a 'ConstraintSource'.
+showConstraintSource :: ConstraintSource -> String
+showConstraintSource (ConstraintSourceMainConfig path) =
+    "main config " ++ path
+showConstraintSource (ConstraintSourceSandboxConfig path) =
+    "sandbox config " ++ path
+showConstraintSource ConstraintSourceUserConfig = "cabal.config"
+showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
+showConstraintSource ConstraintSourceUserTarget = "user target"
+showConstraintSource ConstraintSourceNonUpgradeablePackage =
+    "non-upgradeable package"
+showConstraintSource ConstraintSourceModifiedAddSourceDep =
+    "modified add-source dependency"
+showConstraintSource ConstraintSourceFreeze = "cabal freeze"
+showConstraintSource ConstraintSourceConfigFlagOrTarget =
+    "config file, command line flag, or user target"
+showConstraintSource ConstraintSourceUnknown = "unknown source"

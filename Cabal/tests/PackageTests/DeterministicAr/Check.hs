@@ -7,22 +7,17 @@ import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
-import Data.List
-#if __GLASGOW_HASKELL__ < 710
-import Data.Traversable
-#endif
 import PackageTests.PackageTester
-import System.Exit
 import System.FilePath
 import System.IO
 import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
-import Distribution.Package               (packageKeyHash)
+import Distribution.Package               (getHSLibraryName)
 import Distribution.Version               (Version(..))
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.Configure      (getPersistBuildConfig)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, pkgKey)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localComponentId)
 
 -- Perhaps these should live in PackageTester.
 
@@ -30,36 +25,13 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, pkgKey)
 assertFailure' :: String -> IO a
 assertFailure' msg = assertFailure msg >> return {-unpossible!-}undefined
 
-ghcPkg_field :: String -> String -> FilePath -> IO [FilePath]
-ghcPkg_field libraryName fieldName ghcPkgPath = do
-    (cmd, exitCode, raw) <- run Nothing ghcPkgPath []
-        ["--user", "field", libraryName, fieldName]
-    let output = filter ('\r' /=) raw -- Windows
-    -- copypasta of PackageTester.requireSuccess
-    unless (exitCode == ExitSuccess) . assertFailure $
-        "Command " ++ cmd ++ " failed.\n" ++ "output: " ++ output
-
-    let prefix = fieldName ++ ": "
-    case traverse (stripPrefix prefix) (lines output) of
-        Nothing -> assertFailure' $ "Command " ++ cmd ++ " failed: expected "
-            ++ show prefix ++ " prefix on every line.\noutput: " ++ output
-        Just fields -> return fields
-
-ghcPkg_field1 :: String -> String -> FilePath -> IO FilePath
-ghcPkg_field1 libraryName fieldName ghcPkgPath = do
-    fields <- ghcPkg_field libraryName fieldName ghcPkgPath
-    case fields of
-        [field] -> return field
-        _ -> assertFailure' $ "Command ghc-pkg field failed: "
-            ++ "output not a single line.\noutput: " ++ show fields
-
 ------------------------------------------------------------------------
 
 this :: String
 this = "DeterministicAr"
 
-suite :: FilePath -> FilePath -> Assertion
-suite ghcPath ghcPkgPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let dir = "PackageTests" </> this
     let spec = PackageSpec
             { directory = dir
@@ -67,26 +39,21 @@ suite ghcPath ghcPkgPath = do
             , distPref = Nothing
             }
 
-    unregister this ghcPkgPath
-    iResult <- cabal_install spec ghcPath
-    assertInstallSucceeded iResult
+    result <- cabal_build config spec
+    assertBuildSucceeded result
 
     let distBuild = dir </> "dist" </> "build"
-    libdir <- ghcPkg_field1 this "library-dirs" ghcPkgPath
     lbi    <- getPersistBuildConfig (dir </> "dist")
-    mapM_ (checkMetadata lbi) [distBuild, libdir]
-    unregister this ghcPkgPath
+    checkMetadata lbi distBuild
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> Assertion
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
-    path = dir </> "libHS" ++ this ++ "-0"
-           ++ (if ghc_7_10 then ("-" ++ packageKeyHash (pkgKey lbi)) else "")
-           ++ ".a"
+    path = dir </> "lib" ++ getHSLibraryName (localComponentId lbi) ++ ".a"
 
-    ghc_7_10 = case compilerId (compiler lbi) of
+    _ghc_7_10 = case compilerId (compiler lbi) of
       CompilerId GHC version | version >= Version [7, 10] [] -> True
       _                                                      -> False
 

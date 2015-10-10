@@ -53,7 +53,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     addSourcePackages,
-    hideInstalledPackagesSpecificByInstalledPackageId,
+    hideInstalledPackagesSpecificByComponentId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds
@@ -69,33 +69,45 @@ import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
-         ( SourcePackageDb(SourcePackageDb)
-         , SourcePackage(..) )
+         ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
+         , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, PackageConstraint(..)
-         , debugPackageConstraint
+         ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         , PackageConstraint(..), showPackageConstraint
+         , LabeledPackageConstraint(..), unlabelPackageConstraint
+         , ConstraintSource(..), showConstraintSource
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
+import Distribution.Client.ComponentDeps (ComponentDeps)
+import qualified Distribution.Client.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageName(..), PackageId, Package(..), packageName, packageVersion
-         , InstalledPackageId, Dependency(Dependency))
+         ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
+         , Package(..), packageName, packageVersion
+         , ComponentId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), GenericPackageDescription(..)
-         , Library(..), Executable(..), TestSuite(..), Benchmark(..), CondTree)
+         ( PackageDescription(..), Library(..), Executable(..)
+         , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
+         , GenericPackageDescription(..), CondTree
+         , Flag(flagName), FlagName(..) )
 import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
-import Distribution.PackageDescription.Configuration (mapCondTree)
+import Distribution.PackageDescription.Configuration
+         ( mapCondTree, finalizePackageDescription )
+import Distribution.Client.PackageUtils
+         ( externalBuildDepends )
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, thisVersion, withinRange
+         ( VersionRange, anyVersion, thisVersion, withinRange
          , removeUpperBound, simplifyVersionRange )
 import Distribution.Compiler
-         ( CompilerId(..), CompilerInfo(..), CompilerFlavor(..) )
+         ( CompilerInfo(..) )
 import Distribution.System
          ( Platform )
+import Distribution.Client.Utils
+         ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, warn, info )
 import Distribution.Text
@@ -103,11 +115,16 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import Data.List (maximumBy, foldl', intercalate)
+import Data.List
+         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate )
+import Data.Function (on)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (Set)
+import Control.Exception
+         ( assert )
+
 
 -- ------------------------------------------------------------
 -- * High level planner policy
@@ -119,7 +136,7 @@ import Data.Set (Set)
 --
 data DepResolverParams = DepResolverParams {
        depResolverTargets           :: [PackageName],
-       depResolverConstraints       :: [PackageConstraint],
+       depResolverConstraints       :: [LabeledPackageConstraint],
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
@@ -132,14 +149,20 @@ data DepResolverParams = DepResolverParams {
        depResolverMaxBackjumps      :: Maybe Int
      }
 
-debugDepResolverParams :: DepResolverParams -> String
-debugDepResolverParams p =
+showDepResolverParams :: DepResolverParams -> String
+showDepResolverParams p =
      "targets: " ++ intercalate ", " (map display (depResolverTargets p))
   ++ "\nconstraints: "
-  ++   concatMap (("\n  " ++) . debugPackageConstraint) (depResolverConstraints p)
+  ++   concatMap (("\n  " ++) . showLabeledConstraint)
+       (depResolverConstraints p)
   ++ "\npreferences: "
-  ++   concatMap (("\n  " ++) . debugPackagePreference) (depResolverPreferences p)
+  ++   concatMap (("\n  " ++) . showPackagePreference)
+       (depResolverPreferences p)
   ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
+  where
+    showLabeledConstraint :: LabeledPackageConstraint -> String
+    showLabeledConstraint (LabeledPackageConstraint pc src) =
+        showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | A package selection preference for a particular package.
 --
@@ -158,10 +181,10 @@ data PackagePreference =
 -- | Provide a textual representation of a package preference
 -- for debugging purposes.
 --
-debugPackagePreference :: PackagePreference -> String
-debugPackagePreference (PackageVersionPreference   pn vr) =
+showPackagePreference :: PackagePreference -> String
+showPackagePreference (PackageVersionPreference   pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
-debugPackagePreference (PackageInstalledPreference pn ip) =
+showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
 
 basicDepResolverParams :: InstalledPackageIndex
@@ -190,7 +213,7 @@ addTargets extraTargets params =
       depResolverTargets = extraTargets ++ depResolverTargets params
     }
 
-addConstraints :: [PackageConstraint]
+addConstraints :: [LabeledPackageConstraint]
                -> DepResolverParams -> DepResolverParams
 addConstraints extraConstraints params =
     params {
@@ -256,7 +279,9 @@ dontUpgradeNonUpgradeablePackages params =
     addConstraints extraConstraints params
   where
     extraConstraints =
-      [ PackageConstraintInstalled pkgname
+      [ LabeledPackageConstraint
+        (PackageConstraintInstalled pkgname)
+        ConstraintSourceNonUpgradeablePackage
       | all (/=PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
@@ -277,14 +302,14 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecificByInstalledPackageId :: [InstalledPackageId]
+hideInstalledPackagesSpecificByComponentId :: [ComponentId]
                                                      -> DepResolverParams
                                                      -> DepResolverParams
-hideInstalledPackagesSpecificByInstalledPackageId pkgids params =
+hideInstalledPackagesSpecificByComponentId pkgids params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteInstalledPackageId)
+        foldl' (flip InstalledPackageIndex.deleteComponentId)
                (depResolverInstalledPkgIndex params) pkgids
     }
 
@@ -312,12 +337,12 @@ hideInstalledPackagesAllVersions pkgnames params =
 
 hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
 hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByInstalledPackageId pkgids params
+    hideInstalledPackagesSpecificByComponentId pkgids params
   where
-    pkgids = map Installed.installedPackageId
+    pkgids = map Installed.installedComponentId
            . InstalledPackageIndex.reverseDependencyClosure
                             (depResolverInstalledPkgIndex params)
-           . map (Installed.installedPackageId . fst)
+           . map (Installed.installedComponentId . fst)
            . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 
@@ -457,8 +482,10 @@ applySandboxInstallPolicy
         (thisVersion (packageVersion pkg)) | pkg <- otherDeps ]
 
   . addConstraints
-      [ PackageConstraintVersion (packageName pkg)
-        (thisVersion (packageVersion pkg)) | pkg <- modifiedDeps ]
+      [ let pc = PackageConstraintVersion (packageName pkg)
+                 (thisVersion (packageVersion pkg))
+        in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
+      | pkg <- modifiedDeps ]
 
   . addTargets [ packageName pkg | pkg <- modifiedDeps ]
 
@@ -483,16 +510,16 @@ applySandboxInstallPolicy
 -- ------------------------------------------------------------
 
 chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver _         AlwaysTopDown _                = return TopDown
-chooseSolver _         AlwaysModular _                = return Modular
-chooseSolver verbosity Choose        cinfo            = do
-  let (CompilerId f v) = compilerInfoId cinfo
-      chosenSolver | f == GHC && v <= Version [7] [] = TopDown
-                   | otherwise                       = Modular
-      msg TopDown = warn verbosity "Falling back to topdown solver for GHC < 7."
-      msg Modular = info verbosity "Choosing modular solver."
-  msg chosenSolver
-  return chosenSolver
+chooseSolver verbosity preSolver _cinfo =
+    case preSolver of
+      AlwaysTopDown -> do
+        warn verbosity "Topdown solver is deprecated"
+        return TopDown
+      AlwaysModular -> do
+        return Modular
+      Choose -> do
+        info verbosity "Choosing modular solver."
+        return Modular
 
 runSolver :: Solver -> SolverConfig -> DependencyResolver
 runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
@@ -513,12 +540,14 @@ resolveDependencies :: Platform
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _solver params
   | null (depResolverTargets params)
-  = return (mkInstallPlan platform comp (depResolverIndependentGoals params) [])
+  = return (validateSolverResult platform comp indGoals [])
+  where
+    indGoals = depResolverIndependentGoals params
 
 resolveDependencies platform comp  solver params =
 
-    Step (debugDepResolverParams finalparams)
-  $ fmap (mkInstallPlan platform comp indGoals)
+    Step (showDepResolverParams finalparams)
+  $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
@@ -547,24 +576,6 @@ resolveDependencies platform comp  solver params =
 
     preferences = interpretPackagesPreference
                     (Set.fromList targets) defpref prefs
-
--- | Make an install plan from the output of the dep resolver.
--- It checks that the plan is valid, or it's an error in the dep resolver.
---
-mkInstallPlan :: Platform
-              -> CompilerInfo
-              -> Bool
-              -> [InstallPlan.PlanPackage] -> InstallPlan
-mkInstallPlan platform comp indepGoals pkgIndex =
-  let index = InstalledPackageIndex.fromList pkgIndex in
-  case InstallPlan.new platform comp indepGoals index of
-    Right plan     -> plan
-    Left  problems -> error $ unlines $
-        "internal error: could not construct a valid install plan."
-      : "The proposed (invalid) plan contained the following problems:"
-      : map InstallPlan.showPlanProblem problems
-      ++ "Proposed plan:"
-      : [InstallPlan.showPlanIndex index]
 
 
 -- | Give an interpretation to the global 'PackagesPreference' as
@@ -597,6 +608,165 @@ interpretPackagesPreference selected defaultPref prefs =
         -- latest version of foo, but the installed version of everything else
         if pkgname `Set.member` selected then PreferLatest
                                          else PreferInstalled
+
+-- ------------------------------------------------------------
+-- * Checking the result of the solver
+-- ------------------------------------------------------------
+
+-- | Make an install plan from the output of the dep resolver.
+-- It checks that the plan is valid, or it's an error in the dep resolver.
+--
+validateSolverResult :: Platform
+                     -> CompilerInfo
+                     -> Bool
+                     -> [ResolverPackage]
+                     -> InstallPlan
+validateSolverResult platform comp indepGoals pkgs =
+    case planPackagesProblems platform comp pkgs of
+      [] -> case InstallPlan.new indepGoals index of
+              Right plan     -> plan
+              Left  problems -> error (formatPlanProblems problems)
+      problems               -> error (formatPkgProblems problems)
+
+  where
+    index = InstalledPackageIndex.fromList (map toPlanPackage pkgs)
+
+    toPlanPackage (PreExisting pkg) = InstallPlan.PreExisting pkg
+    toPlanPackage (Configured  pkg) = InstallPlan.Configured  pkg
+
+    formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
+    formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
+
+    formatProblemMessage problems = 
+      unlines $
+        "internal error: could not construct a valid install plan."
+      : "The proposed (invalid) plan contained the following problems:"
+      : problems
+      ++ "Proposed plan:"
+      : [InstallPlan.showPlanIndex index]
+
+
+data PlanPackageProblem =
+       InvalidConfiguredPackage ConfiguredPackage [PackageProblem]
+
+showPlanPackageProblem :: PlanPackageProblem -> String
+showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
+     "Package " ++ display (packageId pkg)
+  ++ " has an invalid configuration, in particular:\n"
+  ++ unlines [ "  " ++ showPackageProblem problem
+             | problem <- packageProblems ]
+
+planPackagesProblems :: Platform -> CompilerInfo
+                     -> [ResolverPackage]
+                     -> [PlanPackageProblem]
+planPackagesProblems platform cinfo pkgs =
+     [ InvalidConfiguredPackage pkg packageProblems
+     | Configured pkg <- pkgs
+     , let packageProblems = configuredPackageProblems platform cinfo pkg
+     , not (null packageProblems) ]
+
+data PackageProblem = DuplicateFlag PD.FlagName
+                    | MissingFlag   PD.FlagName
+                    | ExtraFlag     PD.FlagName
+                    | DuplicateDeps [PackageId]
+                    | MissingDep    Dependency
+                    | ExtraDep      PackageId
+                    | InvalidDep    Dependency PackageId
+
+showPackageProblem :: PackageProblem -> String
+showPackageProblem (DuplicateFlag (PD.FlagName flag)) =
+  "duplicate flag in the flag assignment: " ++ flag
+
+showPackageProblem (MissingFlag (PD.FlagName flag)) =
+  "missing an assignment for the flag: " ++ flag
+
+showPackageProblem (ExtraFlag (PD.FlagName flag)) =
+  "extra flag given that is not used by the package: " ++ flag
+
+showPackageProblem (DuplicateDeps pkgids) =
+     "duplicate packages specified as selected dependencies: "
+  ++ intercalate ", " (map display pkgids)
+
+showPackageProblem (MissingDep dep) =
+     "the package has a dependency " ++ display dep
+  ++ " but no package has been selected to satisfy it."
+
+showPackageProblem (ExtraDep pkgid) =
+     "the package configuration specifies " ++ display pkgid
+  ++ " but (with the given flag assignment) the package does not actually"
+  ++ " depend on any version of that package."
+
+showPackageProblem (InvalidDep dep pkgid) =
+     "the package depends on " ++ display dep
+  ++ " but the configuration specifies " ++ display pkgid
+  ++ " which does not satisfy the dependency."
+
+-- | A 'ConfiguredPackage' is valid if the flag assignment is total and if
+-- in the configuration given by the flag assignment, all the package
+-- dependencies are satisfied by the specified packages.
+--
+configuredPackageProblems :: Platform -> CompilerInfo
+                          -> ConfiguredPackage -> [PackageProblem]
+configuredPackageProblems platform cinfo
+  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
+     [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
+  ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
+  ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
+  ++ [ DuplicateDeps pkgs
+     | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName))
+                                specifiedDeps) ]
+  ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
+  ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
+  ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
+                            , not (packageSatisfiesDependency pkgid dep) ]
+  where
+    specifiedDeps :: ComponentDeps [PackageId]
+    specifiedDeps = fmap (map confSrcId) specifiedDeps'
+
+    mergedFlags = mergeBy compare
+      (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
+      (sort $ map fst specifiedFlags)
+
+    packageSatisfiesDependency
+      (PackageIdentifier name  version)
+      (Dependency        name' versionRange) = assert (name == name') $
+        version `withinRange` versionRange
+
+    dependencyName (Dependency name _) = name
+
+    mergedDeps :: [MergeResult Dependency PackageId]
+    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
+
+    mergeDeps :: [Dependency] -> [PackageId]
+              -> [MergeResult Dependency PackageId]
+    mergeDeps required specified =
+      let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f) in
+      mergeBy
+        (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
+        (sortNubOn dependencyName required)
+        (sortNubOn packageName    specified)
+
+    -- TODO: It would be nicer to use ComponentDeps here so we can be more
+    -- precise in our checks. That's a bit tricky though, as this currently
+    -- relies on the 'buildDepends' field of 'PackageDescription'. (OTOH, that
+    -- field is deprecated and should be removed anyway.)  As long as we _do_
+    -- use a flat list here, we have to allow for duplicates when we fold
+    -- specifiedDeps; once we have proper ComponentDeps here we should get rid
+    -- of the `nubOn` in `mergeDeps`.
+    requiredDeps :: [Dependency]
+    requiredDeps =
+      --TODO: use something lower level than finalizePackageDescription
+      case finalizePackageDescription specifiedFlags
+         (const True)
+         platform cinfo
+         []
+         (enableStanzas stanzas $ packageDescription pkg) of
+        Right (resolvedPkg, _) ->
+             externalBuildDepends resolvedPkg
+          ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
+        Left  _ ->
+          error "configuredPackageInvalidDeps internal error"
+
 
 -- ------------------------------------------------------------
 -- * Simple resolver that ignores dependencies
@@ -654,8 +824,9 @@ resolveWithoutDependencies (DepResolverParams targets constraints
     packageConstraints pkgname =
       Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
     packageVersionConstraintMap =
-      Map.fromList [ (name, range)
-                   | PackageConstraintVersion name range <- constraints ]
+      let pcs = map unlabelPackageConstraint constraints
+      in Map.fromList [ (name, range)
+                      | PackageConstraintVersion name range <- pcs ]
 
     packagePreferences :: PackageName -> PackagePreferences
     packagePreferences = interpretPackagesPreference

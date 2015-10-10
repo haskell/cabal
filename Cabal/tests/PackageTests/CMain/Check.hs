@@ -9,12 +9,12 @@ import PackageTests.PackageTester
 dir :: FilePath
 dir = "PackageTests" </> "CMain"
 
-checkBuild :: FilePath -> Assertion
-checkBuild ghcPath = do
+checkBuild :: SuiteConfig -> Assertion
+checkBuild config = do
     let spec = PackageSpec
             { directory = dir
             , distPref = Nothing
             , configOpts = []
             }
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult

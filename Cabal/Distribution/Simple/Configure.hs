@@ -2,6 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# LANGUAGE PatternSynonyms #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -33,6 +36,8 @@ module Distribution.Simple.Configure (configure,
                                       checkPersistBuildConfigOutdated,
                                       tryGetPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
+                                      findDistPref, findDistPrefOrDefault,
+                                      computeComponentId,
                                       localBuildInfoFile,
                                       getInstalledPackages, getPackageDBContents,
                                       configCompiler, configCompilerAux,
@@ -51,17 +56,17 @@ import Distribution.Compiler
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
-    , compilerInfo
+    , compilerInfo, ProfDetailLevel(..), knownProfDetailLevels
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
-    , packageKeySupported, renamingPackageFlagsSupported )
+    , packageKeySupported, renamingPackageFlagsSupported
+    , unifiedIPIDRequired )
 import Distribution.Simple.PreProcess ( platformDefines )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
-    , InstalledPackageId(..), thisPackageVersion
-    , mkPackageKey, PackageKey(..), packageKeyLibraryName )
+    , ComponentId(..), thisPackageVersion, ComponentId(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -71,7 +76,7 @@ import Distribution.PackageDescription as PD
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) , defaultRenaming )
+    , ModuleReexport(..) , defaultRenaming, FlagAssignment )
 import Distribution.ModuleName
     ( ModuleName )
 import Distribution.PackageDescription.Configuration
@@ -86,17 +91,17 @@ import Distribution.Simple.Program
     , userSpecifyArgss, userSpecifyPaths
     , lookupProgram, requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
-import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..), Flag(..), fromFlag, fromFlagOrDefault
-    , flagToMaybe )
+import Distribution.Simple.Setup as Setup
+    ( ConfigFlags(..), CopyDest(..), Flag(..), defaultDistPref
+    , fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-    , LibraryName(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
+    , absoluteInstallDirs, prefixRelativeInstallDirs
     , ComponentName(..), showComponentName, pkgEnabledComponents
-    , componentBuildInfo, componentName, checkComponentsCyclic )
+    , componentBuildInfo, componentName, checkComponentsCyclic
+    , lookupComponent )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -111,6 +116,8 @@ import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
+import Distribution.Simple.InstallDirs
+    ( fromPathTemplate, substPathTemplate, toPathTemplate, packageTemplateEnv )
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -122,10 +129,16 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
 import Prelude hiding ( mapM )
 import Control.Exception
-    ( ErrorCall(..), Exception, evaluate, throw, throwIO, try )
+    ( Exception, evaluate, throw, throwIO, try )
+#if __GLASGOW_HASKELL__ >= 711
+import Control.Exception ( pattern ErrorCall )
+#else
+import Control.Exception ( ErrorCall(..) )
+#endif
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
+import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
@@ -145,6 +158,9 @@ import Data.Map (Map)
 import Data.Traversable
     ( mapM )
 import Data.Typeable
+import Data.Char ( chr, isAlphaNum )
+import Numeric ( showIntAtBase )
+import Data.Bits ( shift )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -158,6 +174,7 @@ import Distribution.Text
 import Text.PrettyPrint
     ( render, (<>), ($+$), char, text, comma
     , quotes, punctuate, nest, sep, hsep )
+import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
@@ -312,6 +329,30 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- * Configuration
 -- -----------------------------------------------------------------------------
 
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
+-- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
+-- environment variable, or the default prefix.
+findDistPref :: FilePath  -- ^ default \"dist\" prefix
+             -> Setup.Flag FilePath  -- ^ override \"dist\" prefix
+             -> IO FilePath
+findDistPref defDistPref overrideDistPref = do
+    envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
+    return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
+  where
+    parseEnvDistPref env =
+      case env of
+        Just distPref | not (null distPref) -> toFlag distPref
+        _ -> NoFlag
+
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
+-- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
+-- environment variable, or 'defaultDistPref' is used. Call this function to resolve a
+-- @*DistPref@ flag whenever it is not known to be set. (The @*DistPref@ flags are always
+-- set to a definite value before invoking 'UserHooks'.)
+findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
+                      -> IO FilePath
+findDistPrefOrDefault = findDistPref defaultDistPref
+
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
 configure :: (GenericPackageDescription, HookedBuildInfo)
@@ -319,7 +360,6 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
 configure (pkg_descr0, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
-            verbosity = fromFlag (configVerbosity cfg)
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
@@ -372,9 +412,9 @@ configure (pkg_descr0, pbi) cfg
                 --TODO: should use a per-compiler method to map the source
                 --      package ID into an installed package id we can use
                 --      for the internal package set. The open-codes use of
-                --      InstalledPackageId . display here is a hack.
-                Installed.installedPackageId =
-                   InstalledPackageId $ display $ pid,
+                --      ComponentId . display here is a hack.
+                Installed.installedComponentId =
+                   ComponentId $ display $ pid,
                 Installed.sourcePackageId = pid
               }
             internalPackageSet = PackageIndex.fromList [internalPackage]
@@ -502,12 +542,12 @@ configure (pkg_descr0, pbi) cfg
 
         let installDeps = Map.elems
                         . Map.fromList
-                        . map (\v -> (Installed.installedPackageId v, v))
+                        . map (\v -> (Installed.installedComponentId v, v))
                         $ externalPkgDeps ++ holeDeps
 
         packageDependsIndex <-
           case PackageIndex.dependencyClosure installedPackageSet
-                  (map Installed.installedPackageId installDeps) of
+                  (map Installed.installedComponentId installDeps) of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -520,11 +560,11 @@ configure (pkg_descr0, pbi) cfg
                             | (pkg, deps) <- broken ]
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
-                Installed.installedPackageId =
-                   InstalledPackageId (display (packageId pkg_descr)),
+                Installed.installedComponentId =
+                   ComponentId (display (packageId pkg_descr)),
                 Installed.sourcePackageId = packageId pkg_descr,
                 Installed.depends =
-                  map Installed.installedPackageId installDeps
+                  map Installed.installedComponentId installDeps
               }
         case PackageIndex.dependencyInconsistencies
            . PackageIndex.insert pseudoTopPkg
@@ -538,27 +578,6 @@ configure (pkg_descr0, pbi) cfg
                         ++ display (PackageIdentifier name ver)
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
-
-        -- Calculate the package key.  We're going to store it in LocalBuildInfo
-        -- canonically, but ComponentsLocalBuildInfo also needs to know about it
-        -- XXX Do we need the internal deps?
-        -- NB: does *not* include holeDeps!
-        let pkg_key = mkPackageKey (packageKeySupported comp)
-                                   (package pkg_descr)
-                                   (map Installed.packageKey externalPkgDeps)
-                                   (map (\(k,(p,m)) -> (k,(Installed.packageKey p,m))) hole_insts)
-
-        -- internal component graph
-        buildComponents <-
-          case mkComponentsGraph pkg_descr internalPkgDeps of
-            Left  componentCycle -> reportComponentCycle componentCycle
-            Right components     ->
-              case mkComponentsLocalBuildInfo packageDependsIndex pkg_descr
-                                              internalPkgDeps externalPkgDeps holeDeps
-                                              (Map.fromList hole_insts)
-                                              pkg_key components of
-                Left  problems    -> reportModuleReexportProblems problems
-                Right components' -> return components'
 
         -- installation directories
         defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
@@ -603,6 +622,16 @@ configure (pkg_descr0, pbi) cfg
 
         (pkg_descr', programsConfig''') <-
           configurePkgconfigPackages verbosity pkg_descr programsConfig''
+
+        -- internal component graph
+        buildComponents <-
+          case mkComponentsGraph pkg_descr internalPkgDeps of
+            Left  componentCycle -> reportComponentCycle componentCycle
+            Right components     ->
+              mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
+                                         internalPkgDeps externalPkgDeps holeDeps
+                                         (Map.fromList hole_insts)
+                                         components (configConfigurationsFlags cfg)
 
         split_objs <-
            if not (fromFlag $ configSplitObjs cfg)
@@ -656,10 +685,24 @@ configure (pkg_descr0, pbi) cfg
             ++ "is not being built. Linking will fail if any executables "
             ++ "depend on the library."
 
-        let withProf_ = fromFlagOrDefault False (configProf cfg)
-            withProfExe_ = fromFlagOrDefault withProf_ $ configProfExe cfg
-            withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
-        when (withProfExe_ && not withProfLib_) $ warn verbosity $
+        -- The --profiling flag sets the default for both libs and exes,
+        -- but can be overidden by --library-profiling, or the old deprecated
+        -- --executable-profiling flag.
+        let profEnabledLibOnly = configProfLib cfg
+            profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
+            profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
+            profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+
+        -- The --profiling-detail and --library-profiling-detail flags behave
+        -- similarly
+        profDetailLibOnly <- checkProfDetail (configProfLibDetail cfg)
+        profDetailBoth    <- liftM (fromFlagOrDefault ProfDetailDefault)
+                                   (checkProfDetail (configProfDetail cfg))
+        let profDetailLib = fromFlagOrDefault profDetailBoth profDetailLibOnly
+            profDetailExe = profDetailBoth
+
+        when (profEnabledExe && not profEnabledLib) $
+          warn verbosity $
                "Executables will be built with profiling, but library "
             ++ "profiling is disabled. Linking will fail if any executables "
             ++ "depend on the library."
@@ -687,14 +730,15 @@ configure (pkg_descr0, pbi) cfg
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
-                    pkgKey              = pkg_key,
                     instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
-                    withProfLib         = withProfLib_,
+                    withProfLib         = profEnabledLib,
                     withSharedLib       = withSharedLib_,
                     withDynExe          = withDynExe_,
-                    withProfExe         = withProfExe_,
+                    withProfExe         = profEnabledExe,
+                    withProfLibDetail   = profDetailLib,
+                    withProfExeDetail   = profDetailExe,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withDebugInfo       = fromFlag $ configDebugInfo cfg,
                     withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
@@ -742,6 +786,8 @@ configure (pkg_descr0, pbi) cfg
         return lbi
 
     where
+      verbosity = fromFlag (configVerbosity cfg)
+
       addExtraIncludeLibDirs pkg_descr =
           let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                                , PD.includeDirs = configExtraIncludeDirs cfg}
@@ -752,6 +798,15 @@ configure (pkg_descr0, pbi) cfg
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
                       , executables = modifyExecutable  `map`
                                       executables pkg_descr}
+
+      checkProfDetail (Flag (ProfDetailOther other)) = do
+        warn verbosity $
+             "Unknown profiling detail level '" ++ other
+          ++ "', using default.\n"
+          ++ "The profiling detail levels are: " ++ intercalate ", "
+             [ name | (name, _, _) <- knownProfDetailLevels ]
+        return (Flag ProfDetailDefault)
+      checkProfDetail other = return other
 
 mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
 mkProgramsConfig cfg initialProgramsConfig = programsConfig
@@ -863,7 +918,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackages verbosity packageDBs progconf
+    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progconf
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progconf
     JHC   -> JHC.getInstalledPackages verbosity packageDBs progconf
     LHC   -> LHC.getInstalledPackages verbosity packageDBs progconf
@@ -925,15 +980,15 @@ newPackageDepsBehaviour pkg =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints :: [Dependency] ->
-                       [(PackageName, InstalledPackageId)] ->
+                       [(PackageName, ComponentId)] ->
                        InstalledPackageIndex ->
                        Either String ([Dependency],
                                       Map PackageName InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 
-    when (not (null badInstalledPackageIds)) $
+    when (not (null badComponentIds)) $
       Left $ render $ text "The following package dependencies were requested"
-         $+$ nest 4 (dispDependencies badInstalledPackageIds)
+         $+$ nest 4 (dispDependencies badComponentIds)
          $+$ text "however the given installed package instance does not exist."
 
     when (not (null badNames)) $
@@ -957,19 +1012,19 @@ combinedConstraints constraints dependencies installedPackages = do
                         | (_, _, Just pkg) <- dependenciesPkgInfo ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, InstalledPackageId,
+    dependenciesPkgInfo :: [(PackageName, ComponentId,
                              Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
       [ (pkgname, ipkgid, mpkg)
       | (pkgname, ipkgid) <- dependencies
-      , let mpkg = PackageIndex.lookupInstalledPackageId
+      , let mpkg = PackageIndex.lookupComponentId
                      installedPackages ipkgid
       ]
 
     -- If we looked up a package specified by an installed package id
     -- (i.e. someone has written a hash) and didn't find it then it's
     -- an error.
-    badInstalledPackageIds =
+    badComponentIds =
       [ (pkgname, ipkgid)
       | (pkgname, ipkgid, Nothing) <- dependenciesPkgInfo ]
 
@@ -1023,7 +1078,7 @@ configureInstantiateWith pkg_descr cfg installedPackageSet = do
         -- TODO: internal dependencies (e.g. the test package depending on the
         -- main library) is not currently supported
         let selectHoleDependency (k,(i,m)) =
-              case PackageIndex.lookupInstalledPackageId installedPackageSet i of
+              case PackageIndex.lookupComponentId installedPackageSet i of
                 Just pkginst -> Right (k,(pkginst, m))
                 Nothing -> Left i
             (failed_hmap, hole_insts) = partitionEithers (map selectHoleDependency hole_insts0)
@@ -1247,46 +1302,131 @@ reportComponentCycle cnames =
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
 
-mkComponentsLocalBuildInfo :: InstalledPackageIndex
+-- | This method computes a default, "good enough" 'ComponentId'
+-- for a package.  The intent is that cabal-install (or the user) will
+-- specify a more detailed IPID via the @--ipid@ flag if necessary.
+computeComponentId :: PackageDescription
+            -> ComponentName
+            -- TODO: careful here!
+            -> [ComponentId] -- IPIDs of the component dependencies
+            -> FlagAssignment
+            -> IO ComponentId
+computeComponentId pkg_descr cname dep_ipids flagAssignment = do
+    -- show is found to be faster than intercalate and then replacement of
+    -- special character used in intercalating. We cannot simply hash by
+    -- doubly concating list, as it just flatten out the nested list, so
+    -- different sources can produce same hash
+    let hash = hashToBase62 $
+                -- For safety, include the package + version here
+                -- for GHC 7.10, where just the hash is used as
+                -- the package key
+                (display (package pkg_descr))
+                      ++ (show $ dep_ipids)
+                      ++ show flagAssignment
+    return . ComponentId $
+                display (package pkg_descr)
+                    ++ "-" ++ hash
+                    ++ (case cname of
+                         CLibName -> ""
+                         -- TODO: these could result in non-parseable IPIDs
+                         -- since the component name format is very flexible
+                         CExeName   s -> "-" ++ s ++ ".exe"
+                         CTestName  s -> "-" ++ s ++ ".test"
+                         CBenchName s -> "-" ++ s ++ ".bench")
+  where
+    representBase62 x
+        | x < 10 = chr (48 + x)
+        | x < 36 = chr (65 + x - 10)
+        | x < 62 = chr (97 + x - 36)
+        | otherwise = '@'
+    fpToInteger (Fingerprint a b) =
+      toInteger a * (shift (1 :: Integer) 64) + toInteger b
+    hashToBase62 s = showIntAtBase 62 representBase62
+                      (fpToInteger $ fingerprintString s) ""
+
+mkComponentsLocalBuildInfo :: ConfigFlags
+                           -> Compiler
+                           -> InstalledPackageIndex
                            -> PackageDescription
                            -> [PackageId] -- internal package deps
                            -> [InstalledPackageInfo] -- external package deps
                            -> [InstalledPackageInfo] -- hole package deps
                            -> Map ModuleName (InstalledPackageInfo, ModuleName)
-                           -> PackageKey
                            -> [(Component, [ComponentName])]
-                           -> Either [(ModuleReexport, String)] -- errors
-                                     [(ComponentName, ComponentLocalBuildInfo,
-                                                      [ComponentName])] -- ok
-mkComponentsLocalBuildInfo installedPackages pkg_descr
+                           -> FlagAssignment
+                           -> IO [(ComponentName, ComponentLocalBuildInfo,
+                                                  [ComponentName])]
+mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps holePkgDeps hole_insts
-                           pkg_key graph =
+                           graph flagAssignment = do
+    -- Pre-compute library hash so we can setup internal deps
+    lib_hash@(ComponentId str) <-
+      -- TODO configIPID should have name changed
+      case configIPID cfg of
+        Flag lib_hash0 ->
+            -- Hack to reuse install dirs machinery
+            -- NB: no real IPID available at this point
+            let env = packageTemplateEnv (package pkg_descr) (ComponentId "")
+                str = fromPathTemplate (substPathTemplate env (toPathTemplate lib_hash0))
+            in return (ComponentId str)
+        _ ->
+          computeComponentId pkg_descr CLibName (getDeps CLibName) flagAssignment
+    let extractCandidateCompatKey s
+            = case simpleParse s :: Maybe PackageId of
+                -- Something like 'foo-0.1', use it verbatim.
+                -- (NB: hash tags look like tags, so they are parsed,
+                -- so the extra equality check tests if a tag was dropped.)
+                Just pid | display pid == s -> s
+                -- Something like 'foo-0.1-XXX', take the stuff at the end.
+                -- TODO this won't work with component stuff
+                _ -> reverse (takeWhile isAlphaNum (reverse s))
+        cand_compat_key = ComponentId (extractCandidateCompatKey str)
+        old_style_key = ComponentId (display (package pkg_descr))
+        best_key = ComponentId str
+        compat_key =
+            if packageKeySupported comp
+                then if unifiedIPIDRequired comp
+                        then best_key
+                        else cand_compat_key
+                else old_style_key
     sequence
-      [ do clbi <- componentLocalBuildInfo c
+      [ do clbi <- componentLocalBuildInfo lib_hash compat_key c
            return (componentName c, clbi, cdeps)
       | (c, cdeps) <- graph ]
   where
+    getDeps cname =
+          let externalPkgs = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
+                                                            externalPkgDeps)
+                                      (lookupComponent pkg_descr cname)
+          in map Installed.installedComponentId externalPkgs
+
     -- The allPkgDeps contains all the package deps for the whole package
     -- but we need to select the subset for this specific component.
     -- we just take the subset for the package names this component
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
-    componentLocalBuildInfo component =
+    componentLocalBuildInfo lib_hash compat_key component =
       case component of
       CLib lib -> do
         let exports = map (\n -> Installed.ExposedModule n Nothing Nothing)
                           (PD.exposedModules lib)
             esigs = map (\n -> Installed.ExposedModule n Nothing
                                 (fmap (\(pkg,m) -> Installed.OriginalModule
-                                                      (Installed.installedPackageId pkg) m)
+                                                      (Installed.installedComponentId pkg) m)
                                       (Map.lookup n hole_insts)))
                         (PD.exposedSignatures lib)
-        reexports <- resolveModuleReexports installedPackages
-                                            (packageId pkg_descr)
-                                            externalPkgDeps lib
+        let mb_reexports = resolveModuleReexports installedPackages
+                                                  (packageId pkg_descr)
+                                                  lib_hash
+                                                  externalPkgDeps lib
+        reexports <- case mb_reexports of
+            Left problems -> reportModuleReexportProblems problems
+            Right r -> return r
+
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentLibraries   = [ LibraryName ("HS" ++ packageKeyLibraryName (package pkg_descr) pkg_key) ],
+          componentId = lib_hash,
+          componentCompatPackageKey = compat_key,
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
         }
@@ -1310,13 +1450,11 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
         dedup = Map.toList . Map.fromList
         cpds = if newPackageDepsBehaviour pkg_descr
                then dedup $
-                    [ (Installed.installedPackageId pkg, packageId pkg)
+                    [ (Installed.installedComponentId pkg, packageId pkg)
                     | pkg <- selectSubset bi externalPkgDeps ]
-                 ++ [ (inplacePackageId pkgid, pkgid)
+                 ++ [ (lib_hash, pkgid)
                     | pkgid <- selectSubset bi internalPkgDeps ]
-                 ++ [ (Installed.installedPackageId pkg, packageId pkg)
-                    | pkg <- holePkgDeps ]
-               else [ (Installed.installedPackageId pkg, packageId pkg)
+               else [ (Installed.installedComponentId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
         cprns = if newPackageDepsBehaviour pkg_descr
                 then Map.unionWith mappend
@@ -1349,11 +1487,12 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
 --
 resolveModuleReexports :: InstalledPackageIndex
                        -> PackageId
+                       -> ComponentId
                        -> [InstalledPackageInfo]
                        -> Library
                        -> Either [(ModuleReexport, String)] -- errors
                                  [Installed.ExposedModule] -- ok
-resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
+resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
     case partitionEithers (map resolveModuleReexport (PD.reexportedModules lib)) of
       ([],  ok) -> Right ok
       (errs, _) -> Left  errs
@@ -1369,9 +1508,9 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
                                                   exposedModule)])
           -- The package index here contains all the indirect deps of the
           -- package we're configuring, but we want just the direct deps
-        | let directDeps = Set.fromList (map Installed.installedPackageId externalPkgDeps)
+        | let directDeps = Set.fromList (map Installed.installedComponentId externalPkgDeps)
         , pkg <- PackageIndex.allPackages installedPackages
-        , Installed.installedPackageId pkg `Set.member` directDeps
+        , Installed.installedComponentId pkg `Set.member` directDeps
         , let exportingPackageName = packageName pkg
         , exposedModule <- visibleModuleDetails pkg
         ]
@@ -1380,9 +1519,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
                             ++ otherModules (libBuildInfo lib)
         , let exportingPackageName = packageName srcpkgid
               definingModuleName   = visibleModuleName
-              -- we don't know the InstalledPackageId of this package yet
-              -- we will fill it in later, before registration.
-              definingPackageId    = InstalledPackageId ""
+              definingPackageId    = key
               originalModule = Installed.OriginalModule definingPackageId
                                                         definingModuleName
               exposedModule  = Installed.ExposedModule visibleModuleName
@@ -1401,7 +1538,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
         -- The first case is the modules actually defined in this package.
         -- In this case the reexport will point to this package.
             Nothing -> return exposedModule { Installed.exposedReexport =
-                            Just (Installed.OriginalModule (Installed.installedPackageId pkg)
+                            Just (Installed.OriginalModule (Installed.installedComponentId pkg)
                                                  (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package

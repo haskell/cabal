@@ -23,13 +23,14 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
+import Distribution.System
 
-symlinkBinaries :: Compiler
+symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan
+                -> InstallPlan 
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries _ _ _ _ = return []
+symlinkBinaries _ _ _ _ _ = return []
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
@@ -37,18 +38,19 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ReadyPackage(..), enableStanzas )
+         ( SourcePackage(..)
+         , GenericReadyPackage(..), ReadyPackage, enableStanzas
+         , ConfiguredPackage(..) , fakeComponentId)
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), mkPackageKey, PackageKey )
+         ( PackageIdentifier, Package(packageId), ComponentId(..) )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
-import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
@@ -56,9 +58,10 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Simple.Compiler
-         ( Compiler, CompilerInfo(..), packageKeySupported )
+         ( Compiler, compilerInfo, CompilerInfo(..) )
+import Distribution.System
+         ( Platform )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
@@ -97,12 +100,12 @@ import Data.Maybe
 -- controlled from the config file. Of course it only works on POSIX systems
 -- with symlinks so is not available to Windows users.
 --
-symlinkBinaries :: Compiler
+symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries comp configFlags installFlags plan =
+symlinkBinaries platform comp configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
     Just symlinkBinDir
@@ -112,7 +115,7 @@ symlinkBinaries comp configFlags installFlags plan =
 --    TODO: do we want to do this here? :
 --      createDirectoryIfMissing True publicBinDir
       fmap catMaybes $ sequence
-        [ do privateBinDir <- pkgBinDir pkg pkg_key
+        [ do privateBinDir <- pkgBinDir pkg ipid
              ok <- symlinkBinary
                      publicBinDir  privateBinDir
                      publicExeName privateExeName
@@ -120,24 +123,27 @@ symlinkBinaries comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
+        | (ReadyPackage (ConfiguredPackage _ _flags _ _) _, pkg, exe) <- exes
         , let pkgid  = packageId pkg
-              pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.packageKey (CD.nonSetupDeps deps)) []
+              -- This is a bit dodgy; probably won't work for Backpack packages
+              ipid = fakeComponentId pkgid
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
-              prefix = substTemplate pkgid pkg_key prefixTemplate
-              suffix = substTemplate pkgid pkg_key suffixTemplate ]
+              prefix = substTemplate pkgid ipid prefixTemplate
+              suffix = substTemplate pkgid ipid suffixTemplate ]
   where
     exes =
       [ (cpkg, pkg, exe)
-      | InstallPlan.Installed cpkg _ <- InstallPlan.toList plan
+      | InstallPlan.Installed cpkg _ _ <- InstallPlan.toList plan
       , let pkg   = pkgDescription cpkg
       , exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
     pkgDescription :: ReadyPackage -> PackageDescription
-    pkgDescription (ReadyPackage (SourcePackage _ pkg _ _) flags stanzas _) =
+    pkgDescription (ReadyPackage (ConfiguredPackage
+                                    (SourcePackage _ pkg _ _)
+                                    flags stanzas _)
+                                  _) =
       case finalizePackageDescription flags
              (const True)
              platform cinfo [] (enableStanzas stanzas pkg) of
@@ -146,8 +152,8 @@ symlinkBinaries comp configFlags installFlags plan =
 
     -- This is sadly rather complicated. We're kind of re-doing part of the
     -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> PackageKey -> IO FilePath
-    pkgBinDir pkg pkg_key = do
+    pkgBinDir :: PackageDescription -> ComponentId -> IO FilePath
+    pkgBinDir pkg ipid = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor
                        (fromFlag (configUserInstall configFlags))
@@ -155,21 +161,20 @@ symlinkBinaries comp configFlags installFlags plan =
       let templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
-                           (packageId pkg) pkg_key
+                           (packageId pkg) ipid
                            cinfo InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
-    substTemplate pkgid pkg_key = InstallDirs.fromPathTemplate
-                                . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv pkgid pkg_key
+    substTemplate pkgid ipid = InstallDirs.fromPathTemplate
+                             . InstallDirs.substPathTemplate env
+      where env = InstallDirs.initialPathTemplateEnv pkgid ipid
                                                      cinfo platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
-    platform         = InstallPlan.planPlatform plan
-    cinfo            = InstallPlan.planCompiler plan
+    cinfo            = compilerInfo comp
     (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir

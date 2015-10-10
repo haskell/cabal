@@ -47,6 +47,7 @@ data GhcImplInfo = GhcImplInfo
   , reportsNoExt         :: Bool -- ^ --supported-languages gives Ext and NoExt
   , alwaysNondecIndent   :: Bool -- ^ NondecreasingIndentation is always on
   , flagGhciScript       :: Bool -- ^ -ghci-script flag supported
+  , flagProfAuto         :: Bool -- ^ new style -fprof-auto* flags
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
   , flagDebugInfo        :: Bool -- ^ -g flag supported
   }
@@ -80,6 +81,7 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
   , reportsNoExt         = v >= [7]
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
+  , flagProfAuto         = v >= [7,4]
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
   }
@@ -100,6 +102,7 @@ ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
   , reportsNoExt         = True
   , alwaysNondecIndent   = False
   , flagGhciScript       = True
+  , flagProfAuto         = True
   , flagPackageConf      = False
   , flagDebugInfo        = False
   }

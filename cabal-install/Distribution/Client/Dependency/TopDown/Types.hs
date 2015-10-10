@@ -14,14 +14,14 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ReadyPackage(..), InstalledPackage(..)
+         ( SourcePackage(..), ConfiguredPackage(..)
          , OptionalStanza, ConfiguredId(..) )
-import Distribution.Client.InstallPlan
-         ( ConfiguredPackage(..), PlanPackage(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Package
-         ( PackageIdentifier, Dependency
+         ( PackageId, PackageIdentifier, Dependency
          , Package(packageId) )
 import Distribution.PackageDescription
          ( FlagAssignment )
@@ -42,7 +42,17 @@ data InstalledOrSource installed source
    | InstalledAndSource installed source
   deriving Eq
 
+data FinalSelectedPackage
+   = SelectedInstalled InstalledPackage
+   | SelectedSource    ConfiguredPackage
+
 type TopologicalSortNumber = Int
+
+-- | InstalledPackage caches its dependencies as source package IDs.
+data InstalledPackage
+   = InstalledPackage
+       InstalledPackageInfo
+       [PackageId]
 
 data InstalledPackageEx
    = InstalledPackageEx
@@ -65,6 +75,9 @@ data SemiConfiguredPackage
        [Dependency]      -- dependencies we end up with when we apply
                          -- the flag assignment
 
+instance Package InstalledPackage where
+  packageId (InstalledPackage pkg _) = packageId pkg
+
 instance Package InstalledPackageEx where
   packageId (InstalledPackageEx p _ _) = packageId p
 
@@ -79,6 +92,10 @@ instance (Package installed, Package source)
   packageId (InstalledOnly      p  ) = packageId p
   packageId (SourceOnly         p  ) = packageId p
   packageId (InstalledAndSource p _) = packageId p
+
+instance Package FinalSelectedPackage where
+  packageId (SelectedInstalled pkg) = packageId pkg
+  packageId (SelectedSource    pkg) = packageId pkg
 
 
 -- | We can have constraints on selecting just installed or just source
@@ -96,9 +113,9 @@ data InstalledConstraint = InstalledConstraint
 --
 -- The top-down solver uses its down type class for package dependencies,
 -- because it wants to know these dependencies as PackageIds, rather than as
--- InstalledPackageIds (so it cannot use PackageFixedDeps).
+-- ComponentIds (so it cannot use PackageFixedDeps).
 --
--- Ideally we would switch the top-down solver over to use InstalledPackageIds
+-- Ideally we would switch the top-down solver over to use ComponentIds
 -- throughout; that means getting rid of this type class, and changing over the
 -- package index type to use Cabal's rather than cabal-install's. That will
 -- avoid the need for the local definitions of dependencyGraph and
@@ -117,15 +134,10 @@ instance PackageSourceDeps InstalledPackageEx where
 instance PackageSourceDeps ConfiguredPackage where
   sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
 
-instance PackageSourceDeps ReadyPackage where
-  sourceDeps (ReadyPackage _ _ _ deps) = map packageId $ CD.nonSetupDeps deps
-
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps
 
-instance PackageSourceDeps PlanPackage where
-  sourceDeps (PreExisting pkg) = sourceDeps pkg
-  sourceDeps (Configured  pkg) = sourceDeps pkg
-  sourceDeps (Processing pkg)  = sourceDeps pkg
-  sourceDeps (Installed pkg _) = sourceDeps pkg
-  sourceDeps (Failed    pkg _) = sourceDeps pkg
+instance PackageSourceDeps FinalSelectedPackage where
+  sourceDeps (SelectedInstalled pkg) = sourceDeps pkg
+  sourceDeps (SelectedSource    pkg) = sourceDeps pkg
+

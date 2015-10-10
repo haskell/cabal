@@ -51,8 +51,10 @@ graphFromEdges edges0 =
     sorted_edges = sortBy lt edges0
     edges1       = zipWith (,) [0..] sorted_edges
 
-    graph        = array bounds0 [(v, (mapMaybe mk_edge ks)) | (v, (_, _, ks)) <- edges1]
-    key_map      = array bounds0 [(v, k                    ) | (v, (_, k, _ )) <- edges1]
+    graph        = array bounds0 [(v, (mapMaybe mk_edge ks))
+                                 | (v, (_, _, ks)) <- edges1]
+    key_map      = array bounds0 [(v, k                    )
+                                 | (v, (_, k, _ )) <- edges1]
     vertex_map   = array bounds0 edges1
 
     (_,k1,_) `lt` (_,k2,_) = k1 `compare` k2

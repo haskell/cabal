@@ -1,4 +1,7 @@
-module Distribution.Client.Dependency.Modular.Message where
+module Distribution.Client.Dependency.Modular.Message (
+    Message(..),
+    showMessages
+  ) where
 
 import qualified Data.List as L
 import Prelude hiding (pi)
@@ -9,6 +12,8 @@ import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..), showConstraintSource )
 
 data Message =
     Enter           -- ^ increase indentation level
@@ -86,24 +91,27 @@ showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
 showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"
 
 showFR :: ConflictSet QPN -> FailReason -> String
-showFR _ InconsistentInitialConstraints = " (inconsistent initial constraints)"
-showFR _ (Conflicting ds)               = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
-showFR _ CannotInstall                  = " (only already installed instances can be used)"
-showFR _ CannotReinstall                = " (avoiding to reinstall a package with same version but new dependencies)"
-showFR _ Shadowed                       = " (shadowed by another installed package with same version)"
-showFR _ Broken                         = " (package is broken)"
-showFR _ (GlobalConstraintVersion vr)   = " (global constraint requires " ++ display vr ++ ")"
-showFR _ GlobalConstraintInstalled      = " (global constraint requires installed instance)"
-showFR _ GlobalConstraintSource         = " (global constraint requires source instance)"
-showFR _ GlobalConstraintFlag           = " (global constraint requires opposite flag selection)"
-showFR _ ManualFlag                     = " (manual flag can only be changed explicitly)"
-showFR _ (BuildFailureNotInIndex pn)    = " (unknown package: " ++ display pn ++ ")"
-showFR c Backjump                       = " (backjumping, conflict set: " ++ showCS c ++ ")"
-showFR _ MultipleInstances              = " (multiple instances)"
-showFR c (DependenciesNotLinked msg)    = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showCS c ++ ")"
+showFR _ InconsistentInitialConstraints   = " (inconsistent initial constraints)"
+showFR _ (Conflicting ds)                 = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
+showFR _ CannotInstall                    = " (only already installed instances can be used)"
+showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
+showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
+showFR _ Broken                           = " (package is broken)"
+showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ display vr ++ ")"
+showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
+showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
+showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
+showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
+showFR _ (BuildFailureNotInIndex pn)      = " (unknown package: " ++ display pn ++ ")"
+showFR c Backjump                         = " (backjumping, conflict set: " ++ showCS c ++ ")"
+showFR _ MultipleInstances                = " (multiple instances)"
+showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showCS c ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
-showFR _ (MalformedFlagChoice qfn)      = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
-showFR _ (MalformedStanzaChoice qsn)    = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
-showFR _ EmptyGoalChoice                = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
+showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
+showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
+showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
+
+constraintSource :: ConstraintSource -> String
+constraintSource src = "constraint from " ++ showConstraintSource src

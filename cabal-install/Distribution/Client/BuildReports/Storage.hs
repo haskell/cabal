@@ -75,7 +75,8 @@ storeAnonymous reports = sequence_
              . onlyRemote
     repoName (_,_,rrepo) = remoteRepoName rrepo
 
-    onlyRemote :: [(BuildReport, Maybe Repo)] -> [(BuildReport, Repo, RemoteRepo)]
+    onlyRemote :: [(BuildReport, Maybe Repo)]
+               -> [(BuildReport, Repo, RemoteRepo)]
     onlyRemote rs =
       [ (report, repo, remoteRepo)
       | (report, Just repo@Repo { repoKind = Left remoteRepo }) <- rs ]
@@ -116,34 +117,39 @@ storeLocal cinfo templates reports platform = sequence_
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-fromInstallPlan :: InstallPlan -> [(BuildReport, Maybe Repo)]
-fromInstallPlan plan = catMaybes
-                     . map (fromPlanPackage platform comp)
-                     . InstallPlan.toList
-                     $ plan
-  where platform = InstallPlan.planPlatform plan
-        comp     = compilerInfoId (InstallPlan.planCompiler plan)
+fromInstallPlan :: Platform -> CompilerId
+                -> InstallPlan
+                -> [(BuildReport, Maybe Repo)]
+fromInstallPlan platform comp plan =
+     catMaybes
+   . map (fromPlanPackage platform comp)
+   . InstallPlan.toList
+   $ plan
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
-  InstallPlan.Installed (ReadyPackage srcPkg flags _ deps) result
+  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _) deps)
+                         _ result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map packageId (CD.nonSetupDeps deps))
+                                (packageId srcPkg) flags
+                                (map packageId (CD.nonSetupDeps deps))
                                 (Right result)
               , extractRepo srcPkg)
 
   InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map confSrcId (CD.nonSetupDeps deps))
+                                (packageId srcPkg) flags
+                                (map confSrcId (CD.nonSetupDeps deps))
                                 (Left result)
               , extractRepo srcPkg )
 
   _ -> Nothing
 
   where
-    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ }) = Just repo
+    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ })
+                  = Just repo
     extractRepo _ = Nothing
 
 fromPlanningFailure :: Platform -> CompilerId

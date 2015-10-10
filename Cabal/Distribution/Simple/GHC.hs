@@ -60,7 +60,7 @@ import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
+                                ( InstalledPackageInfo(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -86,7 +86,7 @@ import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( toFlag, fromFlag, configCoverage, configDistPref )
+         ( toFlag, fromFlag, fromFlagOrDefault, configCoverage, configDistPref )
 import qualified Distribution.Simple.Setup as Cabal
         ( Flag(..) )
 import Distribution.Simple.Compiler
@@ -273,11 +273,11 @@ getPackageDBContents verbosity packagedb conf = do
   toPackageIndex verbosity pkgss conf
 
 -- | Given a package DB stack, return all installed packages.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs conf = do
   checkPackageDbEnvVar
-  checkPackageDbStack packagedbs
+  checkPackageDbStack comp packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   index <- toPackageIndex verbosity pkgss conf
   return $! hackRtsPackage index
@@ -331,15 +331,30 @@ checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
     Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: PackageDBStack -> IO ()
-checkPackageDbStack (GlobalPackageDB:rest)
+checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack comp = if flagPackageConf implInfo
+                              then checkPackageDbStackPre76
+                              else checkPackageDbStackPost76
+  where implInfo = ghcVersionImplInfo (compilerVersion comp)
+
+checkPackageDbStackPost76 :: PackageDBStack -> IO ()
+checkPackageDbStackPost76 (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStack rest
+checkPackageDbStackPost76 rest
+  | GlobalPackageDB `elem` rest =
+  die $ "If the global package db is specified, it must be "
+     ++ "specified first and cannot be specified multiple times"
+checkPackageDbStackPost76 _ = return ()
+
+checkPackageDbStackPre76 :: PackageDBStack -> IO ()
+checkPackageDbStackPre76 (GlobalPackageDB:rest)
+  | GlobalPackageDB `notElem` rest = return ()
+checkPackageDbStackPre76 rest
   | GlobalPackageDB `notElem` rest =
   die $ "With current ghc versions the global package db is always used "
-     ++ "and must be listed first. This ghc limitation may be lifted in "
-     ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
-checkPackageDbStack _ =
+     ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
+     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+checkPackageDbStackPre76 _ =
   die $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
@@ -413,12 +428,8 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  libName <- case componentLibraries clbi of
-             [libName] -> return libName
-             [] -> die "No library name found when building library"
-             _  -> die "Multiple library names found when building library"
-
-  let libTargetDir = buildDir lbi
+  let libName = componentId clbi
+      libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
@@ -430,8 +441,6 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
       (Platform _hostArch hostOS) = hostPlatform lbi
-      hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
-                   (instantiatedWith lbi)
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp
@@ -454,6 +463,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
         | otherwise = mempty
 
@@ -465,14 +475,14 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
-                      ghcOptPackageKey   = toFlag (pkgKey lbi),
-                      ghcOptSigOf        = hole_insts,
                       ghcOptInputModules = toNubListR $ libModules lib,
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
 
       profOpts    = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode = toFlag True,
+                      ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                              (withProfLibDetail lbi),
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
                       ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
@@ -561,10 +571,12 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                }
                odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
            createDirectoryIfMissingVerbose verbosity True odir
-           runGhcProg vanillaCcOpts
-           unless forRepl $
-             whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
-           unless forRepl $ whenProfLib (runGhcProg profCcOpts)
+           needsRecomp <- checkNeedsRecompilation filename vanillaCcOpts
+           when needsRecomp $ do
+               runGhcProg vanillaCcOpts
+               unless forRepl $
+                 whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
+               unless forRepl $ whenProfLib (runGhcProg profCcOpts)
       | filename <- cSources libBi]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
@@ -654,13 +666,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                                && ghcVersion < Version [7,8] [])
                                             then toFlag sharedLibInstallPath
                                             else mempty,
-                ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
+                ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
                 ghcOptRPaths             = rpaths
               }
 
@@ -688,7 +700,7 @@ startInterpreter verbosity conf comp packageDBs = do
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
-  checkPackageDbStack packageDBs
+  checkPackageDbStack comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram conf
   runGHC verbosity ghcProg comp replOpts
 
@@ -732,6 +744,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
         | otherwise = mempty
 
@@ -759,10 +772,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                    }
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
+                      ghcOptProfilingAuto  = Internal.profDetailLevelFlag False
+                                               (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $
-                                             hcProfOptions GHC exeBi,
+                      ghcOptExtra          = toNubListR (hcProfOptions GHC exeBi),
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -785,7 +799,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
-                                             [exeDir </> x | x <- cObjs],
+                                             [exeDir </> x | x <- cObjs]
+                    }
+      dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
@@ -831,9 +847,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
       linkOpts = commonOpts `mappend`
-                 linkerOpts `mappend` mempty {
-                      ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
-                 }
+                 linkerOpts `mappend`
+                 mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
+                 (if withDynExe lbi then dynLinkerOpts else mempty)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
@@ -855,9 +871,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                                        else GhcStaticOnly),
                        ghcOptProfilingMode = toFlag (withProfExe lbi)
                      }
-              odir = fromFlag (ghcOptObjDir opts)
+              odir  = fromFlag (ghcOptObjDir opts)
           createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProg opts
+          needsRecomp <- checkNeedsRecompilation filename opts
+          when needsRecomp $ 
+            runGhcProg opts
      | filename <- cSrcs ]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
@@ -869,6 +887,19 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   unless forRepl $ do
     info verbosity "Linking..."
     runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+
+-- | Returns True if the modification date of the given source file is newer than
+-- the object file we last compiled for it, or if no object file exists yet.
+checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
+checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
+    where oname = getObjectFileName filename opts
+
+-- | Finds the object file name of the given source file
+getObjectFileName :: FilePath -> GhcOptions -> FilePath
+getObjectFileName filename opts = oname
+    where odir  = fromFlag (ghcOptObjDir opts)
+          oext  = fromFlagOrDefault "o" (ghcOptObjSuffix opts)
+          oname = odir </> replaceExtension filename oext
 
 -- | Calculate the RPATHs for the component we are building.
 --
@@ -947,7 +978,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
       sharedArgs = vanillaArgs `mappend` mempty {
@@ -957,12 +987,14 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptObjSuffix   = toFlag "dyn_o",
                        ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
                    }
-      profArgs = vanillaArgs `mappend` mempty {
+      profArgs   = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
+                     ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                             (withProfLibDetail lbi),
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
-                 }
+                   }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
            else if withSharedLib  lbi then sharedArgs
            else if withProfLib    lbi then profArgs
@@ -1032,21 +1064,23 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
-  whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
-  whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
-  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
+  whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+  whenProf    $ installOrdinary builtDir targetDir       profileLibName
+  whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
+  whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
     install isShared srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
+
       if isShared
-        then do when (stripLibs lbi) $ Strip.stripLib verbosity
-                                       (hostPlatform lbi) (withPrograms lbi) src
-                installExecutableFile verbosity src dst
+        then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
+
+      when (stripLibs lbi) $ Strip.stripLib verbosity
+                             (hostPlatform lbi) (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -1056,11 +1090,11 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libNames = componentLibraries clbi
-    vanillaLibNames = map mkLibName              libNames
-    profileLibNames = map mkProfLibName          libNames
-    ghciLibNames    = map Internal.mkGHCiLibName libNames
-    sharedLibNames  = map (mkSharedLibName cid)  libNames
+    libName = componentId clbi
+    vanillaLibName = mkLibName              libName
+    profileLibName = mkProfLibName          libName
+    ghciLibName    = Internal.mkGHCiLibName libName
+    sharedLibName  = (mkSharedLibName cid)  libName
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))

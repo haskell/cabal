@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -33,6 +33,7 @@ module Distribution.Simple.Utils (
         rawSystemStdout,
         rawSystemStdInOut,
         rawSystemIOWithEnv,
+        createProcessWithEnv,
         maybeExit,
         xargs,
         findProgramLocation,
@@ -70,6 +71,7 @@ module Distribution.Simple.Utils (
         findFirstFile,
         findFileWithExtension,
         findFileWithExtension',
+        findAllFilesWithExtension,
         findModuleFile,
         findModuleFiles,
         getDirectoryContentsRecursive,
@@ -113,6 +115,11 @@ module Distribution.Simple.Utils (
         writeUTF8File,
         normaliseLineEndings,
 
+        -- * BOM
+        startsWithBOM,
+        fileHasBOM,
+        ignoreBOM,
+
         -- * generic utils
         dropWhileEndLE,
         takeWhileEndLE,
@@ -140,7 +147,9 @@ import Data.Char as Char
 import Data.Foldable
     ( traverse_ )
 import Data.List
-   ( nub, unfoldr, isPrefixOf, tails, intercalate )
+    ( nub, unfoldr, isPrefixOf, tails, intercalate )
+import Data.Typeable
+    ( cast )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
@@ -189,7 +198,7 @@ import Control.Concurrent (forkIO)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
 import System.Process
-         ( createProcess, rawSystem, runInteractiveProcess
+         ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
          , showCommandForUser, waitForProcess)
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
@@ -229,23 +238,48 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
-topHandlerWith :: (Exception.IOException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = catchIO prog handle
+topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
+topHandlerWith cont prog =
+    Exception.catches prog [
+        Exception.Handler rethrowAsyncExceptions
+      , Exception.Handler rethrowExitStatus
+      , Exception.Handler handle
+      ]
   where
-    handle ioe = do
+    -- Let async exceptions rise to the top for the default top-handler
+    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
+    rethrowAsyncExceptions = throwIO
+
+    -- ExitCode gets thrown asynchronously too, and we don't want to print it
+    rethrowExitStatus :: ExitCode -> IO a
+    rethrowExitStatus = throwIO
+
+    -- Print all other exceptions
+    handle :: Exception.SomeException -> IO a
+    handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (mesage pname)
-      cont ioe
-      where
-        mesage pname = wrapText (pname ++ ": " ++ file ++ detail)
-        file         = case ioeGetFileName ioe of
-                         Nothing   -> ""
-                         Just path -> path ++ location ++ ": "
-        location     = case ioeGetLocation ioe of
-                         l@(n:_) | Char.isDigit n -> ':' : l
-                         _                        -> ""
-        detail       = ioeGetErrorString ioe
+      hPutStr stderr (message pname se)
+      cont se
+
+    message :: String -> Exception.SomeException -> String
+    message pname (Exception.SomeException se) =
+      case cast se :: Maybe Exception.IOException of
+        Just ioe ->
+          let file         = case ioeGetFileName ioe of
+                               Nothing   -> ""
+                               Just path -> path ++ location ++ ": "
+              location     = case ioeGetLocation ioe of
+                               l@(n:_) | Char.isDigit n -> ':' : l
+                               _                        -> ""
+              detail       = ioeGetErrorString ioe
+          in wrapText (pname ++ ": " ++ file ++ detail)
+        Nothing ->
+#if __GLASGOW_HASKELL__ < 710
+          show se
+#else
+          Exception.displayException se
+#endif
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
@@ -417,22 +451,8 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
-    printRawCommandAndArgsAndEnv verbosity path args menv
-    hFlush stdout
-    (_,_,_,ph) <- createProcess $
-                  (Process.proc path args) { Process.cwd           = mcwd
-                                           , Process.env           = menv
-                                           , Process.std_in        = mbToStd inp
-                                           , Process.std_out       = mbToStd out
-                                           , Process.std_err       = mbToStd err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
-                                           , Process.delegate_ctlc = True
-#endif
-#endif
-                                           }
+    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
+                                       (mbToStd inp) (mbToStd out) (mbToStd err)
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
@@ -440,6 +460,37 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
+
+createProcessWithEnv :: Verbosity
+                     -> FilePath
+                     -> [String]
+                     -> Maybe FilePath           -- ^ New working dir or inherit
+                     -> Maybe [(String, String)] -- ^ New environment or inherit
+                     -> Process.StdStream  -- ^ stdin
+                     -> Process.StdStream  -- ^ stdout
+                     -> Process.StdStream  -- ^ stderr
+                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
+                        -- ^ Any handles created for stdin, stdout, or stderr
+                        -- with 'CreateProcess', and a handle to the process.
+createProcessWithEnv verbosity path args mcwd menv inp out err = do
+    printRawCommandAndArgsAndEnv verbosity path args menv
+    hFlush stdout
+    (inp', out', err', ph) <- createProcess $
+                                (Process.proc path args) {
+                                    Process.cwd           = mcwd
+                                  , Process.env           = menv
+                                  , Process.std_in        = inp
+                                  , Process.std_out       = out
+                                  , Process.std_err       = err
+#ifdef MIN_VERSION_process
+#if MIN_VERSION_process(1,2,0)
+-- delegate_ctlc has been added in process 1.2, and we still want to be able to
+-- bootstrap GHC on systems not having that version
+                                  , Process.delegate_ctlc = True
+#endif
+#endif
+                                  }
+    return (inp', out', err', ph)
 
 -- | Run a command and return its output.
 --
@@ -612,6 +663,16 @@ findFileWithExtension extensions searchPath baseName =
     | path <- nub searchPath
     , ext <- nub extensions ]
 
+findAllFilesWithExtension :: [String]
+                          -> [FilePath]
+                          -> FilePath
+                          -> IO [FilePath]
+findAllFilesWithExtension extensions searchPath basename =
+  findAllFiles id
+    [ path </> basename <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
 -- | Like 'findFileWithExtension' but returns which element of the search path
 -- the file was found in, and the file path relative to that base directory.
 --
@@ -632,6 +693,9 @@ findFirstFile file = findFirst
                               if exists
                                 then return (Just x)
                                 else findFirst xs
+
+findAllFiles :: (a -> FilePath) -> [a] -> IO [a]
+findAllFiles file = filterM (doesFileExist . file)
 
 -- | Finds the files corresponding to a list of Haskell module names.
 --
@@ -1237,6 +1301,16 @@ toUTF8 (c:cs)
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
   where w = ord c
+
+-- | Whether BOM is at the beginning of the input
+startsWithBOM :: String -> Bool
+startsWithBOM ('\xFEFF':_) = True
+startsWithBOM _            = False
+
+-- | Check whether a file has Unicode byte order mark (BOM).
+fileHasBOM :: FilePath -> IO Bool
+fileHasBOM f = fmap (startsWithBOM . fromUTF8)
+             . hGetContents =<< openBinaryFile f ReadMode
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --

@@ -116,7 +116,9 @@ initCabal verbosity packageDBs repos comp conf initFlags = do
 
   initFlags' <- extendFlags installedPkgIndex sourcePkgDb initFlags
 
-  writeLicense initFlags'
+  case license initFlags' of
+    Flag PublicDomain -> return ()
+    _                 -> writeLicense initFlags'
   writeSetupFile initFlags'
   writeChangeLog initFlags'
   createSourceDirectories initFlags'
@@ -350,7 +352,7 @@ getGenComments flags = do
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
   where
-    promptMsg = "Include documentation on what each field means (y/n)"
+    promptMsg = "Add informative comments to each field in the cabal file (y/n)"
 
 -- | Ask for the source root directory.
 getSrcDir :: InitFlags -> IO InitFlags
@@ -379,7 +381,7 @@ getModulesBuildToolsAndDeps :: InstalledPackageIndex -> InitFlags -> IO InitFlag
 getModulesBuildToolsAndDeps pkgIx flags = do
   dir <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
 
-  -- XXX really should use guessed source roots.
+  -- TODO: really should use guessed source roots.
   sourceFiles <- scanForModules dir
 
   Just mods <-      return (exposedModules flags)
@@ -807,9 +809,11 @@ generateCabalFile fileName c =
                 (Just "The license under which the package is released.")
                 True
 
-       , fieldS "license-file" (Flag "LICENSE")
-                (Just "The file containing the license text.")
-                True
+       , case (license c) of
+           Flag PublicDomain -> empty
+           _ -> fieldS "license-file" (Flag "LICENSE")
+                       (Just "The file containing the license text.")
+                       True
 
        , fieldS "author"        (author       c)
                 (Just "The package author(s).")
@@ -819,9 +823,11 @@ generateCabalFile fileName c =
                 (Just "An email address to which users can send suggestions, bug reports, and patches.")
                 True
 
-       , fieldS "copyright"     NoFlag
-                (Just "A copyright notice.")
-                True
+       , case (license c) of
+           Flag PublicDomain -> empty
+           _ -> fieldS "copyright"     NoFlag
+                       (Just "A copyright notice.")
+                       True
 
        , fieldS "category"      (either id display `fmap` category c)
                 Nothing

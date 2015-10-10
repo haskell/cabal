@@ -27,7 +27,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Distribution.Package
          ( PackageIdentifier(..)
          , Package(..)
-         , PackageName(..), packageName )
+         , PackageName(..), packageName, ComponentId(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), usedExtensions
@@ -64,7 +64,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo_(..) )
+         ( InstalledPackageInfo(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils
@@ -310,8 +310,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                           -- haddock to write them elsewhere.
                           ghcOptObjDir     = toFlag tmp,
                           ghcOptHiDir      = toFlag tmp,
-                          ghcOptStubDir    = toFlag tmp,
-                          ghcOptPackageKey = toFlag $ pkgKey lbi
+                          ghcOptStubDir    = toFlag tmp
                       } `mappend` getGhcCppOpts haddockVersion bi
         sharedOpts = vanillaOpts {
                          ghcOptDynLinkMode = toFlag GhcDynamicOnly,
@@ -467,15 +466,28 @@ renderArgs :: Verbosity
               -> (([String], FilePath) -> IO a)
               -> IO a
 renderArgs verbosity tmpFileOpts version comp args k = do
+  let haddockSupportsUTF8          = version >= Version [2,14,4] []
+      haddockSupportsResponseFiles = version >  Version [2,16,1] []
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
     \prologueFileName h -> do
           do
-             when (version >= Version [2,14,4] []) (hSetEncoding h utf8)
+             when haddockSupportsUTF8 (hSetEncoding h utf8)
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
-             k (pflag : renderPureArgs version comp args, result)
+                 renderedArgs = pflag : renderPureArgs version comp args
+             if haddockSupportsResponseFiles 
+               then
+                 withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
+                    \responseFileName hf -> do
+                         when haddockSupportsUTF8 (hSetEncoding hf utf8)
+                         mapM_ (hPutStrLn hf) renderedArgs
+                         hClose hf
+                         let respFile = "@" ++ responseFileName
+                         k ([respFile], result)
+               else
+                 k (renderedArgs, result)
     where
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
@@ -619,7 +631,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (pkgKey lbi) (compilerInfo (compiler lbi))
+  : initialPathTemplateEnv pkg_id (ComponentId (display pkg_id)) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

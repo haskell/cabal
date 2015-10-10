@@ -1,7 +1,8 @@
-module PackageTests.TestSuiteExeV10.Check (checks) where
+module PackageTests.TestSuiteTests.ExeV10.Check (checks) where
 
 import qualified Control.Exception as E (IOException, catch)
 import Control.Monad (when)
+import Data.List (intercalate)
 import Data.Maybe (catMaybes)
 import System.Directory ( doesFileExist )
 import System.FilePath
@@ -12,7 +13,7 @@ import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
 import Distribution.PackageDescription (package)
 import Distribution.Simple.Compiler (compilerId)
 import Distribution.Simple.Configure (getPersistBuildConfig)
-import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, pkgKey)
+import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, localCompatPackageKey)
 import Distribution.Simple.Hpc
 import Distribution.Simple.Program.Builtin (hpcProgram)
 import Distribution.Simple.Program.Db
@@ -23,43 +24,48 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-checks :: FilePath -> [TestTree]
-checks ghcPath =
-    [ testCase "Test" $ checkTest ghcPath ]
-    ++ hpcTestMatrix ghcPath ++
-    [ testCase "TestNoHpc/NoTix" $ checkTestNoHpcNoTix ghcPath
-    , testCase "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
+checks :: SuiteConfig -> [TestTree]
+checks config =
+    [ testCase "Test" $ checkTest config
+    , testGroup "WithHpc" $ hpcTestMatrix config
+    , testGroup "WithoutHpc"
+      [ testCase "NoTix" $ checkTestNoHpcNoTix config
+      , testCase "NoMarkup" $ checkTestNoHpcNoMarkup config
+      ]
     ]
 
-hpcTestMatrix :: FilePath -> [TestTree]
-hpcTestMatrix ghcPath = do
+hpcTestMatrix :: SuiteConfig -> [TestTree]
+hpcTestMatrix config = do
     libProf <- [True, False]
     exeProf <- [True, False]
     exeDyn <- [True, False]
     shared <- [True, False]
-    let name = concat
-            [ "WithHpc-"
-            , if libProf then "LibProf" else ""
-            , if exeProf then "ExeProf" else ""
-            , if exeDyn then "ExeDyn" else ""
-            , if shared then "Shared" else ""
-            ]
-        enable cond flag
-          | cond = Just $ "--enable-" ++ flag
-          | otherwise = Nothing
+    let name | null suffixes = "Vanilla"
+             | otherwise = intercalate "-" suffixes
+          where
+            suffixes = catMaybes
+                      [ if libProf then Just "LibProf" else Nothing
+                      , if exeProf then Just "ExeProf" else Nothing
+                      , if exeDyn then Just "ExeDyn" else Nothing
+                      , if shared then Just "Shared" else Nothing
+                      ]
         opts = catMaybes
             [ enable libProf "library-profiling"
             , enable exeProf "profiling"
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]
-    return $ testCase name $ checkTestWithHpc ghcPath name opts
+          where
+            enable cond flag
+              | cond = Just $ "--enable-" ++ flag
+              | otherwise = Nothing
+    return $ testCase name $ checkTestWithHpc config ("WithHpc-" ++ name) opts
 
 dir :: FilePath
-dir = "PackageTests" </> "TestSuiteExeV10"
+dir = "PackageTests" </> "TestSuiteTests" </> "ExeV10"
 
-checkTest :: FilePath -> Assertion
-checkTest ghcPath = buildAndTest ghcPath "Default" [] []
+checkTest :: SuiteConfig -> Assertion
+checkTest config = buildAndTest config "Default" [] []
 
 shouldExist :: FilePath -> Assertion
 shouldExist path = doesFileExist path >>= assertBool (path ++ " should exist")
@@ -69,18 +75,18 @@ shouldNotExist path =
     doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
-checkTestWithHpc :: FilePath -> String -> [String] -> Assertion
-checkTestWithHpc ghcPath name extraOpts = do
+checkTestWithHpc :: SuiteConfig -> String -> [String] -> Assertion
+checkTestWithHpc config name extraOpts = do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
         let distPref' = dir </> "dist-" ++ name
-        buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
+        buildAndTest config name [] ("--enable-coverage" : extraOpts)
         lbi <- getPersistBuildConfig distPref'
         let way = guessWay lbi
             CompilerId comp version = compilerId (compiler lbi)
             subdir
               | comp == GHC && version >= Version [7, 10] [] =
-                  display (pkgKey lbi)
+                  display (localCompatPackageKey lbi)
               | otherwise = display (package $ localPkgDescr lbi)
         mapM_ shouldExist
             [ mixDir distPref' way "my-0.1" </> subdir </> "Foo.mix"
@@ -90,9 +96,9 @@ checkTestWithHpc ghcPath name extraOpts = do
             ]
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
-checkTestNoHpcNoTix :: FilePath -> Assertion
-checkTestNoHpcNoTix ghcPath = do
-    buildAndTest ghcPath "NoHpcNoTix" []
+checkTestNoHpcNoTix :: SuiteConfig -> Assertion
+checkTestNoHpcNoTix config = do
+    buildAndTest config "NoHpcNoTix" []
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
       , "--ghc-option=dist-NoHpcNoTix/hpc/vanilla" ]
@@ -102,10 +108,10 @@ checkTestNoHpcNoTix ghcPath = do
 
 -- | Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
-checkTestNoHpcNoMarkup :: FilePath -> Assertion
-checkTestNoHpcNoMarkup ghcPath = do
+checkTestNoHpcNoMarkup :: SuiteConfig -> Assertion
+checkTestNoHpcNoMarkup config = do
     let tixFile = tixFilePath "dist-NoHpcNoMarkup" Vanilla "test-Foo"
-    buildAndTest ghcPath "NoHpcNoMarkup"
+    buildAndTest config "NoHpcNoMarkup"
       [("HPCTIXFILE", Just tixFile)]
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
@@ -115,16 +121,16 @@ checkTestNoHpcNoMarkup ghcPath = do
 -- | Build and test a package and ensure that both were successful.
 --
 -- The flag "--enable-tests" is provided in addition to the given flags.
-buildAndTest :: FilePath -> String -> [(String, Maybe String)] -> [String] -> IO ()
-buildAndTest ghcPath name envOverrides flags = do
+buildAndTest :: SuiteConfig -> String -> [(String, Maybe String)] -> [String] -> IO ()
+buildAndTest config name envOverrides flags = do
     let spec = PackageSpec
             { directory = dir
             , distPref = Just $ "dist-" ++ name
             , configOpts = "--enable-tests" : flags
             }
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult
-    testResult <- cabal_test spec envOverrides [] ghcPath
+    testResult <- cabal_test config spec envOverrides []
     assertTestSucceeded testResult
 
 -- | Checks for a suitable HPC version for testing.

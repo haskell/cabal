@@ -4,18 +4,18 @@ import PackageTests.PackageTester
 import System.FilePath
 import Test.Tasty.HUnit
 
-vanilla :: FilePath -> Assertion
-vanilla ghcPath = do
+vanilla :: SuiteConfig -> Assertion
+vanilla config = do
   let spec = PackageSpec
           { directory = "PackageTests" </> "TemplateHaskell" </> "vanilla"
           , configOpts = []
           , distPref = Nothing
           }
-  result <- cabal_build spec ghcPath
+  result <- cabal_build config spec
   assertBuildSucceeded result
 
-profiling :: FilePath -> Assertion
-profiling ghcPath = do
+profiling :: SuiteConfig -> Assertion
+profiling config = do
    let flags = ["--enable-library-profiling"
 --                ,"--disable-library-vanilla"
                ,"--enable-profiling"]
@@ -24,11 +24,11 @@ profiling ghcPath = do
           , configOpts = flags
           , distPref = Nothing
           }
-   result <- cabal_build spec ghcPath
+   result <- cabal_build config spec
    assertBuildSucceeded result
 
-dynamic :: FilePath -> Assertion
-dynamic ghcPath = do
+dynamic :: SuiteConfig -> Assertion
+dynamic config = do
     let flags = ["--enable-shared"
 --                ,"--disable-library-vanilla"
                 ,"--enable-executable-dynamic"]
@@ -37,5 +37,5 @@ dynamic ghcPath = do
             , configOpts = flags
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build config spec
     assertBuildSucceeded result
