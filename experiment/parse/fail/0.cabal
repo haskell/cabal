@@ -1,0 +1,66 @@
+Name:                ixset
+Version:             1.0.4
+Synopsis:            Efficient relational queries on Haskell sets.
+Description:
+    Create and query sets that are indexed by multiple indices.
+License:             BSD3
+License-file:        COPYING
+Author:              Happstack team, HAppS LLC
+Maintainer:          Happstack team <happs@googlegroups.com>
+homepage:            http://happstack.com
+Category:            Data Structures
+Build-Type:          Simple
+Cabal-Version:       >= 1.8
+
+source-repository head
+    type:     darcs
+    subdir:   ixset
+    location: http://patch-tag.com/r/mae/happstack
+
+flag base4
+
+Library
+--  Default-Language:    Haskell2010
+  if flag(base4)
+    Build-Depends:     base >=4 && < 5, syb
+  else
+    Build-Depends:     base < 4
+
+  if impl(ghc >= 6.12.1)
+    Build-Depends:    syb-with-class >= 0.6.1
+  else
+    Build-Depends:    syb-with-class < 0.6.1
+
+
+  Build-Depends:       containers,
+                       safecopy,
+                       template-haskell
+
+  hs-source-dirs:      src
+  Exposed-modules:
+                       Data.IxSet
+                       Data.IxSet.Ix
+
+  if impl(ghc >= 6.12)
+     ghc-options:      -Wall -fno-warn-unused-do-bind
+  else
+     ghc-options:      -Wall
+  GHC-Prof-Options:    -auto-all
+{-
+
+Disable for now because it causes problems with older versions of Cabal.
+
+Test-Suite test-ixset
+    Default-Language:    Haskell2010
+    type:    detailed-0.9
+    test-module: Test
+    other-modules: Data.IxSet.Tests
+    hs-source-dirs:      tests
+    build-depends:     base,
+                       Cabal >= 1.10,
+                       containers,
+                       HUnit,
+                       ixset,
+                       QuickCheck,
+                       random
+-}

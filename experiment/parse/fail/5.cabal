@@ -1,0 +1,79 @@
+name:          phasechange
+category:      Data
+version:       0.1
+author:        Gábor Lehel
+maintainer:    Gábor Lehel <illissius@gmail.com>
+homepage:      http://github.com/glehel/phasechange
+copyright:     Copyright (C) 2012 Gábor Lehel
+license:       BSD3
+license-file:  LICENSE
+stability:     experimental
+cabal-version: >= 1.10
+build-type:    Simple
+synopsis:      Freezing, thawing, and copy elision
+description: 
+    This library provides a class for types which present the same underlying data in both an immutable (frozen) as well as a mutable (thawed) form,
+    and various functions to manipulate them. Some of the functions allow for copy elision.
+    .
+    Instances are provided for the array types from the @primitive@, @array@, and @vector@ packages, but this is mainly for completeness: there is
+    nothing these instances do which @vector@ doesn't already do better. The main purpose, rather, is to assist new types, for instance types whose implementation relies on destructive-update foreign imports, and cases when writing a full stream fusion framework isn't practical.
+    .
+    There are three modules:
+        .
+        [Data.PhaseChange] This module exports the class without its methods, together with functions which guarantee referential transparency
+        (provided that instances are well-behaved). This is the module you should normally import to work with PhaseChangeable data.
+        .
+        [Data.PhaseChange.Unsafe] This module exports functions which can break referential transparency if they are used improperly. Be careful.
+        .
+        [Data.PhaseChange.Impl] This module exports the class along with its methods. Import it if you want to define a new instance.
+
+source-repository head
+    type:      git
+    location:  git://github.com/glehel/phasechange.git
+
+library
+    default-language:
+        Haskell98
+
+    other-extensions:
+        CPP,
+        MagicHash,
+        Rank2Types,
+        TypeFamilies,
+        UnboxedTuples,
+        FlexibleContexts,
+        FlexibleInstances,
+        UndecidableInstances,
+        MultiParamTypeClasses
+
+    impl(ghc >= 7.4):
+        other-extensions:
+            Trustworthy,
+            ConstraintKinds
+
+    impl(ghc >= 7.6):
+        other-extensions:
+            Unsafe
+
+    build-depends:
+        base >= 4.4 && < 4.6,
+        ghc-prim,
+        primitive == 0.4.*,
+--      newtype   == 0.2.*,
+        monad-st  == 0.2.*,
+        array     == 0.4.*,
+        vector    == 0.9.*
+
+    exposed-modules:
+        Data.PhaseChange
+        Data.PhaseChange.Unsafe
+        Data.PhaseChange.Impl
+
+    other-modules:
+        Data.PhaseChange.Internal
+        Data.PhaseChange.Instances
+
+    include-dirs: .
+
+    ghc-options:
+        -Wall

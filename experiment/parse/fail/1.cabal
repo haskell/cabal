@@ -1,0 +1,93 @@
+Name: DSTM
+Version: 0.1.2
+Copyright: (c) 2010, Frank Kupke
+License: LGPL
+License-File: LICENSE
+Author: Frank Kupke
+Maintainer: frk@informatik.uni-kiel.de
+Cabal-Version: >= 1.2.3
+Stability: provisional
+Synopsis: A framework for using STM within distributed systems
+Description:
+{
+The DSTM package consists of the DSTM library, a name server application, and
+three sample distributed programs using the library. DSTM is a framework
+enabling the use of the STM interface, known from concurrent programming, to be
+used for distributed Haskell applications as well. Provided are a simple Dining
+Philosophers, a Chat, and a soft real-time Bomberman game application.
+.
+Distributed communication is transparent to the application programmer. The
+application designer uses a very simple nameserver mechanism to set up the 
+system. The DSTM library includes the management of unavailable process nodes
+and provides the application with abstract error information thus facilitating 
+the implementation of robust distributed application programs.
+.
+For usage please look into the included file: DSTMManual.pdf, also available at
+http:\/\/www.informatik.uni-kiel.de\/prog\/mitarbeiter\/frank-kupke\/.
+.
+Changes from last version:
+.
+* documentation available online
+.
+* fixed typos in Chat example
+.
+* set debug flags to no debug output
+}
+Category: Distributed Computing
+Build-Type: Simple
+Tested-With: GHC ==6.10
+
+Data-Files: field.txt, input1.txt, input2.txt, input3.txt
+Data-Dir: Bomberman
+Extra-source-files: README LICENSE DSTMManual.pdf
+
+Library
+  Build-Depends: base >=4 && <5, unix, process, network, haskell98, containers
+
+  GHC-Options: -Wall
+
+  Exposed-Modules:
+        Control.Distributed.STM.DSTM
+
+  Other-Modules:
+        Control.Distributed.STM.DebugBase,
+        Control.Distributed.STM.DebugDSTM,
+        Control.Distributed.STM.Dist
+        Control.Distributed.STM.EnvAddr,
+        Control.Distributed.STM.NameService,
+        Control.Distributed.STM.RetryVar,
+        Control.Distributed.STM.TVar,
+        Control.Distributed.STM.STM,
+        Control.Distributed.STM.Utils,
+        Paths_DSTM
+
+  Extensions: DeriveDataTypeable,
+              ScopedTypeVariables
+
+Executable NameServer
+  Main-Is:        NameServer.hs
+  Other modules:  DSTM, NameService
+  Build-Depends:  base >=4 && <5, unix, process, network, haskell98, containers
+  Hs-Source-Dirs: Nameserver, .
+
+Executable Phil
+  Main-Is:        Phil.hs
+  Build-Depends:  base >=4 && <5, unix, process, network, haskell98, containers
+  Hs-Source-Dirs: Phil, .
+
+Executable ChatClient
+  Main-Is:        ChatClient.hs
+  Build-Depends:  base >=4 && <5, unix, process, network, haskell98, containers
+  Hs-Source-Dirs: Chat, .
+  Other-Modules:  ChatData
+
+Executable ChatServer
+  Main-Is:        ChatServer.hs
+  Build-Depends:  base >=4 && <5, unix, process, network, haskell98, containers
+  Hs-Source-Dirs: Chat, .
+  Other-Modules:  ChatData
+
+Executable Bomberman
+  Main-Is:        Bomberman.hs
+  Build-Depends:  base >=4 && <5, unix, process, network, haskell98, containers
+  Hs-Source-Dirs: Bomberman, .

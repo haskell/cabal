@@ -1,0 +1,169 @@
+Name: Cabal
+Version: 1.15.0
+Copyright: 2003-2006, Isaac Jones
+           2005-2011, Duncan Coutts
+License: BSD3
+License-File: LICENSE
+Author: Isaac Jones <ijones@syntaxpolice.org>
+        Duncan Coutts <duncan@community.haskell.org>
+Maintainer: cabal-devel@haskell.org
+Homepage: http://www.haskell.org/cabal/
+bug-reports: http://hackage.haskell.org/trac/hackage/
+Synopsis: A framework for packaging Haskell software
+Description:
+        The Haskell Common Architecture for Building Applications and
+        Libraries: a framework defining a common interface for authors to more
+        easily build their Haskell applications in a portable way.
+        .
+        The Haskell Cabal is part of a larger infrastructure for distributing,
+        organizing, and cataloging Haskell libraries and tools.
+Category: Distribution
+cabal-version: >=1.10
+Build-Type: Custom
+-- Even though we do use the default Setup.lhs it's vital to bootstrapping
+-- that we build Setup.lhs using our own local Cabal source code.
+
+Extra-Source-Files:
+        README changelog
+
+source-repository head
+  type:     darcs
+  location: http://darcs.haskell.org/cabal/
+  subdir:   Cabal
+
+Flag base4
+    Description: Choose the even newer, even smaller, split-up base package.
+
+Flag base3
+    Description: Choose the new smaller, split-up base package.
+
+Library
+  build-depends:   base       >= 2   && < 5,
+                   filepath   >= 1   && < 1.4
+  if flag(base4) { build-depends: base >= 4 } else { build-depends: base < 4 }
+  if flag(base3) { build-depends: base >= 3 } else { build-depends: base < 3 }
+  if flag(base3)
+    Build-Depends: directory  >= 1   && < 1.2,
+                   process    >= 1   && < 1.2,
+                   old-time   >= 1   && < 1.2,
+                   containers >= 0.1 && < 0.6,
+                   array      >= 0.1 && < 0.5,
+                   pretty     >= 1   && < 1.2
+
+  if !os(windows)
+    Build-Depends: unix       >= 2.0 && < 2.6
+
+  ghc-options: -Wall -fno-ignore-asserts
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
+  nhc98-Options: -K4M
+
+  Exposed-Modules:
+        Distribution.Compiler,
+        Distribution.InstalledPackageInfo,
+        Distribution.License,
+        Distribution.Make,
+        Distribution.ModuleName,
+        Distribution.Package,
+        Distribution.PackageDescription,
+        Distribution.PackageDescription.Configuration,
+        Distribution.PackageDescription.Parse,
+        Distribution.PackageDescription.Check,
+        Distribution.PackageDescription.PrettyPrint,
+        Distribution.ParseUtils,
+        Distribution.ReadE,
+        Distribution.Simple,
+        Distribution.Simple.Build,
+        Distribution.Simple.Build.Macros,
+        Distribution.Simple.Build.PathsModule,
+        Distribution.Simple.BuildPaths,
+        Distribution.Simple.Bench,
+        Distribution.Simple.Command,
+        Distribution.Simple.Compiler,
+        Distribution.Simple.Configure,
+        Distribution.Simple.GHC,
+        Distribution.Simple.LHC,
+        Distribution.Simple.Haddock,
+        Distribution.Simple.Hpc,
+        Distribution.Simple.Hugs,
+        Distribution.Simple.Install,
+        Distribution.Simple.InstallDirs,
+        Distribution.Simple.JHC,
+        Distribution.Simple.LocalBuildInfo,
+        Distribution.Simple.NHC,
+        Distribution.Simple.PackageIndex,
+        Distribution.Simple.PreProcess,
+        Distribution.Simple.PreProcess.Unlit,
+        Distribution.Simple.Program,
+        Distribution.Simple.Program.Ar,
+        Distribution.Simple.Program.Builtin,
+        Distribution.Simple.Program.Db,
+        Distribution.Simple.Program.GHC,
+        Distribution.Simple.Program.HcPkg,
+        Distribution.Simple.Program.Hpc,
+        Distribution.Simple.Program.Ld,
+        Distribution.Simple.Program.Run,
+        Distribution.Simple.Program.Script,
+        Distribution.Simple.Program.Types,
+        Distribution.Simple.Register,
+        Distribution.Simple.Setup,
+        Distribution.Simple.SrcDist,
+        Distribution.Simple.Test,
+        Distribution.Simple.UHC,
+        Distribution.Simple.UserHooks,
+        Distribution.Simple.Utils,
+        Distribution.System,
+        Distribution.TestSuite,
+        Distribution.Text,
+        Distribution.Verbosity,
+        Distribution.Version,
+        Distribution.Compat.ReadP,
+        Language.Haskell.Extension
+
+  Other-Modules:
+        Distribution.GetOpt,
+        Distribution.Compat.Exception,
+        Distribution.Compat.CopyFile,
+        Distribution.Compat.TempFile,
+        Distribution.Simple.GHC.IPI641,
+        Distribution.Simple.GHC.IPI642,
+        Paths_Cabal
+
+  Default-Language: Haskell98
+  Default-Extensions: CPP
+
+test-suite unit-tests
+  type: exitcode-stdio-1.0
+  main-is: suite.hs
+  other-modules: PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check,
+                 PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check,
+                 PackageTests.BuildDeps.InternalLibrary0.Check,
+                 PackageTests.BuildDeps.InternalLibrary1.Check,
+                 PackageTests.BuildDeps.InternalLibrary2.Check,
+                 PackageTests.BuildDeps.InternalLibrary3.Check,
+                 PackageTests.BuildDeps.InternalLibrary4.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps1.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps2.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps3.Check,
+                 PackageTests.BuildDeps.SameDepsAllRound.Check,
+                 PackageTests.TestOptions.Check,
+                 PackageTests.TestStanza.Check,
+                 PackageTests.TestSuiteExeV10.Check,
+                 PackageTests.BenchmarkStanza.Check,
+                 PackageTests.PackageTester
+  hs-source-dirs: tests
+  build-depends:
+        base,
+        test-framework,
+        test-framework-quickcheck2,
+        test-framework-hunit,
+        HUnit,
+        QuickCheck >= 2.1.0.1,
+        Cabal,
+        process,
+        directory,
+        filepath,
+        extensible-exceptions,
+        bytestring,
+        unix
+  Default-Language: Haskell98
