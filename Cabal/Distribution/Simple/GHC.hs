@@ -33,7 +33,10 @@
 
 module Distribution.Simple.GHC (
         getGhcInfo,
-        configure, getInstalledPackages, getPackageDBContents,
+        configure,
+        getInstalledPackages,
+        getInstalledPackagesMonitorFiles,
+        getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
         startInterpreter,
@@ -186,7 +189,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 --
 guessToolFromGhcPath :: Program -> ConfiguredProgram
                      -> Verbosity -> ProgramSearchPath
-                     -> IO (Maybe FilePath)
+                     -> IO (Maybe (FilePath, [FilePath]))
 guessToolFromGhcPath tool ghcProg verbosity searchpath
   = do let toolname          = programName tool
            path              = programPath ghcProg
@@ -209,7 +212,10 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                    -- method.
          []     -> programFindLocation tool verbosity searchpath
          (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
-                      return (Just fp)
+                      let lookedAt = map fst
+                                   . takeWhile (\(_file, exist) -> not exist)
+                                   $ zip guesses exists
+                      return (Just (fp, lookedAt))
 
   where takeVersionSuffix :: FilePath -> String
         takeVersionSuffix = takeWhileEndLE isSuffixChar
@@ -232,7 +238,8 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
 guessGhcPkgFromGhcPath :: ConfiguredProgram
-                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+                       -> Verbosity -> ProgramSearchPath
+                       -> IO (Maybe (FilePath, [FilePath]))
 guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
@@ -244,7 +251,8 @@ guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 -- > /usr/local/bin/hsc2hs(.exe)
 --
 guessHsc2hsFromGhcPath :: ConfiguredProgram
-                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+                       -> Verbosity -> ProgramSearchPath
+                       -> IO (Maybe (FilePath, [FilePath]))
 guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
@@ -256,7 +264,8 @@ guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 -- > /usr/local/bin/haddock(.exe)
 --
 guessHaddockFromGhcPath :: ConfiguredProgram
-                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+                       -> Verbosity -> ProgramSearchPath
+                       -> IO (Maybe (FilePath, [FilePath]))
 guessHaddockFromGhcPath = guessToolFromGhcPath haddockProgram
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
@@ -320,12 +329,24 @@ getLibDir' verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
-
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
+
+getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath
+getUserPackageDB _verbosity ghcProg (Platform arch os) = do
+    appdir <- getAppUserDataDirectory "ghc"
+    return (appdir </> platformAndVersion </> packageConfFileName)
+  where
+    platformAndVersion = intercalate "-" [ Internal.showArchString arch
+                                         , Internal.showOsString os
+                                         , display ghcVersion ]
+    packageConfFileName
+      | ghcVersion >= Version [6,12] []  = "package.conf.d"
+      | otherwise                        = "package.conf"
+    Just ghcVersion = programVersion ghcProg
 
 checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
@@ -398,25 +419,30 @@ getInstalledPackages' verbosity packagedbs conf = do
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
 
-getInstalledPackagesFingerprint :: Verbosity -> [PackageDB]
-                                -> IO [Maybe UTCTime]
-getInstalledPackagesFingerprint verbosity packagedbs =
-  | ghcVersion >= Version [6,9] [] =
-  
-  | otherwise =
+getInstalledPackagesMonitorFiles :: Verbosity -> Platform
+                                 -> ProgramConfiguration
+                                 -> [PackageDB]
+                                 -> IO [FilePath]
+getInstalledPackagesMonitorFiles verbosity platform progdb =
+    mapM getPackageDBPath
+  where
+    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath GlobalPackageDB =
+      selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
 
-    sequence
-      [ catchIO (Just `fmap` getModificationTime probeFile) $ \e ->
-          if isDoesNotExistError e
-            then return Nothing
-            else ioError e
-      | repo <- packagedbs
-      , let probeFile = repoLocalDir repo </> "00-index.cache"
-      ]
+    getPackageDBPath UserPackageDB =
+      selectMonitorFile =<< getUserPackageDB verbosity ghcProg platform
 
-getPackageDBPath :: PackageDB -> FilePath
-getPackageDBPath (SpecificPackageDB path) = path </> "package.cache"
- --Or file directly
+    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
+
+    -- GHC has old style file dbs, and new style directory dbs.
+    selectMonitorFile path = do
+      isFileStyle <- doesFileExist path
+      if isFileStyle then return path
+                     else return (path </> "package.cache")
+
+    Just ghcProg = lookupProgram ghcProgram progdb
+
 
 -- -----------------------------------------------------------------------------
 -- Building

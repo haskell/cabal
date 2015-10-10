@@ -74,6 +74,7 @@ data HcPkgInfo = HcPkgInfo
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , useSingleFileDb :: Bool -- ^ requires single file package database
+    --TODO: split into dir style supported and required
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.

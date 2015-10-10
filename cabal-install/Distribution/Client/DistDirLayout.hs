@@ -13,86 +13,104 @@ import Distribution.Compiler
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Text
 
---  Our state directory looks like this
+
+
+-- | The layout of the project state directory. Traditionally this has been
+-- called the @dist@ directory.
 --
+data DistDirLayout = DistDirLayout {
 
--- | The dist directory, which is the root of where cabal keeps all its state
--- including the build artifacts from each package we build.
---
-distDirectory :: FilePath
-distDirectory = "." </> "dist-newstyle"
+        -- | The dist directory, which is the root of where cabal keeps all its
+       -- state including the build artifacts from each package we build.
+       --
+       distDirectory                :: FilePath,
 
--- | The directory under dist where we keep the build artifacts for a package
--- we're building from a local directory.
---
--- This uses a package id not just a package name because technically we can
--- have multiple instances of the same package in a solution (e.g. setup deps).
---
-distBuildDirectory :: PackageId -> FilePath
-distBuildDirectory pkgid = distBuildRootDirectory </> display pkgid
+       -- | The directory under dist where we keep the build artifacts for a
+       -- package we're building from a local directory.
+       --
+       -- This uses a 'PackageId' not just a 'PackageName' because technically
+       -- we can have multiple instances of the same package in a solution
+       -- (e.g. setup deps).
+       --
+       distBuildDirectory           :: PackageId -> FilePath,
+       distBuildRootDirectory       :: FilePath,
 
-distBuildRootDirectory :: FilePath
-distBuildRootDirectory = distDirectory </> "build"
+       -- | The directory under dist where we put the unpacked sources of
+       -- packages, in those cases where it makes sense to keep the build
+       -- artifacts to reduce rebuild times. These can be tarballs or could be
+       -- scm repos.
+       --
+       distUnpackedSrcDirectory     :: PackageId -> FilePath,
+       distUnpackedSrcRootDirectory :: FilePath,
 
--- | The directory under dist where we put the unpacked sources of packages,
--- in those cases where it makes sense to keep the build artifacts to reduce
--- rebuild times. These can be tarballs or could be scm repos.
---
-distUnpackedSrcDirectory :: PackageId -> FilePath
-distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory </> display pkgid
+       -- | The location for project-wide cache files (e.g. state used in
+       -- incremental rebuilds).
+       --
+       distProjectCacheFile         :: String -> FilePath,
+       distProjectCacheDirectory    :: FilePath,
 
-distUnpackedSrcRootDirectory :: FilePath
-distUnpackedSrcRootDirectory = distDirectory </> "src"
+       -- | The location for package-specific cache files (e.g. state used in
+       -- incremental rebuilds).
+       --
+       distPackageCacheFile         :: PackageId -> String -> FilePath,
+       distPackageCacheDirectory    :: PackageId -> FilePath,
 
--- | The location of the file status cache used to track the files in a local
--- unpacked source directory.
---
--- > <dist>/build/<pkgid>/filestatus.cache
---
-distUnpackedSrcFileStatusCache :: PackageId -> FilePath
-distUnpackedSrcFileStatusCache pkgid =
-    distBuildDirectory pkgid </> "filestatus.cache"
+       distTempDirectory            :: FilePath,
+       distBinDirectory             :: FilePath,
 
-distUnpackedSrcConfigCache :: PackageId -> FilePath
-distUnpackedSrcConfigCache pkgid =
-    distBuildDirectory pkgid </> "config.cache"
-
-distSolverInputsCache :: FilePath
-distSolverInputsCache =
-    distBuildRootDirectory </> "solver.cache"
-
-distInstallPlanCache :: FilePath
-distInstallPlanCache =
-    distBuildRootDirectory </> "plan.cache"
-
-distTempDirectory :: FilePath
-distTempDirectory = distDirectory </> "tmp"
-
-distBinDirectory :: FilePath
-distBinDirectory = distDirectory </> "bin"
-
-distPackageDB :: FilePath
-distPackageDB = distDirectory </> "package.db"
-
-
------
-
---TODO: move to another module, e.g. CabalDirLayout
-
-
-data CabalDirLayout = CabalDirLayout {
-       cabalStoreDirectory      :: CompilerId -> FilePath,
-       cabalStorePackageDBPath  :: CompilerId -> FilePath,
-       cabalStorePackageDB      :: CompilerId -> PackageDB
+       distPackageDB                :: CompilerId -> FilePath
      }
+
+
+
+--TODO: move to another module, e.g. CabalDirLayout?
+data CabalDirLayout = CabalDirLayout {
+       cabalStoreDirectory        :: CompilerId -> FilePath,
+       cabalStorePackageDirectory :: CompilerId -> InstalledPackageId
+                                                -> FilePath,
+       cabalStorePackageDBPath    :: CompilerId -> FilePath,
+       cabalStorePackageDB        :: CompilerId -> PackageDB
+     }
+
+
+defaultDistDirLayout :: FilePath -> DistDirLayout
+defaultDistDirLayout projectRootDirectory =
+    DistDirLayout {..}
+  where
+    distDirectory = projectRootDirectory </> "dist-newstyle"
+    --TODO: switch to just dist at some point, or some other new name
+
+    distBuildRootDirectory   = distDirectory </> "build"
+    distBuildDirectory pkgid = distBuildRootDirectory </> display pkgid
+
+    distUnpackedSrcRootDirectory   = distDirectory </> "src"
+    distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
+                                      </> display pkgid
+
+    distProjectCacheDirectory = distDirectory </> "cache"
+    distProjectCacheFile name = distProjectCacheDirectory </> name
+
+    distPackageCacheDirectory pkgid = distBuildDirectory pkgid </> "cache"
+    distPackageCacheFile pkgid name = distPackageCacheDirectory pkgid </> name
+
+    distTempDirectory = distDirectory </> "tmp"
+
+    distBinDirectory = distDirectory </> "bin"
+
+    distPackageDB compid = distDirectory </> "packagedb" </> display compid
+
+
 
 defaultCabalDirLayout :: FilePath -> CabalDirLayout
 defaultCabalDirLayout cabalDir =
     CabalDirLayout {..}
   where
 
-    cabalStoreDirectory compid = 
+    cabalStoreDirectory compid =
       cabalDir </> "store" </> display compid
+
+    cabalStorePackageDirectory compid ipkgid = 
+      cabalStoreDirectory compid </> display ipkgid
 
     cabalStorePackageDBPath compid =
       cabalDir </> "store" </> display compid </> "package.db"

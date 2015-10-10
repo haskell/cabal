@@ -21,6 +21,9 @@ module Distribution.Simple.Build (
 
     initialBuildSteps,
     writeAutogenFiles,
+    doesPackageDBExist,
+    createPackageDB,
+    deletePackageDB,
   ) where
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -475,24 +478,43 @@ benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
                         -> IO PackageDB
 createInternalPackageDB verbosity lbi distPref = do
-    case compilerFlavor (compiler lbi) of
-      GHC   -> createWith $ GHC.hcPkgInfo   (withPrograms lbi)
-      GHCJS -> createWith $ GHCJS.hcPkgInfo (withPrograms lbi)
-      LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
-      _     -> return packageDB
+    existsAlready <- doesPackageDBExist dbPath
+    when existsAlready $ deletePackageDB dbPath
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) dbPath 
+    return (SpecificPackageDB dbPath)
     where
       dbPath = distPref </> "package.conf.inplace"
-      packageDB = SpecificPackageDB dbPath
-      createWith hpi = do
-        dir_exists <- doesDirectoryExist dbPath
-        if dir_exists
-            then removeDirectoryRecursive dbPath
-            else do file_exists <- doesFileExist dbPath
-                    when file_exists $ removeFile dbPath
-        if HcPkg.useSingleFileDb hpi
-            then writeFile dbPath "[]"
-            else HcPkg.init hpi verbosity dbPath
-        return packageDB
+
+doesPackageDBExist :: FilePath -> IO Bool
+doesPackageDBExist dbPath = do
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then return True
+        else doesFileExist dbPath
+
+createPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
+createPackageDB verbosity comp progdb dbPath =
+    case compilerFlavor comp of
+      GHC   -> createWith $ GHC.hcPkgInfo   progdb
+      GHCJS -> createWith $ GHCJS.hcPkgInfo progdb
+      LHC   -> createWith $ LHC.hcPkgInfo   progdb
+      _     -> return ()
+  where
+    createWith hpi
+      | HcPkg.useSingleFileDb hpi
+      = writeFile dbPath "[]"
+      
+      | otherwise
+      = HcPkg.init hpi verbosity dbPath
+
+deletePackageDB :: FilePath -> IO ()
+deletePackageDB dbPath = do
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then removeDirectoryRecursive dbPath
+        else do file_exists <- doesFileExist dbPath
+                when file_exists $ removeFile dbPath
+
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb

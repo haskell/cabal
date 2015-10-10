@@ -694,8 +694,9 @@ data UserConstraint =
    | UserConstraintSource    PackageName
    | UserConstraintFlags     PackageName FlagAssignment
    | UserConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Show,Eq)
+  deriving (Eq, Show, Generic)
 
+instance Binary UserConstraint
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 -- At the moment, the types happen to be directly equivalent

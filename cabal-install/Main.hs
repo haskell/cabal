@@ -189,7 +189,7 @@ main = do
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = topHandler $
+mainWorker args = -- topHandler $
   case commandsRun (globalCommand commands) commands args of
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
@@ -249,10 +249,10 @@ mainWorker args = topHandler $
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
       ,hiddenCommand $
-       configureExCommand { commandName = "new-configure" }
+       installCommand { commandName = "new-configure" }
                               `commandAddAction` newConfigureAction
       ,hiddenCommand $
-       buildCommand { commandName = "new-build" }
+       installCommand { commandName = "new-build" }
                               `commandAddAction` newBuildAction
       ,replCommand            `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
@@ -1206,36 +1206,55 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
 -- New nix style local build ui
 --
 
-newConfigureAction :: (ConfigFlags, ConfigExFlags)
+newConfigureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                    -> [String] -> GlobalFlags -> IO ()
-newConfigureAction (configFlags, configExFlags) extraArgs globalFlags = do
+newConfigureAction (configFlags, configExFlags, installFlags, haddockFlags)
+                   extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
-  (useSandbox, config) <- fmap
+  (_useSandbox, config) <- fmap
                           (updateInstallDirs (configUserInstall configFlags))
                           (loadConfigOrSandboxConfig verbosity globalFlags)
 
+  --TODO: this should all go away and config loading should be done by
+  -- configure/build properly
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      configExFlags' = defaultConfigExFlags         `mappend`
+                       savedConfigureExFlags config `mappend` configExFlags
+      installFlags'  = defaultInstallFlags          `mappend`
+                       savedInstallFlags     config `mappend` installFlags
+      haddockFlags'  = defaultHaddockFlags          `mappend`
+                       savedHaddockFlags     config `mappend` haddockFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
   MultiPkg.configure verbosity
-                     globalFlags' configFlags' configExFlags' useSandbox
+                     globalFlags' configFlags' configExFlags'
+                     installFlags' haddockFlags'
                      extraArgs
 
-newBuildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
-newBuildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
-  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+newBuildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+               -> [String] -> GlobalFlags -> IO ()
+newBuildAction (configFlags, configExFlags, installFlags, haddockFlags)
+               extraArgs globalFlags = do
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
-  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  (_useSandbox, config) <- fmap
+                          (updateInstallDirs (configUserInstall configFlags))
+                          (loadConfigOrSandboxConfig verbosity globalFlags)
 
-  let configFlags'   = savedConfigureFlags   config
-      configExFlags' = savedConfigureExFlags config
-      globalFlags'   = savedGlobalFlags      config
+  --TODO: this should all go away and config loading should be done by
+  -- configure/build properly
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+      configExFlags' = defaultConfigExFlags         `mappend`
+                       savedConfigureExFlags config `mappend` configExFlags
+      installFlags'  = defaultInstallFlags          `mappend`
+                       savedInstallFlags     config `mappend` installFlags
+      haddockFlags'  = defaultHaddockFlags          `mappend`
+                       savedHaddockFlags     config `mappend` haddockFlags
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
   MultiPkg.build verbosity
-                 globalFlags'
-                 configFlags' configExFlags' useSandbox
-                 buildFlags   buildExFlags
+                 globalFlags' configFlags' configExFlags'
+                 installFlags' haddockFlags'
                  extraArgs
 

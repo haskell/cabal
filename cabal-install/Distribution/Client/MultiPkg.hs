@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, DeriveGeneric,
+{-# LANGUAGE BangPatterns, DeriveGeneric, GeneralizedNewtypeDeriving,
              RecordWildCards, NamedFieldPuns,
              ScopedTypeVariables #-}
 
@@ -20,56 +20,61 @@ module Distribution.Client.MultiPkg (
     -- * High level things
     configure,
     build,
-
-    testBuild,
-    buildTargets
   ) where
 
-import           Distribution.Client.Types
+import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, InstallPlan )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.ComponentDeps as ComponentDeps
-import           Distribution.Client.IndexUtils
-import           Distribution.Client.Targets
+import qualified Distribution.Client.IndexUtils as IndexUtils
+import           Distribution.Client.Targets (UserConstraint, pkgSpecifierTarget, userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileStatusCache
+import           Distribution.Client.Glob
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.HttpUtils
 import           Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar
-import           Distribution.Client.Config (SavedConfig(..), defaultRemoteRepo, defaultCabalDir, defaultCacheDir)
+import           Distribution.Client.Config ({-SavedConfig(..),-} defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
+import           Distribution.Client.BuildReports.Types (ReportLevel)
 
-import           Distribution.Client.Sandbox
-import           Distribution.Client.Sandbox.Types
-import           Distribution.Client.Sandbox.Index as Index
+--import           Distribution.Client.Sandbox
+--import           Distribution.Client.Sandbox.Types
+--import           Distribution.Client.Sandbox.Index as Index
 
---import           Distribution.Client.Utils
+import           Distribution.Client.Utils
 
 import           Distribution.Package
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
+import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.PackageDescription.Configuration as Cabal
+import qualified Distribution.PackageDescription.Parse as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import qualified Distribution.Client.PackageIndex as Client.PackageIndex
-import           Distribution.Simple.Compiler
+--import qualified Distribution.Client.PackageIndex as Client.PackageIndex
+import           Distribution.Simple.Compiler hiding (Flag)
 import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import qualified Distribution.Simple.GHC as GHC
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (toFlag)
-import           Distribution.Simple.Configure (configCompilerEx, configCompilerAuxEx)
+import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault, HaddockFlags(..))
+import           Distribution.Utils.NubList (NubList, fromNubList)
+import qualified Distribution.Simple.Configure as Cabal
+import qualified Distribution.Simple.Build as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
+import           Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
+
 --import           Distribution.Client.Setup ()
-import           Distribution.Simple.Utils
+import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text
@@ -83,12 +88,17 @@ import qualified Data.ByteString.Lazy       as LBS
 import qualified Data.ByteString.Lazy.Char8 as LBS.Char8
 import qualified Data.Digest.Pure.SHA as SHA
 
+import           Control.Applicative
 import           Control.Monad
+import           Control.Monad.State as State
 import           Control.Exception
 import           Control.Concurrent.Async
+import           Control.Concurrent.MVar
 import           Data.List
 import           Data.Either
 import           Data.Maybe
+import           Data.Monoid
+import           Data.Function (on)
 
 import           Data.Binary
 import           GHC.Generics (Generic)
@@ -151,34 +161,42 @@ build :: Verbosity
       -> GlobalFlags
       -> ConfigFlags
       -> ConfigExFlags
-      -> UseSandbox
-      -> BuildFlags
-      -> BuildExFlags
+      -> InstallFlags
+      -> HaddockFlags
       -> [String]
       -> IO ()
 build verbosity
       globalFlags
-      configFlags configExFlags useSandbox
-      buildFlags _buildExFlags --TODO: do something with these
-      userTargets =
+      configFlags configExFlags
+      installFlags haddockFlags
+      userTargets = do
 
-    -- The build, or really rebuild, is split into two major parts:
+    cabalDir <- defaultCabalDir
+    let cabalDirLayout = defaultCabalDirLayout cabalDir
+
+    projectRootDir <- findProjectRoot
+    let distDirLayout = defaultDistDirLayout projectRootDir
+
+    let projectConfigCLI = convertCommandLineFlags 
+                             globalFlags
+                             configFlags configExFlags
+                             installFlags haddockFlags
+
+    -- The (re)build is split into two major parts:
 
     -- Phase 1: decide what to do.
     --
     -- Take all input configuration and make a description of what to do.
     --
-    rebuildInstallPlan verbosity
-                       -- all the config:
-                       globalFlags
-                       configFlags configExFlags
-                       useSandbox
+    (elaboratedInstallPlan, sharedPackageConfig, buildFlags) <-
+      rebuildInstallPlan verbosity
+                         projectRootDir distDirLayout cabalDirLayout
+                         projectConfigCLI
 
     -- The description of what to do is represented by an
     -- 'ElaboratedInstallPlan' (plus an 'ElaboratedSharedConfig' for those
     -- bits that are common between all packages.
     --
-    >>= \ (elaboratedInstallPlan, sharedPackageConfig) ->
 
     -- Phase 2: now do it.
     --
@@ -186,18 +204,15 @@ build verbosity
     -- rebuild the various packages needed.
     --
     rebuildTargets verbosity
+                   distDirLayout cabalDirLayout
                    elaboratedInstallPlan
                    sharedPackageConfig
-                   userTargets
                    buildFlags
+                   userTargets
 
     --TODO: may want to do some earlier parsing/validation of the userTargets
     -- though fully resolving what they refer to requires info from the env
     -- or config (e.g. knowing which packages are in the plan, where they live)
-    
-    --TODO: we may need to set up the http transport in either or both phases
-    -- but we'd really like to do so lazily, but would also like to share if
-    -- possible.
 
     -- Note that it is a deliberate design choice that the 'userTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -217,7 +232,6 @@ build verbosity
     -- TODO: The current 'BuildFlags' is a mix of config and build-only, due
     -- to the old command line interface and needs to be cleaned up.
 
-
 -- To a first approximation, configure just runs the first phase of 'build'
 -- where we bring the install plan up to date (thus checking that it's
 -- possible).
@@ -230,23 +244,58 @@ configure :: Verbosity
           -> GlobalFlags
           -> ConfigFlags
           -> ConfigExFlags
-          -> UseSandbox
+          -> InstallFlags
+          -> Cabal.HaddockFlags
           -> [String]
           -> IO ()
 configure verbosity
-          globalFlags configFlags configExFlags useSandbox
+          globalFlags
+          configFlags configExFlags
+          installFlags haddockFlags
           _extraArgs = do
 
     -- In this prototype version we don't yet support extra local temporary
     -- config, so it's really just the first phase of build.
 
+    projectRootDir <- findProjectRoot
+    cabalDir       <- defaultCabalDir
+    let distDirLayout  = defaultDistDirLayout projectRootDir
+        cabalDirLayout = defaultCabalDirLayout cabalDir
+        projectConfigCLI = convertCommandLineFlags 
+                             globalFlags
+                             configFlags configExFlags
+                             installFlags haddockFlags
+
     _ <- rebuildInstallPlan verbosity
-                            -- all the config:
-                            globalFlags
-                            configFlags configExFlags
-                            useSandbox
+                            projectRootDir distDirLayout cabalDirLayout
+                            projectConfigCLI
 
     return ()
+
+
+-- | Find the root of this project.
+--
+-- Searches for an explicit @cabal.project@ file, in the current directory or
+-- parent directories. If no project file is found then the current dir is the
+-- project root (and the project will use an implicit config).
+--
+findProjectRoot :: IO FilePath
+findProjectRoot = do
+
+    curdir  <- getCurrentDirectory
+    homedir <- getHomeDirectory
+
+    -- search upwards if we get to the users home dir or the filesystem root, then use the current dir
+    let probe dir | isDrive dir || dir == homedir
+                  = return curdir -- implicit project root
+        probe dir = do
+          exists <- doesFileExist (dir </> "cabal.project")
+          if exists
+            then return dir       -- explicit project root
+            else probe (takeDirectory dir)
+
+    probe curdir
+   --TODO: add compat support for old style sandboxes
 
 
 ------------------------------------------------------------------------------
@@ -308,9 +357,10 @@ data ElaboratedSharedConfig
        pkgConfigPlatform         :: Platform,
        pkgConfigCompiler         :: Compiler, --TODO: replace with CompilerInfo
        pkgConfigProgramDb        :: ProgramDb, --TODO: no Eq instance
+       --TODO: ^^ binary instance does not preserve the prog paths
+       --      perhaps should keep the configured progs separately
 
        pkgConfigLibraryProfiling :: Bool
-       --TODO: loads more, see the ConfigFlags
 
      }
   deriving (Show, Generic)
@@ -327,29 +377,32 @@ instance Binary ElaboratedSharedConfig
 data ElaboratedConfiguredPackage
    = ElaboratedConfiguredPackage {
 
+       pkgSrcId :: PackageId,
+
        -- | TODO: we don't need this, just a few bits from it:
        --   build type, spec version
        pkgDescription :: Cabal.GenericPackageDescription,
-
-       pkgSrcId :: PackageId,
 
        -- | A total flag assignment for the package
        pkgFlagAssignment   :: Cabal.FlagAssignment,
 
        -- | Which optional stanzas are enabled (testsuites, benchmarks)
-       pkgEnabledStanzas   :: [OptionalStanza],
+       pkgTestsuitesEnable :: Bool,
+       pkgBenchmarksEnable :: Bool,
+       pkgEnabledStanzas   :: [OptionalStanza], --TODO: eliminate 
 
-       -- | The exact dependencies (to other plan packages)
+       -- | The exact dependencies (on other plan packages)
        --
        pkgDependencies     :: ComponentDeps.ComponentDeps [InstalledPackageId],
+       --TODO: ^^ do we need this given that ReadyPackage includes it?
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
        --   is not the same as where it may be unpacked to for the build.
        pkgSourceLocation :: PackageLocation (Maybe FilePath),
 
-       --pkgSourceDir ? -- or derived based on package location?
-       --pkgBuildDir  ?
-       
+       --pkgSourceDir ? -- currently passed in later because they can use temp locations
+       --pkgBuildDir  ? -- but could in principle still have it here, with optional instr to use temp loc
+
        pkgBuildStyle             :: BuildStyle,
 
        pkgSetupPackageDBStack    :: PackageDBStack,
@@ -358,9 +411,33 @@ data ElaboratedConfiguredPackage
 
        -- | The package contains a library and so must be registered
        pkgRequiresRegistration :: Bool,
+       pkgHasExplicitSetupDeps :: Bool, --TODO: maybe? currently unused
 
-       pkgDescriptionOverride  :: Maybe LBS.Char8.ByteString
+       pkgDescriptionOverride  :: Maybe LBS.Char8.ByteString,
 
+       pkgVanillaLib           :: Bool,
+       pkgSharedLib            :: Bool,
+       pkgDynExe               :: Bool,
+       pkgGHCiLib              :: Bool,
+       pkgProfLib              :: Bool,
+       pkgProfExe              :: Bool,
+       pkgProfLibDetail        :: ProfDetailLevel,
+       pkgProfExeDetail        :: ProfDetailLevel,
+       pkgLibCoverage          :: Bool,
+       pkgExeCoverage          :: Bool,
+       pkgOptimization         :: OptimisationLevel,
+       pkgSplitObjs            :: Bool,
+       pkgStripLibs            :: Bool,
+       pkgStripExes            :: Bool,
+       pkgDebugInfo            :: DebugInfoLevel,
+
+       pkgConfigureScriptArgs   :: [String],
+       pkgExtraLibDirs          :: [FilePath],
+       pkgExtraIncludeDirs      :: [FilePath],
+       pkgProgPrefix            :: Maybe PathTemplate,
+       pkgProgSuffix            :: Maybe PathTemplate,
+
+       pkgInstallDirs           :: InstallDirs.InstallDirTemplates -- still $prefix relative
 {-
        -- Setup.hs related things:
 
@@ -375,20 +452,6 @@ data ElaboratedConfiguredPackage
        -- was built against (or if none or unknown the minimum spec version).
        pkgSetupHsCabalVersion :: Version
 -}
-
-       --TODO: loads more, see the ConfigFlags and hash info below
-
---     pkgHashCompilerId              :: CompilerId,
---     pkgHashPlatform                :: Platform,
---     pkgHashFlagAssignment          :: FlagAssignment, -- complete not partial
---     pkgHashConfigureOptions        :: [String], -- just ./configure for build-type Configure
---     pkgHashOptimisationLevel       :: OptimisationLevel,
---     pkgHashLibraryShared           :: Bool,
---     pkgHashLibraryProfiling        :: Bool
---     pkgHashLibraryProfilingLevel   :: ProfDetailLevel,
---     pkgHashHpcEnabled              :: Bool,
---     pkgHashToolsVersions     ?
---     pkgHashToolsExtraOptions ?
      }
   deriving (Eq, Show, Generic)
 
@@ -429,433 +492,642 @@ instance Binary BuildStyle
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
                                                   InstalledPackageInfo
+--TODO: this duplicates the InstalledPackageInfo quite a bit in an install plan
+-- because the same ipkg is used by many packages. So the binary file will be big.
+-- Could we keep just (ipkgid, deps) instead of the whole InstalledPackageInfo?
+-- or transform to a shared form when serialising / deserialising
+
+type BuildResult  = GenericBuildResult InstalledPackageInfo 
+                                       BuildSuccess BuildFailure
+
+data BuildSuccess = BuildOk DocsResult TestsResult
+  deriving (Eq, Show, Generic)
+
+data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
+  deriving (Eq, Show, Generic)
+
+data TestsResult = TestsNotTried | TestsOk
+  deriving (Eq, Show, Generic)
+
+data BuildFailure = PlanningFailed
+                  | DependentFailed PackageId
+                  | DownloadFailed  String
+                  | UnpackFailed    String
+                  | ConfigureFailed String
+                  | BuildFailed     String
+                  | TestsFailed     String
+                  | InstallFailed   String
+  deriving (Eq, Show, Generic)
+
+instance Binary BuildFailure
+instance Binary BuildSuccess
+instance Binary DocsResult
+instance Binary TestsResult
+
 
 ------------------------------------------------------------------------------
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
-rebuildInstallPlan :: Verbosity ->
-                      GlobalFlags ->
-                      ConfigFlags -> ConfigExFlags ->
-                      UseSandbox ->
-                      IO (ElaboratedInstallPlan, ElaboratedSharedConfig)
+
+rebuildInstallPlan :: Verbosity
+                   -> FilePath -> DistDirLayout -> CabalDirLayout
+                   -> ( ProjectConfigSolver
+                      , PackageConfigShared
+                      , PackageConfig
+                      , ProjectConfigBuildOnly
+                      )
+                   -> IO ( ElaboratedInstallPlan
+                         , ElaboratedSharedConfig
+                         , ProjectConfigBuildOnly )
 rebuildInstallPlan verbosity
-                   -- all the config:
-                   globalFlags
-                   configFlags configExFlags
-                   useSandbox =
-    return (undefined, undefined)
+                   projectRootDir
+                   distDirLayout@DistDirLayout{..}
+                   CabalDirLayout{..}
+                   ( cliConfigSolver
+                   , cliConfigAllPackages
+                   , cliConfigLocalPackages
+                   , cliConfigBuildOnly
+                   ) =
+    --FIXME: cliConfigBuildOnly, can we avoid redoing the stuff below when
+    -- just the cliConfigBuildOnly changes? But still get the build settings
+    -- from the config file and recombine with the cli build settings?
 
+    runRebuild $
+    rerunIfChanged installPlanFileMonitor projectRootDir
+                   ( cliConfigSolver
+                   , cliConfigAllPackages
+                   , cliConfigLocalPackages
+                     -- note: don't track cliConfigBuildOnly
+                   )
+                   $ \_ -> do
+      liftIO $ do
+        info verbosity "Project settings changed, reconfiguring..."
+        createDirectoryIfMissingVerbose verbosity False distDirectory
+        createDirectoryIfMissingVerbose verbosity False distProjectCacheDirectory
 
-------------------------------------------------------------------------------
--- * Doing it: executing an 'ElaboratedInstallPlan'
-------------------------------------------------------------------------------
+      -- first read the cabal.project (or implicit config) and combine it with
+      -- any args from the command line
+      projectConfig@ProjectConfig {
+        projectConfigBuildOnly,
+        projectConfigSolver,
+        projectConfigAllPackages,
+        projectConfigLocalPackages,
+        projectConfigSpecificPackage
+      } <- readProjectConfig projectRootDir
+                             cliConfigSolver
+                             cliConfigAllPackages
+                             cliConfigLocalPackages
+                             cliConfigBuildOnly
 
+      -- then look for all the cabal packages in the project
+      -- some of which may be local src dirs, tarballs etc
+      localCabalFiles <- findProjectCabalFiles projectConfig
 
-rebuildTargets :: Verbosity ->
-                  ElaboratedInstallPlan ->
-                  ElaboratedSharedConfig ->
-                  [String] ->  --TODO: probably want to parse earlier
-                  BuildFlags -> --TODO: prune to build-only flags
-                  IO ()
-rebuildTargets verbosity
-               elaboratedInstallPlan
-               sharedPackageConfig
-               userTargets
-               BuildFlags{buildNumJobs} =
+      localSourcePackages <- mapM (readSourcePackage verbosity) localCabalFiles
 
+      -- Cached phase: configuring the compiler
+      --
+      (compiler, platform, progdb) <-
+        let PackageConfigShared {
+              packageConfigHcFlavor, packageConfigHcPath, packageConfigHcPkg
+            } = projectConfigAllPackages
+        in
+        rerunIfChanged compilerFileMonitor projectRootDir
+          ( flagToMaybe packageConfigHcFlavor
+          , flagToMaybe packageConfigHcPath
+          , flagToMaybe packageConfigHcPkg
+          )
+          --TODO: need to track $PATH changes
+          (configureCompiler verbosity)
 
-    putStrLn $ printPlan elaboratedInstallPlan'
---  mapM_ print [ pkg | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedInstallPlan' ]
+      -- Cached phase: running the solver
+      --
+      let corePackageDbs = [GlobalPackageDB]
+      installPlan <-
+        let ProjectConfigBuildOnly {
+              projectConfigCacheDir
+            } = projectConfigBuildOnly
+        in
+        rerunIfChanged solverFileMonitor projectRootDir
+          (projectConfigSolver, projectConfigCacheDir, localSourcePackages,
+           compiler, platform, configuredPrograms progdb)
+          $ \_ -> do
 
-    residualPlan <- buildTargets
-                      verbosity
-                      numJobs
-                      transport
-                      sharedPackageConfig
-                      elaboratedInstallPlan'
+          let repos = projectConfigRepos (fromFlag projectConfigCacheDir)
+                                         projectConfigSolver
 
-    --TODO: this result plan should be saved, resetting all failed and
-    -- BuildInplaceOnly packages to original Configured state
-    -- so effectively only the installed tarball packages get updated
-    -- could also replace installed ones to be pre-installed
+          installedPkgIndex <- getInstalledPackages verbosity compiler
+                                                    corePackageDbs progdb
+                                                    platform
+          sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    putStrLn $ InstallPlan.showInstallPlan residualPlan
+          liftIO $ do
+            notice verbosity "Resolving dependencies..."
+            solver <- chooseSolver verbosity
+                                   (fromFlag $ projectConfigSolverSolver projectConfigSolver)
+                                   (compilerInfo compiler)
+            foldProgress logMsg die return $
+              planPackages compiler platform solver projectConfigSolver
+                           installedPkgIndex sourcePkgDb
+                           localSourcePackages
+
+      -- Last phase: elaborating the install plan
+      defInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
+                                   (compilerFlavor compiler) False False
+      let storePackageDb     = cabalStorePackageDB (compilerId compiler)
+          storePackageDbs    = [ GlobalPackageDB, storePackageDb ]
+
+      let (elaboratedInstallPlan, sharedPackageConfig) =
+            elaborateInstallPlanForLocalBuild
+              platform compiler progdb
+              corePackageDbs storePackageDbs
+              distDirLayout
+              installPlan
+              localSourcePackages
+              defInstallDirs
+              projectConfigAllPackages
+              projectConfigLocalPackages
+              projectConfigSpecificPackage
+
+      -- Note that because the store is content addressed and the way that we
+      -- use it, we don't need to track changes to the store.
+      --TODO: is this really true? what if packages get deleted? / GC'd?
+      --      relates to the issue of whether rebuildTargets rewrites the
+      --      final install plan or not
+      liftIO $ createPackageDBIfMissing verbosity compiler progdb storePackageDbs
+      storePkgIndex <- liftIO $ Cabal.getPackageDBContents verbosity compiler storePackageDb progdb
+
+--      putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan
+      liftIO $ putStrLn $ printPlan elaboratedInstallPlan
+
+      elaboratedInstallPlan' <- liftIO $
+        reusePackagesFromStore
+          pkgSourceLocation
+          (elaboratedPackageHashConfigInputs sharedPackageConfig)
+          storePkgIndex
+          elaboratedInstallPlan
+
+--      putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan'
+      liftIO $ putStrLn $ printPlan elaboratedInstallPlan'
+
+      return ( elaboratedInstallPlan'
+             , sharedPackageConfig
+             , projectConfigBuildOnly )
   where
-    numJobs = determineNumJobs buildNumJobs
+    logMsg message rest = debugNoWrap verbosity' message >> rest
+    verbosity' = normal --FIXME
 
-------------------------------------------------------------------------------
--- * Misc experimental prototype code
-------------------------------------------------------------------------------
+    installPlanFileMonitor = FileMonitorName (distProjectCacheFile "install-plan")
+    compilerFileMonitor    = FileMonitorName (distProjectCacheFile "compiler")
+    solverFileMonitor      = FileMonitorName (distProjectCacheFile "solver")
 
-configure' :: Verbosity
-          -> GlobalFlags
-          -> ConfigFlags
-          -> ConfigExFlags
-          -> UseSandbox
-          -> [String]
-          -> IO ()
-configure' verbosity
-          globalFlags configFlags _configExFlags useSandbox
-          _extraArgs = do
+findProjectCabalFiles :: ProjectConfig -> Rebuild [FilePath]
+findProjectCabalFiles ProjectConfig{..} = do
+    monitorFiles (map MonitorFileGlob projectConfigPackageGlobs)
+    liftIO $ map (projectConfigRootDir </>) . concat
+         <$> mapM (matchFileGlob projectConfigRootDir) projectConfigPackageGlobs
 
-    print "New multi-pkg configure"
-    localSrcPkgs <- resolveEnvironment
-    print localSrcPkgs
-    let userTargets = map UserTargetLocalDir ("." : localSrcPkgs)
-        --TODO: ^^ do this properly
-    print userTargets
+readSourcePackage :: Verbosity -> FilePath -> Rebuild (PackageSpecifier SourcePackage)
+readSourcePackage verbosity cabalFile = do
+    -- no need to monitorFiles because findProjectCabalFiles did it already
+    pkgdesc <- liftIO $ Cabal.readPackageDescription verbosity cabalFile
+    let srcLocation = LocalUnpackedPackage (takeDirectory cabalFile)
+    return $ SpecificSourcePackage 
+               SourcePackage {
+                 packageInfoId        = packageId pkgdesc,
+                 packageDescription   = pkgdesc,
+                 packageSource        = srcLocation,
+                 packageDescrOverride = Nothing
+               }
 
-    cabalDir   <- defaultCabalDir
-    cacheDir   <- defaultCacheDir
-    let cabalDirs@CabalDirLayout{..} = defaultCabalDirLayout cabalDir
+configureCompiler :: Verbosity
+                  -> (Maybe CompilerFlavor, Maybe FilePath, Maybe FilePath)
+                  -> Rebuild (Compiler, Platform, ProgramConfiguration)
+configureCompiler verbosity 
+                  (compFlavor, hcPath, hcPkg) = do
+    --TODO: need to track $PATH changes
+    liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
 
-    (compiler, platform, progdb) <- configCompilerAuxEx configFlags
+    result@(_, _, progdb) <- liftIO $
+      Cabal.configCompilerEx
+        compFlavor hcPath hcPkg
+        defaultProgramDb verbosity
 
-    let ambientPackageDbs  = [GlobalPackageDB]
-        storePackageDbs    = [GlobalPackageDB,
-                              cabalStorePackageDB (compilerId compiler)]
+    monitorFiles (programsMonitorFiles progdb)
 
-    installedPkgIndex <- getInstalledPackages verbosity compiler
-                                              ambientPackageDbs progdb
-    --TODO: ensure store db exists before loading it
-    storePkgIndex     <- getInstalledPackages verbosity compiler
-                                              storePackageDbs   progdb
-    sourcePkgDb       <- getSourcePackages    verbosity repos
-    transport         <- configureTransport   verbosity preferredTransport
+    return result
 
-    pkgSpecifiers     <- resolveUserTargets verbosity transport
-                           worldFile
-                           (packageIndex sourcePkgDb)
-                           userTargets
+programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
+programsMonitorFiles progdb =   
+    [ monitor
+    | prog    <- configuredPrograms progdb
+    , monitor <- monitorFileSearchPath (programMonitorFiles prog)
+                                       (programPath prog)
+    ]
+  --TODO: also need to react to $PATH changes{
 
-    let solverInputs = (compiler, platform,
---                        installedPkgIndex,
---                        selectNeededSubset sourcePkgDb (Set.fromList (map pkgSpecifierTarget pkgSpecifiers)),
-                        pkgSpecifiers)
-    solverInputsChanged <- checkValueChanged distSolverInputsCache solverInputs
-    --TODO: minimise the solverInputs size to reduce spurious rebuilds?
-    -- if so, has to be cheap since we'd check it each time
-    
-    --TODO: avoid even reading the source or installed indexes if nothing has changed
-    --      so we get to keep the elaborated install plan
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
+                     -> ProgramConfiguration -> Platform
+                     -> Rebuild InstalledPackageIndex
+getInstalledPackages verbosity compiler corePackageDbs progdb platform = do
+    installedPkgIndex <-
+      liftIO $ IndexUtils.getInstalledPackages
+                 verbosity compiler
+                 corePackageDbs progdb
+    monitorFiles . map MonitorFile
+      =<< liftIO (IndexUtils.getInstalledPackagesMonitorFiles
+                    verbosity compiler
+                    corePackageDbs progdb platform)
+    return installedPkgIndex
 
-    installPlan <- case solverInputsChanged of
+getSourcePackages :: Verbosity -> [Repo] -> Rebuild SourcePackageDb
+getSourcePackages verbosity repos = do
+    sourcePkgDb <- liftIO $ IndexUtils.getSourcePackages verbosity repos
+    monitorFiles . map MonitorFile
+                 $ IndexUtils.getSourcePackagesMonitorFiles repos
+    return sourcePkgDb
+
+
+createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
+                         -> PackageDBStack -> IO ()
+createPackageDBIfMissing verbosity compiler progdb packageDbs =
+  case reverse packageDbs of
+    SpecificPackageDB dbPath : _ -> do
+      exists <- liftIO $ Cabal.doesPackageDBExist dbPath
+      unless exists $ do
+        createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
+        Cabal.createPackageDB verbosity compiler progdb dbPath
+    _ -> return ()
+
+
+-------------------------------
+-- Project config
+--
+
+instance Binary ProjectConfig
+instance Binary ProjectConfigSolver
+instance Binary ProjectConfigBuildOnly
+instance Binary PackageConfigShared
+instance Binary PackageConfig
+
+data ProjectConfig
+   = ProjectConfig {
+       projectConfigRootDir      :: FilePath,
+       projectConfigPackageGlobs :: [FilePathGlob],
+
+       projectConfigBuildOnly       :: ProjectConfigBuildOnly,
+       projectConfigSolver          :: ProjectConfigSolver,
+       projectConfigAllPackages     :: PackageConfigShared,
+       projectConfigLocalPackages   :: PackageConfig,
+       projectConfigSpecificPackage :: Map PackageName PackageConfig
+     }
+  deriving (Eq, Show, Generic)
+
+data ProjectConfigBuildOnly
+   = ProjectConfigBuildOnly {
+       projectConfigVerbosity             :: Flag Verbosity,
+       projectConfigDryRun                :: Flag Bool,
+       projectConfigOnlyDeps              :: Flag Bool,
+       projectConfigSummaryFile           :: NubList PathTemplate,
+       projectConfigLogFile               :: Flag PathTemplate,
+       projectConfigBuildReports          :: Flag ReportLevel,
+       projectConfigReportPlanningFailure :: Flag Bool,
+       projectConfigSymlinkBinDir         :: Flag FilePath,
+       projectConfigOneShot               :: Flag Bool,
+       projectConfigNumJobs               :: Flag (Maybe Int),
+       projectConfigOfflineMode           :: Flag Bool,
+       projectConfigKeepTempFiles         :: Flag Bool,
+       projectConfigHttpTransport         :: Flag String,
+       projectConfigCacheDir              :: Flag FilePath,
+       projectConfigLogsDir               :: Flag FilePath,
+       projectConfigWorldFile             :: Flag FilePath
+     }
+  deriving (Eq, Show, Generic)
+
+data ProjectConfigSolver
+   = ProjectConfigSolver {
+       projectConfigSolverConstraints       :: [(UserConstraint, ConstraintSource)],
+       projectConfigSolverPreferences       :: [Dependency],
+       projectConfigConfigurationsFlags     :: FlagAssignment,
+       projectConfigSolverCabalVersion      :: Flag Version,
+       projectConfigSolverSolver            :: Flag PreSolver,
+       projectConfigSolverAllowNewer        :: Flag AllowNewer,
+       projectConfigRemoteRepos             :: NubList RemoteRepo,     -- ^ Available Hackage servers.
+       projectConfigLocalRepos              :: NubList FilePath,
+
+       projectConfigSolverMaxBackjumps      :: Flag Int,
+       projectConfigSolverReorderGoals      :: Flag Bool,
+       projectConfigSolverStrongFlags       :: Flag Bool,
+
+       -- Things that only make sense for manual mode, not --local mode
+       -- too much control!
+       projectConfigSolverIndependentGoals  :: Flag Bool,
+       projectConfigSolverShadowPkgs        :: Flag Bool,
+       projectConfigSolverReinstall         :: Flag Bool,
+       projectConfigSolverAvoidReinstalls   :: Flag Bool,
+       projectConfigSolverOverrideReinstall :: Flag Bool,
+       projectConfigSolverUpgradeDeps       :: Flag Bool
+     }
+  deriving (Eq, Show, Generic)
+
+
+data PackageConfigShared
+   = PackageConfigShared {
+       packageConfigProgramPaths     :: [(String, FilePath)],
+       packageConfigProgramArgs      :: [(String, [String])],
+       packageConfigProgramPathExtra :: NubList FilePath,
+       packageConfigHcFlavor         :: Flag CompilerFlavor,
+       packageConfigHcPath           :: Flag FilePath,
+       packageConfigHcPkg            :: Flag FilePath,
+       packageConfigVanillaLib       :: Flag Bool,
+       packageConfigProfLib          :: Flag Bool,
+       packageConfigSharedLib        :: Flag Bool,
+       packageConfigHaddockIndex     :: Flag PathTemplate,
+
+       -- Things that only make sense for manual mode, not --local mode
+       -- too much control!
+       packageConfigUserInstall      :: Flag Bool,
+       packageConfigInstallDirs      :: InstallDirs (Flag PathTemplate),
+       packageConfigPackageDBs       :: [Maybe PackageDB],
+       packageConfigRelocatable      :: Flag Bool,
+       packageConfigRootCmd          :: Flag String
+     }
+  deriving (Eq, Show, Generic)
+
+
+data PackageConfig
+   = PackageConfig {
+       packageConfigDynExe              :: Flag Bool,
+       packageConfigProfExe             :: Flag Bool,
+       packageConfigProf                :: Flag Bool,
+       packageConfigProfDetail          :: Flag ProfDetailLevel,
+       packageConfigProfLibDetail       :: Flag ProfDetailLevel,
+       packageConfigConfigureArgs       :: [String],
+       packageConfigOptimization        :: Flag OptimisationLevel,
+       packageConfigProgPrefix          :: Flag PathTemplate,
+       packageConfigProgSuffix          :: Flag PathTemplate,
+       packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraIncludeDirs    :: [FilePath],
+       packageConfigGHCiLib             :: Flag Bool,
+       packageConfigSplitObjs           :: Flag Bool,
+       packageConfigStripExes           :: Flag Bool,
+       packageConfigStripLibs           :: Flag Bool,
+       packageConfigTests               :: Flag Bool,
+       packageConfigBenchmarks          :: Flag Bool,
+       packageConfigCoverage            :: Flag Bool,
+       packageConfigLibCoverage         :: Flag Bool,
+       packageConfigDebugInfo           :: Flag DebugInfoLevel,
+       packageConfigRunTests            :: Flag Bool,
+       packageConfigDocumentation       :: Flag Bool,
+       packageConfigHaddockHoogle       :: Flag Bool,
+       packageConfigHaddockHtml         :: Flag Bool,
+       packageConfigHaddockHtmlLocation :: Flag String,
+       packageConfigHaddockExecutables  :: Flag Bool,
+       packageConfigHaddockTestSuites   :: Flag Bool,
+       packageConfigHaddockBenchmarks   :: Flag Bool,
+       packageConfigHaddockInternal     :: Flag Bool,
+       packageConfigHaddockCss          :: Flag FilePath,
+       packageConfigHaddockHscolour     :: Flag Bool,
+       packageConfigHaddockHscolourCss  :: Flag FilePath,
+       packageConfigHaddockContents     :: Flag PathTemplate
+     }
+  deriving (Eq, Show, Generic)
+
+
+-- | Reads an explicit @cabal.project@ file in the given project root dir,
+-- or returns the default project config for an implicitly defined project.
+--
+readProjectConfig :: FilePath
+                  -> ProjectConfigSolver
+                  -> PackageConfigShared
+                  -> PackageConfig
+                  -> ProjectConfigBuildOnly
+                  -> Rebuild ProjectConfig
+readProjectConfig projectRootDir
+                  cliConfigSolver cliConfigAllPackages
+                  cliConfigLocalPackages cliConfigBuildOnly = do
+    let projectFile = projectRootDir</> "cabal.project"
+    usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
+    if usesExplicitProjectRoot
+      then do monitorFiles [MonitorFileHashed projectFile]
+              parseProjectConfig <$> liftIO (readFile projectFile)
+
+      else do monitorFiles [MonitorNonExistantFile projectFile]
+              return defaultImplicitProjectConfig
+  where
+    --TODO: this is just a placeholder, need to actually read these settings
+    -- from the project file and combine them with the user-wide config and cli
+    parseProjectConfig content =
+      ProjectConfig
+        projectRootDir
+        (catMaybes (map simpleParse (lines content)))
+        cliConfigBuildOnly
+        cliConfigSolver
+        cliConfigAllPackages
+        cliConfigLocalPackages                     
+        Map.empty
+
+    defaultImplicitProjectConfig :: ProjectConfig
+    defaultImplicitProjectConfig =
+      ProjectConfig
+        projectRootDir
+        [ GlobFile (Glob [WildCard, Literal ".cabal"])
+        , GlobDir  (Glob [WildCard]) $
+          GlobFile (Glob [WildCard, Literal ".cabal"])
+        ]
+        cliConfigBuildOnly
+        cliConfigSolver
+        cliConfigAllPackages
+        cliConfigLocalPackages                     
+        Map.empty
+
+convertCommandLineFlags :: GlobalFlags
+                        -> ConfigFlags  -> ConfigExFlags
+                        -> InstallFlags -> Cabal.HaddockFlags
+                        -> ( ProjectConfigSolver
+                           , PackageConfigShared
+                           , PackageConfig
+                           , ProjectConfigBuildOnly
+                           )
+convertCommandLineFlags globalFlags configFlags configExFlags
+                        installFlags haddockFlags =
+    ( ProjectConfigSolver{..}
+    , PackageConfigShared{..}
+    , PackageConfig{..}
+    , ProjectConfigBuildOnly{..}
+    )
+  where
+    GlobalFlags {
+      globalVersion           = _,
+      globalNumericVersion    = _,
+      globalConfigFile        = _, -- TODO
+      globalSandboxConfigFile = _, -- ??
+      globalRemoteRepos       = projectConfigRemoteRepos,
+      globalLocalRepos        = projectConfigLocalRepos,
+      globalCacheDir          = projectConfigCacheDir,
+      globalLogsDir           = projectConfigLogsDir,
+      globalWorldFile         = projectConfigWorldFile,
+      globalRequireSandbox    = _,
+      globalIgnoreSandbox     = _,
+      globalHttpTransport     = projectConfigHttpTransport
+    } = globalFlags
+
+    ConfigFlags {
+      configPrograms            = _,
+      configProgramPaths        = packageConfigProgramPaths,
+      configProgramArgs         = packageConfigProgramArgs,
+      configProgramPathExtra    = packageConfigProgramPathExtra,
+      configHcFlavor            = packageConfigHcFlavor,
+      configHcPath              = packageConfigHcPath,
+      configHcPkg               = packageConfigHcPkg,
+      configVanillaLib          = packageConfigVanillaLib,
+      configProfLib             = packageConfigProfLib,
+      configSharedLib           = packageConfigSharedLib,
+      configDynExe              = packageConfigDynExe,
+      configProfExe             = packageConfigProfExe,
+      configProf                = packageConfigProf,
+      configProfDetail          = packageConfigProfDetail,
+      configProfLibDetail       = packageConfigProfLibDetail,
+      configConfigureArgs       = packageConfigConfigureArgs,
+      configOptimization        = packageConfigOptimization,
+      configProgPrefix          = packageConfigProgPrefix,
+      configProgSuffix          = packageConfigProgSuffix,
+      configInstallDirs         = packageConfigInstallDirs,
+      configScratchDir          = _,
+      configDistPref            = _,
+      configVerbosity           = projectConfigVerbosity,
+      configUserInstall         = packageConfigUserInstall,
+      configPackageDBs          = packageConfigPackageDBs,
+      configGHCiLib             = packageConfigGHCiLib,
+      configSplitObjs           = packageConfigSplitObjs,
+      configStripExes           = packageConfigStripExes,
+      configStripLibs           = packageConfigStripLibs,
+      configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
+      configConstraints         = _, -- instead use configExConstraints
+      configDependencies        = _, -- Setup.hs specific
+      configInstantiateWith     = _, -- Setup.hs specific
+      configConfigurationsFlags = projectConfigConfigurationsFlags,
+      configTests               = packageConfigTests,
+      configBenchmarks          = packageConfigBenchmarks,
+      configCoverage            = packageConfigCoverage,
+      configLibCoverage         = packageConfigLibCoverage,
+      configExactConfiguration  = _,
+      configFlagError           = _,
+      configRelocatable         = packageConfigRelocatable,
+      configDebugInfo           = packageConfigDebugInfo
+    } = configFlags
+
+    ConfigExFlags {
+      configCabalVersion        = projectConfigSolverCabalVersion,
+      configExConstraints       = projectConfigSolverConstraints,
+      configPreferences         = projectConfigSolverPreferences,
+      configSolver              = projectConfigSolverSolver,
+      configAllowNewer          = projectConfigSolverAllowNewer
+    } = configExFlags
+
+    InstallFlags {
+      installDocumentation      = packageConfigDocumentation,
+      installHaddockIndex       = packageConfigHaddockIndex,
+      installDryRun             = projectConfigDryRun,
+      installReinstall          = projectConfigSolverReinstall,
+      installAvoidReinstalls    = projectConfigSolverAvoidReinstalls,
+      installOverrideReinstall  = projectConfigSolverOverrideReinstall,
+      installMaxBackjumps       = projectConfigSolverMaxBackjumps,
+      installUpgradeDeps        = projectConfigSolverUpgradeDeps,
+      installReorderGoals       = projectConfigSolverReorderGoals,
+      installIndependentGoals   = projectConfigSolverIndependentGoals,
+      installShadowPkgs         = projectConfigSolverShadowPkgs,
+      installStrongFlags        = projectConfigSolverStrongFlags,
+      installOnly               = _,
+      installOnlyDeps           = projectConfigOnlyDeps,
+      installRootCmd            = packageConfigRootCmd,
+      installSummaryFile        = projectConfigSummaryFile,
+      installLogFile            = projectConfigLogFile,
+      installBuildReports       = projectConfigBuildReports,
+      installReportPlanningFailure = projectConfigReportPlanningFailure,
+      installSymlinkBinDir      = projectConfigSymlinkBinDir,
+      installOneShot            = projectConfigOneShot,
+      installNumJobs            = projectConfigNumJobs,
+      installRunTests           = packageConfigRunTests,
+      installOfflineMode        = projectConfigOfflineMode
+    } = installFlags
+
+    HaddockFlags {
+      haddockProgramPaths       = _,
+      haddockProgramArgs        = _,
+      haddockHoogle             = packageConfigHaddockHoogle,
+      haddockHtml               = packageConfigHaddockHtml,
+      haddockHtmlLocation       = packageConfigHaddockHtmlLocation,
+      haddockExecutables        = packageConfigHaddockExecutables,
+      haddockTestSuites         = packageConfigHaddockTestSuites,
+      haddockBenchmarks         = packageConfigHaddockBenchmarks,
+      haddockInternal           = packageConfigHaddockInternal,
+      haddockCss                = packageConfigHaddockCss,
+      haddockHscolour           = packageConfigHaddockHscolour,
+      haddockHscolourCss        = packageConfigHaddockHscolourCss,
+      haddockContents           = packageConfigHaddockContents,
+      haddockDistPref           = _,
+      haddockKeepTempFiles      = projectConfigKeepTempFiles,
+      haddockVerbosity          = _
+    } = haddockFlags
+
+projectConfigRepos :: FilePath -> ProjectConfigSolver -> [Repo]
+projectConfigRepos downloadCacheRootDir
+                   ProjectConfigSolver { projectConfigRemoteRepos
+                                       , projectConfigLocalRepos } =
+    remoteRepos ++ localRepos
+  where
+    remoteRepos =
+      [ Repo (Left remote) cacheDir
+      | remote <- fromNubList projectConfigRemoteRepos
+      , let cacheDir = downloadCacheRootDir
+                   </> remoteRepoName remote ]
+    localRepos =
+      [ Repo (Right LocalRepo) local
+      | local <- fromNubList projectConfigLocalRepos ]
+
+
+-------------------------------
+-- Simple rebuild abstraction
+--
+
+newtype Rebuild a = Rebuild (StateT [MonitorFilePath] IO a)
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+monitorFiles :: [MonitorFilePath] -> Rebuild ()
+monitorFiles filespecs = Rebuild (State.modify (filespecs++))
+
+unRebuild :: Rebuild a -> IO (a, [MonitorFilePath])
+unRebuild (Rebuild action) = runStateT action []
+
+runRebuild :: Rebuild a -> IO a
+runRebuild (Rebuild action) = evalStateT action []
+
+--TODO: if we make this a Rebuild then we also have to cache and return the
+--      monitor files
+rerunIfChanged :: (Eq a, Binary a, Binary b)
+               => FileMonitorName a b
+               -> FilePath
+               -> a
+               -> (a -> Rebuild b)
+               -> Rebuild b
+rerunIfChanged cacheFile monitorFilesRootDir key action = do
+    changed <- liftIO $ checkFileMonitorChanged cacheFile monitorFilesRootDir key
+    case changed of
       Changed -> do
-        notice verbosity "Resolving dependencies..."
-        planResult <- foldProgress logMsg (return . Left) (return . Right)
-                    $ planPackages compiler platform
-                                   installedPkgIndex sourcePkgDb
-                                   pkgSpecifiers
-        case planResult of
-          Left message      -> die message
-          Right installPlan -> do
-            putStrLn "updating solver inputs cache"
-            updateValueChangeCache distSolverInputsCache
-                                   solverInputs installPlan
-            putStrLn "done"
-            return installPlan
+        (result, files) <- liftIO $ unRebuild $ action key
+--        liftIO $ putStrLn $ takeFileName cacheFile ++ " changed"
+        liftIO $ updateFileMonitor cacheFile monitorFilesRootDir
+                                   files key result
+        monitorFiles files
+        return result
 
-      Unchanged installPlan -> return installPlan
-
-    return ()
-
-  where
-    repos              = globalRepos globalFlags
-    preferredTransport = Cabal.flagToMaybe (globalHttpTransport globalFlags)
-    worldFile          = Cabal.fromFlag (globalWorldFile globalFlags)
-
-    resolveEnvironment =
-      case useSandbox of
-        NoSandbox -> return []
-        UseSandbox _sandboxDir -> do
-          indexFile     <- tryGetIndexFilePath SavedConfig { savedGlobalFlags = globalFlags }
-          Index.listBuildTreeRefs verbosity
-                                  Index.DontListIgnored
-                                  Index.LinksAndSnapshots
-                                  indexFile
-
-    logMsg message rest = debugNoWrap verbosity message >> rest
-
-
-build' :: Verbosity
-      -> GlobalFlags
-      -> ConfigFlags
-      -> ConfigExFlags
-      -> UseSandbox
-      -> BuildFlags
-      -> BuildExFlags
-      -> [String]
-      -> IO ()
-build' verbosity
-      globalFlags
-      configFlags _configExFlags useSandbox
-      _buildFlags _buildExFlags
-      _extraArgs = do
-
-    print "New multi-pkg build"
-
-    localSrcPkgs <- resolveEnvironment
-    print localSrcPkgs
-    let userTargets = map UserTargetLocalDir ("." : localSrcPkgs)
-        --TODO: ^^ do this properly
-    print userTargets
-
-    cabalDir   <- defaultCabalDir
-    cacheDir   <- defaultCacheDir
-    let cabalDirs@CabalDirLayout{..} = defaultCabalDirLayout cabalDir
-
-    (compiler, platform, compilerProgs) <- configCompilerAuxEx configFlags
-
-    let corePackageDbs  = [GlobalPackageDB]
-        storePackageDbs = [GlobalPackageDB,
-                           cabalStorePackageDB (compilerId compiler)]
-
-    sourcePkgDbFingerprint <- getSourcePackagesFingerprint repos
-    sourcePkgDbChanged :: Changed ()     <- checkValueChanged "sourcePkgDbFingerprint.cache" sourcePkgDbFingerprint
-    print sourcePkgDbFingerprint
-    print sourcePkgDbChanged
-
-    installedPkgIndex <- getInstalledPackages verbosity compiler
-                                              corePackageDbs compilerProgs
-
-    sourcePkgDb       <- getSourcePackages    verbosity repos
-    transport         <- configureTransport   verbosity preferredTransport
-
-    pkgSpecifiers     <- resolveUserTargets verbosity transport
-                           worldFile
-                           (packageIndex sourcePkgDb)
-                           userTargets
-
-    let solverInputs = (compiler, platform,
---                        installedPkgIndex,
---                        selectNeededSubset sourcePkgDb (Set.fromList (map pkgSpecifierTarget pkgSpecifiers)),
-                        pkgSpecifiers)
-    solverInputsChanged <- checkValueChanged distSolverInputsCache solverInputs
-    --TODO: minimise the solverInputs size to reduce spurious rebuilds?
-    -- if so, has to be cheap since we'd check it each time
-    
-    --TODO: avoid even reading the source or installed indexes if nothing has changed
-    --      so we get to keep the elaborated install plan
-
-    installPlan <- case solverInputsChanged of
-      Changed -> do
-        notice verbosity "Resolving dependencies..."
-        planResult <- foldProgress logMsg (return . Left) (return . Right)
-                    $ planPackages compiler platform
-                                   installedPkgIndex sourcePkgDb
-                                   pkgSpecifiers
-        case planResult of
-          Left message      -> die message
-          Right installPlan -> do
-            putStrLn "updating solver inputs cache"
-            updateValueChangeCache distSolverInputsCache
-                                   solverInputs installPlan
-            putStrLn "done"
-            return installPlan
-
-      Unchanged installPlan -> return installPlan
-
-    --TODO: ensure store db exists before loading it
-    storePkgIndex     <- getInstalledPackages verbosity compiler
-                                              storePackageDbs compilerProgs
-
-    return ()
-
-  where
-    repos              = globalRepos globalFlags
-    preferredTransport = Cabal.flagToMaybe (globalHttpTransport globalFlags)
-    worldFile          = Cabal.fromFlag (globalWorldFile globalFlags)
-
-    resolveEnvironment =
-      case useSandbox of
-        NoSandbox -> return []
-        UseSandbox _sandboxDir -> do
-          indexFile     <- tryGetIndexFilePath SavedConfig { savedGlobalFlags = globalFlags }
-          Index.listBuildTreeRefs verbosity
-                                  Index.DontListIgnored
-                                  Index.LinksAndSnapshots
-                                  indexFile
-
-    logMsg message rest = debugNoWrap verbosity message >> rest
-
-
--- | We don't need the entire index (which is rather large and costly if we
--- force it by examining the whole thing). So trace out the maximul subset of
--- each index that we could possibly ever need. Do this by flattening packages
--- and looking at the names of all possible dependencies.
---
-selectNeededSubset :: SourcePackageDb
-                   -> Set PackageName
-                   -> SourcePackageDb
-selectNeededSubset (SourcePackageDb sourcePkgIndex prefs) remaining0 =
-    SourcePackageDb (select sourcePkgIndex remaining0) prefs
-  where
-    select :: Client.PackageIndex.PackageIndex SourcePackage
-           -> Set PackageName
-           -> Client.PackageIndex.PackageIndex SourcePackage
-    select sourcePkgIndex' remaining
-      | Set.null remaining = sourcePkgIndex'
-      | otherwise          = select sourcePkgIndex'' remaining''
-      where
-        (next, remaining') = Set.deleteFindMin remaining
-        sourcePkgIndex''   = foldl' (flip Client.PackageIndex.insert)
-                                    sourcePkgIndex' moreSource
-        remaining''        = foldl' (flip          Set.insert)
-                                    remaining' moreRemaining
-        moreSource    = Client.PackageIndex.lookupPackageName sourcePkgIndex next
-        moreRemaining = -- we filter out packages already included in the indexes
-                        -- this avoids an infinite loop if a package depends on itself
-                        -- like base-3.0.3.0 with base-4.0.0.0
-          [ name
-          | SourcePackage _ pkg _ _ <- moreSource
-          , name <- allDependencies pkg
-          , null (Client.PackageIndex.lookupPackageName sourcePkgIndex' name)
-          ]
-
-    allDependencies pkg =
-      [ pkgname
-      | Dependency pkgname _ <-
-            maybe [] treeConstraints (Cabal.condLibrary pkg)
-         ++ concatMap (treeConstraints . snd) (Cabal.condExecutables pkg)
-         ++ concatMap (treeConstraints . snd) (Cabal.condTestSuites pkg)
-         ++ concatMap (treeConstraints . snd) (Cabal.condBenchmarks pkg)
-      ]
-    
-    treeConstraints :: Cabal.CondTree v [c] a -> [c]
-    treeConstraints node =
-        Cabal.condTreeConstraints node
-     ++ [ c | (_, t, _)      <- Cabal.condTreeComponents node
-            , c <- treeConstraints t ]
-     ++ [ c | (_, _, Just t) <- Cabal.condTreeComponents node
-            , c <- treeConstraints t ]
-
-
-
--- Outline for build:
---
--- Establish what the environment is:
---   Read all the config files and merge them.
---     ~/.cabal/config, cabal.config and cabal.local.config
--- Separate the environment into those bits that are used as input to the
---   solver, and the bits that are used only in the build without affecting
---   the solver.
--- Resolve if necessary
---   Prune (and normalise) the input to the solver so that we check the minimum
---   amount of the environment for changes, e.g. take a dep closure of the
---   installed and source packages so that installing other global packages
---   doesn't trigger solving again. We only want to re-solve when the solver
---   could possibly have picked a different solution.
--- make 
-
-
-testRepo :: FilePath -> Repo
-testRepo cacheDir = Repo (Left defaultRemoteRepo)
-                         (cacheDir </> remoteRepoName defaultRemoteRepo)
-
-
--- | Test the new building code
---
-testBuild :: [UserTarget] -> IO ()
-testBuild userTargets = do
-
-    cacheDir   <- defaultCacheDir
-
-    let ambientPackageDbs = [GlobalPackageDB]
-        storePackageDbs   = [GlobalPackageDB,
-                             SpecificPackageDB "/home/duncan/.cabal/store/package.db/ghc-7.10.1"]
-                            --TODO: use per-compiler-id package db within the store
-        repos      = [testRepo cacheDir]
-        progdb0    = userSpecifyPath "ghc" "ghc-7.10.1" $
-                     defaultProgramConfiguration
-
-
-    (compiler, platform, progdb) <- configCompilerEx (Just GHC) Nothing Nothing
-                                                     progdb0 verbosity
-
-    installedPkgIndex <- getInstalledPackages verbosity compiler ambientPackageDbs progdb
-    --TODO: ensure store db exists before loading it
-    storePkgIndex     <- getInstalledPackages verbosity compiler storePackageDbs   progdb
-    sourcePkgDb       <- getSourcePackages    verbosity repos
-
-    transport         <- configureTransport verbosity Nothing
-
-    pkgSpecifiers     <- resolveUserTargets verbosity transport
-                           "no-world-file"
-                           (packageIndex sourcePkgDb)
-                           userTargets
-
-    notice verbosity "Resolving dependencies..."
-    planResult     <- foldProgress logMsg (return . Left) (return . Right)
-                    $ planPackages compiler platform
-                                   installedPkgIndex sourcePkgDb
-                                   pkgSpecifiers
-
-    case planResult of
-      Left message      -> die message
-      Right installPlan -> do
-
-        putStrLn $ InstallPlan.showInstallPlan installPlan
-
-        -- Now we do some post-processing on the install plan
-        -- Firstly we set which packages are going to be local builds.
-        -- Then the important nix part: we take source packages that the
-        -- solver has picked and see if we can replace any of them with 
-
-        -- TODO: once we have the security system inplace we can get SHA256
-        -- hashes from the repo. Use these when available so that we can avoid
-        -- computing them all.
-        cwd <- getCurrentDirectory
-
-        let (elaboratedInstallPlan, sharedPackageConfig) =
-              elaborateInstallPlanForLocalBuild
-                platform compiler progdb
-                ambientPackageDbs storePackageDbs
-                cwd
-                installPlan
-                pkgSpecifiers
-
-        putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan
-        putStrLn $ printPlan elaboratedInstallPlan
-
-        elaboratedInstallPlan' <-
-          reusePackagesFromStore
-            pkgSourceLocation
-            (elaboratedPackageHashConfigInputs sharedPackageConfig)
-            storePkgIndex
-            elaboratedInstallPlan
-
-        putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan'
-        putStrLn $ printPlan elaboratedInstallPlan'
---        mapM_ print [ pkg | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedInstallPlan' ]
-
-        residualPlan <- buildTargets
-                          verbosity
-                          1 -- build jobs
-                          transport
-                          sharedPackageConfig
-                          elaboratedInstallPlan'
-
-        --TODO: this result plan can be saved, resetting all failed and
-        -- BuildInplaceOnly packages to original Configured state
-        -- so effectively only the installed tarball packages get updated
-        -- could also replace installed ones to be pre-installed
-
-        putStrLn $ InstallPlan.showInstallPlan residualPlan
-
-  where
-    verbosity = normal --verbose
-    logMsg message rest = debugNoWrap verbosity message >> rest
-
-
-
-
-
-
---debug:
-
---eqPlanPackage (InstallPlan.PreExisting x) (InstallPlan.PreExisting y) = packageId x == packageId y && depends x == depends y
---eqPlanPackage (InstallPlan.Configured  x) (InstallPlan.Configured  y) = x == y
+      Unchanged (result, files) -> do
+        liftIO $ putStrLn $ show cacheFile ++ " unchanged"
+        monitorFiles files
+        return result
 
 
 -- ------------------------------------------------------------
@@ -864,50 +1136,112 @@ testBuild userTargets = do
 
 planPackages :: Compiler
              -> Platform
---             -> ConfigFlags
---             -> ConfigExFlags
---             -> InstallFlags
+             -> Solver -> ProjectConfigSolver
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform
-             --configFlags configExFlags installFlags
+planPackages comp platform solver solverconfig
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
     resolveDependencies
       platform (compilerInfo comp)
-      Modular
+      solver
       resolverParams
 
   where
 
     resolverParams =
 
-        setMaxBackjumps Nothing
+        setMaxBackjumps (if maxBackjumps < 0 then Nothing
+                                             else Just maxBackjumps)
 
-      . setIndependentGoals False
+      . setIndependentGoals independentGoals
 
-      . setReorderGoals False
+      . setReorderGoals reorderGoals
 
-      . setAvoidReinstalls False
+      . setAvoidReinstalls avoidReinstalls --TODO: should only be configurable for custom installs
 
-      . setShadowPkgs False -- don't shadow for installing into user store
+      . setShadowPkgs shadowPkgs --TODO: should only be configurable for custom installs
 
-      . setStrongFlags False
+      . setStrongFlags strongFlags
 
-      . setPreferenceDefault (if True then PreferAllLatest
-                                      else PreferLatestForSelected)
+      . setPreferenceDefault (if upgradeDeps then PreferAllLatest
+                                             else PreferLatestForSelected)
                              --TODO: decide if we need to prefer installed for global packages?
 
-      . removeUpperBounds AllowNewerNone
+      . removeUpperBounds allowNewer
 
-      . addPreferences []
+      . addPreferences
+          -- preferences from the config file or command line
+          [ PackageVersionPreference name ver
+          | Dependency name ver <- projectConfigSolverPreferences ]
 
-      . reinstallTargets  --TODO: do we want this? or just hide all installed packages in the store from the solver
+      . addConstraints
+          -- version constraints from the config file or command line
+            [ LabeledPackageConstraint (userToPackageConstraint pc) src
+            | (pc, src) <- projectConfigSolverConstraints ]
+
+      . addConstraints
+          [ let pc = PackageConstraintStanzas
+                     (pkgSpecifierTarget pkgSpecifier) stanzas
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+          | pkgSpecifier <- pkgSpecifiers ]
+
+      . addConstraints
+          --FIXME: this just applies all flags to all targets which
+          -- is silly. We should check if the flags are appropriate
+          [ let pc = PackageConstraintFlags
+                     (pkgSpecifierTarget pkgSpecifier) flags
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+          | let flags = projectConfigConfigurationsFlags
+          , not (null flags)
+          , pkgSpecifier <- pkgSpecifiers ]
+
+      . reinstallTargets  --TODO: do we want this? we already hide all installed packages in the store from the solver
 
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
+
+    stanzas = [TestStanzas, BenchStanzas]
+    --TODO: while for the local mode we want to run the solver with the tests
+    -- and benchmarks turned on by default (so the solution is stable when we
+    -- actually enable/disable tests), but really we want to have a solver
+    -- mode where it tries to enable these but if it can't work then to turn
+    -- them off.
+{-
+      concat
+        [ if testsEnabled then [TestStanzas] else []
+        , if benchmarksEnabled then [BenchStanzas] else []
+        ]
+    testsEnabled = fromFlagOrDefault False $ configTests configFlags
+    benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
+-}
+--    reinstall        = fromFlag projectConfigSolverReinstall
+    reorderGoals     = fromFlag projectConfigSolverReorderGoals
+    independentGoals = fromFlag projectConfigSolverIndependentGoals
+    avoidReinstalls  = fromFlag projectConfigSolverAvoidReinstalls
+    shadowPkgs       = fromFlag projectConfigSolverShadowPkgs
+    strongFlags      = fromFlag projectConfigSolverStrongFlags
+    maxBackjumps     = fromFlag projectConfigSolverMaxBackjumps
+    upgradeDeps      = fromFlag projectConfigSolverUpgradeDeps
+    allowNewer       = fromFlag projectConfigSolverAllowNewer
+
+    ProjectConfigSolver{
+      projectConfigSolverConstraints,
+      projectConfigSolverPreferences,
+      projectConfigConfigurationsFlags,
+
+--      projectConfigSolverReinstall,  --TODO: check not configurable for local mode?
+      projectConfigSolverReorderGoals,
+      projectConfigSolverIndependentGoals,
+      projectConfigSolverAvoidReinstalls,
+      projectConfigSolverShadowPkgs,
+      projectConfigSolverStrongFlags,
+      projectConfigSolverMaxBackjumps,
+      projectConfigSolverUpgradeDeps,
+      projectConfigSolverAllowNewer
+    } = solverconfig
 
 ------------------------------------------------------------------------------
 -- * Install plan post-processing
@@ -942,22 +1276,30 @@ planPackages comp platform
 elaborateInstallPlanForLocalBuild
   :: Platform -> Compiler -> ProgramDb
   -> PackageDBStack -> PackageDBStack
-  -> FilePath
+  -> DistDirLayout
   -> GenericInstallPlan InstalledPackageInfo
                         ConfiguredPackage
                         _iresult _ifailure
   -> [PackageSpecifier SourcePackage]
+  -> InstallDirs.InstallDirTemplates
+  -> PackageConfigShared
+  -> PackageConfig
+  -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
 elaborateInstallPlanForLocalBuild platform compiler progdb
                                   ambientPackageDbs storePackageDbs
                                   -- TODO: ^^^ these args could come as flag
                                   -- sets or other config file input. For now
                                   -- just individual args
-                                  cwd
-                                  solverPlan pkgSpecifiers =
-    (installPlan, sharedPackageConfig)
+                                  DistDirLayout{..}
+                                  solverPlan pkgSpecifiers
+                                  defInstallDirs
+                                  sharedPackageConfig
+                                  localPackagesConfig
+                                  perPackageConfig =
+    (installPlan, elaboratedSharedConfig)
   where
-    sharedPackageConfig =
+    elaboratedSharedConfig =
       ElaboratedSharedConfig {
         pkgConfigPlatform         = platform,
         pkgConfigCompiler         = compiler,
@@ -989,32 +1331,106 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
       pkg@(ConfiguredPackage (SourcePackage pkgid desc srcloc descOverride)
                              flags stanzas deps) =
 
-      ElaboratedConfiguredPackage {
-        pkgDescription      = desc,
-        pkgSrcId            = pkgid,
-        pkgFlagAssignment   = flags,
-        pkgEnabledStanzas   = stanzas,
-        pkgDependencies     = fmap (map confInstId) deps,
-        pkgSourceLocation = srcloc,
+        ElaboratedConfiguredPackage {..}
+      where
+        pkgSrcId            = pkgid
+        pkgDescription      = desc
+        pkgFlagAssignment   = flags
+        pkgEnabledStanzas   = stanzas
+        pkgTestsuitesEnable = TestStanzas  `elem` stanzas --TODO: only actually enable if solver allows it and we want it
+        pkgBenchmarksEnable = BenchStanzas `elem` stanzas --TODO: only actually enable if solver allows it and we want it
+        pkgDependencies     = fmap (map confInstId) deps
+        pkgSourceLocation   = srcloc
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
-                                then BuildInplaceOnly else BuildAndInstall,
-        pkgSetupPackageDBStack    = ambientPackageDbs,
+                                then BuildInplaceOnly else BuildAndInstall
+        pkgSetupPackageDBStack    = ambientPackageDbs
                                     --TODO: ^^ this should be conditional on
                                     -- whether the package is using an explicit
                                     -- custom setup stanza for specific deps.
                                     -- If so, then it must use the storeDb.
-        pkgBuildPackageDBStack    = buildAndRegisterDbs,
-        pkgRegisterPackageDBStack = buildAndRegisterDbs,
-        pkgRequiresRegistration   = isJust (Cabal.condLibrary desc),
+        pkgBuildPackageDBStack    = buildAndRegisterDbs
+        pkgRegisterPackageDBStack = buildAndRegisterDbs
+        pkgRequiresRegistration   = isJust (Cabal.condLibrary desc)
+        pkgHasExplicitSetupDeps   = isJust (Cabal.setupBuildInfo (Cabal.packageDescription desc))
         pkgDescriptionOverride    = descOverride
-      }
-      where
+
+        pkgVanillaLib    = sharedOptionFlag True  packageConfigVanillaLib
+        pkgSharedLib     = sharedOptionFlag False packageConfigSharedLib
+        pkgDynExe        = perPkgOptionFlag False packageConfigDynExe
+        pkgGHCiLib       = perPkgOptionFlag False packageConfigGHCiLib --TODO: needs to default to enabled on windows still
+
+        pkgProfLib       = sharedOptionFlag False packageConfigProfLib
+        pkgProfExe       = perPkgOptionFlag False packageConfigProfExe
+
+        (pkgProfExeDetail,
+         pkgProfLibDetail) = perPkgOptionLibExeFlag ProfDetailDefault
+                               packageConfigProfDetail
+                               packageConfigProfLibDetail
+        (pkgLibCoverage,
+         pkgExeCoverage)   = perPkgOptionLibExeFlag False
+                               packageConfigCoverage
+                               packageConfigLibCoverage
+
+        pkgOptimization  = perPkgOptionFlag NormalOptimisation packageConfigOptimization
+        pkgSplitObjs     = perPkgOptionFlag False packageConfigSplitObjs
+        pkgStripLibs     = perPkgOptionFlag False packageConfigStripLibs
+        pkgStripExes     = perPkgOptionFlag False packageConfigStripExes
+        pkgDebugInfo     = perPkgOptionFlag NoDebugInfo packageConfigDebugInfo
+
+        pkgConfigureScriptArgs = perPkgOptionList packageConfigConfigureArgs
+        pkgExtraLibDirs        = perPkgOptionList packageConfigExtraLibDirs
+        pkgExtraIncludeDirs    = perPkgOptionList packageConfigExtraIncludeDirs
+        pkgProgPrefix          = perPkgOptionMaybe packageConfigProgPrefix
+        pkgProgSuffix          = perPkgOptionMaybe packageConfigProgSuffix
+
+        -- Note: the prefix here is not yet valid, has to be overridden per-pkg.
+        -- This is because we've not yet calculated the installed package id
+        pkgInstallDirs =
+            InstallDirs.substituteInstallDirTemplates env defInstallDirs
+          where
+            env = InstallDirs.initialPathTemplateEnv
+                    pkgid
+                    (LibraryName (display pkgid))
+                    (compilerInfo compiler)
+                    platform
+
+
+        pkgname = packageName pkgid
+
+        sharedOptionFlag  :: a -> (PackageConfigShared -> Flag a) -> a
+        perPkgOptionFlag  :: a -> (PackageConfig       -> Flag a) -> a
+        perPkgOptionMaybe ::      (PackageConfig       -> Flag a) -> Maybe a
+        perPkgOptionList  ::      (PackageConfig       -> [a])    -> [a]
+
+        sharedOptionFlag def f = fromFlagOrDefault def shared
+          where
+            shared = f sharedPackageConfig
+
+        perPkgOptionFlag def f = fromFlagOrDefault def (lookupPerPkgOption f)
+        perPkgOptionMaybe    f = flagToMaybe (lookupPerPkgOption f)
+        perPkgOptionList     f = lookupPerPkgOption f
+
+        perPkgOptionLibExeFlag def fboth flib = (exe, lib)
+          where
+            exe = fromFlagOrDefault def bothflag
+            lib = fromFlagOrDefault def (bothflag <> libflag)
+
+            bothflag = lookupPerPkgOption fboth
+            libflag  = lookupPerPkgOption flib
+
+        lookupPerPkgOption f = common <> perpkg
+          where
+            common = f localPackagesConfig
+            perpkg = maybe mempty f (Map.lookup pkgname perPackageConfig)
+
         --TODO: does the BuildInplaceOnly affect our choice of registration db here?
         buildAndRegisterDbs
-          | shouldBuildInplaceOnly pkg
-                      = storePackageDbs
-                         ++ [SpecificPackageDB (cwd </> distPackageDB)]
-          | otherwise = storePackageDbs
+          | shouldBuildInplaceOnly pkg = inplacePackageDbs
+          | otherwise                  = storePackageDbs
+
+    inplacePackageDbs =
+        storePackageDbs
+     ++ [SpecificPackageDB (distPackageDB (compilerId compiler))]
 
     -- For this local build policy, every package that lives in a local source
     -- dir (as opposed to a tarball), or depends on such a package, will be
@@ -1033,6 +1449,193 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
           [ fakeInstalledPackageId (packageId pkg)
           | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
+--TODO: perhaps reorder this code
+-- based on the ElaboratedInstallPlan + ElaboratedSharedConfig,
+-- make the various Setup.hs {configure,build,copy} flags
+
+setupHsScriptOptions :: ElaboratedReadyPackage
+                     -> ElaboratedSharedConfig
+                     -> FilePath
+                     -> FilePath
+                     -> Bool
+                     -> Lock
+                     -> SetupScriptOptions
+setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} _)
+                     ElaboratedSharedConfig{..} srcdir builddir
+                     isParallelBuild cacheLock =
+    SetupScriptOptions {
+      useCabalVersion          = anyVersion, --TODO
+      useCompiler              = Just pkgConfigCompiler,
+      usePlatform              = Just pkgConfigPlatform,
+      usePackageDB             = pkgSetupPackageDBStack,
+      usePackageIndex          = Nothing, --TODO
+      useDependencies          = [],    --TODO
+      useDependenciesExclusive = False, --TODO
+      useProgramConfig         = pkgConfigProgramDb,
+      useDistPref              = builddir,
+      useLoggingHandle         = Nothing, --TODO
+      useWorkingDir            = Just srcdir,
+      useWin32CleanHack        = False,   --TODO
+      forceExternalSetupMethod = isParallelBuild,
+      setupCacheLock           = Just cacheLock
+    }
+
+setupHsConfigureFlags :: ElaboratedReadyPackage
+                      -> ElaboratedSharedConfig
+                      -> CabalDirLayout
+                      -> Maybe InstalledPackageId
+                      -> Verbosity
+                      -> FilePath
+                      -> Cabal.ConfigFlags
+setupHsConfigureFlags (ReadyPackage
+                         ElaboratedConfiguredPackage{..}
+                         pkgdeps)
+                      ElaboratedSharedConfig{..}
+                      CabalDirLayout{cabalStorePackageDirectory}
+                      mipkgid
+                      verbosity builddir =
+    Cabal.ConfigFlags {..}
+  where
+    configDistPref            = toFlag builddir
+    configVerbosity           = toFlag verbosity
+
+    configProgramPaths        = mempty --TODO: get from pkgConfigProgramDb
+    configProgramArgs         = mempty --TODO: get from pkgConfigProgramDb
+    configProgramPathExtra    = mempty --TODO: get from pkgConfigProgramDb
+    configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
+    configHcPath              = mempty -- use configProgramPaths instead
+    configHcPkg               = mempty -- use configProgramPaths instead
+
+    configVanillaLib          = toFlag pkgVanillaLib
+    configSharedLib           = toFlag pkgSharedLib
+    configDynExe              = toFlag pkgDynExe
+    configGHCiLib             = toFlag pkgGHCiLib
+    configProfExe             = toFlag pkgProfExe
+    configProfLib             = toFlag pkgProfLib
+    configProf                = mempty --TODO: check older Cabal lib
+
+    -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
+    -- so we specify both so we can specify independently
+    configProfDetail          = toFlag pkgProfExeDetail
+    configProfLibDetail       = toFlag pkgProfLibDetail
+
+    configCoverage            = toFlag pkgExeCoverage
+    configLibCoverage         = toFlag pkgLibCoverage
+
+    configOptimization        = toFlag pkgOptimization
+    configSplitObjs           = toFlag pkgSplitObjs
+    configStripExes           = toFlag pkgStripExes
+    configStripLibs           = toFlag pkgStripLibs
+    configDebugInfo           = toFlag pkgDebugInfo
+
+    configConfigurationsFlags = pkgFlagAssignment
+    configConfigureArgs       = pkgConfigureScriptArgs
+    configExtraLibDirs        = pkgExtraLibDirs
+    configExtraIncludeDirs    = pkgExtraIncludeDirs
+    configProgPrefix          = maybe mempty toFlag pkgProgPrefix
+    configProgSuffix          = maybe mempty toFlag pkgProgSuffix
+
+    configInstallDirs = case mipkgid of
+      Nothing     -> fmap toFlag pkgInstallDirs
+      Just ipkgid -> fmap toFlag pkgInstallDirs {
+                       InstallDirs.prefix = InstallDirs.toPathTemplate prefix
+                     }
+        where
+          prefix = cabalStorePackageDirectory compid ipkgid
+          compid = compilerId pkgConfigCompiler
+
+    -- we only use configDependencies, unless we're talking to an old Cabal
+    -- in which case we use configConstraints
+    configDependencies        = [ (packageName (Installed.sourcePackageId deppkg),
+                                  Installed.installedPackageId deppkg)
+                                | deppkg <- ComponentDeps.nonSetupDeps pkgdeps ]
+    configConstraints         = [ thisPackageVersion (packageId deppkg)
+                                | deppkg <- ComponentDeps.nonSetupDeps pkgdeps ]
+
+    -- explicitly clear, then our package db stack
+    -- TODO: have to do this differently for older Cabal versions
+    configPackageDBs          = Nothing : map Just pkgBuildPackageDBStack
+
+    configInstantiateWith     = mempty --TODO: unused within cabal-install
+    configTests               = toFlag pkgTestsuitesEnable
+    configBenchmarks          = toFlag pkgBenchmarksEnable
+
+    configExactConfiguration  = toFlag True --TODO: always use this, if available
+    configFlagError           = mempty --TODO: appears not to be implemented
+    configRelocatable         = mempty --TODO: ???
+    configScratchDir          = mempty -- never use
+    configUserInstall         = mempty -- don't rely on defaults
+    configPrograms            = error "setupHsConfigureFlags: configPrograms"
+
+setupHsBuildFlags :: ElaboratedConfiguredPackage
+                  -> ElaboratedSharedConfig
+                  -> Verbosity
+                  -> FilePath
+                  -> Cabal.BuildFlags
+setupHsBuildFlags _ _ verbosity builddir =
+    Cabal.BuildFlags {
+      buildProgramPaths = mempty, --unused, set at configure time
+      buildProgramArgs  = mempty, --unused, set at configure time
+      buildVerbosity    = toFlag verbosity,
+      buildDistPref     = toFlag builddir,
+      buildNumJobs      = mempty, --TODO: sometimes want to use toFlag (Just numBuildJobs),
+      buildArgs         = mempty  --TODO: allow building individual components as targets
+    }
+
+setupHsCopyFlags :: ElaboratedConfiguredPackage
+                 -> ElaboratedSharedConfig
+                 -> Verbosity
+                 -> FilePath
+                 -> Cabal.CopyFlags
+setupHsCopyFlags _ _ verbosity builddir =
+    Cabal.CopyFlags {
+      --TODO: we currently just rely on Setup.hs copy to always do the right
+      -- thing, but perhaps we ought really to copy into an image dir and do
+      -- some sanity checks and move into the final location ourselves
+      copyDest      = toFlag InstallDirs.NoCopyDest,
+      copyDistPref  = toFlag builddir,
+      copyVerbosity = toFlag verbosity
+    }
+
+setupHsRegisterFlags :: ElaboratedConfiguredPackage
+                     -> ElaboratedSharedConfig
+                     -> Verbosity
+                     -> FilePath
+                     -> FilePath
+                     -> Cabal.RegisterFlags
+setupHsRegisterFlags ElaboratedConfiguredPackage {pkgBuildStyle} _
+                     verbosity builddir pkgConfFile =
+    Cabal.RegisterFlags {
+      regPackageDB   = mempty,  -- misfeature
+      regGenScript   = mempty,  -- never use
+      regGenPkgConf  = toFlag (Just pkgConfFile),
+      regInPlace     = case pkgBuildStyle of
+                         BuildInplaceOnly -> toFlag True
+                         _                -> toFlag False,
+      regPrintId     = mempty,  -- never use
+      regDistPref    = toFlag builddir,
+      regVerbosity   = toFlag verbosity
+    }
+
+{- TODO:
+setupHsHaddockFlags :: ElaboratedConfiguredPackage
+                    -> ElaboratedSharedConfig
+                    -> Verbosity
+                    -> FilePath
+                    -> Cabal.HaddockFlags
+setupHsHaddockFlags _ _ verbosity builddir =
+    Cabal.HaddockFlags {
+    }
+
+setupHsTestFlags :: ElaboratedConfiguredPackage
+                 -> ElaboratedSharedConfig
+                 -> Verbosity
+                 -> FilePath
+                 -> Cabal.TestFlags
+setupHsTestFlags _ _ verbosity builddir =
+    Cabal.TestFlags {
+    }
+-}
 
 ------------------------------------------------------------------------------
 -- * Sharing installed packages
@@ -1084,8 +1687,29 @@ elaboratedPackageHashConfigInputs
     ElaboratedConfiguredPackage{..} =
 
     PackageHashConfigInputs {
-      pkgHashLibraryProfiling = pkgConfigLibraryProfiling
-      --TODO: all of them
+      pkgHashCompilerId          = compilerId pkgConfigCompiler,
+      pkgHashPlatform            = pkgConfigPlatform,
+      pkgHashFlagAssignment      = pkgFlagAssignment,
+      pkgHashConfigureScriptArgs = pkgConfigureScriptArgs,
+      pkgHashVanillaLib          = pkgVanillaLib,
+      pkgHashSharedLib           = pkgSharedLib,
+      pkgHashDynExe              = pkgDynExe,
+      pkgHashGHCiLib             = pkgGHCiLib,
+      pkgHashProfLib             = pkgProfLib,
+      pkgHashProfExe             = pkgProfExe,
+      pkgHashProfLibDetail       = pkgProfLibDetail,
+      pkgHashProfExeDetail       = pkgProfExeDetail,
+      pkgHashLibCoverage         = pkgLibCoverage,
+      pkgHashExeCoverage         = pkgExeCoverage,
+      pkgHashOptimization        = pkgOptimization,
+      pkgHashSplitObjs           = pkgSplitObjs,
+      pkgHashStripLibs           = pkgStripLibs,
+      pkgHashStripExes           = pkgStripExes,
+      pkgHashDebugInfo           = pkgDebugInfo,
+      pkgHashExtraLibDirs        = pkgExtraLibDirs,
+      pkgHashExtraIncludeDirs    = pkgExtraIncludeDirs,
+      pkgHashProgPrefix          = pkgProgPrefix,
+      pkgHashProgSuffix          = pkgProgSuffix
     }
 
 reusePackagesFromStore :: (PackageFixedDeps srcpkg, HasInstalledPackageId srcpkg)
@@ -1193,7 +1817,6 @@ improveInstallPlanWithPreExistingPackages
        -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
        -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
     go cannotBeImproved installPlan =
-      traceShow ("go", map (display . packageId) cannotBeImproved) $
       case InstallPlan.ready installPlan of
         -- no more source packages can be replaced with pre-existing ones,
         --  just need to reset the ones we put into the processing state
@@ -1203,10 +1826,7 @@ improveInstallPlanWithPreExistingPackages
                 installPlan
 
         -- we have some to look at
-        pkgs -> traceShow ("go ready pkgs", map (display . packageId) pkgs) $
-                traceShow ("go canBeImproved", map (display . packageId . fst) canBeImproved) $
-                traceShow ("go cannotBeImproved'", map (display . packageId) cannotBeImproved') $
-                go (cannotBeImproved' ++ cannotBeImproved)
+        pkgs -> go (cannotBeImproved' ++ cannotBeImproved)
                    installPlan'
           where
             installPlan' = InstallPlan.processing cannotBeImproved'
@@ -1243,94 +1863,117 @@ improveInstallPlanWithPreExistingPackages
 
 
 ------------------------------------------------------------------------------
+-- * Doing it: executing an 'ElaboratedInstallPlan'
+------------------------------------------------------------------------------
 
 
+rebuildTargets :: Verbosity
+               -> DistDirLayout
+               -> CabalDirLayout
+               -> ElaboratedInstallPlan
+               -> ElaboratedSharedConfig
+               -> ProjectConfigBuildOnly
+               -> [String] --TODO: only build the ones we ask for out of the persistent plan
+                           --TODO: probably want to parse these earlier
+               -> IO ()
+rebuildTargets verbosity
+               distDirLayout@DistDirLayout{..} cabalDirLayout
+               installPlan
+               sharedPackageConfig
+               ProjectConfigBuildOnly{
+                 projectConfigNumJobs,
+                 projectConfigHttpTransport
+               }
+               _userTargets = do
 
--- We want to execute the install plan, which may involve installing packages
--- in the classic way, or building packages inplace.
---
-buildTargets :: Verbosity
-             -> Int -> HttpTransport
-             -> ElaboratedSharedConfig
-             -> ElaboratedInstallPlan
---           -> [BuildTarget] --TODO: only build the ones we ask for out of the persistent plan
-             -> IO ElaboratedInstallPlan
-buildTargets verbosity
-             numBuildJobs transport 
-             sharedPackageConfig
-             installPlan = do
+    putStrLn $ printPlan installPlan
 
-  -- Concurrency control: create the job controler and concurrency limits 
-  -- for downloading, building and installing.
-  jobControl    <- if parallelInstall then newParallelJobControl
-                                      else newSerialJobControl
-  buildLimit    <- newJobLimit numBuildJobs
-  downloadLimit <- newJobLimit (min numBuildJobs numDownloadJobs)
-  installLock   <- newLock -- serialise installation
-  cacheLock     <- newLock -- serialise access to setup exe cache
+    -- Concurrency control: create the job controler and concurrency limits 
+    -- for downloading, building and installing.
+    jobControl    <- if isParallelBuild then newParallelJobControl
+                                        else newSerialJobControl
+    buildLimit    <- newJobLimit numBuildJobs
+    installLock   <- newLock -- serialise installation
+    cacheLock     <- newLock -- serialise access to setup exe cache
+                             --TODO: if we treat setup exe like other build deps
+                             -- then we don't need a separate cache lock
 
-  createDirectoryIfMissingVerbose verbosity False distDirectory
-  createDirectoryIfMissingVerbose verbosity False distBuildRootDirectory
+    createDirectoryIfMissingVerbose verbosity False distBuildRootDirectory
+    createDirectoryIfMissingVerbose verbosity False distTempDirectory
 
-  -- Before traversing the install plan, pre-emptively find all packages that
-  -- will need to be downloaded and start downloading them.
-  pkgsToDownload <- packagesRequiringDownload
-                      pkgSourceLocation
-                      installPlan
+    -- Before traversing the install plan, pre-emptively find all packages that
+    -- will need to be downloaded and start downloading them.
+    pkgsToDownload <- packagesRequiringDownload
+                        pkgSourceLocation
+                        installPlan
 
-  mapM_ print pkgsToDownload
+  --  mapM_ print pkgsToDownload
 
-  asyncDownloadPackages verbosity transport downloadLimit
-                        pkgsToDownload $ \downloadMap ->
+    residualPlan <- 
+      asyncDownloadPackages verbosity mkTransport
+                            pkgsToDownload $ \downloadMap ->
 
-    -- For each package in the plan, in dependency order, but in parallel...
-    executeInstallPlan verbosity jobControl installPlan
-                       $ \rpkg@(ReadyPackage (cpkg :: ElaboratedConfiguredPackage) _) -> do
+      -- For each package in the plan, in dependency order, but in parallel...
+      executeInstallPlan verbosity jobControl installPlan
+                         $ \rpkg@(ReadyPackage (cpkg :: ElaboratedConfiguredPackage) _) -> do
 
-      -- If necessary, wait for the download of the remote package to finish.
-      srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
+        -- If necessary, wait for the download of the remote package to finish.
+        srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
+        -- We're not typing up buildLimit-limited resources while downloading,
+        -- but we are once we start unpacking and building.
+        withJobLimit buildLimit $
+          withPackageInLocalDirectory verbosity distDirLayout
+                                      srcloc (pkgBuildStyle cpkg)
+                                      (packageId rpkg)
+                                      $ \srcdir builddir mtarball -> do
+  --        print (pkgBuildStyle cpkg, mtarball)
+            case (pkgBuildStyle cpkg, mtarball) of
+              (BuildAndInstall, Just tarball) -> do
+                --TODO: don't recalculate this if we don't need to
+                srchash <- readFileHashValue tarball
+                let pkgHashInputs = PackageHashInputs {
+                        pkgHashPkgId         = packageId rpkg,
+                        pkgHashSourceHash    = srchash,
+                        pkgHashDirectDeps    = ComponentDeps.libraryDeps (depends rpkg), --TODO: consider carefully which deps
+                        pkgHashOtherConfig   = elaboratedPackageHashConfigInputs
+                                                 sharedPackageConfig cpkg
+                      }
+                    ipkgid = hashedInstalledPackageId pkgHashInputs
 
-      withJobLimit buildLimit $ --TODO: think about this carefully
-        withPackageInLocalDirectory verbosity srcloc (pkgBuildStyle cpkg)
-                                    (packageId rpkg)
-                                    $ \srcdir builddir mtarball -> do
-          case (pkgBuildStyle cpkg, mtarball) of
-            (BuildAndInstall, Just tarball) -> do
-              --TODO: don't recalculate this if we don't need to
-              srchash <- readFileHashValue tarball
-              let pkgHashInputs = PackageHashInputs {
-                      pkgHashPkgId         = packageId rpkg,
-                      pkgHashSourceHash    = srchash,
-                      pkgHashDirectDeps    = ComponentDeps.libraryDeps (depends rpkg), --TODO: consider carefully which deps
-                      pkgHashOtherConfig   = elaboratedPackageHashConfigInputs
-                                               sharedPackageConfig cpkg
-                    }
-                  ipkgid = hashedInstalledPackageId pkgHashInputs
-
-              buildAndInstallUnpackedPackage
-                verbosity installLock cacheLock
-                sharedPackageConfig
-                rpkg ipkgid srcdir builddir'
-              where
-                builddir' = makeRelative srcdir builddir
-                --TODO ^^ do this relative stuff better
-
-            (BuildInplaceOnly, _) -> do
-              --TODO: ensure the store db is initialised
-              --TODO: use a relative build dir rather than absolute
-              builddir' <- canonicalizePath builddir
-              printTiming "=========== buildInplaceUnpackedPackage ============" $
-                buildInplaceUnpackedPackage
-                  verbosity installLock cacheLock
+                buildAndInstallUnpackedPackage
+                  verbosity distDirLayout cabalDirLayout
+                  isParallelBuild installLock cacheLock
                   sharedPackageConfig
-                  rpkg srcdir builddir'
+                  rpkg ipkgid srcdir builddir'
+                where
+                  builddir' = makeRelative srcdir builddir
+                  --TODO ^^ do this relative stuff better
 
-            (BuildAndInstall, Nothing) ->
-              fail "internal error: BuildAndInstall mode without tarball"
+              (BuildInplaceOnly, _) -> do
+                --TODO: ensure the store db is initialised
+                --TODO: use a relative build dir rather than absolute
+                printTiming "=========== buildInplaceUnpackedPackage ============" $
+                  buildInplaceUnpackedPackage
+                    verbosity distDirLayout cabalDirLayout
+                    isParallelBuild cacheLock
+                    sharedPackageConfig
+                    rpkg srcdir builddir
+
+              (BuildAndInstall, Nothing) ->
+                fail "internal error: BuildAndInstall mode without tarball"
+
+    _  <- return residualPlan
+    --TODO: this result plan should be saved, resetting all failed and
+    -- BuildInplaceOnly packages to original Configured state
+    -- so effectively only the installed tarball packages get updated
+    -- could also replace installed ones to be pre-installed
+    return ()
 
   where
-    numDownloadJobs = 2
-    parallelInstall = numBuildJobs >= 2
+    numBuildJobs    = determineNumJobs projectConfigNumJobs
+    isParallelBuild = numBuildJobs >= 2
+    mkTransport     = configureTransport verbosity 
+                        (flagToMaybe projectConfigHttpTransport)
 
 printTiming :: Show t => t -> IO b -> IO b
 printTiming name action = do
@@ -1361,39 +2004,32 @@ packagesRequiringDownload packageSourceLocation installPlan =
       -- order as we get out of the install plan when we run it
 
 type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
-                            (Async (PackageLocation FilePath))
+                            (MVar (PackageLocation FilePath))
 
--- | Fork off async actions to download all the given packages (subject to the
--- given concurrency limit). The body action is passed a map from those
--- packages (identified by their location) to the async action that's doing
--- the download for that package. So the body action should lookup the location
--- and use 'Async.wait' or 'waitAsyncPackageDownload' to get the result.
+-- | Fork off an async action to download all the given packages. The body
+-- action is passed a map from those packages (identified by their location)
+-- to a completion var for that package. So the body action should lookup the
+-- location and use 'waitAsyncPackageDownload' to get the result.
 --
 asyncDownloadPackages :: Verbosity
-                      -> HttpTransport
-                      -> JobLimit
+                      -> IO HttpTransport
                       -> [PackageLocation (Maybe FilePath)]
                       -> (AsyncDownloadMap -> IO a)
                       -> IO a
-asyncDownloadPackages _ _ _ [] body = body Map.empty
-asyncDownloadPackages verbosity transport fetchLimit pkglocs0 body =
-    go Map.empty pkglocs0
-  where
-    -- We want to use 'withAsync' to get the automatic cancellation behaviour,
-    -- so that means we have to nest them all inside each other.
-    go !downloadMap []               = body downloadMap
-    go !downloadMap (pkgloc:pkglocs) = do
-      let downloadAction =
-            withJobLimit fetchLimit $
-              fetchPackage transport verbosity pkgloc
+asyncDownloadPackages _ _ [] body = body Map.empty
+asyncDownloadPackages verbosity mkTransport pkglocs0 body = do
+    --TODO: use parallel downloads? if so, use the fetchLimit
 
-      withAsync downloadAction $ \asyncHandle -> do
-        let downloadMap' = Map.insert pkgloc asyncHandle downloadMap
-        go downloadMap' pkglocs
-    --TODO: this isn't quite what we want because with the jobs being started
-    -- in any order, there's nothing to ensure we download the more important
-    -- packages first.
-    -- Perhaps should use the JobControl abstraction instead?
+    asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkglocs0
+    transport         <- mkTransport
+
+    let downloadAction = 
+          mapM $ \(pkgloc, var) ->
+            fetchPackage transport verbosity pkgloc >>= putMVar var
+
+    withAsync (downloadAction asyncDownloadVars) $ \_ ->
+      let !asyncDownloadMap = Map.fromList asyncDownloadVars
+      in body asyncDownloadMap
 
 
 -- | Check if a package needs downloading, and if so expect to find a download
@@ -1410,7 +2046,7 @@ waitAsyncPackageDownload verbosity downloadMap pkg = do
                      debug verbosity $ "Waiting for download of "
                                     ++ display (packageId pkg)
                                     ++ " to finish"
-                     wait hnd
+                     takeMVar hnd
       Just loc -> return loc
 --TODO: do the exception handling on download stuff
 
@@ -1419,18 +2055,26 @@ waitAsyncPackageDownload verbosity downloadMap pkg = do
 --  for build type Simple we assume we do actually know the files in the package
 --  for other build types we look at all files, only excluding known boring
 
-type BuildResult' ipkg iresult ifailure = Either ifailure (Maybe ipkg, iresult)  --TODO: rename:
 
---TODO: generalise BuildFailure
-executeInstallPlan :: forall ipkg srcpkg iresult.
-                      (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
-                       HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
-                   => Verbosity
-                   -> JobControl IO (PackageId, BuildResult' ipkg iresult BuildFailure)
-                   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-                   -> (GenericReadyPackage srcpkg ipkg
-                      -> IO (BuildResult' ipkg iresult BuildFailure))
-                   -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
+data GenericBuildResult ipkg iresult ifailure
+                  = BuildFailure ifailure
+                  | BuildSuccess (Maybe ipkg) iresult
+  deriving (Eq, Show, Generic)
+
+instance (Binary ipkg, Binary iresult, Binary ifailure) =>
+         Binary (GenericBuildResult ipkg iresult ifailure)
+
+
+executeInstallPlan
+  :: forall ipkg srcpkg iresult.
+     (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
+      HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
+  => Verbosity
+  -> JobControl IO (PackageId, GenericBuildResult ipkg iresult BuildFailure)
+  -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
+  -> (GenericReadyPackage srcpkg ipkg
+       -> IO (GenericBuildResult ipkg iresult BuildFailure))
+  -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
 executeInstallPlan verbosity jobCtl plan0 installPkg =
     tryNewTasks 0 plan0
   where
@@ -1460,13 +2104,13 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
       tryNewTasks taskCount' plan'
 
     updatePlan :: PackageIdentifier
-               -> BuildResult' ipkg iresult BuildFailure
+               -> GenericBuildResult ipkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-    updatePlan pkgid (Right (mipkg, buildSuccess)) =
+    updatePlan pkgid (BuildSuccess mipkg buildSuccess) =
         InstallPlan.completed (fakeInstalledPackageId pkgid) mipkg buildSuccess
 
-    updatePlan pkgid (Left buildFailure) =
+    updatePlan pkgid (BuildFailure buildFailure) =
         InstallPlan.failed (fakeInstalledPackageId pkgid) buildFailure depsFailure
       where
         depsFailure = DependentFailed pkgid
@@ -1481,12 +2125,14 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
 --
 withPackageInLocalDirectory
   :: Verbosity
+  -> DistDirLayout
   -> PackageLocation FilePath
   -> BuildStyle
   -> PackageIdentifier
   -> (FilePath -> FilePath -> Maybe FilePath -> IO a)
   -> IO a
-withPackageInLocalDirectory verbosity location buildstyle pkgid buildPkg =
+withPackageInLocalDirectory verbosity DistDirLayout{..}
+                            location buildstyle pkgid buildPkg =
 
     case location of
 
@@ -1509,7 +2155,6 @@ withPackageInLocalDirectory verbosity location buildstyle pkgid buildPkg =
         -- build and install it from that temp dir.
         BuildAndInstall -> do
         -- TODO: this is also a case where we can calculate the installed pkgid
-          createDirectoryIfMissingVerbose verbosity False distTempDirectory
           withTempDirectory verbosity distTempDirectory
                             (display (packageName pkgid)) $ \tmpdir -> do
             extractTarballPackage verbosity tarball tmpdir pkgid 
@@ -1564,25 +2209,28 @@ overridePackageCabalFile ... =
       writeFileAtomic descFilePath pkgtxt
 -}
 
-buildAndInstallUnpackedPackage :: Verbosity -> Lock -> Lock
+buildAndInstallUnpackedPackage :: Verbosity
+                               -> DistDirLayout -> CabalDirLayout
+                               -> Bool -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
                                -> InstalledPackageId
                                -> FilePath -> FilePath
-                               -> IO (BuildResult' InstalledPackageInfo BuildSuccess BuildFailure)
-buildAndInstallUnpackedPackage verbosity installLock _cacheLock
-                               ElaboratedSharedConfig {
+                               -> IO BuildResult
+buildAndInstallUnpackedPackage verbosity
+                               DistDirLayout{distTempDirectory}
+                               cabalDirLayout
+                               isParallelBuild installLock cacheLock
+                               pkgshared@ElaboratedSharedConfig {
                                  pkgConfigPlatform  = platform,
                                  pkgConfigCompiler  = compiler,
                                  pkgConfigProgramDb = progdb
                                }
                                rpkg@(ReadyPackage
                                  pkg@ElaboratedConfiguredPackage {
-                                   pkgSetupPackageDBStack,
-                                   pkgBuildPackageDBStack,
                                    pkgRegisterPackageDBStack
                                  }
-                                 deps)
+                                 _deps)
                                ipkgid srcdir builddir = do
 
     putStrLn $ "buildAndInstallUnpackedPackage: " ++ srcdir ++ " " ++ builddir
@@ -1602,12 +2250,11 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
     --TODO: sudo re-exec
 
     -- Configure phase
-    notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-    configureFlags' <- addDefaultInstallDirs configureFlags --TODO: use CabalDirLayout as part of env
-    setup configureCommand' (\_ -> configureFlags')
+    notice verbosity $ "(cabal-install) Configuring " ++ display pkgid ++ "..."
+    setup configureCommand' configureFlags
 
     -- Build phase
-    notice verbosity $ "Building " ++ display pkgid ++ "..."
+    notice verbosity $ "(cabal-install) Building " ++ display pkgid ++ "..."
     setup buildCommand' buildFlags
 
     -- Install phase
@@ -1640,7 +2287,7 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
           let hcinf0 = GHC.hcPkgInfo progdb
               hcinf  = hcinf0 {
                          HcPkg.hcPkgProgram = (HcPkg.hcPkgProgram hcinf0) {
-                             programOverrideArgs = ["--enable-multi-instance", "--force"]
+                             programOverrideArgs = [] --TODO: ["--enable-multi-instance", "--force"]
                            }
                        }
           HcPkg.register hcinf verbosity pkgRegisterPackageDBStack (Right ipkg)
@@ -1650,7 +2297,7 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
 
       let docsResult  = DocsNotTried
           testsResult = TestsNotTried
-      return (Right (mipkg, BuildOk docsResult testsResult mipkg))
+      return (BuildSuccess mipkg (BuildOk docsResult testsResult))
 
   where
     pkgid = packageId rpkg
@@ -1668,37 +2315,12 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     --TODO: proper set of config options, not just Setup.hs interface flags
-    configureFlags   = Cabal.emptyConfigFlags {
-      Cabal.configDistPref  = toFlag builddir,
-      Cabal.configVerbosity = toFlag verbosity,
-
-      Cabal.configConfigurationsFlags = pkgFlagAssignment pkg,
-      -- We generate the legacy constraints as well as the new style precise deps.
-      -- In the end only one set gets passed to Setup.hs configure, depending on
-      -- the Cabal version we are talking to.
---      Cabal.configConstraints  = [ thisPackageVersion (packageId deppkg)
---                                 | deppkg <- ComponentDeps.nonSetupDeps deps ],
-      Cabal.configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                                    Installed.installedPackageId deppkg)
-                                 | deppkg <- ComponentDeps.nonSetupDeps deps ],
-      -- Use '--exact-configuration' if supported.
-      Cabal.configExactConfiguration = toFlag True,
-      Cabal.configBenchmarks         = toFlag (BenchStanzas `elem` pkgEnabledStanzas pkg),
-      Cabal.configTests              = toFlag (TestStanzas  `elem` pkgEnabledStanzas pkg),
-      Cabal.configPrograms           = progdb, --TODO: what does this actually get used for?
-      Cabal.configPackageDBs         = Nothing : map Just pkgBuildPackageDBStack,
-
-      --FIXME: hard coded:
-      Cabal.configHcFlavor     = toFlag (compilerFlavor compiler),
-      Cabal.configProgramPaths = [("ghc", "ghc-7.10.1")],
-      Cabal.configOptimization = toFlag NoOptimisation
-    }
+    configureFlags _ = setupHsConfigureFlags rpkg pkgshared
+                                             cabalDirLayout (Just ipkgid)
+                                             verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
-    buildFlags   _   = Cabal.emptyBuildFlags {
-      Cabal.buildDistPref  = toFlag builddir,
-      Cabal.buildVerbosity = toFlag verbosity
-    }
+    buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
     generateInstalledPackageInfo :: IO (Maybe InstalledPackageInfo)
     generateInstalledPackageInfo
@@ -1707,11 +2329,9 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
       absTmpDir <- canonicalizePath distTempDirectory --since we change dir
       withTempFile absTmpDir "package-registration-" $ \pkgConfFile hnd -> do
         hClose hnd
-        let registerFlags _ = Cabal.emptyRegisterFlags {
-              Cabal.regDistPref   = toFlag builddir,
-              Cabal.regVerbosity  = toFlag verbosity,
-              Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
-            }
+        let registerFlags _ = setupHsRegisterFlags pkg pkgshared
+                                                   verbosity builddir
+                                                   pkgConfFile
         setup Cabal.registerCommand registerFlags
 
         (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
@@ -1736,118 +2356,10 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
           die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
                 ++ show perror
 
-{-
-  where
-    pkgid            = packageId pkg
-    buildCommand'    = buildCommand defaultProgramConfiguration
-    buildFlags   _   = emptyBuildFlags {
-      buildDistPref  = configDistPref configFlags,
-      buildVerbosity = toFlag verbosity'
-    }
-    shouldHaddock    = fromFlag (installDocumentation installFlags)
-    haddockFlags' _   = haddockFlags {
-      haddockVerbosity = toFlag verbosity',
-      haddockDistPref  = configDistPref configFlags
-    }
-    testsEnabled = fromFlag (configTests configFlags)
-                   && fromFlagOrDefault False (installRunTests installFlags)
-    testFlags _ = Cabal.emptyTestFlags {
-      Cabal.testDistPref = configDistPref configFlags
-    }
--}
-    copyFlags _ = Cabal.emptyCopyFlags {
-      Cabal.copyDistPref   = toFlag builddir,
-      Cabal.copyDest       = toFlag InstallDirs.NoCopyDest,
-      Cabal.copyVerbosity  = toFlag verbosity
-    }
+    copyFlags _ = setupHsCopyFlags pkg pkgshared verbosity builddir
 
-    scriptOptions = SetupScriptOptions {
-        useCabalVersion   = anyVersion
-      , useCompiler       = Just compiler
-      , usePlatform       = Just platform
-      , usePackageDB      = pkgSetupPackageDBStack
-      , usePackageIndex   = Nothing
-      , useProgramConfig  = progdb
-      , useDistPref       = builddir
-      , useLoggingHandle  = Nothing
-      , useWorkingDir     = Just srcdir --TODO: make the dist dir relative to this
-      , setupCacheLock    = Nothing
-      , useWin32CleanHack = False
-      , forceExternalSetupMethod = False
-        -- If we have explicit setup dependencies, list them; otherwise, we give
-        -- the empty list of dependencies; ideally, we would fix the version of
-        -- Cabal here, so that we no longer need the special case for that in
-        -- `compileSetupExecutable` in `externalSetupMethod`, but we don't yet
-        -- know the version of Cabal at this point, but only find this there.
-        -- Therefore, for now, we just leave this blank.
-      , useDependencies          = []
-      , useDependenciesExclusive = False
-      }
-
-{-
-    shouldRegister = PackageDescription.hasLibs pkg
-    registerFlags _ = Cabal.emptyRegisterFlags {
-      Cabal.regDistPref   = configDistPref configFlags,
-      Cabal.regVerbosity  = toFlag verbosity'
-    }
-    verbosity' = maybe verbosity snd useLogFile
-    tempTemplate name = name ++ "-" ++ display pkgid
--}
-    addDefaultInstallDirs :: Cabal.ConfigFlags -> IO Cabal.ConfigFlags
-    addDefaultInstallDirs configFlags' = do
-      defInstallDirs <- InstallDirs.defaultInstallDirs (compilerFlavor compiler) True False
-      return $ configFlags' {
-          Cabal.configInstallDirs =
-            fmap toFlag $
-            InstallDirs.substituteInstallDirTemplates env defInstallDirs {
-              InstallDirs.prefix = InstallDirs.toPathTemplate $
-                                     InstallDirs.fromPathTemplate (InstallDirs.prefix defInstallDirs)
-                                     </> "store" --TODO: use the CabalDirLayout
-                                     </> display ipkgid
-            }
-          }
-        where
-          env         = InstallDirs.initialPathTemplateEnv pkgid libname cinfo platform
-          cinfo       = compilerInfo compiler
-          libname     = LibraryName (display pkgid)
-{-
-    maybeGenPkgConf :: Maybe FilePath
-                    -> IO (Maybe Installed.InstalledPackageInfo)
-    maybeGenPkgConf mLogPath =
-      if shouldRegister then do
-        tmp <- getTemporaryDirectory
-        withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
-          hClose handle
-          let registerFlags' version = (registerFlags version) {
-                Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
-              }
-          setup Cabal.registerCommand registerFlags' mLogPath
-          withUTF8FileContents pkgConfFile $ \pkgConfText ->
-            case Installed.parseInstalledPackageInfo pkgConfText of
-              Installed.ParseFailed perror    -> pkgConfParseFailed perror
-              Installed.ParseOk warns pkgConf -> do
-                unless (null warns) $
-                  warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
-                return (Just pkgConf)
-      else return Nothing
-
-    pkgConfParseFailed :: Installed.PError -> IO a
-    pkgConfParseFailed perror =
-      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-            ++ show perror
-
-    maybeLogPath :: IO (Maybe FilePath)
-    maybeLogPath =
-      case useLogFile of
-         Nothing                 -> return Nothing
-         Just (mkLogFileName, _) -> do
-           let logFileName = mkLogFileName (packageId pkg) pkg_key
-               logDir      = takeDirectory logFileName
-           unless (null logDir) $ createDirectoryIfMissing True logDir
-           logFileExists <- doesFileExist logFileName
-           when logFileExists $ removeFile logFileName
-           return (Just logFileName)
--}
+    scriptOptions = setupHsScriptOptions rpkg pkgshared srcdir builddir
+                                         isParallelBuild cacheLock
 
 --    setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags =
@@ -1855,62 +2367,47 @@ buildAndInstallUnpackedPackage verbosity installLock _cacheLock
                    scriptOptions
                    (Just pkgdesc)
                    cmd flags []
-{-
-    reexec cmd = do
-      -- look for our own executable file and re-exec ourselves using a helper
-      -- program like sudo to elevate privileges:
-      self <- getExecutablePath
-      weExist <- doesFileExist self
-      if weExist
-        then inDir workingDir $
-               rawSystemExit verbosity cmd
-                 [self, "install", "--only"
-                 ,"--verbose=" ++ showForCabal verbosity]
-        else die $ "Unable to find cabal executable at: " ++ self
--}
 
 
-buildInplaceUnpackedPackage :: Verbosity -> Lock -> Lock
+buildInplaceUnpackedPackage :: Verbosity
+                            -> DistDirLayout -> CabalDirLayout
+                            -> Bool -> Lock
                             -> ElaboratedSharedConfig
                             -> GenericReadyPackage ElaboratedConfiguredPackage
                                                    InstalledPackageInfo
                             -> FilePath -> FilePath
-                            -> IO (BuildResult' InstalledPackageInfo BuildSuccess BuildFailure)
-buildInplaceUnpackedPackage verbosity _installLock _cacheLock
-                            ElaboratedSharedConfig {
+                            -> IO BuildResult
+buildInplaceUnpackedPackage verbosity
+                            DistDirLayout {
+                              distTempDirectory,
+                              distPackageCacheFile,
+                              distPackageCacheDirectory
+                            }
+                            cabalDirLayout
+                            isParallelBuild cacheLock
+                            pkgshared@ElaboratedSharedConfig {
                               pkgConfigPlatform  = platform,
                               pkgConfigCompiler  = compiler,
                               pkgConfigProgramDb = progdb
                             }
-                            rpkg@(ReadyPackage pkg deps) srcdir builddir = do
+                            rpkg@(ReadyPackage pkg _deps) srcdir builddir = do
 
     putStrLn $ "buildInplaceUnpackedPackage: " ++ srcdir ++ " " ++ builddir
 
-    --TODO: compare if this package's config has changed, 
-    --      so have to load previous and compare 
-    --TODO: check the file status cache to see if it's needed
-    --TODO: if it built successfully then update the file status cache,
-    --      both the files and the package config
+    --TODO: also have to rebuild if any deps changed
 
-    configChanged <- checkValueChanged (distUnpackedSrcConfigCache pkgid) rpkg
-    print ("=============================== configChanged", configChanged)
-
-    srcFilesChanged <- checkFileStatusChanged
-                         srcdir (distUnpackedSrcFileStatusCache pkgid)
-    print ("=============================== srcFilesChanged", srcFilesChanged)
-
-    case (configChanged, srcFilesChanged) of
-      (Unchanged (), False) -> do
-        --TODO: reuse previous InstalledPackageInfo, e.g. stash in plan
-        let ipkgid = InstalledPackageId (display pkgid ++ "-inplace")
-        mipkg <- generateInstalledPackageInfo ipkgid
-        
-        let docsResult  = DocsNotTried
-            testsResult = TestsNotTried
-        return (Right (mipkg, BuildOk docsResult testsResult mipkg))
+    configChanged <- checkFileMonitorChanged configFileMonitor srcdir rpkg
+    buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir ()
+    
+    case (configChanged, buildChanged) of
+      (Unchanged ((), _), Unchanged (buildResult, _)) -> return buildResult
 
       _ -> do
+        --TODO: there is duplication between the distdirlayout and the builddir here
+        --      builddir is not enough, we also need the per-package cachedir
         createDirectoryIfMissingVerbose verbosity False builddir
+        createDirectoryIfMissingVerbose verbosity False (distPackageCacheDirectory pkgid)
+        createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
         notice verbosity $ "Configuring " ++ display pkgid ++ "..."
@@ -1941,17 +2438,29 @@ buildInplaceUnpackedPackage verbosity _installLock _cacheLock
             --TODO: do this in a compiler agnostic way via Cabal lib
             --setup Cabal.registerCommand registerFlags
 
-        updateFileStatusCache srcdir (distUnpackedSrcFileStatusCache pkgid)
-          =<< getDirectoryContentsRecursive srcdir
-        --TODO: does checkValueChanged always go with updateValueChangeCache?
-        updateValueChangeCache (distUnpackedSrcConfigCache pkgid) rpkg ()
-
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
-        return (Right (mipkg, BuildOk docsResult testsResult mipkg))
+            
+            buildResult :: BuildResult
+            buildResult = BuildSuccess mipkg (BuildOk docsResult testsResult)
+
+        updateFileMonitor configFileMonitor srcdir
+                          []
+                          rpkg ()
+
+        allSrcFiles <- getDirectoryContentsRecursive srcdir
+
+        updateFileMonitor buildFileMonitor srcdir
+                          (map MonitorFileHashed allSrcFiles)
+                          () buildResult
+
+        return buildResult
 
   where
     pkgid = packageId rpkg
+
+    configFileMonitor = FileMonitorName (distPackageCacheFile pkgid "config")
+    buildFileMonitor  = FileMonitorName (distPackageCacheFile pkgid "build")
 
     --FIXME: this is ridiculous, it's only needed for the setupWrapper, and
     -- it only needs a couple little bits from it
@@ -1969,60 +2478,17 @@ buildInplaceUnpackedPackage verbosity _installLock _cacheLock
     --      or, get passed proper package config and translate into Setup.hs
     --      interface flags (or intermediate, and only translate if we go via
     --      the CLI)
-    configureFlags   = Cabal.emptyConfigFlags {
-      Cabal.configDistPref  = toFlag builddir,
-      Cabal.configVerbosity = toFlag verbosity,
-
-      Cabal.configConfigurationsFlags = pkgFlagAssignment pkg,
-      -- We generate the legacy constraints as well as the new style precise deps.
-      -- In the end only one set gets passed to Setup.hs configure, depending on
-      -- the Cabal version we are talking to.
-      Cabal.configConstraints  = [ thisPackageVersion (packageId deppkg)
-                                 | deppkg <- ComponentDeps.nonSetupDeps deps ],
-      Cabal.configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                                    Installed.installedPackageId deppkg)
-                                 | deppkg <- ComponentDeps.nonSetupDeps deps ],
-      -- Use '--exact-configuration' if supported.
-      Cabal.configExactConfiguration = toFlag True,
-      Cabal.configBenchmarks         = toFlag (BenchStanzas `elem` pkgEnabledStanzas pkg),
-      Cabal.configTests              = toFlag (TestStanzas  `elem` pkgEnabledStanzas pkg),
-      Cabal.configPrograms           = progdb, --TODO: what does this actually get used for?
-      Cabal.configPackageDBs         = Nothing : map Just (pkgRegisterPackageDBStack pkg),
-
-      --FIXME: hard coded:
-      Cabal.configHcFlavor     = toFlag (compilerFlavor compiler),
-      Cabal.configProgramPaths = [("ghc", "ghc-7.10.1")],
-      Cabal.configOptimization = toFlag NoOptimisation
-    }
+    configureFlags   = setupHsConfigureFlags rpkg pkgshared
+                                             cabalDirLayout Nothing
+                                             verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
-    buildFlags   _   = Cabal.emptyBuildFlags {
-      Cabal.buildDistPref  = toFlag builddir,
-      Cabal.buildVerbosity = toFlag verbosity
-    }
+    buildFlags   _   = setupHsBuildFlags pkg pkgshared
+                                         verbosity builddir
 
-    scriptOptions = SetupScriptOptions {
-        useCabalVersion   = anyVersion
-      , useCompiler       = Just compiler
-      , usePlatform       = Just platform
-      , usePackageDB      = pkgRegisterPackageDBStack pkg
-      , usePackageIndex   = Nothing
-      , useProgramConfig  = progdb
-      , useDistPref       = builddir
-      , useLoggingHandle  = Nothing
-      , useWorkingDir     = Just srcdir --TODO: make the dist dir relative to this
-      , setupCacheLock    = Nothing
-      , useWin32CleanHack = False
-      , forceExternalSetupMethod = False
-        -- If we have explicit setup dependencies, list them; otherwise, we give
-        -- the empty list of dependencies; ideally, we would fix the version of
-        -- Cabal here, so that we no longer need the special case for that in
-        -- `compileSetupExecutable` in `externalSetupMethod`, but we don't yet
-        -- know the version of Cabal at this point, but only find this there.
-        -- Therefore, for now, we just leave this blank.
-      , useDependencies          = []
-      , useDependenciesExclusive = False
-      }
+    scriptOptions    = setupHsScriptOptions rpkg pkgshared
+                                            srcdir builddir
+                                            isParallelBuild cacheLock
 
     setup cmd flags =
       setupWrapper verbosity
@@ -2035,15 +2501,11 @@ buildInplaceUnpackedPackage verbosity _installLock _cacheLock
     generateInstalledPackageInfo ipkgid
       | not shouldRegister = return Nothing
       | otherwise = do
-      absTmpDir <- canonicalizePath distTempDirectory --since we change dir
-      withTempFile absTmpDir "package-registration-" $ \pkgConfFile hnd -> do
+      withTempFile distTempDirectory "package-registration-" $ \pkgConfFile hnd -> do
         hClose hnd
-        let registerFlags _ = Cabal.emptyRegisterFlags {
-              Cabal.regDistPref   = toFlag builddir,
-              Cabal.regVerbosity  = toFlag verbosity,
-              Cabal.regGenPkgConf = toFlag (Just pkgConfFile),
-              Cabal.regInPlace    = toFlag True
-            }
+        let registerFlags _ = setupHsRegisterFlags pkg pkgshared
+                                                   verbosity builddir
+                                                   pkgConfFile
         setup Cabal.registerCommand registerFlags
 
         (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
@@ -2141,7 +2603,7 @@ hashedInstalledPackageId pkghashinputs@PackageHashInputs{pkgHashPkgId} =
     InstalledPackageId $
          display pkgHashPkgId   -- to be a bit user friendly
       ++ "-"
-      ++ showHashValue (hashedInstalledPackageIdHash pkghashinputs)
+      ++ showHashValue (hashPackageHashInputs pkghashinputs)
 
 -- | All the information that contribues to a package's hash, and thus its
 -- 'InstalledPackageIds'.
@@ -2159,33 +2621,102 @@ type PackageSourceHash = HashValue
 -- package hash.
 --
 data PackageHashConfigInputs = PackageHashConfigInputs {
---     pkgHashCompilerId              :: CompilerId,
---     pkgHashPlatform                :: Platform,
---     pkgHashFlagAssignment          :: FlagAssignment, -- complete not partial
---     pkgHashConfigureOptions        :: [String], -- just ./configure for build-type Configure
---     pkgHashOptimisationLevel       :: OptimisationLevel,
---     pkgHashLibraryShared           :: Bool,
-       pkgHashLibraryProfiling        :: Bool
---     pkgHashLibraryProfilingLevel   :: ProfDetailLevel,
---     pkgHashHpcEnabled              :: Bool,
---     pkgHashToolsVersions     ?
---     pkgHashToolsExtraOptions ?
--- and what about: docs, split objs, ghci-lib, exe striping? prog prefix/suffix
+       pkgHashCompilerId          :: CompilerId,
+       pkgHashPlatform            :: Platform,
+       pkgHashFlagAssignment      :: FlagAssignment, -- complete not partial
+       pkgHashConfigureScriptArgs :: [String], -- just ./configure for build-type Configure
+       pkgHashVanillaLib          :: Bool,
+       pkgHashSharedLib           :: Bool,
+       pkgHashDynExe              :: Bool,
+       pkgHashGHCiLib             :: Bool,
+       pkgHashProfLib             :: Bool,
+       pkgHashProfExe             :: Bool,
+       pkgHashProfLibDetail       :: ProfDetailLevel,
+       pkgHashProfExeDetail       :: ProfDetailLevel,
+       pkgHashLibCoverage         :: Bool,
+       pkgHashExeCoverage         :: Bool,
+       pkgHashOptimization        :: OptimisationLevel,
+       pkgHashSplitObjs           :: Bool,
+       pkgHashStripLibs           :: Bool,
+       pkgHashStripExes           :: Bool,
+       pkgHashDebugInfo           :: DebugInfoLevel,
+       pkgHashExtraLibDirs        :: [FilePath],
+       pkgHashExtraIncludeDirs    :: [FilePath],
+       pkgHashProgPrefix          :: Maybe PathTemplate,
+       pkgHashProgSuffix          :: Maybe PathTemplate
+
+--     TODO: pkgHashToolsVersions     ?
+--     TODO: pkgHashToolsExtraOptions ?
+--     TODO: and what about docs?
      }
   deriving Show
 
 -- | Calculate the overall hash to be used for an 'InstalledPackageId'
 --
-hashedInstalledPackageIdHash :: PackageHashInputs -> HashValue
-hashedInstalledPackageIdHash PackageHashInputs{..} =
-    hashValue $
-      -- this is a bit ad-hoc and not exactly fast, but should be ok
-      (LBS.Char8.pack . concat) $
-         display pkgHashPkgId    -- strictly speaking this is redundant
-       : showHashValue pkgHashSourceHash
-       : show pkgHashOtherConfig
-       : map display (sort pkgHashDirectDeps)
+hashPackageHashInputs :: PackageHashInputs -> HashValue
+hashPackageHashInputs = hashValue . renderPackageHashInputs
 
+renderPackageHashInputs :: PackageHashInputs -> LBS.ByteString
+renderPackageHashInputs PackageHashInputs{
+                          pkgHashPkgId,
+                          pkgHashSourceHash,
+                          pkgHashDirectDeps,
+                          pkgHashOtherConfig =
+                            PackageHashConfigInputs{..}
+                        } =
+    -- The purpose of this somewhat laboured rendering (e.g. why not just
+    -- use show?) is so that existing package hashes do not change
+    -- unnecessarily when new configuration inputs are added into the hash.
+
+    -- In particular, the assumption is that when a new configuration input
+    -- is included into the hash, that existing packages will typically get
+    -- the default value for that feature. So if we avoid adding entries with
+    -- the default value then most of the time adding new features will not
+    -- change the hashes of existing packages and so fewer packages will need
+    -- to be rebuilt. 
+
+    --TODO: ultimately we probably want to put this config info into the
+    -- ghc-pkg db. At that point this should probably be changed to use the
+    -- config file infrastructure so it can be read back in again.
+    LBS.Char8.pack $ unlines $ catMaybes
+      [ entry "pkgid"       display pkgHashPkgId
+      , entry "src"         showHashValue pkgHashSourceHash
+      , entry "deps"        (intercalate ", " . map display . sort) pkgHashDirectDeps
+        -- and then all the config
+      , entry "compilerid"  display pkgHashCompilerId
+      , entry "platform"    display pkgHashPlatform
+      , opt   "flags" []    showFlagAssignment pkgHashFlagAssignment
+      , opt   "configure-script" [] unwords pkgHashConfigureScriptArgs
+      , opt   "vanilla-lib" True  display pkgHashVanillaLib
+      , opt   "shared-lib"  False display pkgHashSharedLib
+      , opt   "dynamic-exe" False display pkgHashDynExe
+      , opt   "ghci-lib"    False display pkgHashGHCiLib
+      , opt   "prof-lib"    False display pkgHashProfLib
+      , opt   "prof-exe"    False display pkgHashProfExe
+      , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail 
+      , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail 
+      , opt   "hpc-lib"      False display pkgHashLibCoverage
+      , opt   "hpc-exe"      False display pkgHashExeCoverage
+      , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
+      , opt   "split-objs"   False display pkgHashSplitObjs
+      , opt   "stripped-lib" False display pkgHashStripLibs
+      , opt   "stripped-exe" True  display pkgHashStripExes
+      , opt   "debug-info"   NormalDebugInfo (show . fromEnum) pkgHashDebugInfo
+      , opt   "extra-lib-dirs"     [] unwords pkgHashExtraLibDirs
+      , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
+      , opt   "prog-prefix" Nothing (maybe "" InstallDirs.fromPathTemplate) pkgHashProgPrefix
+      , opt   "prog-suffix" Nothing (maybe "" InstallDirs.fromPathTemplate) pkgHashProgSuffix
+      ]
+  where
+    entry key     format value = Just (key ++ ": " ++ format value)
+    opt   key def format value
+         | value == def = Nothing
+         | otherwise    = entry key format value
+
+    showFlagAssignment = unwords . map showEntry . sortBy (compare `on` fst)
+      where
+        showEntry (Cabal.FlagName name, False) = '-' : name
+        showEntry (Cabal.FlagName name, True)  = '+' : name
 
 -----------------------------------------------
 -- The specific choice of hash implementation
@@ -2201,11 +2732,11 @@ hashedInstalledPackageIdHash PackageHashInputs{..} =
 -- there is some value in preventing intentional hash collisions in installed
 -- package ids.
 
-newtype HashValue = HashValue (SHA.Digest SHA.SHA1State)
+newtype HashValue = HashValue (SHA.Digest SHA.SHA256State)
   deriving Show
 
 hashValue :: LBS.ByteString -> HashValue
-hashValue = HashValue . SHA.sha1
+hashValue = HashValue . SHA.sha256
 
 showHashValue :: HashValue -> String
 showHashValue (HashValue digest) = SHA.showDigest digest

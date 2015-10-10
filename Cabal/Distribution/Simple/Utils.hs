@@ -536,7 +536,8 @@ findProgramLocation verbosity prog = do
       Nothing   -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
       Just path -> debug verbosity ("found " ++ prog ++ " at "++ path)
   return res
-
+{-# DEPRECATED findProgramLocation
+    "No longer used within Cabal, try findProgramOnSearchPath" #-}
 
 -- | Look for a program and try to find it's version number. It can accept
 -- either an absolute path or the name of a program binary, in which case we

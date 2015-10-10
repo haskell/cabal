@@ -13,9 +13,10 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
   getInstalledPackages,
+  Configure.getInstalledPackagesMonitorFiles,
   getSourcePackages,
   getSourcePackagesStrict,
-  getSourcePackagesFingerprint,
+  getSourcePackagesMonitorFiles,
   getIndexFileAge,
 
   readPackageIndexFile,
@@ -47,7 +48,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import qualified Distribution.Simple.Configure as Configure
-         ( getInstalledPackages )
+         ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
@@ -60,7 +61,7 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, fromMaybe, catMaybes)
+import Data.Maybe  (mapMaybe, fromMaybe)
 import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -76,9 +77,8 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils ( byteStringToFilePath
                                  , tryFindAddSourcePackageDesc )
 import Distribution.Compat.Exception (catchIO)
-import Distribution.Client.Compat.Time (getFileAge, getModTime, EpochTime)
-import System.Directory (doesFileExist, getModificationTime)
-import Data.Time (UTCTime)
+import Distribution.Client.Compat.Time (getFileAge, getModTime)
+import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
@@ -96,8 +96,6 @@ getInstalledPackages verbosity comp packageDbs conf =
     --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
 
-getInstalledPackagesFingerprint :: PackageDBStack -> IO [Maybe UTCTime]
-getInstalledPackagesFingerprint packageDbs = return []
 
 ------------------------------------------------------------------------
 -- Reading the source package index
@@ -204,16 +202,10 @@ readRepoIndex verbosity repo mode =
 getIndexFileAge :: Repo -> IO Double
 getIndexFileAge repo = getFileAge (repoLocalDir repo </> "00-index.tar")
 
-getSourcePackagesFingerprint :: [Repo] -> IO [Maybe UTCTime]
-getSourcePackagesFingerprint repos =
-    sequence
-      [ catchIO (Just `fmap` getModificationTime cacheFile) $ \e ->
-          if isDoesNotExistError e
-            then return Nothing
-            else ioError e
-      | repo <- repos
-      , let cacheFile = repoLocalDir repo </> "00-index.cache"
-      ]
+getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
+getSourcePackagesMonitorFiles repos =
+    [ repoLocalDir repo </> "00-index.cache"
+    | repo <- repos ]
 
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.

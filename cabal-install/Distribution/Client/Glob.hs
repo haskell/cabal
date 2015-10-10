@@ -6,74 +6,112 @@ module Distribution.Client.Glob
     , globMatches
     ) where
 
-import Distribution.Compat.ReadP
-import Distribution.Text
+import Data.List (stripPrefix)
 import Control.Monad (liftM2)
+import Control.Applicative ((<$>))
 import Data.Binary
 import GHC.Generics (Generic)
+
+import Distribution.Text
+import Distribution.Compat.ReadP
+import qualified Text.PrettyPrint as Disp
+
 
 -- | A piece of a globbing pattern
 data GlobAtom = WildCard
               | Literal String
               | Union [Glob]
-              deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
+
 instance Binary GlobAtom
 
 -- | A single directory or file component of a globbed path
 newtype Glob = Glob [GlobAtom]
-             deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
+
 instance Binary Glob
 
--- | @a `dropPrefix` b@ tests whether @b@ is a prefix of @a@,
--- return @Just@ the remaining portion of @a@ if so.
-dropPrefix :: String -> String -> Maybe String
-dropPrefix xs     []     = Just xs
-dropPrefix (x:xs) (y:ys)
-  | x == y               = dropPrefix xs ys
-dropPrefix _      _      = Nothing
 
--- | Test whether a name matches a globbing pattern
+-- | Test whether a file path component matches a globbing pattern
+--
 globMatches :: Glob -> String -> Bool
-globMatches (Glob atoms) = globMatches' atoms
+globMatches (Glob atoms) = goStart atoms
+  where
+    -- From the man page, glob(7):
+    --   "If a filename starts with a '.', this character must be
+    --    matched explicitly."
+    
+    go, goStart :: [GlobAtom] -> String -> Bool
 
-globMatches' :: [GlobAtom] -> String -> Bool
-globMatches' [] ""                 = True
-globMatches' (Literal lit:rest) s
-  | Just s' <- s `dropPrefix` lit = globMatches' rest s'
-  | otherwise                     = False
-globMatches' [WildCard] ""         = True
-globMatches' (WildCard:rest) (x:xs)=
-    globMatches' rest (x:xs) || globMatches' (WildCard:rest) xs
-globMatches' (Union globs:rest) xs =
-    any (\(Glob glob) -> glob `globMatches'` xs) globs && globMatches' rest xs
-globMatches' [] (_:_)              = False
-globMatches' (_:_) ""              = False
+    goStart (WildCard:_) ('.':_)  = False
+    goStart (Union globs:rest) cs = any (\(Glob glob) ->
+                                            goStart (glob ++ rest) cs) globs
+    goStart rest               cs = go rest cs
+
+    go []                 ""    = True
+    go (Literal lit:rest) cs
+      | Just cs' <- stripPrefix lit cs
+                                = go rest cs'
+      | otherwise               = False
+    go [WildCard]         ""    = True
+    go (WildCard:rest)   (c:cs) = go rest (c:cs) || go (WildCard:rest) cs
+    go (Union globs:rest)   cs  = any (\(Glob glob) ->
+                                          go (glob ++ rest) cs) globs
+    go []                (_:_)  = False
+    go (_:_)              ""    = False
 
 instance Text Glob where
-  disp  = error "Glob disp"
+  disp (Glob atoms) = Disp.hcat (map dispAtom atoms) 
+    where
+      dispAtom WildCard      = Disp.char '*'
+      dispAtom (Literal str) = Disp.text (escape str)
+      dispAtom (Union globs) = Disp.braces
+                                 (Disp.hcat (Disp.punctuate (Disp.char ',')
+                                                            (map disp globs)))
+
+      escape []               = []
+      escape (c:cs)
+        | isGlobEscapedChar c = '\\' : c : escape cs
+        | otherwise           =        c : escape cs
+
   parse = Glob `fmap` many1 globAtom
     where
+      globAtom :: ReadP r GlobAtom
+      globAtom = literal +++ wildcard +++ union
+
       wildcard = char '*' >> return WildCard
+
       union = between (char '{') (char '}')
-              (Union . map Glob <$> sepBy1 (many globAtom) (char ','))
-      --literal = Literal `fmap` (many1 $ (char '\\' >> choice (map char escaped)) +++ other)
+              (Union . map Glob <$> sepBy1 (many1 globAtom) (char ','))
+
       literal = Literal `fmap` many1'
         where
-          escaped = "*!{},"
-          other = satisfy (`notElem` escaped)
+          litchar = normal +++ escape
+          
+          normal  = satisfy (not . isGlobEscapedChar)
+          escape  = char '\\' >> satisfy isGlobEscapedChar
+
           many1' :: ReadP r [Char]
-          many1' = liftM2 (:) other many'
+          many1' = liftM2 (:) litchar many'
+
           many' :: ReadP r [Char]
           many' = many1' <++ return []
 
-      globAtom :: ReadP r GlobAtom
-      globAtom = literal +++ wildcard +++ union
+isGlobEscapedChar :: Char -> Bool
+isGlobEscapedChar '*'  = True
+isGlobEscapedChar '{'  = True
+isGlobEscapedChar '}'  = True
+isGlobEscapedChar ','  = True
+isGlobEscapedChar '\\' = True
+isGlobEscapedChar '/'  = True
+isGlobEscapedChar _    = False
 
 -- | Simplify a glob pattern
 simplify :: [GlobAtom] -> [GlobAtom]
 simplify []                             = []
 simplify (WildCard : WildCard : rest)   = simplify (WildCard : rest)
 simplify (Literal x : Literal y : rest) = simplify (Literal (x++y) : rest)
-simplify (Union globs : rest)           =
+simplify (Union globs : rest)           = 
     Union (map (\(Glob glob) -> Glob $ simplify glob) globs) : simplify rest
 simplify (x : rest)                     = x : simplify rest
+

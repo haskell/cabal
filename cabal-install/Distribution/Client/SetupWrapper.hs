@@ -497,6 +497,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                 (fmap compilerId . useCompiler $ options')
         platformString        = display platform
 
+  --TODO: should realy treat cached setup just like another nix style package
+  -- then we can cache it reliably and build it in parallel like other things
+
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions
