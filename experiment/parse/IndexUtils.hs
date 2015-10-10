@@ -15,7 +15,7 @@ module IndexUtils (
   parseRepoIndex,
   ) where
 
-import qualified Tar
+import qualified Codec.Archive.Tar as Tar
 
 import qualified Data.ByteString.Lazy as BS
 import Data.ByteString.Lazy (ByteString)
@@ -44,15 +44,16 @@ parseRepoIndex :: ByteString
 parseRepoIndex = foldlTarball (\pkgs -> maybe pkgs (:pkgs) . extractPkg) []
 
 extractPkg :: Tar.Entry -> Maybe ByteString
-extractPkg entry
-  | takeExtension (Tar.fileName entry) == ".cabal"
-  = Just (Tar.fileContent entry)
-  | otherwise = Nothing
+extractPkg entry =
+  case Tar.entryContent entry of
+    Tar.NormalFile content _ | takeExtension (Tar.entryPath entry) == ".cabal"
+      -> Just content
+    _ -> Nothing
 
 foldlTarball :: (a -> Tar.Entry -> a) -> a
              -> ByteString -> Either String a
 foldlTarball f z = either Left (Right . foldl f z) . check [] . Tar.read
   where
-    check _  (Tar.Fail err)  = Left  err
+    check _  (Tar.Fail err)  = Left $ show err
     check ok Tar.Done        = Right ok
     check ok (Tar.Next e es) = check (e:ok) es

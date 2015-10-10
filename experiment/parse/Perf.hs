@@ -26,7 +26,7 @@ main = do
     "perf-new" -> let parse  = Parser.readFields . toStrict
                       parsed = [ pkg | Right pkg <- map parse cabalFiles ]
                    in  print (length parsed)
-             
+
     "check-old" -> let parse  = OldParse.readFields . fromUTF8 . LBS.unpack
                        parsed = [ (msg, f)
                                 | (OldParse.ParseFailed msg, f) <-

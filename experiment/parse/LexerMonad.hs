@@ -21,6 +21,9 @@ module LexerMonad (
 
   ) where
 
+import Control.Applicative (Applicative(..))
+import Control.Monad (ap, liftM)
+
 import qualified Data.ByteString as B
 
 -- testing only:
@@ -31,8 +34,15 @@ import qualified Data.Text.Encoding as T
 -- simple state monad
 newtype Lex a = Lex { unLex :: LexState -> LexResult a }
 
+instance Functor Lex where
+  fmap = liftM
+
+instance Applicative Lex where
+  pure = returnLex
+  (<*>) = ap
+
 instance Monad Lex where
-  return = returnLex
+  return = pure
   (>>=)  = thenLex
 
 data LexResult a = LexResult {-# UNPACK #-} !LexState a

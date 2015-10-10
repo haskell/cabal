@@ -1,0 +1,20 @@
+name: parse
+
+dependencies:
+  - base
+  - bytestring
+  - Cabal
+  - directory
+  - old-time
+  - filepath
+  - text
+  - array
+  - containers
+  - parsec
+  - vector
+  - tar
+
+executables:
+  cabal-parser-perf:
+    main: Perf.hs
+    source-dirs: .

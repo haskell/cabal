@@ -1,5 +1,8 @@
 module OldParse {-(readFields, ParseResult(..), runP)-} where
 
+import Control.Applicative (Applicative(..))
+import Control.Monad (ap, liftM)
+
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Simple.Utils (intercalate)
 
@@ -23,6 +26,13 @@ data PWarning = PWarning String
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
+
+instance Functor ParseResult where
+        fmap = liftM
+
+instance Applicative ParseResult where
+        pure = ParseOk []
+        (<*>) = ap
 
 instance Monad ParseResult where
         return x = ParseOk [] x

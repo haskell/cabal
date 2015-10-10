@@ -1,9 +1,12 @@
 flags:
   text:
     integer-simple: false
+  tar:
+    old-time: false
 packages:
 - Cabal/
 - cabal-install/
+- experiment/parse/
 extra-deps:
 - HTTP-4000.2.20
 - mtl-2.2.1
@@ -35,5 +38,9 @@ extra-deps:
 - ansi-wl-pprint-0.6.7.2
 - primitive-0.6
 - transformers-compat-0.4.0.4
+
+# parse experiment
+- vector-0.11.0.0
+- tar-0.4.2.1
 
 resolver: ghc-7.10
