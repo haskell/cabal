@@ -1,0 +1,29 @@
+name:		     unpack-funcs
+version:             0.1.2
+cabal-version:       >= 1.6
+tested-with:	     GHC
+category:            Control
+synopsis:	     Monad transformers that mirror worker-wrapper transformations.
+description:         Provides a typeclass and Template Haskell-driven instance generators that create "worker-wrapper"
+                     @ReaderT@ monad transformers, which unpacks the arguments of single-constructor data types.
+license:             BSD3
+license-file:	     LICENSE
+author:              Louis Wasserman
+maintainer:          wasserman.louis@gmail.com
+build-type:	     Simple
+
+source-repository head
+  type:              git
+  location:          git@github.com:lowasser/unpack-funcs.git
+
+Library{
+build-Depends:    base < 5.0.0.0, template-haskell >= 2.5.0.0, bytestring >= 0.9.1.0,
+                  vector >= 0.6, primitive >= 0.3, transformers
+ghc-options:
+  -Wall -fno-warn-name-shadowing -fno-warn-orphans
+exposed-modules:  
+  Control.Monad.Unpack
+other-modules:
+  Control.Monad.Unpack.Class,
+  Control.Monad.Unpack.TH
+}

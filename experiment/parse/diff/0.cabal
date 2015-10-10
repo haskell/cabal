@@ -1,0 +1,46 @@
+name:          graphs
+category:      Data Structures
+version:       0.1
+license:       BSD3
+cabal-version: >= 1.6
+license-file:  LICENSE
+author:        Edward A. Kmett
+maintainer:    Edward A. Kmett <ekmett@gmail.com>
+stability:     experimental
+homepage:      http://github.com/ekmett/graphs
+copyright:     Copyright (C) 2011 Edward A. Kmett
+synopsis:      A simple monadic graph library
+description:   A simple monadic graph library
+build-type:    Simple
+
+source-repository head
+  type: git
+  location: git://github.com/ekmett/graphs.git
+
+library
+  build-depends: 
+    base >= 4 && < 4.4,
+    array >= 0.3 && < 0.5,
+    data-default >= 0.2 && < 0.3,
+    transformers >= 0.2.2 && < 0.3,
+    containers >= 0.3 && < 0.5,
+    void >= 0.3 && < 0.4
+
+  exposed-modules:
+    Data.Graph.AdjacencyList
+    Data.Graph.AdjacencyMatrix
+    Data.Graph.Algorithm.DepthFirstSearch
+    Data.Graph.Algorithm.BreadthFirstSearch
+    Data.Graph.Class
+    Data.Graph.Class.AdjacencyList
+    Data.Graph.Class.AdjacencyMatrix
+    Data.Graph.Class.EdgeEnumerable
+    Data.Graph.Class.Bidirectional
+    Data.Graph.Class.VertexEnumerable
+    Data.Graph.Dual
+    Data.Graph.Empty
+    Data.Graph.PropertyMap
+  other-modules
+    Data.Graph.Internal.Color
+
+  ghc-options: -Wall 
