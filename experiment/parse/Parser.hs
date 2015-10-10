@@ -2,7 +2,7 @@
 module Parser where
 
 import Lexer
-import LexerMonad (unLex, LexState(..), LexResult(..), Position(..))
+import LexerMonad (unLex, LexState(..), LexResult(..), Position(..), LexWarning)
 
 import Text.Parsec.Prim
 import Text.Parsec.Combinator hiding (eof)
@@ -43,10 +43,16 @@ instance Stream LexState' Identity LToken where
       L _ EOF -> return Nothing
       _       -> return (Just (tok, mkLexState' st'))
 -}
-  uncons (LexState' _ (tok,st')) =
+  uncons (LexState' _ (tok, st')) =
     case tok of
       L _ EOF -> return Nothing
       _       -> return (Just (tok, st'))
+
+-- | Get lexer warnings accumulated so far
+getWarnings :: Parser [LexWarning]
+getWarnings = do
+  LexState' (LexState { warnings = ws }) _ <- getInput
+  return ws
 
 setLexerMode :: Int -> Parser ()
 setLexerMode code = do
@@ -84,7 +90,6 @@ tokName :: Parser Name
 tokIndent                 :: Parser Int
 tokColon, tokOpenBrace,
   tokCloseBrace :: Parser ()
-  
 
 tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (Name pos x);  _ -> Nothing
 tokName'      = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x);  _ -> Nothing

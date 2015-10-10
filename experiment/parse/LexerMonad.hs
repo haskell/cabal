@@ -19,12 +19,16 @@ module LexerMonad (
     getStartCode,
     setStartCode,
 
+    LexWarning(..),
+    addWarning,
+
   ) where
 
 import Control.Applicative (Applicative(..))
 import Control.Monad (ap, liftM)
 
 import qualified Data.ByteString as B
+import Data.Monoid ((<>))
 
 -- testing only:
 import qualified Data.Vector as V
@@ -47,10 +51,14 @@ instance Monad Lex where
 
 data LexResult a = LexResult {-# UNPACK #-} !LexState a
 
+data LexWarning = LexWarning {-# UNPACK #-} !Position
+                             {-# UNPACK #-} !T.Text
+
 data LexState = LexState {
         curPos   :: {-# UNPACK #-} !Position,        -- position at current input location
         curInput :: {-# UNPACK #-} !InputStream,     -- the current input
         curCode  :: {-# UNPACK #-} !StartCode,       -- lexer code
+        warnings :: [LexWarning],
         dbgText  :: V.Vector T.Text
      } --TODO: check if we should cache the first token
        -- since it looks like parsec's uncons can be called many times on the same input
@@ -70,15 +78,16 @@ retPos (Position row _col) = Position (row + 1) 1
 
 
 -- | Execute the given lexer on the supplied input stream.
-execLexer :: Lex a -> InputStream -> a
+execLexer :: Lex a -> InputStream -> ([LexWarning], a)
 execLexer (Lex lex) input =
     case lex initialState of
-      LexResult _ result -> result
+      LexResult s@LexState{ warnings = ws } result -> (ws, result)
   where
     initialState = LexState {
                      curPos   = Position 1 1,
                      curInput = input,
                      curCode  = 0,
+                     warnings = [],
                      dbgText  = V.fromList . T.lines . T.decodeUtf8 $ input
                    }
 
@@ -111,3 +120,6 @@ getStartCode = Lex $ \s@LexState{ curCode = c } -> LexResult s c
 setStartCode :: Int -> Lex ()
 setStartCode c = Lex $ \s -> LexResult s{ curCode = c } ()
 
+-- | Add warning at the current position
+addWarning :: String -> Lex ()
+addWarning msg = Lex $ \s@LexState{ curPos = pos, warnings = ws  } -> LexResult s{ warnings = LexWarning pos (T.pack msg) : ws }  ()

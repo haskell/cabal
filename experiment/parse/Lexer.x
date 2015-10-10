@@ -34,6 +34,7 @@ $ctlchar         = [\x0-\x1f \x7f]
 $printable       = \x0-\x10ffff # $ctlchar   -- so no \n \r
 $spacetab        = [$space \t]
 $bom             = \xfeff
+$nbsp            = \xa0
 
 $paren           = [ \( \) \[ \] ]
 $field_layout    = [$printable \t]
@@ -59,6 +60,7 @@ tokens :-
 
 <bol_section, bol_field_layout, bol_field_braces> {
   $spacetab* @nl                        { \_ _ _ -> adjustPos retPos >> lexToken }
+  $nbsp+                                { \_ _ _ -> addWarning "Non-breaking space occured" >> lexToken}
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*             ;  -- TODO: check the lack of @nl works here
                                         -- including counting line numbers
@@ -161,7 +163,7 @@ lexToken = do
   st  <- getStartCode
   case alexScan inp st of
     AlexEOF -> return (L pos EOF)
-    AlexError inp' -> 
+    AlexError inp' ->
         let !len_bytes = B.length inp - B.length inp' in
             --FIXME: we want len_chars here really
             -- need to decode utf8 up to this point

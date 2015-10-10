@@ -24,9 +24,6 @@ Executable NameServer
   , "DSTM/0.1.1/DSTM.cabal"
   , "DSTM/0.1.2/DSTM.cabal"
 
--- unexpected character in input '\194'
-  , "Octree/0.5/Octree.cabal"
-
 {-
  default- extensions:
                ScopedTypeVariables,
@@ -43,34 +40,12 @@ Test-Suite test-unify:
   , "ds-kanren/0.2.0.0/ds-kanren.cabal"
   , "ds-kanren/0.2.0.1/ds-kanren.cabal"
 
-
--- unexpected character in input '\194'
--- a0 is NBSP
--- 194 160 is the UTF-8 encoding of a NO-BREAK SPACE codepoint (the same codepoint that HTML calls &nbsp;).
--- http://stackoverflow.com/questions/13992934/how-to-fix-utf-encoding-for-whitespaces
-{-
-000019b0  70 6f 73 69 74 6f 72 79  20 68 65 61 64 0d 0a c2  |pository head...|
-000019c0  a0 c2 a0 74 79 70 65 3a  20 20 20 20 20 67 69 74  |...type:     git|
-000019d0  0d 0a c2 a0 c2 a0 6c 6f  63 61 74 69 6f 6e 3a 20  |......location: |
--}
-
-  , "hermit/0.1.8.0/hermit.cabal"
-
 -- Using {- as a comment
   , "ixset/1.0.4/ixset.cabal"
 
 -- test-suite metric-tests:
   , "metric/0.1.4/metric.cabal"
   , "metric/0.2.0/metric.cabal"
-
--- unexpected character in input '\194'
-  , "oeis/0.3.0/oeis.cabal"
-  , "oeis/0.3.1/oeis.cabal"
-  , "oeis/0.3.2/oeis.cabal"
-  , "oeis/0.3.3/oeis.cabal"
-  , "oeis/0.3.4/oeis.cabal"
-  , "oeis/0.3.5/oeis.cabal"
-  , "oeis/0.3.6/oeis.cabal"
 
 --     impl(ghc >= 7.4):
   , "phasechange/0.1/phasechange.cabal"
@@ -82,6 +57,18 @@ Test-Suite test-unify:
   , "vacuum-opengl/0.0.1/vacuum-opengl.cabal"
   ]
 
+-- NBSP files
+{-
+  , "Octree/0.5/Octree.cabal"
+  , "hermit/0.1.8.0/hermit.cabal"
+  , "oeis/0.3.0/oeis.cabal"
+  , "oeis/0.3.1/oeis.cabal"
+  , "oeis/0.3.2/oeis.cabal"
+  , "oeis/0.3.3/oeis.cabal"
+  , "oeis/0.3.4/oeis.cabal"
+  , "oeis/0.3.5/oeis.cabal"
+  , "oeis/0.3.6/oeis.cabal"
+-}
 main :: IO ()
 main = do
   [which, n, indexfile] <- getArgs
