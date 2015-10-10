@@ -30,7 +30,7 @@ import System.FilePath (takeExtension)
 -- specific instance of 'Package' that you might want to use. In the simple
 -- case you can just use @\_ p -> p@ here.
 --
-readPackageIndexFile :: FilePath -> IO [ByteString]
+readPackageIndexFile :: FilePath -> IO [(FilePath, ByteString)]
 readPackageIndexFile indexFile =
       either fail return
     . parseRepoIndex
@@ -40,14 +40,14 @@ readPackageIndexFile indexFile =
 -- as a 'ByteString'.
 --
 parseRepoIndex :: ByteString
-               -> Either String [ByteString]
+               -> Either String [(FilePath, ByteString)]
 parseRepoIndex = foldlTarball (\pkgs -> maybe pkgs (:pkgs) . extractPkg) []
 
-extractPkg :: Tar.Entry -> Maybe ByteString
+extractPkg :: Tar.Entry -> Maybe (FilePath, ByteString)
 extractPkg entry =
   case Tar.entryContent entry of
     Tar.NormalFile content _ | takeExtension (Tar.entryPath entry) == ".cabal"
-      -> Just content
+      -> Just (Tar.entryPath entry, content)
     _ -> Nothing
 
 foldlTarball :: (a -> Tar.Entry -> a) -> a
