@@ -39,7 +39,7 @@ module Distribution.Client.Sandbox (
     updateInstallDirs,
 
     -- FIXME: move somewhere else
-    configPackageDB', configCompilerAux'
+    configPackageDB', configCompilerAux', getPersistOrConfigCompiler
   ) where
 
 import Distribution.Client.Setup
