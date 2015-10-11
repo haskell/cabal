@@ -633,9 +633,10 @@ rebuildInstallPlan verbosity
                            localSourcePackages
 
       -- Last phase: elaborating the install plan
-      defInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
-                                   (compilerFlavor compiler) False False
-      let storePackageDb     = cabalStorePackageDB (compilerId compiler)
+      defaultInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
+                                       (compilerFlavor compiler) False False
+      let storeDirectory     = cabalStoreDirectory (compilerId compiler)
+          storePackageDb     = cabalStorePackageDB (compilerId compiler)
           storePackageDbs    = [ GlobalPackageDB, storePackageDb ]
 
       let (elaboratedInstallPlan, sharedPackageConfig) =
@@ -645,7 +646,7 @@ rebuildInstallPlan verbosity
               distDirLayout
               installPlan
               localSourcePackages
-              defInstallDirs
+              defaultInstallDirs
               projectConfigAllPackages
               projectConfigLocalPackages
               projectConfigSpecificPackage
@@ -655,6 +656,7 @@ rebuildInstallPlan verbosity
       --TODO: is this really true? what if packages get deleted? / GC'd?
       --      relates to the issue of whether rebuildTargets rewrites the
       --      final install plan or not
+      liftIO $ createDirectoryIfMissingVerbose verbosity True storeDirectory
       liftIO $ createPackageDBIfMissing verbosity compiler progdb storePackageDbs
       storePkgIndex <- liftIO $ Cabal.getPackageDBContents verbosity compiler storePackageDb progdb
 
@@ -1293,7 +1295,7 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
                                   -- just individual args
                                   DistDirLayout{..}
                                   solverPlan pkgSpecifiers
-                                  defInstallDirs
+                                  defaultInstallDirs
                                   sharedPackageConfig
                                   localPackagesConfig
                                   perPackageConfig =
