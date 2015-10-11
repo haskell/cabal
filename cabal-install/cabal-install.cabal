@@ -27,7 +27,35 @@ Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
 
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh | sort'
-  tests/PackageTests/Freeze/my.cabal
+  tests/IntegrationTests/exec/common.sh
+  tests/IntegrationTests/exec/should_run/Foo.hs
+  tests/IntegrationTests/exec/should_run/My.hs
+  tests/IntegrationTests/exec/should_run/adds_sandbox_bin_directory_to_path.sh
+  tests/IntegrationTests/exec/should_run/auto_configures_on_exec.sh
+  tests/IntegrationTests/exec/should_run/can_run_executables_installed_in_sandbox.sh
+  tests/IntegrationTests/exec/should_run/configures_cabal_to_use_sandbox.sh
+  tests/IntegrationTests/exec/should_run/configures_ghc_to_use_sandbox.sh
+  tests/IntegrationTests/exec/should_run/exit_with_failure_without_args.sh
+  tests/IntegrationTests/exec/should_run/my.cabal
+  tests/IntegrationTests/exec/should_run/runs_given_command.sh
+  tests/IntegrationTests/freeze/common.sh
+  tests/IntegrationTests/freeze/should_run/disable_benchmarks_freezes_bench_deps.sh
+  tests/IntegrationTests/freeze/should_run/disable_tests_freezes_test_deps.sh
+  tests/IntegrationTests/freeze/should_run/does_not_freeze_nondeps.sh
+  tests/IntegrationTests/freeze/should_run/does_not_freeze_self.sh
+  tests/IntegrationTests/freeze/should_run/dry_run_does_not_create_config.sh
+  tests/IntegrationTests/freeze/should_run/enable_benchmarks_freezes_bench_deps.sh
+  tests/IntegrationTests/freeze/should_run/enable_tests_freezes_test_deps.sh
+  tests/IntegrationTests/freeze/should_run/freezes_direct_dependencies.sh
+  tests/IntegrationTests/freeze/should_run/freezes_transitive_dependencies.sh
+  tests/IntegrationTests/freeze/should_run/my.cabal
+  tests/IntegrationTests/freeze/should_run/runs_without_error.sh
+  tests/IntegrationTests/multiple-source/common.sh
+  tests/IntegrationTests/multiple-source/should_run/finds_second_source_of_multiple_source.sh
+  tests/IntegrationTests/multiple-source/should_run/p/Setup.hs
+  tests/IntegrationTests/multiple-source/should_run/p/p.cabal
+  tests/IntegrationTests/multiple-source/should_run/q/Setup.hs
+  tests/IntegrationTests/multiple-source/should_run/q/q.cabal
 
 source-repository head
   type:     git
@@ -229,29 +257,20 @@ Test-Suite unit-tests
     ghc-options: -threaded
   default-language: Haskell2010
 
--- Large, system tests that build packages.
-test-suite package-tests
+test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
-  main-is: PackageTests.hs
-  other-modules:
-    PackageTests.Exec.Check
-    PackageTests.Freeze.Check
-    PackageTests.MultipleSource.Check
-    PackageTests.PackageTester
+  main-is: IntegrationTests.hs
   build-depends:
     Cabal,
-    QuickCheck >= 2.1.0.1 && < 2.9,
+    async,
     base,
     bytestring,
     directory,
-    extensible-exceptions,
     filepath,
     process,
-    regex-posix,
     tasty,
-    tasty-hunit,
-    tasty-quickcheck
+    tasty-hunit
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3
