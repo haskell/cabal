@@ -113,7 +113,7 @@ defaultCabalDirLayout cabalDir =
       cabalStoreDirectory compid </> display ipkgid
 
     cabalStorePackageDBPath compid =
-      cabalDir </> "store" </> display compid </> "package.db"
+      cabalStoreDirectory compid </> "package.db"
 
     cabalStorePackageDB =
       SpecificPackageDB . cabalStorePackageDBPath
