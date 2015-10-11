@@ -229,29 +229,20 @@ Test-Suite unit-tests
     ghc-options: -threaded
   default-language: Haskell2010
 
--- Large, system tests that build packages.
-test-suite package-tests
+test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
-  main-is: PackageTests.hs
-  other-modules:
-    PackageTests.Exec.Check
-    PackageTests.Freeze.Check
-    PackageTests.MultipleSource.Check
-    PackageTests.PackageTester
+  main-is: IntegrationTests.hs
   build-depends:
     Cabal,
-    QuickCheck >= 2.1.0.1 && < 2.9,
+    async,
     base,
     bytestring,
     directory,
-    extensible-exceptions,
     filepath,
     process,
-    regex-posix,
     tasty,
-    tasty-hunit,
-    tasty-quickcheck
+    tasty-hunit
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3
