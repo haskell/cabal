@@ -6,6 +6,8 @@ import qualified OldParse  (readFields, ParseResult(..))
 import Distribution.Simple.Utils (fromUTF8)
 
 import qualified Parser
+import qualified Lexer
+import qualified LexerMonad as Lexer
 
 import System.Environment
 import Control.Exception (evaluate)
@@ -104,6 +106,19 @@ main = do
                                                     print msg
                                                     LBS.putStr f
 
+    "lexer-warnings" -> let parse  = Parser.readFields' . toStrict
+                            parsed :: [(FilePath, [Lexer.LexWarning])]
+                            parsed = [ (name, ws)
+                                     | (name, bs) <- cabalFiles
+                                     , let p = parse bs
+                                     , isRight p
+                                     , let Right (_, ws) = p
+                                     ]
+                            output (f, ws) | null ws   = return ()
+                                           | otherwise = putStrLn f >> mapM_ print ws >> putStrLn "----"
+                        in mapM_ output parsed
+
+
     "extract-fail" -> let parse  = Parser.readFields . toStrict . snd
                           parsed = [ f
                                    | (Left msg, f) <-
@@ -114,3 +129,6 @@ main = do
 
   where
     toStrict = BS.concat . LBS.toChunks
+
+isRight (Right _) = True
+isRight _ = False

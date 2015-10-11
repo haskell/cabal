@@ -9,7 +9,7 @@ import Text.Parsec.Combinator hiding (eof)
 import Text.Parsec.Pos
 import Text.Parsec.Error
 
-import Control.Monad (guard)
+import Control.Monad (guard, liftM2)
 import Data.Functor.Identity
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
@@ -49,8 +49,8 @@ instance Stream LexState' Identity LToken where
       _       -> return (Just (tok, st'))
 
 -- | Get lexer warnings accumulated so far
-getWarnings :: Parser [LexWarning]
-getWarnings = do
+getLexerWarnings :: Parser [LexWarning]
+getLexerWarnings = do
   LexState' (LexState { warnings = ws }) _ <- getInput
   return ws
 
@@ -300,6 +300,11 @@ fieldInlineOrBraces name =
 
 readFields :: B.ByteString -> Either ParseError [Field]
 readFields s = parse cabalStyleFile "the input" lexSt
+  where
+    lexSt = mkLexState' (mkLexState s)
+
+readFields' :: B.ByteString -> Either ParseError ([Field], [LexWarning])
+readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 

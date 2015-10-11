@@ -213,6 +213,7 @@ mkLexState input = LexState {
                      curPos   = Position 1 1,
                      curInput = input,
                      curCode  = bol_section,
+                     warnings = [],
                      dbgText  = V.fromList . lines' . T.decodeUtf8With T.lenientDecode $ input
                    }
 

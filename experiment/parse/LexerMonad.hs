@@ -53,6 +53,7 @@ data LexResult a = LexResult {-# UNPACK #-} !LexState a
 
 data LexWarning = LexWarning {-# UNPACK #-} !Position
                              {-# UNPACK #-} !T.Text
+  deriving (Show)
 
 data LexState = LexState {
         curPos   :: {-# UNPACK #-} !Position,        -- position at current input location
