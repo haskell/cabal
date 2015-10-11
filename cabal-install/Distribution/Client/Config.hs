@@ -517,20 +517,11 @@ addInfoForKnownRepos other = other
 
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = addBaseConf $ do
-  let sources = [
-        ("commandline option",   return . flagToMaybe $ configFileFlag),
-        ("env var CABAL_CONFIG", lookup "CABAL_CONFIG" `liftM` getEnvironment),
-        ("default config file",  Just `liftM` defaultConfigFile) ]
-
-      getSource [] = error "no config file path candidate found."
-      getSource ((msg,action): xs) =
-                        action >>= maybe (getSource xs) (return . (,) msg)
-
-  (source, configFile) <- getSource sources
+  (source, configFile) <- lookupConfigFile configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
-      notice verbosity $ "Config file path source is " ++ source ++ "."
+      notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
       notice verbosity $ "Writing default configuration to " ++ configFile
       commentConf <- commentSavedConfig
@@ -552,6 +543,27 @@ loadConfig verbosity configFileFlag = addBaseConf $ do
       base  <- baseSavedConfig
       extra <- body
       return (base `mappend` extra)
+
+    sourceMsg CommandlineOption =   "commandline option"
+    sourceMsg EnvironmentVariable = "env var CABAL_CONFIG"
+    sourceMsg Default =             "default config file"
+
+data ConfigFileSource = CommandlineOption
+                      | EnvironmentVariable
+                      | Default
+
+lookupConfigFile :: Flag FilePath -> IO (ConfigFileSource, FilePath)
+lookupConfigFile configFileFlag =
+    getSource sources
+  where
+    sources =
+      [ (CommandlineOption,   return . flagToMaybe $ configFileFlag)
+      , (EnvironmentVariable, lookup "CABAL_CONFIG" `liftM` getEnvironment)
+      , (Default,             Just `liftM` defaultConfigFile) ]
+
+    getSource [] = error "no config file path candidate found."
+    getSource ((source,action): xs) =
+                      action >>= maybe (getSource xs) (return . (,) source)
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
@@ -1014,7 +1026,7 @@ userConfigUpdate verbosity globalFlags = do
   userConfig <- loadConfig normal (globalConfigFile globalFlags)
   newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   commentConf <- commentSavedConfig
-  cabalFile <- defaultConfigFile
+  (_, cabalFile) <- lookupConfigFile $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
