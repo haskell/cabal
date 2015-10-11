@@ -38,7 +38,9 @@ $nbsp            = \xa0
 
 $paren           = [ \( \) \[ \] ]
 $field_layout    = [$printable \t]
+$field_layout'   = [$printable] # [$space]
 $field_braces    = [$printable \t] # [\{ \}]
+$field_braces'   = [$printable] # [\{ \} $space]
 $comment         = [$printable \t]
 $namecore        = [$alpha]
 $nameextra       = [$namecore $digit \- \_ \. \']
@@ -60,7 +62,7 @@ tokens :-
 
 <bol_section, bol_field_layout, bol_field_braces> {
   $spacetab* @nl                        { \_ _ _ -> adjustPos retPos >> lexToken }
-  $nbsp+                                { \_ _ _ -> addWarning "Non-breaking space occured" >> lexToken}
+  $nbsp+                                { \_ _ _ -> addWarning "Non-breaking space occured" >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*             ;  -- TODO: check the lack of @nl works here
                                         -- including counting line numbers
@@ -103,7 +105,8 @@ tokens :-
 }
 
 <in_field_layout> {
-  $field_layout+  { toki TokFieldLine }  --TODO prevent or record leading tabs
+  $spacetab+; --TODO prevent or record leading tabs
+  $field_layout' $field_layout*  { toki TokFieldLine }
   @nl             { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_layout >> lexToken }
 }
 
@@ -112,7 +115,8 @@ tokens :-
 }
 
 <in_field_braces> {
-  $field_braces+    { toki TokFieldLine }
+  $spacetab+; --TODO prevent or record leading tabs
+  $field_braces' $field_braces*    { toki TokFieldLine }
   \{                { tok  OpenBrace  }
   \}                { tok  CloseBrace }
   @nl               { \_ _ _ -> adjustPos retPos >> setStartCode bol_field_braces >> lexToken }

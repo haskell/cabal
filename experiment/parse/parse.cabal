@@ -29,10 +29,9 @@ executable cabal-parser-perf
       InstalledPackageInfo
       Lexer
       LexerMonad
-      OldParse
       ParseFields
+      PostParser
       Parser
-      Parser2
       SearchExperiment
       Test
   default-language: Haskell2010

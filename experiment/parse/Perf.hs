@@ -2,10 +2,11 @@ module Main where
 
 import IndexUtils
 
-import qualified OldParse  (readFields, ParseResult(..))
+import qualified Distribution.ParseUtils as ParseUtils (readFields, ParseResult(..))
 import Distribution.Simple.Utils (fromUTF8)
 
 import qualified Parser
+import qualified PostParser
 import qualified Lexer
 import qualified LexerMonad as Lexer
 
@@ -13,6 +14,7 @@ import System.Environment
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.List as L
 
 checkedFiles :: [FilePath]
 checkedFiles =
@@ -71,6 +73,17 @@ Test-Suite test-unify:
   , "oeis/0.3.5/oeis.cabal"
   , "oeis/0.3.6/oeis.cabal"
 -}
+
+-- Parser results
+checkedFiles2 :: [FilePath]
+checkedFiles2 =
+  [ "4Blocks/0.2/4Blocks.cabal"
+  , "AC-"
+  , "ADPfusion"
+  , "AERN-"
+  , "AES"
+  ]
+
 main :: IO ()
 main = do
   [which, n, indexfile] <- getArgs
@@ -79,17 +92,17 @@ main = do
   case which of
     "perf-baseline" -> print (length cabalFiles)
 
-    "perf-old" -> let parse  = OldParse.readFields . fromUTF8 . LBS.unpack . snd
-                      parsed = [ pkg | OldParse.ParseOk _ pkg <- map parse cabalFiles ]
+    "perf-old" -> let parse  = ParseUtils.readFields . fromUTF8 . LBS.unpack . snd
+                      parsed = [ pkg | ParseUtils.ParseOk _ pkg <- map parse cabalFiles ]
                   in  print (length parsed)
 
     "perf-new" -> let parse  = Parser.readFields . toStrict . snd
                       parsed = [ pkg | Right pkg <- map parse cabalFiles ]
                    in  print (length parsed)
 
-    "check-old" -> let parse  = OldParse.readFields . fromUTF8 . LBS.unpack . snd
+    "check-old" -> let parse  = ParseUtils.readFields . fromUTF8 . LBS.unpack . snd
                        parsed = [ (msg, f)
-                                | (OldParse.ParseFailed msg, f) <-
+                                | (ParseUtils.ParseFailed msg, f) <-
                                   map (\f -> (parse f, f)) cabalFiles ]
                    in  case parsed of
                          []           -> print "all ok!"
@@ -105,6 +118,15 @@ main = do
                          ((msg, (name, f)):_) -> do putStrLn name
                                                     print msg
                                                     LBS.putStr f
+
+    "compare" -> let parseOld c = fmap (PostParser.postProcessFields2 . PostParser.postProcessFields) (ParseUtils.readFields . fromUTF8 . LBS.unpack $ c)
+                     parseNew c = (fmap . fmap . fmap) (const ()) (fmap PostParser.postProcessFields2 . Parser.readFields . toStrict $ c)
+                     parsed   = [ (f, parseOld c, parseNew c) | (f, c) <- cabalFiles ]
+                     parsed'  = [ (f, o, n) | (f, ParseUtils.ParseOk _ o, Right n) <- parsed, o /= n, all (\prefix -> not $ prefix `L.isPrefixOf` f) checkedFiles2 ]
+                     printDiff (f, o, n) = do putStrLn f
+                                              putStrLn (show (length o) ++ " " ++ show (length n))
+                                              mapM_ id [ putStr "- " >> print o' >> putStr "+ " >> print n' | (o', n') <- zip o n, o' /= n' ]
+                 in mapM_ printDiff $ take 1 parsed'
 
     "lexer-warnings" -> let parse  = Parser.readFields' . toStrict
                             parsed :: [(FilePath, [Lexer.LexWarning])]

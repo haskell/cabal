@@ -1,4 +1,7 @@
-{-# LANGUAGE MultiParamTypeClasses, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Parser where
 
 import Lexer
@@ -10,6 +13,7 @@ import Text.Parsec.Pos
 import Text.Parsec.Error
 
 import Control.Monad (guard, liftM2)
+import Data.Char as Char
 import Data.Functor.Identity
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
@@ -27,22 +31,6 @@ mkLexState' st = LexState' st
 type Parser a = ParsecT LexState' () Identity a
 
 instance Stream LexState' Identity LToken where
-  --uncons :: LexState -> Identity (Maybe (Token, LexState))
-
-{-
-  uncons (LexState' st _) =
-    case unLex lexToken st of
-      LexResult st' tok -> 
-        case tok of
-          L _ EOF -> return Nothing
-          _       -> return (Just (tok, LexState' st' undefined))
--}
-{-
-  uncons (LexState' _ (LexResult st' tok)) =
-    case tok of
-      L _ EOF -> return Nothing
-      _       -> return (Just (tok, mkLexState' st'))
--}
   uncons (LexState' _ (tok, st')) =
     case tok of
       L _ EOF -> return Nothing
@@ -84,14 +72,14 @@ describeToken t = case t of
   LexicalError is -> "character in input " ++ show (B.head is)
 
 --tokName, tokStr, tokNum, tokOther, tokFieldLine :: Parser String
-tokName :: Parser Name
+tokName :: Parser (Name Position)
 --tokNum, tokOther
 --tokStr :: Parser String
 tokIndent                 :: Parser Int
 tokColon, tokOpenBrace,
   tokCloseBrace :: Parser ()
 
-tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (Name pos x);  _ -> Nothing
+tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (name pos x);  _ -> Nothing
 tokName'      = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x);  _ -> Nothing
 tokStr        = getTokenWithPos $ \t -> case t of L pos (TokStr   x) -> Just (SecArgStr pos x);  _ -> Nothing
 tokNum        = getTokenWithPos $ \t -> case t of L pos (TokNum   x) -> Just (SecArgNum pos x);  _ -> Nothing
@@ -101,6 +89,15 @@ tokColon      = getToken $ \t -> case t of Colon      -> Just (); _ -> Nothing
 tokOpenBrace  = getToken $ \t -> case t of OpenBrace  -> Just (); _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
+
+-- TODO: temporary hack before 'description' parser is modified to strip dots
+tokFieldLine' = getTokenWithPos $ \t -> case t of
+  L pos (TokFieldLine s)
+    -- If fieldline is just single dot, make it an empty line
+    -- TODO: issue info message: not necessary with Cabal >= 1.23
+    | s == "."  -> Just (FieldLine pos "")
+    | otherwise -> Just (FieldLine pos s)
+  _ -> Nothing
 
 --sectionName, sectionArg, fieldSecName, fieldContent :: Parser String
 colon, openBrace, closeBrace :: Parser ()
@@ -113,6 +110,7 @@ colon        = tokColon      <?> "\":\""
 openBrace    = tokOpenBrace  <?> "\"{\""
 closeBrace   = tokCloseBrace <?> "\"}\""
 fieldContent = tokFieldLine <?> "field contents"
+fieldContent' = tokFieldLine' <?> "field contents"
 
 newtype IndentLevel = IndentLevel Int
 
@@ -135,21 +133,27 @@ inLexerMode :: LexerMode -> Parser p -> Parser p
 inLexerMode (LexerMode mode) p =
   do setLexerMode mode; x <- p; setLexerMode in_section; return x
 
-data Field = Field   !Name [FieldLine]
-           | Section !Name [SectionArg] [Field]
-  deriving (Eq, Show)
+data Field ann = Field   !(Name ann) [FieldLine ann]
+               | Section !(Name ann) [SectionArg ann] [Field ann]
+  deriving (Eq, Show, Functor)
 
-data Name       = Name       !Position !ByteString
-  deriving (Eq, Show)
+data Name ann  = Name       !ann !ByteString
+  deriving (Eq, Show, Functor)
 
-data FieldLine  = FieldLine  !Position !ByteString
-  deriving (Eq, Show)
+name :: ann -> ByteString -> Name ann
+name ann bs = Name ann (B.map Char.toLower bs)
 
-data SectionArg = SecArgName  !Position !ByteString
-                | SecArgStr   !Position !String
-                | SecArgNum   !Position !ByteString
-                | SecArgOther !Position !ByteString
-  deriving (Eq, Show)
+getName :: Name a -> ByteString
+getName (Name _ bs) = bs
+
+data FieldLine ann  = FieldLine  !ann !ByteString
+  deriving (Eq, Show, Functor)
+
+data SectionArg ann = SecArgName  !ann !ByteString
+                    | SecArgStr   !ann !String
+                    | SecArgNum   !ann !ByteString
+                    | SecArgOther !ann !ByteString
+  deriving (Eq, Show, Functor)
 
 
 -----------------------
@@ -200,7 +204,7 @@ data SectionArg = SecArgName  !Position !ByteString
 
 -- Top level of a file using cabal syntax 
 --
-cabalStyleFile :: Parser [Field]
+cabalStyleFile :: Parser [Field Position]
 cabalStyleFile = do es <- elements zeroIndentLevel
                     eof
                     return es
@@ -209,7 +213,7 @@ cabalStyleFile = do es <- elements zeroIndentLevel
 -- and sectionscontent
 --
 -- elements ::= element*
-elements :: IndentLevel -> Parser [Field]
+elements :: IndentLevel -> Parser [Field Position]
 elements ilevel = many (element ilevel)
 
 -- An individual element, ie a field or a section. These can either use
@@ -218,7 +222,7 @@ elements ilevel = many (element ilevel)
 --
 -- element ::= '\n' name elementInLayoutContext
 --           |      name elementInNonLayoutContext
-element :: IndentLevel -> Parser Field
+element :: IndentLevel -> Parser (Field Position)
 element ilevel =
       (do ilevel' <- indentOfAtLeast ilevel
           name    <- tokName
@@ -232,7 +236,7 @@ element ilevel =
 --
 -- elementInLayoutContext ::= ':'  fieldLayoutOrBraces
 --                          | arg* sectionLayoutOrBraces
-elementInLayoutContext :: IndentLevel -> Name -> Parser Field
+elementInLayoutContext :: IndentLevel -> Name Position -> Parser (Field Position)
 elementInLayoutContext ilevel name =
       (do colon; fieldLayoutOrBraces ilevel name)
   <|> (do args  <- many sectionArg
@@ -245,7 +249,7 @@ elementInLayoutContext ilevel name =
 --
 -- elementInNonLayoutContext ::= ':' FieldInlineOrBraces
 --                             | arg* '\n'? '{' elements '\n'? '}'
-elementInNonLayoutContext :: Name -> Parser Field
+elementInNonLayoutContext :: Name Position -> Parser (Field Position)
 elementInNonLayoutContext name =
       (do colon; fieldInlineOrBraces name)
   <|> (do args <- many sectionArg
@@ -259,23 +263,26 @@ elementInNonLayoutContext name =
 --
 -- fieldLayoutOrBraces   ::= '\n'? '{' content '}'
 --                         | line? ('\n' line)*
-fieldLayoutOrBraces :: IndentLevel -> Name -> Parser Field
+fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
 fieldLayoutOrBraces ilevel name =
       (do openBrace
-          ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
+          ls <- inLexerMode (LexerMode in_field_braces) (many fc)
           closeBrace
           return (Field name ls))
   <|> (inLexerMode (LexerMode in_field_layout)
-        (do l  <- option (FieldLine (Position 0 0) B.empty) fieldContent
+        (do l  <- option (FieldLine (Position 0 0) B.empty) fc
                   --FIXME ^^ having to add an extra empty here is silly!
-            ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
+            ls <- many (do _ <- indentOfAtLeast ilevel; fc)
             return (Field name (l:ls))))
+
+  where fc | getName name == "description" = fieldContent'
+           | otherwise                     = fieldContent
 
 -- The body of a section, using either layout style or braces style.
 --
 -- sectionLayoutOrBraces ::= '\n'? '{' elements \n? '}'
 --                         | elements
-sectionLayoutOrBraces :: IndentLevel -> Parser [Field]
+sectionLayoutOrBraces :: IndentLevel -> Parser [Field Position]
 sectionLayoutOrBraces ilevel =
       (do openBrace
           elems <- elements zeroIndentLevel
@@ -288,7 +295,7 @@ sectionLayoutOrBraces ilevel =
 --
 -- fieldInlineOrBraces   ::= '\n'? '{' content '}'
 --                         | content
-fieldInlineOrBraces :: Name -> Parser Field
+fieldInlineOrBraces :: Name Position -> Parser (Field Position)
 fieldInlineOrBraces name =
       (do openBrace
           ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
@@ -298,12 +305,12 @@ fieldInlineOrBraces name =
           return (Field name ls))
 
 
-readFields :: B.ByteString -> Either ParseError [Field]
+readFields :: B.ByteString -> Either ParseError [Field Position]
 readFields s = parse cabalStyleFile "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 
-readFields' :: B.ByteString -> Either ParseError ([Field], [LexWarning])
+readFields' :: B.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
