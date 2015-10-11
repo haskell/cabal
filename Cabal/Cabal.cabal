@@ -273,6 +273,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.System
   main-is: UnitTests.hs
   build-depends:
     base,
