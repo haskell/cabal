@@ -1203,7 +1203,7 @@ planPackages comp platform solver solverconfig
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    stanzas = [TestStanzas, BenchStanzas]
+    stanzas = [] --TODO: should enable for local only [TestStanzas, BenchStanzas]
     --TODO: while for the local mode we want to run the solver with the tests
     -- and benchmarks turned on by default (so the solution is stable when we
     -- actually enable/disable tests), but really we want to have a solver
@@ -1970,7 +1970,7 @@ rebuildTargets verbosity
     return ()
 
   where
-    numBuildJobs    = determineNumJobs projectConfigNumJobs
+    numBuildJobs    = 1 --TODO: reenable: determineNumJobs projectConfigNumJobs
     isParallelBuild = numBuildJobs >= 2
     mkTransport     = configureTransport verbosity 
                         (flagToMaybe projectConfigHttpTransport)
