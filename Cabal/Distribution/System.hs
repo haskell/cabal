@@ -28,12 +28,17 @@ module Distribution.System (
   -- * Platform is a pair of arch and OS
   Platform(..),
   buildPlatform,
-  platformFromTriple
+  platformFromTriple,
+
+  -- * Internal
+  knownOSs,
+  knownArches
   ) where
 
 import qualified System.Info (os, arch)
-import qualified Data.Char as Char (toLower, isAlphaNum)
+import qualified Data.Char as Char (toLower, isAlphaNum, isAlpha)
 
+import Control.Monad (liftM2)
 import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
@@ -193,8 +198,13 @@ buildPlatform = Platform buildArch buildOS
 -- Utils:
 
 ident :: Parse.ReadP r String
-ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
-  --TODO: probably should disallow starting with a number
+ident = liftM2 (:) first rest Parse.+++ liftM2 (:) first rest'
+  where first = Parse.satisfy Char.isAlpha
+        -- We try first to parse identifier without dashes
+        -- This is required to parse 'Platform' properly
+        -- https://github.com/haskell/cabal/issues/2804
+        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_')
+        rest'  = Parse.munch (\c -> Char.isAlphaNum c || c == '_' || c == '-')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
