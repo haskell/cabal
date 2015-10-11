@@ -65,7 +65,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , createPackageEnvironmentFile, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironmentFile, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile )
+  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile
+  , sandboxPackageDBPath )
 import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.SetupWrapper
@@ -82,7 +83,10 @@ import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , interpretPackageDbFlags
                                               , getPackageDBContents
+                                              , maybeGetPersistBuildConfig
+                                              , findDistPrefOrDefault
                                               , findDistPref )
+import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
@@ -479,11 +483,13 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
 -- tool with provided arguments, restricted to the sandbox.
 sandboxHcPkg :: Verbosity -> SandboxFlags -> GlobalFlags -> [String] -> IO ()
 sandboxHcPkg verbosity _sandboxFlags globalFlags extraArgs = do
-  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv
-      dbStack     = configPackageDB' configFlags
-  (comp, _platform, conf) <- configCompilerAux' configFlags
-
+  -- Invoke hc-pkg for the most recently configured compiler (if any),
+  -- using the right package-db for the compiler (see #1935).
+  (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
+  let dir         = sandboxPackageDBPath sandboxDir comp platform
+      dbStack     = [GlobalPackageDB, SpecificPackageDB dir]
   Register.invokeHcPkg verbosity comp conf dbStack extraArgs
 
 updateInstallDirs :: Flag Bool
@@ -791,3 +797,18 @@ configCompilerAux' configFlags =
   configCompilerAuxEx configFlags
     --FIXME: make configCompilerAux use a sensible verbosity
     { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
+
+-- | Try to read the most recently configured compiler from the
+-- 'localBuildInfoFile', falling back on 'configCompilerAuxEx' if it
+-- cannot be read.
+getPersistOrConfigCompiler :: ConfigFlags
+                           -> IO (Compiler, Platform, ProgramConfiguration)
+getPersistOrConfigCompiler configFlags = do
+  distPref <- findDistPrefOrDefault (configDistPref configFlags)
+  mlbi <- maybeGetPersistBuildConfig distPref
+  case mlbi of
+    Nothing  -> do configCompilerAux' configFlags
+    Just lbi -> return ( LocalBuildInfo.compiler lbi
+                       , LocalBuildInfo.hostPlatform lbi
+                       , LocalBuildInfo.withPrograms lbi
+                       )
