@@ -1386,13 +1386,23 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
         -- Note: the prefix here is not yet valid, has to be overridden per-pkg.
         -- This is because we've not yet calculated the installed package id
         pkgInstallDirs =
-            InstallDirs.substituteInstallDirTemplates env defInstallDirs
+            InstallDirs.substituteInstallDirTemplates templateEnv dirTemplates
           where
-            env = InstallDirs.initialPathTemplateEnv
-                    pkgid
-                    (LibraryName (display pkgid))
-                    (compilerInfo compiler)
-                    platform
+            templateEnv  = InstallDirs.initialPathTemplateEnv
+                             pkgid
+                             (LibraryName (display pkgid))
+                             (compilerInfo compiler)
+                             platform
+            dirTemplates
+              | shouldBuildInplaceOnly pkg
+              -- use the ordinary default install dirs
+              = defaultInstallDirs
+
+              | otherwise 
+                -- keep it prefix-relative so we can still substitute that later
+              = defaultInstallDirs {
+                  InstallDirs.prefix = InstallDirs.toPathTemplate "$prefix"
+                }
 
 
         pkgname = packageName pkgid
@@ -1537,10 +1547,10 @@ setupHsConfigureFlags (ReadyPackage
 
     configInstallDirs = case mipkgid of
       Nothing     -> fmap toFlag pkgInstallDirs
-      Just ipkgid -> fmap toFlag pkgInstallDirs {
-                       InstallDirs.prefix = InstallDirs.toPathTemplate prefix
-                     }
+      Just ipkgid -> fmap toFlag (subst pkgInstallDirs)
         where
+          subst  = InstallDirs.substituteInstallDirTemplates
+                     [(InstallDirs.PrefixVar, InstallDirs.toPathTemplate prefix)]
           prefix = cabalStorePackageDirectory compid ipkgid
           compid = compilerId pkgConfigCompiler
 
