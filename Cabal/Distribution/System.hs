@@ -161,6 +161,10 @@ instance Text Arch where
 
   parse = fmap (classifyArch Strict) ident
 
+-- See the comment in instance Text Platform definition
+parseDashlessArch :: Parse.ReadP r Arch
+parseDashlessArch = fmap (classifyArch Strict) dashlessIdent
+
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
   fromMaybe (OtherArch s) $ lookup (lowercase s) archMap
@@ -183,8 +187,15 @@ instance Binary Platform
 
 instance Text Platform where
   disp (Platform arch os) = disp arch <> Disp.char '-' <> disp os
+  -- TODO: there are ambigious platforms like: `arch-word-os`
+  -- which could be parsed as
+  --   * Platform "arch-word" "os"
+  --   * Platform "arch" "word-os"
+  -- We could support that preferring variants 'OtherOS' or 'OtherArch'
+  --
+  -- For now we split into arch and os parts on the first dash.
   parse = do
-    arch <- parse
+    arch <- parseDashlessArch
     _ <- Parse.char '-'
     os   <- parse
     return (Platform arch os)
@@ -198,13 +209,14 @@ buildPlatform = Platform buildArch buildOS
 -- Utils:
 
 ident :: Parse.ReadP r String
-ident = liftM2 (:) first rest Parse.+++ liftM2 (:) first rest'
+ident = liftM2 (:) first rest
   where first = Parse.satisfy Char.isAlpha
-        -- We try first to parse identifier without dashes
-        -- This is required to parse 'Platform' properly
-        -- https://github.com/haskell/cabal/issues/2804
         rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_')
-        rest'  = Parse.munch (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+
+dashlessIdent :: Parse.ReadP r String
+dashlessIdent = liftM2 (:) first rest
+  where first = Parse.satisfy Char.isAlpha
+        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
