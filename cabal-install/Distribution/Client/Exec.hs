@@ -14,8 +14,6 @@ module Distribution.Client.Exec ( exec
 
 import Control.Monad (unless)
 
-import Data.Foldable (forM_)
-
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -91,21 +89,18 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
         let Just program = lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
         sandboxConfigFilePath <- getSandboxConfigFilePath mempty
-        let compilerPackagePath = hcPackagePath gDb
+        let sandboxPackagePath   = sandboxPackageDBPath sandboxDir comp platform
+            compilerPackagePaths = prependToSearchPath gDb sandboxPackagePath
         -- Packages database must exist, otherwise things will start
         -- failing in mysterious ways.
-        forM_ compilerPackagePath $ \fp -> do
-          exists <- doesDirectoryExist fp
-          unless exists $ warn verbosity $ "Package database is not a directory: " ++ fp
+        exists <- doesDirectoryExist sandboxPackagePath
+        unless exists $ warn verbosity $ "Package database is not a directory: "
+                                           ++ sandboxPackagePath
         -- Build the environment
-        return [ (packagePathEnvVar, compilerPackagePath)
-               , ("CABAL_SANDBOX_PACKAGE_PATH", compilerPackagePath)
+        return [ (packagePathEnvVar, Just compilerPackagePaths)
+               , ("CABAL_SANDBOX_PACKAGE_PATH", Just compilerPackagePaths)
                , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
                ]
-
-    hcPackagePath gDb =
-        let s = sandboxPackageDBPath sandboxDir comp platform
-            in Just $ prependToSearchPath gDb s
 
     prependToSearchPath path newValue =
         newValue ++ [searchPathSeparator] ++ path
