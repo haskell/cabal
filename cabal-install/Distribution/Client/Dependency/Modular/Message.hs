@@ -40,6 +40,13 @@ data Message =
 showMessages :: ([Var QPN] -> Bool) -> Bool -> [Message] -> [String]
 showMessages p sl = go [] 0
   where
+    -- The stack 'v' represents variables that are currently assigned by the
+    -- solver.  'go' pushes a variable for a recursive call when it encounters
+    -- 'TryP', 'TryF', or 'TryS' and pops a variable when it encounters 'Leave'.
+    -- When 'go' processes a package goal, or a package goal followed by a
+    -- 'Failure', it calls 'atLevel' with the goal variable at the head of the
+    -- stack so that the predicate can also select messages relating to package
+    -- goal choices.
     go :: [Var QPN] -> Int -> [Message] -> [String]
     go _ _ []                            = []
     -- complex patterns
@@ -62,8 +69,10 @@ showMessages p sl = go [] 0
     go v l (Success                : ms) = (atLevel v l $ "done") (go v l ms)
     go v l (Failure c fr           : ms) = (atLevel v l $ showFailure c fr) (go v l ms)
 
+    showPackageGoal :: QPN -> QGoalReasonChain -> String
     showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGRs gr
 
+    showFailure :: ConflictSet QPN -> FailReason -> String
     showFailure c fr = "fail" ++ showFR c fr
 
     add :: Var QPN -> [Var QPN] -> [Var QPN]
@@ -75,6 +84,7 @@ showMessages p sl = go [] 0
     goPReject v l qpn is c fr ms = (atLevel (P qpn : v) l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go v l ms)
 
     -- write a message, but only if it's relevant; we can also enable or disable the display of the current level
+    atLevel :: [Var QPN] -> Int -> String -> [String] -> [String]
     atLevel v l x xs
       | sl && p v = let s = show l
                     in  ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) : xs
