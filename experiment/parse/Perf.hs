@@ -10,6 +10,8 @@ import qualified PostParser
 import qualified Lexer
 import qualified LexerMonad as Lexer
 
+import Text.Parsec.Error (ParseError)
+
 import System.Environment
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy.Char8 as LBS
@@ -77,11 +79,15 @@ Test-Suite test-unify:
 -- Parser results
 checkedFiles2 :: [FilePath]
 checkedFiles2 =
-  [ "4Blocks/0.2/4Blocks.cabal"
-  , "AC-"
-  , "ADPfusion"
-  , "AERN-"
-  , "AES"
+  -- Curly braces in description
+  [ "Cardinality/"
+  , "ConfigFileTH/"
+  , "Grow/"
+  , "HaTeX/"
+  , "HaTeX-meta/"
+  , "Noise/"
+  , "ascii-progress/"
+  , "binary-file/"
   ]
 
 main :: IO ()
@@ -119,9 +125,11 @@ main = do
                                                     print msg
                                                     LBS.putStr f
 
-    "compare" -> let parseOld c = fmap (PostParser.postProcessFields2 . PostParser.postProcessFields) (ParseUtils.readFields . fromUTF8 . LBS.unpack $ c)
-                     parseNew c = (fmap . fmap . fmap) (const ()) (fmap PostParser.postProcessFields2 . Parser.readFields . toStrict $ c)
-                     parsed   = [ (f, parseOld c, parseNew c) | (f, c) <- cabalFiles ]
+    "compare" -> let parseOld :: LBS.ByteString -> ParseUtils.ParseResult [Parser.Field ()]
+                     parseOld = (fmap . fmap . fmap) (const ()) . fmap (PostParser.postProcessFields2 . PostParser.postProcessFields) . ParseUtils.readFields . fromUTF8 . LBS.unpack
+                     parseNew :: LBS.ByteString -> Either ParseError [Parser.Field ()]
+                     parseNew = (fmap . fmap . fmap) (const ()) . fmap PostParser.postProcessFields2 . Parser.readFields . toStrict
+                     parsed   = [ (f, parseOld c, parseNew c) | (f, c) <- take 2000 cabalFiles ]
                      parsed'  = [ (f, o, n) | (f, ParseUtils.ParseOk _ o, Right n) <- parsed, o /= n, all (\prefix -> not $ prefix `L.isPrefixOf` f) checkedFiles2 ]
                      printDiff (f, o, n) = do putStrLn f
                                               putStrLn (show (length o) ++ " " ++ show (length n))

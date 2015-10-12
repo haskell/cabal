@@ -3,13 +3,14 @@
 module PostParser where
 
 import qualified Distribution.ParseUtils as O (Field(..))
-import qualified Parser as N (Field(..), Name(..), FieldLine(..), SectionArg(..))
+import qualified Parser as N (Field(..), Name(..), FieldLine(..), SectionArg(..), getName)
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Char as C
 import qualified Data.Text as T
+import qualified Data.Foldable as F
 import qualified Data.Text.Encoding as T
 
 toUtf8 :: String -> ByteString
@@ -29,14 +30,34 @@ postProcessFields (O.Section line name arg fields : xs) =
     let field = N.Section (toName name) [N.SecArgName () $ toUtf8 arg | not $ null arg] (postProcessFields fields)
         rest = postProcessFields xs
     in field : rest
-postProcessFields (_ : xs) = postProcessFields xs
+postProcessFields (O.IfBlock line arg fields fields' : xs) =
+    let field  = N.Section (toName "if")   [N.SecArgName () $ toUtf8 arg] (postProcessFields fields)
+        efield = N.Section (toName "else") [] (postProcessFields fields')
+        rest = postProcessFields xs
+    in if null fields'
+          then field : rest
+          else field : efield : rest
 
 postProcessFields2 :: [N.Field a] -> [N.Field a]
 postProcessFields2 = map f
-  where f (N.Field name lines) = N.Field name $ map g $ filter p lines
-        f (N.Section name args fields) = N.Section name args $ postProcessFields2 fields
-        p (N.FieldLine _ content) = not $ B.null content
+  where f (N.Field name lines)
+           | N.getName name == "description"  = N.Field name $ filter p' $ map g $ lines
+           | otherwise                        = N.Field name $ filter p  $ map g $ lines
+        f (N.Section name args fields) = N.Section name (flattenArgs args) $ postProcessFields2 fields
+        p  (N.FieldLine _ content) = not $ B.null content
+        p' (N.FieldLine _ content) = not (B.null content) && content /= "."
         g (N.FieldLine ann content)= N.FieldLine ann (B.reverse . B8.dropWhile C.isSpace . B.reverse $ content)
+
+flattenArgs [] = []
+flattenArgs xs@(first : _) = [ N.SecArgName (g first) $ B8.filter (not . C.isSpace) $ F.foldMap f xs]
+  where f (N.SecArgName  _ x) = x
+        f (N.SecArgStr   _ x) = B8.pack ("\"" ++ x ++ "\"")
+        f (N.SecArgNum   _ x) = x
+        f (N.SecArgOther _ x) = x
+        g (N.SecArgName  p x) = p
+        g (N.SecArgStr   p x) = p
+        g (N.SecArgNum   p x) = p
+        g (N.SecArgOther p x) = p
 
 toName :: String -> N.Name ()
 toName = N.Name () . toUtf8

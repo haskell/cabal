@@ -35,6 +35,7 @@ $printable       = \x0-\x10ffff # $ctlchar   -- so no \n \r
 $spacetab        = [$space \t]
 $bom             = \xfeff
 $nbsp            = \xa0
+$nbspspacetab    = [$nbsp $space \t]
 
 $paren           = [ \( \) \[ \] ]
 $field_layout    = [$printable \t]
@@ -62,7 +63,7 @@ tokens :-
 
 <bol_section, bol_field_layout, bol_field_braces> {
   $spacetab* @nl                        { \_ _ _ -> adjustPos retPos >> lexToken }
-  $nbsp+                                { \_ _ _ -> addWarning "Non-breaking space occured" >> lexToken }
+  $nbspspacetab+ @nl                    { \_ _ _ -> adjustPos retPos >> addWarning "Non-breaking space occured" >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*             ;  -- TODO: check the lack of @nl works here
                                         -- including counting line numbers

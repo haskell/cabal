@@ -90,15 +90,6 @@ tokOpenBrace  = getToken $ \t -> case t of OpenBrace  -> Just (); _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
--- TODO: temporary hack before 'description' parser is modified to strip dots
-tokFieldLine' = getTokenWithPos $ \t -> case t of
-  L pos (TokFieldLine s)
-    -- If fieldline is just single dot, make it an empty line
-    -- TODO: issue info message: not necessary with Cabal >= 1.23
-    | s == "."  -> Just (FieldLine pos "")
-    | otherwise -> Just (FieldLine pos s)
-  _ -> Nothing
-
 --sectionName, sectionArg, fieldSecName, fieldContent :: Parser String
 colon, openBrace, closeBrace :: Parser ()
 
@@ -110,7 +101,6 @@ colon        = tokColon      <?> "\":\""
 openBrace    = tokOpenBrace  <?> "\"{\""
 closeBrace   = tokCloseBrace <?> "\"}\""
 fieldContent = tokFieldLine <?> "field contents"
-fieldContent' = tokFieldLine' <?> "field contents"
 
 newtype IndentLevel = IndentLevel Int
 
@@ -266,17 +256,14 @@ elementInNonLayoutContext name =
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
 fieldLayoutOrBraces ilevel name =
       (do openBrace
-          ls <- inLexerMode (LexerMode in_field_braces) (many fc)
+          ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
           closeBrace
           return (Field name ls))
   <|> (inLexerMode (LexerMode in_field_layout)
-        (do l  <- option (FieldLine (Position 0 0) B.empty) fc
+        (do l  <- option (FieldLine (Position 0 0) B.empty) fieldContent
                   --FIXME ^^ having to add an extra empty here is silly!
-            ls <- many (do _ <- indentOfAtLeast ilevel; fc)
+            ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
             return (Field name (l:ls))))
-
-  where fc | getName name == "description" = fieldContent'
-           | otherwise                     = fieldContent
 
 -- The body of a section, using either layout style or braces style.
 --
