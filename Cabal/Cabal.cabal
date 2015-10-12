@@ -142,6 +142,10 @@ source-repository head
 flag bundled-binary-generic
   default: False
 
+flag parsec-debug
+  default: False
+  manual: True
+
 library
   build-depends:
     base       >= 4.4 && < 5,
@@ -153,12 +157,19 @@ library
     containers >= 0.1 && < 0.6,
     array      >= 0.1 && < 0.6,
     pretty     >= 1   && < 1.2,
+    parsec     >=3.1.9 && <3.2,
     bytestring >= 0.9
 
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5 && < 0.7
   else
     build-depends: binary >= 0.7 && < 0.8
+
+  if flag(parsec-debug)
+    cpp-options: -DCABAL_PARSEC_DEBUG
+    build-depends:
+      text       >= 1.2 && <1.3,
+      vector     >= 0.10 && <0.12
 
   -- Needed for GHC.Generics before GHC 7.6
   if impl(ghc < 7.6)
@@ -188,6 +199,9 @@ library
     Distribution.PackageDescription.Parse
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Utils
+    Distribution.Parsec.Lexer
+    Distribution.Parsec.LexerMonad
+    Distribution.Parsec.Parser
     Distribution.ParseUtils
     Distribution.ReadE
     Distribution.Simple

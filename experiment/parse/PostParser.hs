@@ -3,7 +3,7 @@
 module PostParser where
 
 import qualified Distribution.ParseUtils as O (Field(..))
-import qualified Parser as N (Field(..), Name(..), FieldLine(..), SectionArg(..), getName)
+import qualified Distribution.Parsec.Parser as N (Field(..), Name(..), FieldLine(..), SectionArg(..))
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -38,8 +38,8 @@ postProcessFields (O.IfBlock line arg fields fields' : xs) =
 postProcessFields2 :: [N.Field a] -> [N.Field a]
 postProcessFields2 = map f
   where f (N.Field name lines)
-           | N.getName name == "description"  = N.Field name $ concatLines $ filter p' $ map g $ lines
-           | otherwise                        = N.Field name $ filter p  $ map g $ lines
+           | getName name == "description"  = N.Field name $ concatLines $ filter p' $ map g $ lines
+           | otherwise                      = N.Field name $ filter p  $ map g $ lines
         f (N.Section name args fields) = N.Section name (flattenArgs args) $ postProcessFields2 fields
         f (N.IfElseBlock args t e) = N.IfElseBlock (flattenArgs args) (postProcessFields2 t) (postProcessFields2 e)
         p  (N.FieldLine _ content) = not $ B.null content
@@ -68,3 +68,6 @@ flattenArgs xs@(first : _) = [ N.SecArgName (g first) $ B8.filter (not . C.isSpa
 
 toName :: String -> N.Name ()
 toName = N.Name () . toUtf8
+
+getName :: N.Name a -> ByteString
+getName (N.Name _ bs) = bs

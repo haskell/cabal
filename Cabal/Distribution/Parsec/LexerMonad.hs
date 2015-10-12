@@ -1,4 +1,11 @@
-module LexerMonad (
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.Parsec.LexerMonad
+-- License     :  BSD3
+--
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+module Distribution.Parsec.LexerMonad (
     InputStream,
     LexState(..),
     LexResult(..),
@@ -24,16 +31,22 @@ module LexerMonad (
 
   ) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative (Applicative(..))
+import Data.Monoid ((<>))
+#endif
+
 import Control.Monad (ap, liftM)
 
 import qualified Data.ByteString as B
-import Data.Monoid ((<>))
 
+
+#ifdef CABAL_PARSEC_DEBUG
 -- testing only:
 import qualified Data.Vector as V
 import qualified Data.Text   as T
 import qualified Data.Text.Encoding as T
+#endif
 
 -- simple state monad
 newtype Lex a = Lex { unLex :: LexState -> LexResult a }
@@ -52,15 +65,17 @@ instance Monad Lex where
 data LexResult a = LexResult {-# UNPACK #-} !LexState a
 
 data LexWarning = LexWarning {-# UNPACK #-} !Position
-                             {-# UNPACK #-} !T.Text
+                             {-# UNPACK #-} !String
   deriving (Show)
 
 data LexState = LexState {
         curPos   :: {-# UNPACK #-} !Position,        -- position at current input location
         curInput :: {-# UNPACK #-} !InputStream,     -- the current input
         curCode  :: {-# UNPACK #-} !StartCode,       -- lexer code
-        warnings :: [LexWarning],
-        dbgText  :: V.Vector T.Text
+        warnings :: [LexWarning]
+#ifdef CABAL_PARSEC_DEBUG
+        , dbgText  :: V.Vector T.Text
+#endif
      } --TODO: check if we should cache the first token
        -- since it looks like parsec's uncons can be called many times on the same input
 
@@ -84,13 +99,15 @@ execLexer (Lex lex) input =
     case lex initialState of
       LexResult s@LexState{ warnings = ws } result -> (ws, result)
   where
-    initialState = LexState {
-                     curPos   = Position 1 1,
-                     curInput = input,
-                     curCode  = 0,
-                     warnings = [],
-                     dbgText  = V.fromList . T.lines . T.decodeUtf8 $ input
-                   }
+    initialState = LexState
+      { curPos   = Position 1 1
+      , curInput = input
+      , curCode  = 0
+      , warnings = []
+#ifdef CABAL_PARSEC_DEBUG
+      , dbgText  = V.fromList . T.lines . T.decodeUtf8 $ input
+#endif
+      }
 
 {-# INLINE returnLex #-}
 returnLex :: a -> Lex a
@@ -123,4 +140,4 @@ setStartCode c = Lex $ \s -> LexResult s{ curCode = c } ()
 
 -- | Add warning at the current position
 addWarning :: String -> Lex ()
-addWarning msg = Lex $ \s@LexState{ curPos = pos, warnings = ws  } -> LexResult s{ warnings = LexWarning pos (T.pack msg) : ws }  ()
+addWarning msg = Lex $ \s@LexState{ curPos = pos, warnings = ws  } -> LexResult s{ warnings = LexWarning pos msg : ws }  ()

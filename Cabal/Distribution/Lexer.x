@@ -1,8 +1,18 @@
 {
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.Parsec.Lexer
+-- License     :  BSD3
+--
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+--
+-- Lexer for the cabal files.
 {-# LANGUAGE BangPatterns #-}
-module Lexer (ltest, lexToken, Token(..), LToken(..)
-              ,bol_section, in_section, in_field_layout, in_field_braces
-              ,mkLexState) where
+module Distribution.Lexer
+  (ltest, lexToken, Token(..), LToken(..)
+  ,bol_section, in_section, in_field_layout, in_field_braces
+  ,mkLexState) where
 
 import LexerMonad
 import Control.Monad
@@ -232,181 +242,3 @@ lines' s1
 
                           | otherwise
                          -> [l]
-
-{-
-lex_string :: String -> Lex Token
-lex_string s = do
-  i <- getInput
-  case alexGetChar i of
-    Nothing -> lit_error i
-
-    Just ('"',i)  -> do
-        setInput i
-        return $! TokSym $! (reverse s)
-
-    Just (c, i) -> do
-        case c of
-          '\\' -> do setInput i
-                     c' <- lex_escape
-                     lex_string (c':s)
-          c | isAny c -> do setInput i
-                            lex_string (c:s)
-          _other -> lit_error i
-
-isAny :: Char -> Bool
-isAny c | c >= '\x7f' = Data.Char.isPrint c
-        | otherwise   = c > ' '
-
-lex_escape :: Lex Char
-lex_escape = do
-  i0 <- getInput
-  c <- getCharOrFail i0
-  case c of
-        'a'   -> return '\a'
-        'b'   -> return '\b'
-        'f'   -> return '\f'
-        'n'   -> return '\n'
-        'r'   -> return '\r'
-        't'   -> return '\t'
-        'v'   -> return '\v'
-        '\\'  -> return '\\'
-        '"'   -> return '\"'
-        '\''  -> return '\''
-        '^'   -> do i1 <- getInput
-                    c <- getCharOrFail i1
-                    if c >= '@' && c <= '_'
-                        then return (chr (ord c - ord '@'))
-                        else lit_error i1
-
-        'x'   -> readNum is_hexdigit 16 hexDigit
-        'o'   -> readNum is_octdigit  8 octDecDigit
-        x | is_decdigit x -> readNum2 is_decdigit 10 octDecDigit (octDecDigit x)
-
-        c1 ->  do
-           i <- getInput
-           case alexGetChar i of
-            Nothing -> lit_error i0
-            Just (c2,i2) ->
-              case alexGetChar i2 of
-                Nothing -> do lit_error i0
-                Just (c3,i3) ->
-                   let str = [c1,c2,c3] in
-                   case [ (c,rest) | (p,c) <- silly_escape_chars,
-                                     Just rest <- [stripPrefix p str] ] of
-                          (escape_char,[]):_ -> do
-                                setInput i3
-                                return escape_char
-                          (escape_char,_:_):_ -> do
-                                setInput i2
-                                return escape_char
-                          [] -> lit_error i0
-
-readNum :: (Char -> Bool) -> Int -> (Char -> Int) -> Lex Char
-readNum is_digit base conv = do
-  i <- getInput
-  c <- getCharOrFail i
-  if is_digit c
-        then readNum2 is_digit base conv (conv c)
-        else lit_error i
-
-readNum2 :: (Char -> Bool) -> Int -> (Char -> Int) -> Int -> Lex Char
-readNum2 is_digit base conv i = do
-  input <- getInput
-  read i input
-  where read i input = do
-          case alexGetChar input of
-            Just (c,input') | is_digit c -> do
-               let i' = i*base + conv c
-               if i' > 0x10ffff
-                  then setInput input >> lexError "numeric escape sequence out of range"
-                  else read i' input'
-            _other -> do
-              setInput input; return (chr i)
-
-silly_escape_chars :: [(String, Char)]
-silly_escape_chars = [
-        ("NUL", '\NUL'),
-        ("SOH", '\SOH'),
-        ("STX", '\STX'),
-        ("ETX", '\ETX'),
-        ("EOT", '\EOT'),
-        ("ENQ", '\ENQ'),
-        ("ACK", '\ACK'),
-        ("BEL", '\BEL'),
-        ("BS", '\BS'),
-        ("HT", '\HT'),
-        ("LF", '\LF'),
-        ("VT", '\VT'),
-        ("FF", '\FF'),
-        ("CR", '\CR'),
-        ("SO", '\SO'),
-        ("SI", '\SI'),
-        ("DLE", '\DLE'),
-        ("DC1", '\DC1'),
-        ("DC2", '\DC2'),
-        ("DC3", '\DC3'),
-        ("DC4", '\DC4'),
-        ("NAK", '\NAK'),
-        ("SYN", '\SYN'),
-        ("ETB", '\ETB'),
-        ("CAN", '\CAN'),
-        ("EM", '\EM'),
-        ("SUB", '\SUB'),
-        ("ESC", '\ESC'),
-        ("FS", '\FS'),
-        ("GS", '\GS'),
-        ("RS", '\RS'),
-        ("US", '\US'),
-        ("SP", '\SP'),
-        ("DEL", '\DEL')
-        ]
-
-hexDigit :: Char -> Int
-hexDigit c | is_decdigit c = ord c - ord '0'
-           | otherwise     = ord (to_lower c) - ord 'a' + 10
-
-octDecDigit :: Char -> Int
-octDecDigit c = ord c - ord '0'
-
-is_decdigit :: Char -> Bool
-is_decdigit c
-        =  c >= '0' && c <= '9'
-
-is_hexdigit :: Char -> Bool
-is_hexdigit c
-        =  is_decdigit c
-        || (c >= 'a' && c <= 'f')
-        || (c >= 'A' && c <= 'F')
-
-is_octdigit :: Char -> Bool
-is_octdigit c = c >= '0' && c <= '7'
-
-to_lower :: Char -> Char
-to_lower c
-  | c >=  'A' && c <= 'Z' = chr (ord c - (ord 'A' - ord 'a'))
-
-
--- before calling lit_error, ensure that the current input is pointing to
--- the position of the error in the buffer.  This is so that we can report
--- a correct location to the user, but also so we can detect UTF-8 decoding
--- errors if they occur.
-lit_error :: AlexInput -> Lex a
-lit_error i = do setInput i; lexError "lexical error in string/character literal"
-
-lexError :: String -> Lex a
-lexError = error
-
-getCharOrFail :: AlexInput -> Lex Char
-getCharOrFail i =  do
-  case alexGetChar i of
-        Nothing -> lexError "unexpected end-of-file in string/character literal"
-        Just (c,i)  -> do setInput i; return c
-
--- This version does not squash unicode characters, it is used when
--- lexing strings.
-alexGetChar :: AlexInput -> Maybe (Char,AlexInput)
-alexGetChar = undefined
--}
-
-}
-

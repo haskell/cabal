@@ -5,10 +5,11 @@ import IndexUtils
 import qualified Distribution.ParseUtils as ParseUtils (readFields, ParseResult(..))
 import Distribution.Simple.Utils (fromUTF8)
 
-import qualified Parser
+import qualified Distribution.Parsec.Lexer as Lexer
+import qualified Distribution.Parsec.LexerMonad as Lexer
+import qualified Distribution.Parsec.Parser as Parser 
+
 import qualified PostParser
-import qualified Lexer
-import qualified LexerMonad as Lexer
 
 import Text.Parsec.Error (ParseError)
 

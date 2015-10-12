@@ -1,4 +1,6 @@
 flags:
+  Cabal:
+    parsec-debug: false
   text:
     integer-simple: false
   tar:

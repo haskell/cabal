@@ -2,10 +2,28 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Parser where
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Distribution.Parsec.Parser
+-- License     :  BSD3
+--
+-- Maintainer  :  cabal-devel@haskell.org
+-- Portability :  portable
+--
+-- $grammar
+module Distribution.Parsec.Parser (
+  -- * Types
+  Field(..),
+  Name(..),
+  FieldLine(..),
+  SectionArg(..),
+  -- * Parsing function
+  readFields,
+  readFields'
+  ) where
 
-import Lexer
-import LexerMonad (unLex, LexState(..), LexResult(..), Position(..), LexWarning)
+import Distribution.Parsec.Lexer
+import Distribution.Parsec.LexerMonad (unLex, LexState(..), LexResult(..), Position(..), LexWarning)
 
 import Text.Parsec.Prim
 import Text.Parsec.Combinator hiding (eof)
@@ -17,11 +35,12 @@ import Data.Char as Char
 import Data.Functor.Identity
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
+
+#ifdef CABAL_PARSEC_DEBUG
 import qualified Data.Text   as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
-
-import Debug.Trace
+#endif
 
 data LexState' = LexState' !LexState (LToken, LexState')
 
@@ -152,6 +171,8 @@ data SectionArg ann = SecArgName  !ann !ByteString
 -- Cabal file grammar
 --
 
+-- $grammar
+--
 -- SecElems      ::= SecElem* '\n'?
 -- SecElem       ::= '\n' SecElemLayout | SecElemBraces
 -- SecElemLayout ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
@@ -161,11 +182,9 @@ data SectionArg ann = SecArgName  !ann !ByteString
 -- FieldInline   ::= name ':' content
 -- SectionLayout ::= name arg* SecElems
 -- SectionBraces ::= name arg* '\n'? '{' SecElems '}'
-
 --
 -- and the same thing but left factored...
 --
-
 -- SecElems              ::= SecElem*
 -- SecElem               ::= '\n' name SecElemLayout
 --                         |      name SecElemBraces
@@ -304,6 +323,7 @@ readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" l
   where
     lexSt = mkLexState' (mkLexState s)
 
+#ifdef CABAL_PARSEC_DEBUG
 parseTest' p fname s =
     case parse p fname (lexSt s) of
       Left err -> putStrLn (formatError s err)
@@ -333,8 +353,8 @@ formatError input perr =
     errmsg    = showErrorMessages "or" "unknown parse error"
                                   "expecting" "unexpected" "end of file"
                                   (errorMessages perr)
-    
 
+lines' :: T.Text -> [T.Text]
 lines' s1
   | T.null s1 = []
   | otherwise = case T.break (\c -> c == '\r' || c == '\n') s1 of
@@ -343,6 +363,7 @@ lines' s1
                               Just ('\n', s4) | c == '\r' -> l : lines' s4
                               _                           -> l : lines' s3
                           | otherwise -> [l]
+#endif
 
 eof :: Parser ()
 eof = notFollowedBy anyToken <?> "end of file"
