@@ -63,7 +63,7 @@ exec verbosity useSandbox comp platform programDb extraArgs =
 
         [] -> die "Please specify an executable to run"
   where
-    environmentOverrides = 
+    environmentOverrides =
         case useSandbox of
             NoSandbox -> return []
             (UseSandbox sandboxDir) ->
