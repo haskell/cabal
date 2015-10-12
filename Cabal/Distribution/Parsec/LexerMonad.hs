@@ -65,7 +65,7 @@ instance Monad Lex where
 data LexResult a = LexResult {-# UNPACK #-} !LexState a
 
 data LexWarning = LexWarning {-# UNPACK #-} !Position
-                             {-# UNPACK #-} !String
+                                            !String
   deriving (Show)
 
 data LexState = LexState {
@@ -95,9 +95,9 @@ retPos (Position row _col) = Position (row + 1) 1
 
 -- | Execute the given lexer on the supplied input stream.
 execLexer :: Lex a -> InputStream -> ([LexWarning], a)
-execLexer (Lex lex) input =
-    case lex initialState of
-      LexResult s@LexState{ warnings = ws } result -> (ws, result)
+execLexer (Lex lexer) input =
+    case lexer initialState of
+      LexResult LexState{ warnings = ws } result -> (ws, result)
   where
     initialState = LexState
       { curPos   = Position 1 1

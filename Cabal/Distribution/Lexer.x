@@ -14,7 +14,7 @@ module Distribution.Lexer
   ,bol_section, in_section, in_field_layout, in_field_braces
   ,mkLexState) where
 
-import LexerMonad
+import Distribution.Parsec.LexerMonad
 import Control.Monad
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
