@@ -25,7 +25,7 @@ import Distribution.Parsec.Lexer
 import Distribution.Parsec.LexerMonad (unLex, LexState(..), LexResult(..), Position(..), LexWarning)
 
 import Text.Parsec.Prim
-import Text.Parsec.Combinator hiding (eof)
+import Text.Parsec.Combinator hiding (eof, notFollowedBy)
 import Text.Parsec.Pos
 import Text.Parsec.Error
 
@@ -90,15 +90,13 @@ describeToken t = case t of
   EOF             -> "end of file"
   LexicalError is -> "character in input " ++ show (B.head is)
 
---tokName, tokStr, tokNum, tokOther, tokFieldLine :: Parser String
 tokName :: Parser (Name Position)
---tokNum, tokOther
---tokStr :: Parser String
-tokIndent                 :: Parser Int
-tokColon, tokOpenBrace,
-  tokCloseBrace :: Parser ()
+tokName', tokStr, tokNum, tokOther :: Parser (SectionArg Position)
+tokIndent :: Parser Int
+tokColon, tokOpenBrace, tokCloseBrace :: Parser ()
+tokFieldLine :: Parser (FieldLine Position)
 
-tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (name pos x);  _ -> Nothing
+tokName       = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (mkName pos x);  _ -> Nothing
 tokName'      = getTokenWithPos $ \t -> case t of L pos (TokSym x) -> Just (SecArgName pos x);  _ -> Nothing
 tokStr        = getTokenWithPos $ \t -> case t of L pos (TokStr   x) -> Just (SecArgStr pos x);  _ -> Nothing
 tokNum        = getTokenWithPos $ \t -> case t of L pos (TokNum   x) -> Just (SecArgNum pos x);  _ -> Nothing
@@ -109,16 +107,20 @@ tokOpenBrace  = getToken $ \t -> case t of OpenBrace  -> Just (); _ -> Nothing
 tokCloseBrace = getToken $ \t -> case t of CloseBrace -> Just (); _ -> Nothing
 tokFieldLine  = getTokenWithPos $ \t -> case t of L pos (TokFieldLine s) -> Just (FieldLine pos s); _ -> Nothing
 
---sectionName, sectionArg, fieldSecName, fieldContent :: Parser String
 colon, openBrace, closeBrace :: Parser ()
 
-sectionName  = tokName              <?> "section name"
+sectionArg :: Parser (SectionArg Position)
 sectionArg   = tokName' <|> tokStr
             <|> tokNum <|> tokOther <?> "section parameter"
+
+fieldSecName :: Parser (Name Position)
 fieldSecName = tokName              <?> "field or section name"
+
 colon        = tokColon      <?> "\":\""
 openBrace    = tokOpenBrace  <?> "\"{\""
 closeBrace   = tokCloseBrace <?> "\"}\""
+
+fieldContent :: Parser (FieldLine Position)
 fieldContent = tokFieldLine <?> "field contents"
 
 newtype IndentLevel = IndentLevel Int
@@ -150,8 +152,8 @@ data Field ann = Field   !(Name ann) [FieldLine ann]
 data Name ann  = Name       !ann !ByteString
   deriving (Eq, Show, Functor)
 
-name :: ann -> ByteString -> Name ann
-name ann bs = Name ann (B.map Char.toLower bs)
+mkName :: ann -> ByteString -> Name ann
+mkName ann bs = Name ann (B.map Char.toLower bs)
 
 getName :: Name a -> ByteString
 getName (Name _ bs) = bs
@@ -240,9 +242,9 @@ elements ilevel = many (element ilevel)
 element :: IndentLevel -> Parser (Field Position)
 element ilevel =
       (do ilevel' <- indentOfAtLeast ilevel
-          name    <- tokName
+          name    <- fieldSecName
           elementInLayoutContext (incIndentLevel ilevel') name)
-  <|> (do name    <- tokName
+  <|> (do name    <- fieldSecName
           elementInNonLayoutContext name)
 
 -- An element (field or section) that is valid in a layout context.
@@ -382,6 +384,8 @@ eof = notFollowedBy anyToken <?> "end of file"
 elaborate :: Show a => [Field a] -> [Field a]
 elaborate [] = []
 elaborate (field@Field{} : rest) = field : elaborate rest
+elaborate (IfElseBlock args t e : rest) =
+  IfElseBlock args (elaborate t) (elaborate e) : elaborate rest
 elaborate (Section name args fields : Section ename [] efields : rest)
   | getName name == "if" && getName ename == "else" =
     IfElseBlock args (elaborate fields) (elaborate efields) : elaborate rest

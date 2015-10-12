@@ -160,6 +160,9 @@ library
     parsec     >=3.1.9 && <3.2,
     bytestring >= 0.9
 
+  build-tools:
+    alex >= 3.1.4
+
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5 && < 0.7
   else
