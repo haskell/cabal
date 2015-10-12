@@ -793,6 +793,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.flagPackageConf = False
                                  , HcPkg.supportsDirDbs  = True
                                  , HcPkg.requiresDirDbs  = True
+                                 , HcPkg.nativeMultiInstance  = False -- ?
+                                 , HcPkg.recacheMultiInstance = True  -- ?
                                  }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram conf
