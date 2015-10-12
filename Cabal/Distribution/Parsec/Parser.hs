@@ -9,15 +9,14 @@
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
---
--- $grammar
 module Distribution.Parsec.Parser (
   -- * Types
   Field(..),
   Name(..),
   FieldLine(..),
   SectionArg(..),
-  -- * Parsing function
+  -- * Grammar and parsing
+  -- $grammar
   readFields,
   readFields'
   ) where
@@ -173,6 +172,7 @@ data SectionArg ann = SecArgName  !ann !ByteString
 
 -- $grammar
 --
+-- @
 -- SecElems      ::= SecElem* '\n'?
 -- SecElem       ::= '\n' SecElemLayout | SecElemBraces
 -- SecElemLayout ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
@@ -182,9 +182,11 @@ data SectionArg ann = SecArgName  !ann !ByteString
 -- FieldInline   ::= name ':' content
 -- SectionLayout ::= name arg* SecElems
 -- SectionBraces ::= name arg* '\n'? '{' SecElems '}'
+-- @
 --
 -- and the same thing but left factored...
 --
+-- @
 -- SecElems              ::= SecElem*
 -- SecElem               ::= '\n' name SecElemLayout
 --                         |      name SecElemBraces
@@ -198,20 +200,22 @@ data SectionArg ann = SecArgName  !ann !ByteString
 --                         | arg* '\n'? '{' SecElems '\n'? '}'
 -- FieldInlineOrBraces   ::= '\n'? '{' content '}'
 --                         | content
+-- @
 --
 -- Note how we have several productions with the sequence:
---   '\n'? '{'
--- That is, an optional newline (and indent) followed by a '{' token.
--- In the SectionLayoutOrBraces case you can see that this makes it
--- not fully left factored (because SecElems can start with a '\n').
+--
+-- > '\n'? '{'
+--
+-- That is, an optional newline (and indent) followed by a @{@ token.
+-- In the @SectionLayoutOrBraces@ case you can see that this makes it
+-- not fully left factored (because @SecElems@ can start with a @\n@).
 -- Fully left factoring here would be ugly, and though we could use a
 -- lookahead of two tokens to resolve the alternatives, we can't
 -- conveniently use Parsec's 'try' here to get a lookahead of only two.
 -- So instead we deal with this case in the lexer by making a line
--- where the first non-space is '{' lex as just the '{' token, without
+-- where the first non-space is @{@ lex as just the @{@ token, without
 -- the usual indent token. Then in the parser we can resolve everything
 -- with just one token of lookahead and so without using 'try'.
-
 
 -- Top level of a file using cabal syntax 
 --
@@ -386,69 +390,3 @@ elaborate (Section name args fields : rest)
     IfElseBlock args (elaborate fields) [] : elaborate rest
   | otherwise            =
     Section name args (elaborate fields) : elaborate rest
-
-{-
-data EncodingError = ProbablyBinaryFile
-                   | ControlCharOrBinary
-                   | InvalidUTF8
-                   | InvalidUTF8ProbablyLatin1 Char
-                   | InvalidUTF8OverLong
-                   | Impossible
-                   | NormalChar
-
-checkEncodingError :: ByteString -> EncodingError
-checkEncodingError bs =
-  case BS.uncons bs of
-    Nothing      -> Impossible
-    Just (b,bs')
-      | b == 0     -> ProbablyBinaryFile
-      | b < 0x20 || b == 127   -> ControlCharOrBinary
-      | b <= 0x7f              -> NormalChar
-      | b <= 0xbf              -> InvalidUTF8 -- invalid utf8 (and probably not latin1)
-      | b <= 0xdf  -- two bytes-> 
-      | b <= 0xef  -- three bytes
-      | otherwise  -- four or more bytes (invalid utf8)
-
-  where
-    twoBytes c0 (c1:cs')
-      | c1 .&. 0xC0 == 0x80
-      = let d = ((c0 .&. 0x1F) `shiftL` 6)
-             .|. (c1 .&. 0x3F)
-         in if d >= 0x80
-               then  NormalChar
-               else  InvalidUTF8
-    twoBytes _ cs' = InvalidUTF8
-
--}
-
-{-
-----------------------------------
--- Grammar for pure braces style
---
-SecElem ::= Field |  Section
-Field   ::= name ':' '{' content '}'
-Section ::= name arg* '{' SecElem* '}'
-
--- and left factored:
-
-SecElem  ::= name SecElem'
-SecElem' ::= Field | Section
-Field    ::= ':' '{' content '}'
-Section  ::= arg* '{' SecElem* '}'
-
-----------------------------------
--- Grammar for pure layout style
---
-SecElems ::= (\n SecElem)*
-SecElem  ::= Field | Section
-Field    ::= name ':' line? ('\n' line)*
-Section  ::= name arg* SecElems
-
--- and left factored:
-
-SecElems ::= SecElem*
-SecElem  ::= \n name SecElem'
-SecElem' ::= Field | Section
-Field    ::= ':' line? ('\n' line)*
-Section  ::= arg* SecElems
--}
