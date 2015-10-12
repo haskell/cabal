@@ -2288,6 +2288,7 @@ buildAndInstallUnpackedPackage verbosity
           -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
           -- target system during register, it must be able to make a reg file).
          Cabal.registerPackage verbosity compiler progdb
+                               True -- request multi-instance, nix style
                                (pkgRegisterPackageDBStack pkg) ipkg
 
       let docsResult  = DocsNotTried
@@ -2425,7 +2426,7 @@ buildInplaceUnpackedPackage verbosity
             -- We register ourselves rather than via Setup.hs, because it's a bit
             -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
             -- target system during register, it must be able to make a reg file).
-            Cabal.registerPackage verbosity compiler progdb
+            Cabal.registerPackage verbosity compiler progdb False
                                   (pkgRegisterPackageDBStack pkg) ipkg
 
         let docsResult  = DocsNotTried
