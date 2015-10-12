@@ -211,7 +211,7 @@ buildPlatform = Platform buildArch buildOS
 ident :: Parse.ReadP r String
 ident = liftM2 (:) first rest
   where first = Parse.satisfy Char.isAlpha
-        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_')
+        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_' || c == '-')
 
 dashlessIdent :: Parse.ReadP r String
 dashlessIdent = liftM2 (:) first rest
