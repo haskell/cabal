@@ -47,8 +47,6 @@ import           Distribution.Client.BuildReports.Types (ReportLevel)
 --import           Distribution.Client.Sandbox.Types
 --import           Distribution.Client.Sandbox.Index as Index
 
-import           Distribution.Client.Utils
-
 import           Distribution.Package
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
@@ -63,13 +61,11 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
 import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
-import qualified Distribution.Simple.GHC as GHC
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault, HaddockFlags(..))
 import           Distribution.Utils.NubList (NubList, fromNubList)
 import qualified Distribution.Simple.Configure as Cabal
-import qualified Distribution.Simple.Build as Cabal
+import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
 
@@ -759,7 +755,7 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
       exists <- liftIO $ Cabal.doesPackageDBExist dbPath
       unless exists $ do
         createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
-        Cabal.createPackageDB verbosity compiler progdb dbPath
+        Cabal.createPackageDB verbosity compiler progdb False dbPath
     _ -> return ()
 
 
@@ -2239,10 +2235,7 @@ buildAndInstallUnpackedPackage verbosity
                                  pkgConfigProgramDb = progdb
                                }
                                rpkg@(ReadyPackage
-                                 pkg@ElaboratedConfiguredPackage {
-                                   pkgRegisterPackageDBStack
-                                 }
-                                 _deps)
+                                 pkg _deps)
                                ipkgid srcdir builddir = do
 
     putStrLn $ "buildAndInstallUnpackedPackage: " ++ srcdir ++ " " ++ builddir
@@ -2294,18 +2287,8 @@ buildAndInstallUnpackedPackage verbosity
           -- We register ourselves rather than via Setup.hs, because it's a bit
           -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
           -- target system during register, it must be able to make a reg file).
-
-          --TODO: this is a gross hack:
-          let hcinf0 = GHC.hcPkgInfo progdb
-              hcinf  = hcinf0 {
-                         HcPkg.hcPkgProgram = (HcPkg.hcPkgProgram hcinf0) {
-                             programOverrideArgs = [] --TODO: ["--enable-multi-instance", "--force"]
-                           }
-                       }
-          HcPkg.register hcinf verbosity pkgRegisterPackageDBStack (Right ipkg)
-
-          --TODO: do this in a compiler agnostic way via Cabal lib
-          --setup Cabal.registerCommand registerFlags
+         Cabal.registerPackage verbosity compiler progdb
+                               (pkgRegisterPackageDBStack pkg) ipkg
 
       let docsResult  = DocsNotTried
           testsResult = TestsNotTried
@@ -2442,13 +2425,8 @@ buildInplaceUnpackedPackage verbosity
             -- We register ourselves rather than via Setup.hs, because it's a bit
             -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
             -- target system during register, it must be able to make a reg file).
-
-            HcPkg.reregister (GHC.hcPkgInfo progdb) verbosity
-                             (pkgRegisterPackageDBStack pkg)
-                             (Right ipkg)
-
-            --TODO: do this in a compiler agnostic way via Cabal lib
-            --setup Cabal.registerCommand registerFlags
+            Cabal.registerPackage verbosity compiler progdb
+                                  (pkgRegisterPackageDBStack pkg) ipkg
 
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
