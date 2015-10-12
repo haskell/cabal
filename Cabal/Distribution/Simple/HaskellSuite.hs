@@ -203,14 +203,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
+  -> ProgramDb
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  (hspkg, _) <- requireProgram verbosity haskellSuitePkgProgram (withPrograms lbi)
+registerPackage verbosity progdb packageDbs installedPkgInfo = do
+  (hspkg, _) <- requireProgram verbosity haskellSuitePkgProgram progdb
 
   runProgramInvocation verbosity $
     (programInvocation hspkg

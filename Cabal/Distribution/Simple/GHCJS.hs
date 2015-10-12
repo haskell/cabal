@@ -36,7 +36,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
          , ProgramSearchPath
          , rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
@@ -826,14 +826,12 @@ adjustExts hiSuf objSuf opts =
   }
 
 registerPackage :: Verbosity
-                -> InstalledPackageInfo
-                -> PackageDescription
-                -> LocalBuildInfo
-                -> Bool
+                -> ProgramDb
                 -> PackageDBStack
+                -> InstalledPackageInfo
                 -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
+registerPackage verbosity progdb packageDbs installedPkgInfo =
+  HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
     (Right installedPkgInfo)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
@@ -875,7 +873,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
-                                 , HcPkg.useSingleFileDb = v < [7,9]
+                                 , HcPkg.supportsDirDbs  = True
+                                 , HcPkg.requiresDirDbs  = v >= [7,10]
                                  }
   where
     v                 = versionBranch ver

@@ -77,7 +77,7 @@ import Distribution.Package
          ( PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
          , ProgramSearchPath
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput, requireProgramVersion, requireProgram
@@ -1138,7 +1138,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                  , HcPkg.noPkgDbStack    = v < [6,9]
                                  , HcPkg.noVerboseFlag   = v < [6,11]
                                  , HcPkg.flagPackageConf = v < [7,5]
-                                 , HcPkg.useSingleFileDb = v < [7,9]
+                                 , HcPkg.supportsDirDbs  = v >= [6,8]
+                                 , HcPkg.requiresDirDbs  = v >= [7,10]
                                  }
   where
     v               = versionBranch ver
@@ -1147,14 +1148,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
+  -> ProgramDb
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity
+registerPackage verbosity progdb packageDbs installedPkgInfo =
+  HcPkg.reregister (hcPkgInfo progdb) verbosity
     packageDbs (Right installedPkgInfo)
 
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath

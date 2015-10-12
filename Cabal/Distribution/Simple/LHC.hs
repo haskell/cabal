@@ -62,7 +62,7 @@ import Distribution.Package
          ( Package(..), LibraryName, getHSLibraryName )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
          , ProgramSearchPath, ProgramLocation(..)
          , rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
@@ -778,14 +778,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
+  -> ProgramDb
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
+registerPackage verbosity progdb packageDbs installedPkgInfo =
+  HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
     (Right installedPkgInfo)
 
 hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
@@ -793,7 +791,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
-                                 , HcPkg.useSingleFileDb = True
+                                 , HcPkg.supportsDirDbs  = True
+                                 , HcPkg.requiresDirDbs  = True
                                  }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram conf

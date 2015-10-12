@@ -21,9 +21,6 @@ module Distribution.Simple.Build (
 
     initialBuildSteps,
     writeAutogenFiles,
-    doesPackageDBExist,
-    createPackageDB,
-    deletePackageDB,
   ) where
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -67,11 +64,11 @@ import Distribution.Simple.LocalBuildInfo
          , inplacePackageId )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
-         ( registerPackage, inplaceInstalledPackageInfo )
+         ( registerPackage, inplaceInstalledPackageInfo
+         , doesPackageDBExist, deletePackageDB, createPackageDB )
 import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
@@ -93,8 +90,7 @@ import Control.Monad
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
-         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
-         , doesDirectoryExist, doesFileExist )
+         ( getCurrentDirectory )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -214,9 +210,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
                                                        ipkgid lib' lbi clbi
 
-    registerPackage verbosity
-      installedPkgInfo pkg_descr lbi True -- True meaning in place
-      (withPackageDB lbi)
+    registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                    (withPackageDB lbi) installedPkgInfo
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
@@ -256,7 +251,8 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     extras <- preprocessExtras comp lbi
     info verbosity $ "Building test suite " ++ testName test ++ "..."
     buildLib verbosity numJobs pkg lbi lib libClbi
-    registerPackage verbosity ipi pkg lbi True $ withPackageDB lbi
+    registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                    (withPackageDB lbi) ipi
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
@@ -480,41 +476,12 @@ createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
 createInternalPackageDB verbosity lbi distPref = do
     existsAlready <- doesPackageDBExist dbPath
     when existsAlready $ deletePackageDB dbPath
-    createPackageDB verbosity (compiler lbi) (withPrograms lbi) dbPath 
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) True dbPath 
     return (SpecificPackageDB dbPath)
-    where
-      dbPath = distPref </> "package.conf.inplace"
-
-doesPackageDBExist :: FilePath -> IO Bool
-doesPackageDBExist dbPath = do
-    dir_exists <- doesDirectoryExist dbPath
-    if dir_exists
-        then return True
-        else doesFileExist dbPath
-
-createPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
-createPackageDB verbosity comp progdb dbPath =
-    case compilerFlavor comp of
-      GHC   -> createWith $ GHC.hcPkgInfo   progdb
-      GHCJS -> createWith $ GHCJS.hcPkgInfo progdb
-      LHC   -> createWith $ LHC.hcPkgInfo   progdb
-      _     -> return ()
   where
-    createWith hpi
-      | HcPkg.useSingleFileDb hpi
-      = writeFile dbPath "[]"
-      
-      | otherwise
-      = HcPkg.init hpi verbosity dbPath
-
-deletePackageDB :: FilePath -> IO ()
-deletePackageDB dbPath = do
-    dir_exists <- doesDirectoryExist dbPath
-    if dir_exists
-        then removeDirectoryRecursive dbPath
-        else do file_exists <- doesFileExist dbPath
-                when file_exists $ removeFile dbPath
-
+      dbPath = case compilerFlavor (compiler lbi) of
+        UHC -> UHC.inplacePackageDbPath lbi
+        _   -> distPref </> "package.conf.inplace"
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb
