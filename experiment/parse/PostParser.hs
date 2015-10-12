@@ -31,12 +31,9 @@ postProcessFields (O.Section line name arg fields : xs) =
         rest = postProcessFields xs
     in field : rest
 postProcessFields (O.IfBlock line arg fields fields' : xs) =
-    let field  = N.Section (toName "if")   [N.SecArgName () $ toUtf8 arg] (postProcessFields fields)
-        efield = N.Section (toName "else") [] (postProcessFields fields')
+    let field  = N.IfElseBlock [N.SecArgName () $ toUtf8 arg] (postProcessFields fields) (postProcessFields fields')
         rest = postProcessFields xs
-    in if null fields'
-          then field : rest
-          else field : efield : rest
+    in field : rest
 
 postProcessFields2 :: [N.Field a] -> [N.Field a]
 postProcessFields2 = map f
@@ -44,6 +41,7 @@ postProcessFields2 = map f
            | N.getName name == "description"  = N.Field name $ concatLines $ filter p' $ map g $ lines
            | otherwise                        = N.Field name $ filter p  $ map g $ lines
         f (N.Section name args fields) = N.Section name (flattenArgs args) $ postProcessFields2 fields
+        f (N.IfElseBlock args t e) = N.IfElseBlock (flattenArgs args) (postProcessFields2 t) (postProcessFields2 e)
         p  (N.FieldLine _ content) = not $ B.null content
         p' (N.FieldLine _ content) = not (B.null content) && content /= "."
         -- Description normalising is quite a trick

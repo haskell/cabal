@@ -21,6 +21,7 @@ import qualified Data.Text   as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as T
 
+import Debug.Trace
 
 data LexState' = LexState' !LexState (LToken, LexState')
 
@@ -125,6 +126,7 @@ inLexerMode (LexerMode mode) p =
 
 data Field ann = Field   !(Name ann) [FieldLine ann]
                | Section !(Name ann) [SectionArg ann] [Field ann]
+               | IfElseBlock [SectionArg ann] [Field ann] [Field ann]
   deriving (Eq, Show, Functor)
 
 data Name ann  = Name       !ann !ByteString
@@ -293,7 +295,7 @@ fieldInlineOrBraces name =
 
 
 readFields :: B.ByteString -> Either ParseError [Field Position]
-readFields s = parse cabalStyleFile "the input" lexSt
+readFields s = fmap elaborate $ parse cabalStyleFile "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 
@@ -350,6 +352,19 @@ eof = notFollowedBy anyToken <?> "end of file"
                            <|> return ())
 --showErrorMessages "or" "unknown parse error"
 --                            "expecting" "unexpected" "end of input"
+
+-- | Elaborate a 'Section's with @if@ name into the 'IfElseBlock's.
+elaborate :: Show a => [Field a] -> [Field a]
+elaborate [] = []
+elaborate (field@Field{} : rest) = field : elaborate rest
+elaborate (Section name args fields : Section ename [] efields : rest)
+  | getName name == "if" && getName ename == "else" =
+    IfElseBlock args (elaborate fields) (elaborate efields) : elaborate rest
+elaborate (Section name args fields : rest)
+  | getName name == "if" =
+    IfElseBlock args (elaborate fields) [] : elaborate rest
+  | otherwise            =
+    Section name args (elaborate fields) : elaborate rest
 
 {-
 data EncodingError = ProbablyBinaryFile
