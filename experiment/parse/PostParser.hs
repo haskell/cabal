@@ -41,12 +41,21 @@ postProcessFields (O.IfBlock line arg fields fields' : xs) =
 postProcessFields2 :: [N.Field a] -> [N.Field a]
 postProcessFields2 = map f
   where f (N.Field name lines)
-           | N.getName name == "description"  = N.Field name $ filter p' $ map g $ lines
+           | N.getName name == "description"  = N.Field name $ concatLines $ filter p' $ map g $ lines
            | otherwise                        = N.Field name $ filter p  $ map g $ lines
         f (N.Section name args fields) = N.Section name (flattenArgs args) $ postProcessFields2 fields
         p  (N.FieldLine _ content) = not $ B.null content
         p' (N.FieldLine _ content) = not (B.null content) && content /= "."
-        g (N.FieldLine ann content)= N.FieldLine ann (B.reverse . B8.dropWhile C.isSpace . B.reverse $ content)
+        -- Description normalising is quite a trick
+        g (N.FieldLine ann content)= N.FieldLine ann (trimB8 content)
+        concatLines [] = []
+        concatLines lines@(N.FieldLine ann _ : _) = [N.FieldLine ann $ B.concat (map lineContent lines) ]
+        lineContent (N.FieldLine ann content) = trimB8 $ B8.filter notCurly content
+        notCurly '{' = False
+        notCurly '}' = False
+        notCurly ' ' = False
+        notCurly _   = True
+        trimB8         = B.reverse . B8.dropWhile C.isSpace . B.reverse . B8.dropWhile C.isSpace
 
 flattenArgs [] = []
 flattenArgs xs@(first : _) = [ N.SecArgName (g first) $ B8.filter (not . C.isSpace) $ F.foldMap f xs]

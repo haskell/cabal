@@ -79,15 +79,21 @@ Test-Suite test-unify:
 -- Parser results
 checkedFiles2 :: [FilePath]
 checkedFiles2 =
-  -- Curly braces in description
-  [ "Cardinality/"
-  , "ConfigFileTH/"
-  , "Grow/"
-  , "HaTeX/"
-  , "HaTeX-meta/"
-  , "Noise/"
-  , "ascii-progress/"
-  , "binary-file/"
+  -- Curly braces
+  -- There are a lot in descriptions, but HaTex have them in author field
+  [ "HaTeX/3."
+  , "HaTeX-meta/1."
+
+  -- other-modules without colon
+  , "graphs/0.1/graphs.cabal"
+  , "graphs/0.2/graphs.cabal"
+
+  -- hs-source-dirs:
+  --   .
+  , "hspec-expectations-pretty/0.1/"
+
+  -- multiline copyright
+  , "tn/1.0.0/tn.cabal"
   ]
 
 main :: IO ()
@@ -129,7 +135,7 @@ main = do
                      parseOld = (fmap . fmap . fmap) (const ()) . fmap (PostParser.postProcessFields2 . PostParser.postProcessFields) . ParseUtils.readFields . fromUTF8 . LBS.unpack
                      parseNew :: LBS.ByteString -> Either ParseError [Parser.Field ()]
                      parseNew = (fmap . fmap . fmap) (const ()) . fmap PostParser.postProcessFields2 . Parser.readFields . toStrict
-                     parsed   = [ (f, parseOld c, parseNew c) | (f, c) <- take 2000 cabalFiles ]
+                     parsed   = [ (f, parseOld c, parseNew c) | (f, c) <- cabalFiles ]
                      parsed'  = [ (f, o, n) | (f, ParseUtils.ParseOk _ o, Right n) <- parsed, o /= n, all (\prefix -> not $ prefix `L.isPrefixOf` f) checkedFiles2 ]
                      printDiff (f, o, n) = do putStrLn f
                                               putStrLn (show (length o) ++ " " ++ show (length n))
