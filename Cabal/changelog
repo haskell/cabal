@@ -11,6 +11,7 @@
 	* New 'custom-setup' stanza to specify setup deps. Setup is also built
 	  with the cabal_macros.h style macros, for conditional compilation.
 	* Support Haddock response files (#2746).
+	* Fixed a bug in the Text instance for Platform (#2862).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
