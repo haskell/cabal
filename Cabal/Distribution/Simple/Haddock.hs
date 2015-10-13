@@ -162,7 +162,27 @@ haddock pkg_descr _ _ haddockFlags
         ++ "a library. Perhaps you want to use the --executables, --tests or"
         ++ " --benchmarks flags."
 
-haddock pkg_descr lbi suffixes flags = do
+haddock pkg_descr lbi suffixes flags' = do
+    let verbosity     = flag haddockVerbosity
+        comp          = compiler lbi
+
+        flags
+          | fromFlag (haddockForHackage flags') = flags'
+            { haddockHoogle       = Flag True
+            , haddockHtml         = Flag True
+            , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
+            , haddockContents     = Flag (toPathTemplate pkg_url)
+            , haddockHscolour     = Flag True
+            }
+          | otherwise = flags'
+        pkg_url       = "/package/$pkg-$version"
+        flag f        = fromFlag $ f flags
+
+        tmpFileOpts   = defaultTempFileOptions
+                       { optKeepTempFiles = flag haddockKeepTempFiles }
+        htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
+                        $ flags
+
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
       requireProgramVersion verbosity haddockProgram
@@ -192,12 +212,12 @@ haddock pkg_descr lbi suffixes flags = do
 
     when (flag haddockHscolour) $
       hscolour' (warn verbosity) pkg_descr lbi suffixes
-      (defaultHscolourFlags `mappend` haddockToHscolour hackageFlags)
+      (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
     libdirArgs <- getGhcLibDir  verbosity lbi
     let commonArgs = mconcat
             [ libdirArgs
-            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) hackageFlags
+            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
@@ -213,7 +233,7 @@ haddock pkg_descr lbi suffixes flags = do
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp confHaddock exeArgs'
           Nothing -> do
-           warn (fromFlag $ haddockVerbosity hackageFlags)
+           warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
       case component of
@@ -231,24 +251,6 @@ haddock pkg_descr lbi suffixes flags = do
     forM_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
       forM_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
-  where
-    verbosity     = flag haddockVerbosity
-    keepTempFiles = flag haddockKeepTempFiles
-    comp          = compiler lbi
-    tmpFileOpts   = defaultTempFileOptions { optKeepTempFiles = keepTempFiles }
-    flag f        = fromFlag $ f hackageFlags
-    hackageFlags
-      | fromFlag (haddockForHackage flags) = flags 
-        { haddockHoogle       = Flag True
-        , haddockHtml         = Flag True
-        , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
-        , haddockContents     = Flag (toPathTemplate pkg_url)
-        , haddockHscolour     = Flag True
-        }
-      | otherwise = flags
-    pkg_url = "/package/$pkg-$version"
-    htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
-                    $ hackageFlags
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
@@ -487,7 +489,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
                  renderedArgs = pflag : renderPureArgs version comp args
-             if haddockSupportsResponseFiles 
+             if haddockSupportsResponseFiles
                then
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do
