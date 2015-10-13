@@ -27,6 +27,8 @@
 	* Fixed a space leak in 'cabal update' (#2826).
 	* 'cabal exec' and 'sandbox hc-pkg' now use the configured
 	compiler (#2859).
+	* New 'cabal haddock' option: '--for-hackage' (#2852).
+	* Added a warning when the solver cannot find a dependency (#2853).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
