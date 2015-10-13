@@ -148,8 +148,11 @@ data Token = TokSym   !ByteString
 data LToken = L !Position !Token
   deriving Show
 
-toki t pos len input = return $! L pos (t (B.take len input))
-tok  t pos len input = return $! L pos t
+toki :: Monad m => (ByteString -> Token) -> Position -> Int -> ByteString -> m LToken
+toki t pos  len  input = return $! L pos (t (B.take len input))
+
+tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
+tok  t pos _len _input = return $! L pos t
 
 -- -----------------------------------------------------------------------------
 -- The input type
@@ -189,9 +192,9 @@ lexToken = do
         adjustPos (incPos len_chars)
         setInput inp'
         let !len_bytes = B.length inp - B.length inp'
-        tok <- action pos len_bytes inp
-        --traceShow tok $ return tok
-        return tok
+        t <- action pos len_bytes inp
+        --traceShow t $ return tok
+        return t
 
 
 checkPosition :: Position -> ByteString -> ByteString -> Int -> Lex ()

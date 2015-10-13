@@ -152,8 +152,8 @@ data LToken = L !Position !Token
   deriving Show
 
 toki t pos len input = return $! L pos (t (B.take len input))
-tokl t pos len input = return $! L pos (t len)
-tok  t pos len input = return $! L pos t
+tokl t pos len _input = return $! L pos (t len)
+tok  t pos _len _input = return $! L pos t
 
 -- -----------------------------------------------------------------------------
 -- The input type
@@ -193,9 +193,9 @@ lexToken = do
         adjustPos (incPos len_chars)
         setInput inp'
         let !len_bytes = B.length inp - B.length inp'
-        tok <- action pos len_bytes inp
-        --traceShow tok $ return tok
-        return tok
+        t <- action pos len_bytes inp
+        --traceShow t $ return t
+        return t
 
 checkPosition pos@(Position lineno colno) inp inp' len_chars = do
     text_lines <- getDbgText
