@@ -23,7 +23,7 @@ import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
          ( doesFileExist, renameFile, removeFile )
-import Distribution.Compat.TempFile
+import Distribution.Compat.Internal.TempFile
          ( openBinaryTempFile )
 import System.FilePath
          ( takeDirectory )

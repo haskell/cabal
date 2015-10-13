@@ -8,7 +8,7 @@ module Distribution.Simple.Test.LibV09
 
 import Distribution.Compat.CreatePipe ( createPipe )
 import Distribution.Compat.Environment ( getEnvironment )
-import Distribution.Compat.TempFile ( openTempFile )
+import Distribution.Compat.Internal.TempFile ( openTempFile )
 import Distribution.ModuleName ( ModuleName )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
