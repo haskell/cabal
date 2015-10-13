@@ -15,7 +15,7 @@ before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy-1.19.5 alex-3.1.4
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:/opt/happy/1.19.5/bin:/opt/alex/3.1.4/bin:$HOME/cabal/bin:$PATH
+ - export PATH=$HOME/cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:/opt/happy/1.19.5/bin:/opt/alex/3.1.4/bin:$PATH
 
 install:
  - cabal update
