@@ -14,11 +14,21 @@ env:
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy alex-3.1.4
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:/opt/alex/3.1.4/bin:$PATH
+ - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$HOME/cabal/bin:$PATH
 
 install:
  - cabal update
+
+# Install (almost) bleeding edge alex
+ - git clone https://github.com/simonmar/alex.git
+ - cd alex
+ - git checkout 447bbb8f53db0201e7ba7fe525f2a3b37c2a5f94
+ - runhaskell Setup.lhs configure
+ - runhaskell Setup.lhs build
+ - runhaskell Setup.lhs install
+ - cd ..
+
  # We intentionally do not install anything before trying to build Cabal because
  # it should build with each supported GHC version out-of-the-box.
 
