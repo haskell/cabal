@@ -1311,6 +1311,7 @@ data HaddockFlags = HaddockFlags {
     haddockHoogle       :: Flag Bool,
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
+    haddockForHackage   :: Flag Bool,
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
     haddockBenchmarks   :: Flag Bool,
@@ -1332,6 +1333,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHoogle       = Flag False,
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
+    haddockForHackage   = Flag False,
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
     haddockBenchmarks   = Flag False,
@@ -1397,6 +1399,11 @@ haddockOptions showOrParseArgs =
    haddockHtmlLocation (\v flags -> flags { haddockHtmlLocation = v })
    (reqArgFlag "URL")
 
+  ,option "" ["for-hackage"]
+   "Collection of flags to generate documentation suitable for upload to hackage"
+   haddockForHackage (\v flags -> flags { haddockForHackage = v })
+   trueArg
+
   ,option "" ["executables"]
    "Run haddock for Executables targets"
    haddockExecutables (\v flags -> flags { haddockExecutables = v })
@@ -1460,6 +1467,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = mempty,
     haddockHtml         = mempty,
     haddockHtmlLocation = mempty,
+    haddockForHackage   = mempty,
     haddockExecutables  = mempty,
     haddockTestSuites   = mempty,
     haddockBenchmarks   = mempty,
@@ -1478,6 +1486,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = combine haddockHoogle,
     haddockHtml         = combine haddockHtml,
     haddockHtmlLocation = combine haddockHtmlLocation,
+    haddockForHackage   = combine haddockForHackage,
     haddockExecutables  = combine haddockExecutables,
     haddockTestSuites   = combine haddockTestSuites,
     haddockBenchmarks   = combine haddockBenchmarks,

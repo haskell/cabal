@@ -192,12 +192,12 @@ haddock pkg_descr lbi suffixes flags = do
 
     when (flag haddockHscolour) $
       hscolour' (warn verbosity) pkg_descr lbi suffixes
-      (defaultHscolourFlags `mappend` haddockToHscolour flags)
+      (defaultHscolourFlags `mappend` haddockToHscolour hackageFlags)
 
     libdirArgs <- getGhcLibDir  verbosity lbi
     let commonArgs = mconcat
             [ libdirArgs
-            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
+            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) hackageFlags
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
@@ -213,7 +213,7 @@ haddock pkg_descr lbi suffixes flags = do
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp confHaddock exeArgs'
           Nothing -> do
-           warn (fromFlag $ haddockVerbosity flags)
+           warn (fromFlag $ haddockVerbosity hackageFlags)
              "Unsupported component, skipping..."
            return ()
       case component of
@@ -236,9 +236,19 @@ haddock pkg_descr lbi suffixes flags = do
     keepTempFiles = flag haddockKeepTempFiles
     comp          = compiler lbi
     tmpFileOpts   = defaultTempFileOptions { optKeepTempFiles = keepTempFiles }
-    flag f        = fromFlag $ f flags
+    flag f        = fromFlag $ f hackageFlags
+    hackageFlags
+      | fromFlag (haddockForHackage flags) = flags 
+        { haddockHoogle       = Flag True
+        , haddockHtml         = Flag True
+        , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
+        , haddockContents     = Flag (toPathTemplate pkg_url)
+        , haddockHscolour     = Flag True
+        }
+      | otherwise = flags
+    pkg_url = "/package/$pkg-$version"
     htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
-                    $ flags
+                    $ hackageFlags
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
