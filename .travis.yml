@@ -28,7 +28,7 @@ install:
  - cabal install 'QuickCheck >= 2'
  - cabal configure --bindir=$HOME/.cabal/bin
  - cabal build
- - cabal install
+ - cabal copy
  - cd ..
 
  # We intentionally do not install anything before trying to build Cabal because
