@@ -40,6 +40,13 @@ data Message =
 showMessages :: ([Var QPN] -> Bool) -> Bool -> [Message] -> [String]
 showMessages p sl = go [] 0
   where
+    -- The stack 'v' represents variables that are currently assigned by the
+    -- solver.  'go' pushes a variable for a recursive call when it encounters
+    -- 'TryP', 'TryF', or 'TryS' and pops a variable when it encounters 'Leave'.
+    -- When 'go' processes a package goal, or a package goal followed by a
+    -- 'Failure', it calls 'atLevel' with the goal variable at the head of the
+    -- stack so that the predicate can also select messages relating to package
+    -- goal choices.
     go :: [Var QPN] -> Int -> [Message] -> [String]
     go _ _ []                            = []
     -- complex patterns
@@ -47,6 +54,9 @@ showMessages p sl = go [] 0
     go v l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel (add (F qfn) v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
     go v l (TryS qsn b : Enter : Failure c fr : Leave : ms) = (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go v l (Next (Goal (P qpn) gr) : TryP qpn' i : ms@(Enter : Next _ : _)) = (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGRs gr) (go (add (P qpn) v) l ms)
+    go v l (Next (Goal (P qpn) gr) : Failure c fr : ms) =
+        let v' = add (P qpn) v
+        in (atLevel v' l $ showPackageGoal qpn gr) $ (atLevel v' l $ showFailure c fr) (go v l ms)
     go v l (Failure c Backjump : ms@(Leave : Failure c' Backjump : _)) | c == c' = go v l ms
     -- standard display
     go v l (Enter                  : ms) = go v          (l+1) ms
@@ -54,10 +64,16 @@ showMessages p sl = go [] 0
     go v l (TryP qpn i             : ms) = (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn i) (go (add (P qpn) v) l ms)
     go v l (TryF qfn b             : ms) = (atLevel (add (F qfn) v) l $ "trying: " ++ showQFNBool qfn b) (go (add (F qfn) v) l ms)
     go v l (TryS qsn b             : ms) = (atLevel (add (S qsn) v) l $ "trying: " ++ showQSNBool qsn b) (go (add (S qsn) v) l ms)
-    go v l (Next (Goal (P qpn) gr) : ms) = (atLevel (add (P qpn) v) l $ "next goal: " ++ showQPN qpn ++ showGRs gr) (go v l ms)
+    go v l (Next (Goal (P qpn) gr) : ms) = (atLevel (add (P qpn) v) l $ showPackageGoal qpn gr) (go v l ms)
     go v l (Next _                 : ms) = go v l ms -- ignore flag goals in the log
     go v l (Success                : ms) = (atLevel v l $ "done") (go v l ms)
-    go v l (Failure c fr           : ms) = (atLevel v l $ "fail" ++ showFR c fr) (go v l ms)
+    go v l (Failure c fr           : ms) = (atLevel v l $ showFailure c fr) (go v l ms)
+
+    showPackageGoal :: QPN -> QGoalReasonChain -> String
+    showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGRs gr
+
+    showFailure :: ConflictSet QPN -> FailReason -> String
+    showFailure c fr = "fail" ++ showFR c fr
 
     add :: Var QPN -> [Var QPN] -> [Var QPN]
     add v vs = simplifyVar v : vs
@@ -68,6 +84,7 @@ showMessages p sl = go [] 0
     goPReject v l qpn is c fr ms = (atLevel (P qpn : v) l $ "rejecting: " ++ L.intercalate ", " (map (showQPNPOpt qpn) (reverse is)) ++ showFR c fr) (go v l ms)
 
     -- write a message, but only if it's relevant; we can also enable or disable the display of the current level
+    atLevel :: [Var QPN] -> Int -> String -> [String] -> [String]
     atLevel v l x xs
       | sl && p v = let s = show l
                     in  ("[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x) : xs
