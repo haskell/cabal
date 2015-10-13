@@ -161,10 +161,6 @@ instance Text Arch where
 
   parse = fmap (classifyArch Strict) ident
 
--- See the comment in instance Text Platform definition
-parseDashlessArch :: Parse.ReadP r Arch
-parseDashlessArch = fmap (classifyArch Strict) dashlessIdent
-
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
   fromMaybe (OtherArch s) $ lookup (lowercase s) archMap
@@ -199,6 +195,9 @@ instance Text Platform where
     _ <- Parse.char '-'
     os   <- parse
     return (Platform arch os)
+      where
+        parseDashlessArch :: Parse.ReadP r Arch
+        parseDashlessArch = fmap (classifyArch Strict) dashlessIdent
 
 -- | The platform Cabal was compiled on. In most cases,
 -- @LocalBuildInfo.hostPlatform@ should be used instead (the platform we're
