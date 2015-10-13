@@ -26,9 +26,9 @@ install:
  - git checkout 447bbb8f53db0201e7ba7fe525f2a3b37c2a5f94
  - cabal sandbox init
  - cabal install 'QuickCheck >= 2'
- - runhaskell Setup.lhs configure
- - runhaskell Setup.lhs build
- - runhaskell Setup.lhs install
+ - cabal configure
+ - cabal build
+ - cabal install
  - cd ..
 
  # We intentionally do not install anything before trying to build Cabal because
