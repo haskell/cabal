@@ -25,8 +25,10 @@ import Distribution.Verbosity (normal)
 -- Third party modules.
 import Control.Concurrent.Async (withAsync, wait)
 import Control.Exception (bracket)
+import Data.Maybe (fromMaybe)
 import System.Directory
         ( canonicalizePath
+        , findExecutable
         , getDirectoryContents
         , getTemporaryDirectory
         , doesDirectoryExist
@@ -195,7 +197,8 @@ runTestCase assertResult tc = do
   bracket createWorkDirectory (removeWorkDirectory doRemove) $ \workDirectory -> do
     -- Run
     let scriptDirectory = workDirectory </> tcShouldX tc
-    testResult <- run scriptDirectory "/bin/sh" [ "-e", tcName tc]
+    sh <- fmap (fromMaybe $ error "Cannot find 'sh' executable") $ findExecutable "sh"
+    testResult <- run scriptDirectory sh [ "-e", tcName tc]
     -- Assert that we got what we expected
     assertResult testResult
     mustMatch testResult "stdout" (trStdOut testResult) (tcStdOutPath tc)
