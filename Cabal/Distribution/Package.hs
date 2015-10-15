@@ -24,6 +24,7 @@ module Distribution.Package (
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId(..),
         getHSLibraryName,
+        InstalledPackageId, -- backwards compat
 
         -- * Package source dependencies
         Dependency(..),
@@ -113,6 +114,8 @@ instance NFData PackageIdentifier where
 data ComponentId
     = ComponentId String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+type InstalledPackageId = ComponentId
 
 instance Binary ComponentId
 
