@@ -117,13 +117,14 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
   tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
   tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
-  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
+  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
   tests/PackageTests/UniqueIPID/P1/M.hs
   tests/PackageTests/UniqueIPID/P1/my.cabal
   tests/PackageTests/UniqueIPID/P2/M.hs
   tests/PackageTests/UniqueIPID/P2/my.cabal
+  tests/PackageTests/multInst/my.cabal
   tests/Setup.hs
   tests/Test/Distribution/Version.hs
   tests/Test/Laws.hs
@@ -173,6 +174,7 @@ library
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
+    Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -247,7 +249,6 @@ library
   other-modules:
     Distribution.Compat.Binary
     Distribution.Compat.CopyFile
-    Distribution.Compat.TempFile
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
