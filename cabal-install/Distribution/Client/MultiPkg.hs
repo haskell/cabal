@@ -403,6 +403,8 @@ data ElaboratedConfiguredPackage
        --   is not the same as where it may be unpacked to for the build.
        pkgSourceLocation :: PackageLocation (Maybe FilePath),
 
+       pkgSourceHash     :: Maybe PackageSourceHash,
+
        --pkgSourceDir ? -- currently passed in later because they can use temp locations
        --pkgBuildDir  ? -- but could in principle still have it here, with optional instr to use temp loc
 
@@ -1448,7 +1450,7 @@ elaborateInstallPlan
                         ConfiguredPackage
                         _iresult _ifailure
   -> [PackageSpecifier SourcePackage]
-  -> Map PackageId HashValue
+  -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> PackageConfigShared
   -> PackageConfig
@@ -1512,15 +1514,18 @@ elaborateInstallPlan platform compiler progdb
           = InstalledPackageId (display pkgid ++ "-inplace")
           
           | Just sourceHash <- Map.lookup pkgid sourcePackageHashes
+
+            -- TODO: share this calc so that we can recreate the rendered form of it
           = hashedInstalledPackageId PackageHashInputs {
               pkgHashPkgId       = pkgid,
               pkgHashSourceHash  = sourceHash,
+              --TODO: are these deps right? They're probably using fake ipkigs
               pkgHashDirectDeps  = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
               pkgHashOtherConfig = elaboratedPackageHashConfigInputs
                                        elaboratedSharedConfig
                                        elaboratedPackage -- recursive use
             }
-          
+
           | otherwise
           = error $ "elaborateInstallPlan: non-inplace package "
                  ++ " is missing a source hash: " ++ display pkgid
@@ -1535,6 +1540,7 @@ elaborateInstallPlan platform compiler progdb
         pkgBenchmarksEnable = BenchStanzas `elem` stanzas --TODO: only actually enable if solver allows it and we want it
         pkgDependencies     = fmap (map confInstId) deps
         pkgSourceLocation   = srcloc
+        pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
 
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
@@ -2388,6 +2394,19 @@ buildAndInstallUnpackedPackage verbosity
 
       -- Actual installation
       setup Cabal.copyCommand copyFlags
+      
+      -- TODO: make this a simple shared function of ElaboratedConfiguredPackage
+      LBS.writeFile
+        (cabalStorePackageDirectory cabalDirLayout (compilerId compiler) ipkgid </> "cabal-hash.txt") $
+        renderPackageHashInputs PackageHashInputs {
+              pkgHashPkgId       = pkgid,
+              pkgHashSourceHash  = fromJust (pkgSourceHash pkg),
+              pkgHashDirectDeps  = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
+              pkgHashOtherConfig = elaboratedPackageHashConfigInputs
+                                       pkgshared
+                                       pkg
+            }
+
       -- here's where we could keep track of the installed files ourselves if
       -- we wanted by calling copy to an image dir and then we would make a
       -- manifest and move it to its final location
