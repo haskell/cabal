@@ -200,7 +200,7 @@ build verbosity
     -- rebuild the various packages needed.
     --
     rebuildTargets verbosity
-                   distDirLayout cabalDirLayout
+                   distDirLayout
                    elaboratedInstallPlan
                    sharedPackageConfig
                    buildFlags
@@ -442,7 +442,7 @@ data ElaboratedConfiguredPackage
        pkgProgPrefix            :: Maybe PathTemplate,
        pkgProgSuffix            :: Maybe PathTemplate,
 
-       pkgInstallDirs           :: InstallDirs.InstallDirTemplates -- still $prefix relative
+       pkgInstallDirs           :: InstallDirs.InstallDirs FilePath
 {-
        -- Setup.hs related things:
 
@@ -549,7 +549,7 @@ rebuildInstallPlan :: Verbosity
 rebuildInstallPlan verbosity
                    projectRootDir
                    distDirLayout@DistDirLayout{..}
-                   CabalDirLayout{..} = \cliConfig ->
+                   cabalDirLayout@CabalDirLayout{..} = \cliConfig ->
     runRebuild $
 
     -- The overall improved plan is cached
@@ -716,13 +716,13 @@ rebuildInstallPlan verbosity
                      solverPlan
                 --TODO: monitor the downloaded files?
 
-        defaultInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
-                                         (compilerFlavor compiler) False False
+        defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
         return $
           elaborateInstallPlan
             platform compiler progdb
             corePackageDbs storePackageDbs
             distDirLayout
+            cabalDirLayout
             solverPlan
             localPackages
             sourcePackageHashes
@@ -913,6 +913,10 @@ getPackageSourceHashes verbosity mkTransport
                   [ do loc <- fetchPackage transport verbosity locm
                        return (pkg, loc)
                   | (pkg, locm) <- requireDownloading ]
+
+    --TODO: if we do download any here, we ought to record that we did so
+    --      otherwise the plan execution will still have to attempt
+    --      downloading them
 
     -- Get the hashes of all the tarball packages (i.e. not local dir pkgs)
     --
@@ -1446,6 +1450,7 @@ elaborateInstallPlan
   :: Platform -> Compiler -> ProgramDb
   -> PackageDBStack -> PackageDBStack
   -> DistDirLayout
+  -> CabalDirLayout
   -> GenericInstallPlan InstalledPackageInfo
                         ConfiguredPackage
                         _iresult _ifailure
@@ -1462,6 +1467,7 @@ elaborateInstallPlan platform compiler progdb
                      -- sets or other config file input. For now
                      -- just individual args
                      DistDirLayout{..}
+                     cabalDirLayout
                      solverPlan pkgSpecifiers
                      sourcePackageHashes
                      defaultInstallDirs
@@ -1584,27 +1590,27 @@ elaborateInstallPlan platform compiler progdb
         pkgProgPrefix          = perPkgOptionMaybe packageConfigProgPrefix
         pkgProgSuffix          = perPkgOptionMaybe packageConfigProgSuffix
 
-        -- Note: the prefix here is not yet valid, has to be overridden per-pkg.
-        -- This is because we've not yet calculated the installed package id
-        pkgInstallDirs =
-            InstallDirs.substituteInstallDirTemplates templateEnv dirTemplates
-          where
-            templateEnv  = InstallDirs.initialPathTemplateEnv
-                             pkgid
-                             (LibraryName (display pkgid))
-                             (compilerInfo compiler)
-                             platform
-            dirTemplates
-              | shouldBuildInplaceOnly pkg
-              -- use the ordinary default install dirs
-              = defaultInstallDirs
+        pkgInstallDirs
+          | shouldBuildInplaceOnly pkg
+          -- use the ordinary default install dirs
+          = (InstallDirs.absoluteInstallDirs
+               pkgid
+               (LibraryName (display pkgid))
+               (compilerInfo compiler)
+               InstallDirs.NoCopyDest
+               platform
+               defaultInstallDirs) {
 
-              | otherwise 
-                -- keep it prefix-relative so we can still substitute that later
-              = defaultInstallDirs {
-                  InstallDirs.prefix = InstallDirs.toPathTemplate "$prefix"
-                }
+              InstallDirs.libsubdir  = "", -- absoluteInstallDirs sets these as
+              InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
+            }                              -- them as "Setup.hs configure" args
 
+          | otherwise
+          -- use special simplified install dirs
+          = storePackageInstallDirs
+              cabalDirLayout
+              (compilerId compiler)
+              pkgInstalledId
 
         pkgname = packageName pkgid
 
@@ -1659,6 +1665,43 @@ elaborateInstallPlan platform compiler progdb
           [ fakeInstalledPackageId (packageId pkg)
           | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
+
+-- | To be used for the input for elaborateInstallPlan.
+--
+-- TODO: make InstallDirs.defaultInstallDirs pure.
+--
+userInstallDirTemplates :: Compiler
+                        -> IO InstallDirs.InstallDirTemplates
+userInstallDirTemplates compiler = do
+    InstallDirs.defaultInstallDirs
+                  (compilerFlavor compiler)
+                  True  -- user install
+                  False -- unused
+
+storePackageInstallDirs :: CabalDirLayout
+                        -> CompilerId
+                        -> InstalledPackageId
+                        -> InstallDirs.InstallDirs FilePath
+storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
+                        compid ipkgid =
+    InstallDirs.InstallDirs {..}
+  where
+    prefix       = cabalStorePackageDirectory compid ipkgid
+    bindir       = prefix </> "bin"
+    libdir       = prefix </> "lib"
+    libsubdir    = ""
+    dynlibdir    = libdir
+    libexecdir   = prefix </> "libexec"
+    includedir   = libdir </> "include"
+    datadir      = prefix </> "share"
+    datasubdir   = ""
+    docdir       = datadir </> "doc"
+    mandir       = datadir </> "man"
+    htmldir      = docdir  </> "html"
+    haddockdir   = htmldir
+    sysconfdir   = prefix </> "etc"
+
+
 --TODO: perhaps reorder this code
 -- based on the ElaboratedInstallPlan + ElaboratedSharedConfig,
 -- make the various Setup.hs {configure,build,copy} flags
@@ -1692,8 +1735,6 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} _)
 
 setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> ElaboratedSharedConfig
-                      -> CabalDirLayout
-                      -> Maybe InstalledPackageId
                       -> Verbosity
                       -> FilePath
                       -> Cabal.ConfigFlags
@@ -1701,8 +1742,6 @@ setupHsConfigureFlags (ReadyPackage
                          ElaboratedConfiguredPackage{..}
                          pkgdeps)
                       ElaboratedSharedConfig{..}
-                      CabalDirLayout{cabalStorePackageDirectory}
-                      mipkgid
                       verbosity builddir =
     Cabal.ConfigFlags {..}
   where
@@ -1745,14 +1784,8 @@ setupHsConfigureFlags (ReadyPackage
     configProgPrefix          = maybe mempty toFlag pkgProgPrefix
     configProgSuffix          = maybe mempty toFlag pkgProgSuffix
 
-    configInstallDirs = case mipkgid of
-      Nothing     -> fmap toFlag pkgInstallDirs
-      Just ipkgid -> fmap toFlag (subst pkgInstallDirs)
-        where
-          subst  = InstallDirs.substituteInstallDirTemplates
-                     [(InstallDirs.PrefixVar, InstallDirs.toPathTemplate prefix)]
-          prefix = cabalStorePackageDirectory compid ipkgid
-          compid = compilerId pkgConfigCompiler
+    configInstallDirs         = fmap (toFlag . InstallDirs.toPathTemplate)
+                                     pkgInstallDirs
 
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
@@ -2017,7 +2050,6 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex =
 
 rebuildTargets :: Verbosity
                -> DistDirLayout
-               -> CabalDirLayout
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
                -> ProjectConfigBuildOnly
@@ -2025,7 +2057,7 @@ rebuildTargets :: Verbosity
                            --TODO: probably want to parse these earlier
                -> IO ()
 rebuildTargets verbosity
-               distDirLayout@DistDirLayout{..} cabalDirLayout
+               distDirLayout@DistDirLayout{..}
                installPlan
                sharedPackageConfig
                ProjectConfigBuildOnly{
@@ -2077,7 +2109,7 @@ rebuildTargets verbosity
             case pkgBuildStyle cpkg of
               BuildAndInstall ->
                 buildAndInstallUnpackedPackage
-                  verbosity distDirLayout cabalDirLayout
+                  verbosity distDirLayout
                   isParallelBuild installLock cacheLock
                   sharedPackageConfig
                   rpkg srcdir builddir'
@@ -2089,7 +2121,7 @@ rebuildTargets verbosity
                 --TODO: use a relative build dir rather than absolute
                 printTiming "=========== buildInplaceUnpackedPackage ============" $
                   buildInplaceUnpackedPackage
-                    verbosity distDirLayout cabalDirLayout
+                    verbosity distDirLayout
                     isParallelBuild cacheLock
                     sharedPackageConfig
                     rpkg srcdir builddir
@@ -2343,7 +2375,7 @@ overridePackageCabalFile ... =
 -}
 
 buildAndInstallUnpackedPackage :: Verbosity
-                               -> DistDirLayout -> CabalDirLayout
+                               -> DistDirLayout
                                -> Bool -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
@@ -2351,7 +2383,6 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
-                               cabalDirLayout
                                isParallelBuild installLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
                                  pkgConfigPlatform  = platform,
@@ -2397,7 +2428,7 @@ buildAndInstallUnpackedPackage verbosity
       
       -- TODO: make this a simple shared function of ElaboratedConfiguredPackage
       LBS.writeFile
-        (cabalStorePackageDirectory cabalDirLayout (compilerId compiler) ipkgid </> "cabal-hash.txt") $
+        (InstallDirs.prefix (pkgInstallDirs pkg) </> "cabal-hash.txt") $
         renderPackageHashInputs PackageHashInputs {
               pkgHashPkgId       = pkgid,
               pkgHashSourceHash  = fromJust (pkgSourceHash pkg),
@@ -2449,7 +2480,6 @@ buildAndInstallUnpackedPackage verbosity
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     --TODO: proper set of config options, not just Setup.hs interface flags
     configureFlags _ = setupHsConfigureFlags rpkg pkgshared
-                                             cabalDirLayout (Just ipkgid)
                                              verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
@@ -2503,7 +2533,7 @@ buildAndInstallUnpackedPackage verbosity
 
 
 buildInplaceUnpackedPackage :: Verbosity
-                            -> DistDirLayout -> CabalDirLayout
+                            -> DistDirLayout
                             -> Bool -> Lock
                             -> ElaboratedSharedConfig
                             -> GenericReadyPackage ElaboratedConfiguredPackage
@@ -2516,7 +2546,6 @@ buildInplaceUnpackedPackage verbosity
                               distPackageCacheFile,
                               distPackageCacheDirectory
                             }
-                            cabalDirLayout
                             isParallelBuild cacheLock
                             pkgshared@ElaboratedSharedConfig {
                               pkgConfigPlatform  = platform,
@@ -2608,7 +2637,6 @@ buildInplaceUnpackedPackage verbosity
     --      interface flags (or intermediate, and only translate if we go via
     --      the CLI)
     configureFlags   = setupHsConfigureFlags rpkg pkgshared
-                                             cabalDirLayout Nothing
                                              verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
