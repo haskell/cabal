@@ -719,6 +719,26 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/deriving.html#deriving-lift>
   | DeriveLift
 
+  -- | Enable support for 'static pointers' (and the @static@
+  -- keyword) to refer to globally stable names, even across
+  -- different programs.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/static-pointers.html>
+  | StaticPointers
+
+  -- | Switches data type declarations to be strict by default (as if
+  -- they had a bang using @BangPatterns@), and allow opt-in field
+  -- laziness using @~@.
+  | StrictData
+
+  -- | Allows @do@-notation for types that are @'Applicative'@ as well
+  -- as @'Monad'@. When enabled, desugaring @do@ notation tries to use
+  -- @(<*>)@ and @'fmap'@ and @'join'@ as far as possible.
+  | ApplicativeDo
+
+  -- | Allow records to use duplicated field labels for accessors.
+  | DuplicateRecordFields
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
