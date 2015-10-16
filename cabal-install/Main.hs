@@ -108,6 +108,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpage)
@@ -118,6 +119,7 @@ import Distribution.Client.Utils              (determineNumJobs
 #endif
                                               ,existsAndIsMoreRecentThan)
 
+import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), benchmarkName, benchmarkBuildInfo
          , testName, testBuildInfo, buildable )
@@ -158,7 +160,7 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
-import System.FilePath          (splitExtension, takeExtension)
+import System.FilePath          (splitExtension, takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #ifdef mingw32_HOST_OS
                                 , stderr
@@ -861,6 +863,13 @@ haddockAction haddockFlags extraArgs globalFlags = do
       setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
+  when (fromFlagOrDefault False $ haddockForHackage haddockFlags) $ do
+    pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
+    let dest = distPref </> name <.> "tar.gz"
+        name = display (packageId pkg) ++ "-docs"
+        docDir = distPref </> "doc" </> "html"
+    createTarGzFile dest docDir name
+    notice verbosity $ "Documentation tarball created: " ++ dest
 
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
