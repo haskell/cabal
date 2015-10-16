@@ -322,6 +322,11 @@ flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
 
+flag parsec
+  description:  Use parsec parser
+  default:      False
+  manual:       True
+
 library
   build-depends:
     array      >= 0.1 && < 0.6,
@@ -482,6 +487,30 @@ library
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
+  if flag(parsec)
+    cpp-options: -DCABAL_PARSEC
+    build-depends:
+      transformers,
+      parsec >= 3.1.9 && <3.2
+    build-tools:
+      alex >= 3.1.4
+    exposed-modules:
+      Distribution.Compat.Parsec
+      Distribution.PackageDescription.Parsec
+      Distribution.PackageDescription.Parsec.FieldDescr
+      Distribution.Parsec.Class
+      Distribution.Parsec.ConfVar
+      Distribution.Parsec.Lexer
+      Distribution.Parsec.LexerMonad
+      Distribution.Parsec.Parser
+      Distribution.Parsec.Types.Common
+      Distribution.Parsec.Types.Field
+      Distribution.Parsec.Types.FieldDescr
+      Distribution.Parsec.Types.ParseResult
+      Distribution.Compat.DList
+
+  -- Move DList to other-module if/when D.C.Lens is done
+
   other-modules:
     Distribution.Backpack.PreExistingComponent
     Distribution.Backpack.ReadyComponent
@@ -609,6 +638,32 @@ test-suite package-tests
     old-time
   if !os(windows)
     build-depends: unix, exceptions
+  ghc-options: -Wall -rtsopts
+  default-extensions: CPP
+  default-language: Haskell2010
+
+test-suite parser-tests
+  if !flag(parsec)
+    buildable: False
+
+  type: exitcode-stdio-1.0
+  main-is: ParserTests.hs
+  other-modules:
+    DiffInstances
+    StructDiff
+  hs-source-dirs: tests
+  build-depends:
+    base,
+    containers,
+    tar >=0.5 && <0.6,
+    bytestring,
+    directory,
+    filepath,
+    generics-sop ==0.2.*,
+    these >=0.7.1 && <0.8,
+    singleton-bool >=0.1.1.0 && <0.2,
+    keys,
+    Cabal
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell2010

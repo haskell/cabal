@@ -13,7 +13,7 @@
 -- Data type for Haskell module names.
 
 module Distribution.ModuleName (
-        ModuleName,
+        ModuleName (..), -- TODO: move Parsec instance here, don't export constructor
         fromString,
         fromComponents,
         components,
