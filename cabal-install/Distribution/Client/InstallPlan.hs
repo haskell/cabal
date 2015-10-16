@@ -526,9 +526,15 @@ mapPreservingGraph :: (HasInstalledPackageId ipkg, HasInstalledPackageId srcpkg,
                    -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
                    -> GenericInstallPlan ipkg' srcpkg' iresult' ifailure'
 mapPreservingGraph f plan =
-    mkInstallPlan (PackageIndex.mapPreservingId f (planIndex plan))
-                  (planFakeMap plan)
+    mkInstallPlan (PackageIndex.fromList pkgs')
+                  fakeMap'
                   (planIndepGoals plan)
+  where
+    pkgs         = toList plan
+    pkgs'        = map f pkgs
+    pkgidChanges = [ (installedPackageId pkg, installedPackageId pkg')
+                   | (pkg, pkg') <- zip pkgs pkgs' ]
+    fakeMap'     = planFakeMap plan `Map.union` Map.fromList pkgidChanges
 
 
 -- ------------------------------------------------------------

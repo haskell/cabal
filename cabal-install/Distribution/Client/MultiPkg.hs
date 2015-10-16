@@ -347,6 +347,12 @@ type ElaboratedInstallPlan
                         ElaboratedConfiguredPackage
                         BuildSuccess BuildFailure
 
+type SolverInstallPlan
+   = InstallPlan --TODO: redefine locally or move def to solver interface
+
+--TODO: decide if we really need this, there's not much in it, and in principle
+--      even platform and compiler could be different if we're building things
+--      like a server + client with ghc + ghcjs
 data ElaboratedSharedConfig
    = ElaboratedSharedConfig {
 
@@ -373,7 +379,8 @@ instance Binary ElaboratedSharedConfig
 data ElaboratedConfiguredPackage
    = ElaboratedConfiguredPackage {
 
-       pkgSrcId :: PackageId,
+       pkgInstalledId :: InstalledPackageId,
+       pkgSourceId    :: PackageId,
 
        -- | TODO: we don't need this, just a few bits from it:
        --   build type, spec version
@@ -454,10 +461,10 @@ data ElaboratedConfiguredPackage
 instance Binary ElaboratedConfiguredPackage
 
 instance Package ElaboratedConfiguredPackage where
-  packageId = pkgSrcId
+  packageId = pkgSourceId
 
 instance HasInstalledPackageId ElaboratedConfiguredPackage where
-  installedPackageId = fakeInstalledPackageId . packageId
+  installedPackageId = pkgInstalledId
 
 instance PackageFixedDeps ElaboratedConfiguredPackage where
   depends = pkgDependencies
@@ -525,160 +532,252 @@ instance Binary TestsResult
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
+type CliConfig = ( ProjectConfigSolver
+                 , PackageConfigShared
+                 , PackageConfig
+                 , ProjectConfigBuildOnly
+                 )
 
 rebuildInstallPlan :: Verbosity
                    -> FilePath -> DistDirLayout -> CabalDirLayout
-                   -> ( ProjectConfigSolver
-                      , PackageConfigShared
-                      , PackageConfig
-                      , ProjectConfigBuildOnly
-                      )
+                   -> CliConfig
                    -> IO ( ElaboratedInstallPlan
                          , ElaboratedSharedConfig
                          , ProjectConfigBuildOnly )
 rebuildInstallPlan verbosity
                    projectRootDir
                    distDirLayout@DistDirLayout{..}
-                   CabalDirLayout{..}
-                   ( cliConfigSolver
-                   , cliConfigAllPackages
-                   , cliConfigLocalPackages
-                   , cliConfigBuildOnly
-                   ) =
-    --FIXME: cliConfigBuildOnly, can we avoid redoing the stuff below when
-    -- just the cliConfigBuildOnly changes? But still get the build settings
-    -- from the config file and recombine with the cli build settings?
-
+                   CabalDirLayout{..} = \cliConfig ->
     runRebuild $
-    rerunIfChanged installPlanFileMonitor projectRootDir
-                   ( cliConfigSolver
-                   , cliConfigAllPackages
-                   , cliConfigLocalPackages
-                     -- note: don't track cliConfigBuildOnly
-                   )
-                   $ \_ -> do
+
+    -- The overall improved plan is cached
+    rerunIfChanged fileMonitorImprovedPlan projectRootDir
+                   (valueMonitorImprovedPlan cliConfig) $ do
+
+      -- And so is the elaborated plan that the improved plan based on
+      (elaboratedPlan, elaboratedShared,
+       buildConfig) <-
+        rerunIfChanged fileMonitorElaboratedPlan projectRootDir
+                       (valueMonitorImprovedPlan cliConfig) $ do
+
+          projectConfig <- phaseReadProjectConfig cliConfig
+          localPackages <- phaseReadLocalPackages projectConfig
+          compilerEtc   <- phaseConfigureCompiler projectConfig
+          solverPlan    <- phaseRunSolver         projectConfig compilerEtc
+                                                  localPackages
+          (elaboratedPlan,
+           elaboratedShared) <- phaseElaboratePlan projectConfig compilerEtc
+                                                   solverPlan localPackages
+
+          return (elaboratedPlan, elaboratedShared,
+                  projectConfigBuildOnly projectConfig)
+
+      -- The improved plan changes each time we install something, whereas
+      -- the underlying elaborated plan only changes when input config
+      -- changes, so it's worth caching them separately.
+      improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
+      return (improvedPlan, elaboratedShared, buildConfig)
+
+  where
+    fileMonitorCompiler       = FileMonitorName (distProjectCacheFile "compiler")
+    fileMonitorSolverPlan     = FileMonitorName (distProjectCacheFile "solver-plan")
+    fileMonitorElaboratedPlan = FileMonitorName (distProjectCacheFile "elaborated-plan")
+    fileMonitorImprovedPlan   = FileMonitorName (distProjectCacheFile "improved-plan")
+
+    valueMonitorImprovedPlan ( cliConfigSolver
+                             , cliConfigAllPackages
+                             , cliConfigLocalPackages
+                             , _cliConfigBuildOnly
+                             )
+                           = ( cliConfigSolver
+                             , cliConfigAllPackages
+                             , cliConfigLocalPackages
+                             )
+
+    -- Read the cabal.project (or implicit config) and combine it with
+    -- arguments from the command line
+    --
+    phaseReadProjectConfig :: CliConfig -> Rebuild ProjectConfig
+    phaseReadProjectConfig ( cliConfigSolver
+                           , cliConfigAllPackages
+                           , cliConfigLocalPackages
+                           , cliConfigBuildOnly
+                           ) = do
       liftIO $ do
         info verbosity "Project settings changed, reconfiguring..."
         createDirectoryIfMissingVerbose verbosity False distDirectory
         createDirectoryIfMissingVerbose verbosity False distProjectCacheDirectory
 
-      -- first read the cabal.project (or implicit config) and combine it with
-      -- any args from the command line
-      projectConfig@ProjectConfig {
-        projectConfigBuildOnly,
-        projectConfigSolver,
-        projectConfigAllPackages,
-        projectConfigLocalPackages,
-        projectConfigSpecificPackage
-      } <- readProjectConfig projectRootDir
-                             cliConfigSolver
-                             cliConfigAllPackages
-                             cliConfigLocalPackages
-                             cliConfigBuildOnly
+      readProjectConfig projectRootDir
+                        cliConfigSolver
+                        cliConfigAllPackages
+                        cliConfigLocalPackages
+                        cliConfigBuildOnly
 
-      -- then look for all the cabal packages in the project
-      -- some of which may be local src dirs, tarballs etc
+
+    -- Look for all the cabal packages in the project
+    -- some of which may be local src dirs, tarballs etc
+    --
+    phaseReadLocalPackages :: ProjectConfig
+                           -> Rebuild [PackageSpecifier SourcePackage]
+    phaseReadLocalPackages projectConfig = do
+
       localCabalFiles <- findProjectCabalFiles projectConfig
+      mapM (readSourcePackage verbosity) localCabalFiles
 
-      localSourcePackages <- mapM (readSourcePackage verbosity) localCabalFiles
 
-      -- Cached phase: configuring the compiler
-      --
-      (compiler, platform, progdb) <-
-        let PackageConfigShared {
-              packageConfigHcFlavor, packageConfigHcPath, packageConfigHcPkg
-            } = projectConfigAllPackages
-        in
-        rerunIfChanged compilerFileMonitor projectRootDir
-          ( flagToMaybe packageConfigHcFlavor
-          , flagToMaybe packageConfigHcPath
-          , flagToMaybe packageConfigHcPkg
-          )
-          --TODO: need to track $PATH changes
-          (configureCompiler verbosity)
+    -- Configure the compiler we're using.
+    --
+    -- This is moderately expensive and doesn't change that often so we cache
+    -- it independently.
+    --
+    phaseConfigureCompiler :: ProjectConfig
+                           -> Rebuild (Compiler, Platform, ProgramDb)
+    phaseConfigureCompiler ProjectConfig{projectConfigAllPackages} =
+        rerunIfChanged fileMonitorCompiler projectRootDir
+                       (hcFlavor, hcPath, hcPkg) $
+          configureCompiler verbosity (hcFlavor, hcPath, hcPkg)
+      where
+        hcFlavor = flagToMaybe packageConfigHcFlavor
+        hcPath   = flagToMaybe packageConfigHcPath
+        hcPkg    = flagToMaybe packageConfigHcPkg
+        PackageConfigShared {
+          packageConfigHcFlavor,
+          packageConfigHcPath,
+          packageConfigHcPkg
+        }        = projectConfigAllPackages
 
-      -- Cached phase: running the solver
-      --
-      let corePackageDbs = [GlobalPackageDB]
-      installPlan <-
-        let ProjectConfigBuildOnly {
-              projectConfigCacheDir
-            } = projectConfigBuildOnly
-        in
-        rerunIfChanged solverFileMonitor projectRootDir
-          (projectConfigSolver, projectConfigCacheDir, localSourcePackages,
-           compiler, platform, configuredPrograms progdb)
-          $ \_ -> do
 
-          let repos = projectConfigRepos (fromFlag projectConfigCacheDir)
-                                         projectConfigSolver
-
-          installedPkgIndex <- getInstalledPackages verbosity compiler
-                                                    corePackageDbs progdb
-                                                    platform
+    -- Run the solver to get the initial install plan.
+    -- This is expensive so we cache it independently.
+    --
+    phaseRunSolver :: ProjectConfig
+                   -> (Compiler, Platform, ProgramDb)
+                   -> [PackageSpecifier SourcePackage]
+                   -> Rebuild SolverInstallPlan
+    phaseRunSolver ProjectConfig{projectConfigSolver, projectConfigBuildOnly}
+                   (compiler, platform, progdb)
+                   localPackages =
+        rerunIfChanged fileMonitorSolverPlan projectRootDir
+                       (projectConfigSolver, projectConfigCacheDir,
+                        localPackages,
+                        compiler, platform, configuredPrograms progdb) $ do
+          
+          installedPkgIndex <- getInstalledPackages verbosity
+                                                    compiler progdb platform
+                                                    corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity repos
 
           liftIO $ do
+            solver <- chooseSolver verbosity solverpref (compilerInfo compiler)
+
             notice verbosity "Resolving dependencies..."
-            solver <- chooseSolver verbosity
-                                   (fromFlag $ projectConfigSolverSolver projectConfigSolver)
-                                   (compilerInfo compiler)
             foldProgress logMsg die return $
               planPackages compiler platform solver projectConfigSolver
                            installedPkgIndex sourcePkgDb
-                           localSourcePackages
+                           localPackages
+      where
+        corePackageDbs = [GlobalPackageDB]
+        repos          = projectConfigRepos (fromFlag projectConfigCacheDir)
+                                            projectConfigSolver
+        solverpref     = fromFlag projectConfigSolverSolver 
+        logMsg message rest = debugNoWrap verbosity message >> rest
 
-      -- Last phase: elaborating the install plan
-      defaultInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
-                                       (compilerFlavor compiler) False False
-      let storeDirectory     = cabalStoreDirectory (compilerId compiler)
-          storePackageDb     = cabalStorePackageDB (compilerId compiler)
-          storePackageDbs    = [ GlobalPackageDB, storePackageDb ]
+        ProjectConfigBuildOnly {projectConfigCacheDir} = projectConfigBuildOnly
+        ProjectConfigSolver {projectConfigSolverSolver} = projectConfigSolver
 
-      let (elaboratedInstallPlan, sharedPackageConfig) =
-            elaborateInstallPlanForLocalBuild
-              platform compiler progdb
-              corePackageDbs storePackageDbs
-              distDirLayout
-              installPlan
-              localSourcePackages
-              defaultInstallDirs
-              projectConfigAllPackages
-              projectConfigLocalPackages
-              projectConfigSpecificPackage
 
-      -- Note that because the store is content addressed and the way that we
-      -- use it, we don't need to track changes to the store.
-      --TODO: is this really true? what if packages get deleted? / GC'd?
-      --      relates to the issue of whether rebuildTargets rewrites the
-      --      final install plan or not
-      liftIO $ createDirectoryIfMissingVerbose verbosity True storeDirectory
-      liftIO $ createPackageDBIfMissing verbosity compiler progdb storePackageDbs
-      storePkgIndex <- liftIO $ Cabal.getPackageDBContents verbosity compiler storePackageDb progdb
+    -- Elaborate the solver's install plan to get a fully detailed plan. This
+    -- version of the plan has the final nix-style hashed ids.
+    --
+    phaseElaboratePlan :: ProjectConfig
+                       -> (Compiler, Platform, ProgramDb)
+                       -> SolverInstallPlan
+                       -> [PackageSpecifier SourcePackage]
+                       -> Rebuild ( ElaboratedInstallPlan
+                                  , ElaboratedSharedConfig )
+    phaseElaboratePlan ProjectConfig {
+                         projectConfigAllPackages,
+                         projectConfigLocalPackages,
+                         projectConfigSpecificPackage,
+                         projectConfigBuildOnly
+                       }
+                       (compiler, platform, progdb)
+                       solverPlan localPackages = do
 
---      putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan
-      liftIO $ putStrLn $ printPlan elaboratedInstallPlan
+        liftIO $ debug verbosity "Elaborating the install plan..."
+        liftIO $ putStrLn $ InstallPlan.showInstallPlan solverPlan
 
-      elaboratedInstallPlan' <- liftIO $
-        reusePackagesFromStore
-          pkgSourceLocation
-          (elaboratedPackageHashConfigInputs sharedPackageConfig)
-          storePkgIndex
-          elaboratedInstallPlan
+        sourcePackageHashes <-
+          liftIO $ getPackageSourceHashes verbosity mkTransport
+                     (\(ConfiguredPackage pkg _ _ _) -> packageSource pkg)
+                     solverPlan
+                --TODO: monitor the downloaded files?
 
---      putStrLn $ InstallPlan.showInstallPlan elaboratedInstallPlan'
-      liftIO $ putStrLn $ printPlan elaboratedInstallPlan'
+        defaultInstallDirs <- liftIO $ InstallDirs.defaultInstallDirs
+                                         (compilerFlavor compiler) False False
+        return $
+          elaborateInstallPlan
+            platform compiler progdb
+            corePackageDbs storePackageDbs
+            distDirLayout
+            solverPlan
+            localPackages
+            sourcePackageHashes
+            defaultInstallDirs
+            projectConfigAllPackages
+            projectConfigLocalPackages
+            projectConfigSpecificPackage
+      where
+        corePackageDbs     = [ GlobalPackageDB ]
+        storePackageDbs    = [ GlobalPackageDB, storePackageDb ]
+        storePackageDb     = cabalStorePackageDB (compilerId compiler)
 
-      return ( elaboratedInstallPlan'
-             , sharedPackageConfig
-             , projectConfigBuildOnly )
-  where
-    logMsg message rest = debugNoWrap verbosity' message >> rest
-    verbosity' = normal --FIXME
+        mkTransport        = configureTransport verbosity preferredTransport
+        preferredTransport = flagToMaybe (projectConfigHttpTransport
+                                              projectConfigBuildOnly)
 
-    installPlanFileMonitor = FileMonitorName (distProjectCacheFile "install-plan")
-    compilerFileMonitor    = FileMonitorName (distProjectCacheFile "compiler")
-    solverFileMonitor      = FileMonitorName (distProjectCacheFile "solver")
+
+    -- Improve the elaborated install plan. The elaborated plan consists
+    -- mostly of source packages (with full nix-style hashed ids). Where
+    -- corresponding installed packages already exist in the store, replace
+    -- them in the plan.
+    --
+    -- Note that we do monitor the store's package db here, so we will redo
+    -- this improvement phase when the db changes -- including as a result of
+    -- executing a plan and installing things.
+    --
+    phaseImprovePlan :: ElaboratedInstallPlan
+                     -> ElaboratedSharedConfig
+                     -> Rebuild ElaboratedInstallPlan
+    phaseImprovePlan elaboratedPlan elaboratedShared = do
+
+        liftIO $ notice verbosity "Improving the install plan..."
+        liftIO $ putStrLn $ InstallPlan.showInstallPlan elaboratedPlan
+
+        recreateDirectory verbosity True storeDirectory
+        storePkgIndex <- getPackageDBContents verbosity
+                                              compiler progdb platform
+                                              storePackageDb
+
+        let improvedPlan = improveInstallPlanWithPreExistingPackages
+                             storePkgIndex
+                             elaboratedPlan
+
+        liftIO $ notice verbosity "==== The improved install plan ===="
+        liftIO $ putStrLn $ InstallPlan.showInstallPlan improvedPlan
+        return improvedPlan
+
+      where
+        storeDirectory  = cabalStoreDirectory (compilerId compiler)
+        storePackageDb  = cabalStorePackageDB (compilerId compiler)
+        ElaboratedSharedConfig {
+          pkgConfigCompiler  = compiler,
+          pkgConfigPlatform  = platform,
+          pkgConfigProgramDb = progdb
+        } = elaboratedShared
+
+
 
 findProjectCabalFiles :: ProjectConfig -> Rebuild [FilePath]
 findProjectCabalFiles ProjectConfig{..} = do
@@ -723,28 +822,41 @@ programsMonitorFiles progdb =
     , monitor <- monitorFileSearchPath (programMonitorFiles prog)
                                        (programPath prog)
     ]
-  --TODO: also need to react to $PATH changes{
+  --TODO: also need to react to $PATH changes
 
-getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
-                     -> ProgramConfiguration -> Platform
+getInstalledPackages :: Verbosity
+                     -> Compiler -> ProgramDb -> Platform
+                     -> PackageDBStack 
                      -> Rebuild InstalledPackageIndex
-getInstalledPackages verbosity compiler corePackageDbs progdb platform = do
-    installedPkgIndex <-
-      liftIO $ IndexUtils.getInstalledPackages
-                 verbosity compiler
-                 corePackageDbs progdb
+getInstalledPackages verbosity compiler progdb platform packagedbs = do
     monitorFiles . map MonitorFile
       =<< liftIO (IndexUtils.getInstalledPackagesMonitorFiles
                     verbosity compiler
-                    corePackageDbs progdb platform)
-    return installedPkgIndex
+                    packagedbs progdb platform)
+    liftIO $ IndexUtils.getInstalledPackages
+               verbosity compiler
+               packagedbs progdb
+
+getPackageDBContents :: Verbosity
+                     -> Compiler -> ProgramDb -> Platform
+                     -> PackageDB
+                     -> Rebuild InstalledPackageIndex
+getPackageDBContents verbosity compiler progdb platform packagedb = do
+    monitorFiles . map MonitorFile
+      =<< liftIO (IndexUtils.getInstalledPackagesMonitorFiles
+                    verbosity compiler
+                    [packagedb] progdb platform)
+    liftIO $ do
+      createPackageDBIfMissing verbosity compiler
+                               progdb [packagedb]
+      Cabal.getPackageDBContents verbosity compiler
+                                 packagedb progdb
 
 getSourcePackages :: Verbosity -> [Repo] -> Rebuild SourcePackageDb
 getSourcePackages verbosity repos = do
-    sourcePkgDb <- liftIO $ IndexUtils.getSourcePackages verbosity repos
     monitorFiles . map MonitorFile
                  $ IndexUtils.getSourcePackagesMonitorFiles repos
-    return sourcePkgDb
+    liftIO $ IndexUtils.getSourcePackages verbosity repos
 
 
 createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
@@ -757,6 +869,63 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
         createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
         Cabal.createPackageDB verbosity compiler progdb False dbPath
     _ -> return ()
+
+
+recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
+recreateDirectory verbosity createParents dir = do
+    liftIO $ createDirectoryIfMissingVerbose verbosity createParents dir
+    monitorFiles [MonitorFile dir]
+
+
+-- | Get the 'HashValue' for all the source packages where we use hashes,
+-- and download any packages required to do so.
+--
+-- Note that we don't get hashes for local unpacked packages.
+--
+getPackageSourceHashes :: Package srcpkg
+                       => Verbosity
+                       -> IO HttpTransport
+                       -> (srcpkg -> PackageLocation (Maybe FilePath))
+                       -> GenericInstallPlan ipkg srcpkg iresult ifailure
+                       -> IO (Map PackageId PackageSourceHash)
+getPackageSourceHashes verbosity mkTransport
+                      packageSourceLocation installPlan = do
+
+    -- Determine which packages need fetching, and which are present already
+    --
+    pkgslocs <- sequence
+      [ do let locm = packageSourceLocation pkg
+           mloc <- checkFetched locm
+           return (pkg, locm, mloc)
+      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+    let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
+        alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
+
+    -- Download the ones we need
+    --
+    newlyDownloaded <-
+      if null requireDownloading
+        then return []
+        else do transport <- mkTransport
+                sequence
+                  [ do loc <- fetchPackage transport verbosity locm
+                       return (pkg, loc)
+                  | (pkg, locm) <- requireDownloading ]
+
+    -- Get the hashes of all the tarball packages (i.e. not local dir pkgs)
+    --
+    liftM Map.fromList $
+      sequence
+        [ do srchash <- readFileHashValue tarball
+             return (packageId pkg, srchash)
+
+        | (pkg, srcloc) <- newlyDownloaded ++ alreadyDownloaded
+        , tarball <- maybeToList (tarballFileLocation srcloc) ]
+  where
+    tarballFileLocation (LocalUnpackedPackage _dir)      = Nothing
+    tarballFileLocation (LocalTarballPackage    tarball) = Just tarball
+    tarballFileLocation (RemoteTarballPackage _ tarball) = Just tarball
+    tarballFileLocation (RepoTarballPackage _ _ tarball) = Just tarball
 
 
 -------------------------------
@@ -1109,13 +1278,13 @@ rerunIfChanged :: (Eq a, Binary a, Binary b)
                => FileMonitorName a b
                -> FilePath
                -> a
-               -> (a -> Rebuild b)
+               -> Rebuild b
                -> Rebuild b
 rerunIfChanged cacheFile monitorFilesRootDir key action = do
     changed <- liftIO $ checkFileMonitorChanged cacheFile monitorFilesRootDir key
     case changed of
       Changed -> do
-        (result, files) <- liftIO $ unRebuild $ action key
+        (result, files) <- liftIO $ unRebuild action
 --        liftIO $ putStrLn $ takeFileName cacheFile ++ " changed"
         liftIO $ updateFileMonitor cacheFile monitorFilesRootDir
                                    files key result
@@ -1271,7 +1440,7 @@ planPackages comp platform solver solverconfig
 -- In theory should be able to make an elaborated install plan with a policy
 -- matching that of the classic @cabal install --user@ or @--global@
 --
-elaborateInstallPlanForLocalBuild
+elaborateInstallPlan
   :: Platform -> Compiler -> ProgramDb
   -> PackageDBStack -> PackageDBStack
   -> DistDirLayout
@@ -1279,22 +1448,24 @@ elaborateInstallPlanForLocalBuild
                         ConfiguredPackage
                         _iresult _ifailure
   -> [PackageSpecifier SourcePackage]
+  -> Map PackageId HashValue
   -> InstallDirs.InstallDirTemplates
   -> PackageConfigShared
   -> PackageConfig
   -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
-elaborateInstallPlanForLocalBuild platform compiler progdb
-                                  ambientPackageDbs storePackageDbs
-                                  -- TODO: ^^^ these args could come as flag
-                                  -- sets or other config file input. For now
-                                  -- just individual args
-                                  DistDirLayout{..}
-                                  solverPlan pkgSpecifiers
-                                  defaultInstallDirs
-                                  sharedPackageConfig
-                                  localPackagesConfig
-                                  perPackageConfig =
+elaborateInstallPlan platform compiler progdb
+                     ambientPackageDbs storePackageDbs
+                     -- TODO: ^^^ these args could come as flag
+                     -- sets or other config file input. For now
+                     -- just individual args
+                     DistDirLayout{..}
+                     solverPlan pkgSpecifiers
+                     sourcePackageHashes
+                     defaultInstallDirs
+                     sharedPackageConfig
+                     localPackagesConfig
+                     perPackageConfig =
     (installPlan, elaboratedSharedConfig)
   where
     elaboratedSharedConfig =
@@ -1322,16 +1493,41 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
       InstallPlan.Configured (individualPackageConfig pkg)
 
     convertPlanPackage _ =
-      error "elaborateInstallPlanForLocalBuild: unexpected package state"
+      error "elaborateInstallPlan: unexpected package state"
     
     individualPackageConfig :: ConfiguredPackage -> ElaboratedConfiguredPackage
     individualPackageConfig
       pkg@(ConfiguredPackage (SourcePackage pkgid desc srcloc descOverride)
                              flags stanzas deps) =
-
-        ElaboratedConfiguredPackage {..}
+        elaboratedPackage
       where
-        pkgSrcId            = pkgid
+        -- Knot tying: the final elaboratedPackage includes the
+        -- pkgInstalledId, which is calculated by hashing many
+        -- of the other fields of the elaboratedPackage.
+        --
+        elaboratedPackage = ElaboratedConfiguredPackage {..}
+
+        pkgInstalledId
+          | shouldBuildInplaceOnly pkg
+          = InstalledPackageId (display pkgid ++ "-inplace")
+          
+          | Just sourceHash <- Map.lookup pkgid sourcePackageHashes
+          = hashedInstalledPackageId PackageHashInputs {
+              pkgHashPkgId       = pkgid,
+              pkgHashSourceHash  = sourceHash,
+              pkgHashDirectDeps  = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
+              pkgHashOtherConfig = elaboratedPackageHashConfigInputs
+                                       elaboratedSharedConfig
+                                       elaboratedPackage -- recursive use
+            }
+          
+          | otherwise
+          = error $ "elaborateInstallPlan: non-inplace package "
+                 ++ " is missing a source hash: " ++ display pkgid
+
+        -- All the other fields of the ElaboratedConfiguredPackage
+        --
+        pkgSourceId         = pkgid
         pkgDescription      = desc
         pkgFlagAssignment   = flags
         pkgEnabledStanzas   = stanzas
@@ -1339,6 +1535,7 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
         pkgBenchmarksEnable = BenchStanzas `elem` stanzas --TODO: only actually enable if solver allows it and we want it
         pkgDependencies     = fmap (map confInstId) deps
         pkgSourceLocation   = srcloc
+
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
         pkgSetupPackageDBStack    = ambientPackageDbs
@@ -1431,7 +1628,6 @@ elaborateInstallPlanForLocalBuild platform compiler progdb
             common = f localPackagesConfig
             perpkg = maybe mempty f (Map.lookup pkgname perPackageConfig)
 
-        --TODO: does the BuildInplaceOnly affect our choice of registration db here?
         buildAndRegisterDbs
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
           | otherwise                  = storePackageDbs
@@ -1720,58 +1916,6 @@ elaboratedPackageHashConfigInputs
       pkgHashProgSuffix          = pkgProgSuffix
     }
 
-reusePackagesFromStore :: (PackageFixedDeps srcpkg, HasInstalledPackageId srcpkg)
-                       => (srcpkg -> PackageLocation (Maybe FilePath))
-                       -> (srcpkg -> PackageHashConfigInputs)
-                       -> InstalledPackageIndex
-                       -> GenericInstallPlan InstalledPackageInfo srcpkg
-                                      iresult ifailure
-                       -> IO (GenericInstallPlan InstalledPackageInfo srcpkg
-                                          iresult ifailure)
-reusePackagesFromStore packageSourceLocation
-                       packageHashConfigInputs
-                       storePkgIndex installPlan = do
-
-    pkgsAndTarballs <-
-      packagesWithFetchedTarballs
-        packageSourceLocation
-        [ pkg | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
-
-    knownSrcPkgHashInfo <-
-      liftM Map.fromList $
-      sequence
-        [ do srchash <- readFileHashValue tarball
-             let conf = packageHashConfigInputs pkg
-             return (packageId pkg, (srchash, conf))
-
-        | (pkg, tarball) <- pkgsAndTarballs ]
-
-    let installPlan' = improveInstallPlanWithPreExistingPackages
-                         storePkgIndex
-                         knownSrcPkgHashInfo
-                         installPlan
-
-    return installPlan'
-
-packagesWithFetchedTarballs :: (srcpkg -> PackageLocation (Maybe FilePath))
-                            -> [srcpkg]
-                            -> IO [(srcpkg, FilePath)]
-packagesWithFetchedTarballs packageSourceLocation pkgs = do
-    pkgslocs <- sequence
-                  [ do mloc <- checkFetched (packageSourceLocation pkg)
-                       return (pkg, mloc)
-                  | pkg <- pkgs
-                  ]
-    return [ (pkg, tarloc)
-           | (pkg, Just srcloc) <- pkgslocs
-           , tarloc <- maybeToList (getTarballFile srcloc)
-           ]
-  where
-    getTarballFile (LocalUnpackedPackage _dir)      = Nothing
-    getTarballFile (LocalTarballPackage    tarball) = Just tarball
-    getTarballFile (RemoteTarballPackage _ tarball) = Just tarball
-    getTarballFile (RepoTarballPackage _ _ tarball) = Just tarball
-
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and
 -- enough information to calculate 'InstalledPackageId' for a selection of
@@ -1781,11 +1925,9 @@ improveInstallPlanWithPreExistingPackages
   :: forall srcpkg iresult ifailure.
      (HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
   => InstalledPackageIndex
-  -> Map PackageId (PackageSourceHash, PackageHashConfigInputs)
   -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
   -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-improveInstallPlanWithPreExistingPackages
-    installedPkgIndex knownSrcPkgHashInfo =
+improveInstallPlanWithPreExistingPackages installedPkgIndex =
 
     go []
   where
@@ -1850,16 +1992,8 @@ improveInstallPlanWithPreExistingPackages
 
     canPackageBeImproved :: GenericReadyPackage srcpkg InstalledPackageInfo
                          -> Maybe InstalledPackageInfo
-    canPackageBeImproved pkg = do
-      (srcHash, configHash) <- Map.lookup (packageId pkg) knownSrcPkgHashInfo
-      let pkgHashInputs = PackageHashInputs {
-              pkgHashPkgId         = packageId pkg,
-              pkgHashSourceHash    = srcHash ,
-              pkgHashDirectDeps    = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
-              pkgHashOtherConfig   = configHash
-            } 
-          ipkgid = hashedInstalledPackageId pkgHashInputs
-      PackageIndex.lookupInstalledPackageId installedPkgIndex ipkgid
+    canPackageBeImproved pkg = PackageIndex.lookupInstalledPackageId
+                                 installedPkgIndex (installedPackageId pkg)
 
     replaceWithPreExisting :: [(GenericReadyPackage srcpkg InstalledPackageInfo, InstalledPackageInfo)]
                            -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
@@ -1933,32 +2067,19 @@ rebuildTargets verbosity
           withPackageInLocalDirectory verbosity distDirLayout
                                       srcloc (pkgBuildStyle cpkg)
                                       (packageId rpkg)
-                                      $ \srcdir builddir mtarball -> do
-  --        print (pkgBuildStyle cpkg, mtarball)
-            case (pkgBuildStyle cpkg, mtarball) of
-              (BuildAndInstall, Just tarball) -> do
-                --TODO: don't recalculate this if we don't need to
-                srchash <- readFileHashValue tarball
-                let pkgHashInputs = PackageHashInputs {
-                        pkgHashPkgId         = packageId rpkg,
-                        pkgHashSourceHash    = srchash,
-                        pkgHashDirectDeps    = ComponentDeps.libraryDeps (depends rpkg), --TODO: consider carefully which deps
-                        pkgHashOtherConfig   = elaboratedPackageHashConfigInputs
-                                                 sharedPackageConfig cpkg
-                      }
-                    ipkgid = hashedInstalledPackageId pkgHashInputs
-
+                                      $ \srcdir builddir ->
+            case pkgBuildStyle cpkg of
+              BuildAndInstall ->
                 buildAndInstallUnpackedPackage
                   verbosity distDirLayout cabalDirLayout
                   isParallelBuild installLock cacheLock
                   sharedPackageConfig
-                  rpkg ipkgid srcdir builddir'
+                  rpkg srcdir builddir'
                 where
                   builddir' = makeRelative srcdir builddir
                   --TODO ^^ do this relative stuff better
 
-              (BuildInplaceOnly, _) -> do
-                --TODO: ensure the store db is initialised
+              BuildInplaceOnly ->
                 --TODO: use a relative build dir rather than absolute
                 printTiming "=========== buildInplaceUnpackedPackage ============" $
                   buildInplaceUnpackedPackage
@@ -1966,9 +2087,6 @@ rebuildTargets verbosity
                     isParallelBuild cacheLock
                     sharedPackageConfig
                     rpkg srcdir builddir
-
-              (BuildAndInstall, Nothing) ->
-                fail "internal error: BuildAndInstall mode without tarball"
 
     _  <- return residualPlan
     --TODO: this result plan should be saved, resetting all failed and
@@ -2078,7 +2196,8 @@ executeInstallPlan
      (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
       HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
   => Verbosity
-  -> JobControl IO (PackageId, GenericBuildResult ipkg iresult BuildFailure)
+  -> JobControl IO ( GenericReadyPackage srcpkg ipkg
+                   , GenericBuildResult ipkg iresult BuildFailure )
   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
   -> (GenericReadyPackage srcpkg ipkg
        -> IO (GenericBuildResult ipkg iresult BuildFailure))
@@ -2095,7 +2214,7 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
                    buildResult <- installPkg pkg
-                   return (packageId pkg, buildResult)
+                   return (pkg, buildResult)
             | pkg <- pkgs
             , let pkgid = packageId pkg
             ]
@@ -2106,22 +2225,22 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
 
     waitForTasks taskCount plan = do
       info verbosity $ "Waiting for install task to finish..."
-      (pkgid, buildResult) <- collectJob jobCtl
+      (pkg, buildResult) <- collectJob jobCtl
       let taskCount' = taskCount-1
-          plan'      = updatePlan pkgid buildResult plan
+          plan'      = updatePlan pkg buildResult plan
       tryNewTasks taskCount' plan'
 
-    updatePlan :: PackageIdentifier
+    updatePlan :: GenericReadyPackage srcpkg ipkg
                -> GenericBuildResult ipkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-    updatePlan pkgid (BuildSuccess mipkg buildSuccess) =
-        InstallPlan.completed (fakeInstalledPackageId pkgid) mipkg buildSuccess
+    updatePlan pkg (BuildSuccess mipkg buildSuccess) =
+        InstallPlan.completed (installedPackageId pkg) mipkg buildSuccess
 
-    updatePlan pkgid (BuildFailure buildFailure) =
-        InstallPlan.failed (fakeInstalledPackageId pkgid) buildFailure depsFailure
+    updatePlan pkg (BuildFailure buildFailure) =
+        InstallPlan.failed (installedPackageId pkg) buildFailure depsFailure
       where
-        depsFailure = DependentFailed pkgid
+        depsFailure = DependentFailed (packageId pkg)
         -- So this first pkgid failed for whatever reason (buildFailure).
         -- All the other packages that depended on this pkgid, which we
         -- now cannot build, we mark as failing due to 'DependentFailed'
@@ -2137,7 +2256,7 @@ withPackageInLocalDirectory
   -> PackageLocation FilePath
   -> BuildStyle
   -> PackageIdentifier
-  -> (FilePath -> FilePath -> Maybe FilePath -> IO a)
+  -> (FilePath -> FilePath -> IO a)
   -> IO a
 withPackageInLocalDirectory verbosity DistDirLayout{..}
                             location buildstyle pkgid buildPkg =
@@ -2148,7 +2267,7 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
       -- style, we build from that directory and put build artifacts under the
       -- shared dist directory.
       LocalUnpackedPackage srcdir ->
-        buildPkg srcdir (distBuildDirectory pkgid) Nothing
+        buildPkg srcdir (distBuildDirectory pkgid)
 
       -- The three tarball cases are handled the same as each other,
       -- though depending on the build style.
@@ -2168,7 +2287,7 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
             extractTarballPackage verbosity tarball tmpdir pkgid 
             let srcdir   = tmpdir </> display pkgid
                 builddir = srcdir </> "dist"
-            buildPkg srcdir builddir (Just tarball)
+            buildPkg srcdir builddir
 
         -- In this case we make sure the tarball has been unpacked to the
         -- appropriate location under the shared dist dir, and then build it
@@ -2183,7 +2302,7 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
           unless exists $ do
             createDirectoryIfMissingVerbose verbosity False srcrootdir
             extractTarballPackage verbosity tarball srcrootdir pkgid
-          buildPkg srcdir builddir (Just tarball)
+          buildPkg srcdir builddir
 
 
 extractTarballPackage :: Verbosity -> FilePath -> FilePath -> PackageId -> IO ()
@@ -2222,7 +2341,6 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> Bool -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
-                               -> InstalledPackageId
                                -> FilePath -> FilePath
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
@@ -2234,9 +2352,8 @@ buildAndInstallUnpackedPackage verbosity
                                  pkgConfigCompiler  = compiler,
                                  pkgConfigProgramDb = progdb
                                }
-                               rpkg@(ReadyPackage
-                                 pkg _deps)
-                               ipkgid srcdir builddir = do
+                               rpkg@(ReadyPackage pkg _deps)
+                               srcdir builddir = do
 
     putStrLn $ "buildAndInstallUnpackedPackage: " ++ srcdir ++ " " ++ builddir
     createDirectoryIfMissingVerbose verbosity False builddir
@@ -2296,7 +2413,8 @@ buildAndInstallUnpackedPackage verbosity
       return (BuildSuccess mipkg (BuildOk docsResult testsResult))
 
   where
-    pkgid = packageId rpkg
+    pkgid  = packageId rpkg
+    ipkgid = installedPackageId rpkg
 
     --FIXME: this is rediculous:
     pkgdesc = case Cabal.finalizePackageDescription
@@ -2386,7 +2504,8 @@ buildInplaceUnpackedPackage verbosity
                               pkgConfigCompiler  = compiler,
                               pkgConfigProgramDb = progdb
                             }
-                            rpkg@(ReadyPackage pkg _deps) srcdir builddir = do
+                            rpkg@(ReadyPackage pkg _deps)
+                            srcdir builddir = do
 
     putStrLn $ "buildInplaceUnpackedPackage: " ++ srcdir ++ " " ++ builddir
 
@@ -2418,8 +2537,7 @@ buildInplaceUnpackedPackage verbosity
         -- Register locally
         --TODO: only need to re-register if input package config has changed
         --      (or if not registered in the first place)
-        let ipkgid = InstalledPackageId (display pkgid ++ "-inplace")
-        mipkg <- generateInstalledPackageInfo ipkgid
+        mipkg <- generateInstalledPackageInfo
         case mipkg of
           Nothing   -> return ()
           Just ipkg -> do
@@ -2448,7 +2566,8 @@ buildInplaceUnpackedPackage verbosity
         return buildResult
 
   where
-    pkgid = packageId rpkg
+    pkgid  = packageId rpkg
+    ipkgid = installedPackageId rpkg
 
     configFileMonitor = FileMonitorName (distPackageCacheFile pkgid "config")
     buildFileMonitor  = FileMonitorName (distPackageCacheFile pkgid "build")
@@ -2487,9 +2606,8 @@ buildInplaceUnpackedPackage verbosity
                    (Just pkgdesc)
                    cmd flags []
 
-    generateInstalledPackageInfo :: InstalledPackageId
-                                 -> IO (Maybe InstalledPackageInfo)
-    generateInstalledPackageInfo ipkgid
+    generateInstalledPackageInfo :: IO (Maybe InstalledPackageInfo)
+    generateInstalledPackageInfo
       | not shouldRegister = return Nothing
       | otherwise = do
       withTempFile distTempDirectory "package-registration-" $ \pkgConfFile hnd -> do
@@ -2724,7 +2842,7 @@ renderPackageHashInputs PackageHashInputs{
 -- package ids.
 
 newtype HashValue = HashValue (SHA.Digest SHA.SHA256State)
-  deriving Show
+  deriving (Eq, Show, Binary)
 
 hashValue :: LBS.ByteString -> HashValue
 hashValue = HashValue . SHA.sha256
