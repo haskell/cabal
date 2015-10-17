@@ -105,7 +105,7 @@ import           System.IO
 import           System.Directory
 
 --import Data.Time
-import Debug.Trace
+--import Debug.Trace
 
 
 ------------------------------------------------------------------------------
@@ -553,13 +553,13 @@ rebuildInstallPlan verbosity
     runRebuild $
 
     -- The overall improved plan is cached
-    rerunIfChanged fileMonitorImprovedPlan projectRootDir
+    rerunIfChanged verbosity projectRootDir fileMonitorImprovedPlan
                    (valueMonitorImprovedPlan cliConfig) $ do
 
       -- And so is the elaborated plan that the improved plan based on
       (elaboratedPlan, elaboratedShared,
        buildConfig) <-
-        rerunIfChanged fileMonitorElaboratedPlan projectRootDir
+        rerunIfChanged verbosity projectRootDir fileMonitorElaboratedPlan
                        (valueMonitorImprovedPlan cliConfig) $ do
 
           projectConfig <- phaseReadProjectConfig cliConfig
@@ -581,10 +581,10 @@ rebuildInstallPlan verbosity
       return (improvedPlan, elaboratedShared, buildConfig)
 
   where
-    fileMonitorCompiler       = FileMonitorName (distProjectCacheFile "compiler")
-    fileMonitorSolverPlan     = FileMonitorName (distProjectCacheFile "solver-plan")
-    fileMonitorElaboratedPlan = FileMonitorName (distProjectCacheFile "elaborated-plan")
-    fileMonitorImprovedPlan   = FileMonitorName (distProjectCacheFile "improved-plan")
+    fileMonitorCompiler       = FileMonitorCacheFile (distProjectCacheFile "compiler")
+    fileMonitorSolverPlan     = FileMonitorCacheFile (distProjectCacheFile "solver-plan")
+    fileMonitorElaboratedPlan = FileMonitorCacheFile (distProjectCacheFile "elaborated-plan")
+    fileMonitorImprovedPlan   = FileMonitorCacheFile (distProjectCacheFile "improved-plan")
 
     valueMonitorImprovedPlan ( cliConfigSolver
                              , cliConfigAllPackages
@@ -636,7 +636,7 @@ rebuildInstallPlan verbosity
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
     phaseConfigureCompiler ProjectConfig{projectConfigAllPackages} =
-        rerunIfChanged fileMonitorCompiler projectRootDir
+        rerunIfChanged verbosity projectRootDir fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg) $
           configureCompiler verbosity (hcFlavor, hcPath, hcPkg)
       where
@@ -660,7 +660,7 @@ rebuildInstallPlan verbosity
     phaseRunSolver ProjectConfig{projectConfigSolver, projectConfigBuildOnly}
                    (compiler, platform, progdb)
                    localPackages =
-        rerunIfChanged fileMonitorSolverPlan projectRootDir
+        rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
                        (projectConfigSolver, projectConfigCacheDir,
                         localPackages,
                         compiler, platform, configuredPrograms progdb) $ do
@@ -708,7 +708,7 @@ rebuildInstallPlan verbosity
                        solverPlan localPackages = do
 
         liftIO $ debug verbosity "Elaborating the install plan..."
-        liftIO $ putStrLn $ InstallPlan.showInstallPlan solverPlan
+        --liftIO $ putStrLn $ InstallPlan.showInstallPlan solverPlan
 
         sourcePackageHashes <-
           liftIO $ getPackageSourceHashes verbosity mkTransport
@@ -754,8 +754,8 @@ rebuildInstallPlan verbosity
                      -> Rebuild ElaboratedInstallPlan
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
-        liftIO $ notice verbosity "Improving the install plan..."
-        liftIO $ putStrLn $ InstallPlan.showInstallPlan elaboratedPlan
+        liftIO $ debug verbosity "Improving the install plan..."
+        --liftIO $ putStrLn $ InstallPlan.showInstallPlan elaboratedPlan
 
         recreateDirectory verbosity True storeDirectory
         storePkgIndex <- getPackageDBContents verbosity
@@ -766,8 +766,7 @@ rebuildInstallPlan verbosity
                              storePkgIndex
                              elaboratedPlan
 
-        liftIO $ notice verbosity "==== The improved install plan ===="
-        liftIO $ putStrLn $ InstallPlan.showInstallPlan improvedPlan
+        --liftIO $ putStrLn $ InstallPlan.showInstallPlan improvedPlan
         return improvedPlan
 
       where
@@ -1275,24 +1274,32 @@ runRebuild :: Rebuild a -> IO a
 runRebuild (Rebuild action) = evalStateT action []
 
 rerunIfChanged :: (Eq a, Binary a, Binary b)
-               => FileMonitorName a b
+               => Verbosity
                -> FilePath
+               -> FileMonitorCacheFile a b
                -> a
                -> Rebuild b
                -> Rebuild b
-rerunIfChanged cacheFile monitorFilesRootDir key action = do
-    changed <- liftIO $ checkFileMonitorChanged cacheFile monitorFilesRootDir key
+rerunIfChanged verbosity rootDir monitorCacheFile key action = do
+    changed <- liftIO $ checkFileMonitorChanged
+                          monitorCacheFile rootDir key
     case changed of
-      Changed -> do
-        (result, files) <- liftIO $ unRebuild action
---        liftIO $ putStrLn $ takeFileName cacheFile ++ " changed"
-        liftIO $ updateFileMonitor cacheFile monitorFilesRootDir
-                                   files key result
+      Unchanged (result, files) -> do
+        liftIO $ debug verbosity $
+            "File monitor '"
+         ++ takeFileName (monitorCacheFilePath monitorCacheFile)
+         ++ "' unchanged."
         monitorFiles files
         return result
 
-      Unchanged (result, files) -> do
-        liftIO $ putStrLn $ show cacheFile ++ " unchanged"
+      Changed mbFile -> do
+        (result, files) <- liftIO $ unRebuild action
+        liftIO $ debug verbosity $
+            "File monitor '"
+         ++ takeFileName (monitorCacheFilePath monitorCacheFile)
+         ++ "' changed: " ++ fromMaybe "non-file change" mbFile
+        liftIO $ updateFileMonitor monitorCacheFile rootDir
+                                   files key result
         monitorFiles files
         return result
 
@@ -2019,8 +2026,7 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex =
       case InstallPlan.ready installPlan of
         -- no more source packages can be replaced with pre-existing ones,
         --  just need to reset the ones we put into the processing state
-        [] -> trace "go done" $
-              InstallPlan.reverted
+        [] -> InstallPlan.reverted
                 [ pkg | ReadyPackage pkg _ <- cannotBeImproved ]
                 installPlan
 
@@ -2076,7 +2082,7 @@ rebuildTargets verbosity
                }
                _userTargets = do
 
-    putStrLn $ printPlan installPlan
+    -- putStrLn $ printPlan installPlan
 
     -- Concurrency control: create the job controler and concurrency limits 
     -- for downloading, building and installing.
@@ -2393,7 +2399,6 @@ buildAndInstallUnpackedPackage verbosity
                                rpkg@(ReadyPackage pkg _deps)
                                srcdir builddir = do
 
-    putStrLn $ "buildAndInstallUnpackedPackage: " ++ srcdir ++ " " ++ builddir
     createDirectoryIfMissingVerbose verbosity False builddir
 
     --TODO: deal consistently with talking to older Setup.hs versions, much like
@@ -2410,11 +2415,13 @@ buildAndInstallUnpackedPackage verbosity
     --TODO: sudo re-exec
 
     -- Configure phase
-    notice verbosity $ "(cabal-install) Configuring " ++ display pkgid ++ "..."
+    when isParallelBuild $
+      notice verbosity $ "Configuring " ++ display pkgid ++ "..."
     setup configureCommand' configureFlags
 
     -- Build phase
-    notice verbosity $ "(cabal-install) Building " ++ display pkgid ++ "..."
+    when isParallelBuild $
+      notice verbosity $ "Building " ++ display pkgid ++ "..."
     setup buildCommand' buildFlags
 
     -- Install phase
@@ -2548,8 +2555,6 @@ buildInplaceUnpackedPackage verbosity
                             rpkg@(ReadyPackage pkg _deps)
                             srcdir builddir = do
 
-    putStrLn $ "buildInplaceUnpackedPackage: " ++ srcdir ++ " " ++ builddir
-
     --TODO: also have to rebuild if any deps changed
 
     configChanged <- checkFileMonitorChanged configFileMonitor srcdir rpkg
@@ -2566,11 +2571,13 @@ buildInplaceUnpackedPackage verbosity
         createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
-        notice verbosity $ "Configuring " ++ display pkgid ++ "..."
+        when isParallelBuild $
+          notice verbosity $ "Configuring " ++ display pkgid ++ "..."
         setup configureCommand' (\_ -> configureFlags)
 
         -- Build phase
-        notice verbosity $ "Building " ++ display pkgid ++ "..."
+        when isParallelBuild $
+          notice verbosity $ "Building " ++ display pkgid ++ "..."
         setup buildCommand' buildFlags
 
         -- Register locally
@@ -2608,8 +2615,8 @@ buildInplaceUnpackedPackage verbosity
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
-    configFileMonitor = FileMonitorName (distPackageCacheFile pkgid "config")
-    buildFileMonitor  = FileMonitorName (distPackageCacheFile pkgid "build")
+    configFileMonitor = FileMonitorCacheFile (distPackageCacheFile pkgid "config")
+    buildFileMonitor  = FileMonitorCacheFile (distPackageCacheFile pkgid "build")
 
     --FIXME: this is ridiculous, it's only needed for the setupWrapper, and
     -- it only needs a couple little bits from it
@@ -2719,7 +2726,6 @@ linearizeInstallPlan plan =
           -- pretending that each package is installed
           -- It's doubly a hack because the installed package ID
           -- didn't get updated...
--}
 
 printPlan :: GenericInstallPlan ipkg ElaboratedConfiguredPackage iresult ifailure -> String
 printPlan installPlan =
@@ -2729,6 +2735,7 @@ printPlan installPlan =
         | InstallPlan.Configured pkg@ElaboratedConfiguredPackage { pkgBuildStyle = BuildInplaceOnly }
             <- InstallPlan.toList installPlan
         ]
+-}
 
        
 

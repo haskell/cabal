@@ -12,15 +12,12 @@ module Distribution.Client.FileStatusCache (
   monitorFileHashedSearchPath,
 
   -- * Creating and checking sets of monitored files
-  FileMonitorName(..),
+  FileMonitorCacheFile(..),
   Changed(..),
   checkFileMonitorChanged,
   updateFileMonitor,
 
   matchFileGlob,
-  --TODO: remove:
---  checkValueChanged,
---  updateValueChangeCache,
   ) where
 
 import           Data.Map.Strict (Map)
@@ -38,8 +35,7 @@ import           Control.Applicative
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.State (StateT)
 import qualified Control.Monad.Trans.State as State
-import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.Class
+import           Control.Monad.Except
 import           Control.Exception
 
 import           Distribution.Text
@@ -121,7 +117,8 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 --
 -- It is typed to ensure it's used at consistent types.
 --
-newtype FileMonitorName a b = FileMonitorName FilePath
+newtype FileMonitorCacheFile a b
+      = FileMonitorCacheFile { monitorCacheFilePath :: FilePath }
   deriving Show
 
 ------------------------------------------------------------------------------
@@ -202,31 +199,31 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
 -- Checking the status of monitored files
 --
 
-data Changed b = Changed | Unchanged b
+data Changed b = Unchanged b | Changed (Maybe FilePath)
   deriving Show
 
 
 checkFileMonitorChanged
   :: (Eq a, Binary a, Binary b)
-  => FileMonitorName a b  -- ^ cache file path
-  -> FilePath       -- ^ root directory
-  -> a              -- ^ key value
+  => FileMonitorCacheFile a b            -- ^ cache file path
+  -> FilePath                            -- ^ root directory
+  -> a                                   -- ^ key value
   -> IO (Changed (b, [MonitorFilePath])) -- ^ did the key or any paths change?
-checkFileMonitorChanged (FileMonitorName monitorStateFile) root currentKey =
+checkFileMonitorChanged (FileMonitorCacheFile monitorStateFile)
+                        root currentKey =
 
     -- Consider it a change if the cache file does not exist,
     -- or we cannot decode it.
-    handleDoesNotExist Changed $
+    handleDoesNotExist (Changed Nothing) $
           Binary.decodeFileOrFail monitorStateFile
-      >>= either (\_ -> return Changed)
+      >>= either (\_ -> return (Changed Nothing))
                  checkStatusCache
 
   where
     -- It's also a change if the guard value has changed
     checkStatusCache (_, cachedKey, _)
       | currentKey /= cachedKey
-      = do print "checkFileMonitorChanged: key value changed"
-           return Changed
+      = return (Changed Nothing)
 
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
 
@@ -234,12 +231,10 @@ checkFileMonitorChanged (FileMonitorName monitorStateFile) root currentKey =
       res <- probeFileSystem root cachedFileStatus
       case res of
         -- Some monitored file has changed
-        Nothing -> do
-          print "checkFileMonitorChanged: files changed"
-          return Changed
-        
+        Left changedPath -> return (Changed (Just changedPath))
+
         -- No monitored file has changed
-        Just (cachedFileStatus', cacheStatus) -> do
+        Right (cachedFileStatus', cacheStatus) -> do
 
           -- But we might still want to update the cache
           whenCacheChanged cacheStatus $
@@ -268,7 +263,7 @@ checkFileMonitorChanged (FileMonitorName monitorStateFile) root currentKey =
 -- re-traversing the directory in future runs.
 --
 probeFileSystem :: FilePath -> MonitorStateFileSet
-                -> IO (Maybe (MonitorStateFileSet, CacheChanged))
+                -> IO (Either FilePath (MonitorStateFileSet, CacheChanged))
 probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
   runChangedM $
     MonitorStateFileSet
@@ -278,21 +273,21 @@ probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
 -----------------------------------------------
 -- Monad for checking for file system changes
 --
--- We need to be able to bail out if we detect a change (using MaybeT),
+-- We need to be able to bail out if we detect a change (using ExceptT),
 -- but if there's no change we need to be able to rebuild the monitor
 -- state. And we want to optimise that rebuilding by keeping track if
 -- anything actually changed (using StateT), so that in the typical case
 -- we can avoid rewriting the state file.
 
-newtype ChangedM a = ChangedM (StateT CacheChanged (MaybeT IO) a)
+newtype ChangedM a = ChangedM (StateT CacheChanged (ExceptT FilePath IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-runChangedM :: ChangedM a -> IO (Maybe (a, CacheChanged))
+runChangedM :: ChangedM a -> IO (Either FilePath (a, CacheChanged))
 runChangedM (ChangedM action) =
-  runMaybeT $ State.runStateT action CacheUnchanged
+  runExceptT $ State.runStateT action CacheUnchanged
 
-somethingChanged :: ChangedM a
-somethingChanged = ChangedM $ lift $ MaybeT $ return Nothing
+somethingChanged :: FilePath -> ChangedM a
+somethingChanged path = ChangedM $ throwError path
 
 cacheChanged :: ChangedM ()
 cacheChanged = ChangedM $ State.put CacheChanged
@@ -316,8 +311,8 @@ probeFileStatus root file cached = do
       MonitorStateFileHashed mtime hash -> probeFileModificationTimeAndHash
                                              root file mtime hash
       MonitorStateFileNonExistant       -> probeFileNonExistance root file
-      MonitorStateFileChanged           -> somethingChanged
-      MonitorStateFileHashChanged       -> somethingChanged
+      MonitorStateFileChanged           -> somethingChanged file
+      MonitorStateFileHashChanged       -> somethingChanged file
 
     return cached
 
@@ -370,13 +365,13 @@ probeGlobStatus root dirName (MonitorStateGlobDirs glob globPath mtime children)
         -- we currently just leave these now-redundant entries in the
         -- cache as they cost no IO and keeping them allows us to avoid
         -- rewriting the cache.
-      | otherwise = somethingChanged
+      | otherwise = somethingChanged path
 
     -- Only in current filesystem state (directory added)
     probeMergeResult (OnlyInRight path) = do
       cgp <- liftIO $ buildFileGlobMonitorState root (dirName </> path) globPath
       if hasMatchingFiles cgp
-        then somethingChanged
+        then somethingChanged path
         else cacheChanged >> return (path, cgp)
 
     -- Found in path
@@ -406,7 +401,7 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
         let mergeRes = mergeBy (\(path1,_,_) path2 -> compare path1 path2)
                          children
                          (sort matches)
-        unless (all isInBoth mergeRes) somethingChanged
+        unless (all isInBoth mergeRes) (somethingChanged dirName)
         return mtime'
 
     -- Check that none of the children have changed
@@ -425,14 +420,14 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
 
 updateFileMonitor
   :: (Binary a, Binary b)
-  => FileMonitorName a b -- ^ cache file path
-  -> FilePath            -- ^ root directory
-  -> [MonitorFilePath]   -- ^ patterns of interest relative to root
-  -> a                   -- ^ a cached key value
-  -> b                   -- ^ a cached value dependent upon the key and on the
-                         --   paths identified by the given patterns
+  => FileMonitorCacheFile a b -- ^ cache file path
+  -> FilePath                 -- ^ root directory
+  -> [MonitorFilePath]        -- ^ patterns of interest relative to root
+  -> a                        -- ^ a cached key value
+  -> b                        -- ^ a cached value dependent upon the key and on
+                              --   the paths identified by the given patterns
   -> IO ()
-updateFileMonitor (FileMonitorName cacheFile) root
+updateFileMonitor (FileMonitorCacheFile cacheFile) root
                   monitorFiles cachedKey cachedResult = do
     fsc <- buildMonitorStateFileSet root monitorFiles
     Binary.encodeFile cacheFile (fsc, cachedKey, cachedResult)
@@ -523,19 +518,19 @@ matchFileGlob root glob0 = go glob0 ""
 probeFileModificationTime :: FilePath -> FilePath -> ModTime -> ChangedM ()
 probeFileModificationTime root file mtime = do
     unchanged <- liftIO $ checkModificationTimeUnchanged root file mtime
-    unless unchanged somethingChanged
+    unless unchanged (somethingChanged file)
 
 probeFileModificationTimeAndHash :: FilePath -> FilePath -> ModTime -> Hash
                                  -> ChangedM ()
 probeFileModificationTimeAndHash root file mtime hash = do
     unchanged <- liftIO $
       checkFileModificationTimeAndHashUnchanged root file mtime hash
-    unless unchanged somethingChanged
+    unless unchanged (somethingChanged file)
 
 probeFileNonExistance :: FilePath -> FilePath -> ChangedM ()
 probeFileNonExistance root file = do
     exists <- liftIO $ doesFileExist (root </> file)
-    when exists somethingChanged
+    when exists (somethingChanged file)
 
 -- | File name relative to @root@
 checkModificationTimeUnchanged :: FilePath -> FilePath
@@ -543,11 +538,6 @@ checkModificationTimeUnchanged :: FilePath -> FilePath
 checkModificationTimeUnchanged root file mtime =
   handleDoesNotExist False $ do
     mtime' <- getModificationTime (root </> file)
-
-    --TODO: debug only:
-    when (mtime /= mtime') $
-      print ("file mtime changed", file)
-
     return (mtime == mtime')
 
 -- | File name relative to @root@
@@ -561,12 +551,6 @@ checkFileModificationTimeAndHashUnchanged root file mtime chash =
       then return True
       else do
         chash' <- readFileHash (root </> file)
-
-        --TODO: debug only:
-        if chash /= chash'
-          then print ("file hash changed", file)
-          else print ("file mtime changed, but hash unchanged", file)
-
         return (chash == chash')
 
 readFileHash :: FilePath -> IO Hash
@@ -626,25 +610,3 @@ instance Binary MonitorStateFileSet where
               return $! MonitorStateFileSet singlePaths globPaths
       else fail "MonitorStateFileSet: wrong version"
 
----------------------------------------------------------------------
--- Deprecated
---
-
-{-
-checkValueChanged :: (Binary a, Eq a, Binary b)
-                  => FilePath -> a -> IO (Changed b)
-checkValueChanged cacheFile currentValue =
-    handleDoesNotExist Changed $ do   -- cache file didn't exist
-      res <- Binary.decodeFileOrFail cacheFile
-      case res of
-        Right (cachedValue, cachedPayload)
-          | currentValue == cachedValue
-                       -> return (Unchanged cachedPayload)
-          | otherwise  -> return Changed -- value changed
-        Left _         -> return Changed -- decode error
-
-
-updateValueChangeCache :: (Binary a, Binary b) => FilePath -> a -> b -> IO ()
-updateValueChangeCache path key payload =
-    Binary.encodeFile path (key, payload)
--}
