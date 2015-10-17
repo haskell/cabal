@@ -29,6 +29,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.ComponentDeps as ComponentDeps
+import           Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.IndexUtils as IndexUtils
 import           Distribution.Client.Targets (UserConstraint, pkgSpecifierTarget, userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
@@ -396,7 +397,7 @@ data ElaboratedConfiguredPackage
 
        -- | The exact dependencies (on other plan packages)
        --
-       pkgDependencies     :: ComponentDeps.ComponentDeps [InstalledPackageId],
+       pkgDependencies     :: ComponentDeps [InstalledPackageId],
        --TODO: ^^ do we need this given that ReadyPackage includes it?
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
@@ -1488,25 +1489,29 @@ elaborateInstallPlan platform compiler progdb
 
     installPlan = InstallPlan.mapPreservingGraph convertPlanPackage solverPlan
 
-    convertPlanPackage :: InstallPlan.GenericPlanPackage InstalledPackageInfo
+    convertPlanPackage :: ComponentDeps [InstalledPackageId]
+                       -> InstallPlan.GenericPlanPackage InstalledPackageInfo
                                                          ConfiguredPackage
                                                          _iresult _ifailure
                        -> InstallPlan.GenericPlanPackage InstalledPackageInfo
                                                          ElaboratedConfiguredPackage
                                                          iresult ifailure
-    convertPlanPackage (InstallPlan.PreExisting pkg) =
+    convertPlanPackage deps (InstallPlan.PreExisting pkg) =
+      assert (deps == depends pkg) $
       InstallPlan.PreExisting pkg
 
-    convertPlanPackage (InstallPlan.Configured  pkg) =
-      InstallPlan.Configured (individualPackageConfig pkg)
+    convertPlanPackage deps (InstallPlan.Configured  pkg) =
+      InstallPlan.Configured (individualPackageConfig pkg deps)
 
-    convertPlanPackage _ =
+    convertPlanPackage _ _ =
       error "elaborateInstallPlan: unexpected package state"
     
-    individualPackageConfig :: ConfiguredPackage -> ElaboratedConfiguredPackage
+    individualPackageConfig :: ConfiguredPackage
+                            -> ComponentDeps [InstalledPackageId]
+                            -> ElaboratedConfiguredPackage
     individualPackageConfig
       pkg@(ConfiguredPackage (SourcePackage pkgid desc srcloc descOverride)
-                             flags stanzas deps) =
+                             flags stanzas _olddeps) deps =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the
@@ -1525,8 +1530,7 @@ elaborateInstallPlan platform compiler progdb
           = hashedInstalledPackageId PackageHashInputs {
               pkgHashPkgId       = pkgid,
               pkgHashSourceHash  = sourceHash,
-              --TODO: are these deps right? They're probably using fake ipkigs
-              pkgHashDirectDeps  = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
+              pkgHashDirectDeps  = ComponentDeps.libraryDeps deps, --TODO: consider carefully which deps
               pkgHashOtherConfig = elaboratedPackageHashConfigInputs
                                        elaboratedSharedConfig
                                        elaboratedPackage -- recursive use
@@ -1544,7 +1548,7 @@ elaborateInstallPlan platform compiler progdb
         pkgEnabledStanzas   = stanzas
         pkgTestsuitesEnable = TestStanzas  `elem` stanzas --TODO: only actually enable if solver allows it and we want it
         pkgBenchmarksEnable = BenchStanzas `elem` stanzas --TODO: only actually enable if solver allows it and we want it
-        pkgDependencies     = fmap (map confInstId) deps
+        pkgDependencies     = deps
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
 

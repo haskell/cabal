@@ -78,7 +78,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( intercalate )
+         ( foldl', intercalate )
 import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
@@ -498,7 +498,7 @@ reverted pkgs plan = assert (invariant plan') plan'
 --
 preexisting :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
                 HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
-           => InstalledPackageId
+            => InstalledPackageId
             -> ipkg
             -> GenericInstallPlan ipkg srcpkg iresult ifailure
             -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -518,24 +518,45 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
     }
 
 
-mapPreservingGraph :: (HasInstalledPackageId ipkg, HasInstalledPackageId srcpkg,
+mapPreservingGraph :: (HasInstalledPackageId ipkg,    PackageFixedDeps ipkg,
+                       HasInstalledPackageId srcpkg,  PackageFixedDeps srcpkg,
                        HasInstalledPackageId ipkg',   PackageFixedDeps ipkg',
                        HasInstalledPackageId srcpkg', PackageFixedDeps srcpkg')
-                   => (  GenericPlanPackage ipkg  srcpkg  iresult  ifailure
+                   => (  ComponentDeps [InstalledPackageId]
+                      -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
                       -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
                    -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
                    -> GenericInstallPlan ipkg' srcpkg' iresult' ifailure'
 mapPreservingGraph f plan =
     mkInstallPlan (PackageIndex.fromList pkgs')
-                  fakeMap'
+                  Map.empty -- empty fakeMap
                   (planIndepGoals plan)
   where
-    pkgs         = toList plan
-    pkgs'        = map f pkgs
-    pkgidChanges = [ (installedPackageId pkg, installedPackageId pkg')
-                   | (pkg, pkg') <- zip pkgs pkgs' ]
-    fakeMap'     = planFakeMap plan `Map.union` Map.fromList pkgidChanges
+    -- The package mapping function may change the InstalledPackageId. So we
+    -- walk over the packages in dependency order keeping track of these
+    -- package id changes and use it to supply the correct set of package
+    -- dependencies as an extra input to the package mapping function.
+    --
+    -- Having fully remapped all the deps this also means we can use an empty
+    -- FakeMap for the resulting install plan.
 
+    (_, pkgs') = foldl' f' (Map.empty, []) (reverseTopologicalOrder plan)
+
+    f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
+      where
+       pkg' = f deps' pkg
+         where
+           deps' = fmap (map (mapDep ipkgidMap)) (depends pkg)
+
+       ipkgidMap'
+         | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
+         | otherwise         =                           ipkgidMap
+         where
+           ipkgid  = installedPackageId pkg
+           ipkgid' = installedPackageId pkg'
+   
+    mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
+ 
 
 -- ------------------------------------------------------------
 -- * Checking validity of plans
