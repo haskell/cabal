@@ -104,7 +104,7 @@ import           System.FilePath
 import           System.IO
 import           System.Directory
 
-import Data.Time
+--import Data.Time
 import Debug.Trace
 
 
@@ -398,7 +398,6 @@ data ElaboratedConfiguredPackage
        -- | The exact dependencies (on other plan packages)
        --
        pkgDependencies     :: ComponentDeps [InstalledPackageId],
-       --TODO: ^^ do we need this given that ReadyPackage includes it?
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
        --   is not the same as where it may be unpacked to for the build.
@@ -915,10 +914,6 @@ getPackageSourceHashes verbosity mkTransport
                        return (pkg, loc)
                   | (pkg, locm) <- requireDownloading ]
 
-    --TODO: if we do download any here, we ought to record that we did so
-    --      otherwise the plan execution will still have to attempt
-    --      downloading them
-
     -- Get the hashes of all the tarball packages (i.e. not local dir pkgs)
     --
     liftM Map.fromList $
@@ -1279,8 +1274,6 @@ unRebuild (Rebuild action) = runStateT action []
 runRebuild :: Rebuild a -> IO a
 runRebuild (Rebuild action) = evalStateT action []
 
---TODO: if we make this a Rebuild then we also have to cache and return the
---      monitor files
 rerunIfChanged :: (Eq a, Binary a, Binary b)
                => FileMonitorName a b
                -> FilePath
@@ -1483,8 +1476,7 @@ elaborateInstallPlan platform compiler progdb
         pkgConfigCompiler         = compiler,
         pkgConfigProgramDb        = progdb,
  
-        --TODO: for now just an example and not yet configurable
-        pkgConfigLibraryProfiling = False
+        pkgConfigLibraryProfiling = False --TODO: make configurable
       }
 
     installPlan = InstallPlan.mapPreservingGraph convertPlanPackage solverPlan
@@ -2105,9 +2097,7 @@ rebuildTargets verbosity
                         pkgSourceLocation
                         installPlan
 
-  --  mapM_ print pkgsToDownload
-
-    residualPlan <- 
+    _residualPlan <- 
       asyncDownloadPackages verbosity mkTransport
                             pkgsToDownload $ \downloadMap ->
 
@@ -2137,18 +2127,12 @@ rebuildTargets verbosity
 
               BuildInplaceOnly ->
                 --TODO: use a relative build dir rather than absolute
-                printTiming "=========== buildInplaceUnpackedPackage ============" $
-                  buildInplaceUnpackedPackage
-                    verbosity distDirLayout
-                    isParallelBuild cacheLock
-                    sharedPackageConfig
-                    rpkg srcdir builddir
+                buildInplaceUnpackedPackage
+                  verbosity distDirLayout
+                  isParallelBuild cacheLock
+                  sharedPackageConfig
+                  rpkg srcdir builddir
 
-    _  <- return residualPlan
-    --TODO: this result plan should be saved, resetting all failed and
-    -- BuildInplaceOnly packages to original Configured state
-    -- so effectively only the installed tarball packages get updated
-    -- could also replace installed ones to be pre-installed
     return ()
 
   where
@@ -2157,6 +2141,7 @@ rebuildTargets verbosity
     mkTransport     = configureTransport verbosity 
                         (flagToMaybe projectConfigHttpTransport)
 
+{-
 printTiming :: Show t => t -> IO b -> IO b
 printTiming name action = do
   before <- getCurrentTime
@@ -2164,6 +2149,7 @@ printTiming name action = do
   after <- getCurrentTime
   print ("printTiming", name, after `diffUTCTime` before)
   return x
+-}
 
 --TODO: do we need to use a with-style for the temp files for downloading http
 -- packages, or are we going to cache them persistently?
@@ -2182,8 +2168,6 @@ packagesRequiringDownload packageSourceLocation installPlan =
       | InstallPlan.Configured pkg
          <- InstallPlan.reverseTopologicalOrder installPlan
       ]
-      --TODO: check that the reverseTopologicalOrder is more or less the same
-      -- order as we get out of the install plan when we run it
 
 type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
                             (MVar (PackageLocation FilePath))
@@ -2336,8 +2320,7 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
       case buildstyle of
         -- In this case we make a temp dir, unpack the tarball to there and
         -- build and install it from that temp dir.
-        BuildAndInstall -> do
-        -- TODO: this is also a case where we can calculate the installed pkgid
+        BuildAndInstall ->
           withTempDirectory verbosity distTempDirectory
                             (display (packageName pkgid)) $ \tmpdir -> do
             extractTarballPackage verbosity tarball tmpdir pkgid 
@@ -2444,7 +2427,6 @@ buildAndInstallUnpackedPackage verbosity
       -- Actual installation
       setup Cabal.copyCommand copyFlags
       
-      -- TODO: make this a simple shared function of ElaboratedConfiguredPackage
       LBS.writeFile
         (InstallDirs.prefix (pkgInstallDirs pkg) </> "cabal-hash.txt") $
         (renderPackageHashInputs (packageHashInputs pkgshared pkg))
@@ -2585,8 +2567,6 @@ buildInplaceUnpackedPackage verbosity
 
         -- Configure phase
         notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-        --TODO: think about these install dirs, we're not planning to install, but
-        -- where should we configure them for?
         setup configureCommand' (\_ -> configureFlags)
 
         -- Build phase
