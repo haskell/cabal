@@ -1,0 +1,14 @@
+Library
+  build-depends:   base       >= 2   && < 5,
+  if flag(base4) { build-depends: base >= 4 } else { build-depends: base < 4 }
+                   filepath   >= 1   && < 1.4
+  if flag(base3) { build-depends: base >= 3 } else { build-depends: base < 3 }
+  if flag(base3)
+    Build-Depends: directory  >= 1   && < 1.2,
+                   process    >= 1   && < 1.2,
+                   old-time   >= 1   && < 1.2,
+                   containers >= 0.1 && < 0.6,
+                   array      >= 0.1 && < 0.5,
+                   pretty     >= 1   && < 1.2
+  else
+    baz:

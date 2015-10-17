@@ -1,0 +1,18 @@
+Name:                     nat
+Version:                  0.1
+Description:            Implementation of natural numbers and integers by a binary
+                                representation. The implementation is supposed to be lazy and
+                                reasonable efficient (in comparison to peano numbers). This
+                                implementation is inspired by a similar approach in the functional
+                                logic programming language Curry.
+Synopsis:                 Lazy binary natural numbers
+License:                   BSD3
+Author:                    Andres Löh, Frank Huch, Jan Christiansen    
+Maintainer:              Jan Christiansen <jac@informatik.uni-kiel.de>
+Category:                 Data, Math
+Build-Depends:       base
+Exposed-modules:  Data.Number.Nat Data.Number.NatO Data.Number.Int
+ghc-options:          -Wall
+build-type:              Simple
+
+extra-source-files: Tests.hs

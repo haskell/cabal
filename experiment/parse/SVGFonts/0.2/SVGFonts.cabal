@@ -1,0 +1,27 @@
+Name:             SVGFonts
+Version:          0.2
+Description:      parse svg-font files and generate outlines of letters and sentences
+category:         graphics
+License:          GPL
+License-file:     LICENSE
+Author:           Tillmann Vogt
+Maintainer:       Tillmann.Vogt@rwth-aachen.de
+Build-Type:       Simple
+Cabal-Version:    >=1.2
+
+Library
+    hs-source-dirs: src
+    build-depends:
+        haskell98,
+        base,
+        OpenGL,
+        GLUT,
+        xml,
+        parsec
+    exposed-modules:
+        Graphics.SVGFonts.ReadFont        Graphics.SVGFonts.KETTriangulation
+
+Executable Fonts
+    hs-source-dirs: src
+    Main-is:        Test/Fonts.hs
+    other-modules:  Test.PointOfView, Graphics.SVGFonts.ReadFont
