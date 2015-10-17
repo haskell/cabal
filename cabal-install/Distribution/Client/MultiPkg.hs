@@ -1524,17 +1524,12 @@ elaborateInstallPlan platform compiler progdb
           | shouldBuildInplaceOnly pkg
           = InstalledPackageId (display pkgid ++ "-inplace")
           
-          | Just sourceHash <- Map.lookup pkgid sourcePackageHashes
-
-            -- TODO: share this calc so that we can recreate the rendered form of it
-          = hashedInstalledPackageId PackageHashInputs {
-              pkgHashPkgId       = pkgid,
-              pkgHashSourceHash  = sourceHash,
-              pkgHashDirectDeps  = ComponentDeps.libraryDeps deps, --TODO: consider carefully which deps
-              pkgHashOtherConfig = elaboratedPackageHashConfigInputs
-                                       elaboratedSharedConfig
-                                       elaboratedPackage -- recursive use
-            }
+          | otherwise
+          = assert (isJust pkgSourceHash) $
+            hashedInstalledPackageId
+              (packageHashInputs
+                elaboratedSharedConfig
+                elaboratedPackage)  -- recursive use of elaboratedPackage
 
           | otherwise
           = error $ "elaborateInstallPlan: non-inplace package "
@@ -1926,10 +1921,29 @@ setupHsTestFlags _ _ verbosity builddir =
 -- TODO: for safety of concurrent installs, we must make sure we register but
 -- not replace installed packages with ghc-pkg.
 
-elaboratedPackageHashConfigInputs :: ElaboratedSharedConfig
-                                  -> ElaboratedConfiguredPackage
-                                  -> PackageHashConfigInputs
-elaboratedPackageHashConfigInputs
+packageHashInputs :: ElaboratedSharedConfig
+                  -> ElaboratedConfiguredPackage
+                  -> PackageHashInputs
+packageHashInputs
+    pkgshared
+    pkg@ElaboratedConfiguredPackage{
+      pkgSourceId,
+      pkgSourceHash = Just srchash,
+      pkgDependencies
+    } =
+    PackageHashInputs {
+      pkgHashPkgId       = pkgSourceId,
+      pkgHashSourceHash  = srchash,
+      pkgHashDirectDeps  = ComponentDeps.libraryDeps pkgDependencies, --TODO: consider carefully which deps
+      pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
+    }
+packageHashInputs _ _ =
+    error "packageHashInputs: only for packages with source hashes"
+
+packageHashConfigInputs :: ElaboratedSharedConfig
+                        -> ElaboratedConfiguredPackage
+                        -> PackageHashConfigInputs
+packageHashConfigInputs
     ElaboratedSharedConfig{..}
     ElaboratedConfiguredPackage{..} =
 
@@ -2433,14 +2447,7 @@ buildAndInstallUnpackedPackage verbosity
       -- TODO: make this a simple shared function of ElaboratedConfiguredPackage
       LBS.writeFile
         (InstallDirs.prefix (pkgInstallDirs pkg) </> "cabal-hash.txt") $
-        renderPackageHashInputs PackageHashInputs {
-              pkgHashPkgId       = pkgid,
-              pkgHashSourceHash  = fromJust (pkgSourceHash pkg),
-              pkgHashDirectDeps  = ComponentDeps.libraryDeps (depends pkg), --TODO: consider carefully which deps
-              pkgHashOtherConfig = elaboratedPackageHashConfigInputs
-                                       pkgshared
-                                       pkg
-            }
+        (renderPackageHashInputs (packageHashInputs pkgshared pkg))
 
       -- here's where we could keep track of the installed files ourselves if
       -- we wanted by calling copy to an image dir and then we would make a
@@ -2841,7 +2848,8 @@ renderPackageHashInputs PackageHashInputs{
     LBS.Char8.pack $ unlines $ catMaybes
       [ entry "pkgid"       display pkgHashPkgId
       , entry "src"         showHashValue pkgHashSourceHash
-      , entry "deps"        (intercalate ", " . map display . sort) pkgHashDirectDeps
+      , entry "deps"        (intercalate ", " . map display
+                                   . map head . group . sort) pkgHashDirectDeps
         -- and then all the config
       , entry "compilerid"  display pkgHashCompilerId
       , entry "platform"    display pkgHashPlatform
