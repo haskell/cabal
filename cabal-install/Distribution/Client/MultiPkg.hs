@@ -1289,23 +1289,22 @@ rerunIfChanged verbosity rootDir monitorCacheFile key action = do
                           monitorCacheFile rootDir key
     case changed of
       Unchanged (result, files) -> do
-        liftIO $ debug verbosity $
-            "File monitor '"
-         ++ takeFileName (monitorCacheFilePath monitorCacheFile)
-         ++ "' unchanged."
+        liftIO $ debug verbosity $ "File monitor '" ++ monitorName
+                                                    ++ "' unchanged."
         monitorFiles files
         return result
 
       Changed mbFile -> do
+        liftIO $ debug verbosity $ "File monitor '" ++ monitorName
+                                ++ "' changed: "
+                                ++ fromMaybe "non-file change" mbFile
         (result, files) <- liftIO $ unRebuild action
-        liftIO $ debug verbosity $
-            "File monitor '"
-         ++ takeFileName (monitorCacheFilePath monitorCacheFile)
-         ++ "' changed: " ++ fromMaybe "non-file change" mbFile
         liftIO $ updateFileMonitor monitorCacheFile rootDir
                                    files key result
         monitorFiles files
         return result
+  where
+    monitorName = takeFileName (monitorCacheFilePath monitorCacheFile)
 
 
 -- ------------------------------------------------------------
