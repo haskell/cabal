@@ -583,6 +583,7 @@ rebuildInstallPlan verbosity
   where
     fileMonitorCompiler       = FileMonitorCacheFile (distProjectCacheFile "compiler")
     fileMonitorSolverPlan     = FileMonitorCacheFile (distProjectCacheFile "solver-plan")
+    fileMonitorSourceHashes   = FileMonitorCacheFile (distProjectCacheFile "source-hashes")
     fileMonitorElaboratedPlan = FileMonitorCacheFile (distProjectCacheFile "elaborated-plan")
     fileMonitorImprovedPlan   = FileMonitorCacheFile (distProjectCacheFile "improved-plan")
 
@@ -711,10 +712,9 @@ rebuildInstallPlan verbosity
         --liftIO $ putStrLn $ InstallPlan.showInstallPlan solverPlan
 
         sourcePackageHashes <-
-          liftIO $ getPackageSourceHashes verbosity mkTransport
-                     (\(ConfiguredPackage pkg _ _ _) -> packageSource pkg)
-                     solverPlan
-                --TODO: monitor the downloaded files?
+          rerunIfChanged verbosity projectRootDir fileMonitorSourceHashes
+                         (map packageId $ InstallPlan.toList solverPlan) $
+            getPackageSourceHashes verbosity mkTransport solverPlan
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
         return $
@@ -883,22 +883,21 @@ recreateDirectory verbosity createParents dir = do
 --
 -- Note that we don't get hashes for local unpacked packages.
 --
-getPackageSourceHashes :: Package srcpkg
-                       => Verbosity
+getPackageSourceHashes :: Verbosity
                        -> IO HttpTransport
-                       -> (srcpkg -> PackageLocation (Maybe FilePath))
-                       -> GenericInstallPlan ipkg srcpkg iresult ifailure
-                       -> IO (Map PackageId PackageSourceHash)
-getPackageSourceHashes verbosity mkTransport
-                      packageSourceLocation installPlan = do
+                       -> SolverInstallPlan
+                       -> Rebuild (Map PackageId PackageSourceHash)
+getPackageSourceHashes verbosity mkTransport installPlan = do
 
     -- Determine which packages need fetching, and which are present already
     --
-    pkgslocs <- sequence
-      [ do let locm = packageSourceLocation pkg
+    pkgslocs <- liftIO $ sequence
+      [ do let locm = packageSource pkg
            mloc <- checkFetched locm
            return (pkg, locm, mloc)
-      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+      | InstallPlan.Configured
+          (ConfiguredPackage pkg _ _ _) <- InstallPlan.toList installPlan ]
+
     let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
         alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
 
@@ -907,7 +906,8 @@ getPackageSourceHashes verbosity mkTransport
     newlyDownloaded <-
       if null requireDownloading
         then return []
-        else do transport <- mkTransport
+        else liftIO $ do
+                transport <- mkTransport
                 sequence
                   [ do loc <- fetchPackage transport verbosity locm
                        return (pkg, loc)
@@ -915,13 +915,18 @@ getPackageSourceHashes verbosity mkTransport
 
     -- Get the hashes of all the tarball packages (i.e. not local dir pkgs)
     --
-    liftM Map.fromList $
+    let pkgsTarballs =
+          [ (packageId pkg, tarball)
+          | (pkg, srcloc) <- newlyDownloaded ++ alreadyDownloaded
+          , tarball <- maybeToList (tarballFileLocation srcloc) ]
+
+    monitorFiles [ MonitorFile tarball | (_pkgid, tarball) <- pkgsTarballs ]
+
+    liftM Map.fromList $ liftIO $
       sequence
         [ do srchash <- readFileHashValue tarball
-             return (packageId pkg, srchash)
-
-        | (pkg, srcloc) <- newlyDownloaded ++ alreadyDownloaded
-        , tarball <- maybeToList (tarballFileLocation srcloc) ]
+             return (pkgid, srchash)
+        | (pkgid, tarball) <- pkgsTarballs ]
   where
     tarballFileLocation (LocalUnpackedPackage _dir)      = Nothing
     tarballFileLocation (LocalTarballPackage    tarball) = Just tarball
