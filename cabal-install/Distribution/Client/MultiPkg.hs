@@ -62,6 +62,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
 import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
+import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault, HaddockFlags(..))
 import           Distribution.Utils.NubList (NubList, fromNubList)
@@ -550,17 +551,19 @@ rebuildInstallPlan verbosity
                    projectRootDir
                    distDirLayout@DistDirLayout{..}
                    cabalDirLayout@CabalDirLayout{..} = \cliConfig ->
-    runRebuild $
+    runRebuild $ do
+    progsearchpath <- liftIO $ getSystemSearchPath
 
     -- The overall improved plan is cached
     rerunIfChanged verbosity projectRootDir fileMonitorImprovedPlan
-                   (valueMonitorImprovedPlan cliConfig) $ do
+                   -- react to changes in command line args and the path
+                   (valueMonitorImprovedPlan cliConfig, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
       (elaboratedPlan, elaboratedShared,
        buildConfig) <-
         rerunIfChanged verbosity projectRootDir fileMonitorElaboratedPlan
-                       (valueMonitorImprovedPlan cliConfig) $ do
+                       (valueMonitorImprovedPlan cliConfig, progsearchpath) $ do
 
           projectConfig <- phaseReadProjectConfig cliConfig
           localPackages <- phaseReadLocalPackages projectConfig
@@ -636,10 +639,20 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler ProjectConfig{projectConfigAllPackages} =
+    phaseConfigureCompiler ProjectConfig{projectConfigAllPackages} = do
+        progsearchpath <- liftIO $ getSystemSearchPath
         rerunIfChanged verbosity projectRootDir fileMonitorCompiler
-                       (hcFlavor, hcPath, hcPkg) $
-          configureCompiler verbosity (hcFlavor, hcPath, hcPkg)
+                       (hcFlavor, hcPath, hcPkg, progsearchpath) $ do
+
+          liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
+          result@(_, _, progdb) <- liftIO $
+            Cabal.configCompilerEx
+              hcFlavor hcPath hcPkg
+              defaultProgramDb verbosity
+
+          monitorFiles (programsMonitorFiles progdb)
+
+          return result
       where
         hcFlavor = flagToMaybe packageConfigHcFlavor
         hcPath   = flagToMaybe packageConfigHcPath
@@ -664,7 +677,7 @@ rebuildInstallPlan verbosity
         rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
                        (projectConfigSolver, projectConfigCacheDir,
                         localPackages,
-                        compiler, platform, configuredPrograms progdb) $ do
+                        compiler, platform, programsDbSignature progdb) $ do
           
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
@@ -793,31 +806,23 @@ readSourcePackage verbosity cabalFile = do
                  packageDescrOverride = Nothing
                }
 
-configureCompiler :: Verbosity
-                  -> (Maybe CompilerFlavor, Maybe FilePath, Maybe FilePath)
-                  -> Rebuild (Compiler, Platform, ProgramConfiguration)
-configureCompiler verbosity 
-                  (compFlavor, hcPath, hcPkg) = do
-    --TODO: need to track $PATH changes
-    liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-
-    result@(_, _, progdb) <- liftIO $
-      Cabal.configCompilerEx
-        compFlavor hcPath hcPkg
-        defaultProgramDb verbosity
-
-    monitorFiles (programsMonitorFiles progdb)
-
-    return result
-
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
-programsMonitorFiles progdb =   
+programsMonitorFiles progdb =
     [ monitor
     | prog    <- configuredPrograms progdb
     , monitor <- monitorFileSearchPath (programMonitorFiles prog)
                                        (programPath prog)
     ]
-  --TODO: also need to react to $PATH changes
+
+-- | Select the bits of a 'ProgramDb' to monitor for value changes.
+-- Use 'programsMonitorFiles' for the files to monitor.
+--
+programsDbSignature :: ProgramDb -> [ConfiguredProgram]
+programsDbSignature progdb =
+    [ prog { programMonitorFiles = []
+           , programOverrideEnv  = filter ((/="PATH") . fst)
+                                          (programOverrideEnv prog) }
+    | prog <- configuredPrograms progdb ]
 
 getInstalledPackages :: Verbosity
                      -> Compiler -> ProgramDb -> Platform

@@ -27,6 +27,7 @@ module Distribution.Simple.Program.Find (
     defaultProgramSearchPath,
     findProgramOnSearchPath,
     programSearchPathAsPATHVar,
+    getSystemSearchPath,
   ) where
 
 import Distribution.Verbosity
