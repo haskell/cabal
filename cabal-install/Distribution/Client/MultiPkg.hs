@@ -709,7 +709,6 @@ rebuildInstallPlan verbosity
                        solverPlan localPackages = do
 
         liftIO $ debug verbosity "Elaborating the install plan..."
-        --liftIO $ putStrLn $ InstallPlan.showInstallPlan solverPlan
 
         sourcePackageHashes <-
           rerunIfChanged verbosity projectRootDir fileMonitorSourceHashes
@@ -755,18 +754,13 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        --liftIO $ putStrLn $ InstallPlan.showInstallPlan elaboratedPlan
-
         recreateDirectory verbosity True storeDirectory
         storePkgIndex <- getPackageDBContents verbosity
                                               compiler progdb platform
                                               storePackageDb
-
         let improvedPlan = improveInstallPlanWithPreExistingPackages
                              storePkgIndex
                              elaboratedPlan
-
-        --liftIO $ putStrLn $ InstallPlan.showInstallPlan improvedPlan
         return improvedPlan
 
       where
@@ -2087,9 +2081,7 @@ rebuildTargets verbosity
                }
                _userTargets = do
 
-    -- putStrLn $ printPlan installPlan
-
-    -- Concurrency control: create the job controler and concurrency limits 
+    -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
     jobControl    <- if isParallelBuild then newParallelJobControl
                                         else newSerialJobControl
@@ -2118,6 +2110,7 @@ rebuildTargets verbosity
 
         -- If necessary, wait for the download of the remote package to finish.
         srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
+
         -- We're not typing up buildLimit-limited resources while downloading,
         -- but we are once we start unpacking and building.
         withJobLimit buildLimit $
