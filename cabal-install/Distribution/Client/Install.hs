@@ -553,8 +553,8 @@ linearizeInstallPlan installedPkgIndex plan =
     unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
-      []      -> Nothing
-      (pkg:_) -> Just ((pkg, status), plan'')
+      []          -> Nothing
+      ((pkg,_):_) -> Just ((pkg, status), plan'')
         where
           pkgid  = installedPackageId pkg
           status = packageStatus installedPkgIndex pkg
@@ -1164,12 +1164,12 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
                  spawnJob jobCtl $ do
                    buildResult <- installPkg pkg
                    return (packageId pkg, libname, buildResult)
-            | pkg <- pkgs
+            | (pkg, _) <- pkgs
             , let pkgid = packageId pkg
                   libname = readyLibraryName comp pkg ]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
+              plan'      = InstallPlan.processing (map fst pkgs) plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do

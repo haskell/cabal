@@ -118,10 +118,10 @@ configure verbosity packageDBs repos comp platform conf
         Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ReadyPackage
+      [(pkg@(ReadyPackage
              (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
                                  _ _ _)
-             _)] -> do
+             _), _)] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
           (setupScriptOptions installedPkgIndex (Just pkg))

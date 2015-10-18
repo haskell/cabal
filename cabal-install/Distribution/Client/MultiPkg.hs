@@ -506,7 +506,7 @@ type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
 type BuildResult  = GenericBuildResult InstalledPackageInfo 
                                        BuildSuccess BuildFailure
 
-data BuildSuccess = BuildOk DocsResult TestsResult
+data BuildSuccess = BuildOk Bool DocsResult TestsResult
   deriving (Eq, Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
@@ -2046,7 +2046,7 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex =
                 [ case canPackageBeImproved pkg of
                     Nothing   -> Left pkg
                     Just ipkg -> Right (pkg, ipkg)
-                | pkg <- pkgs ]
+                | (pkg, _) <- pkgs ]
 
     canPackageBeImproved :: GenericReadyPackage srcpkg InstalledPackageInfo
                          -> Maybe InstalledPackageInfo
@@ -2109,8 +2109,8 @@ rebuildTargets verbosity
                             pkgsToDownload $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      executeInstallPlan verbosity jobControl installPlan
-                         $ \rpkg@(ReadyPackage (cpkg :: ElaboratedConfiguredPackage) _) -> do
+      executeInstallPlan verbosity jobControl installPlan $
+        \rpkg@(ReadyPackage cpkg _) depResults -> do
 
         -- If necessary, wait for the download of the remote package to finish.
         srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
@@ -2128,7 +2128,8 @@ rebuildTargets verbosity
                   verbosity distDirLayout
                   isParallelBuild installLock cacheLock
                   sharedPackageConfig
-                  rpkg srcdir builddir'
+                  rpkg
+                  srcdir builddir'
                 where
                   builddir' = makeRelative srcdir builddir
                   --TODO ^^ do this relative stuff better
@@ -2139,7 +2140,8 @@ rebuildTargets verbosity
                   verbosity distDirLayout
                   isParallelBuild cacheLock
                   sharedPackageConfig
-                  rpkg srcdir builddir
+                  rpkg depResults
+                  srcdir builddir
 
     return ()
 
@@ -2247,7 +2249,8 @@ executeInstallPlan
   -> JobControl IO ( GenericReadyPackage srcpkg ipkg
                    , GenericBuildResult ipkg iresult BuildFailure )
   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-  -> (GenericReadyPackage srcpkg ipkg
+  -> (    GenericReadyPackage srcpkg ipkg
+       -> ComponentDeps [iresult]
        -> IO (GenericBuildResult ipkg iresult BuildFailure))
   -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
 executeInstallPlan verbosity jobCtl plan0 installPkg =
@@ -2261,14 +2264,14 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
           sequence_
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg
+                   buildResult <- installPkg pkg depResults
                    return (pkg, buildResult)
-            | pkg <- pkgs
+            | (pkg, depResults) <- pkgs
             , let pkgid = packageId pkg
             ]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
+              plan'      = InstallPlan.processing (map fst pkgs) plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
@@ -2462,7 +2465,7 @@ buildAndInstallUnpackedPackage verbosity
 
       let docsResult  = DocsNotTried
           testsResult = TestsNotTried
-      return (BuildSuccess mipkg (BuildOk docsResult testsResult))
+      return (BuildSuccess mipkg (BuildOk True docsResult testsResult))
 
   where
     pkgid  = packageId rpkg
@@ -2540,6 +2543,7 @@ buildInplaceUnpackedPackage :: Verbosity
                             -> ElaboratedSharedConfig
                             -> GenericReadyPackage ElaboratedConfiguredPackage
                                                    InstalledPackageInfo
+                            -> ComponentDeps [BuildSuccess]
                             -> FilePath -> FilePath
                             -> IO BuildResult
 buildInplaceUnpackedPackage verbosity
@@ -2555,15 +2559,22 @@ buildInplaceUnpackedPackage verbosity
                               pkgConfigProgramDb = progdb
                             }
                             rpkg@(ReadyPackage pkg _deps)
+                            depResults
                             srcdir builddir = do
 
-    --TODO: also have to rebuild if any deps changed
-
+    -- The configChanged here includes the identity of the dependencies, so
+    -- depsChanged below is just needed for the changes in the content of deps.
+    --
     configChanged <- checkFileMonitorChanged configFileMonitor srcdir rpkg
     buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir ()
-    
-    case (configChanged, buildChanged) of
-      (Unchanged ((), _), Unchanged (buildResult, _)) -> return buildResult
+    let depsChanged = not $ null [ () | BuildOk True _ _ <- ComponentDeps.flatDeps depResults ]
+
+    case (configChanged, buildChanged, depsChanged) of
+      (Unchanged (mipkg, _), Unchanged (buildSuccess, _), False) ->
+          return (BuildSuccess mipkg (markUnchanged buildSuccess)) --TODO: make this cleaner
+        where
+          markUnchanged :: BuildSuccess -> BuildSuccess
+          markUnchanged (BuildOk _ b c) = BuildOk False b c
 
       _ -> do
         --TODO: there is duplication between the distdirlayout and the builddir here
@@ -2573,9 +2584,10 @@ buildInplaceUnpackedPackage verbosity
         createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
-        when isParallelBuild $
-          notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-        setup configureCommand' (\_ -> configureFlags)
+        whenChanged configChanged $ do
+          when isParallelBuild $
+            notice verbosity $ "Configuring " ++ display pkgid ++ "..."
+          setup configureCommand' (\_ -> configureFlags)
 
         -- Build phase
         when isParallelBuild $
@@ -2583,42 +2595,54 @@ buildInplaceUnpackedPackage verbosity
         setup buildCommand' buildFlags
 
         -- Register locally
-        --TODO: only need to re-register if input package config has changed
-        --      (or if not registered in the first place)
-        mipkg <- generateInstalledPackageInfo
-        case mipkg of
-          Nothing   -> return ()
-          Just ipkg -> do
-            -- We register ourselves rather than via Setup.hs, because it's a bit
-            -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
-            -- target system during register, it must be able to make a reg file).
-            Cabal.registerPackage verbosity compiler progdb False
-                                  (pkgRegisterPackageDBStack pkg) ipkg
+        mipkg <- case configChanged of
+          Unchanged (mipkg, _) -> return mipkg
+          Changed   _ -> do
+            mipkg <- generateInstalledPackageInfo
+            case mipkg of
+              Nothing   -> return ()
+              Just ipkg ->
+                -- We register ourselves rather than via Setup.hs, because it's a bit
+                -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
+                -- target system during register, it must be able to make a reg file).
+                Cabal.registerPackage verbosity compiler progdb False
+                                      (pkgRegisterPackageDBStack pkg) ipkg
+            return mipkg
 
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
             
-            buildResult :: BuildResult
-            buildResult = BuildSuccess mipkg (BuildOk docsResult testsResult)
+            buildSuccess :: BuildSuccess
+            buildSuccess = BuildOk True docsResult testsResult
 
-        updateFileMonitor configFileMonitor srcdir
-                          []
-                          rpkg ()
+        whenChanged configChanged $
+          updateFileMonitor configFileMonitor srcdir
+                            []
+                            rpkg mipkg
 
         allSrcFiles <- getDirectoryContentsRecursive srcdir
 
         updateFileMonitor buildFileMonitor srcdir
                           (map MonitorFileHashed allSrcFiles)
-                          () buildResult
+                          () buildSuccess
 
-        return buildResult
+        return (BuildSuccess mipkg buildSuccess)
 
   where
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
+    configFileMonitor :: FileMonitorCacheFile
+                           (GenericReadyPackage ElaboratedConfiguredPackage
+                                                InstalledPackageInfo)
+                           (Maybe InstalledPackageInfo)
     configFileMonitor = FileMonitorCacheFile (distPackageCacheFile pkgid "config")
+
+    buildFileMonitor  :: FileMonitorCacheFile () BuildSuccess
     buildFileMonitor  = FileMonitorCacheFile (distPackageCacheFile pkgid "build")
+
+    whenChanged (Changed   _) action = action
+    whenChanged (Unchanged _) _      = return ()
 
     --FIXME: this is ridiculous, it's only needed for the setupWrapper, and
     -- it only needs a couple little bits from it

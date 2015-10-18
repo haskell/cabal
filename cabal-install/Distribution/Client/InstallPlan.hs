@@ -331,7 +331,7 @@ remove shouldRemove plan =
 --
 ready :: forall ipkg srcpkg iresult ifailure. PackageFixedDeps srcpkg
       => GenericInstallPlan ipkg srcpkg iresult ifailure
-      -> [GenericReadyPackage srcpkg ipkg]
+      -> [(GenericReadyPackage srcpkg ipkg, ComponentDeps [iresult])]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -340,31 +340,39 @@ ready plan = assert check readyPackages
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
-    readyPackages :: [GenericReadyPackage srcpkg ipkg]
+    readyPackages :: [(GenericReadyPackage srcpkg ipkg, ComponentDeps [iresult])]
     readyPackages =
-      [ ReadyPackage srcpkg deps
+      [ (ReadyPackage srcpkg ipkgDeps, iresultDeps)
       | srcpkg <- configuredPackages
         -- select only the package that have all of their deps installed:
-      , deps <- maybeToList (hasAllInstalledDeps srcpkg)
+      , (ipkgDeps, iresultDeps) <- maybeToList (hasAllInstalledDeps srcpkg)
       ]
 
-    hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
-    hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
+    hasAllInstalledDeps :: srcpkg
+                        -> Maybe ( ComponentDeps [ipkg]
+                                 , ComponentDeps [iresult] )
+    hasAllInstalledDeps pkg = do
+      combinedDeps <- T.mapM (mapM isInstalledDep) (depends pkg)
+      let ipkgDeps    :: ComponentDeps [ipkg]
+          iresultDeps :: ComponentDeps [iresult]
+          ipkgDeps    = fmap (            map fst) combinedDeps
+          iresultDeps = fmap (catMaybes . map snd) combinedDeps
+      return (ipkgDeps, iresultDeps)
 
-    isInstalledDep :: InstalledPackageId -> Maybe ipkg
+    isInstalledDep :: InstalledPackageId -> Maybe (ipkg, Maybe iresult)
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which
       -- case we might be dealing with an old pointer
       case PlanIndex.fakeLookupInstalledPackageId
            (planFakeMap plan) (planIndex plan) pkgid
       of
-        Just (PreExisting ipkg)            -> Just ipkg
-        Just (Configured  _)               -> Nothing
-        Just (Processing  _)               -> Nothing
-        Just (Installed   _ (Just ipkg) _) -> Just ipkg
-        Just (Installed   _ Nothing     _) -> internalError depOnNonLib
-        Just (Failed      _             _) -> internalError depOnFailed
-        Nothing                            -> internalError incomplete
+        Just (PreExisting ipkg)              -> Just (ipkg, Nothing)
+        Just (Configured  _)                 -> Nothing
+        Just (Processing  _)                 -> Nothing
+        Just (Installed   _ (Just ipkg) res) -> Just (ipkg, Just res)
+        Just (Installed   _ Nothing       _) -> internalError depOnNonLib
+        Just (Failed      _               _) -> internalError depOnFailed
+        Nothing                              -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
     depOnNonLib = "configured package depends on a non-library package"
