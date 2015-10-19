@@ -520,7 +520,7 @@ problems fakeMap indepGoals index =
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
      , Just pkg' <- map (PlanIndex.fakeLookupComponentId fakeMap index)
-                    (CD.nonSetupDeps (depends pkg))
+                    (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.

@@ -106,7 +106,7 @@ brokenPackages fakeMap index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing =
-          [ pkg' | pkg' <- CD.nonSetupDeps (depends pkg)
+          [ pkg' | pkg' <- CD.flatDeps (depends pkg)
                  , isNothing (fakeLookupComponentId fakeMap index pkg') ]
   , not (null missing) ]
 
@@ -232,7 +232,8 @@ dependencyCycles :: (PackageFixedDeps pkg, HasComponentId pkg)
 dependencyCycles fakeMap index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, installedComponentId pkg, CD.nonSetupDeps (fakeDepends fakeMap pkg))
+    adjacencyList = [ (pkg, installedComponentId pkg,
+                            CD.flatDeps (fakeDepends fakeMap pkg))
                     | pkg <- allPackages index ]
 
 
@@ -290,5 +291,5 @@ dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
     resolve   pid = Map.findWithDefault pid pid fakeMap
     edgesFrom pkg = ( ()
                     , resolve (installedComponentId pkg)
-                    , CD.nonSetupDeps (fakeDepends fakeMap pkg)
+                    , CD.flatDeps (fakeDepends fakeMap pkg)
                     )
