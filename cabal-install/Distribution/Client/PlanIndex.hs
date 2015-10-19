@@ -51,34 +51,29 @@ import Distribution.Package
 
 -- Note [FakeMap]
 -----------------
--- We'd like to use the PackageIndex defined in this module for
--- cabal-install's InstallPlan.  However, at the moment, this
--- data structure is indexed by ComponentId, which we don't
--- know until after we've compiled a package (whereas InstallPlan
--- needs to store not-compiled packages in the index.) Eventually,
--- an ComponentId will be calculatable prior to actually
--- building the package (making it something of a misnomer), but
--- at the moment, the "fake installed package ID map" is a workaround
--- to solve this problem while reusing PackageIndex.  The basic idea
--- is that, since we don't know what an ComponentId is
--- beforehand, we just fake up one based on the package ID (it only
--- needs to be unique for the particular install plan), and fill
--- it out with the actual generated ComponentId after the
--- package is successfully compiled.
+-- We'd like to use the PackageIndex defined in this module for cabal-install's
+-- InstallPlan.  However, at the moment, this data structure is indexed by
+-- ComponentId, which we don't know until after we've compiled a package
+-- (whereas InstallPlan needs to store not-compiled packages in the index.)
+-- Eventually, an ComponentId will be calculatable prior to actually building
+-- the package, but at the moment, the "fake installed package ID map" is a
+-- workaround to solve this problem while reusing PackageIndex.  The basic idea
+-- is that, since we don't know what an ComponentId is beforehand, we just fake
+-- up one based on the package ID (it only needs to be unique for the particular
+-- install plan), and fill it out with the actual generated ComponentId after
+-- the package is successfully compiled.
 --
--- However, there is a problem: in the index there may be
--- references using the old package ID, which are now dangling if
--- we update the ComponentId.  We could map over the entire
--- index to update these pointers as well (a costly operation), but
--- instead, we've chosen to parametrize a variety of important functions
--- by a FakeMap, which records what a fake installed package ID was
--- actually resolved to post-compilation.  If we do a lookup, we first
--- check and see if it's a fake ID in the FakeMap.
+-- However, there is a problem: in the index there may be references using the
+-- old package ID, which are now dangling if we update the ComponentId.  We
+-- could map over the entire index to update these pointers as well (a costly
+-- operation), but instead, we've chosen to parametrize a variety of important
+-- functions by a FakeMap, which records what a fake installed package ID was
+-- actually resolved to post-compilation.  If we do a lookup, we first check and
+-- see if it's a fake ID in the FakeMap.
 --
--- It's a bit grungy, but we expect this to only be temporary anyway.
--- (Another possible workaround would have been to *not* update
--- the installed package ID, but I decided this would be hard to
--- understand.)
+-- It's a bit grungy, but we expect this to only be temporary anyway.  (Another
+-- possible workaround would have been to *not* update the installed package ID,
+-- but I decided this would be hard to understand.)
 
 -- | Map from fake package keys to real ones.  See Note [FakeMap]
 type FakeMap = Map ComponentId ComponentId
