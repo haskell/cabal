@@ -52,7 +52,6 @@ import           Distribution.Package
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.PackageDescription (FlagAssignment)
-import qualified Distribution.PackageDescription.Configuration as Cabal
 import qualified Distribution.PackageDescription.Parse as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -65,6 +64,7 @@ import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault, HaddockFlags(..))
+import           Distribution.Simple.Command (CommandUI)
 import           Distribution.Utils.NubList (NubList, fromNubList)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.Register as Cabal
@@ -2397,7 +2397,6 @@ buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
                                isParallelBuild installLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
-                                 pkgConfigPlatform  = platform,
                                  pkgConfigCompiler  = compiler,
                                  pkgConfigProgramDb = progdb
                                }
@@ -2452,16 +2451,18 @@ buildAndInstallUnpackedPackage verbosity
 
       -- For libraries, grab the package configuration file
       -- and register it ourselves
-      mipkg <- generateInstalledPackageInfo
-      case mipkg of
-        Nothing   -> return ()
-        Just ipkg -> do
-          -- We register ourselves rather than via Setup.hs, because it's a bit
-          -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
-          -- target system during register, it must be able to make a reg file).
-         Cabal.registerPackage verbosity compiler progdb
-                               True -- request multi-instance, nix style
-                               (pkgRegisterPackageDBStack pkg) ipkg
+      mipkg <-
+        if pkgRequiresRegistration pkg
+          then do ipkg <- generateInstalledPackageInfo
+                  -- We register ourselves rather than via Setup.hs. We need to
+                  -- grab and modify the InstalledPackageInfo. We decide what
+                  -- the installed package id is, not the build system.
+                  let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
+                  Cabal.registerPackage verbosity compiler progdb
+                                        True -- multi-instance, nix style
+                                        (pkgRegisterPackageDBStack pkg) ipkg'
+                  return (Just ipkg')
+          else return Nothing
 
       let docsResult  = DocsNotTried
           testsResult = TestsNotTried
@@ -2471,69 +2472,35 @@ buildAndInstallUnpackedPackage verbosity
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
-    --FIXME: this is rediculous:
-    pkgdesc = case Cabal.finalizePackageDescription
-                     (pkgFlagAssignment pkg)
-                     (const True)
-                     platform (compilerInfo compiler) []
-                     (enableStanzas (pkgEnabledStanzas pkg)
-                                    (pkgDescription pkg))
-                of Left _ -> error "finalizePackageDescription ReadyPackage failed"
-                   Right (desc, _) -> desc
-
-
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
-    --TODO: proper set of config options, not just Setup.hs interface flags
     configureFlags _ = setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
-    generateInstalledPackageInfo :: IO (Maybe InstalledPackageInfo)
-    generateInstalledPackageInfo
-      | not shouldRegister = return Nothing
-      | otherwise = do
-      absTmpDir <- canonicalizePath distTempDirectory --since we change dir
-      withTempFile absTmpDir "package-registration-" $ \pkgConfFile hnd -> do
-        hClose hnd
-        let registerFlags _ = setupHsRegisterFlags pkg pkgshared
-                                                   verbosity builddir
-                                                   pkgConfFile
+    generateInstalledPackageInfo :: IO InstalledPackageInfo
+    generateInstalledPackageInfo =
+      withTempInstalledPackageInfoFile
+        verbosity distTempDirectory $ \pkgConfFile -> do
+        -- make absolute since setup changes dir
+        pkgConfFile' <- canonicalizePath pkgConfFile
+        let registerFlags _ = setupHsRegisterFlags
+                                pkg pkgshared
+                                verbosity builddir
+                                pkgConfFile'
         setup Cabal.registerCommand registerFlags
-
-        (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
-          case Installed.parseInstalledPackageInfo pkgConfStr of
-            Installed.ParseFailed perror -> pkgConfParseFailed perror
-            Installed.ParseOk warns ipkg -> return (warns, ipkg)
-
-        unless (null warns) $
-          warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
-
-        return $ Just ipkg {
-            -- Important: we decide what the installed package id is, not
-            -- the build system.
-            Installed.installedPackageId = ipkgid
-            --TODO: re-exported modules can also mention this ipkgid, and we'd need to update that too
-          }
-
-      where
-        shouldRegister = Cabal.hasLibs pkgdesc
-        pkgConfParseFailed :: Installed.PError -> IO a
-        pkgConfParseFailed perror =
-          die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-                ++ show perror
 
     copyFlags _ = setupHsCopyFlags pkg pkgshared verbosity builddir
 
     scriptOptions = setupHsScriptOptions rpkg pkgshared srcdir builddir
                                          isParallelBuild cacheLock
 
---    setup :: CommandUI flags -> (Version -> flags) -> IO ()
+    setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags =
       setupWrapper verbosity
                    scriptOptions
-                   (Just pkgdesc)
+                   (Just (Cabal.packageDescription (pkgDescription pkg)))
                    cmd flags []
 
 
@@ -2554,7 +2521,6 @@ buildInplaceUnpackedPackage verbosity
                             }
                             isParallelBuild cacheLock
                             pkgshared@ElaboratedSharedConfig {
-                              pkgConfigPlatform  = platform,
                               pkgConfigCompiler  = compiler,
                               pkgConfigProgramDb = progdb
                             }
@@ -2597,17 +2563,19 @@ buildInplaceUnpackedPackage verbosity
         -- Register locally
         mipkg <- case configChanged of
           Unchanged (mipkg, _) -> return mipkg
-          Changed   _ -> do
-            mipkg <- generateInstalledPackageInfo
-            case mipkg of
-              Nothing   -> return ()
-              Just ipkg ->
-                -- We register ourselves rather than via Setup.hs, because it's a bit
-                -- cleaner (Setup.hs isn't allowed to expect to be able to modify the
-                -- target system during register, it must be able to make a reg file).
+          Changed   _
+            | pkgRequiresRegistration pkg -> do
+                ipkg <- generateInstalledPackageInfo
+                -- We register ourselves rather than via Setup.hs. We need to
+                -- grab and modify the InstalledPackageInfo. We decide what
+                -- the installed package id is, not the build system.
+                let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
                 Cabal.registerPackage verbosity compiler progdb False
-                                      (pkgRegisterPackageDBStack pkg) ipkg
-            return mipkg
+                                      (pkgRegisterPackageDBStack pkg)
+                                      ipkg'
+                return (Just ipkg')
+
+           | otherwise -> return Nothing
 
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
@@ -2644,22 +2612,7 @@ buildInplaceUnpackedPackage verbosity
     whenChanged (Changed   _) action = action
     whenChanged (Unchanged _) _      = return ()
 
-    --FIXME: this is ridiculous, it's only needed for the setupWrapper, and
-    -- it only needs a couple little bits from it
-    pkgdesc = case Cabal.finalizePackageDescription
-                     (pkgFlagAssignment pkg)
-                     (const True)
-                     platform (compilerInfo compiler) []
-                     (enableStanzas (pkgEnabledStanzas pkg)
-                                    (pkgDescription pkg))
-                of Left _ -> error "finalizePackageDescription ReadyPackage failed"
-                   Right (desc, _) -> desc
-
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
-    --TODO: proper set of config options, not just Setup.hs interface flags
-    --      or, get passed proper package config and translate into Setup.hs
-    --      interface flags (or intermediate, and only translate if we go via
-    --      the CLI)
     configureFlags   = setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
@@ -2671,43 +2624,48 @@ buildInplaceUnpackedPackage verbosity
                                             srcdir builddir
                                             isParallelBuild cacheLock
 
+    setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags =
       setupWrapper verbosity
                    scriptOptions
-                   (Just pkgdesc)
+                   (Just (Cabal.packageDescription (pkgDescription pkg)))
                    cmd flags []
 
-    generateInstalledPackageInfo :: IO (Maybe InstalledPackageInfo)
-    generateInstalledPackageInfo
-      | not shouldRegister = return Nothing
-      | otherwise = do
-      withTempFile distTempDirectory "package-registration-" $ \pkgConfFile hnd -> do
-        hClose hnd
-        let registerFlags _ = setupHsRegisterFlags pkg pkgshared
-                                                   verbosity builddir
-                                                   pkgConfFile
+    generateInstalledPackageInfo :: IO InstalledPackageInfo
+    generateInstalledPackageInfo =
+      withTempInstalledPackageInfoFile
+        verbosity distTempDirectory $ \pkgConfFile -> do
+        -- make absolute since setup changes dir
+        pkgConfFile' <- canonicalizePath pkgConfFile
+        let registerFlags _ = setupHsRegisterFlags
+                                pkg pkgshared
+                                verbosity builddir
+                                pkgConfFile'
         setup Cabal.registerCommand registerFlags
 
-        (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
-          case Installed.parseInstalledPackageInfo pkgConfStr of
-            Installed.ParseFailed perror -> pkgConfParseFailed perror
-            Installed.ParseOk warns ipkg -> return (warns, ipkg)
 
-        unless (null warns) $
-          warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+withTempInstalledPackageInfoFile :: Verbosity -> FilePath
+                                 -> (FilePath -> IO ())
+                                 -> IO InstalledPackageInfo
+withTempInstalledPackageInfoFile verbosity tempdir action =
+    withTempFile tempdir "package-registration-" $ \pkgConfFile hnd -> do
+      hClose hnd
+      action pkgConfFile
 
-        return $ Just ipkg {
-            -- Important: we decide what the installed package id is, not
-            -- the build system.
-            Installed.installedPackageId = ipkgid
-          }
+      (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
+        case Installed.parseInstalledPackageInfo pkgConfStr of
+          Installed.ParseFailed perror -> pkgConfParseFailed perror
+          Installed.ParseOk warns ipkg -> return (warns, ipkg)
 
-      where
-        shouldRegister = Cabal.hasLibs pkgdesc
-        pkgConfParseFailed :: Installed.PError -> IO a
-        pkgConfParseFailed perror =
-          die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-                ++ show perror
+      unless (null warns) $
+        warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+
+      return ipkg
+  where
+    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed perror =
+      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+            ++ show perror
 
 {-
 printPlan :: Verbosity -> [ReadyPackage] -> IO ()
