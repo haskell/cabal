@@ -42,6 +42,9 @@ module Distribution.Client.InstallPlan (
 
   -- ** Querying the install plan
   dependencyClosure,
+  reverseDependencyClosure,
+  topologicalOrder,
+  reverseTopologicalOrder,
   ) where
 
 import Distribution.InstalledPackageInfo
@@ -606,3 +609,28 @@ dependencyClosure plan =
   . Graph.dfs (planGraph plan)
   . map (planVertexOf plan)
 
+
+reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                         -> [ComponentId]
+                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+reverseDependencyClosure plan =
+    map (planPkgOf plan)
+  . concatMap Tree.flatten
+  . Graph.dfs (planGraphRev plan)
+  . map (planVertexOf plan)
+
+
+topologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                 -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+topologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraph plan
+
+
+reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                        -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+reverseTopologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraphRev plan
