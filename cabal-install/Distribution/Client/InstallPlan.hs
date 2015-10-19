@@ -50,9 +50,6 @@ module Distribution.Client.InstallPlan (
   reverseDependencyClosure,
   topologicalOrder,
   reverseTopologicalOrder,
-
-  -- Hacking
---  setPackagesBuildInplaceOnly
   ) where
 
 import Distribution.InstalledPackageInfo
@@ -652,7 +649,7 @@ problems fakeMap indepGoals index =
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
      , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index)
-                    (CD.nonSetupDeps (depends pkg))
+                    (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -730,39 +727,39 @@ stateDependencyRelation (Failed    _ _) (Failed    _   _) = True
 stateDependencyRelation _               _                 = False
 
 
--- | Compute the dependency closure of a _source_ package in a install plan
+-- | Compute the dependency closure of a package in a install plan
 --
 dependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
                   -> [InstalledPackageId]
                   -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-dependencyClosure GenericInstallPlan { planGraph
-                                     , planPkgOf, planVertexOf } =
-    map planPkgOf
+dependencyClosure plan =
+    map (planPkgOf plan)
   . concatMap Tree.flatten
-  . Graph.dfs planGraph
-  . map planVertexOf
+  . Graph.dfs (planGraph plan)
+  . map (planVertexOf plan)
 
 
 reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
                          -> [InstalledPackageId]
                          -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-reverseDependencyClosure GenericInstallPlan { planGraphRev
-                                            , planPkgOf, planVertexOf } =
-    map planPkgOf
+reverseDependencyClosure plan =
+    map (planPkgOf plan)
   . concatMap Tree.flatten
-  . Graph.dfs planGraphRev
-  . map planVertexOf
+  . Graph.dfs (planGraphRev plan)
+  . map (planVertexOf plan)
 
 
 topologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
                  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-topologicalOrder installPlan = map (planPkgOf installPlan)
-                             . Graph.topSort
-                             $ planGraph installPlan
+topologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraph plan
 
 
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-reverseTopologicalOrder installPlan = map (planPkgOf installPlan)
-                                    . Graph.topSort
-                                    $ planGraphRev installPlan
+reverseTopologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraphRev plan
