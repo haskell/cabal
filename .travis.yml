@@ -9,6 +9,7 @@ env:
  - GHCVER=7.8.4
  - GHCVER=7.10.1
  - GHCVER=7.10.2
+ # TODO add PARSEC_BUNDLED=YES when it's so
  - GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
@@ -29,7 +30,7 @@ install:
 # build config format changed.
 script:
  # We depend on parsec nowadays, which isn't distributed with GHC <8.0
- - cabal install parsec
+ - if [ "$PARSEC_BUNDLED" != "YES" ]; then cabal install parsec; fi
 
 # Cabal
  - cd Cabal
