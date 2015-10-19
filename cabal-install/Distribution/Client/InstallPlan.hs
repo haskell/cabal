@@ -72,6 +72,7 @@ import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
+import qualified Data.Tree as Tree
 import Control.Exception
          ( assert )
 import Data.Maybe (catMaybes)
@@ -594,22 +595,14 @@ stateDependencyRelation (Failed    _ _) (Failed    _   _) = True
 stateDependencyRelation _               _                 = False
 
 
--- | Compute the dependency closure of a _source_ package in a install plan
+-- | Compute the dependency closure of a package in a install plan
 --
--- See `Distribution.Client.PlanIndex.dependencyClosure`
-dependencyClosure :: (HasComponentId ipkg,   PackageFixedDeps ipkg,
-                      HasComponentId srcpkg, PackageFixedDeps srcpkg)
-                  => GenericInstallPlan ipkg srcpkg iresult ifailure
-                  -> [PackageIdentifier]
-                  -> Either [(GenericPlanPackage ipkg srcpkg iresult ifailure,
-                              [ComponentId])]
-                            (PackageIndex
-                             (GenericPlanPackage ipkg srcpkg iresult ifailure))
-dependencyClosure installPlan pids =
-    PlanIndex.dependencyClosure
-      (planFakeMap installPlan)
-      (planIndex installPlan)
-      (map (resolveFakeId . fakeComponentId) pids)
-  where
-    resolveFakeId :: ComponentId -> ComponentId
-    resolveFakeId ipid = Map.findWithDefault ipid ipid (planFakeMap installPlan)
+dependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                  -> [ComponentId]
+                  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+dependencyClosure plan =
+    map (planPkgOf plan)
+  . concatMap Tree.flatten
+  . Graph.dfs (planGraph plan)
+  . map (planVertexOf plan)
+
