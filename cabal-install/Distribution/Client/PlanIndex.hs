@@ -11,22 +11,17 @@ module Distribution.Client.PlanIndex (
   , fakeLookupComponentId
     -- * Graph traversal functions
   , brokenPackages
-  , dependencyClosure
   , dependencyCycles
   , dependencyGraph
   , dependencyInconsistencies
-  , reverseDependencyClosure
-  , reverseTopologicalOrder
-  , topologicalOrder
   ) where
 
 import Prelude hiding (lookup)
 import qualified Data.Map as Map
-import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
-import Data.Maybe (isNothing, fromMaybe, fromJust)
+import Data.Maybe (isNothing, fromJust)
 import Data.Either (rights)
 
 #if !MIN_VERSION_base(4,8,0)
@@ -106,7 +101,7 @@ brokenPackages fakeMap index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing =
-          [ pkg' | pkg' <- CD.nonSetupDeps (depends pkg)
+          [ pkg' | pkg' <- CD.flatDeps (depends pkg)
                  , isNothing (fakeLookupComponentId fakeMap index pkg') ]
   , not (null missing) ]
 
@@ -218,7 +213,6 @@ dependencyInconsistencies' fakeMap index =
 
 
 
-
 -- | Find if there are any cycles in the dependency graph. If there are no
 -- cycles the result is @[]@.
 --
@@ -233,7 +227,8 @@ dependencyCycles :: (PackageFixedDeps pkg, HasComponentId pkg)
 dependencyCycles fakeMap index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, installedComponentId pkg, CD.nonSetupDeps (fakeDepends fakeMap pkg))
+    adjacencyList = [ (pkg, installedComponentId pkg,
+                            CD.flatDeps (fakeDepends fakeMap pkg))
                     | pkg <- allPackages index ]
 
 
@@ -267,45 +262,6 @@ dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
                     pkgids'    = CD.nonSetupDeps (depends pkg) ++ pkgids
 
 
-topologicalOrder :: (PackageFixedDeps pkg, HasComponentId pkg)
-                 => FakeMap -> PackageIndex pkg -> [pkg]
-topologicalOrder fakeMap index = map toPkgId
-                               . Graph.topSort
-                               $ graph
-  where (graph, toPkgId, _) = dependencyGraph fakeMap index
-
-
-reverseTopologicalOrder :: (PackageFixedDeps pkg, HasComponentId pkg)
-                        => FakeMap -> PackageIndex pkg -> [pkg]
-reverseTopologicalOrder fakeMap index = map toPkgId
-                                      . Graph.topSort
-                                      . Graph.transposeG
-                                      $ graph
-  where (graph, toPkgId, _) = dependencyGraph fakeMap index
-
-
--- | Takes the transitive closure of the packages reverse dependencies.
---
--- * The given 'PackageIdentifier's must be in the index.
---
-reverseDependencyClosure :: (PackageFixedDeps pkg, HasComponentId pkg)
-                         => FakeMap
-                         -> PackageIndex pkg
-                         -> [ComponentId]
-                         -> [pkg]
-reverseDependencyClosure fakeMap index =
-    map vertexToPkg
-  . concatMap Tree.flatten
-  . Graph.dfs reverseDepGraph
-  . map (fromMaybe noSuchPkgId . pkgIdToVertex)
-
-  where
-    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph fakeMap index
-    reverseDepGraph = Graph.transposeG depGraph
-    noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
-
-
-
 -- | Builds a graph of the package dependencies.
 --
 -- Dependencies on other packages that are not in the index are discarded.
@@ -330,5 +286,5 @@ dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
     resolve   pid = Map.findWithDefault pid pid fakeMap
     edgesFrom pkg = ( ()
                     , resolve (installedComponentId pkg)
-                    , CD.nonSetupDeps (fakeDepends fakeMap pkg)
+                    , CD.flatDeps (fakeDepends fakeMap pkg)
                     )
