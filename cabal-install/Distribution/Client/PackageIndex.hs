@@ -80,6 +80,7 @@ newtype PackageIndex pkg = PackageIndex
   (Map PackageName [pkg])
 
   deriving (Eq, Show, Read, Functor, Generic)
+--FIXME: the Functor instance here relies on no package id changes
 
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex Map.empty
