@@ -190,13 +190,24 @@ instance (HasInstalledPackageId ipkg, HasInstalledPackageId srcpkg) =>
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
     planFakeMap    :: !FakeMap,
+    planIndepGoals :: !Bool,
+
+    -- cached (lazily) graph
     planGraph      :: Graph,
     planGraphRev   :: Graph,
-    planPkgOf      :: Graph.Vertex
-                      -> GenericPlanPackage ipkg srcpkg iresult ifailure,
-    planVertexOf   :: InstalledPackageId -> Graph.Vertex,
-    planIndepGoals :: !Bool
+    planPkgIdOf    :: Graph.Vertex -> InstalledPackageId,
+    planVertexOf   :: InstalledPackageId -> Graph.Vertex
   }
+
+planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
+          -> Graph.Vertex
+          -> GenericPlanPackage ipkg srcpkg iresult ifailure
+planPkgOf plan v =
+    case PackageIndex.lookupInstalledPackageId (planIndex plan)
+                                               (planPkgIdOf plan v) of
+      Just pkg -> pkg
+      Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
+
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
@@ -228,7 +239,7 @@ mkInstallPlan index fakeMap indepGoals =
 
       planGraph      = graph,
       planGraphRev   = Graph.transposeG graph,
-      planPkgOf      = vertexToPkgId,
+      planPkgIdOf    = vertexToPkgId,
       planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex
     }
   where
