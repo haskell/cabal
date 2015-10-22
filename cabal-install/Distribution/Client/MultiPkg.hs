@@ -31,7 +31,7 @@ import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.ComponentDeps as ComponentDeps
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import           Distribution.Client.Targets (UserConstraint, pkgSpecifierTarget, userToPackageConstraint)
+import           Distribution.Client.Targets
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileStatusCache
 import           Distribution.Client.Glob
@@ -51,13 +51,14 @@ import           Distribution.Client.BuildReports.Types (ReportLevel(..))
 import           Distribution.Package
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
+import qualified Distribution.PackageDescription as PackageDescription
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.PackageDescription.Parse as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
---import qualified Distribution.Client.PackageIndex as Client.PackageIndex
+import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
 import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
@@ -167,7 +168,7 @@ build verbosity
       globalFlags
       configFlags configExFlags
       installFlags haddockFlags
-      userTargets = do
+      targetStrings = do
 
     cabalDir <- defaultCabalDir
     let cabalDirLayout = defaultCabalDirLayout cabalDir
@@ -181,11 +182,17 @@ build verbosity
                                configFlags configExFlags
                                installFlags haddockFlags
 
+    userTargets <- readUserTargets verbosity targetStrings
+
     -- The (re)build is split into two major parts:
+    --  * decide what to do
+    --  * do it
 
     -- Phase 1: decide what to do.
     --
-    -- Take all input configuration and make a description of what to do.
+    -- 1.a) Take the project configuration and make a plan for how to build
+    -- everything in the project. This is independent of any specific targets
+    -- the user has asked for.
     --
     (elaboratedInstallPlan, sharedPackageConfig, projectConfig) <-
       rebuildInstallPlan verbosity
@@ -196,10 +203,17 @@ build verbosity
                           (projectConfigBuildOnly projectConfig)
                           cliBuildSettings
 
-    -- The description of what to do is represented by an
-    -- 'ElaboratedInstallPlan' (plus an 'ElaboratedSharedConfig' for those
-    -- bits that are common between all packages.
+    -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
+
+    -- 1.b) Now given the specific targets the user has asked for, decide
+    -- which bits of the plan we will want to execute.
     --
+    elaboratedInstallPlan' <-
+      selectTargets verbosity
+                    cabalDirLayout
+                    elaboratedInstallPlan
+                    buildSettings
+                    userTargets
 
     -- Phase 2: now do it.
     --
@@ -209,10 +223,9 @@ build verbosity
     unless (buildSettingDryRun buildSettings) $
       rebuildTargets verbosity
                      distDirLayout
-                     elaboratedInstallPlan
+                     elaboratedInstallPlan'
                      sharedPackageConfig
                      buildSettings
-                     userTargets
 
     --TODO: may want to do some earlier parsing/validation of the userTargets
     -- though fully resolving what they refer to requires info from the env
@@ -2148,6 +2161,217 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex =
              plan0
              canBeImproved
 
+------------------------------------------------------------------------------
+-- * Taking user targets into account, selecting what to build
+------------------------------------------------------------------------------
+
+
+selectTargets :: Verbosity
+              -> CabalDirLayout
+              -> ElaboratedInstallPlan
+              -> BuildTimeSettings
+              -> [UserTarget]
+              -> IO ElaboratedInstallPlan
+selectTargets verbosity
+              CabalDirLayout{cabalWorldFile}
+              installPlan
+              buildSettings
+              userTargets = do
+
+    -- First do some defaulting, if no targets are given, use the package
+    -- in the current directory if any.
+    --
+    userTargets' <- case userTargets of
+      [] -> do res <- matchFileGlob "." (GlobFile (Glob [WildCard, Literal ".cabal"]))
+               case res of
+                 [local] -> return [UserTargetLocalCabalFile local]
+                 []      -> die $ "TODO: decide what to do when no targets are specified and there's no local package, suggest 'all' target?"
+                 files   -> die $ "Multiple cabal files found.\n"
+                               ++ "Please use only one of: "
+                               ++ intercalate ", " files
+      _  -> return userTargets
+
+    -- Expand the world target (not really necessary) and disambiguate case
+    -- insensitive package names to actual package names.
+    --
+    packageTargets <- concat <$> mapM (expandUserTarget cabalWorldFile) userTargets'
+    let packageSpecifiers :: [PackageSpecifier (PackageLocation ())]
+        (problems, packageSpecifiers) =
+           disambiguatePackageTargets available availableExtra packageTargets
+
+        --TODO: we're using an empty set of known package names here, which
+        -- means we cannot resolve names of packages other than those that are
+        -- directly in the current plan. We ought to keep a set of the known
+        -- hackage packages so we can resolve names to those. Though we don't
+        -- really need that until we can do something sensible with packages
+        -- outside of the project.
+        available :: SourcePackageIndex.PackageIndex PackageId
+        available      = mempty
+        availableExtra = map packageName (InstallPlan.toList installPlan)
+    reportPackageTargetProblems verbosity problems
+
+    -- Now check if those targets belong to the current project or not.
+    -- Ultimately we want to do something sensible for targets not in this
+    -- project, but for now we just bail. This gives us back the ipkgid from
+    -- the plan.
+    --
+    targetPkgids <- checkTargets installPlan packageSpecifiers
+
+    -- Finally, prune the install plan to cover just those target packages
+    -- and their deps.
+    --
+    let installPlan' :: ElaboratedInstallPlan
+        Right installPlan' =
+          InstallPlan.new False $
+            PackageIndex.fromList $
+              InstallPlan.dependencyClosure installPlan targetPkgids
+
+    -- Tell the user what we're going to do
+    checkPrintPlan verbosity
+                   installPlan'
+                   buildSettings
+
+    return installPlan'
+
+
+checkTargets :: ElaboratedInstallPlan
+             -> [PackageSpecifier (PackageLocation ())]
+             -> IO [InstalledPackageId]
+checkTargets installPlan targets = do
+
+    -- Our first task is to work out if a target refers to something inside
+    -- the project or outside, since we will behave differently in these cases.
+    --
+    -- It's not quite as simple as checking if the target refers to a package
+    -- name that is inside the project because one might refer to a local
+    -- package dir that is not in the project but that has the same name (e.g.
+    -- a different local fork of a package). So the logic looks like this:
+    -- * for targets with a package location, check it is in the set of
+    --   locations of packages within the project
+    -- * for targets with just a name, just check it is in the set of names of
+    --   packages in the project.
+
+    let projLocalPkgLocs =
+          Map.fromList
+            [ (fmap (const ()) (pkgSourceLocation pkg), installedPackageId pkg)
+            | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+
+        projAllPkgs =
+          Map.fromList
+            [ (packageName pkg, installedPackageId pkg)
+            | pkg <- InstallPlan.toList installPlan ]
+        --TODO: what if the solution has multiple versions of this package?
+        --      e.g. due to setup deps or due to multiple independent sets of
+        --      packages being built (e.g. ghc + ghcjs in a project)
+
+    mapM (checkTarget projLocalPkgLocs projAllPkgs) targets
+
+  where
+    checkTarget projLocalPkgLocs _projAllPkgs (SpecificSourcePackage loc) = do
+      absloc <- canonicalizePackageLocation loc
+      case Map.lookup absloc projLocalPkgLocs of
+        Nothing    -> die $ show loc ++ " is not in the project"
+        Just pkgid -> return pkgid
+
+    checkTarget _projLocalPkgLocs projAllPkgs (NamedPackage pkgname _constraints) = do
+      case Map.lookup pkgname projAllPkgs of
+        Nothing     -> die $ display pkgname ++ " is not in the project"
+        Just ipkgid -> return ipkgid
+
+canonicalizePackageLocation :: PackageLocation a -> IO (PackageLocation a)
+canonicalizePackageLocation loc =
+  case loc of
+    LocalUnpackedPackage path -> LocalUnpackedPackage <$> canonicalizePath path
+    LocalTarballPackage  path -> LocalTarballPackage  <$> canonicalizePath path
+    _                         -> return loc
+
+
+-------------------------------
+-- Displaying plan info
+--
+
+checkPrintPlan :: Verbosity
+               -> ElaboratedInstallPlan
+               -> BuildTimeSettings
+               -> IO ()
+checkPrintPlan verbosity installPlan buildSettings =
+    printPlan verbosity dryRun (linearizeInstallPlan installPlan)
+    --TODO: see Install.hs for other things checkPrintPlan ought to do too
+  where
+    dryRun = buildSettingDryRun buildSettings
+
+
+linearizeInstallPlan :: ElaboratedInstallPlan -> [ElaboratedReadyPackage]
+linearizeInstallPlan =
+    unfoldr next
+  where
+    next plan = case InstallPlan.ready plan of
+      []          -> Nothing
+      ((pkg,_):_) -> Just (pkg, plan')
+        where
+          pkgid  = installedPackageId pkg
+          ipkg   = Installed.emptyInstalledPackageInfo {
+                     Installed.sourcePackageId    = packageId pkg,
+                     Installed.installedPackageId = pkgid
+                   }
+          plan'  = InstallPlan.completed pkgid (Just ipkg)
+                     (BuildOk True DocsNotTried TestsNotTried)
+                     (InstallPlan.processing [pkg] plan)
+    --FIXME: This is a bit of a hack, pretending that each package is installed
+    -- could we use InstallPlan.topologicalOrder?
+
+printPlan :: Verbosity
+          -> Bool -- is dry run
+          -> [ElaboratedReadyPackage]
+          -> IO ()
+printPlan _         _      []   = return ()
+printPlan verbosity dryRun pkgs
+  | verbosity >= verbose
+  = notice verbosity $ unlines $
+      ("In order, the following " ++ wouldWill ++ " be built:")
+    : map showPkgAndReason pkgs
+
+  | otherwise
+  = notice verbosity $ unlines $
+      ("In order, the following " ++ wouldWill
+       ++ " be built (use -v for more details):")
+    : map showPkg pkgs
+  where
+    wouldWill | dryRun    = "would"
+              | otherwise = "will"
+
+    showPkg pkg = display (packageId pkg)
+
+    showPkgAndReason :: ElaboratedReadyPackage -> String
+    showPkgAndReason (ReadyPackage pkg' _) =
+      display (packageId pkg') ++
+      showFlagAssignment (nonDefaultFlags pkg') ++
+      showStanzas (pkgEnabledStanzas pkg')
+
+    toFlagAssignment :: [PackageDescription.Flag] -> FlagAssignment
+    toFlagAssignment = map (\ f -> (Cabal.flagName f, Cabal.flagDefault f))
+
+    nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
+    nonDefaultFlags ElaboratedConfiguredPackage {
+                      pkgFlagAssignment, pkgDescription
+                    } =
+      let defaultAssignment =
+            toFlagAssignment
+             (Cabal.genPackageFlags pkgDescription)
+      in  pkgFlagAssignment \\ defaultAssignment
+
+    showStanzas :: [OptionalStanza] -> String
+    showStanzas = concatMap ((' ' :) . showStanza)
+    showStanza TestStanzas  = "*test"
+    showStanza BenchStanzas = "*bench"
+
+    -- FIXME: this should be a proper function in a proper place
+    showFlagAssignment :: FlagAssignment -> String
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagValue (f, True)   = '+' : showFlagName f
+    showFlagValue (f, False)  = '-' : showFlagName f
+    showFlagName (Cabal.FlagName f) = f
+
 
 ------------------------------------------------------------------------------
 -- * Doing it: executing an 'ElaboratedInstallPlan'
@@ -2159,8 +2383,6 @@ rebuildTargets :: Verbosity
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
                -> BuildTimeSettings
-               -> [String] --TODO: only build the ones we ask for out of the persistent plan
-                           --TODO: probably want to parse these earlier
                -> IO ()
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
@@ -2169,8 +2391,7 @@ rebuildTargets verbosity
                BuildTimeSettings{
                  buildSettingNumJobs,
                  buildSettingHttpTransport
-               }
-               _userTargets = do
+               } = do
 
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
@@ -2753,61 +2974,6 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
       die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror
 
-{-
-printPlan :: Verbosity -> [ReadyPackage] -> IO ()
-printPlan verbosity pkgs = do
-    notice verbosity $ unlines $
-        ("In order, the following would be installed:")
-      : map showPkgAndReason pkgs
-  where
-
-    showPkgAndReason pkg = display (packageId pkg)
-                        ++ showStanzas (stanzas pkg)
-                        ++ " " ++ showBuildStyle pkg
-
-
-    stanzas :: ReadyPackage -> [OptionalStanza]
-    stanzas (ReadyPackage _ _ sts _ _) = sts
-
-    showStanzas :: [OptionalStanza] -> String
-    showStanzas = concatMap ((' ' :) . showStanza)
-    showStanza TestStanzas  = "*test"
-    showStanza BenchStanzas = "*bench"
-
-    showBuildStyle (ReadyPackage _ _ _ _ buildstyle) = show buildstyle
-
-
-linearizeInstallPlan :: InstallPlan -> [ReadyPackage]
-linearizeInstallPlan plan =
-    unfoldr next plan
-  where
-    next plan' = case InstallPlan.ready plan' of
-      []      -> Nothing
-      (pkg:_) -> Just (pkg, plan'')
-        where
-          pkgid  = installedPackageId pkg
-          plan'' = InstallPlan.completed pkgid
-                     (BuildOk DocsNotTried TestsNotTried
-                              (Just $ Installed.emptyInstalledPackageInfo
-                              { Installed.sourcePackageId = packageId pkg
-                              , Installed.installedPackageId = pkgid }))
-                     (InstallPlan.processing [pkg] plan')
-          --FIXME: This is a bit of a hack,
-          -- pretending that each package is installed
-          -- It's doubly a hack because the installed package ID
-          -- didn't get updated...
-
-printPlan :: GenericInstallPlan ipkg ElaboratedConfiguredPackage iresult ifailure -> String
-printPlan installPlan =
-      "These packages are using local inplace builds: " ++
-      intercalate ", "
-        [ display (packageId pkg)
-        | InstallPlan.Configured pkg@ElaboratedConfiguredPackage { pkgBuildStyle = BuildInplaceOnly }
-            <- InstallPlan.toList installPlan
-        ]
--}
-
-       
 
 -------------------------------
 -- Calculating package hashes
