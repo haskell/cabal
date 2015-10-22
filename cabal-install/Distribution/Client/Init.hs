@@ -359,7 +359,7 @@ getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
   srcDirs <- return (sourceDirs flags)
              ?>> fmap (:[]) `fmap` guessSourceDir flags
-             ?>> fmap (fmap ((:[]) . either id id) . join) (maybePrompt
+             ?>> fmap (>>= fmap ((:[]) . either id id)) (maybePrompt
                       flags
                       (promptListOptional' "Source directory" ["src"] id))
 

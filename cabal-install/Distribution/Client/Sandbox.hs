@@ -700,8 +700,8 @@ withSandboxPackageInfo verbosity configFlags globalFlags
     toSourcePackage (path, pkgDesc) = SourcePackage
       (packageId pkgDesc) pkgDesc (LocalUnpackedPackage path) Nothing
 
--- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and a no-op
--- otherwise.
+-- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and the
+-- identity otherwise.
 maybeWithSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
                                -> Compiler -> Platform -> ProgramConfiguration
                                -> UseSandbox

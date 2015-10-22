@@ -137,7 +137,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( join, when, unless, filterM )
+    ( when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
@@ -1209,7 +1209,7 @@ findPackageDesc dir
 
 -- |Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: FilePath -> IO FilePath
-tryFindPackageDesc dir = join . fmap (either die return) $ findPackageDesc dir
+tryFindPackageDesc dir = either die return =<< findPackageDesc dir
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
