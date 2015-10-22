@@ -225,7 +225,7 @@ mainWorker args = topHandler $
     printNumericVersion = putStrLn $ display Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
                                   ++ display Paths_cabal_install.version
-                                  ++ "\nusing version "
+                                  ++ "\ncompiled using version "
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
 
