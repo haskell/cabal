@@ -671,11 +671,11 @@ rebuildInstallPlan verbosity
                    -> (Compiler, Platform, ProgramDb)
                    -> [PackageSpecifier SourcePackage]
                    -> Rebuild SolverInstallPlan
-    phaseRunSolver ProjectConfig{projectConfigSolver, projectConfigBuildOnly}
+    phaseRunSolver ProjectConfig{projectConfigSolver}
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
-                       (projectConfigSolver, projectConfigCacheDir,
+                       (projectConfigSolver, cabalPackageCacheDirectory,
                         localPackages,
                         compiler, platform, programsDbSignature progdb) $ do
           
@@ -694,12 +694,11 @@ rebuildInstallPlan verbosity
                            localPackages
       where
         corePackageDbs = [GlobalPackageDB]
-        repos          = projectConfigRepos (fromFlag projectConfigCacheDir)
+        repos          = projectConfigRepos cabalPackageCacheDirectory
                                             projectConfigSolver
-        solverpref     = fromFlag projectConfigSolverSolver 
+        solverpref     = fromFlag projectConfigSolverSolver
         logMsg message rest = debugNoWrap verbosity message >> rest
 
-        ProjectConfigBuildOnly {projectConfigCacheDir} = projectConfigBuildOnly
         ProjectConfigSolver {projectConfigSolverSolver} = projectConfigSolver
 
 
