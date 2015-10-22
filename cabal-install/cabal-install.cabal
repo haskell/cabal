@@ -111,6 +111,7 @@ executable cabal
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
         Distribution.Client.Freeze
+        Distribution.Client.GenBounds
         Distribution.Client.Get
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock

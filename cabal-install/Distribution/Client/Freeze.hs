@@ -13,7 +13,7 @@
 -- The cabal freeze command
 -----------------------------------------------------------------------------
 module Distribution.Client.Freeze (
-    freeze,
+    freeze, getFreezePkgs
   ) where
 
 import Distribution.Client.Config ( SavedConfig(..) )
@@ -87,21 +87,9 @@ freeze :: Verbosity
 freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
       globalFlags freezeFlags = do
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repos
-
-    transport <- configureTransport verbosity
-                 (flagToMaybe (globalHttpTransport globalFlags))
-
-    pkgSpecifiers <- resolveUserTargets verbosity transport
-                       (fromFlag $ globalWorldFile globalFlags)
-                       (packageIndex sourcePkgDb)
-                       [UserTargetLocalDir "."]
-
-    sanityCheck pkgSpecifiers
-    pkgs  <- planPackages
-               verbosity comp platform mSandboxPkgInfo freezeFlags
-               installedPkgIndex sourcePkgDb pkgSpecifiers
+    pkgs  <- getFreezePkgs
+               verbosity packageDBs repos comp platform conf mSandboxPkgInfo
+               globalFlags freezeFlags
 
     if null pkgs
       then notice verbosity $ "No packages to be frozen. "
@@ -116,6 +104,35 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
 
+getFreezePkgs :: Verbosity
+              -> PackageDBStack
+              -> [Repo]
+              -> Compiler
+              -> Platform
+              -> ProgramConfiguration
+              -> Maybe SandboxPackageInfo
+              -> GlobalFlags
+              -> FreezeFlags
+              -> IO [PlanPackage]
+getFreezePkgs verbosity packageDBs repos comp platform conf mSandboxPkgInfo
+      globalFlags freezeFlags = do
+
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    sourcePkgDb       <- getSourcePackages    verbosity repos
+
+    transport <- configureTransport verbosity
+                 (flagToMaybe (globalHttpTransport globalFlags))
+
+    pkgSpecifiers <- resolveUserTargets verbosity transport
+                       (fromFlag $ globalWorldFile globalFlags)
+                       (packageIndex sourcePkgDb)
+                       [UserTargetLocalDir "."]
+
+    sanityCheck pkgSpecifiers
+    planPackages
+               verbosity comp platform mSandboxPkgInfo freezeFlags
+               installedPkgIndex sourcePkgDb pkgSpecifiers
+  where
     sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
         die $ "internal error: 'resolveUserTargets' returned "
