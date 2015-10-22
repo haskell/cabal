@@ -39,6 +39,7 @@ module Distribution.Client.Setup
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..)
     , userConfigCommand, UserConfigFlags(..)
+    , manpageCommand
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -876,6 +877,18 @@ uninstallCommand = CommandUI {
     commandUsage        = usageAlternatives "uninstall" ["PACKAGES"],
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
+  }
+
+manpageCommand :: CommandUI (Flag Verbosity)
+manpageCommand = CommandUI {
+    commandName         = "manpage",
+    commandSynopsis     = "Outputs manpage source.",
+    commandDescription  = Just $ \_ ->
+      "Output manpage source to STDOUT.\n",
+    commandNotes        = Nothing,
+    commandUsage        = usageFlags "manpage",
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 runCommand :: CommandUI (BuildFlags, BuildExFlags)
@@ -2302,6 +2315,7 @@ paragraph = (++"\n")
 
 indentParagraph :: String -> String
 indentParagraph = unlines
+                . (flip (++)) [""]
                 . map (("  "++).unwords)
                 . wrapLine 77
                 . words

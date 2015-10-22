@@ -42,6 +42,7 @@ import Distribution.Client.Setup
          , ExecFlags(..), execCommand
          , UserConfigFlags(..), userConfigCommand
          , reportCommand
+         , manpageCommand
          )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
@@ -109,6 +110,7 @@ import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
+import Distribution.Client.Manpage            (manpage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
 #if defined(mingw32_HOST_OS)
@@ -128,8 +130,8 @@ import qualified Distribution.Make as Make
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
-         ( CommandParse(..), CommandUI(..), Command
-         , commandsRun, commandAddAction, hiddenCommand )
+         ( CommandParse(..), CommandUI(..), Command, CommandSpec(..), CommandType(..)
+         , commandsRun, commandAddAction, hiddenCommand, commandFromSpec)
 import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
@@ -229,55 +231,57 @@ mainWorker args = topHandler $
                                   ++ display cabalVersion
                                   ++ " of the Cabal library "
 
-    commands =
-      [installCommand         `commandAddAction` installAction
-      ,updateCommand          `commandAddAction` updateAction
-      ,listCommand            `commandAddAction` listAction
-      ,infoCommand            `commandAddAction` infoAction
-      ,fetchCommand           `commandAddAction` fetchAction
-      ,freezeCommand          `commandAddAction` freezeAction
-      ,getCommand             `commandAddAction` getAction
-      ,hiddenCommand $
-       unpackCommand          `commandAddAction` unpackAction
-      ,checkCommand           `commandAddAction` checkAction
-      ,sdistCommand           `commandAddAction` sdistAction
-      ,uploadCommand          `commandAddAction` uploadAction
-      ,reportCommand          `commandAddAction` reportAction
-      ,runCommand             `commandAddAction` runAction
-      ,initCommand            `commandAddAction` initAction
-      ,configureExCommand     `commandAddAction` configureAction
-      ,buildCommand           `commandAddAction` buildAction
-      ,replCommand            `commandAddAction` replAction
-      ,sandboxCommand         `commandAddAction` sandboxAction
-      ,haddockCommand         `commandAddAction` haddockAction
-      ,execCommand            `commandAddAction` execAction
-      ,userConfigCommand      `commandAddAction` userConfigAction
-      ,cleanCommand           `commandAddAction` cleanAction
-      ,wrapperAction copyCommand
-                     copyVerbosity     copyDistPref
-      ,wrapperAction hscolourCommand
-                     hscolourVerbosity hscolourDistPref
-      ,wrapperAction registerCommand
-                     regVerbosity      regDistPref
-      ,testCommand            `commandAddAction` testAction
-      ,benchmarkCommand       `commandAddAction` benchmarkAction
-      ,hiddenCommand $
-       uninstallCommand       `commandAddAction` uninstallAction
-      ,hiddenCommand $
-       formatCommand          `commandAddAction` formatAction
-      ,hiddenCommand $
-       upgradeCommand         `commandAddAction` upgradeAction
-      ,hiddenCommand $
-       win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
-      ,hiddenCommand $
-       actAsSetupCommand`commandAddAction` actAsSetupAction
+    commands = map commandFromSpec commandSpecs
+    commandSpecs =
+      [ regularCmd installCommand installAction
+      , regularCmd updateCommand updateAction
+      , regularCmd listCommand listAction
+      , regularCmd infoCommand infoAction
+      , regularCmd fetchCommand fetchAction
+      , regularCmd freezeCommand freezeAction
+      , regularCmd getCommand getAction
+      , hiddenCmd  unpackCommand unpackAction
+      , regularCmd checkCommand checkAction
+      , regularCmd sdistCommand sdistAction
+      , regularCmd uploadCommand uploadAction
+      , regularCmd reportCommand reportAction
+      , regularCmd runCommand runAction
+      , regularCmd initCommand initAction
+      , regularCmd configureExCommand configureAction
+      , regularCmd buildCommand buildAction
+      , regularCmd replCommand replAction
+      , regularCmd sandboxCommand sandboxAction
+      , regularCmd haddockCommand haddockAction
+      , regularCmd execCommand execAction
+      , regularCmd userConfigCommand userConfigAction
+      , regularCmd cleanCommand cleanAction
+      , wrapperCmd copyCommand copyVerbosity copyDistPref
+      , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
+      , wrapperCmd registerCommand regVerbosity regDistPref
+      , regularCmd testCommand testAction
+      , regularCmd benchmarkCommand benchmarkAction
+      , hiddenCmd  uninstallCommand uninstallAction
+      , hiddenCmd  formatCommand formatAction
+      , hiddenCmd  upgradeCommand upgradeAction
+      , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
+      , hiddenCmd  actAsSetupCommand actAsSetupAction
+      , hiddenCmd  manpageCommand (manpageAction commandSpecs)
       ]
+
+type Action = GlobalFlags -> IO ()
+
+regularCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
+regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) NormalCommand
+hiddenCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
+hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) HiddenCommand
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action
+wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
 
 wrapperAction :: Monoid flags
               => CommandUI flags
               -> (flags -> Flag Verbosity)
               -> (flags -> Flag String)
-              -> Command (GlobalFlags -> IO ())
+              -> Command Action
 wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command
     { commandDefaultFlags = mempty } $ \flags extraArgs globalFlags -> do
@@ -289,7 +293,7 @@ wrapperAction command verbosityFlag distPrefFlag =
                  command (const flags) extraArgs
 
 configureAction :: (ConfigFlags, ConfigExFlags)
-                -> [String] -> GlobalFlags -> IO ()
+                -> [String] -> Action
 configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
@@ -325,7 +329,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
               (globalRepos globalFlags')
               comp platform conf configFlags'' configExFlags' extraArgs
 
-buildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+buildAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
 buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
       noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
@@ -379,7 +383,7 @@ filterBuildFlags version config buildFlags
     numJobsCmdLineFlag = buildNumJobs buildFlags
 
 
-replAction :: (ReplFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+replAction :: (ReplFlags, BuildExFlags) -> [String] -> Action
 replAction (replFlags, buildExFlags) extraArgs globalFlags = do
   cwd     <- getCurrentDirectory
   pkgDesc <- findPackageDesc cwd
@@ -657,7 +661,7 @@ reconfigure verbosity flagDistPref addConfigFlags extraArgs globalFlags
         ++ configureManually
 
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-              -> [String] -> GlobalFlags -> IO ()
+              -> [String] -> Action
 installAction (configFlags, _, installFlags, _) _ globalFlags
   | fromFlagOrDefault False (installOnly installFlags) = do
       let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
@@ -844,7 +848,7 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
         setupWrapper verbosity setupOptions Nothing
           Cabal.benchmarkCommand (const benchmarkFlags') extraArgs'
 
-haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
+haddockAction :: HaddockFlags -> [String] -> Action
 haddockAction haddockFlags extraArgs globalFlags = do
   let verbosity = fromFlag (haddockVerbosity haddockFlags)
   (_useSandbox, config, distPref) <-
@@ -858,7 +862,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
 
-cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
+cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
   (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags
   distPref <- findSavedDistPref config (cleanDistPref cleanFlags)
@@ -872,7 +876,7 @@ cleanAction cleanFlags extraArgs globalFlags = do
   where
     verbosity = fromFlagOrDefault normal (cleanVerbosity cleanFlags)
 
-listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
+listAction :: ListFlags -> [String] -> Action
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
@@ -892,7 +896,7 @@ listAction listFlags extraArgs globalFlags = do
        listFlags
        extraArgs
 
-infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
+infoAction :: InfoFlags -> [String] -> Action
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
@@ -914,7 +918,7 @@ infoAction infoFlags extraArgs globalFlags = do
        infoFlags
        targets
 
-updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+updateAction :: Flag Verbosity -> [String] -> Action
 updateAction verbosityFlag extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
@@ -926,7 +930,7 @@ updateAction verbosityFlag extraArgs globalFlags = do
   update transport verbosity (globalRepos globalFlags')
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
-              -> [String] -> GlobalFlags -> IO ()
+              -> [String] -> Action
 upgradeAction _ _ _ = die $
     "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
  ++ "You can install the latest version of a package using 'cabal install'. "
@@ -940,7 +944,7 @@ upgradeAction _ _ _ = die $
  ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
  ++ "packages (e.g. by using appropriate --constraint= flags)."
 
-fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
+fetchAction :: FetchFlags -> [String] -> Action
 fetchAction fetchFlags extraArgs globalFlags = do
   let verbosity = fromFlag (fetchVerbosity fetchFlags)
   targets <- readUserTargets verbosity extraArgs
@@ -954,7 +958,7 @@ fetchAction fetchFlags extraArgs globalFlags = do
         comp platform conf globalFlags' fetchFlags
         targets
 
-freezeAction :: FreezeFlags -> [String] -> GlobalFlags -> IO ()
+freezeAction :: FreezeFlags -> [String] -> Action
 freezeAction freezeFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (freezeVerbosity freezeFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
@@ -972,7 +976,7 @@ freezeAction freezeFlags _extraArgs globalFlags = do
             mSandboxPkgInfo
             globalFlags' freezeFlags
 
-uploadAction :: UploadFlags -> [String] -> GlobalFlags -> IO ()
+uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do
   let verbosity = fromFlag (uploadVerbosity uploadFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
@@ -1012,14 +1016,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
 
-checkAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do
   unless (null extraArgs) $
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
-formatAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+formatAction :: Flag Verbosity -> [String] -> Action
 formatAction verbosityFlag extraArgs _globalFlags = do
   let verbosity = fromFlag verbosityFlag
   path <- case extraArgs of
@@ -1030,7 +1034,7 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   -- Uses 'writeFileAtomic' under the hood.
   writeGenericPackageDescription path pkgDesc
 
-uninstallAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+uninstallAction :: Flag Verbosity -> [String] -> Action
 uninstallAction _verbosityFlag extraArgs _globalFlags = do
   let package = case extraArgs of
         p:_ -> p
@@ -1041,7 +1045,7 @@ uninstallAction _verbosityFlag extraArgs _globalFlags = do
         ++ "'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
 
 
-sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
+sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> Action
 sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
@@ -1051,7 +1055,7 @@ sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
   let sdistFlags' = sdistFlags { sDistDistPref = toFlag distPref }
   sdist sdistFlags' sdistExFlags
 
-reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
+reportAction :: ReportFlags -> [String] -> Action
 reportAction reportFlags extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
@@ -1065,7 +1069,7 @@ reportAction reportFlags extraArgs globalFlags = do
     (flagToMaybe $ reportUsername reportFlags')
     (flagToMaybe $ reportPassword reportFlags')
 
-runAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+runAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
 runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
   let noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
@@ -1087,7 +1091,7 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   maybeWithSandboxDirOnSearchPath useSandbox $
     run verbosity lbi exe exeArgs
 
-getAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
+getAction :: GetFlags -> [String] -> Action
 getAction getFlags extraArgs globalFlags = do
   let verbosity = fromFlag (getVerbosity getFlags)
   targets <- readUserTargets verbosity extraArgs
@@ -1100,11 +1104,11 @@ getAction getFlags extraArgs globalFlags = do
     getFlags
     targets
 
-unpackAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
+unpackAction :: GetFlags -> [String] -> Action
 unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
-initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
+initAction :: InitFlags -> [String] -> Action
 initAction initFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (initVerbosity initFlags)
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
@@ -1119,7 +1123,7 @@ initAction initFlags _extraArgs globalFlags = do
             conf
             initFlags
 
-sandboxAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxAction :: SandboxFlags -> [String] -> Action
 sandboxAction sandboxFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
   case extraArgs of
@@ -1154,7 +1158,7 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
   where
     noExtraArgs = (<1) . length
 
-execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
+execAction :: ExecFlags -> [String] -> Action
 execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
@@ -1162,7 +1166,7 @@ execAction execFlags extraArgs globalFlags = do
   (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
   exec verbosity useSandbox comp platform conf extraArgs
 
-userConfigAction :: UserConfigFlags -> [String] -> GlobalFlags -> IO ()
+userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
   let verbosity = fromFlag (userConfigVerbosity ucflags)
   case extraArgs of
@@ -1175,8 +1179,7 @@ userConfigAction ucflags extraArgs globalFlags = do
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
-win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> GlobalFlags
-                          -> IO ()
+win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> Action
 win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
   let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
   Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
@@ -1185,7 +1188,7 @@ win32SelfUpgradeAction _ _ _ = return ()
 -- | Used as an entry point when cabal-install needs to invoke itself
 -- as a setup script. This can happen e.g. when doing parallel builds.
 --
-actAsSetupAction :: ActAsSetupFlags -> [String] -> GlobalFlags -> IO ()
+actAsSetupAction :: ActAsSetupFlags -> [String] -> Action
 actAsSetupAction actAsSetupFlags args _globalFlags =
   let bt = fromFlag (actAsSetupBuildType actAsSetupFlags)
   in case bt of
@@ -1195,3 +1198,10 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Make      -> Make.defaultMainArgs args
     Custom               -> error "actAsSetupAction Custom"
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
+
+manpageAction :: [CommandSpec action] -> Flag Verbosity -> [String] -> Action
+manpageAction commands _ extraArgs _ = do
+  unless (null extraArgs) $
+    die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
+  pname <- getProgName
+  putStrLn (manpage pname commands)
