@@ -2889,7 +2889,10 @@ buildInplaceUnpackedPackage verbosity
                             []
                             rpkg mipkg
 
-        allSrcFiles <- getDirectoryContentsRecursive srcdir
+        --TODO: temporary hack. We need to look at the package description
+        -- and work out the exact file monitors to use
+        allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
+                   <$> getDirectoryContentsRecursive srcdir
 
         updateFileMonitor buildFileMonitor srcdir
                           (map MonitorFileHashed allSrcFiles)
