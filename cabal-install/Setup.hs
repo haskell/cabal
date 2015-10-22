@@ -45,7 +45,7 @@ buildManpage lbi verbosity = do
       manpage = buildDir lbi </> "cabal/cabal.1"
   manpageHandle <- openFile manpage WriteMode
   notice verbosity ("Generating manual page " ++ manpage ++ " ...")
-  runProcess cabal ["manpage"] Nothing Nothing Nothing (Just manpageHandle) Nothing
+  _ <- runProcess cabal ["manpage"] Nothing Nothing Nothing (Just manpageHandle) Nothing
   return ()
 
 installManpage :: PackageDescription -> LocalBuildInfo -> Verbosity -> CopyDest -> IO ()
