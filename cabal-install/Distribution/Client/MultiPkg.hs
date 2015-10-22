@@ -227,10 +227,6 @@ build verbosity
                      sharedPackageConfig
                      buildSettings
 
-    --TODO: may want to do some earlier parsing/validation of the userTargets
-    -- though fully resolving what they refer to requires info from the env
-    -- or config (e.g. knowing which packages are in the plan, where they live)
-
     -- Note that it is a deliberate design choice that the 'userTargets' is
     -- not passed to phase 1, and the various bits of input config is not
     -- passed to phase 2.
@@ -246,8 +242,6 @@ build verbosity
 
     -- Notionally, the 'BuildFlags' should be things that do not affect what
     -- we build, just how we do it. These ones of course do 
-    -- TODO: The current 'BuildFlags' is a mix of config and build-only, due
-    -- to the old command line interface and needs to be cleaned up.
 
 -- To a first approximation, configure just runs the first phase of 'build'
 -- where we bring the install plan up to date (thus checking that it's
