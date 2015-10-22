@@ -42,6 +42,9 @@ module Distribution.Client.InstallPlan (
 
   -- ** Querying the install plan
   dependencyClosure,
+  reverseDependencyClosure,
+  topologicalOrder,
+  reverseTopologicalOrder,
   ) where
 
 import Distribution.InstalledPackageInfo
@@ -72,6 +75,7 @@ import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
+import qualified Data.Tree as Tree
 import Control.Exception
          ( assert )
 import Data.Maybe (catMaybes)
@@ -516,7 +520,7 @@ problems fakeMap indepGoals index =
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
      , Just pkg' <- map (PlanIndex.fakeLookupComponentId fakeMap index)
-                    (CD.nonSetupDeps (depends pkg))
+                    (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -594,22 +598,39 @@ stateDependencyRelation (Failed    _ _) (Failed    _   _) = True
 stateDependencyRelation _               _                 = False
 
 
--- | Compute the dependency closure of a _source_ package in a install plan
+-- | Compute the dependency closure of a package in a install plan
 --
--- See `Distribution.Client.PlanIndex.dependencyClosure`
-dependencyClosure :: (HasComponentId ipkg,   PackageFixedDeps ipkg,
-                      HasComponentId srcpkg, PackageFixedDeps srcpkg)
-                  => GenericInstallPlan ipkg srcpkg iresult ifailure
-                  -> [PackageIdentifier]
-                  -> Either [(GenericPlanPackage ipkg srcpkg iresult ifailure,
-                              [ComponentId])]
-                            (PackageIndex
-                             (GenericPlanPackage ipkg srcpkg iresult ifailure))
-dependencyClosure installPlan pids =
-    PlanIndex.dependencyClosure
-      (planFakeMap installPlan)
-      (planIndex installPlan)
-      (map (resolveFakeId . fakeComponentId) pids)
-  where
-    resolveFakeId :: ComponentId -> ComponentId
-    resolveFakeId ipid = Map.findWithDefault ipid ipid (planFakeMap installPlan)
+dependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                  -> [ComponentId]
+                  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+dependencyClosure plan =
+    map (planPkgOf plan)
+  . concatMap Tree.flatten
+  . Graph.dfs (planGraph plan)
+  . map (planVertexOf plan)
+
+
+reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                         -> [ComponentId]
+                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+reverseDependencyClosure plan =
+    map (planPkgOf plan)
+  . concatMap Tree.flatten
+  . Graph.dfs (planGraphRev plan)
+  . map (planVertexOf plan)
+
+
+topologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                 -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+topologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraph plan
+
+
+reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
+                        -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+reverseTopologicalOrder plan =
+    map (planPkgOf plan)
+  . Graph.topSort
+  $ planGraphRev plan
