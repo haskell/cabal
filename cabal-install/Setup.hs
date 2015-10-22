@@ -1,6 +1,5 @@
 import Distribution.PackageDescription ( PackageDescription )
-import Distribution.Simple ( UserHooks
-                           , defaultMainWithHooks
+import Distribution.Simple ( defaultMainWithHooks
                            , simpleUserHooks
                            , postBuild
                            , postCopy
