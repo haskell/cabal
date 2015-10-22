@@ -21,7 +21,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
                     2007-2012 Duncan Coutts <duncan@community.haskell.org>
 Category:           Distribution
-Build-type:         Simple
+Build-type:         Custom
 Cabal-Version:      >= 1.10
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
