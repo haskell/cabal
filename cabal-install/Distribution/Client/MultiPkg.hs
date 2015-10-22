@@ -42,7 +42,7 @@ import           Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Config ({-SavedConfig(..),-} defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
-import           Distribution.Client.BuildReports.Types (ReportLevel)
+import           Distribution.Client.BuildReports.Types (ReportLevel(..))
 
 --import           Distribution.Client.Sandbox
 --import           Distribution.Client.Sandbox.Types
@@ -63,7 +63,7 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault, HaddockFlags(..))
+import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlag, fromFlagOrDefault, HaddockFlags(..))
 import           Distribution.Simple.Command (CommandUI)
 import           Distribution.Utils.NubList (NubList, fromNubList)
 import qualified Distribution.Simple.Configure as Cabal
@@ -101,7 +101,7 @@ import           Data.Function (on)
 import           Data.Binary
 import           GHC.Generics (Generic)
 
-import           System.FilePath
+import           System.FilePath hiding (combine)
 import           System.IO
 import           System.Directory
 
@@ -175,10 +175,11 @@ build verbosity
     projectRootDir <- findProjectRoot
     let distDirLayout = defaultDistDirLayout projectRootDir
 
-    let projectConfigCLI = convertCommandLineFlags 
-                             globalFlags
-                             configFlags configExFlags
-                             installFlags haddockFlags
+    let (cliConfig,
+         cliBuildSettings) = convertCommandLineFlags
+                               globalFlags
+                               configFlags configExFlags
+                               installFlags haddockFlags
 
     -- The (re)build is split into two major parts:
 
@@ -186,10 +187,14 @@ build verbosity
     --
     -- Take all input configuration and make a description of what to do.
     --
-    (elaboratedInstallPlan, sharedPackageConfig, buildFlags) <-
+    (elaboratedInstallPlan, sharedPackageConfig, projectConfig) <-
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
-                         projectConfigCLI
+                         cliConfig
+
+    let buildSettings = resolveBuildTimeSettings
+                          (projectConfigBuildOnly projectConfig)
+                          cliBuildSettings
 
     -- The description of what to do is represented by an
     -- 'ElaboratedInstallPlan' (plus an 'ElaboratedSharedConfig' for those
@@ -201,12 +206,13 @@ build verbosity
     -- Execute all or parts of the description of what to do to build or
     -- rebuild the various packages needed.
     --
-    rebuildTargets verbosity
-                   distDirLayout
-                   elaboratedInstallPlan
-                   sharedPackageConfig
-                   buildFlags
-                   userTargets
+    unless (buildSettingDryRun buildSettings) $
+      rebuildTargets verbosity
+                     distDirLayout
+                     elaboratedInstallPlan
+                     sharedPackageConfig
+                     buildSettings
+                     userTargets
 
     --TODO: may want to do some earlier parsing/validation of the userTargets
     -- though fully resolving what they refer to requires info from the env
@@ -259,14 +265,15 @@ configure verbosity
     cabalDir       <- defaultCabalDir
     let distDirLayout  = defaultDistDirLayout projectRootDir
         cabalDirLayout = defaultCabalDirLayout cabalDir
-        projectConfigCLI = convertCommandLineFlags 
-                             globalFlags
-                             configFlags configExFlags
-                             installFlags haddockFlags
+        (cliConfig,
+         _cliBuildSettings) = convertCommandLineFlags 
+                                globalFlags
+                                configFlags configExFlags
+                                installFlags haddockFlags
 
     _ <- rebuildInstallPlan verbosity
                             projectRootDir distDirLayout cabalDirLayout
-                            projectConfigCLI
+                            cliConfig
 
     return ()
 
@@ -538,7 +545,6 @@ instance Binary TestsResult
 type CliConfig = ( ProjectConfigSolver
                  , PackageConfigShared
                  , PackageConfig
-                 , ProjectConfigBuildOnly
                  )
 
 rebuildInstallPlan :: Verbosity
@@ -546,7 +552,7 @@ rebuildInstallPlan :: Verbosity
                    -> CliConfig
                    -> IO ( ElaboratedInstallPlan
                          , ElaboratedSharedConfig
-                         , ProjectConfigBuildOnly )
+                         , ProjectConfig )
 rebuildInstallPlan verbosity
                    projectRootDir
                    distDirLayout@DistDirLayout{..}
@@ -557,13 +563,13 @@ rebuildInstallPlan verbosity
     -- The overall improved plan is cached
     rerunIfChanged verbosity projectRootDir fileMonitorImprovedPlan
                    -- react to changes in command line args and the path
-                   (valueMonitorImprovedPlan cliConfig, progsearchpath) $ do
+                   (cliConfig, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
       (elaboratedPlan, elaboratedShared,
-       buildConfig) <-
+       projectConfig) <-
         rerunIfChanged verbosity projectRootDir fileMonitorElaboratedPlan
-                       (valueMonitorImprovedPlan cliConfig, progsearchpath) $ do
+                       (cliConfig, progsearchpath) $ do
 
           projectConfig <- phaseReadProjectConfig cliConfig
           localPackages <- phaseReadLocalPackages projectConfig
@@ -575,13 +581,13 @@ rebuildInstallPlan verbosity
                                                    solverPlan localPackages
 
           return (elaboratedPlan, elaboratedShared,
-                  projectConfigBuildOnly projectConfig)
+                  projectConfig)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
-      return (improvedPlan, elaboratedShared, buildConfig)
+      return (improvedPlan, elaboratedShared, projectConfig)
 
   where
     fileMonitorCompiler       = FileMonitorCacheFile (distProjectCacheFile "compiler")
@@ -590,16 +596,6 @@ rebuildInstallPlan verbosity
     fileMonitorElaboratedPlan = FileMonitorCacheFile (distProjectCacheFile "elaborated-plan")
     fileMonitorImprovedPlan   = FileMonitorCacheFile (distProjectCacheFile "improved-plan")
 
-    valueMonitorImprovedPlan ( cliConfigSolver
-                             , cliConfigAllPackages
-                             , cliConfigLocalPackages
-                             , _cliConfigBuildOnly
-                             )
-                           = ( cliConfigSolver
-                             , cliConfigAllPackages
-                             , cliConfigLocalPackages
-                             )
-
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
     --
@@ -607,7 +603,6 @@ rebuildInstallPlan verbosity
     phaseReadProjectConfig ( cliConfigSolver
                            , cliConfigAllPackages
                            , cliConfigLocalPackages
-                           , cliConfigBuildOnly
                            ) = do
       liftIO $ do
         info verbosity "Project settings changed, reconfiguring..."
@@ -618,7 +613,6 @@ rebuildInstallPlan verbosity
                         cliConfigSolver
                         cliConfigAllPackages
                         cliConfigLocalPackages
-                        cliConfigBuildOnly
 
 
     -- Look for all the cabal packages in the project
@@ -1073,11 +1067,10 @@ readProjectConfig :: FilePath
                   -> ProjectConfigSolver
                   -> PackageConfigShared
                   -> PackageConfig
-                  -> ProjectConfigBuildOnly
                   -> Rebuild ProjectConfig
 readProjectConfig projectRootDir
                   cliConfigSolver cliConfigAllPackages
-                  cliConfigLocalPackages cliConfigBuildOnly = do
+                  cliConfigLocalPackages = do
     let projectFile = projectRootDir</> "cabal.project"
     usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
     if usesExplicitProjectRoot
@@ -1093,7 +1086,7 @@ readProjectConfig projectRootDir
       ProjectConfig
         projectRootDir
         (catMaybes (map simpleParse (lines content)))
-        cliConfigBuildOnly
+        mempty
         cliConfigSolver
         cliConfigAllPackages
         cliConfigLocalPackages                     
@@ -1107,7 +1100,7 @@ readProjectConfig projectRootDir
         , GlobDir  (Glob [WildCard]) $
           GlobFile (Glob [WildCard, Literal ".cabal"])
         ]
-        cliConfigBuildOnly
+        mempty
         cliConfigSolver
         cliConfigAllPackages
         cliConfigLocalPackages                     
@@ -1116,16 +1109,18 @@ readProjectConfig projectRootDir
 convertCommandLineFlags :: GlobalFlags
                         -> ConfigFlags  -> ConfigExFlags
                         -> InstallFlags -> Cabal.HaddockFlags
-                        -> ( ProjectConfigSolver
-                           , PackageConfigShared
-                           , PackageConfig
+                        -> ( ( ProjectConfigSolver
+                             , PackageConfigShared
+                             , PackageConfig
+                             )
                            , ProjectConfigBuildOnly
                            )
 convertCommandLineFlags globalFlags configFlags configExFlags
                         installFlags haddockFlags =
-    ( ProjectConfigSolver{..}
-    , PackageConfigShared{..}
-    , PackageConfig{..}
+    ( ( ProjectConfigSolver{..}
+      , PackageConfigShared{..}
+      , PackageConfig{..}
+      )
     , ProjectConfigBuildOnly{..}
     )
   where
@@ -1258,6 +1253,99 @@ projectConfigRepos downloadCacheRootDir
     localRepos =
       [ Repo (Right LocalRepo) local
       | local <- fromNubList projectConfigLocalRepos ]
+
+
+data BuildTimeSettings
+   = BuildTimeSettings {
+       buildSettingDryRun                :: Bool,
+       buildSettingOnlyDeps              :: Bool,
+       buildSettingSummaryFile           :: [PathTemplate],
+       buildSettingLogFile               :: Maybe PathTemplate,
+       buildSettingBuildReports          :: ReportLevel,
+       buildSettingReportPlanningFailure :: Bool,
+       buildSettingSymlinkBinDir         :: [FilePath],
+       buildSettingOneShot               :: Bool,
+       buildSettingNumJobs               :: Maybe Int,
+       buildSettingOfflineMode           :: Bool,
+       buildSettingKeepTempFiles         :: Bool,
+       buildSettingHttpTransport         :: Maybe String
+     }
+  deriving (Eq, Show, Generic)
+
+instance Monoid ProjectConfigBuildOnly where
+  mempty = 
+    ProjectConfigBuildOnly {
+      projectConfigVerbosity             = mempty,
+      projectConfigDryRun                = mempty,
+      projectConfigOnlyDeps              = mempty,
+      projectConfigSummaryFile           = mempty,
+      projectConfigLogFile               = mempty,
+      projectConfigBuildReports          = mempty,
+      projectConfigReportPlanningFailure = mempty,
+      projectConfigSymlinkBinDir         = mempty,
+      projectConfigOneShot               = mempty,
+      projectConfigNumJobs               = mempty,
+      projectConfigOfflineMode           = mempty,
+      projectConfigKeepTempFiles         = mempty,
+      projectConfigHttpTransport         = mempty,
+      projectConfigCacheDir              = mempty,
+      projectConfigLogsDir               = mempty,
+      projectConfigWorldFile             = mempty
+    }
+  mappend a b =
+    ProjectConfigBuildOnly {
+      projectConfigVerbosity             = combine projectConfigVerbosity,
+      projectConfigDryRun                = combine projectConfigDryRun,
+      projectConfigOnlyDeps              = combine projectConfigOnlyDeps,
+      projectConfigSummaryFile           = combine projectConfigSummaryFile,
+      projectConfigLogFile               = combine projectConfigLogFile,
+      projectConfigBuildReports          = combine projectConfigBuildReports,
+      projectConfigReportPlanningFailure = combine projectConfigReportPlanningFailure,
+      projectConfigSymlinkBinDir         = combine projectConfigSymlinkBinDir,
+      projectConfigOneShot               = combine projectConfigOneShot,
+      projectConfigNumJobs               = combine projectConfigNumJobs,
+      projectConfigOfflineMode           = combine projectConfigOfflineMode,
+      projectConfigKeepTempFiles         = combine projectConfigKeepTempFiles,
+      projectConfigHttpTransport         = combine projectConfigHttpTransport,
+      projectConfigCacheDir              = combine projectConfigCacheDir,
+      projectConfigLogsDir               = combine projectConfigLogsDir,
+      projectConfigWorldFile             = combine projectConfigWorldFile
+    }
+    where combine field = field a `mappend` field b
+
+
+resolveBuildTimeSettings :: ProjectConfigBuildOnly
+                         -> ProjectConfigBuildOnly
+                         -> BuildTimeSettings
+resolveBuildTimeSettings fromProjectFile fromCommandLine =
+    BuildTimeSettings {
+      buildSettingDryRun        = fromFlag    projectConfigDryRun,
+      buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps,
+      buildSettingSummaryFile   = fromNubList projectConfigSummaryFile,
+      buildSettingLogFile       = flagToMaybe projectConfigLogFile,
+      buildSettingBuildReports  = fromFlag    projectConfigBuildReports,
+      buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir,
+      buildSettingOneShot       = fromFlag    projectConfigOneShot,
+      buildSettingNumJobs       = fromFlag    projectConfigNumJobs,
+      buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode,
+      buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles,
+      buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport,
+      buildSettingReportPlanningFailure = fromFlag projectConfigReportPlanningFailure
+    }
+  where
+    ProjectConfigBuildOnly{..} = defaults
+                       `mappend` fromProjectFile
+                       `mappend` fromCommandLine
+    defaults = mempty {
+      projectConfigDryRun                = toFlag False,
+      projectConfigOnlyDeps              = toFlag False,
+      projectConfigBuildReports          = toFlag NoReports,
+      projectConfigReportPlanningFailure = toFlag False,
+      projectConfigOneShot               = toFlag False,
+      projectConfigNumJobs               = toFlag Nothing,
+      projectConfigOfflineMode           = toFlag False,
+      projectConfigKeepTempFiles         = toFlag False
+    }
 
 
 -------------------------------
@@ -2070,7 +2158,7 @@ rebuildTargets :: Verbosity
                -> DistDirLayout
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
-               -> ProjectConfigBuildOnly
+               -> BuildTimeSettings
                -> [String] --TODO: only build the ones we ask for out of the persistent plan
                            --TODO: probably want to parse these earlier
                -> IO ()
@@ -2078,9 +2166,9 @@ rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
                sharedPackageConfig
-               ProjectConfigBuildOnly{
-                 projectConfigNumJobs,
-                 projectConfigHttpTransport
+               BuildTimeSettings{
+                 buildSettingNumJobs,
+                 buildSettingHttpTransport
                }
                _userTargets = do
 
@@ -2145,10 +2233,9 @@ rebuildTargets verbosity
     return ()
 
   where
-    numBuildJobs    = 1 --TODO: reenable: determineNumJobs projectConfigNumJobs
+    numBuildJobs    = 1 --TODO: reenable: determineNumJobs buildSettingNumJobs
     isParallelBuild = numBuildJobs >= 2
-    mkTransport     = configureTransport verbosity 
-                        (flagToMaybe projectConfigHttpTransport)
+    mkTransport     = configureTransport verbosity buildSettingHttpTransport
 
 {-
 printTiming :: Show t => t -> IO b -> IO b
