@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Manpage
@@ -7,17 +7,13 @@
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Stability   :  provisional
--- Portability :  non-portable (ExistentialQuantification)
+-- Portability :  portable
 --
--- Functions and types for building the manual page.
+-- Functions for building the manual page.
 
 module Distribution.Client.Manpage
-  ( -- * Command list
-    CommandVisibility (..)
-  , CommandSpec (..)
-  , commandFromSpec
-    -- * Manual page generation
-  , manpage
+  ( -- * Manual page generation
+    manpage
   ) where
 
 import Distribution.Simple.Command
@@ -25,18 +21,6 @@ import Distribution.Client.Setup (globalCommand)
 
 import Data.Char (toUpper)
 import Data.List (intercalate)
-
-data CommandVisibility = Visible | Hidden
-
--- | wraps a @CommandUI@ together with a function that turns it into a @Command@.
--- By hiding the type of flags for the UI allows construction of a list of all UIs at the
--- top level of the program. That list can then be used for generation of manual page
--- as well as for executing the selected command.
-data CommandSpec action
-  = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command action) CommandVisibility
-
-commandFromSpec :: CommandSpec a -> Command a
-commandFromSpec (CommandSpec ui action _) = action ui
 
 data FileInfo = FileInfo String String -- ^ path, description
 
@@ -91,15 +75,15 @@ manpage pname commands = unlines $
   ]
 
 commandSynopsisLines :: String -> CommandSpec action -> [String]
-commandSynopsisLines pname (CommandSpec ui _ Visible) =
+commandSynopsisLines pname (CommandSpec ui _ NormalCommand) =
   [ ".B " ++ pname ++ " " ++ (commandName ui)
   , ".R - " ++ commandSynopsis ui
   , ".br"
   ]
-commandSynopsisLines _ (CommandSpec _ _ Hidden) = []
+commandSynopsisLines _ (CommandSpec _ _ HiddenCommand) = []
 
 commandDetailsLines :: String -> CommandSpec action -> [String]
-commandDetailsLines pname (CommandSpec ui _ Visible) =
+commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
   [ ".B " ++ pname ++ " " ++ (commandName ui) 
   , ""
   , commandUsage ui pname
@@ -119,7 +103,7 @@ commandDetailsLines pname (CommandSpec ui _ Visible) =
       case field ui of
         Just text -> [text pname, ""]
         Nothing   -> []
-commandDetailsLines _ (CommandSpec _ _ Hidden) = []
+commandDetailsLines _ (CommandSpec _ _ HiddenCommand) = []
 
 optionsLines :: CommandUI flags -> [String]
 optionsLines command = concatMap optionLines (concatMap optionDescr (commandOptions command ParseArgs))

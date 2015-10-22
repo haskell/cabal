@@ -110,10 +110,7 @@ import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
-import Distribution.Client.Manpage            (CommandVisibility(..)
-                                              ,CommandSpec(..)
-                                              ,commandFromSpec
-                                              ,manpage)
+import Distribution.Client.Manpage            (manpage)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
 #if defined(mingw32_HOST_OS)
@@ -133,8 +130,8 @@ import qualified Distribution.Make as Make
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
-         ( CommandParse(..), CommandUI(..), Command
-         , commandsRun, commandAddAction, hiddenCommand )
+         ( CommandParse(..), CommandUI(..), Command, CommandSpec(..), CommandType(..)
+         , commandsRun, commandAddAction, hiddenCommand, commandFromSpec)
 import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
@@ -274,11 +271,11 @@ mainWorker args = topHandler $
 type Action = GlobalFlags -> IO ()
 
 regularCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
-regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) Visible
+regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) NormalCommand
 hiddenCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
-hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) Hidden
+hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) HiddenCommand
 wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action
-wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) Visible
+wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
 
 wrapperAction :: Monoid flags
               => CommandUI flags

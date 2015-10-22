@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ExistentialQuantification #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command
@@ -6,7 +6,7 @@
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
--- Portability :  portable
+-- Portability :  non-portable (ExistentialQuantification)
 --
 -- This is to do with command line handling. The Cabal command line is
 -- organised into a number of named sub-commands (much like darcs). The
@@ -37,6 +37,11 @@ module Distribution.Simple.Command (
   Command,
   commandAddAction,
   noExtraFlags,
+
+  -- ** Building lists of commands
+  CommandType(..),
+  CommandSpec(..),
+  commandFromSpec,
 
   -- ** Running commands
   commandsRun,
@@ -605,3 +610,13 @@ helpCommandUI =
     ++ "  " ++ pname ++ " help help\n"
     ++ "    Oh, appararently you already know this.\n"
   }
+
+-- | wraps a @CommandUI@ together with a function that turns it into a @Command@.
+-- By hiding the type of flags for the UI allows construction of a list of all UIs at the
+-- top level of the program. That list can then be used for generation of manual page
+-- as well as for executing the selected command.
+data CommandSpec action
+  = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command action) CommandType
+
+commandFromSpec :: CommandSpec a -> Command a
+commandFromSpec (CommandSpec ui action _) = action ui
