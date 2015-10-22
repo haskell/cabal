@@ -2315,6 +2315,7 @@ paragraph = (++"\n")
 
 indentParagraph :: String -> String
 indentParagraph = unlines
+                . (flip (++)) [""]
                 . map (("  "++).unwords)
                 . wrapLine 77
                 . words
