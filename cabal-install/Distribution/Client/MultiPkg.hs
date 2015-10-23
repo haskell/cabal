@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns, DeriveGeneric, GeneralizedNewtypeDeriving,
-             RecordWildCards, NamedFieldPuns,
+{-# LANGUAGE BangPatterns, RecordWildCards, NamedFieldPuns,
+             DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
@@ -101,10 +101,12 @@ import           Data.Function (on)
 
 import           Data.Binary
 import           GHC.Generics (Generic)
+import           Data.Typeable (Typeable)
 
 import           System.FilePath hiding (combine)
 import           System.IO
 import           System.Directory
+import           System.Exit
 
 --import Data.Time
 --import Debug.Trace
@@ -533,15 +535,17 @@ data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
 data TestsResult = TestsNotTried | TestsOk
   deriving (Eq, Show, Generic)
 
-data BuildFailure = PlanningFailed
+data BuildFailure = PlanningFailed              --TODO: not yet used
                   | DependentFailed PackageId
-                  | DownloadFailed  String
-                  | UnpackFailed    String
+                  | DownloadFailed  String      --TODO: not yet used
+                  | UnpackFailed    String      --TODO: not yet used
                   | ConfigureFailed String
                   | BuildFailed     String
-                  | TestsFailed     String
+                  | TestsFailed     String      --TODO: not yet used
                   | InstallFailed   String
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show, Typeable, Generic)
+
+instance Exception BuildFailure
 
 instance Binary BuildFailure
 instance Binary BuildSuccess
@@ -2444,7 +2448,8 @@ rebuildTargets verbosity
 
       -- For each package in the plan, in dependency order, but in parallel...
       executeInstallPlan verbosity jobControl installPlan $
-        \rpkg@(ReadyPackage cpkg _) depResults -> do
+        \rpkg@(ReadyPackage cpkg _) depResults ->
+        handle (return . BuildFailure) $ do
 
         -- If necessary, wait for the download of the remote package to finish.
         srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
@@ -2746,7 +2751,6 @@ buildAndInstallUnpackedPackage verbosity
     --      quicker configure.
 
     --TODO: optional logging
-    --TODO: exception handling to tag things with the phase they failed in
     --TODO: docs and tests
     --TODO: win32-self-replacement
     --TODO: sudo re-exec
@@ -2754,15 +2758,19 @@ buildAndInstallUnpackedPackage verbosity
     -- Configure phase
     when isParallelBuild $
       notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-    setup configureCommand' configureFlags
+    annotateFailure ConfigureFailed $
+      setup configureCommand' configureFlags
 
     -- Build phase
     when isParallelBuild $
       notice verbosity $ "Building " ++ display pkgid ++ "..."
-    setup buildCommand' buildFlags
+    annotateFailure BuildFailed $
+      setup buildCommand' buildFlags
 
     -- Install phase
-    criticalSection installLock $ do
+    mipkg <-
+      criticalSection installLock $ 
+      annotateFailure InstallFailed $ do
       --TODO: do we need the installLock for copying? can we not do that in
       -- parallel? Isn't it just registering that we have to lock for?
       --TODO: need to lock installing this ipkig so other processes don't
@@ -2784,22 +2792,24 @@ buildAndInstallUnpackedPackage verbosity
 
       -- For libraries, grab the package configuration file
       -- and register it ourselves
-      mipkg <-
-        if pkgRequiresRegistration pkg
-          then do ipkg <- generateInstalledPackageInfo
-                  -- We register ourselves rather than via Setup.hs. We need to
-                  -- grab and modify the InstalledPackageInfo. We decide what
-                  -- the installed package id is, not the build system.
-                  let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
-                  Cabal.registerPackage verbosity compiler progdb
-                                        True -- multi-instance, nix style
-                                        (pkgRegisterPackageDBStack pkg) ipkg'
-                  return (Just ipkg')
-          else return Nothing
+      if pkgRequiresRegistration pkg
+        then do
+          ipkg <- generateInstalledPackageInfo
+          -- We register ourselves rather than via Setup.hs. We need to
+          -- grab and modify the InstalledPackageInfo. We decide what
+          -- the installed package id is, not the build system.
+          let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
+          Cabal.registerPackage verbosity compiler progdb
+                                True -- multi-instance, nix style
+                                (pkgRegisterPackageDBStack pkg) ipkg'
+          return (Just ipkg')
+        else return Nothing
 
-      let docsResult  = DocsNotTried
-          testsResult = TestsNotTried
-      return (BuildSuccess mipkg (BuildOk True docsResult testsResult))
+    --TODO: docs and test phases
+    let docsResult  = DocsNotTried
+        testsResult = TestsNotTried
+
+    return (BuildSuccess mipkg (BuildOk True docsResult testsResult))
 
   where
     pkgid  = packageId rpkg
@@ -2979,6 +2989,19 @@ buildInplaceUnpackedPackage verbosity
                                 verbosity builddir
                                 pkgConfFile'
         setup Cabal.registerCommand registerFlags
+
+
+-- helper
+annotateFailure :: (String -> BuildFailure) -> IO a -> IO a
+annotateFailure annotate action =
+  action `catches`
+    [ Handler $ \ioe  -> handler (ioe  :: IOException)
+    , Handler $ \exit -> handler (exit :: ExitCode)
+    ]
+  where
+    handler :: Exception e => e -> IO a
+    handler = throwIO . annotate . show
+                       --TODO: use displayException when available
 
 
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
