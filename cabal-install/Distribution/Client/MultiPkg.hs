@@ -439,7 +439,7 @@ data ElaboratedConfiguredPackage
        pkgRequiresRegistration :: Bool,
        pkgHasExplicitSetupDeps :: Bool, --TODO: maybe? currently unused
 
-       pkgDescriptionOverride  :: Maybe LBS.Char8.ByteString,
+       pkgDescriptionOverride  :: Maybe CabalFileText,
 
        pkgVanillaLib           :: Bool,
        pkgSharedLib            :: Bool,
@@ -515,6 +515,8 @@ data BuildStyle =
   deriving (Eq, Show, Generic)
 
 instance Binary BuildStyle
+
+type CabalFileText = LBS.Char8.ByteString
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
                                                   InstalledPackageInfo
@@ -2457,10 +2459,11 @@ rebuildTargets verbosity
         -- We're not typing up buildLimit-limited resources while downloading,
         -- but we are once we start unpacking and building.
         withJobLimit buildLimit $
-          withPackageInLocalDirectory verbosity distDirLayout
-                                      srcloc (pkgBuildStyle cpkg)
-                                      (packageId rpkg)
-                                      $ \srcdir builddir ->
+          withPackageInLocalDirectory
+            verbosity distDirLayout srcloc
+            (packageId rpkg) (pkgBuildStyle cpkg)
+            (pkgDescriptionOverride cpkg)$ \srcdir builddir ->
+
             case pkgBuildStyle cpkg of
               BuildAndInstall ->
                 buildAndInstallUnpackedPackage
@@ -2643,12 +2646,14 @@ withPackageInLocalDirectory
   :: Verbosity
   -> DistDirLayout
   -> PackageLocation FilePath
-  -> BuildStyle
   -> PackageIdentifier
+  -> BuildStyle
+  -> Maybe CabalFileText
   -> (FilePath -> FilePath -> IO a)
   -> IO a
-withPackageInLocalDirectory verbosity DistDirLayout{..}
-                            location buildstyle pkgid buildPkg =
+withPackageInLocalDirectory verbosity distDirLayout@DistDirLayout{..}
+                            location pkgid buildstyle pkgTextOverride
+                            buildPkg =
 
     case location of
 
@@ -2672,7 +2677,8 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
         BuildAndInstall ->
           withTempDirectory verbosity distTempDirectory
                             (display (packageName pkgid)) $ \tmpdir -> do
-            extractTarballPackage verbosity tarball tmpdir pkgid 
+            unpackPackageTarball verbosity tarball tmpdir
+                                 pkgid pkgTextOverride
             let srcdir   = tmpdir </> display pkgid
                 builddir = srcdir </> "dist"
             buildPkg srcdir builddir
@@ -2681,48 +2687,75 @@ withPackageInLocalDirectory verbosity DistDirLayout{..}
         -- appropriate location under the shared dist dir, and then build it
         -- inplace there
         BuildInplaceOnly -> do
-          -- TODO: do a timestamp comparison and re-unpack if the tarball is updated
-          -- TODO: re-overwrite the .cabal file if it gets updated in the repo
           let srcrootdir = distUnpackedSrcRootDirectory
               srcdir     = distUnpackedSrcDirectory pkgid
               builddir   = distBuildDirectory pkgid
+          -- TODO: use a proper file monitor rather than this dir exists test
           exists <- doesDirectoryExist srcdir
           unless exists $ do
             createDirectoryIfMissingVerbose verbosity False srcrootdir
-            extractTarballPackage verbosity tarball srcrootdir pkgid
+            unpackPackageTarball verbosity tarball srcrootdir
+                                 pkgid pkgTextOverride
+            moveTarballShippedDistDirectory verbosity distDirLayout
+                                            srcrootdir pkgid
           buildPkg srcdir builddir
 
 
-extractTarballPackage :: Verbosity -> FilePath -> FilePath -> PackageId -> IO ()
-extractTarballPackage verbosity tarball parentdir pkgid = do
-    info verbosity $ "Extracting " ++ tarball ++ " to " ++ parentdir ++ "..."
-    Tar.extractTarGzFile parentdir pkgsubdir tarball
+unpackPackageTarball :: Verbosity -> FilePath -> FilePath
+                     -> PackageId -> Maybe CabalFileText
+                     -> IO ()
+unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
+    --TODO: switch to tar package and catch tar exceptions
+    annotateFailure UnpackFailed $ do
 
-    -- sanity check:
-    exists <- doesFileExist cabalFile
-    when (not exists) $
-      die $ "Package .cabal file not found: " ++ show cabalFile
-    
-    --TODO: overwrite the .cabal file with the one from the index, when appropriate
-    --TODO: move any pre-shipped dist dir into the right place
+      -- Unpack the tarball
+      --
+      info verbosity $ "Extracting " ++ tarball ++ " to " ++ parentdir ++ "..."
+      Tar.extractTarGzFile parentdir pkgsubdir tarball
+
+      -- Sanity check
+      --
+      exists <- doesFileExist cabalFile
+      when (not exists) $
+        die $ "Package .cabal file not found in the tarball: " ++ cabalFile
+
+      -- Overwrite the .cabal with the one from the index, when appropriate
+      --
+      case pkgTextOverride of
+        Nothing     -> return ()
+        Just pkgtxt -> do
+          info verbosity $ "Updating " ++ display pkgname <.> "cabal"
+                        ++ " with the latest revision from the index."
+          writeFileAtomic cabalFile pkgtxt
+
   where
     cabalFile = parentdir </> pkgsubdir
-                          </> display (packageName pkgid) <.> "cabal"
+                          </> display pkgname <.> "cabal"
     pkgsubdir = display pkgid
+    pkgname   = packageName pkgid
 
--- Override the .cabal file if necessary
-{-
-overridePackageCabalFile ... =
-  case pkgoverride of
-    Nothing     -> return ()
-    Just pkgtxt -> do
-      let descFilePath = fromMaybe "." workingDir
-                     </> display (packageName pkgid) <.> "cabal"
-      info verbosity $
-        "Updating " ++ display (packageName pkgid) <.> "cabal"
-                    ++ " with the latest revision from the index."
-      writeFileAtomic descFilePath pkgtxt
--}
+
+-- | This is a bit of a hacky workaround. A number of packages ship
+-- pre-processed .hs files in a dist directory inside the tarball. We don't
+-- use the standard 'dist' location so unless we move this dist dir to the
+-- right place then we'll miss the shipped pre-procssed files. This hacky
+-- approach to shipped pre-procssed files ought to be replaced by a proper
+-- system, though we'll still need to keep this hack for older packages.
+--
+moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout
+                                -> FilePath -> PackageIdentifier -> IO ()
+moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
+                                parentdir pkgid = do
+    distDirExists <- doesDirectoryExist tarballDistDir
+    when distDirExists $ do
+      debug verbosity $ "Moving '" ++ tarballDistDir ++ "' to '"
+                                   ++ targetDistDir ++ "'"
+      --TODO: or perhaps better to copy, and use a file monitor
+      renameDirectory tarballDistDir targetDistDir
+  where
+    tarballDistDir = parentdir </> display pkgid </> "dist"
+    targetDistDir  = distBuildDirectory pkgid
+
 
 buildAndInstallUnpackedPackage :: Verbosity
                                -> DistDirLayout
