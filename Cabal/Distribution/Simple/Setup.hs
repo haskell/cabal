@@ -956,6 +956,7 @@ installCommand = CommandUI
          "using shell script wrappers around executables"
          installUseWrapper (\v flags -> flags { installUseWrapper = v })
          (boolOpt [] [])
+      --TODO: unused flag ^^
 
       ,option "" ["package-db"] ""
          installPackageDB (\v flags -> flags { installPackageDB = v })

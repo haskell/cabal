@@ -199,6 +199,13 @@ build verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 
+    --TODO: some debug or status feature to write out the full
+    -- elaboratedInstallPlan details
+    -- For now can use this:
+    --liftIO $ writeFile (distProjectCacheFile distDirLayout "plan.txt") $
+    --           unlines $ show sharedPackageConfig
+    --                   : map show (InstallPlan.toList elaboratedInstallPlan)
+
     let buildSettings = resolveBuildTimeSettings
                           (projectConfigBuildOnly projectConfig)
                           cliBuildSettings
@@ -1780,7 +1787,10 @@ elaborateInstallPlan platform compiler progdb
                 profLib = fromFlagOrDefault False (profBothFlag <> profLibFlag)
           , profLib ]
             --TODO: unused: the old deprecated packageConfigProfExe
-
+            --TODO: this does not check the config consistency, e.g. a package
+            -- explicitly turning off profiling, but something depending on
+            -- it that needs profiling. This really needs a separate package
+            -- config validation/resolution pass.
 
 -- | To be used for the input for elaborateInstallPlan.
 --
@@ -2857,6 +2867,7 @@ buildInplaceUnpackedPackage verbosity
     configChanged <- checkFileMonitorChanged configFileMonitor srcdir rpkg
     buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir ()
     let depsChanged = not $ null [ () | BuildOk True _ _ <- ComponentDeps.flatDeps depResults ]
+    --TODO: some debug-level message about file changes, like rerunIfChanged
 
     case (configChanged, buildChanged, depsChanged) of
       (Unchanged (mipkg, _), Unchanged (buildSuccess, _), False) ->
