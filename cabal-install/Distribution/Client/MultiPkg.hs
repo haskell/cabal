@@ -1649,6 +1649,8 @@ elaborateInstallPlan platform compiler progdb
                                     -- whether the package is using an explicit
                                     -- custom setup stanza for specific deps.
                                     -- If so, then it must use the storeDb.
+                                    -- and if not, do we still want to
+                                    -- allow using the user db?
         pkgBuildPackageDBStack    = buildAndRegisterDbs
         pkgRegisterPackageDBStack = buildAndRegisterDbs
         pkgRequiresRegistration   = isJust (Cabal.condLibrary desc)
@@ -2603,7 +2605,7 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
            | otherwise      -> waitForTasks taskCount plan
         pkgs                -> do
           sequence_
-            [ do info verbosity $ "Ready to install " ++ display pkgid
+            [ do debug verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
                    buildResult <- installPkg pkg depResults
                    return (pkg, buildResult)
@@ -2616,7 +2618,7 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
-      info verbosity $ "Waiting for install task to finish..."
+      debug verbosity $ "Waiting for install task to finish..."
       (pkg, buildResult) <- collectJob jobCtl
       let taskCount' = taskCount-1
           plan'      = updatePlan pkg buildResult plan
