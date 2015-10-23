@@ -2051,7 +2051,8 @@ packageHashInputs
     PackageHashInputs {
       pkgHashPkgId       = pkgSourceId,
       pkgHashSourceHash  = srchash,
-      pkgHashDirectDeps  = ComponentDeps.libraryDeps pkgDependencies, --TODO: consider carefully which deps
+      -- Yes, we use all the deps here (lib, exe and setup)
+      pkgHashDirectDeps  = ComponentDeps.flatDeps pkgDependencies,
       pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
     }
 packageHashInputs _ _ =
