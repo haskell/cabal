@@ -374,12 +374,9 @@ data ElaboratedSharedConfig
 
        pkgConfigPlatform         :: Platform,
        pkgConfigCompiler         :: Compiler, --TODO: replace with CompilerInfo
-       pkgConfigProgramDb        :: ProgramDb, --TODO: no Eq instance
+       pkgConfigProgramDb        :: ProgramDb --TODO: no Eq instance
        --TODO: ^^ binary instance does not preserve the prog paths
        --      perhaps should keep the configured progs separately
-
-       pkgConfigLibraryProfiling :: Bool
-
      }
   deriving (Show, Generic)
 
@@ -1013,7 +1010,6 @@ data PackageConfigShared
        packageConfigHcPath           :: Flag FilePath,
        packageConfigHcPkg            :: Flag FilePath,
        packageConfigVanillaLib       :: Flag Bool,
-       packageConfigProfLib          :: Flag Bool,
        packageConfigSharedLib        :: Flag Bool,
        packageConfigHaddockIndex     :: Flag PathTemplate,
 
@@ -1031,8 +1027,9 @@ data PackageConfigShared
 data PackageConfig
    = PackageConfig {
        packageConfigDynExe              :: Flag Bool,
-       packageConfigProfExe             :: Flag Bool,
-       packageConfigProf                :: Flag Bool,
+       packageConfigProf                :: Flag Bool, --TODO: sort out this
+       packageConfigProfLib             :: Flag Bool, --TODO: duplication
+       packageConfigProfExe             :: Flag Bool, --TODO: and consistency
        packageConfigProfDetail          :: Flag ProfDetailLevel,
        packageConfigProfLibDetail       :: Flag ProfDetailLevel,
        packageConfigConfigureArgs       :: [String],
@@ -1549,9 +1546,7 @@ elaborateInstallPlan
   -> PackageDBStack -> PackageDBStack
   -> DistDirLayout
   -> CabalDirLayout
-  -> GenericInstallPlan InstalledPackageInfo
-                        ConfiguredPackage
-                        _iresult _ifailure
+  -> SolverInstallPlan
   -> [PackageSpecifier SourcePackage]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
@@ -1572,42 +1567,33 @@ elaborateInstallPlan platform compiler progdb
                      sharedPackageConfig
                      localPackagesConfig
                      perPackageConfig =
-    (installPlan, elaboratedSharedConfig)
+    (elaboratedInstallPlan, elaboratedSharedConfig)
   where
     elaboratedSharedConfig =
       ElaboratedSharedConfig {
         pkgConfigPlatform         = platform,
         pkgConfigCompiler         = compiler,
-        pkgConfigProgramDb        = progdb,
- 
-        pkgConfigLibraryProfiling = False --TODO: make configurable
+        pkgConfigProgramDb        = progdb
       }
 
-    installPlan = InstallPlan.mapPreservingGraph convertPlanPackage solverPlan
+    elaboratedInstallPlan =
+      flip InstallPlan.mapPreservingGraph solverPlan $ \deps planpkg ->
+        case planpkg of
+          InstallPlan.PreExisting pkg ->
+            InstallPlan.PreExisting pkg
 
-    convertPlanPackage :: ComponentDeps [InstalledPackageId]
-                       -> InstallPlan.GenericPlanPackage InstalledPackageInfo
-                                                         ConfiguredPackage
-                                                         _iresult _ifailure
-                       -> InstallPlan.GenericPlanPackage InstalledPackageInfo
-                                                         ElaboratedConfiguredPackage
-                                                         iresult ifailure
-    convertPlanPackage deps (InstallPlan.PreExisting pkg) =
-      assert (deps == depends pkg) $
-      InstallPlan.PreExisting pkg
+          InstallPlan.Configured  pkg ->
+            InstallPlan.Configured (elaborateConfiguredPackage deps pkg)
 
-    convertPlanPackage deps (InstallPlan.Configured  pkg) =
-      InstallPlan.Configured (individualPackageConfig pkg deps)
+          _ -> error "elaborateInstallPlan: unexpected package state"
 
-    convertPlanPackage _ _ =
-      error "elaborateInstallPlan: unexpected package state"
-    
-    individualPackageConfig :: ConfiguredPackage
-                            -> ComponentDeps [InstalledPackageId]
-                            -> ElaboratedConfiguredPackage
-    individualPackageConfig
-      pkg@(ConfiguredPackage (SourcePackage pkgid desc srcloc descOverride)
-                             flags stanzas _olddeps) deps =
+    elaborateConfiguredPackage :: ComponentDeps [InstalledPackageId]
+                               -> ConfiguredPackage
+                               -> ElaboratedConfiguredPackage
+    elaborateConfiguredPackage
+        deps pkg@(ConfiguredPackage
+                    (SourcePackage pkgid desc srcloc descOverride)
+                    flags stanzas _olddeps) =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the
@@ -1658,32 +1644,32 @@ elaborateInstallPlan platform compiler progdb
 
         pkgVanillaLib    = sharedOptionFlag True  packageConfigVanillaLib
         pkgSharedLib     = sharedOptionFlag False packageConfigSharedLib
-        pkgDynExe        = perPkgOptionFlag False packageConfigDynExe
-        pkgGHCiLib       = perPkgOptionFlag False packageConfigGHCiLib --TODO: needs to default to enabled on windows still
+        pkgDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
+        pkgGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: needs to default to enabled on windows still
 
-        pkgProfLib       = sharedOptionFlag False packageConfigProfLib
-        pkgProfExe       = perPkgOptionFlag False packageConfigProfExe
+        pkgProfExe       = perPkgOptionFlag pkgid False packageConfigProf
+        pkgProfLib       = shouldUseLibraryProfiling pkgid
 
         (pkgProfExeDetail,
-         pkgProfLibDetail) = perPkgOptionLibExeFlag ProfDetailDefault
+         pkgProfLibDetail) = perPkgOptionLibExeFlag pkgid ProfDetailDefault
                                packageConfigProfDetail
                                packageConfigProfLibDetail
-        (pkgLibCoverage,
-         pkgExeCoverage)   = perPkgOptionLibExeFlag False
+        (pkgExeCoverage,
+         pkgLibCoverage)   = perPkgOptionLibExeFlag pkgid False
                                packageConfigCoverage
                                packageConfigLibCoverage
 
-        pkgOptimization  = perPkgOptionFlag NormalOptimisation packageConfigOptimization
-        pkgSplitObjs     = perPkgOptionFlag False packageConfigSplitObjs
-        pkgStripLibs     = perPkgOptionFlag False packageConfigStripLibs
-        pkgStripExes     = perPkgOptionFlag False packageConfigStripExes
-        pkgDebugInfo     = perPkgOptionFlag NoDebugInfo packageConfigDebugInfo
+        pkgOptimization  = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
+        pkgSplitObjs     = perPkgOptionFlag pkgid False packageConfigSplitObjs
+        pkgStripLibs     = perPkgOptionFlag pkgid False packageConfigStripLibs
+        pkgStripExes     = perPkgOptionFlag pkgid False packageConfigStripExes
+        pkgDebugInfo     = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
 
-        pkgConfigureScriptArgs = perPkgOptionList packageConfigConfigureArgs
-        pkgExtraLibDirs        = perPkgOptionList packageConfigExtraLibDirs
-        pkgExtraIncludeDirs    = perPkgOptionList packageConfigExtraIncludeDirs
-        pkgProgPrefix          = perPkgOptionMaybe packageConfigProgPrefix
-        pkgProgSuffix          = perPkgOptionMaybe packageConfigProgSuffix
+        pkgConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
+        pkgExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
+        pkgExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
+        pkgProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
+        pkgProgSuffix          = perPkgOptionMaybe pkgid packageConfigProgSuffix
 
         pkgInstallDirs
           | shouldBuildInplaceOnly pkg
@@ -1707,37 +1693,42 @@ elaborateInstallPlan platform compiler progdb
               (compilerId compiler)
               pkgInstalledId
 
-        pkgname = packageName pkgid
-
-        sharedOptionFlag  :: a -> (PackageConfigShared -> Flag a) -> a
-        perPkgOptionFlag  :: a -> (PackageConfig       -> Flag a) -> a
-        perPkgOptionMaybe ::      (PackageConfig       -> Flag a) -> Maybe a
-        perPkgOptionList  ::      (PackageConfig       -> [a])    -> [a]
-
-        sharedOptionFlag def f = fromFlagOrDefault def shared
-          where
-            shared = f sharedPackageConfig
-
-        perPkgOptionFlag def f = fromFlagOrDefault def (lookupPerPkgOption f)
-        perPkgOptionMaybe    f = flagToMaybe (lookupPerPkgOption f)
-        perPkgOptionList     f = lookupPerPkgOption f
-
-        perPkgOptionLibExeFlag def fboth flib = (exe, lib)
-          where
-            exe = fromFlagOrDefault def bothflag
-            lib = fromFlagOrDefault def (bothflag <> libflag)
-
-            bothflag = lookupPerPkgOption fboth
-            libflag  = lookupPerPkgOption flib
-
-        lookupPerPkgOption f = common <> perpkg
-          where
-            common = f localPackagesConfig
-            perpkg = maybe mempty f (Map.lookup pkgname perPackageConfig)
-
         buildAndRegisterDbs
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
           | otherwise                  = storePackageDbs
+
+    sharedOptionFlag  :: a         -> (PackageConfigShared -> Flag a) -> a
+    perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
+    perPkgOptionMaybe :: PackageId ->       (PackageConfig -> Flag a) -> Maybe a
+    perPkgOptionList  :: PackageId ->       (PackageConfig -> [a])    -> [a]
+
+    sharedOptionFlag def f = fromFlagOrDefault def shared
+      where
+        shared = f sharedPackageConfig
+
+    perPkgOptionFlag  pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
+    perPkgOptionMaybe pkgid     f = flagToMaybe (lookupPerPkgOption pkgid f)
+    perPkgOptionList  pkgid     f = lookupPerPkgOption pkgid f
+
+    perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
+      where
+        exe = fromFlagOrDefault def bothflag
+        lib = fromFlagOrDefault def (bothflag <> libflag)
+
+        bothflag = lookupPerPkgOption pkgid fboth
+        libflag  = lookupPerPkgOption pkgid flib
+
+    lookupPerPkgOption :: (Package pkg, Monoid m)
+                       => pkg -> (PackageConfig -> m) -> m
+    lookupPerPkgOption pkg f
+      -- the project config specifies values that apply to packages local to
+      -- but by default non-local packages get all default config values
+      -- the project, and can specify per-package values for any package,
+      | isLocalToProject pkg = local <> perpkg
+      | otherwise            =          perpkg
+      where
+        local  = f localPackagesConfig
+        perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)
 
     inplacePackageDbs =
         storePackageDbs
@@ -1759,6 +1750,36 @@ elaborateInstallPlan platform compiler progdb
           solverPlan
           [ fakeInstalledPackageId (packageId pkg)
           | SpecificSourcePackage pkg <- pkgSpecifiers ]
+
+    isLocalToProject :: Package pkg => pkg -> Bool
+    isLocalToProject pkg = Set.member (packageId pkg)
+                                      pkgsLocalToProject
+
+    pkgsLocalToProject :: Set PackageId
+    pkgsLocalToProject =
+      Set.fromList
+        [ packageId pkg
+        | SpecificSourcePackage pkg <- pkgSpecifiers ]
+
+    shouldUseLibraryProfiling :: Package pkg => pkg -> Bool
+    shouldUseLibraryProfiling pkg = Set.member (packageId pkg)
+                                               pkgsUseLibraryProfiling
+
+    pkgsUseLibraryProfiling :: Set PackageId
+    pkgsUseLibraryProfiling =
+        Set.fromList
+      $ map packageId
+      $ InstallPlan.dependencyClosure
+          solverPlan
+          [ fakeInstalledPackageId (packageId pkg)
+          | pkg <- InstallPlan.toList solverPlan
+            -- keep just the packages that have profiling turned on:
+          , let pkgid        = packageId pkg
+                profBothFlag = lookupPerPkgOption pkgid packageConfigProf
+                profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
+                profLib = fromFlagOrDefault False (profBothFlag <> profLibFlag)
+          , profLib ]
+            --TODO: unused: the old deprecated packageConfigProfExe
 
 
 -- | To be used for the input for elaborateInstallPlan.
