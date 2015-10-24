@@ -72,7 +72,7 @@ import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (InstallDirs, PathTemplate)
 
---import           Distribution.Client.Setup ()
+import           Distribution.Client.Utils (determineNumJobs)
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
 import           Distribution.Verbosity
@@ -209,6 +209,7 @@ build verbosity
     --                   : map show (InstallPlan.toList elaboratedInstallPlan)
 
     let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
                           (projectConfigBuildOnly projectConfig)
                           cliBuildSettings
 
@@ -1277,17 +1278,19 @@ data BuildTimeSettings
        buildSettingDryRun                :: Bool,
        buildSettingOnlyDeps              :: Bool,
        buildSettingSummaryFile           :: [PathTemplate],
-       buildSettingLogFile               :: Maybe PathTemplate,
+       buildSettingLogFile               :: Maybe (Compiler  -> Platform
+                                                -> PackageId -> LibraryName
+                                                             -> FilePath),
+       buildSettingLogVerbosity          :: Verbosity,
        buildSettingBuildReports          :: ReportLevel,
        buildSettingReportPlanningFailure :: Bool,
        buildSettingSymlinkBinDir         :: [FilePath],
        buildSettingOneShot               :: Bool,
-       buildSettingNumJobs               :: Maybe Int,
+       buildSettingNumJobs               :: Int,
        buildSettingOfflineMode           :: Bool,
        buildSettingKeepTempFiles         :: Bool,
        buildSettingHttpTransport         :: Maybe String
      }
-  deriving (Eq, Show, Generic)
 
 instance Monoid ProjectConfigBuildOnly where
   mempty = 
@@ -1331,38 +1334,92 @@ instance Monoid ProjectConfigBuildOnly where
     where combine field = field a `mappend` field b
 
 
-resolveBuildTimeSettings :: ProjectConfigBuildOnly
+resolveBuildTimeSettings :: Verbosity
+                         -> CabalDirLayout
+                         -> ProjectConfigBuildOnly
                          -> ProjectConfigBuildOnly
                          -> BuildTimeSettings
-resolveBuildTimeSettings fromProjectFile fromCommandLine =
-    BuildTimeSettings {
-      buildSettingDryRun        = fromFlag    projectConfigDryRun,
-      buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps,
-      buildSettingSummaryFile   = fromNubList projectConfigSummaryFile,
-      buildSettingLogFile       = flagToMaybe projectConfigLogFile,
-      buildSettingBuildReports  = fromFlag    projectConfigBuildReports,
-      buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir,
-      buildSettingOneShot       = fromFlag    projectConfigOneShot,
-      buildSettingNumJobs       = fromFlag    projectConfigNumJobs,
-      buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode,
-      buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles,
-      buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport,
-      buildSettingReportPlanningFailure = fromFlag projectConfigReportPlanningFailure
-    }
+resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
+                         fromProjectFile
+                         fromCommandLine =
+    BuildTimeSettings {..}
   where
+    buildSettingDryRun        = fromFlag    projectConfigDryRun
+    buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
+    buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
+    --buildSettingLogFile       -- defined below, more complicated 
+    --buildSettingLogVerbosity  -- defined below, more complicated
+    buildSettingBuildReports  = fromFlag    projectConfigBuildReports
+    buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
+    buildSettingOneShot       = fromFlag    projectConfigOneShot
+    buildSettingNumJobs       = determineNumJobs projectConfigNumJobs
+    buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
+    buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
+    buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
+    buildSettingReportPlanningFailure
+                              = fromFlag projectConfigReportPlanningFailure
+
     ProjectConfigBuildOnly{..} = defaults
                        `mappend` fromProjectFile
                        `mappend` fromCommandLine
+
     defaults = mempty {
       projectConfigDryRun                = toFlag False,
       projectConfigOnlyDeps              = toFlag False,
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigOneShot               = toFlag False,
-      projectConfigNumJobs               = toFlag Nothing,
       projectConfigOfflineMode           = toFlag False,
       projectConfigKeepTempFiles         = toFlag False
     }
+
+    -- The logging logic: what log file to use and what verbosity.
+    --
+    -- If the user has specified --remote-build-reporting=detailed, use the
+    -- default log file location. If the --build-log option is set, use the
+    -- provided location. Otherwise don't use logging, unless building in
+    -- parallel (in which case the default location is used).
+    --
+    buildSettingLogFile :: Maybe (Compiler -> Platform
+                               -> PackageId -> LibraryName -> FilePath)
+    buildSettingLogFile
+      | useDefaultTemplate = Just (substLogFileName defaultTemplate)
+      | otherwise          = fmap  substLogFileName givenTemplate
+
+    defaultTemplate = InstallDirs.toPathTemplate $
+                        cabalLogsDirectory </> "$pkgid" <.> "log"
+    givenTemplate   = flagToMaybe projectConfigLogFile
+
+    useDefaultTemplate
+      | buildSettingBuildReports == DetailedReports = True
+      | isJust givenTemplate                        = False
+      | isParallelBuild                             = True
+      | otherwise                                   = False
+
+    isParallelBuild = buildSettingNumJobs >= 2
+
+    substLogFileName :: PathTemplate
+                     -> Compiler -> Platform
+                     -> PackageId -> LibraryName -> FilePath
+    substLogFileName template compiler platform pkgid libname =
+        InstallDirs.fromPathTemplate
+          (InstallDirs.substPathTemplate env template)
+      where
+        env = InstallDirs.initialPathTemplateEnv
+                pkgid libname (compilerInfo compiler) platform
+
+    -- If the user has specified --remote-build-reporting=detailed or
+    -- --build-log, use more verbose logging.
+    --
+    buildSettingLogVerbosity
+      | overrideVerbosity = max verbose verbosity
+      | otherwise         = verbosity
+
+    overrideVerbosity
+      | buildSettingBuildReports == DetailedReports = True
+      | isJust givenTemplate                        = True
+      | isParallelBuild                             = False
+      | otherwise                                   = False
 
 
 -------------------------------
@@ -1860,7 +1917,7 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} _)
       useDependenciesExclusive = False, --TODO
       useProgramConfig         = pkgConfigProgramDb,
       useDistPref              = builddir,
-      useLoggingHandle         = Nothing, --TODO
+      useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
       useWin32CleanHack        = False,   --TODO
       forceExternalSetupMethod = isParallelBuild,
@@ -2422,7 +2479,7 @@ rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
                sharedPackageConfig
-               BuildTimeSettings{
+               buildSettings@BuildTimeSettings{
                  buildSettingNumJobs,
                  buildSettingHttpTransport
                } = do
@@ -2431,7 +2488,7 @@ rebuildTargets verbosity
     -- for downloading, building and installing.
     jobControl    <- if isParallelBuild then newParallelJobControl
                                         else newSerialJobControl
-    buildLimit    <- newJobLimit numBuildJobs
+    buildLimit    <- newJobLimit buildSettingNumJobs
     installLock   <- newLock -- serialise installation
     cacheLock     <- newLock -- serialise access to setup exe cache
                              --TODO: if we treat setup exe like other build deps
@@ -2470,7 +2527,7 @@ rebuildTargets verbosity
               BuildAndInstall ->
                 buildAndInstallUnpackedPackage
                   verbosity distDirLayout
-                  isParallelBuild installLock cacheLock
+                  buildSettings installLock cacheLock
                   sharedPackageConfig
                   rpkg
                   srcdir builddir'
@@ -2482,7 +2539,7 @@ rebuildTargets verbosity
                 --TODO: use a relative build dir rather than absolute
                 buildInplaceUnpackedPackage
                   verbosity distDirLayout
-                  isParallelBuild cacheLock
+                  buildSettings cacheLock
                   sharedPackageConfig
                   rpkg depResults
                   srcdir builddir
@@ -2490,8 +2547,7 @@ rebuildTargets verbosity
     return ()
 
   where
-    numBuildJobs    = 1 --TODO: reenable: determineNumJobs buildSettingNumJobs
-    isParallelBuild = numBuildJobs >= 2
+    isParallelBuild = buildSettingNumJobs >= 2
     mkTransport     = configureTransport verbosity buildSettingHttpTransport
 
 {-
@@ -2648,7 +2704,7 @@ withPackageInLocalDirectory
   :: Verbosity
   -> DistDirLayout
   -> PackageLocation FilePath
-  -> PackageIdentifier
+  -> PackageId
   -> BuildStyle
   -> Maybe CabalFileText
   -> (FilePath -> FilePath -> IO a)
@@ -2745,7 +2801,7 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
 -- system, though we'll still need to keep this hack for older packages.
 --
 moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout
-                                -> FilePath -> PackageIdentifier -> IO ()
+                                -> FilePath -> PackageId -> IO ()
 moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
                                 parentdir pkgid = do
     distDirExists <- doesDirectoryExist tarballDistDir
@@ -2761,22 +2817,28 @@ moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
 
 buildAndInstallUnpackedPackage :: Verbosity
                                -> DistDirLayout
-                               -> Bool -> Lock -> Lock
+                               -> BuildTimeSettings -> Lock -> Lock
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
                                -> FilePath -> FilePath
                                -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
-                               isParallelBuild installLock cacheLock
+                               BuildTimeSettings {
+                                 buildSettingNumJobs,
+                                 buildSettingLogFile
+                               }
+                               installLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
                                  pkgConfigCompiler  = compiler,
+                                 pkgConfigPlatform  = platform,
                                  pkgConfigProgramDb = progdb
                                }
                                rpkg@(ReadyPackage pkg _deps)
                                srcdir builddir = do
 
     createDirectoryIfMissingVerbose verbosity False builddir
+    initLogFile
 
     --TODO: deal consistently with talking to older Setup.hs versions, much like
     --      we do for ghc, with a proper options type and rendering step
@@ -2785,9 +2847,7 @@ buildAndInstallUnpackedPackage verbosity
     --      passing data like installed packages, compiler, and program db for a
     --      quicker configure.
 
-    --TODO: optional logging
     --TODO: docs and tests
-    --TODO: win32-self-replacement
     --TODO: sudo re-exec
 
     -- Configure phase
@@ -2808,8 +2868,13 @@ buildAndInstallUnpackedPackage verbosity
       annotateFailure InstallFailed $ do
       --TODO: do we need the installLock for copying? can we not do that in
       -- parallel? Isn't it just registering that we have to lock for?
+
       --TODO: need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
+
+      -- TODO: note that for nix-style installations it is not necessary to do
+      -- the 'withWin32SelfUpgrade' dance, but it would be necessary for a
+      -- shared bin dir.
 
       -- Actual installation
       setup Cabal.copyCommand copyFlags
@@ -2821,6 +2886,7 @@ buildAndInstallUnpackedPackage verbosity
       -- here's where we could keep track of the installed files ourselves if
       -- we wanted by calling copy to an image dir and then we would make a
       -- manifest and move it to its final location
+
       --TODO: we should actually have it make an image in store/incomming and
       -- then when it's done, move it to its final location, to reduce problems
       -- with installs failing half-way. Could also register and then move.
@@ -2850,6 +2916,8 @@ buildAndInstallUnpackedPackage verbosity
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
+    isParallelBuild = buildSettingNumJobs >= 2
+
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags _ = setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
@@ -2876,15 +2944,38 @@ buildAndInstallUnpackedPackage verbosity
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags =
-      setupWrapper verbosity
-                   scriptOptions
-                   (Just (Cabal.packageDescription (pkgDescription pkg)))
-                   cmd flags []
+      withLogging $ \mLogFileHandle -> 
+        setupWrapper
+          verbosity
+          scriptOptions { useLoggingHandle = mLogFileHandle }
+          (Just (Cabal.packageDescription (pkgDescription pkg)))
+          cmd flags []
+
+    mlogFile =
+      case buildSettingLogFile of
+        Nothing        -> Nothing
+        Just mkLogFile -> Just (mkLogFile compiler platform pkgid libname)
+          where
+            --TODO: please, can we not get rid of package keys in templates?
+            libname = readyLibraryName compiler rpkg 
+
+    initLogFile =
+      case mlogFile of
+        Nothing      -> return ()
+        Just logFile -> do
+          createDirectoryIfMissing True (takeDirectory logFile)
+          exists <- doesFileExist logFile
+          when exists $ removeFile logFile
+
+    withLogging action =
+      case mlogFile of
+        Nothing      -> action Nothing
+        Just logFile -> withFile logFile AppendMode (action . Just)
 
 
 buildInplaceUnpackedPackage :: Verbosity
                             -> DistDirLayout
-                            -> Bool -> Lock
+                            -> BuildTimeSettings -> Lock
                             -> ElaboratedSharedConfig
                             -> GenericReadyPackage ElaboratedConfiguredPackage
                                                    InstalledPackageInfo
@@ -2897,7 +2988,8 @@ buildInplaceUnpackedPackage verbosity
                               distPackageCacheFile,
                               distPackageCacheDirectory
                             }
-                            isParallelBuild cacheLock
+                            BuildTimeSettings{buildSettingNumJobs}
+                            cacheLock
                             pkgshared@ElaboratedSharedConfig {
                               pkgConfigCompiler  = compiler,
                               pkgConfigProgramDb = progdb
@@ -2981,6 +3073,8 @@ buildInplaceUnpackedPackage verbosity
   where
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
+
+    isParallelBuild = buildSettingNumJobs >= 2
 
     configFileMonitor :: FileMonitorCacheFile
                            (GenericReadyPackage ElaboratedConfiguredPackage

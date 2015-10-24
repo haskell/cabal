@@ -175,9 +175,12 @@ readyPackageKey comp (ReadyPackage pkg deps) =
 
 -- | Extracts a library name from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
-readyLibraryName comp ready@(ReadyPackage pkg _) =
-    packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
+readyLibraryName :: Package srcpkg
+                 => Compiler
+                 -> GenericReadyPackage srcpkg InstalledPackageInfo
+                 -> LibraryName
+readyLibraryName comp rpkg =
+    packageKeyLibraryName (packageId rpkg) (readyPackageKey comp rpkg)
 
 
 -- | A package description along with the location of the package sources.
