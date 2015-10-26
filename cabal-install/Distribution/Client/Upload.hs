@@ -1,7 +1,7 @@
 -- This is a quick hack for uploading packages to Hackage.
 -- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
 
-module Distribution.Client.Upload (check, upload, report) where
+module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
 import Distribution.Client.HttpUtils
@@ -16,10 +16,11 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
 import Network.URI (URI(uriPath), parseURI)
+import Network.HTTP (Header(..), HeaderName(..))
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
-import System.FilePath  ((</>), takeExtension)
+import System.FilePath  ((</>), takeExtension, takeFileName)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
 import Control.Monad (forM_, when)
@@ -46,6 +47,40 @@ upload transport verbosity repos mUsername mPassword paths = do
     flip mapM_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       handlePackage transport verbosity uploadURI auth path
+
+uploadDoc :: HttpTransport -> Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> FilePath -> IO ()
+uploadDoc transport verbosity repos mUsername mPassword path = do
+    targetRepo <-
+      case [ remoteRepo | Left remoteRepo <- map repoKind repos ] of
+        [] -> die $ "Cannot upload. No remote repositories are configured."
+        rs -> remoteRepoTryUpgradeToHttps transport (last rs)
+    let targetRepoURI = remoteRepoURI targetRepo
+        rootIfEmpty x = if null x then "/" else x
+        uploadURI = targetRepoURI {
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> "package/" ++ pkgid ++ "/docs"
+        }
+        (reverseSuffix, reversePkgid) = break (== '-') (reverse (takeFileName path))
+        pkgid = reverse $ tail reversePkgid
+    when (reverse reverseSuffix /= "docs.tar.gz" || null reversePkgid || head reversePkgid /= '-') $ do
+      print path
+      print reverseSuffix
+      print reversePkgid
+      die "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
+    Username username <- maybe promptUsername return mUsername
+    Password password <- maybe promptPassword return mPassword
+
+    let auth = Just (username,password)
+        headers =
+          [ Header HdrContentType "application/x-tar"
+          , Header HdrContentEncoding "gzip"
+          ]
+    notice verbosity $ "Uploading documentation " ++ path ++ "... "
+    resp <- putHttpFile transport verbosity uploadURI path auth headers
+    case resp of
+      (200,_)     -> do notice verbosity "Ok"
+      (code,err)  -> do notice verbosity $ "Error uploading documentation " ++ path ++ ": "
+                                    ++ "http code " ++ show code ++ "\n"
+                                    ++ err
 
 promptUsername :: IO Username
 promptUsername = do

@@ -346,6 +346,7 @@ instance Monoid SavedConfig where
 
       combinedSavedUploadFlags = UploadFlags {
         uploadCheck       = combine uploadCheck,
+        uploadDoc         = combine uploadDoc,
         uploadUsername    = combine uploadUsername,
         uploadPassword    = combine uploadPassword,
         uploadPasswordCmd = combine uploadPasswordCmd,
