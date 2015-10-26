@@ -222,6 +222,12 @@ data HttpTransport = HttpTransport {
       postHttpFile :: Verbosity -> URI -> FilePath -> Maybe Auth
                    -> IO (HttpCode, String),
 
+      -- | PUT a file resource to a URI, with optional auth
+      -- (username, password), extra headers and return the HTTP status code
+      -- and any error string.
+      putHttpFile :: Verbosity -> URI -> FilePath -> Maybe Auth -> [Header]
+                  -> IO (HttpCode, String),
+
       -- | Whether this transport supports https or just http.
       transportSupportsHttps :: Bool,
 
@@ -310,7 +316,7 @@ configureTransport verbosity Nothing = do
 
 curlTransport :: ConfiguredProgram -> HttpTransport
 curlTransport prog =
-    HttpTransport gethttp posthttp posthttpfile True False
+    HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
     gethttp verbosity uri etag destPath = do
         withTempFile (takeDirectory destPath)
@@ -350,6 +356,25 @@ curlTransport prog =
         (code, err, _etag) <- parseResponse uri resp ""
         return (code, err)
 
+    puthttpfile verbosity uri path auth headers = do
+        let args = [ show uri
+                   , "--request", "PUT", "--data-binary", "@"++path
+                   , "--write-out", "%{http_code}"
+                   , "--user-agent", userAgent
+                   , "--silent", "--show-error"
+                   , "--header", "Accept: text/plain"
+                   ]
+                ++ concat
+                   [ ["--header", show name ++ ": " ++ value]
+                   | Header name value <- headers ]
+                ++ concat
+                   [ ["--digest", "--user", uname ++ ":" ++ passwd]
+                   | (uname,passwd) <- maybeToList auth ]
+        resp <- getProgramInvocationOutput verbosity
+                  (programInvocation prog args)
+        (code, err, _etag) <- parseResponse uri resp ""
+        return (code, err)
+
     -- on success these curl involcations produces an output like "200"
     -- and on failure it has the server error response first
     parseResponse uri resp headers =
@@ -374,7 +399,7 @@ curlTransport prog =
 
 wgetTransport :: ConfiguredProgram -> HttpTransport
 wgetTransport prog =
-    HttpTransport gethttp posthttp posthttpfile True False
+    HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
     gethttp verbosity uri etag destPath = do
         resp <- runWGet verbosity args
@@ -410,10 +435,25 @@ wgetTransport prog =
                      [ [ "--http-user=" ++ uname
                        , "--http-password=" ++ passwd ]
                      | (uname,passwd) <- maybeToList auth ]
-
           resp <- runWGet verbosity args
           (code, err, _etag) <- parseResponse uri resp
           return (code, err)
+
+    puthttpfile verbosity uri path auth headers = do
+        let args = [ show uri
+                   , "--method=PUT", "--body-file="++path
+                   , "--user-agent=" ++ userAgent
+                   , "--server-response"
+                   , "--header=Accept: text/plain" ]
+                ++ [ "--header=" ++ show name ++ ": " ++ value | Header name value <- headers ]
+                ++ concat
+                   [ [ "--http-user=" ++ uname
+                     , "--http-password=" ++ passwd ]
+                   | (uname,passwd) <- maybeToList auth ]
+
+        resp <- runWGet verbosity args
+        (code, err, _etag) <- parseResponse uri resp
+        return (code, err)
 
     runWGet verbosity args = do
         -- wget returns its output on stderr rather than stdout
@@ -450,7 +490,7 @@ wgetTransport prog =
 
 powershellTransport :: ConfiguredProgram -> HttpTransport
 powershellTransport prog =
-    HttpTransport gethttp posthttp posthttpfile True False
+    HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
     gethttp verbosity uri etag destPath =
         withTempFile (takeDirectory destPath)
@@ -524,6 +564,41 @@ powershellTransport prog =
           Just i -> return (i, x) -- TODO extract real etag
           Nothing -> statusParseFail uri x
 
+    puthttpfile verbosity uri path auth headers =
+        withTempFile (takeDirectory path)
+                     "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
+          fullPath <- canonicalizePath path
+          hPutStr tmpScriptHandle (script fullPath)
+          hClose tmpScriptHandle
+          let args = ["-InputFormat", "None", "-File", tmpScriptFile]
+          resp <- getProgramInvocationOutput verbosity
+                    (programInvocation prog args)
+          parseResponse resp
+      where
+        script fullPath =
+          concatMap (++";\n") $
+            [ "$wc = new-object system.net.webclient"
+            , "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"
+            , "$wc.Headers.Add(\"Accept\", \"text/plain\")" ]
+         ++ [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value
+            | Header name value <- headers ]
+         ++ [ "$wc.Credentials = new-object System.Net.NetworkCredential("
+              ++ escape uname ++ "," ++ escape passwd ++ ",\"\")"
+            | (uname,passwd) <- maybeToList auth ]
+         ++ [ "Try {"
+            , "$bytes = [System.IO.File]::ReadAllBytes("++escape fullPath++")"
+            , "$wc.UploadData("++ escape (show uri) ++ ",\"PUT\", $bytes)"
+            , "} Catch {Write-Error $_; Exit(1);}"
+            , "Write-Host \"200\""
+            , "Exit" ]
+
+        escape x = show x
+
+        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
+          Just i -> return (i, x) -- TODO extract real etag
+          Nothing -> statusParseFail uri x
+
+
 
 ------------------------------------------------------------------------------
 -- The builtin plain HttpTransport
@@ -531,7 +606,7 @@ powershellTransport prog =
 
 plainHttpTransport :: HttpTransport
 plainHttpTransport =
-    HttpTransport gethttp posthttp posthttpfile False False
+    HttpTransport gethttp posthttp posthttpfile puthttpfile False False
   where
     gethttp verbosity uri etag destPath = do
       let req = Request{
@@ -561,6 +636,19 @@ plainHttpTransport =
                   rqURI     = uri,
                   rqMethod  = POST,
                   rqHeaders = headers,
+                  rqBody    = body
+                }
+      (_, resp) <- cabalBrowse verbosity auth (request req)
+      return (convertRspCode (rspCode resp), rspErrorString resp)
+
+    puthttpfile verbosity uri path auth headers = do
+      body <- BS.readFile path
+      let req = Request {
+                  rqURI     = uri,
+                  rqMethod  = PUT,
+                  rqHeaders = Header HdrContentLength (show (BS.length body))
+                            : Header HdrAccept "text/plain"
+                            : headers,
                   rqBody    = body
                 }
       (_, resp) <- cabalBrowse verbosity auth (request req)
