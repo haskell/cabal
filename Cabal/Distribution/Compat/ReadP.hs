@@ -70,7 +70,7 @@ module Distribution.Compat.ReadP
   )
  where
 
-import Control.Monad( MonadPlus(..), liftM, liftM2, ap )
+import Control.Monad( MonadPlus(..), liftM, liftM2, replicateM, ap, (>=>) )
 import Data.Char (isSpace)
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..))
@@ -102,8 +102,8 @@ instance Applicative (P s) where
 instance Monad (P s) where
   return x = Result x Fail
 
-  (Get f)      >>= k = Get (\c -> f c >>= k)
-  (Look f)     >>= k = Look (\s -> f s >>= k)
+  (Get f)      >>= k = Get (f >=> k)
+  (Look f)     >>= k = Look (f >=> k)
   Fail         >>= _ = Fail
   (Result x p) >>= k = k x `mplus` (p >>= k)
   (Final r)    >>= k = final [ys' | (x,s) <- r, ys' <- run (k x) s]
@@ -160,7 +160,7 @@ instance Applicative (Parser r s) where
 
 instance Monad (Parser r s) where
   return x  = R (\k -> k x)
-  fail _    = R (\_ -> Fail)
+  fail _    = R (const Fail)
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 
 --instance MonadPlus (Parser r s) where
@@ -197,7 +197,7 @@ look = R Look
 
 pfail :: ReadP r a
 -- ^ Always fails.
-pfail = R (\_ -> Fail)
+pfail = R (const Fail)
 
 (+++) :: ReadP r a -> ReadP r a -> ReadP r a
 -- ^ Symmetric choice.
@@ -230,7 +230,7 @@ gather (R m) =
  where
   gath l (Get f)      = Get (\c -> gath (l.(c:)) (f c))
   gath _ Fail         = Fail
-  gath l (Look f)     = Look (\s -> gath l (f s))
+  gath l (Look f)     = Look (gath l . f)
   gath l (Result k p) = k (l []) `mplus` gath l p
   gath _ (Final _)    = error "do not use readS_to_P in gather!"
 
@@ -250,9 +250,9 @@ string :: String -> ReadP r String
 -- ^ Parses and returns the specified string.
 string this = do s <- look; scan this s
  where
-  scan []     _               = do return this
-  scan (x:xs) (y:ys) | x == y = do get >> scan xs ys
-  scan _      _               = do pfail
+  scan []     _               = return this
+  scan (x:xs) (y:ys) | x == y = get >> scan xs ys
+  scan _      _               = pfail
 
 munch :: (Char -> Bool) -> ReadP r String
 -- ^ Parses the first zero or more characters satisfying the predicate.
@@ -288,7 +288,7 @@ skipSpaces =
 count :: Int -> ReadP r a -> ReadP r [a]
 -- ^ @ count n p @ parses @n@ occurrences of @p@ in sequence. A list of
 --   results is returned.
-count n p = sequence (replicate n p)
+count n p = replicateM n p
 
 between :: ReadP r open -> ReadP r close -> ReadP r a -> ReadP r a
 -- ^ @ between open close p @ parses @open@, followed by @p@ and finally
