@@ -440,8 +440,7 @@ data ElaboratedConfiguredPackage
        pkgProfExe              :: Bool,
        pkgProfLibDetail        :: ProfDetailLevel,
        pkgProfExeDetail        :: ProfDetailLevel,
-       pkgLibCoverage          :: Bool,
-       pkgExeCoverage          :: Bool,
+       pkgCoverage             :: Bool,
        pkgOptimization         :: OptimisationLevel,
        pkgSplitObjs            :: Bool,
        pkgStripLibs            :: Bool,
@@ -1042,7 +1041,6 @@ data PackageConfig
        packageConfigTests               :: Flag Bool,
        packageConfigBenchmarks          :: Flag Bool,
        packageConfigCoverage            :: Flag Bool,
-       packageConfigLibCoverage         :: Flag Bool,
        packageConfigDebugInfo           :: Flag DebugInfoLevel,
        packageConfigRunTests            :: Flag Bool,
        packageConfigDocumentation       :: Flag Bool,
@@ -1178,13 +1176,15 @@ convertCommandLineFlags globalFlags configFlags configExFlags
       configConfigurationsFlags = projectConfigConfigurationsFlags,
       configTests               = packageConfigTests,
       configBenchmarks          = packageConfigBenchmarks,
-      configCoverage            = packageConfigCoverage,
-      configLibCoverage         = packageConfigLibCoverage,
+      configCoverage            = coverage,
+      configLibCoverage         = libcoverage, --deprecated
       configExactConfiguration  = _,
       configFlagError           = _,
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo
     } = configFlags
+
+    packageConfigCoverage       = coverage <> libcoverage
 
     ConfigExFlags {
       configCabalVersion        = projectConfigSolverCabalVersion,
@@ -1712,10 +1712,7 @@ elaborateInstallPlan platform compiler progdb
          pkgProfLibDetail) = perPkgOptionLibExeFlag pkgid ProfDetailDefault
                                packageConfigProfDetail
                                packageConfigProfLibDetail
-        (pkgExeCoverage,
-         pkgLibCoverage)   = perPkgOptionLibExeFlag pkgid False
-                               packageConfigCoverage
-                               packageConfigLibCoverage
+        pkgCoverage      = perPkgOptionFlag pkgid False packageConfigCoverage
 
         pkgOptimization  = perPkgOptionFlag pkgid NormalOptimisation packageConfigOptimization
         pkgSplitObjs     = perPkgOptionFlag pkgid False packageConfigSplitObjs
@@ -2106,17 +2103,17 @@ setupHsConfigureFlags (ReadyPackage
     configSharedLib           = toFlag pkgSharedLib
     configDynExe              = toFlag pkgDynExe
     configGHCiLib             = toFlag pkgGHCiLib
-    configProfExe             = toFlag pkgProfExe
+    configProfExe             = mempty
     configProfLib             = toFlag pkgProfLib
-    configProf                = mempty --TODO: check older Cabal lib
+    configProf                = toFlag pkgProfExe
 
     -- configProfDetail is for exe+lib, but overridden by configProfLibDetail
     -- so we specify both so we can specify independently
     configProfDetail          = toFlag pkgProfExeDetail
     configProfLibDetail       = toFlag pkgProfLibDetail
 
-    configCoverage            = toFlag pkgExeCoverage
-    configLibCoverage         = toFlag pkgLibCoverage
+    configCoverage            = toFlag pkgCoverage
+    configLibCoverage         = mempty
 
     configOptimization        = toFlag pkgOptimization
     configSplitObjs           = toFlag pkgSplitObjs
@@ -2309,8 +2306,7 @@ packageHashConfigInputs
       pkgHashProfExe             = pkgProfExe,
       pkgHashProfLibDetail       = pkgProfLibDetail,
       pkgHashProfExeDetail       = pkgProfExeDetail,
-      pkgHashLibCoverage         = pkgLibCoverage,
-      pkgHashExeCoverage         = pkgExeCoverage,
+      pkgHashCoverage            = pkgCoverage,
       pkgHashOptimization        = pkgOptimization,
       pkgHashSplitObjs           = pkgSplitObjs,
       pkgHashStripLibs           = pkgStripLibs,
@@ -3363,8 +3359,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashProfExe             :: Bool,
        pkgHashProfLibDetail       :: ProfDetailLevel,
        pkgHashProfExeDetail       :: ProfDetailLevel,
-       pkgHashLibCoverage         :: Bool,
-       pkgHashExeCoverage         :: Bool,
+       pkgHashCoverage            :: Bool,
        pkgHashOptimization        :: OptimisationLevel,
        pkgHashSplitObjs           :: Bool,
        pkgHashStripLibs           :: Bool,
@@ -3426,8 +3421,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "prof-exe"    False display pkgHashProfExe
       , opt   "prof-lib-detail" ProfDetailDefault showProfDetailLevel pkgHashProfLibDetail 
       , opt   "prof-exe-detail" ProfDetailDefault showProfDetailLevel pkgHashProfExeDetail 
-      , opt   "hpc-lib"      False display pkgHashLibCoverage
-      , opt   "hpc-exe"      False display pkgHashExeCoverage
+      , opt   "hpc"          False display pkgHashCoverage
       , opt   "optimisation" NormalOptimisation (show . fromEnum) pkgHashOptimization
       , opt   "split-objs"   False display pkgHashSplitObjs
       , opt   "stripped-lib" False display pkgHashStripLibs
