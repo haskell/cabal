@@ -1310,8 +1310,9 @@ computeComponentId :: PackageDescription
             -- TODO: careful here!
             -> [ComponentId] -- IPIDs of the component dependencies
             -> FlagAssignment
+            -> String -- Any extra information you might want to add in
             -> IO ComponentId
-computeComponentId pkg_descr cname dep_ipids flagAssignment = do
+computeComponentId pkg_descr cname dep_ipids flagAssignment extra = do
     -- show is found to be faster than intercalate and then replacement of
     -- special character used in intercalating. We cannot simply hash by
     -- doubly concating list, as it just flatten out the nested list, so
@@ -1323,6 +1324,7 @@ computeComponentId pkg_descr cname dep_ipids flagAssignment = do
                 (display (package pkg_descr))
                       ++ (show $ dep_ipids)
                       ++ show flagAssignment
+                      ++ show extra
     return . ComponentId $
                 display (package pkg_descr)
                     ++ "-" ++ hash
@@ -1370,7 +1372,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                 str = fromPathTemplate (substPathTemplate env (toPathTemplate lib_hash0))
             in return (ComponentId str)
         _ ->
-          computeComponentId pkg_descr CLibName (getDeps CLibName) flagAssignment
+          computeComponentId pkg_descr CLibName (getDeps CLibName) flagAssignment (fromFlagOrDefault "" (configIPIDExtra cfg))
     let extractCandidateCompatKey s
             = case simpleParse s :: Maybe PackageId of
                 -- Something like 'foo-0.1', use it verbatim.
