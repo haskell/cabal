@@ -492,112 +492,108 @@ powershellTransport :: ConfiguredProgram -> HttpTransport
 powershellTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
-    gethttp verbosity uri etag destPath =
-        withTempFile (takeDirectory destPath)
-                     "psScript.ps1" $ \tmpFile tmpHandle -> do
-           hPutStr tmpHandle script
-           hClose tmpHandle
-           let args = ["-InputFormat", "None", "-File", tmpFile]
-           resp <- getProgramInvocationOutput verbosity
-                     (programInvocation prog args)
-           parseResponse resp
+    gethttp verbosity uri etag destPath = do
+      resp <- runPowershellScript verbosity destPath $
+        webclientScript
+          (setupHeaders (useragentHeader : etagHeader))
+          [ "$wc.DownloadFile(" ++ escape (show uri)
+              ++ "," ++ escape destPath ++ ");"
+          , "Write-Host \"200\";"
+          , "Write-Host $wc.ResponseHeaders.Item(\"ETag\");"
+          ]
+      parseResponse resp
       where
-        script =
-          concatMap (++";\n") $
-            [ "$wc = new-object system.net.webclient"
-            , "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
-         ++ [ "$wc.Headers.Add(\"If-None-Match\"," ++ t ++ ")"
-            | t <- maybeToList etag ]
-         ++ [ "Try {"
-            ,  "$wc.DownloadFile("++ escape (show uri) ++
-                              "," ++ escape destPath ++ ")"
-            , "} Catch {Write-Error $_; Exit(5);}"
-            , "Write-Host \"200\""
-            , "Write-Host $wc.ResponseHeaders.Item(\"ETag\")"
-            , "Exit" ]
-
-        escape x = '"' : x ++ "\"" --TODO write/find real escape.
-
         parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
           Just i  -> return (i, Nothing) -- TODO extract real etag
           Nothing -> statusParseFail uri x
+        etagHeader = [ Header HdrIfNoneMatch t | t <- maybeToList etag ]
 
     posthttp = noPostYet
 
     posthttpfile verbosity uri path auth =
-        withTempFile (takeDirectory path)
-                     (takeFileName path) $ \tmpFile tmpHandle ->
-        withTempFile (takeDirectory path)
-                     "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
-          (body, boundary) <- generateMultipartBody path
-          BS.hPut tmpHandle body
-          hClose tmpHandle
+      withTempFile (takeDirectory path)
+                   (takeFileName path) $ \tmpFile tmpHandle -> do
+        (body, boundary) <- generateMultipartBody path
+        BS.hPut tmpHandle body
+        hClose tmpHandle
+        fullPath <- canonicalizePath tmpFile
 
-          fullPath <- canonicalizePath tmpFile
-          hPutStr tmpScriptHandle (script fullPath boundary)
-          hClose tmpScriptHandle
-          let args = ["-InputFormat", "None", "-File", tmpScriptFile]
-          resp <- getProgramInvocationOutput verbosity
-                    (programInvocation prog args)
-          parseResponse resp
-      where
-        script fullPath boundary = 
-          concatMap (++";\n") $
-            [ "$wc = new-object system.net.webclient"
-            , "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"
-            , "$wc.Headers.Add(\"Content-type\"," ++
-                              "\"multipart/form-data; " ++
-                              "boundary="++boundary++"\")" ]
-         ++ [ "$wc.Credentials = new-object System.Net.NetworkCredential("
-              ++ escape uname ++ "," ++ escape passwd ++ ",\"\")"
-            | (uname,passwd) <- maybeToList auth ]
-         ++ [ "Try {"
-            , "$bytes = [System.IO.File]::ReadAllBytes("++escape fullPath++")"
-            , "$wc.UploadData("++ escape (show uri) ++ ",$bytes)"
-            , "} Catch {Write-Error $_; Exit(1);}"
-            , "Write-Host \"200\""
-            , "Exit" ]
+        let contentHeader = Header HdrContentType
+              ("multipart/form-data; boundary=" ++ boundary)
+        resp <- runPowershellScript verbosity path $ webclientScript
+          (setupHeaders (contentHeader : extraHeaders) ++ setupAuth auth)
+          (uploadFileAction "POST" uri fullPath)
+        parseUploadResponse uri resp
 
-        escape x = show x
+    puthttpfile verbosity uri path auth headers = do
+      fullPath <- canonicalizePath path
+      resp <- runPowershellScript verbosity path $ webclientScript
+        (setupHeaders (extraHeaders ++ headers) ++ setupAuth auth)
+        (uploadFileAction "PUT" uri fullPath)
+      parseUploadResponse uri resp
 
-        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
-          Just i -> return (i, x) -- TODO extract real etag
-          Nothing -> statusParseFail uri x
+    runPowershellScript verbosity path script =
+      withTempFile (takeDirectory path)
+                   "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
+        hPutStr tmpScriptHandle script
+        hClose tmpScriptHandle
+        let args =
+              [ "-InputFormat", "None"
+              -- the default execution policy doesn't allow running
+              -- unsigned scripts, so we need to tell powershell to bypass it
+              , "-ExecutionPolicy", "bypass"
+              , "-File", tmpScriptFile
+              ]
+        getProgramInvocationOutput verbosity (programInvocation prog args)
 
-    puthttpfile verbosity uri path auth headers =
-        withTempFile (takeDirectory path)
-                     "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
-          fullPath <- canonicalizePath path
-          hPutStr tmpScriptHandle (script fullPath)
-          hClose tmpScriptHandle
-          let args = ["-InputFormat", "None", "-File", tmpScriptFile]
-          resp <- getProgramInvocationOutput verbosity
-                    (programInvocation prog args)
-          parseResponse resp
-      where
-        script fullPath =
-          concatMap (++";\n") $
-            [ "$wc = new-object system.net.webclient"
-            , "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"
-            , "$wc.Headers.Add(\"Accept\", \"text/plain\")" ]
-         ++ [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ")"
-            | Header name value <- headers ]
-         ++ [ "$wc.Credentials = new-object System.Net.NetworkCredential("
-              ++ escape uname ++ "," ++ escape passwd ++ ",\"\")"
-            | (uname,passwd) <- maybeToList auth ]
-         ++ [ "Try {"
-            , "$bytes = [System.IO.File]::ReadAllBytes("++escape fullPath++")"
-            , "$wc.UploadData("++ escape (show uri) ++ ",\"PUT\", $bytes)"
-            , "} Catch {Write-Error $_; Exit(1);}"
-            , "Write-Host \"200\""
-            , "Exit" ]
+    escape = show
 
-        escape x = show x
+    useragentHeader = Header HdrUserAgent userAgent
+    extraHeaders = [Header HdrAccept "text/plain", useragentHeader]
 
-        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
-          Just i -> return (i, x) -- TODO extract real etag
-          Nothing -> statusParseFail uri x
+    setupHeaders headers =
+      [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ");"
+      | Header name value <- headers
+      ]
 
+    setupAuth auth =
+      [ "$wc.Credentials = new-object System.Net.NetworkCredential("
+          ++ escape uname ++ "," ++ escape passwd ++ ",\"\");"
+      | (uname,passwd) <- maybeToList auth
+      ]
+
+    uploadFileAction method uri fullPath =
+      [ "$fileBytes = [System.IO.File]::ReadAllBytes(" ++ escape fullPath ++ ");"
+      , "$bodyBytes = $wc.UploadData(" ++ escape (show uri) ++ "," ++ show method ++ ", $fileBytes);"
+      , "Write-Host \"200\";"
+      , "Write-Host (-join [System.Text.Encoding]::UTF8.GetChars($bodyBytes));"
+      ]
+
+    parseUploadResponse uri resp = case lines (trim resp) of
+      (codeStr : message) | Just code <- readMaybe codeStr -> return (code, unlines message)
+      _ -> statusParseFail uri resp
+
+    webclientScript setup action = unlines
+      [ "$wc = new-object system.net.webclient;"
+      , unlines setup
+      , "Try {"
+      , unlines (map ("  " ++) action)
+      , "} Catch [System.Net.WebException] {"
+      , "  $exception = $_.Exception;"
+      , "  If ($exception.Status -eq [System.Net.WebExceptionStatus]::ProtocolError) {"
+      , "    $response = $exception.Response -as [System.Net.HttpWebResponse];"
+      , "    $reader = new-object System.IO.StreamReader($response.GetResponseStream());"
+      , "    Write-Host ($response.StatusCode -as [int]);"
+      , "    Write-Host $reader.ReadToEnd();"
+      , "  } Else {"
+      , "    Write-Error $exception.Message;"
+      , "    Exit(1);"
+      , "  }"
+      , "} Catch {"
+      , "  Write-Error $_.Exception.Message;"
+      , "  Exit(1);"
+      , "}"
+      ]
 
 
 ------------------------------------------------------------------------------
