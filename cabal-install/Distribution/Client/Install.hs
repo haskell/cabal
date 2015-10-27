@@ -528,7 +528,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   let offline = fromFlagOrDefault False (installOfflineMode installFlags)
   when offline $ do
     let pkgs = [ sourcePkg
-               | InstallPlan.Configured (ConfiguredPackage sourcePkg _ _ _)
+               | InstallPlan.Configured (ConfiguredPackage sourcePkg _ _ _ _)
                  <- InstallPlan.toList installPlan ]
     notFetched <- fmap (map packageInfoId)
                   . filterM (fmap isNothing . checkFetched . packageSource)
@@ -669,14 +669,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
-    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
+    nonDefaultFlags (ConfiguredPackage spkg fa _ _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
     stanzas :: ConfiguredPackage -> [OptionalStanza]
-    stanzas (ConfiguredPackage _ _ sts _) = sts
+    stanzas (ConfiguredPackage _ _ sts _ _) = sts
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((' ' :) . showStanza)
@@ -1001,7 +1001,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg | InstallPlan.Installed pkg _ _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ pkg | ReadyPackage (ConfiguredPackage pkg _ _ _) _
+        allSrcPkgs   = [ pkg | ReadyPackage (ConfiguredPackage pkg _ _ _ _) _
                             <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
@@ -1233,7 +1233,7 @@ installReadyPackage :: Platform -> CompilerInfo
 installReadyPackage platform cinfo configFlags
                     (ReadyPackage (ConfiguredPackage
                                     (SourcePackage _ gpkg source pkgoverride)
-                                    flags stanzas _)
+                                    flags stanzas _ _)
                                    deps)
                     installPkg =
   installPkg configFlags {

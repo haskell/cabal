@@ -120,7 +120,7 @@ configure verbosity packageDBs repos comp platform conf
     Right installPlan -> case InstallPlan.ready installPlan of
       [(pkg@(ReadyPackage
              (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
-                                 _ _ _)
+                                 _ _ _ _)
              _), _)] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
@@ -174,6 +174,7 @@ configureSetupScript packageDBs
                      mpkg
   = SetupScriptOptions {
       useCabalVersion   = cabalVersion
+    , useCabalSpecVersion = Nothing
     , useCompiler       = Just comp
     , usePlatform       = Just platform
     , usePackageDB      = packageDBs'
@@ -193,6 +194,7 @@ configureSetupScript packageDBs
       -- Therefore, for now, we just leave this blank.
     , useDependencies          = fromMaybe [] explicitSetupDeps
     , useDependenciesExclusive = isJust explicitSetupDeps
+    , useVersionMacros         = isJust explicitSetupDeps
     }
   where
     -- When we are compiling a legacy setup script without an explicit
@@ -212,7 +214,7 @@ configureSetupScript packageDBs
 
     explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
+      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _ _) deps
                  <- mpkg
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
@@ -308,7 +310,7 @@ configurePackage :: Verbosity
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
                  (ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _)
-                                                  flags stanzas _)
+                                                  flags stanzas _ _)
                                deps)
                  extraArgs =
 

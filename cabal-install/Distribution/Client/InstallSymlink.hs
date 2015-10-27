@@ -126,7 +126,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage (ConfiguredPackage _ _flags _ _) deps, pkg, exe) <- exes
+        | (ReadyPackage (ConfiguredPackage _ _flags _ _ _) deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
                                      (map Installed.libraryName
@@ -147,7 +147,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
     pkgDescription :: ReadyPackage -> PackageDescription
     pkgDescription (ReadyPackage (ConfiguredPackage
                                     (SourcePackage _ pkg _ _)
-                                    flags stanzas _)
+                                    flags stanzas _ _)
                                   _) =
       case finalizePackageDescription flags
              (const True)

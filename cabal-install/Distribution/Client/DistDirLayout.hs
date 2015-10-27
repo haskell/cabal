@@ -58,7 +58,7 @@ data DistDirLayout = DistDirLayout {
        distTempDirectory            :: FilePath,
        distBinDirectory             :: FilePath,
 
-       distPackageDB                :: CompilerId -> FilePath
+       distPackageDB                :: CompilerId -> PackageDB
      }
 
 
@@ -101,7 +101,8 @@ defaultDistDirLayout projectRootDirectory =
 
     distBinDirectory = distDirectory </> "bin"
 
-    distPackageDB compid = distDirectory </> "packagedb" </> display compid
+    distPackageDBPath compid = distDirectory </> "packagedb" </> display compid
+    distPackageDB = SpecificPackageDB . distPackageDBPath
 
 
 

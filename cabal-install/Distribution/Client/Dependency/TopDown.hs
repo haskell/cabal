@@ -249,7 +249,7 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
+topDownResolver platform cinfo installedPkgIndex sourcePkgIndex _setupDeps
                 preferences constraints targets =
     mapMessages $ topDownResolver'
                     platform cinfo
@@ -609,7 +609,7 @@ finaliseSelectedPackages pref selected constraints =
 
     finaliseInstalled (InstalledPackageEx pkg _ _) = SelectedInstalled pkg
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
-        SelectedSource (ConfiguredPackage pkg flags stanzas deps')
+        SelectedSource (ConfiguredPackage pkg flags stanzas deps' [])
       where
         -- We cheat in the cabal solver, and classify all dependencies as
         -- library dependencies.

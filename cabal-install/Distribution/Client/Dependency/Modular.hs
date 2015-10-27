@@ -34,13 +34,15 @@ import Distribution.System
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver
-modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =
+modularResolver sc (Platform arch os) cinfo iidx sidx sdeps pprefs pcs pns =
   fmap (uncurry postprocess)      $ -- convert install plan
   logToProgress (maxBackjumps sc) $ -- convert log format into progress format
   solve sc idx pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
-      idx    = convPIs os arch cinfo (shadowPkgs sc) (strongFlags sc) iidx sidx
+      idx    = convPIs os arch cinfo
+                       (shadowPkgs sc) (strongFlags sc)
+                       iidx sidx sdeps
       -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromListWith (++) (map pair pcs)
         where
@@ -48,7 +50,7 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =
 
       -- Results have to be converted into an install plan.
       postprocess :: Assignment -> RevDepMap -> [ResolverPackage]
-      postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
+      postprocess a rdm = map (convCP iidx sidx sdeps) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN

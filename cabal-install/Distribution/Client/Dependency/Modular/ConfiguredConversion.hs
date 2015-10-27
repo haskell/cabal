@@ -14,20 +14,24 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.ComponentDeps (ComponentDeps)
 
 
-convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
+convCP :: SI.InstalledPackageIndex ->
+          CI.PackageIndex SourcePackage ->
+          (SourcePackage -> [Dependency]) ->
           CP QPN -> ResolverPackage
-convCP iidx sidx (CP qpi fa es ds) =
+convCP iidx sidx sdeps (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting
                   (fromJust $ SI.lookupInstalledPackageId iidx pi)
     Right pi -> Configured $ ConfiguredPackage
-                  (fromJust $ CI.lookupPackageId sidx pi)
+                  srcpkg
                   fa
                   es
                   ds'
-  where
-    ds' :: ComponentDeps [ConfiguredId]
-    ds' = fmap (map convConfId) ds
+                  (sdeps srcpkg)
+      where
+        Just srcpkg = CI.lookupPackageId sidx pi
+        ds' :: ComponentDeps [ConfiguredId]
+        ds' = fmap (map convConfId) ds
 
 convPI :: PI QPN -> Either InstalledPackageId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi

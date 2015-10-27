@@ -56,7 +56,8 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByInstalledPackageId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
-    removeUpperBounds
+    removeUpperBounds,
+    addDefaultSetupDepends,
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -141,6 +142,7 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverSetupDepsDefaults :: SourcePackage -> [Dependency],
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
@@ -198,6 +200,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
+       depResolverSetupDepsDefaults = const [],
        depResolverReorderGoals      = False,
        depResolverIndependentGoals  = False,
        depResolverAvoidReinstalls   = False,
@@ -401,6 +404,7 @@ removeUpperBounds allowNewer params =
         onBenchmark  bmk  = bmk { PD.benchmarkBuildInfo =
                                      f' $ PD.benchmarkBuildInfo bmk }
 
+        --TODO: also apply to setupDepends
         srcPkg' = srcPkg { packageDescription = gpd' }
         gpd'    = gpd {
           PD.packageDescription = pd',
@@ -427,6 +431,15 @@ removeUpperBounds allowNewer params =
         onCondTree :: (a -> b) -> PD.CondTree v [Dependency] a
                    -> PD.CondTree v [Dependency] b
         onCondTree g = mapCondTree g (map f) id
+
+
+-- | Supply defaults for packages without explicit Setup dependencies
+addDefaultSetupDepends :: (SourcePackage -> [Dependency])
+                      -> DepResolverParams -> DepResolverParams
+addDefaultSetupDepends defaultSetupDeps params =
+    params {
+      depResolverSetupDepsDefaults = defaultSetupDeps
+    }
 
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams
@@ -550,7 +563,8 @@ resolveDependencies platform comp  solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
-                     platform comp installedPkgIndex sourcePkgIndex
+                     platform comp
+                     installedPkgIndex sourcePkgIndex defaultSetupDeps
                      preferences constraints targets
   where
 
@@ -559,6 +573,7 @@ resolveDependencies platform comp  solver params =
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
+      defaultSetupDeps
       reorderGoals
       indGoals
       noReinstalls
@@ -708,7 +723,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerInfo
                           -> ConfiguredPackage -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
+  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps' setupDeps) =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -763,7 +778,7 @@ configuredPackageProblems platform cinfo
          (enableStanzas stanzas $ packageDescription pkg) of
         Right (resolvedPkg, _) ->
              externalBuildDepends resolvedPkg
-          ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
+          ++ maybe setupDeps PD.setupDepends (PD.setupBuildInfo resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"
 
@@ -789,7 +804,7 @@ configuredPackageProblems platform cinfo
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
-                              prefs defpref installedPkgIndex sourcePkgIndex
+                              prefs defpref installedPkgIndex sourcePkgIndex _
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
     collectEithers (map selectPackage targets)

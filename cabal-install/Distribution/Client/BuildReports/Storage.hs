@@ -130,7 +130,7 @@ fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
-  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _) deps)
+  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _ _) deps)
                          _ result
     -> Just $ ( BuildReport.new os arch comp
                                 (packageId srcPkg) flags
@@ -138,7 +138,7 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
                                 (Right result)
               , extractRepo srcPkg)
 
-  InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
+  InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps _) result
     -> Just $ ( BuildReport.new os arch comp
                                 (packageId srcPkg) flags
                                 (map confSrcId (CD.nonSetupDeps deps))

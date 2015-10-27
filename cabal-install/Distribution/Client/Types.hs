@@ -15,7 +15,7 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..)
+         ( PackageName, PackageId, Package(..), Dependency
          , mkPackageKey, PackageKey, InstalledPackageId(..)
          , HasInstalledPackageId(..), PackageInstalled(..)
          , LibraryName, packageKeyLibraryName )
@@ -104,6 +104,7 @@ data ConfiguredPackage = ConfiguredPackage
                            -- These must be consistent with the 'buildDepends'
                            -- in the 'PackageDescription' that you'd get by
                            -- applying the flag assignment and optional stanzas.
+       [Dependency]        -- legacy Setup.hs deps
   deriving (Eq, Show, Generic)
 
 instance Binary ConfiguredPackage
@@ -131,11 +132,17 @@ instance Binary ConfiguredId
 instance Show ConfiguredId where
   show = show . confSrcId
 
+instance Package ConfiguredId where
+  packageId = confSrcId
+
+instance HasInstalledPackageId ConfiguredId where
+  installedPackageId = confInstId 
+
 instance Package ConfiguredPackage where
-  packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
+  packageId (ConfiguredPackage pkg _ _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
+  depends (ConfiguredPackage _ _ _ deps _) = fmap (map confInstId) deps
 
 instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId

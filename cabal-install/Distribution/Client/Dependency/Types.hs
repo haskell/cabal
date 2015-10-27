@@ -60,7 +60,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
-         ( PackageName )
+         ( PackageName, Dependency )
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -112,7 +112,8 @@ instance Text PreSolver where
 type DependencyResolver = Platform
                        -> CompilerInfo
                        -> InstalledPackageIndex
-                       ->          PackageIndex.PackageIndex SourcePackage
+                       -> PackageIndex.PackageIndex SourcePackage
+                       -> (SourcePackage -> [Dependency]) --TOO: a bit hacky
                        -> (PackageName -> PackagePreferences)
                        -> [LabeledPackageConstraint]
                        -> [PackageName]
