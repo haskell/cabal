@@ -3075,7 +3075,8 @@ buildAndInstallUnpackedPackage verbosity
     isParallelBuild = buildSettingNumJobs >= 2
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
-    configureFlags _ = setupHsConfigureFlags rpkg pkgshared
+    configureFlags v = flip filterConfigureFlags v $
+                       setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
@@ -3180,7 +3181,7 @@ buildInplaceUnpackedPackage verbosity
         whenChanged configChanged $ do
           when isParallelBuild $
             notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-          setup configureCommand' (\_ -> configureFlags)
+          setup configureCommand' configureFlags
 
         -- Build phase
         when isParallelBuild $
@@ -3245,7 +3246,8 @@ buildInplaceUnpackedPackage verbosity
     whenChanged (Unchanged _) _      = return ()
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
-    configureFlags   = setupHsConfigureFlags rpkg pkgshared
+    configureFlags v = flip filterConfigureFlags v $
+                       setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
