@@ -189,7 +189,7 @@ main = do
   getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker args = -- topHandler $
+mainWorker args = topHandler $
   case commandsRun (globalCommand commands) commands args of
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
