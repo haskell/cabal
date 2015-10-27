@@ -57,7 +57,7 @@ import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Data.Char ( isAlphaNum )
-import Data.Maybe ( catMaybes, maybeToList )
+import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
 #if __GLASGOW_HASKELL__ < 710
@@ -309,7 +309,7 @@ simplifyCondTree :: (Monoid a, Monoid d) =>
                  -> CondTree v d a
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
-    mconcat $ (d, a) : catMaybes (map simplifyIf ifs)
+    mconcat $ (d, a) : mapMaybe simplifyIf ifs
   where
     simplifyIf (cnd, t, me) =
         case simplifyCondition cnd env of
