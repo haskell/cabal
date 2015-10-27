@@ -580,7 +580,7 @@ powershellTransport prog =
             [ "$wc = new-object system.net.webclient"
             , "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"
             , "$wc.Headers.Add(\"Accept\", \"text/plain\")" ]
-         ++ [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value
+         ++ [ "$wc.Headers.Add(" ++ escape (show name) ++ "," ++ escape value ++ ")"
             | Header name value <- headers ]
          ++ [ "$wc.Credentials = new-object System.Net.NetworkCredential("
               ++ escape uname ++ "," ++ escape passwd ++ ",\"\")"
