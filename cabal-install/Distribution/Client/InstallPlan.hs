@@ -538,7 +538,7 @@ mapPreservingGraph :: (HasInstalledPackageId ipkg,    PackageFixedDeps ipkg,
                        HasInstalledPackageId srcpkg,  PackageFixedDeps srcpkg,
                        HasInstalledPackageId ipkg',   PackageFixedDeps ipkg',
                        HasInstalledPackageId srcpkg', PackageFixedDeps srcpkg')
-                   => (  ComponentDeps [InstalledPackageId]
+                   => (  (InstalledPackageId -> InstalledPackageId)
                       -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
                       -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
                    -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
@@ -560,9 +560,7 @@ mapPreservingGraph f plan =
 
     f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
       where
-       pkg' = f deps' pkg
-         where
-           deps' = fmap (map (mapDep ipkgidMap)) (depends pkg)
+       pkg' = f (mapDep ipkgidMap) pkg
 
        ipkgidMap'
          | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap

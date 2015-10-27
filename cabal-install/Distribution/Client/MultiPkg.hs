@@ -411,7 +411,7 @@ data ElaboratedConfiguredPackage
 
        -- | The exact dependencies (on other plan packages)
        --
-       pkgDependencies     :: ComponentDeps [InstalledPackageId],
+       pkgDependencies     :: ComponentDeps [ConfiguredId],
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
        --   is not the same as where it may be unpacked to for the build.
@@ -458,17 +458,15 @@ data ElaboratedConfiguredPackage
 
        -- Setup.hs related things:
 
-       -- | The .cabal file build type 
-       pkgSetupBuildType       :: Cabal.BuildType, --TODO: not actually used currently
-
-       -- | The .cabal file specifies explicit dependencies for the Setup.hs.
-       -- Only newer .cabal files with build type Custom have these.
-       pkgHasExplicitSetupDeps :: Bool,
+       -- | One of four modes for how we build and interact with the Setup.hs
+       -- script, based on whether it's a build-type Custom, with or without
+       -- explicit deps and the cabal spec version the .cabal file needs.
+       pkgSetupScriptStyle      :: SetupScriptStyle,
 
        -- | The version of the Cabal command line interface that we are using
        -- for this package. This is typically the version of the Cabal lib
        -- that the Setup.hs is built against.
-       pkgSetupHsCabalVersion  :: Version
+       pkgSetupScriptCliVersion :: Version
      }
   deriving (Eq, Show, Generic)
 
@@ -481,7 +479,7 @@ instance HasInstalledPackageId ElaboratedConfiguredPackage where
   installedPackageId = pkgInstalledId
 
 instance PackageFixedDeps ElaboratedConfiguredPackage where
-  depends = pkgDependencies
+  depends = fmap (map installedPackageId) . pkgDependencies
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.
@@ -1495,7 +1493,8 @@ planPackages comp platform solver solverconfig
 
       . removeUpperBounds allowNewer
 
-      . addDefaultSetupDepends defaultSetupDeps
+      . addDefaultSetupDepends (defaultSetupDeps platform
+                              . PD.packageDescription . packageDescription)
 
       . addPreferences
           -- preferences from the config file or command line
@@ -1542,53 +1541,6 @@ planPackages comp platform solver solverconfig
     testsEnabled = fromFlagOrDefault False $ configTests configFlags
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
 -}
-    defaultSetupDeps srcpkg
-        -- For packages with build type custom that do not specify explicit
-        -- setup dependencies, we add a dependency on Cabal and a number
-        -- of other packages.
-        --
-        -- The Cabal dep is slightly special:
-        --  * we omit the dep for the Cabal lib itself (since it bootstraps),
-        --  * we constrain it to be less than 1.23 since all packages
-        --    relying on later Cabal spec versions are supposed to use
-        --    explit setup deps. Having this constraint also allows later
-        --    Cabal lib versions to make breaking API changes without breaking
-        --    all old Setup.hs scripts.
-        --
-      | maybe True (PD.Custom ==) (PD.buildType pkg)
-      = let cabalCompatMaxVer = Version [1,23] []
-            cabalConstraint   = orLaterVersion (PD.specVersion pkg)
-                                  `intersectVersionRanges`
-                                earlierVersion cabalCompatMaxVer
-         in [ Dependency cabalPkgname cabalConstraint
-            | packageName pkg /= cabalPkgname ]
-         ++ [ Dependency (PackageName name) anyVersion
-            | name <- defaultPkgs ]
-
-        -- For other build types (like Simple) we typically have no deps at
-        -- all since we'll use the internal setup wrapper method. However if
-        -- the package requires a version of the Cabal spec that's later than
-        -- that supported by the Cabal lib version we were built with then
-        -- we will still need to compile an external Setup.hs, though it'll
-        -- be one of the simple ones that only depends on Cabal and base.
-      | PD.specVersion pkg > cabalVersion
-      = let cabalConstraint = orLaterVersion (PD.specVersion pkg)
-         in [ Dependency cabalPkgname cabalConstraint
-            , Dependency basePkgname  anyVersion ]
-      
-      | otherwise
-      = []
-      where
-        pkg = PD.packageDescription (packageDescription srcpkg)
-        cabalPkgname = PackageName "Cabal"
-        basePkgname  = PackageName "base"
-
-    defaultPkgs      = [ "array", "base", "binary", "bytestring", "containers"
-                       , "deepseq", "directory", "filepath", "pretty"
-                       , "process", "time" ]
-                    ++ [ "Win32" | os == Windows ]
-                    ++ [ "unix"  | os /= Windows ]
-                      where Platform _ os = platform
 --    reinstall        = fromFlag projectConfigSolverReinstall
     reorderGoals     = fromFlag projectConfigSolverReorderGoals
     independentGoals = fromFlag projectConfigSolverIndependentGoals
@@ -1676,23 +1628,31 @@ elaborateInstallPlan platform compiler progdb
       }
 
     elaboratedInstallPlan =
-      flip InstallPlan.mapPreservingGraph solverPlan $ \deps planpkg ->
+      flip InstallPlan.mapPreservingGraph solverPlan $ \mapDep planpkg ->
         case planpkg of
           InstallPlan.PreExisting pkg ->
             InstallPlan.PreExisting pkg
 
           InstallPlan.Configured  pkg ->
-            InstallPlan.Configured (elaborateConfiguredPackage deps pkg)
+            InstallPlan.Configured
+              (elaborateConfiguredPackage (fixupDependencies mapDep pkg))
 
           _ -> error "elaborateInstallPlan: unexpected package state"
 
-    elaborateConfiguredPackage :: ComponentDeps [InstalledPackageId]
-                               -> ConfiguredPackage
+    -- remap the installed package ids of the direct deps, since we're
+    -- changing the installed package ids of all the packages to use the
+    -- final nix-style hashed ids.
+    fixupDependencies mapDep
+       (ConfiguredPackage pkg flags stanzas deps  setup) =
+        ConfiguredPackage pkg flags stanzas deps' setup
+      where
+        deps' = fmap (map (\d -> d { confInstId = mapDep (confInstId d) })) deps
+
+    elaborateConfiguredPackage :: ConfiguredPackage
                                -> ElaboratedConfiguredPackage
     elaborateConfiguredPackage
-        deps pkg@(ConfiguredPackage
-                    (SourcePackage pkgid gdesc srcloc descOverride)
-                    flags stanzas _olddeps _) =
+        pkg@(ConfiguredPackage (SourcePackage pkgid gdesc srcloc descOverride)
+                               flags stanzas deps _) =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the
@@ -1727,34 +1687,16 @@ elaborateInstallPlan platform compiler progdb
         pkgDependencies     = deps
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
-
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
         pkgBuildPackageDBStack    = buildAndRegisterDbs
         pkgRegisterPackageDBStack = buildAndRegisterDbs
         pkgRequiresRegistration   = isJust (Cabal.condLibrary gdesc)
 
-        pkgSetupBuildType         = fromMaybe Cabal.Custom (Cabal.buildType desc)
-        pkgHasExplicitSetupDeps   = pkgSetupBuildType == Cabal.Custom
-                                 && isJust (Cabal.setupBuildInfo desc)
-        desc                      = Cabal.packageDescription gdesc
+        pkgSetupScriptStyle       = packageSetupScriptStyle desc
+        pkgSetupScriptCliVersion  = packageSetupScriptSpecVersion desc deps
         pkgSetupPackageDBStack    = buildAndRegisterDbs        
-        pkgSetupHsCabalVersion    =
-            case find (\dep -> packageName dep == PackageName "Cabal")
-                      (CD.setupDeps _olddeps) of --FIXME: do deps conversion better 
-              Just dep                     -> packageVersion dep
-              Nothing 
-                | null (CD.setupDeps deps) -> cabalVersion -- one we were built with
-                | packageName pkgid
-                    == PackageName "Cabal" -> packageVersion pkgid
-                | otherwise                -> PD.specVersion desc
-            --TODO: review our policy here. For old setup scripts without
-            -- explicit setup deps we now pick a selection of typical packages
-            -- though we don't make that exclusive, that is we don't use the
-            -- --hide-all-packages flag. This allows it to depend on things
-            -- within the project but still be a bit fuzzy with depending on
-            -- other things. Alternatively we could be strict and say that
-            -- we the deps must be exclusive.
+        desc                      = Cabal.packageDescription gdesc
 
         pkgDescriptionOverride    = descOverride
 
@@ -1903,6 +1845,200 @@ elaborateInstallPlan platform compiler progdb
             -- it that needs profiling. This really needs a separate package
             -- config validation/resolution pass.
 
+
+---------------------------
+-- Setup.hs script policy
+--
+
+-- Handling for Setup.hs scripts is a bit tricky, part of it lives in the
+-- solver phase, and part in the elaboration phase. We keep the helper
+-- functions for both phases together here so at least you can see all of it
+-- in one place.
+
+-- | There are four major cases for Setup.hs handling:
+--
+--  1. @build-type@ Custom with a @custom-setup@ section
+--  2. @build-type@ Custom without a @custom-setup@ section
+--  3. @build-type@ not Custom with @cabal-version >  $our-cabal-version@
+--  4. @build-type@ not Custom with @cabal-version <= $our-cabal-version@
+--
+-- It's also worth noting that packages specifying @cabal-version: >= 1.23@
+-- or later that have @build-type@ Custom will always have a @custom-setup@
+-- section. Therefore in case 2, the specified @cabal-version@ will always be
+-- less than 1.23.
+--
+-- In cases 1 and 2 we obviously have to build an external Setup.hs script,
+-- while in case 4 we can use the internal library API. In case 3 we also have
+-- to build an external Setup.hs script because the package needs a later
+-- Cabal lib version than we can support internally.
+--
+data SetupScriptStyle = SetupCustomExplicitDeps
+                      | SetupCustomImplicitDeps
+                      | SetupNonCustomExternalLib
+                      | SetupNonCustomInternalLib
+  deriving (Eq, Show, Generic)
+
+instance Binary SetupScriptStyle
+
+
+packageSetupScriptStyle :: PD.PackageDescription -> SetupScriptStyle
+packageSetupScriptStyle pkg
+  | buildType == PD.Custom
+  , isJust (PD.setupBuildInfo pkg)
+  = SetupCustomExplicitDeps
+
+  | buildType == PD.Custom
+  = SetupCustomImplicitDeps
+
+  | PD.specVersion pkg > cabalVersion -- one cabal-install is built against
+  = SetupNonCustomExternalLib
+
+  | otherwise
+  = SetupNonCustomInternalLib
+  where
+    buildType = fromMaybe Cabal.Custom (Cabal.buildType pkg)
+
+
+-- | Part of our Setup.hs handling policy is implemented by getting the solver
+-- to work out setup dependencies for packages. The solver already handles
+-- packages that explicitly specify setup dependencies, but we can also tell
+-- the solver to treat other packages as if they had setup dependencies.
+-- That's what this function does, it gets called by the solver for all
+-- packages that don't already have setup dependencies.
+--
+-- The dependencies we want to add is different for each 'SetupScriptStyle'.
+--
+defaultSetupDeps :: Platform -> PD.PackageDescription -> [Dependency]
+defaultSetupDeps platform pkg =
+    case packageSetupScriptStyle pkg of
+
+      -- For packages with build type custom that do not specify explicit
+      -- setup dependencies, we add a dependency on Cabal and a number
+      -- of other packages.
+      SetupCustomImplicitDeps ->
+        [ Dependency depPkgname anyVersion
+        | depPkgname <- legacyCustomSetupPkgs platform ] ++
+        -- The Cabal dep is slightly special:
+        --  * we omit the dep for the Cabal lib itself (since it bootstraps),
+        --  * we constrain it to be less than 1.23 since all packages
+        --    relying on later Cabal spec versions are supposed to use
+        --    explit setup deps. Having this constraint also allows later
+        --    Cabal lib versions to make breaking API changes without breaking
+        --    all old Setup.hs scripts.
+        [ Dependency cabalPkgname cabalConstraint
+        | packageName pkg /= cabalPkgname ]
+        where
+          cabalConstraint   = orLaterVersion (PD.specVersion pkg)
+                                `intersectVersionRanges`
+                              earlierVersion cabalCompatMaxVer
+          cabalCompatMaxVer = Version [1,23] []
+ 
+      -- For other build types (like Simple) if we still need to compile an
+      -- external Setup.hs, it'll be one of the simple ones that only depends
+      -- on Cabal and base.
+      SetupNonCustomExternalLib ->
+        [ Dependency cabalPkgname cabalConstraint
+        , Dependency basePkgname  anyVersion ]
+        where
+          cabalConstraint = orLaterVersion (PD.specVersion pkg)
+  
+      -- The internal setup wrapper method has no deps at all.
+      SetupNonCustomInternalLib -> []
+
+      SetupCustomExplicitDeps ->
+        error $ "defaultSetupDeps: called for a package with explicit "
+             ++ "setup deps: " ++ display (packageId pkg)
+
+
+-- | Work out which version of the Cabal spec we will be using to talk to the
+-- Setup.hs interface for this package.
+--
+-- This depends somewhat on the 'SetupScriptStyle' but most cases are a result
+-- of what the solver picked for us, based on the explicit setup deps or the
+-- ones added implicitly by 'defaultSetupDeps'.
+--
+packageSetupScriptSpecVersion :: Package pkg
+                              => PD.PackageDescription
+                              -> ComponentDeps [pkg]
+                              -> Version
+packageSetupScriptSpecVersion pkg deps =
+    case packageSetupScriptStyle pkg of
+
+      -- We're going to be using the internal Cabal library, so the spec
+      -- version of that is simply the version of the Cabal library that
+      -- cabal-install has been built with.
+      SetupNonCustomInternalLib ->
+        cabalVersion
+
+      -- If we happen to be building the Cabal lib itself then because that
+      -- bootstraps itself then we use the version of the lib we're building.
+      SetupCustomImplicitDeps | packageName pkg == cabalPkgname ->
+        packageVersion pkg
+
+      -- In all other cases we have a look at what version of the Cabal lib
+      -- the solver picked. Or if it didn't depend on Cabal at all (which is
+      -- very rare) then we look at the .cabal file to see what spec version
+      -- it declares.
+      _ -> case find ((cabalPkgname ==) . packageName) (CD.setupDeps deps) of 
+             Just dep -> packageVersion dep
+             Nothing  -> PD.specVersion pkg
+
+
+cabalPkgname, basePkgname :: PackageName
+cabalPkgname = PackageName "Cabal"
+basePkgname  = PackageName "base"
+
+
+legacyCustomSetupPkgs :: Platform -> [PackageName]
+legacyCustomSetupPkgs (Platform _ os) =
+    map PackageName $
+        [ "array", "base", "binary", "bytestring", "containers"
+        , "deepseq", "directory", "filepath", "pretty"
+        , "process", "time" ]
+     ++ [ "Win32" | os == Windows ]
+     ++ [ "unix"  | os /= Windows ]
+
+-- The other aspects of our Setup.hs policy lives here where we decide on
+-- the 'SetupScriptOptions'.
+--
+-- Our current policy for the 'SetupCustomImplicitDeps' case is that we
+-- try to make the implicit deps cover everything, and we don't allow the
+-- compiler to pick up other deps. This may or may not be sustainable, and
+-- we might have to allow the deps to be non-exclusive, but that itself would
+-- be tricky since we would have to allow the Setup access to all the packages
+-- in the store and local dbs.
+
+setupHsScriptOptions :: ElaboratedReadyPackage
+                     -> ElaboratedSharedConfig
+                     -> FilePath
+                     -> FilePath
+                     -> Bool
+                     -> Lock
+                     -> SetupScriptOptions
+setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
+                     ElaboratedSharedConfig{..} srcdir builddir
+                     isParallelBuild cacheLock =
+    SetupScriptOptions {
+      useCabalVersion          = thisVersion pkgSetupScriptCliVersion,
+      useCabalSpecVersion      = Just pkgSetupScriptCliVersion,
+      useCompiler              = Just pkgConfigCompiler,
+      usePlatform              = Just pkgConfigPlatform,
+      usePackageDB             = pkgSetupPackageDBStack,
+      usePackageIndex          = Nothing,
+      useDependencies          = [ (installedPackageId ipkg, packageId ipkg)
+                                 | ipkg <- CD.setupDeps deps ],
+      useDependenciesExclusive = True,
+      useVersionMacros         = pkgSetupScriptStyle == SetupCustomExplicitDeps,
+      useProgramConfig         = pkgConfigProgramDb,
+      useDistPref              = builddir,
+      useLoggingHandle         = Nothing, -- this gets set later
+      useWorkingDir            = Just srcdir,
+      useWin32CleanHack        = False,   --TODO
+      forceExternalSetupMethod = isParallelBuild,
+      setupCacheLock           = Just cacheLock
+    }
+
+
 -- | To be used for the input for elaborateInstallPlan.
 --
 -- TODO: make InstallDirs.defaultInstallDirs pure.
@@ -1943,36 +2079,6 @@ storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
 -- based on the ElaboratedInstallPlan + ElaboratedSharedConfig,
 -- make the various Setup.hs {configure,build,copy} flags
 
-setupHsScriptOptions :: ElaboratedReadyPackage
-                     -> ElaboratedSharedConfig
-                     -> FilePath
-                     -> FilePath
-                     -> Bool
-                     -> Lock
-                     -> SetupScriptOptions
-setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
-                     ElaboratedSharedConfig{..} srcdir builddir
-                     isParallelBuild cacheLock =
-    SetupScriptOptions {
-      useCabalVersion          = thisVersion pkgSetupHsCabalVersion,
-      useCabalSpecVersion      = Just pkgSetupHsCabalVersion,
-      useCompiler              = Just pkgConfigCompiler,
-      usePlatform              = Just pkgConfigPlatform,
-      usePackageDB             = pkgSetupPackageDBStack,
-      usePackageIndex          = Nothing,
-      useDependencies          = [ (installedPackageId ipkg, packageId ipkg)
-                                 | ipkg <- CD.setupDeps deps ],
-      useDependenciesExclusive = True,
-      useVersionMacros         = pkgHasExplicitSetupDeps,
-      useProgramConfig         = pkgConfigProgramDb,
-      useDistPref              = builddir,
-      useLoggingHandle         = Nothing, -- this gets set later
-      useWorkingDir            = Just srcdir,
-      useWin32CleanHack        = False,   --TODO
-      forceExternalSetupMethod = isParallelBuild,
-      setupCacheLock           = Just cacheLock
-    }
-    
 
 setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> ElaboratedSharedConfig
@@ -2177,7 +2283,7 @@ packageHashInputs
       pkgHashPkgId       = pkgSourceId,
       pkgHashSourceHash  = srchash,
       -- Yes, we use all the deps here (lib, exe and setup)
-      pkgHashDirectDeps  = CD.flatDeps pkgDependencies,
+      pkgHashDirectDeps  = map installedPackageId (CD.flatDeps pkgDependencies),
       pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
     }
 packageHashInputs _ _ =
