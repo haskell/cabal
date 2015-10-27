@@ -9,21 +9,17 @@ module Distribution.Compat.Internal.TempFile (
 
 
 import System.FilePath        ((</>))
-import Foreign.C              (eEXIST)
+import Foreign.C              (CInt, eEXIST, getErrno, errnoToIOError)
 
 import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
-                               o_BINARY, o_NONBLOCK, o_NOCTTY)
+                               o_BINARY, o_NONBLOCK, o_NOCTTY,
+                               withFilePath, c_getpid)
 import System.IO.Error        (isAlreadyExistsError)
-import System.Posix.Internals (withFilePath)
-import Foreign.C              (CInt)
 import GHC.IO.Handle.FD       (fdToHandle)
 import Distribution.Compat.Exception (tryIO)
 import Control.Exception      (onException)
-import Foreign.C              (getErrno, errnoToIOError)
-
-import System.Posix.Internals (c_getpid)
 
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 import System.Directory       ( createDirectory )
