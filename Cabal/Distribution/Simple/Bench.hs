@@ -29,8 +29,8 @@ import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils ( die, notice, rawSystemExitCode )
 import Distribution.Text
 
-import Control.Monad ( when, unless )
-import System.Exit ( ExitCode(..), exitFailure, exitWith )
+import Control.Monad ( when, unless, forM )
+import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 
@@ -77,9 +77,9 @@ bench args pkg_descr lbi flags = do
                       ++ show (disp $ PD.benchmarkType bm)
                   exitFailure
 
-    when (not $ PD.hasBenchmarks pkg_descr) $ do
+    unless (PD.hasBenchmarks pkg_descr) $ do
         notice verbosity "Package has no benchmarks."
-        exitWith ExitSuccess
+        exitSuccess
 
     when (PD.hasBenchmarks pkg_descr && null enabledBenchmarks) $
         die $ "No benchmarks enabled. Did you remember to configure with "
@@ -87,7 +87,7 @@ bench args pkg_descr lbi flags = do
 
     bmsToRun <- case benchmarkNames of
             [] -> return enabledBenchmarks
-            names -> flip mapM names $ \bmName ->
+            names -> forM names $ \bmName ->
                 let benchmarkMap = zip enabledNames enabledBenchmarks
                     enabledNames = map PD.benchmarkName enabledBenchmarks
                     allNames = map PD.benchmarkName pkgBenchmarks
