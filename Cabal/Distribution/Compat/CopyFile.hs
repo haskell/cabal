@@ -69,7 +69,7 @@ copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
   copy
     `catchIO` (\ioe -> throwIO (ioeSetLocation ioe "copyFile"))
-    where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
+    where copy = withBinaryFile fromFPath ReadMode $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
                     hClose hTmp
@@ -100,8 +100,7 @@ filesEqual :: FilePath -> FilePath -> IO Bool
 filesEqual f1 f2 = do
   ex1 <- doesFileExist f1
   ex2 <- doesFileExist f2
-  if not (ex1 && ex2) then return False else do
-
+  if not (ex1 && ex2) then return False else
     withBinaryFile f1 ReadMode $ \h1 ->
       withBinaryFile f2 ReadMode $ \h2 -> do
         c1 <- BSL.hGetContents h1
