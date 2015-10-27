@@ -344,7 +344,7 @@ curlTransport prog =
     posthttpfile verbosity uri path auth = do
         let args = [ show uri
                    , "--form", "package=@"++path
-                   , "--write-out", "%{http_code}"
+                   , "--write-out", "\n%{http_code}"
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
                    , "--header", "Accept: text/plain" ]
@@ -359,7 +359,7 @@ curlTransport prog =
     puthttpfile verbosity uri path auth headers = do
         let args = [ show uri
                    , "--request", "PUT", "--data-binary", "@"++path
-                   , "--write-out", "%{http_code}"
+                   , "--write-out", "\n%{http_code}"
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
                    , "--header", "Accept: text/plain"
@@ -382,10 +382,12 @@ curlTransport prog =
             case reverse (lines resp) of
               (codeLine:rerrLines) ->
                 case readMaybe (trim codeLine) of
-                  Just i  -> let errstr = unlines (reverse rerrLines)
+                  Just i  -> let errstr = mkErrstr rerrLines
                               in Just (i, errstr)
                   Nothing -> Nothing
               []          -> Nothing
+
+          mkErrstr = unlines . reverse . dropWhile (all isSpace)
 
           mb_etag :: Maybe ETag
           mb_etag  = listToMaybe $ reverse
