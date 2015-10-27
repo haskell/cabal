@@ -15,7 +15,7 @@ module Distribution.Compat.CopyFile (
 import Control.Monad
          ( when, unless )
 import Control.Exception
-         ( bracket, bracketOnError, throwIO )
+         ( bracketOnError, throwIO )
 import qualified Data.ByteString.Lazy as BSL
 import Distribution.Compat.Exception
          ( catchIO )
@@ -28,7 +28,7 @@ import Distribution.Compat.Internal.TempFile
 import System.FilePath
          ( takeDirectory )
 import System.IO
-         ( openBinaryFile, IOMode(ReadMode), hClose, hGetBuf, hPutBuf
+         ( IOMode(ReadMode), hClose, hGetBuf, hPutBuf
          , withBinaryFile )
 import Foreign
          ( allocaBytes )
