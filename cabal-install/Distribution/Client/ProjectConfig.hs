@@ -21,13 +21,12 @@ module Distribution.Client.ProjectConfig (
     resolveBuildTimeSettings,
   ) where
 
-import           Distribution.Client.RebuildMonad
+import Distribution.Client.RebuildMonad
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Targets
 import Distribution.Client.DistDirLayout
-import Distribution.Client.FileStatusCache
 import Distribution.Client.Glob
 import Distribution.Client.Setup
 import Distribution.Client.BuildReports.Types (ReportLevel(..))

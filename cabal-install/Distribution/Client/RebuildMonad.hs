@@ -9,14 +9,28 @@
 -- functions.
 --
 module Distribution.Client.RebuildMonad (
+    -- * Rebuild monad
     Rebuild,
     runRebuild,
+
+    -- * Setting up file monitoring
     monitorFiles,
+    MonitorFilePath(..),
+    monitorFileSearchPath,
+    FilePathGlob(..),
+
+    -- * Using a file monitor
+    FileMonitorCacheFile(..),
     rerunIfChanged,
+
+    -- * Utils
+    matchFileGlob,
   ) where
 
 import Distribution.Client.FileStatusCache
-         ( FileMonitorCacheFile(..), MonitorFilePath, Changed(..)
+         ( MonitorFilePath(..), monitorFileSearchPath
+         , FilePathGlob(..), matchFileGlob
+         , FileMonitorCacheFile(..), Changed(..)
          , checkFileMonitorChanged, updateFileMonitor )
 
 import Distribution.Simple.Utils (debug)
