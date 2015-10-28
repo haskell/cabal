@@ -33,7 +33,7 @@ upload :: HttpTransport -> Verbosity -> [Repo] -> Maybe Username -> Maybe Passwo
 upload transport verbosity repos mUsername mPassword paths = do
     targetRepo <-
       case [ remoteRepo | Left remoteRepo <- map repoKind repos ] of
-        [] -> die $ "Cannot upload. No remote repositories are configured."
+        [] -> die "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
@@ -43,7 +43,7 @@ upload transport verbosity repos mUsername mPassword paths = do
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
     let auth = Just (username,password)
-    flip mapM_ paths $ \path -> do
+    forM_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       handlePackage transport verbosity uploadURI auth path
 
@@ -81,7 +81,7 @@ report verbosity repos mUsername mPassword = do
                         do inp <- readFile (srcDir </> logFile)
                            let (reportStr, buildLog) = read inp :: (String,String)
                            case BuildReport.parse reportStr of
-                             Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
+                             Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
                              Right report' ->
                                  do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
                                     BuildReport.uploadReports verbosity auth (remoteRepoURI remoteRepo) [(report', Just buildLog)]
@@ -89,8 +89,8 @@ report verbosity repos mUsername mPassword = do
         Right{} -> return ()
 
 check :: HttpTransport -> Verbosity -> [FilePath] -> IO ()
-check transport verbosity paths = do
-          flip mapM_ paths $ \path -> do
+check transport verbosity paths =
+          forM_ paths $ \path -> do
             notice verbosity $ "Checking " ++ path ++ "... "
             handlePackage transport verbosity checkURI Nothing path
 
@@ -99,8 +99,7 @@ handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
 handlePackage transport verbosity uri auth path =
   do resp <- postHttpFile transport verbosity uri path auth
      case resp of
-       (200,_)     -> do notice verbosity "Ok"
-       (code,err)  -> do notice verbosity $ "Error uploading " ++ path ++ ": "
+       (200,_)     -> notice verbosity "Ok"
+       (code,err)  -> notice verbosity $ "Error uploading " ++ path ++ ": "
                                      ++ "http code " ++ show code ++ "\n"
                                      ++ err
-
