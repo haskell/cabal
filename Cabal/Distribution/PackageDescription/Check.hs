@@ -34,7 +34,7 @@ module Distribution.PackageDescription.Check (
   ) where
 
 import Data.Maybe
-         ( isNothing, isJust, catMaybes, maybeToList, fromMaybe )
+         ( isNothing, isJust, catMaybes, mapMaybe, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Monad
          ( filterM, liftM )
@@ -1658,8 +1658,8 @@ repoTypeDirname _          = []
 --
 checkPackageFileNames :: [FilePath] -> [PackageCheck]
 checkPackageFileNames files =
-     (take 1 . catMaybes . map checkWindowsPath $ files)
-  ++ (take 1 . catMaybes . map checkTarPath     $ files)
+     (take 1 . mapMaybe checkWindowsPath $ files)
+  ++ (take 1 . mapMaybe checkTarPath     $ files)
       -- If we get any of these checks triggering then we're likely to get
       -- many, and that's probably not helpful, so return at most one.
 
