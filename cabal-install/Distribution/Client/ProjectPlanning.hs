@@ -69,6 +69,8 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
+import qualified Distribution.Simple.GHC   as GHC   --TODO: [code cleanup] eliminate
+import qualified Distribution.Simple.GHCJS as GHCJS --TODO: [code cleanup] eliminate
 import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
@@ -975,13 +977,13 @@ elaborateInstallPlan platform compiler progdb
 
         pkgDescriptionOverride    = descOverride
 
-        pkgVanillaLib    = sharedOptionFlag True  packageConfigVanillaLib
-        pkgSharedLib     = sharedOptionFlag False packageConfigSharedLib
+        pkgVanillaLib    = sharedOptionFlag True  packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
+        pkgSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
         pkgDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         pkgGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
 
         pkgProfExe       = perPkgOptionFlag pkgid False packageConfigProf
-        pkgProfLib       = shouldUseLibraryProfiling pkgid
+        pkgProfLib       = pkgid `Set.member` pkgsUseProfilingLibrary
 
         (pkgProfExeDetail,
          pkgProfLibDetail) = perPkgOptionLibExeFlag pkgid ProfDetailDefault
@@ -1094,29 +1096,57 @@ elaborateInstallPlan platform compiler progdb
         [ packageId pkg
         | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
-    shouldUseLibraryProfiling :: Package pkg => pkg -> Bool
-    shouldUseLibraryProfiling pkg = Set.member (packageId pkg)
-                                               pkgsUseLibraryProfiling
+    pkgsUseSharedLibrary :: Set PackageId
+    pkgsUseSharedLibrary =
+        packagesWithDownwardClosedProperty needsSharedLib
+      where
+        needsSharedLib pkg =
+            fromMaybe compilerShouldUseSharedLibByDefault
+                      (liftM2 (||) pkgSharedLib pkgDynExe)
+          where
+            pkgid        = packageId pkg
+            pkgSharedLib = flagToMaybe (packageConfigSharedLib sharedPackageConfig)
+            pkgDynExe    = perPkgOptionMaybe pkgid packageConfigDynExe
 
-    pkgsUseLibraryProfiling :: Set PackageId
-    pkgsUseLibraryProfiling =
+    --TODO: [code cleanup] move this into the Cabal lib. It's currently open
+    -- coded in Distribution.Simple.Configure, but should be made a proper
+    -- function of the Compiler or CompilerInfo.
+    compilerShouldUseSharedLibByDefault =
+      case compilerFlavor compiler of
+        GHC   -> GHC.isDynamic compiler
+        GHCJS -> GHCJS.isDynamic compiler
+        _     -> False
+
+    pkgsUseProfilingLibrary :: Set PackageId
+    pkgsUseProfilingLibrary =
+        packagesWithDownwardClosedProperty needsProfilingLib
+      where
+        needsProfilingLib pkg =
+            fromFlagOrDefault False (profBothFlag <> profLibFlag)
+          where
+            pkgid        = packageId pkg
+            profBothFlag = lookupPerPkgOption pkgid packageConfigProf
+            profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
+            --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
+
+    packagesWithDownwardClosedProperty property =
         Set.fromList
       $ map packageId
       $ InstallPlan.dependencyClosure
           solverPlan
-          [ fakeInstalledPackageId (packageId pkg)
+          [ installedPackageId pkg
           | pkg <- InstallPlan.toList solverPlan
-            -- keep just the packages that have profiling turned on:
-          , let pkgid        = packageId pkg
-                profBothFlag = lookupPerPkgOption pkgid packageConfigProf
-                profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
-                profLib = fromFlagOrDefault False (profBothFlag <> profLibFlag)
-          , profLib ]
-            --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
-            --TODO: [nice to have] this does not check the config consistency, e.g. a package
-            -- explicitly turning off profiling, but something depending on
-            -- it that needs profiling. This really needs a separate package
-            -- config validation/resolution pass.
+          , property pkg ] -- just the packages that satisfy the propety
+      --TODO: [nice to have] this does not check the config consistency,
+      -- e.g. a package explicitly turning off profiling, but something
+      -- depending on it that needs profiling. This really needs a separate
+      -- package config validation/resolution pass.
+
+      --TODO: [nice to have] config consistency checking:
+      -- * profiling libs & exes, exe needs lib, recursive
+      -- * shared libs & exes, exe needs lib, recursive
+      -- * vanilla libs & exes, exe needs lib, recursive
+      -- * ghci or shared lib needed by TH, recursive, ghc version dependent
 
 
 ---------------------------
