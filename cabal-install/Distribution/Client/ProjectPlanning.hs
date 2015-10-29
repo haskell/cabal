@@ -57,6 +57,7 @@ import           Distribution.Client.JobControl
 import           Distribution.Client.HttpUtils
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
+import           Distribution.Utils.NubList (toNubList)
 
 import           Distribution.Package
 import           Distribution.System
@@ -1367,9 +1368,9 @@ setupHsConfigureFlags (ReadyPackage
     configDistPref            = toFlag builddir
     configVerbosity           = toFlag verbosity
 
-    configProgramPaths        = mempty --TODO: [required feature] get from pkgConfigProgramDb
-    configProgramArgs         = mempty --TODO: [required feature] get from pkgConfigProgramDb
-    configProgramPathExtra    = mempty --TODO: [required feature] get from pkgConfigProgramDb
+    configProgramPaths        = programDbProgramPaths pkgConfigProgramDb
+    configProgramArgs         = programDbProgramArgs  pkgConfigProgramDb
+    configProgramPathExtra    = programDbPathExtra    pkgConfigProgramDb
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- use configProgramPaths instead
     configHcPkg               = mempty -- use configProgramPaths instead
@@ -1428,6 +1429,24 @@ setupHsConfigureFlags (ReadyPackage
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms            = error "setupHsConfigureFlags: configPrograms"
+
+    programDbProgramPaths db =
+      [ (programId prog, programPath prog)
+      | prog <- configuredPrograms db ]
+
+    programDbProgramArgs db =
+      [ (programId prog, programOverrideArgs prog)
+      | prog <- configuredPrograms db ]
+
+    programDbPathExtra db =
+      case getProgramSearchPath db of
+        ProgramSearchPathDefault : extra ->
+          toNubList [ dir | ProgramSearchPathDir dir <- extra ]
+        _ -> error $ "setupHsConfigureFlags: we cannot currently cope with a "
+                  ++ "search path that does not start with the system path"
+                  -- the Setup.hs interface only has --extra-prog-path
+                  -- so we cannot put things before the $PATH, only after
+
 
 setupHsBuildFlags :: ElaboratedConfiguredPackage
                   -> ElaboratedSharedConfig
