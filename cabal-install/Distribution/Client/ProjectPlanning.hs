@@ -77,6 +77,7 @@ import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
+import           Distribution.Simple.BuildTarget
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -251,7 +252,10 @@ data ElaboratedConfiguredPackage
        -- | The version of the Cabal command line interface that we are using
        -- for this package. This is typically the version of the Cabal lib
        -- that the Setup.hs is built against.
-       pkgSetupScriptCliVersion :: Version
+       pkgSetupScriptCliVersion :: Version,
+
+       -- Build time related:
+       pkgBuildTargets          :: Maybe [BuildTarget]
      }
   deriving (Eq, Show, Generic)
 
@@ -995,6 +999,7 @@ elaborateInstallPlan platform compiler progdb
         pkgExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
         pkgProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
         pkgProgSuffix          = perPkgOptionMaybe pkgid packageConfigProgSuffix
+        pkgBuildTargets        = Nothing -- sometimes gets adjusted later
 
         pkgInstallDirs
           | shouldBuildInplaceOnly pkg
@@ -1429,15 +1434,18 @@ setupHsBuildFlags :: ElaboratedConfiguredPackage
                   -> Verbosity
                   -> FilePath
                   -> Cabal.BuildFlags
-setupHsBuildFlags _ _ verbosity builddir =
+setupHsBuildFlags pkg@ElaboratedConfiguredPackage{..} _ verbosity builddir =
     Cabal.BuildFlags {
       buildProgramPaths = mempty, --unused, set at configure time
       buildProgramArgs  = mempty, --unused, set at configure time
       buildVerbosity    = toFlag verbosity,
       buildDistPref     = toFlag builddir,
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
-      buildArgs         = mempty  --TODO: [required feature] allow building individual components as targets
+      buildArgs         = maybe [] showBuildTargets pkgBuildTargets
     }
+  where
+    showBuildTargets = map (showBuildTarget QL3 (packageId pkg))
+ 
 
 setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig

@@ -17,6 +17,7 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
+import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.Targets
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileStatusCache (FilePathGlob(..), matchFileGlob)
@@ -32,11 +33,13 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Simple.Setup as Cabal
+import qualified Distribution.Simple.BuildTarget as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Verbosity
 import           Distribution.Text
 
+import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import           Control.Applicative
@@ -317,10 +320,10 @@ selectTargets verbosity
     -- and their deps.
     --
     let installPlan' :: ElaboratedInstallPlan
-        Right installPlan' =
-          InstallPlan.new False $
-            PackageIndex.fromList $
-              InstallPlan.dependencyClosure installPlan targetPkgids
+        installPlan' = prunePlanToTargets targetPkgids' installPlan
+
+        targetPkgids' = map (\t -> (t, Nothing)) targetPkgids
+        --TODO: [required feature] ^^ add in the individual build targets
 
     -- Tell the user what we're going to do
     checkPrintPlan verbosity
@@ -380,6 +383,39 @@ canonicalizePackageLocation loc =
     LocalUnpackedPackage path -> LocalUnpackedPackage <$> canonicalizePath path
     LocalTarballPackage  path -> LocalTarballPackage  <$> canonicalizePath path
     _                         -> return loc
+
+
+
+prunePlanToTargets :: [(InstalledPackageId, Maybe [Cabal.BuildTarget])]
+                   -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+prunePlanToTargets targets installPlan =
+      installPlan'
+    where
+      Right installPlan' =
+        InstallPlan.new False $
+          PackageIndex.fromList $
+            map applyBuildTargets prunedPkgs
+
+      prunedPkgs = InstallPlan.dependencyClosure installPlan (map fst targets)
+
+      buildTargets      = Map.fromList [ (ipkgid, ts)
+                                       | (ipkgid, Just ts) <- targets ]
+      hasReverseLibDeps = Set.fromList [ depid | pkg <- prunedPkgs
+                                       , depid <- CD.flatDeps (depends pkg) ]
+
+      applyBuildTargets (InstallPlan.PreExisting pkg) =
+          InstallPlan.PreExisting pkg
+      applyBuildTargets (InstallPlan.Configured pkg) =
+          InstallPlan.Configured pkg {
+            pkgBuildTargets =
+              if Set.member ipkgid hasReverseLibDeps
+                then Nothing  -- no specific targets, i.e. build everything
+                else Map.lookup ipkgid buildTargets
+                              -- any specific targets, or everything
+          }
+        where
+          ipkgid = installedPackageId pkg
+      applyBuildTargets _ = error "prunePlanToTargets: bad package state"
 
 
 -------------------------------

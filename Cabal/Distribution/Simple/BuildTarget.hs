@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -14,10 +14,13 @@ module Distribution.Simple.BuildTarget (
     -- * Build targets
     BuildTarget(..),
     readBuildTargets,
+    showBuildTarget,
+    QualLevel(..),
 
     -- * Parsing user build targets
     UserBuildTarget,
     readUserBuildTargets,
+    showUserBuildTarget,
     UserBuildTargetProblem(..),
     reportUserBuildTargetProblems,
 
@@ -54,6 +57,8 @@ import Data.Maybe
          ( listToMaybe, catMaybes )
 import Data.Either
          ( partitionEithers )
+import Distribution.Compat.Binary (Binary)
+import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Control.Monad
 #if __GLASGOW_HASKELL__ < 710
@@ -127,8 +132,9 @@ data BuildTarget =
      -- | A specific file within a specific component.
      --
    | BuildTargetFile ComponentName FilePath
-  deriving (Show,Eq)
+  deriving (Show,Eq,Generic)
 
+instance Binary BuildTarget
 
 -- ------------------------------------------------------------
 -- * Do everything
@@ -232,6 +238,10 @@ showUserBuildTarget = intercalate ":" . components
     components (UserBuildTargetDouble s1 s2)    = [s1,s2]
     components (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
 
+showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget ql pkgid bt =
+    showUserBuildTarget (renderBuildTarget ql pkgid bt)
+
 
 -- ------------------------------------------------------------
 -- * Resolving user targets to build targets
@@ -312,13 +322,13 @@ disambiguateBuildTargets pkgid original =
             . partition (\g -> length g > 1)
             . groupBy (equating fst)
             . sortBy (comparing fst)
-            . map (\t -> (renderBuildTarget ql t pkgid, t))
+            . map (\t -> (renderBuildTarget ql pkgid t, t))
 
 data QualLevel = QL1 | QL2 | QL3
   deriving (Enum, Show)
 
-renderBuildTarget :: QualLevel -> BuildTarget -> PackageId -> UserBuildTarget
-renderBuildTarget ql target pkgid =
+renderBuildTarget :: QualLevel -> PackageId -> BuildTarget -> UserBuildTarget
+renderBuildTarget ql pkgid target =
     case ql of
       QL1 -> UserBuildTargetSingle s1        where  s1          = single target
       QL2 -> UserBuildTargetDouble s1 s2     where (s1, s2)     = double target
