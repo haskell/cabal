@@ -45,6 +45,7 @@ import System.FilePath as FilePath
          , takeDirectory )
 import Data.List
          ( intercalate, nub )
+import Data.Binary
 import GHC.Generics
 #if defined(mingw32_HOST_OS)
 import qualified System.Win32
@@ -67,6 +68,8 @@ data ProgramSearchPathEntry =
          ProgramSearchPathDir FilePath  -- ^ A specific dir
        | ProgramSearchPathDefault       -- ^ The system default
   deriving (Eq, Generic)
+
+instance Binary ProgramSearchPathEntry
 
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]

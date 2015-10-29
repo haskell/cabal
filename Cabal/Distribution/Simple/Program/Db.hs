@@ -150,7 +150,7 @@ instance Binary ProgramDb where
     searchpath <- get
     progs      <- get
     return $! emptyProgramDb {
-      progSearchPath  = searchpath
+      progSearchPath  = searchpath,
       configuredProgs = progs
     }
 
