@@ -59,7 +59,7 @@ import           Data.List
 import           System.FilePath
 import           System.IO
 import           System.Directory
-import           System.Exit
+import           System.Exit (ExitCode)
 
 
 ------------------------------------------------------------------------------
