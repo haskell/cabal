@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -115,14 +114,11 @@ import Data.Data                  (Data)
 import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
 import Data.Maybe                 (fromMaybe, maybeToList)
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative        (Applicative((<*>), pure))
-import Data.Monoid                (Monoid(mempty, mappend))
-import Data.Foldable              (Foldable(foldMap))
-import Data.Traversable           (Traversable(traverse))
-#endif
+import Data.Monoid as Mon         (Monoid(..))
+import Data.Foldable as Fold      (Foldable(foldMap))
+import Data.Traversable as Trav   (Traversable(traverse))
 import Data.Typeable               ( Typeable )
-import Control.Applicative         (Alternative(..))
+import Control.Applicative as AP   (Alternative(..), Applicative(..))
 import Control.Monad               (MonadPlus(mplus,mzero), ap)
 import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
@@ -324,7 +320,7 @@ instance Binary SetupBuildInfo
 
 instance Monoid SetupBuildInfo where
   mempty = SetupBuildInfo {
-    setupDepends = mempty
+    setupDepends = Mon.mempty
   }
   mappend a b = SetupBuildInfo {
     setupDepends = combine setupDepends
@@ -1193,23 +1189,23 @@ instance Functor Condition where
 instance Foldable Condition where
   f `foldMap` Var c    = f c
   _ `foldMap` Lit _    = mempty
-  f `foldMap` CNot c   = foldMap f c
+  f `foldMap` CNot c   = Fold.foldMap f c
   f `foldMap` COr c d  = foldMap f c `mappend` foldMap f d
   f `foldMap` CAnd c d = foldMap f c `mappend` foldMap f d
 
 instance Traversable Condition where
   f `traverse` Var c    = Var `fmap` f c
   _ `traverse` Lit c    = pure $ Lit c
-  f `traverse` CNot c   = CNot `fmap` traverse f c
+  f `traverse` CNot c   = CNot `fmap` Trav.traverse f c
   f `traverse` COr c d  = COr  `fmap` traverse f c <*> traverse f d
   f `traverse` CAnd c d = CAnd `fmap` traverse f c <*> traverse f d
 
 instance Applicative Condition where
-  pure  = return
+  pure  = Var
   (<*>) = ap
 
 instance Monad Condition where
-  return = Var
+  return = AP.pure
   -- Terminating cases
   (>>=) (Lit x) _ = Lit x
   (>>=) (Var x) f = f x

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternGuards #-}
 -----------------------------------------------------------------------------
 -- |
@@ -70,9 +69,7 @@ import qualified Data.Map as M
 import Data.Char                ( isSpace )
 import Data.Maybe               ( fromMaybe, maybeToList, isJust )
 import Control.Monad            ( unless, when )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
+import Data.Monoid as Mon       ( Monoid(..) )
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension, takeDirectory )
@@ -375,7 +372,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptCabal           = toFlag True,
       ghcOptComponentId  = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> toFlag pk
-        _ -> mempty,
+        _ -> Mon.mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,

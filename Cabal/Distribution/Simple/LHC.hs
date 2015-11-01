@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LHC
@@ -87,12 +86,10 @@ import Language.Haskell.Extension
          ( Language(Haskell98), Extension(..), KnownExtension(..) )
 
 import Control.Monad            ( unless, when )
+import Data.Monoid as Mon
 import Data.List
 import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( catMaybes )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
@@ -230,7 +227,7 @@ getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! (mconcat indexes)
+  return $! (Mon.mconcat indexes)
 
   where
     -- On Windows, various fields have $topdir/foo rather than full

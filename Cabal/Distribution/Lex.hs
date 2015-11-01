@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternGuards #-}
 -----------------------------------------------------------------------------
 -- |
@@ -15,9 +14,7 @@ module Distribution.Lex (
  ) where
 
 import Data.Char (isSpace)
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 
 newtype DList a = DList ([a] -> [a])
 
@@ -27,7 +24,7 @@ runDList (DList run) = run []
 singleton :: a -> DList a
 singleton a = DList (a:)
 
-instance Monoid (DList a) where
+instance Mon.Monoid (DList a) where
   mempty = DList id
   DList a `mappend` DList b = DList (a . b)
 

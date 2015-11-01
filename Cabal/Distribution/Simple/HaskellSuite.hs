@@ -1,10 +1,6 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Simple.HaskellSuite where
 
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-#endif
 import Data.Maybe
 import Data.Version
 import qualified Data.Map as M (empty)
@@ -106,7 +102,7 @@ getCompilerVersion verbosity prog = do
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Compiler.Flag)]
 getExtensions verbosity prog = do
   extStrs <-
-    lines <$>
+    lines `fmap`
     rawSystemStdout verbosity (programPath prog) ["--supported-extensions"]
   return
     [ (ext, "-X" ++ display ext) | Just ext <- map simpleParse extStrs ]
@@ -114,7 +110,7 @@ getExtensions verbosity prog = do
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Compiler.Flag)]
 getLanguages verbosity prog = do
   langStrs <-
-    lines <$>
+    lines `fmap`
     rawSystemStdout verbosity (programPath prog) ["--supported-languages"]
   return
     [ (ext, "-G" ++ display ext) | Just ext <- map simpleParse langStrs ]

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
@@ -28,9 +27,7 @@ import Distribution.Utils.NubList   ( NubListR, fromNubListR )
 import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import qualified Data.Map as M
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
@@ -494,7 +491,7 @@ packageDbArgs implInfo
 
 instance Monoid GhcOptions where
   mempty = GhcOptions {
-    ghcOptMode               = mempty,
+    ghcOptMode               = Mon.mempty,
     ghcOptExtra              = mempty,
     ghcOptExtraDefault       = mempty,
     ghcOptInputFiles         = mempty,
@@ -503,7 +500,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = mempty,
     ghcOptSourcePathClear    = mempty,
     ghcOptSourcePath         = mempty,
-    ghcOptComponentId         = mempty,
+    ghcOptComponentId        = mempty,
     ghcOptPackageDBs         = mempty,
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,

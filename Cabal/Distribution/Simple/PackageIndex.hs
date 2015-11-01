@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -70,9 +69,7 @@ import qualified Data.Graph as Graph
 import Data.List as List
          ( null, foldl', sort
          , groupBy, sortBy, find, isInfixOf, nubBy, deleteBy, deleteFirstsBy )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (Monoid(..))
-#endif
+import Data.Monoid as Mon (Monoid(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (isNothing, fromMaybe)
@@ -132,7 +129,7 @@ instance HasComponentId a => Monoid (PackageIndex a) where
   mempty  = PackageIndex Map.empty Map.empty
   mappend = merge
   --save one mappend with empty in the common case:
-  mconcat [] = mempty
+  mconcat [] = Mon.mempty
   mconcat xs = foldr1 mappend xs
 
 invariant :: HasComponentId a => PackageIndex a -> Bool

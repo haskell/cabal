@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command
@@ -69,9 +69,7 @@ import Control.Monad
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import Data.Maybe
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
          ( Text(disp, parse) )
@@ -176,7 +174,7 @@ reqArg' ad mkflag showflag =
     reqArg ad (succeedReadE mkflag) showflag
 
 -- | (String -> a) variant of "optArg"
-optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b)
+optArg' :: Mon.Monoid b => ArgPlaceHolder -> (Maybe String -> b)
            -> (b -> [Maybe String])
            -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compat.ReadP
@@ -72,10 +71,7 @@ module Distribution.Compat.ReadP
 
 import Control.Monad( MonadPlus(..), liftM, liftM2, replicateM, ap, (>=>) )
 import Data.Char (isSpace)
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..))
-#endif
-import Control.Applicative (Alternative(empty, (<|>)))
+import Control.Applicative as AP (Applicative(..), Alternative(empty, (<|>)))
 
 infixr 5 +++, <++
 
@@ -96,11 +92,11 @@ instance Functor (P s) where
   fmap = liftM
 
 instance Applicative (P s) where
-  pure = return
+  pure x = Result x Fail
   (<*>) = ap
 
 instance Monad (P s) where
-  return x = Result x Fail
+  return = AP.pure
 
   (Get f)      >>= k = Get (f >=> k)
   (Look f)     >>= k = Look (f >=> k)
@@ -155,11 +151,11 @@ instance Functor (Parser r s) where
   fmap h (R f) = R (\k -> f (k . h))
 
 instance Applicative (Parser r s) where
-  pure = return
+  pure x  = R (\k -> k x)
   (<*>) = ap
 
 instance Monad (Parser r s) where
-  return x  = R (\k -> k x)
+  return = AP.pure
   fail _    = R (const Fail)
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 

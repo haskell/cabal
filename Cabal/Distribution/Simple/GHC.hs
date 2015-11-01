@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC
@@ -108,9 +107,7 @@ import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( fromList )
 import Data.Maybe               ( catMaybes )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
+import Data.Monoid as Mon       ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing )
@@ -463,7 +460,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
-        | forRepl = mempty  -- HPC is not supported in ghci
+        | forRepl = Mon.mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
         | otherwise = mempty
 
