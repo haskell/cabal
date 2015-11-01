@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.CCompiler
@@ -47,10 +46,9 @@ module Distribution.Simple.CCompiler (
    filenameCDialect
   ) where
 
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
+import Data.Monoid as Mon
      ( Monoid(..) )
-#endif
+
 import System.FilePath
      ( takeExtension )
 
@@ -64,7 +62,7 @@ data CDialect = C
               | ObjectiveCPlusPlus
               deriving (Eq, Show)
 
-instance Monoid CDialect where
+instance Mon.Monoid CDialect where
   mempty = C
 
   mappend C                  anything           = anything

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE DefaultSignatures #-}
 -----------------------------------------------------------------------------
@@ -53,13 +53,8 @@ import Data.Array.Unboxed
 
 import GHC.Generics
 
---
--- This isn't available in older Hugs or older GHC
---
-#if __GLASGOW_HASKELL__ >= 606
 import qualified Data.Sequence as Seq
 import qualified Data.Foldable as Fold
-#endif
 
 ------------------------------------------------------------------------
 
@@ -467,11 +462,6 @@ instance (Binary e) => Binary (IntMap.IntMap e) where
 ------------------------------------------------------------------------
 -- Queues and Sequences
 
-#if __GLASGOW_HASKELL__ >= 606
---
--- This is valid Hugs, but you need the most recent Hugs
---
-
 instance (Binary e) => Binary (Seq.Seq e) where
     put s = put (Seq.length s) >> Fold.mapM_ put s
     get = do n <- get :: Get Int
@@ -480,8 +470,6 @@ instance (Binary e) => Binary (Seq.Seq e) where
             rep xs n g = xs `seq` n `seq` do
                            x <- g
                            rep (xs Seq.|> x) (n-1) g
-
-#endif
 
 ------------------------------------------------------------------------
 -- Floating point

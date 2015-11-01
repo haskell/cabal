@@ -640,12 +640,14 @@ instance (Monad m) => Applicative (StT s m) where
 #else
 instance (Monad m, Functor m) => Applicative (StT s m) where
 #endif
-    pure = return
+    pure a = StT (\s -> return (a,s))
     (<*>) = ap
 
 
 instance Monad m => Monad (StT s m) where
+#if __GLASGOW_HASKELL__ < 710
     return a = StT (\s -> return (a,s))
+#endif
     StT f >>= g = StT $ \s -> do
                         (a,s') <- f s
                         runStT (g a) s'

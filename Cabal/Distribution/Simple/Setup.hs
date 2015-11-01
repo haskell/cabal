@@ -30,8 +30,6 @@
 -- read and written from files. This would allow us to save configure flags in
 -- config files.
 
-{-# LANGUAGE CPP #-}
-
 module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,

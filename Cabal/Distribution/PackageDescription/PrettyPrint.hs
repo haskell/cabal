@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.PrettyPrint
@@ -18,9 +17,7 @@ module Distribution.PackageDescription.PrettyPrint (
     showGenericPackageDescription,
 ) where
 
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (Monoid(mempty))
-#endif
+import Data.Monoid as Mon (Monoid(mempty))
 import Distribution.PackageDescription
        ( Benchmark(..), BenchmarkInterface(..), benchmarkType
        , TestSuite(..), TestSuiteInterface(..), testType
@@ -236,9 +233,9 @@ ppIf' :: a -> (a -> Maybe a -> Doc)
            -> Condition ConfVar
            -> CondTree ConfVar [Dependency] a
            -> Doc
-ppIf' it ppIt c thenTree = 
+ppIf' it ppIt c thenTree =
   if isEmpty thenDoc
-     then mempty
+     then Mon.mempty
      else ppIfCondition c $$ nest indentWith thenDoc
   where thenDoc = ppCondTree thenTree (if simplifiedPrinting then (Just it) else Nothing) ppIt
 
@@ -249,7 +246,7 @@ ppIfElse :: a -> (a -> Maybe a -> Doc)
               -> Doc
 ppIfElse it ppIt c thenTree elseTree =
   case (isEmpty thenDoc, isEmpty elseDoc) of
-    (True,  True)  -> mempty
+    (True,  True)  -> Mon.mempty
     (False, True)  -> ppIfCondition c $$ nest indentWith thenDoc
     (True,  False) -> ppIfCondition (cNot c) $$ nest indentWith elseDoc
     (False, False) -> (ppIfCondition c $$ nest indentWith thenDoc)

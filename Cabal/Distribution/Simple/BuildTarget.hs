@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -56,10 +55,7 @@ import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..))
-#endif
-import Control.Applicative (Alternative(..))
+import Control.Applicative as AP (Alternative(..), Applicative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
@@ -798,11 +794,12 @@ instance Functor Match where
   fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
 
 instance Applicative Match where
-  pure = return
+  pure a = ExactMatch 0 [a]
   (<*>) = ap
 
 instance Monad Match where
-  return a                = ExactMatch 0 [a]
+  return = AP.pure
+
   NoMatch      d ms >>= _ = NoMatch d ms
   ExactMatch   d xs >>= f = addDepth d
                           $ foldr matchPlus matchZero (map f xs)
