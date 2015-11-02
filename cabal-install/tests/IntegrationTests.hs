@@ -15,7 +15,7 @@ import Distribution.Simple.Program.Builtin (ghcPkgProgram)
 import Distribution.Simple.Program.Db
         (defaultProgramDb, requireProgram, setProgramSearchPath)
 import Distribution.Simple.Program.Find
-        (ProgramSearchPathEntry(ProgramSearchPathDir), defaultProgramSearchPath)
+        (ProgramSearchPathEntry(ProgramSearchPathDir))
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Setup ( Flag(..) )
@@ -256,9 +256,11 @@ main :: IO ()
 main = do
   -- Find executables and build directories, etc.
   distPref <- findDistPrefOrDefault NoFlag
-  buildDir <- canonicalizePath (distPref </> "build/cabal")
-  let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
-  (cabal, _) <- requireProgram normal cabalProgram (setProgramSearchPath programSearchPath defaultProgramDb)
+  let programSearchPath = [ProgramSearchPathDir $ distPref </> "build/cabal"]
+  -- This throws an error if the cabal executable hasn't been built yet,
+  -- because test suites can't depend on executables.
+  (cabal, _) <- requireProgram normal cabalProgram
+                    (setProgramSearchPath programSearchPath defaultProgramDb)
   (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
   baseDirectory <- canonicalizePath $ "tests" </> "IntegrationTests"
   -- Set up environment variables for test scripts

@@ -35,7 +35,7 @@ import Distribution.Simple.Utils
 import Distribution.System
          ( OS(..), buildOS )
 import System.Directory
-         ( findExecutable )
+         ( canonicalizePath, findExecutable )
 import Distribution.Compat.Environment
          ( getEnvironment )
 import System.FilePath
@@ -109,7 +109,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
     findFirstExe (f:fs) = do
       isExe <- doesExecutableExist f
       if isExe
-        then return (Just f)
+        then Just `fmap` canonicalizePath f
         else findFirstExe fs
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
