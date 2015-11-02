@@ -45,7 +45,7 @@ import System.FilePath as FilePath
          , takeDirectory )
 import Data.List
          ( intercalate, nub )
-import Data.Binary
+import Distribution.Compat.Binary
 import GHC.Generics
 #if defined(mingw32_HOST_OS)
 import qualified System.Win32
