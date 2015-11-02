@@ -89,6 +89,15 @@ stripBase (Setup pn      pp) = Setup pn      (stripBase pp)
 stripBase (Base _pn      pp) =                stripBase pp
 stripBase None               = None
 
+-- | Is the package in the primary group of packages. In particular this
+-- does not include packages pulled in as setup deps.
+--
+primaryPP :: PP -> Bool
+primaryPP (Independent _ pp) = primaryPP pp
+primaryPP (Setup       _ _ ) = False
+primaryPP (Base        _ pp) = primaryPP pp
+primaryPP  None              = True
+
 -- | String representation of a package path.
 --
 -- NOTE: This always ends in a period

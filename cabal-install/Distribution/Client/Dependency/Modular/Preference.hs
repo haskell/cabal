@@ -17,7 +17,7 @@ import Data.Map (Map)
 import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), LabeledPackageConstraint(..)
+  ( PackageConstraint(..), LabeledPackageConstraint(..), ConstraintSource(..)
   , PackagePreferences(..), InstalledPreference(..) )
 import Distribution.Client.Types
   ( OptionalStanza(..) )
@@ -96,12 +96,18 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- given instance for a P-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintP :: ConflictSet QPN
+processPackageConstraintP :: PP
+                          -> ConflictSet QPN
                           -> I
                           -> LabeledPackageConstraint
                           -> Tree a
                           -> Tree a
-processPackageConstraintP c i (LabeledPackageConstraint pc src) r = go i pc
+processPackageConstraintP pp _ _ (LabeledPackageConstraint _ src) r
+  | src == ConstraintSourceUserTarget && not (primaryPP pp)         = r
+    -- the constraints arising from targets, like "foo-1.0" only apply to
+    -- the main packages in the solution, they don't constrain setup deps
+
+processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
   where
     go (I v _) (PackageConstraintVersion _ vr)
         | checkVR vr v  = r
@@ -158,10 +164,10 @@ enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
                           -> Tree QGoalReasonChain
 enforcePackageConstraints pcs = trav go
   where
-    go (PChoiceF qpn@(Q _ pn)               gr      ts) =
+    go (PChoiceF qpn@(Q pp pn)              gr      ts) =
       let c = toConflictSet (Goal (P qpn) gr)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
+          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
