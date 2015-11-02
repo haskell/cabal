@@ -64,12 +64,13 @@ preferredVersionsOrdering vr v1 v2 =
   compare (checkVR vr v1) (checkVR vr v2)
 
 -- | Traversal that tries to establish package preferences (not constraints).
--- Works by reordering choice nodes.
+-- Works by reordering choice nodes. Also applies stanza preferences.
 preferPackagePreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
-preferPackagePreferences pcs = packageOrderFor (const True) preference
+preferPackagePreferences pcs = preferPackageStanzaPreferences pcs
+                             . packageOrderFor (const True) preference
   where
     preference pn i1@(I v1 _) i2@(I v2 _) =
-      let PackagePreferences vr ipref = pcs pn
+      let PackagePreferences vr ipref _ = pcs pn
       in  preferredVersionsOrdering vr v1 v2 `mappend` -- combines lexically
           locationsOrdering ipref i1 i2
 
@@ -91,6 +92,20 @@ preferInstalledOrdering _              _              = EQ
 -- | Compare instances by their version numbers.
 preferLatestOrdering :: I -> I -> Ordering
 preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
+
+-- | Traversal that tries to establish package stanza enable\/disable
+-- preferences. Works by reordering the branches of stanza choices.
+preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
+preferPackageStanzaPreferences pcs = trav go
+  where
+    go (SChoiceF qsn@(SN (PI (Q _ pn) _) s) gr _tr ts) =
+        let PackagePreferences _ _ spref = pcs pn
+            enableStanzaPref = s `elem` spref
+                  -- move True case first to try enabling the stanza
+            ts' | enableStanzaPref = P.sortByKeys (flip compare) ts
+                | otherwise        = ts
+         in SChoiceF qsn gr True ts'   -- True: now weak choice
+    go x = x
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given instance for a P-node. Translates the constraint into a
@@ -321,9 +336,12 @@ deferWeakFlagChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x
 
+    -- weak flags go very last, weak stanzas next last
     defer :: Tree a -> Tree a -> Ordering
     defer (FChoice _ _ True _ _) _ = GT
     defer _ (FChoice _ _ True _ _) = LT
+    defer (SChoice _ _ True _) _   = GT
+    defer _ (SChoice _ _ True _)   = LT
     defer _ _                      = EQ
 
 -- | Variant of 'preferEasyGoalChoices'.
