@@ -16,6 +16,7 @@ module Distribution.Simple.BuildTarget (
     readBuildTargets,
     showBuildTarget,
     QualLevel(..),
+    buildTargetComponentName,
 
     -- * Parsing user build targets
     UserBuildTarget,
@@ -135,6 +136,11 @@ data BuildTarget =
   deriving (Show,Eq,Generic)
 
 instance Binary BuildTarget
+
+buildTargetComponentName :: BuildTarget -> ComponentName
+buildTargetComponentName (BuildTargetComponent cn)   = cn
+buildTargetComponentName (BuildTargetModule    cn _) = cn
+buildTargetComponentName (BuildTargetFile      cn _) = cn
 
 -- ------------------------------------------------------------
 -- * Do everything

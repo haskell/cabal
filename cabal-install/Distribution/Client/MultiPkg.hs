@@ -34,6 +34,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.BuildTarget as Cabal
+import qualified Distribution.Simple.LocalBuildInfo as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Verbosity
@@ -41,10 +42,13 @@ import           Distribution.Text
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.Graph as Graph
+import qualified Data.Tree  as Tree
 
 import           Control.Applicative
 import           Control.Monad
 import           Data.List
+import           Data.Maybe
 import           Data.Monoid
 
 import           System.FilePath
@@ -143,9 +147,9 @@ build verbosity
     --TODO: [nice to have] some debug or status feature to write out the full
     -- elaboratedInstallPlan details
     -- For now can use this:
-    --liftIO $ writeFile (distProjectCacheFile distDirLayout "plan.txt") $
-    --           unlines $ show sharedPackageConfig
-    --                   : map show (InstallPlan.toList elaboratedInstallPlan)
+    writeFile (distProjectCacheFile distDirLayout "plan.txt") $
+               unlines $ show sharedPackageConfig
+                       : map show (InstallPlan.toList elaboratedInstallPlan)
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
@@ -394,19 +398,21 @@ prunePlanToTargets targets installPlan =
       Right installPlan' =
         InstallPlan.new False $
           PackageIndex.fromList $
-            map applyBuildTargets prunedPkgs
+            prunedPkgs
 
-      prunedPkgs = InstallPlan.dependencyClosure installPlan (map fst targets)
+      prunedPkgs = dependencyClosure
+                     (CD.flatDeps . depends)
+                     (map pruneDependencies (InstallPlan.toList installPlan))
+                     (map fst targets)
 
       buildTargets      = Map.fromList [ (ipkgid, ts)
                                        | (ipkgid, Just ts) <- targets ]
       hasReverseLibDeps = Set.fromList [ depid | pkg <- prunedPkgs
                                        , depid <- CD.flatDeps (depends pkg) ]
 
-      applyBuildTargets (InstallPlan.PreExisting pkg) =
-          InstallPlan.PreExisting pkg
-      applyBuildTargets (InstallPlan.Configured pkg) =
+      pruneDependencies (InstallPlan.Configured pkg) =
           InstallPlan.Configured pkg {
+            pkgDependencies = CD.filterDeps keepNeeded (pkgDependencies pkg),
             pkgBuildTargets =
               if Set.member ipkgid hasReverseLibDeps
                 then Nothing  -- no specific targets, i.e. build everything
@@ -414,8 +420,49 @@ prunePlanToTargets targets installPlan =
                               -- any specific targets, or everything
           }
         where
-          ipkgid = installedPackageId pkg
-      applyBuildTargets _ = error "prunePlanToTargets: bad package state"
+          keepNeeded (CD.ComponentTest  _) _ = keepTestsuites
+          keepNeeded (CD.ComponentBench _) _ = keepBenchmarks
+          keepNeeded _                     _ = True
+
+          ipkgid         = installedPackageId pkg
+          bts            = fromMaybe [] (Map.lookup ipkgid buildTargets)
+          keepTestsuites =
+            not $ null [ () | Cabal.CTestName _ <- map Cabal.buildTargetComponentName bts ]
+          keepBenchmarks =
+            not $ null [ () | Cabal.CBenchName _ <- map Cabal.buildTargetComponentName bts ]
+
+      pruneDependencies pkg = pkg
+
+
+dependencyClosure :: HasInstalledPackageId pkg
+                  => (pkg -> [InstalledPackageId])
+                  -> [pkg]
+                  -> [InstalledPackageId]
+                  -> [pkg]
+dependencyClosure deps allpkgs =
+    map vertexToPkg
+  . concatMap Tree.flatten
+  . Graph.dfs graph
+  . map pkgidToVertex
+  where
+    (graph, vertexToPkg, pkgidToVertex) = dependencyGraph deps allpkgs
+
+dependencyGraph :: HasInstalledPackageId pkg
+                => (pkg -> [InstalledPackageId])
+                -> [pkg]
+                -> (Graph.Graph,
+                    Graph.Vertex -> pkg,
+                    InstalledPackageId -> Graph.Vertex)
+dependencyGraph deps pkgs =
+    (graph, vertexToPkg', pkgidToVertex')
+  where
+    (graph, vertexToPkg, pkgidToVertex) =
+      Graph.graphFromEdges [ ( pkg, installedPackageId pkg, deps pkg ) 
+                           | pkg <- pkgs ]
+    vertexToPkg'   = (\(pkg,_,_) -> pkg)
+                   . vertexToPkg
+    pkgidToVertex' = fromMaybe (error "dependencyGraph: lookup failure")
+                   . pkgidToVertex
 
 
 -------------------------------
@@ -478,7 +525,7 @@ printPlan verbosity dryRun pkgs
     showPkgAndReason (ReadyPackage pkg' _) =
       display (packageId pkg') ++
       showFlagAssignment (nonDefaultFlags pkg') ++
-      showStanzas (pkgEnabledStanzas pkg')
+      showStanzas pkg'
 
     toFlagAssignment :: [PD.Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (Cabal.flagName f, Cabal.flagDefault f))
@@ -492,10 +539,8 @@ printPlan verbosity dryRun pkgs
              (Cabal.genPackageFlags pkgDescription)
       in  pkgFlagAssignment \\ defaultAssignment
 
-    showStanzas :: [OptionalStanza] -> String
-    showStanzas = concatMap ((' ' :) . showStanza)
-    showStanza TestStanzas  = "*test"
-    showStanza BenchStanzas = "*bench"
+    showStanzas pkg = concat $ [ " *test"  | pkgTestsuitesEnable pkg ]
+                            ++ [ " *bench" | pkgBenchmarksEnable pkg ]
 
     -- TODO: [code cleanup] this should be a proper function in a proper place
     showFlagAssignment :: FlagAssignment -> String

@@ -11,6 +11,8 @@ module Distribution.Client.ProjectConfig (
     PackageConfigShared(..),
     PackageConfig(..),
     projectConfigRepos,
+    lookupLocalPackageConfig,
+    lookupNonLocalPackageConfig,
 
     -- * Reading config
     readProjectConfig,
@@ -191,6 +193,27 @@ instance Binary ProjectConfigSolver
 instance Binary ProjectConfigBuildOnly
 instance Binary PackageConfigShared
 instance Binary PackageConfig
+
+
+lookupLocalPackageConfig :: Monoid a
+                         => (PackageConfig -> a)
+                         -> ProjectConfig
+                         -> PackageName -> a
+lookupLocalPackageConfig field ProjectConfig {
+                           projectConfigLocalPackages,
+                           projectConfigSpecificPackage
+                         } pkgname =
+    field projectConfigLocalPackages
+ <> maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
+
+lookupNonLocalPackageConfig :: Monoid a
+                            => (PackageConfig -> a)
+                            -> ProjectConfig
+                            -> PackageName -> a
+lookupNonLocalPackageConfig field ProjectConfig {
+                              projectConfigSpecificPackage
+                            } pkgname =
+    maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
 
 
 

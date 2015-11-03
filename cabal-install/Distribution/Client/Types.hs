@@ -211,7 +211,7 @@ instance Package SourcePackage where packageId = packageInfoId
 data OptionalStanza
     = TestStanzas
     | BenchStanzas
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
 
 instance Binary OptionalStanza
 

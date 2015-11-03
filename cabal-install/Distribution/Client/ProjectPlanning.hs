@@ -75,7 +75,7 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, fromFlag, fromFlagOrDefault)
+import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -197,7 +197,6 @@ data ElaboratedConfiguredPackage
        -- | Which optional stanzas are enabled (testsuites, benchmarks)
        pkgTestsuitesEnable :: Bool,
        pkgBenchmarksEnable :: Bool,
-       pkgEnabledStanzas   :: [OptionalStanza], --TODO: [required feature] eliminate 
 
        -- | The exact dependencies (on other plan packages)
        --
@@ -472,14 +471,14 @@ rebuildInstallPlan verbosity
                    -> (Compiler, Platform, ProgramDb)
                    -> [PackageSpecifier SourcePackage]
                    -> Rebuild SolverInstallPlan
-    phaseRunSolver ProjectConfig{projectConfigSolver}
+    phaseRunSolver projectConfig@ProjectConfig{projectConfigSolver}
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
                        (projectConfigSolver, cabalPackageCacheDirectory,
-                        localPackages,
+                        localPackages, localPackagesEnabledStanzas,
                         compiler, platform, programsDbSignature progdb) $ do
-          
+
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
@@ -492,7 +491,7 @@ rebuildInstallPlan verbosity
             foldProgress logMsg die return $
               planPackages compiler platform solver projectConfigSolver
                            installedPkgIndex sourcePkgDb
-                           localPackages
+                           localPackages localPackagesEnabledStanzas
       where
         corePackageDbs = [GlobalPackageDB]
         repos          = projectConfigRepos cabalPackageCacheDirectory
@@ -502,6 +501,24 @@ rebuildInstallPlan verbosity
 
         ProjectConfigSolver {projectConfigSolverSolver} = projectConfigSolver
 
+        localPackagesEnabledStanzas = 
+          Map.fromList
+            [ (pkgname, stanzas)
+            | pkg <- localPackages
+            , let pkgname            = pkgSpecifierTarget pkg
+                  testsEnabled       = lookupLocalPackageConfig
+                                         packageConfigTests
+                                         projectConfig pkgname
+                  benchmarksEnabled  = lookupLocalPackageConfig
+                                         packageConfigBenchmarks
+                                         projectConfig pkgname
+                  stanzas =
+                    Map.fromList $
+                      [ (TestStanzas, enabled)
+                      | enabled <- flagToList testsEnabled ]
+                   ++ [ (BenchStanzas , enabled)
+                      | enabled <- flagToList benchmarksEnabled ]
+            ]
 
     -- Elaborate the solver's install plan to get a fully detailed plan. This
     -- version of the plan has the final nix-style hashed ids.
@@ -738,9 +755,11 @@ planPackages :: Compiler
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
+             -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String InstallPlan
 planPackages comp platform solver solverconfig
-             installedPkgIndex sourcePkgDb pkgSpecifiers =
+             installedPkgIndex sourcePkgDb
+             pkgSpecifiers pkgStanzasEnable =
 
     resolveDependencies
       platform (compilerInfo comp)
@@ -749,6 +768,8 @@ planPackages comp platform solver solverconfig
 
   where
 
+    --TODO: disable multiple instances restriction in the solver, but then
+    -- make sure we can cope with that in the output.
     resolverParams =
 
         setMaxBackjumps (if maxBackjumps < 0 then Nothing
@@ -783,11 +804,29 @@ planPackages comp platform solver solverconfig
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
             | (pc, src) <- projectConfigSolverConstraints ]
 
+      . addPreferences
+          -- enable stanza preference where the user did not specify
+          [ PackageStanzasPreference pkgname stanzas
+          | pkgSpecifier <- pkgSpecifiers
+          , let pkgname = pkgSpecifierTarget pkgSpecifier
+                stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
+                stanzas = [ stanza | stanza <- [minBound..maxBound]
+                          , Map.lookup stanza stanzaM == Nothing ]
+          , not (null stanzas)
+          ]
+
       . addConstraints
-          [ let pc = PackageConstraintStanzas
-                     (pkgSpecifierTarget pkgSpecifier) stanzas
-            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
-          | pkgSpecifier <- pkgSpecifiers ]
+          -- enable stanza constraints where the user asked to enable
+          [ LabeledPackageConstraint
+              (PackageConstraintStanzas pkgname stanzas)
+              ConstraintSourceConfigFlagOrTarget
+          | pkgSpecifier <- pkgSpecifiers
+          , let pkgname = pkgSpecifierTarget pkgSpecifier
+                stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
+                stanzas = [ stanza | stanza <- [minBound..maxBound]
+                          , Map.lookup stanza stanzaM == Just True ]
+          , not (null stanzas)
+          ]
 
       . addConstraints
           --TODO: [nice to have] this just applies all flags to all targets which
@@ -804,20 +843,6 @@ planPackages comp platform solver solverconfig
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    stanzas = [] --TODO: [required feature] should enable for local only [TestStanzas, BenchStanzas]
-    --TODO: [required feature] while for the local mode we want to run the solver with the tests
-    -- and benchmarks turned on by default (so the solution is stable when we
-    -- actually enable/disable tests), but really we want to have a solver
-    -- mode where it tries to enable these but if it can't work then to turn
-    -- them off.
-{-
-      concat
-        [ if testsEnabled then [TestStanzas] else []
-        , if benchmarksEnabled then [BenchStanzas] else []
-        ]
-    testsEnabled = fromFlagOrDefault False $ configTests configFlags
-    benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
--}
 --    reinstall        = fromFlag projectConfigSolverReinstall
     reorderGoals     = fromFlag projectConfigSolverReorderGoals
     independentGoals = fromFlag projectConfigSolverIndependentGoals
@@ -958,9 +983,10 @@ elaborateInstallPlan platform compiler progdb
         pkgSourceId         = pkgid
         pkgDescription      = gdesc
         pkgFlagAssignment   = flags
-        pkgEnabledStanzas   = stanzas
-        pkgTestsuitesEnable = TestStanzas  `elem` stanzas --TODO: [required feature] only actually enable if solver allows it and we want it
-        pkgBenchmarksEnable = BenchStanzas `elem` stanzas --TODO: [required feature] only actually enable if solver allows it and we want it
+        pkgTestsuitesEnable = TestStanzas  `elem` stanzas
+                           && perPkgOptionFlag pkgid False packageConfigTests
+        pkgBenchmarksEnable = BenchStanzas `elem` stanzas
+                           && perPkgOptionFlag pkgid False packageConfigBenchmarks
         pkgDependencies     = deps
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
@@ -1199,7 +1225,7 @@ packageSetupScriptStyle pkg
   | otherwise
   = SetupNonCustomInternalLib
   where
-    buildType = fromMaybe Cabal.Custom (Cabal.buildType pkg)
+    buildType = fromMaybe PD.Custom (PD.buildType pkg)
 
 
 -- | Part of our Setup.hs handling policy is implemented by getting the solver
