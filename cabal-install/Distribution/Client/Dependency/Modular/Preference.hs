@@ -98,7 +98,7 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (PI (Q _ pn) _) s) gr _tr ts) =
+    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts) | primaryPP pp =
         let PackagePreferences _ _ spref = pcs pn
             enableStanzaPref = s `elem` spref
                   -- move True case first to try enabling the stanza
