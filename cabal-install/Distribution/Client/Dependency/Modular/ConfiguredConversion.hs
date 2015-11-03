@@ -7,6 +7,7 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Types (ResolverPackage(..))
 import qualified Distribution.Client.PackageIndex as CI
 import qualified Distribution.Simple.PackageIndex as SI
+import qualified Distribution.PackageDescription  as PD
 
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
@@ -27,9 +28,11 @@ convCP iidx sidx sdeps (CP qpi fa es ds) =
                   fa
                   es
                   ds'
-                  (sdeps srcpkg)
+                  (maybe (sdeps srcpkg) PD.setupDepends
+                         (PD.setupBuildInfo pkgdesc))
       where
         Just srcpkg = CI.lookupPackageId sidx pi
+        pkgdesc = PD.packageDescription (packageDescription srcpkg)
         ds' :: ComponentDeps [ConfiguredId]
         ds' = fmap (map convConfId) ds
 
