@@ -69,7 +69,7 @@ import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
 import Numeric (showHex)
 import System.Directory (canonicalizePath)
-import System.IO (hClose, hPutStr)
+import System.IO (hClose)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
@@ -504,7 +504,7 @@ powershellTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
     gethttp verbosity uri etag destPath = do
-      resp <- runPowershellScript verbosity destPath $
+      resp <- runPowershellScript verbosity $
         webclientScript
           (setupHeaders (useragentHeader : etagHeader))
           [ "$wc.DownloadFile(" ++ escape (show uri)
@@ -531,34 +531,30 @@ powershellTransport prog =
 
         let contentHeader = Header HdrContentType
               ("multipart/form-data; boundary=" ++ boundary)
-        resp <- runPowershellScript verbosity path $ webclientScript
+        resp <- runPowershellScript verbosity $ webclientScript
           (setupHeaders (contentHeader : extraHeaders) ++ setupAuth auth)
           (uploadFileAction "POST" uri fullPath)
         parseUploadResponse uri resp
 
     puthttpfile verbosity uri path auth headers = do
       fullPath <- canonicalizePath path
-      resp <- runPowershellScript verbosity path $ webclientScript
+      resp <- runPowershellScript verbosity $ webclientScript
         (setupHeaders (extraHeaders ++ headers) ++ setupAuth auth)
         (uploadFileAction "PUT" uri fullPath)
       parseUploadResponse uri resp
 
-    runPowershellScript verbosity path script =
-      withTempFile (takeDirectory path)
-                   "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
-        hPutStr tmpScriptHandle script
-        hClose tmpScriptHandle
-        let args =
-              [ "-InputFormat", "None"
-              -- the default execution policy doesn't allow running
-              -- unsigned scripts, so we need to tell powershell to bypass it
-              , "-ExecutionPolicy", "bypass"
-              , "-NoProfile", "-NonInteractive"
-              , "-Command", "-"
-              ]
-        getProgramInvocationOutput verbosity (programInvocation prog args)
-          { progInvokeInput = Just (script ++ "\nExit(0);")
-          }
+    runPowershellScript verbosity script = do
+      let args =
+            [ "-InputFormat", "None"
+            -- the default execution policy doesn't allow running
+            -- unsigned scripts, so we need to tell powershell to bypass it
+            , "-ExecutionPolicy", "bypass"
+            , "-NoProfile", "-NonInteractive"
+            , "-Command", "-"
+            ]
+      getProgramInvocationOutput verbosity (programInvocation prog args)
+        { progInvokeInput = Just (script ++ "\nExit(0);")
+        }
 
     escape = show
 
