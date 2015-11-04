@@ -18,7 +18,7 @@ import Network.HTTP
          , Header(..), HeaderName(..), lookupHeader )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
-         ( URI (..), URIAuth (..) )
+         ( URI (..), URIAuth (..), uriToString )
 import Network.Browser
          ( browse, setOutHandler, setErrHandler, setProxy
          , setAuthorityGen, request, setAllowBasicAuth, setUserAgent )
@@ -32,7 +32,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.List
          ( isPrefixOf, find, intercalate )
 import Data.Maybe
-         ( listToMaybe, maybeToList )
+         ( listToMaybe, maybeToList, fromMaybe )
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
@@ -341,17 +341,25 @@ curlTransport prog =
 
     posthttp = noPostYet
 
+    addAuthConfig auth progInvocation = progInvocation
+      { progInvokeInput = do
+          (uname, passwd) <- auth
+          return $ unlines
+            [ "--digest"
+            , "--user " ++ uname ++ ":" ++ passwd
+            ]
+      , progInvokeArgs = ["--config", "-"] ++ progInvokeArgs progInvocation
+      }
+
     posthttpfile verbosity uri path auth = do
         let args = [ show uri
                    , "--form", "package=@"++path
                    , "--write-out", "\n%{http_code}"
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
-                   , "--header", "Accept: text/plain" ]
-                ++ concat
-                   [ ["--digest", "--user", uname ++ ":" ++ passwd]
-                   | (uname,passwd) <- maybeToList auth ]
-        resp <- getProgramInvocationOutput verbosity
+                   , "--header", "Accept: text/plain"
+                   ]
+        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
         (code, err, _etag) <- parseResponse uri resp ""
         return (code, err)
@@ -367,10 +375,7 @@ curlTransport prog =
                 ++ concat
                    [ ["--header", show name ++ ": " ++ value]
                    | Header name value <- headers ]
-                ++ concat
-                   [ ["--digest", "--user", uname ++ ":" ++ passwd]
-                   | (uname,passwd) <- maybeToList auth ]
-        resp <- getProgramInvocationOutput verbosity
+        resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
         (code, err, _etag) <- parseResponse uri resp ""
         return (code, err)
@@ -404,12 +409,11 @@ wgetTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
     gethttp verbosity uri etag destPath = do
-        resp <- runWGet verbosity args
+        resp <- runWGet verbosity uri args
         (code, _err, etag') <- parseResponse uri resp
         return (code, etag')
       where
-        args = [ show uri
-               , "--output-document=" ++ destPath
+        args = [ "--output-document=" ++ destPath
                , "--user-agent=" ++ userAgent
                , "--tries=5"
                , "--timeout=15"
@@ -427,40 +431,45 @@ wgetTransport prog =
           BS.hPut tmpHandle body
           BS.writeFile "wget.in" body
           hClose tmpHandle
-          let args = [ show uri
-                     , "--post-file=" ++ tmpFile
+          let args = [ "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
                      , "--server-response"
                      , "--header=Content-type: multipart/form-data; " ++ 
                                               "boundary=" ++ boundary ]
-                  ++ concat
-                     [ [ "--http-user=" ++ uname
-                       , "--http-password=" ++ passwd ]
-                     | (uname,passwd) <- maybeToList auth ]
-          resp <- runWGet verbosity args
+          resp <- runWGet verbosity (addUriAuth auth uri) args
           (code, err, _etag) <- parseResponse uri resp
           return (code, err)
 
     puthttpfile verbosity uri path auth headers = do
-        let args = [ show uri
-                   , "--method=PUT", "--body-file="++path
+        let args = [ "--method=PUT", "--body-file="++path
                    , "--user-agent=" ++ userAgent
                    , "--server-response"
                    , "--header=Accept: text/plain" ]
-                ++ [ "--header=" ++ show name ++ ": " ++ value | Header name value <- headers ]
-                ++ concat
-                   [ [ "--http-user=" ++ uname
-                     , "--http-password=" ++ passwd ]
-                   | (uname,passwd) <- maybeToList auth ]
+                ++ [ "--header=" ++ show name ++ ": " ++ value
+                   | Header name value <- headers ]
 
-        resp <- runWGet verbosity args
+        resp <- runWGet verbosity (addUriAuth auth uri) args
         (code, err, _etag) <- parseResponse uri resp
         return (code, err)
 
-    runWGet verbosity args = do
+    addUriAuth Nothing uri = uri
+    addUriAuth (Just (user, pass)) uri = uri
+      { uriAuthority = Just a { uriUserInfo = user ++ ":" ++ pass ++ "@" }
+      }
+     where
+      a = fromMaybe (URIAuth "" "" "") (uriAuthority uri)
+
+    runWGet verbosity uri args = do
+        -- We pass the URI via STDIN because it contains the users' credentials
+        -- and sensitive data should not be passed via command line arguments.
+        let
+          invocation = (programInvocation prog ("--input-file=-" : args))
+            { progInvokeInput = Just (uriToString id uri "")
+            }
+
         -- wget returns its output on stderr rather than stdout
         (_, resp, exitCode) <- getProgramInvocationOutputAndErrors verbosity
-                                 (programInvocation prog args)
+                                 invocation
         -- wget returns exit code 8 for server "errors" like "304 not modified"
         if exitCode == ExitSuccess || exitCode == ExitFailure 8
           then return resp
