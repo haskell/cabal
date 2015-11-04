@@ -553,9 +553,12 @@ powershellTransport prog =
               -- the default execution policy doesn't allow running
               -- unsigned scripts, so we need to tell powershell to bypass it
               , "-ExecutionPolicy", "bypass"
-              , "-File", tmpScriptFile
+              , "-NoProfile", "-NonInteractive"
+              , "-Command", "-"
               ]
         getProgramInvocationOutput verbosity (programInvocation prog args)
+          { progInvokeInput = Just (script ++ "\nExit(0);")
+          }
 
     escape = show
 
@@ -597,12 +600,10 @@ powershellTransport prog =
       , "    Write-Host ($response.StatusCode -as [int]);"
       , "    Write-Host $reader.ReadToEnd();"
       , "  } Else {"
-      , "    Write-Error $exception.Message;"
-      , "    Exit(1);"
+      , "    Write-Host $exception.Message;"
       , "  }"
       , "} Catch {"
-      , "  Write-Error $_.Exception.Message;"
-      , "  Exit(1);"
+      , "  Write-Host $_.Exception.Message;"
       , "}"
       ]
 
