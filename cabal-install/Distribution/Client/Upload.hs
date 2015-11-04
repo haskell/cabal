@@ -61,10 +61,7 @@ uploadDoc transport verbosity repos mUsername mPassword path = do
         }
         (reverseSuffix, reversePkgid) = break (== '-') (reverse (takeFileName path))
         pkgid = reverse $ tail reversePkgid
-    when (reverse reverseSuffix /= "docs.tar.gz" || null reversePkgid || head reversePkgid /= '-') $ do
-      print path
-      print reverseSuffix
-      print reversePkgid
+    when (reverse reverseSuffix /= "docs.tar.gz" || null reversePkgid || head reversePkgid /= '-') $
       die "Expected a file name matching the pattern <pkgid>-docs.tar.gz"
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
