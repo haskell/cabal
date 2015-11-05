@@ -13,6 +13,10 @@
 	* Support Haddock response files (#2746).
 	* Fixed a bug in the Text instance for Platform (#2862).
 	* New 'setup haddock' option: '--for-hackage' (#2852).
+	* New --show-detail=direct; like streaming, but allows the test
+	  program to detect that is connected to a terminal, and works
+	  reliable with a non-threaded runtime (#2911, and serves as a
+	  work-around for #2398)
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.

@@ -1774,7 +1774,7 @@ replCommand progConf = CommandUI
 -- * Test flags
 -- ------------------------------------------------------------
 
-data TestShowDetails = Never | Failures | Always | Streaming
+data TestShowDetails = Never | Failures | Always | Streaming | Direct
     deriving (Eq, Ord, Enum, Bounded, Show)
 
 knownTestShowDetails :: [TestShowDetails]
@@ -1862,7 +1862,8 @@ testCommand = CommandUI
             ("'always': always show results of individual test cases. "
              ++ "'never': never show results of individual test cases. "
              ++ "'failures': show results of failing test cases. "
-             ++ "'streaming': show results of test cases in real time.")
+             ++ "'streaming': show results of test cases in real time."
+             ++ "'direct': send results of test cases in real time; no log file.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
             (reqArg "FILTER"
                 (readP_to_E (\_ -> "--show-details flag expects one of "
