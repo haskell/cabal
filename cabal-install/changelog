@@ -29,6 +29,7 @@
 	compiler (#2859).
 	* New 'cabal haddock' option: '--for-hackage' (#2852).
 	* Added a warning when the solver cannot find a dependency (#2853).
+	* New 'cabal upload' option: '--doc': upload documentation to hackage (#2890).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

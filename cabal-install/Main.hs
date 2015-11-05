@@ -74,7 +74,7 @@ import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
-import Distribution.Client.Upload as Upload   (upload, check, report)
+import qualified Distribution.Client.Upload as Upload
 import Distribution.Client.Run                (run, splitRunArgs)
 import Distribution.Client.HttpUtils          (configureTransport)
 import Distribution.Client.SrcDist            (sdist)
@@ -108,6 +108,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.Tar                (createTarGzFile)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
 import Distribution.Client.Manpage            (manpage)
@@ -118,6 +119,7 @@ import Distribution.Client.Utils              (determineNumJobs
 #endif
                                               ,existsAndIsMoreRecentThan)
 
+import Distribution.Package (packageId)
 import Distribution.PackageDescription
          ( BuildType(..), Executable(..), benchmarkName, benchmarkBuildInfo
          , testName, testBuildInfo, buildable )
@@ -158,7 +160,7 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
-import System.FilePath          (splitExtension, takeExtension)
+import System.FilePath          (splitExtension, takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #ifdef mingw32_HOST_OS
                                 , stderr
@@ -166,7 +168,7 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
                                 , stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.List                (intercalate)
-import Data.Maybe               (mapMaybe)
+import Data.Maybe               (mapMaybe, listToMaybe)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid              (Monoid(..))
 import Control.Applicative      (pure, (<$>))
@@ -861,6 +863,13 @@ haddockAction haddockFlags extraArgs globalFlags = do
       setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
+  when (fromFlagOrDefault False $ haddockForHackage haddockFlags) $ do
+    pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
+    let dest = distPref </> name <.> "tar.gz"
+        name = display (packageId pkg) ++ "-docs"
+        docDir = distPref </> "doc" </> "html"
+    createTarGzFile dest docDir name
+    notice verbosity $ "Documentation tarball created: " ++ dest
 
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
@@ -978,11 +987,14 @@ freezeAction freezeFlags _extraArgs globalFlags = do
 
 uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (uploadVerbosity uploadFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let uploadFlags' = savedUploadFlags config `mappend` uploadFlags
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles     = extraArgs
+  when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
+    die "the 'upload' command expects at least one .tar.gz archive."
+  when (fromFlag (uploadCheck uploadFlags') && fromFlag (uploadDoc uploadFlags')) $
+    die "--check and --doc cannot be used together."
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags'
@@ -992,19 +1004,24 @@ uploadAction uploadFlags extraArgs globalFlags = do
        _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
   if fromFlag (uploadCheck uploadFlags')
-    then Upload.check transport verbosity tarfiles
-    else upload transport
-                verbosity
-                (globalRepos globalFlags')
-                (flagToMaybe $ uploadUsername uploadFlags')
-                maybe_password
-                tarfiles
+  then do
+    Upload.check transport verbosity tarfiles
+  else if fromFlag (uploadDoc uploadFlags')
+  then do
+    when (length tarfiles > 1) $
+     die "the 'upload' command can only upload documentation for one package at a time."
+    tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
+    Upload.uploadDoc transport verbosity (globalRepos globalFlags')
+                    (flagToMaybe $ uploadUsername uploadFlags') maybe_password tarfile
+  else do
+    Upload.upload transport verbosity (globalRepos globalFlags')
+                  (flagToMaybe $ uploadUsername uploadFlags') maybe_password tarfiles
+
   where
+    verbosity = fromFlag (uploadVerbosity uploadFlags)
     checkTarFiles tarfiles
-      | null tarfiles
-      = die "the 'upload' command expects one or more .tar.gz packages."
       | not (null otherFiles)
-      = die $ "the 'upload' command expects only .tar.gz packages: "
+      = die $ "the 'upload' command expects only .tar.gz archives: "
            ++ intercalate ", " otherFiles
       | otherwise = sequence_
                       [ do exists <- doesFileExist tarfile
@@ -1015,6 +1032,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
             isTarGzFile file = case splitExtension file of
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
+    generateDocTarball config = do
+      notice verbosity  "No documentation tarball specified. Building documentation tarball..."
+      haddockAction (defaultHaddockFlags { haddockForHackage = Flag True }) [] globalFlags
+      distPref <- findSavedDistPref config NoFlag
+      pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
+      return $ distPref </> display (packageId pkg) ++ "-docs" <.> "tar.gz"
 
 checkAction :: Flag Verbosity -> [String] -> Action
 checkAction verbosityFlag extraArgs _globalFlags = do

@@ -1556,6 +1556,7 @@ instance Monoid InstallFlags where
 
 data UploadFlags = UploadFlags {
     uploadCheck       :: Flag Bool,
+    uploadDoc         :: Flag Bool,
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
@@ -1565,6 +1566,7 @@ data UploadFlags = UploadFlags {
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
     uploadCheck       = toFlag False,
+    uploadDoc         = toFlag False,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
@@ -1574,7 +1576,7 @@ defaultUploadFlags = UploadFlags {
 uploadCommand :: CommandUI UploadFlags
 uploadCommand = CommandUI {
     commandName         = "upload",
-    commandSynopsis     = "Uploads source packages to Hackage.",
+    commandSynopsis     = "Uploads source packages or documentation to Hackage.",
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n"
@@ -1588,6 +1590,11 @@ uploadCommand = CommandUI {
       ,option ['c'] ["check"]
          "Do not upload, just do QA checks."
         uploadCheck (\v flags -> flags { uploadCheck = v })
+        trueArg
+
+      ,option ['d'] ["doc"]
+        "Upload documentation instead of a source package. Cannot be used together with --check."
+        uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg
 
       ,option ['u'] ["username"]
@@ -1612,6 +1619,7 @@ uploadCommand = CommandUI {
 instance Monoid UploadFlags where
   mempty = UploadFlags {
     uploadCheck       = mempty,
+    uploadDoc         = mempty,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
@@ -1619,6 +1627,7 @@ instance Monoid UploadFlags where
   }
   mappend a b = UploadFlags {
     uploadCheck       = combine uploadCheck,
+    uploadDoc         = combine uploadDoc,
     uploadUsername    = combine uploadUsername,
     uploadPassword    = combine uploadPassword,
     uploadPasswordCmd = combine uploadPasswordCmd,

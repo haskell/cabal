@@ -49,7 +49,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
          ( defaultHscolourFlags
          , Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
-         , HaddockFlags(..), HscolourFlags(..) )
+         , fromFlagOrDefault, HaddockFlags(..), HscolourFlags(..) )
 import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..)
@@ -218,7 +218,8 @@ haddock pkg_descr lbi suffixes flags' = do
     let commonArgs = mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription pkg_descr ]
+            , fromPackageDescription forDist pkg_descr ]
+        forDist = fromFlagOrDefault False (haddockForHackage flags)
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
     withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
@@ -278,12 +279,11 @@ fromFlags env flags =
       argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
     }
 
-fromPackageDescription :: PackageDescription -> HaddockArgs
-fromPackageDescription pkg_descr =
+fromPackageDescription :: Bool -> PackageDescription -> HaddockArgs
+fromPackageDescription forDist pkg_descr =
       mempty { argInterfaceFile = Flag $ haddockName pkg_descr,
                argPackageName = Flag $ packageId $ pkg_descr,
-               argOutputDir = Dir $ "doc" </> "html"
-                              </> display (packageName pkg_descr),
+               argOutputDir = Dir $ "doc" </> "html" </> name,
                argPrologue = Flag $ if null desc then synopsis pkg_descr
                                     else desc,
                argTitle = Flag $ showPkg ++ subtitle
@@ -291,6 +291,9 @@ fromPackageDescription pkg_descr =
       where
         desc = PD.description pkg_descr
         showPkg = display (packageId pkg_descr)
+        name
+          | forDist = showPkg ++ "-docs"
+          | otherwise = display (packageName pkg_descr)
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
