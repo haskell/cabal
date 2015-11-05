@@ -371,7 +371,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptComponentId  = case clbi of
-        LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> toFlag pk
+        LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
+          -> toFlag pk
         _ -> Mon.mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
@@ -409,7 +410,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
 
-    hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.installedComponentId p,n)))
+    hole_insts = map (\(k,(p,n))
+                      -> (k, (InstalledPackageInfo.installedComponentId p,n)))
                  (instantiatedWith lbi)
 
 -- | Strip out flags that are not supported in ghci
@@ -498,7 +500,8 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
         unless (mPP == mcsPP) abort
     where
         lookupEnv :: String -> IO (Maybe String)
-        lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
+        lookupEnv name = (Just `fmap` getEnv name)
+                         `catchIO` const (return Nothing)
         abort =
             die $ "Use of " ++ compilerName ++ "'s environment variable "
                ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "
