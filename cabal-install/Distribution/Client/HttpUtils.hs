@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, BangPatterns #-}
 -----------------------------------------------------------------------------
--- | Separate module for HTTP actions, using a proxy server if one exists
+-- | Separate module for HTTP actions, using a proxy server if one exists.
 -----------------------------------------------------------------------------
 module Distribution.Client.HttpUtils (
     DownloadResult(..),
@@ -196,7 +196,8 @@ isOldHackageURI :: URI -> Bool
 isOldHackageURI uri
     = case uriAuthority uri of
         Just (URIAuth {uriRegName = "hackage.haskell.org"}) ->
-            FilePath.Posix.splitDirectories (uriPath uri) == ["/","packages","archive"]
+            FilePath.Posix.splitDirectories (uriPath uri)
+            == ["/","packages","archive"]
         _ -> False
 
 
@@ -232,7 +233,7 @@ data HttpTransport = HttpTransport {
       transportSupportsHttps :: Bool,
 
       -- | Whether this transport implementation was specifically chosen by
-      -- the user via configuration, or whether it was automatically selected. 
+      -- the user via configuration, or whether it was automatically selected.
       -- Strictly speaking this is not a property of the transport itself but
       -- about how it was chosen. Nevertheless it's convenient to keep here.
       transportManuallySelected :: Bool
@@ -434,7 +435,7 @@ wgetTransport prog =
           let args = [ "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
                      , "--server-response"
-                     , "--header=Content-type: multipart/form-data; " ++ 
+                     , "--header=Content-type: multipart/form-data; " ++
                                               "boundary=" ++ boundary ]
           resp <- runWGet verbosity (addUriAuth auth uri) args
           (code, err, _etag) <- parseResponse uri resp
@@ -574,13 +575,15 @@ powershellTransport prog =
 
     uploadFileAction method uri fullPath =
       [ "$fileBytes = [System.IO.File]::ReadAllBytes(" ++ escape fullPath ++ ");"
-      , "$bodyBytes = $wc.UploadData(" ++ escape (show uri) ++ "," ++ show method ++ ", $fileBytes);"
+      , "$bodyBytes = $wc.UploadData(" ++ escape (show uri) ++ ","
+        ++ show method ++ ", $fileBytes);"
       , "Write-Host \"200\";"
       , "Write-Host (-join [System.Text.Encoding]::UTF8.GetChars($bodyBytes));"
       ]
 
     parseUploadResponse uri resp = case lines (trim resp) of
-      (codeStr : message) | Just code <- readMaybe codeStr -> return (code, unlines message)
+      (codeStr : message)
+        | Just code <- readMaybe codeStr -> return (code, unlines message)
       _ -> statusParseFail uri resp
 
     webclientScript setup action = unlines
@@ -590,9 +593,11 @@ powershellTransport prog =
       , unlines (map ("  " ++) action)
       , "} Catch [System.Net.WebException] {"
       , "  $exception = $_.Exception;"
-      , "  If ($exception.Status -eq [System.Net.WebExceptionStatus]::ProtocolError) {"
+      , "  If ($exception.Status -eq "
+        ++ "[System.Net.WebExceptionStatus]::ProtocolError) {"
       , "    $response = $exception.Response -as [System.Net.HttpWebResponse];"
-      , "    $reader = new-object System.IO.StreamReader($response.GetResponseStream());"
+      , "    $reader = new-object "
+        ++ "System.IO.StreamReader($response.GetResponseStream());"
       , "    Write-Host ($response.StatusCode -as [int]);"
       , "    Write-Host $reader.ReadToEnd();"
       , "  } Else {"
