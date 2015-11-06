@@ -48,7 +48,7 @@ import Data.Char     (isSpace)
 import Data.Foldable (traverse_)
 import Data.Maybe    (listToMaybe, isJust)
 import Data.List     (nub, unfoldr, partition, (\\))
-import Control.Monad (liftM, foldM, when, unless, ap) 
+import Control.Monad (liftM, foldM, when, unless, ap)
 import Control.Arrow    (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -615,7 +615,7 @@ parseConstraint (Field (Name pos n) ls)
 parseConstraint f = userBug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 -- To reuse existing stuff
-fieldLinesToString :: [FieldLine] -> String
+fieldLinesToString :: [FieldLine Position] -> String
 fieldLinesToString = undefined
 
 posLine :: Position -> Int
@@ -632,12 +632,12 @@ buildInfoNames = map fieldName binfoFieldDescrs
 -- Our monad for parsing a list/tree of fields.
 --
 -- The state represents the remaining fields to be processed.
-type PM a = StateT [Field] ParseResult a
+type PM a = StateT [Field Position] ParseResult a
 
 
 
 -- return look-ahead field or nothing if we're at the end of the file
-peekField :: PM (Maybe Field)
+peekField :: PM (Maybe (Field Position))
 peekField = liftM listToMaybe get
 
 -- Unconditionally discard the first field in our state.  Will error when it
@@ -776,7 +776,7 @@ parsePackageDescription file = do
     -- The current implementation just gathers all library-specific fields
     -- in a library section and wraps all executable stanzas in an executable
     -- section.
-    sectionizeFields :: [Field] -> [Field]
+    sectionizeFields :: [Field Position] -> [Field Position]
     sectionizeFields fs
       | oldSyntax fs =
           let
@@ -792,10 +792,10 @@ parsePackageDescription file = do
 
             exes = unfoldr toExe exes0
             toExe [] = Nothing
-            toExe (F l e n : r)
+            toExe (Field n e : r)
               | e == "executable" =
                   let (efs, r') = break ((=="executable") . fName) r
-                  in Just (Section l "executable" n (deps ++ efs), r')
+                  in Just (Section n "executable" (deps ++ efs), r')
             toExe _ = cabalBug "unexpected input to 'toExe'"
           in
             hdr ++
@@ -804,7 +804,7 @@ parsePackageDescription file = do
             ++ exes
       | otherwise = fs
 
-    isSimpleField F{} = True
+    isSimpleField Field{} = True
     isSimpleField _ = False
 
     -- warn if there's something at the end of the file
@@ -819,7 +819,7 @@ parsePackageDescription file = do
     -- fields
     getHeader :: [Field] -> PM [Field]
     getHeader acc = peekField >>= \mf -> case mf of
-        Just f@F{} -> skipField >> getHeader (f:acc)
+        Just f@Field{} -> skipField >> getHeader (f:acc)
         _ -> return (reverse acc)
 
     --
@@ -1007,12 +1007,12 @@ parsePackageDescription file = do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
             skipField
             getBody
-      Just f@(F {}) -> do
+      Just f@(Field {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "Plain fields are not allowed in between stanzas: " ++ show f
             skipField
             getBody
-      Just f@(IfBlock {}) -> do
+      Just f@(IfElseBlock {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
@@ -1023,18 +1023,18 @@ parsePackageDescription file = do
     --
     -- We have to recurse down into conditionals and we treat fields that
     -- describe dependencies specially.
-    collectFields :: ([Field] -> PM a) -> [Field]
+    collectFields :: ([Field Position] -> PM a) -> [Field]
                   -> PM (CondTree ConfVar [Dependency] a)
     collectFields parser allflds = do
 
-        let simplFlds = [ F l n v | F l n v <- allflds ]
-            condFlds = [ f | f@IfBlock{} <- allflds ]
+        let simplFlds = [ f | f@Field{} <- allflds ]
+            condFlds = [ f | f@IfElseBlock{} <- allflds ]
             sections = [ s | s@Section{} <- allflds ]
 
         -- Put these through the normal parsing pass too, so that we
         -- collect the ModRenamings
         let depFlds = filter isConstraint simplFlds
-        
+
         mapM_
             (\(Section (Name pos n) _ _) -> lift . warning $
                 "Unexpected section '" ++ show n ++ "' on " ++ showPos pos)
@@ -1047,10 +1047,10 @@ parsePackageDescription file = do
 
         return (CondNode a deps ifs)
       where
-        isConstraint (F _ n _) = n `elem` constraintFieldNames
+        isConstraint (Field (Name _ n) _) = n `elem` constraintFieldNames
         isConstraint _ = False
 
-        processIfs (IfBlock l c t e) = do
+        processIfs (IfElseBlock l c t e) = do
             cnd <- lift $ runP l "if" parseCondition c
             t' <- collectFields parser t
             e' <- case e of
@@ -1109,7 +1109,7 @@ parseFields :: [FieldDescr a]      -- ^ descriptions of fields we know how to
             -> UnrecFieldParser a  -- ^ possibly do something with
                                    --   unrecognized fields
             -> a                   -- ^ accumulator
-            -> [Field]             -- ^ fields to be parsed
+            -> [Field Position]             -- ^ fields to be parsed
             -> ParseResult a
 parseFields descrs unrec ini fields =
     do (a, unknowns) <- foldM (parseField descrs unrec) (ini, []) fields
@@ -1128,15 +1128,15 @@ parseField :: [FieldDescr a]     -- ^ list of parseable fields
            -> UnrecFieldParser a -- ^ possibly do something with
                                  --   unrecognized fields
            -> (a,[(Int,String)]) -- ^ accumulated result and warnings
-           -> Field              -- ^ the field to be parsed
-           -> ParseResult (a, [(Int,String)])
-parseField (FieldDescr name _ parser : fields) unrec (a, us) (F line f val)
+           -> Field Position     -- ^ the field to be parsed
+           -> ParseResult (a, [(Position,String)])
+parseField (FieldDescr name _ parser : fields) unrec (a, us) (Field name'@(Name line f) val)
   | name == f = parser line val a >>= \a' -> return (a',us)
-  | otherwise = parseField fields unrec (a,us) (F line f val)
-parseField [] unrec (a,us) (F l f val) = return $
+  | otherwise = parseField fields unrec (a,us) (Field name' val)
+parseField [] unrec (a,us) (Field (Name pos f) val) = return $
   case unrec (f,val) a of        -- no fields matched, see if the 'unrec'
     Just a' -> (a',us)           -- function wants to do anything with it
-    Nothing -> (a, (l,f):us)
+    Nothing -> (a, (pos,f):us)
 parseField _ _ _ _ = cabalBug "'parseField' called on a non-field"
 
 deprecatedFields :: [(String,String)]
@@ -1150,15 +1150,15 @@ deprecatedFieldsBuildInfo :: [(String,String)]
 deprecatedFieldsBuildInfo = [ ("hs-source-dir","hs-source-dirs") ]
 
 -- Handle deprecated fields
-deprecField :: Field -> ParseResult Field
-deprecField (F line fld val) = do
+deprecField :: Field Position -> ParseResult (Field Position)
+deprecField (Field (Name pos fld) val) = do
   fld' <- case lookup fld deprecatedFields of
             Nothing -> return fld
             Just newName -> do
               warning $ "The field \"" ++ fld
                       ++ "\" is deprecated, please use \"" ++ newName ++ "\""
               return newName
-  return (F line fld' val)
+  return (Field (Name pos fld') val)
 deprecField _ = cabalBug "'deprecField' called on a non-field"
 
 
@@ -1170,13 +1170,13 @@ parseHookedBuildInfo inp = do
   biExes <- mapM parseExe (maybe ss (const exes) mLib)
   return (mLib, biExes)
   where
-    parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
-    parseLib (bi@(F _ inFieldName _:_))
+    parseLib :: [Field Position] -> ParseResult (Maybe BuildInfo)
+    parseLib (bi@(Field (Name _ inFieldName) _:_))
         | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
 
-    parseExe :: [Field] -> ParseResult (String, BuildInfo)
-    parseExe (F line inFieldName mName:bi)
+    parseExe :: [Field Position] -> ParseResult (String, BuildInfo)
+    parseExe (Field (Name line inFieldName) mName:bi)
         | lowercase inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)
