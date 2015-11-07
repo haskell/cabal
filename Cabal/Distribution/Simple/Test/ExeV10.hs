@@ -30,7 +30,7 @@ import System.Directory
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hGetContents, hPutStr, stdout )
+import System.IO ( hGetContents, hPutStr, stdout, stderr )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -63,15 +63,20 @@ runTest pkg_descr lbi flags suite = do
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ PD.testName suite
 
-    (rOut, wOut) <- createPipe
+    (wOut, wErr, logText) <- case details of
+        Direct -> return (stdout, stderr, "")
+        _ -> do
+            (rOut, wOut) <- createPipe
 
-    -- Read test executable's output lazily (returns immediately)
-    logText <- hGetContents rOut
-    -- Force the IO manager to drain the test output pipe
-    void $ forkIO $ length logText `seq` return ()
+            -- Read test executable's output lazily (returns immediately)
+            logText <- hGetContents rOut
+            -- Force the IO manager to drain the test output pipe
+            void $ forkIO $ length logText `seq` return ()
 
-    -- '--show-details=streaming': print the log output in another thread
-    when (details == Streaming) $ void $ forkIO $ hPutStr stdout logText
+            -- '--show-details=streaming': print the log output in another thread
+            when (details == Streaming) $ void $ forkIO $ hPutStr stdout logText
+
+            return (wOut, wOut, logText)
 
     -- Run the test executable
     let opts = map (testOption pkg_descr lbi suite)
@@ -93,7 +98,7 @@ runTest pkg_descr lbi flags suite = do
 
     exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                -- these handles are automatically closed
-                               Nothing (Just wOut) (Just wOut)
+                               Nothing (Just wOut) (Just wErr)
 
     -- Generate TestSuiteLog from executable exit code and a machine-
     -- readable test log.
@@ -112,12 +117,10 @@ runTest pkg_descr lbi flags suite = do
     -- Show the contents of the human-readable log file on the terminal
     -- if there is a failure and/or detailed output is requested
     let whenPrinting = when $
-            (details > Never)
-            && (not (suitePassed $ testLogs suiteLog) || details == Always)
+            ( details == Always ||
+              details == Failures && not (suitePassed $ testLogs suiteLog))
             -- verbosity overrides show-details
             && verbosity >= normal
-            -- if streaming, we already printed the log
-            && details /= Streaming
     whenPrinting $ putStr $ unlines $ lines logText
 
     -- Write summary notice to terminal indicating end of test suite

@@ -130,7 +130,7 @@ buildAndTest config name envOverrides flags = do
             }
     buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult
-    testResult <- cabal_test config spec envOverrides []
+    testResult <- cabal_test config spec envOverrides ["--show-details=direct"]
     assertTestSucceeded testResult
 
 -- | Checks for a suitable HPC version for testing.

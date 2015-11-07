@@ -171,6 +171,7 @@ main = do
     putStrLn $ "Using haddock: " ++ haddockPath
     setCurrentDirectory "tests"
     -- Create a shared Setup executable to speed up Simple tests
+    putStrLn $ "Building shared ./Setup executable"
     compileSetup config "."
     defaultMain $ testGroup "Package Tests"
       (tests config cabalVersion)
