@@ -238,7 +238,7 @@ qualifyDeps QO{..} (Q pp' pn) = go
     qBase :: Dep PN -> Bool
     qBase (Dep dep _ci) = qoBaseShim && unPackageName dep == "base"
 
-    -- Should we qualify this goal with the 'Setup' packaeg path?
+    -- Should we qualify this goal with the 'Setup' package path?
     qSetup :: Component -> Bool
     qSetup comp = qoSetupIndependent && comp == ComponentSetup
 
