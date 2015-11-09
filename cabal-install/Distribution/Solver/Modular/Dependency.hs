@@ -12,6 +12,7 @@ module Distribution.Solver.Modular.Dependency (
   , showVar
     -- * Conflict sets
   , ConflictSet
+  , CS.ConflictType(..)
   , ConflictMap
   , CS.showConflictSet
     -- * Constrained instances

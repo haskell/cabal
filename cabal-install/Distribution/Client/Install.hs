@@ -380,6 +380,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
         setMaxBackjumps (if maxBackjumps < 0 then Nothing
                                              else Just maxBackjumps)
 
+      . setMaxScore maxScore
+
       . setIndependentGoals independentGoals
 
       . setReorderGoals reorderGoals
@@ -456,6 +458,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     strongFlags      = fromFlag (installStrongFlags       installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
+    maxScore         = flagToMaybe (installMaxScore       installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
     allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)
@@ -556,7 +559,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   -- with a dangerous install plan.
   when (dryRun || containsReinstalls && not overrideReinstall) $
     printPlan (dryRun || breaksPkgs && not overrideReinstall)
-      adaptedVerbosity lPlan sourcePkgDb
+      adaptedVerbosity lPlan (InstallPlan.planScore installPlan) sourcePkgDb
 
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
@@ -647,9 +650,12 @@ packageStatus installedPkgIndex cpkg =
 printPlan :: Bool -- is dry run
           -> Verbosity
           -> [(ReadyPackage, PackageStatus)]
+          -> InstallPlanScore
           -> SourcePackageDb
           -> IO ()
-printPlan dryRun verbosity plan sourcePkgDb = case plan of
+printPlan dryRun verbosity plan score sourcePkgDb = do
+ notice verbosity $ "Install plan score: " ++ showInstallPlanScore score
+ case plan of
   []   -> return ()
   pkgs
     | verbosity >= Verbosity.verbose -> putStr $ unlines $

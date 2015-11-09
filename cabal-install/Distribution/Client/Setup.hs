@@ -109,7 +109,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
 import Distribution.ParseUtils
          ( readPToMaybe )
 import Distribution.Verbosity
@@ -681,6 +681,7 @@ data FetchFlags = FetchFlags {
       fetchDryRun    :: Flag Bool,
       fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
+      fetchMaxScore         :: Flag InstallPlanScore,
       fetchReorderGoals     :: Flag ReorderGoals,
       fetchCountConflicts   :: Flag CountConflicts,
       fetchIndependentGoals :: Flag IndependentGoals,
@@ -697,6 +698,7 @@ defaultFetchFlags = FetchFlags {
     fetchDryRun    = toFlag False,
     fetchSolver           = Flag defaultSolver,
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
+    fetchMaxScore         = mempty,
     fetchReorderGoals     = Flag (ReorderGoals False),
     fetchCountConflicts   = Flag (CountConflicts True),
     fetchIndependentGoals = Flag (IndependentGoals False),
@@ -745,6 +747,7 @@ fetchCommand = CommandUI {
        optionSolver      fetchSolver           (\v flags -> flags { fetchSolver           = v }) :
        optionSolverFlags showOrParseArgs
                          fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
+                         fetchMaxScore         (\v flags -> flags { fetchMaxScore         = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchCountConflicts   (\v flags -> flags { fetchCountConflicts   = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
@@ -764,6 +767,7 @@ data FreezeFlags = FreezeFlags {
       freezeBenchmarks       :: Flag Bool,
       freezeSolver           :: Flag PreSolver,
       freezeMaxBackjumps     :: Flag Int,
+      freezeMaxScore         :: Flag InstallPlanScore,
       freezeReorderGoals     :: Flag ReorderGoals,
       freezeCountConflicts   :: Flag CountConflicts,
       freezeIndependentGoals :: Flag IndependentGoals,
@@ -780,6 +784,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeBenchmarks       = toFlag False,
     freezeSolver           = Flag defaultSolver,
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
+    freezeMaxScore         = mempty,
     freezeReorderGoals     = Flag (ReorderGoals False),
     freezeCountConflicts   = Flag (CountConflicts True),
     freezeIndependentGoals = Flag (IndependentGoals False),
@@ -831,6 +836,7 @@ freezeCommand = CommandUI {
          freezeSolver           (\v flags -> flags { freezeSolver           = v }):
        optionSolverFlags showOrParseArgs
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
+                         freezeMaxScore         (\v flags -> flags { freezeMaxScore         = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
                          freezeCountConflicts   (\v flags -> flags { freezeCountConflicts   = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
@@ -1396,6 +1402,7 @@ data InstallFlags = InstallFlags {
     installHaddockIndex     :: Flag PathTemplate,
     installDryRun           :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
+    installMaxScore         :: Flag InstallPlanScore,
     installReorderGoals     :: Flag ReorderGoals,
     installCountConflicts   :: Flag CountConflicts,
     installIndependentGoals :: Flag IndependentGoals,
@@ -1439,6 +1446,7 @@ defaultInstallFlags = InstallFlags {
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
+    installMaxScore        = mempty,
     installReorderGoals    = Flag (ReorderGoals False),
     installCountConflicts  = Flag (CountConflicts True),
     installIndependentGoals= Flag (IndependentGoals False),
@@ -1588,6 +1596,7 @@ installOptions showOrParseArgs =
 
       optionSolverFlags showOrParseArgs
                         installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
+                        installMaxScore         (\v flags -> flags { installMaxScore         = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
                         installCountConflicts   (\v flags -> flags { installCountConflicts   = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
@@ -2371,8 +2380,10 @@ optionSolver get set =
                                  (toFlag `fmap` parse))
                      (flagToList . fmap display))
 
+-- TODO: Add new solver options to fetch and freeze.
 optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
+                  -> (flags -> Flag InstallPlanScore) -> (Flag InstallPlanScore -> flags -> flags)
                   -> (flags -> Flag ReorderGoals)     -> (Flag ReorderGoals     -> flags -> flags)
                   -> (flags -> Flag CountConflicts)   -> (Flag CountConflicts   -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
@@ -2380,12 +2391,19 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> (flags -> Flag AllowBootLibInstalls) -> (Flag AllowBootLibInstalls -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _setig
+optionSolverFlags showOrParseArgs getmbj setmbj getms setms getrg setrg getcc setcc _getig _setig
                   getsip setsip getstrfl setstrfl getib setib =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
       (reqArg "NUM" (readP_to_E ("Cannot parse number: "++) (fmap toFlag parse))
+                    (map show . flagToList))
+  , option [] ["max-score"]
+      "Maximum score for the install plan."
+      (fmap unInstallPlanScore . getms)
+      (setms . fmap InstallPlanScore)
+      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
+                                (fmap toFlag (Parse.readS_to_P reads)))
                     (map show . flagToList))
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."

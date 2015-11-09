@@ -688,7 +688,7 @@ testCyclicDependencyErrorMessages name =
 
     checkSummarizedLog :: String -> Bool
     checkSummarizedLog =
-        isInfixOf "rejecting: pkg-C-1.0.0 (cyclic dependencies; conflict set: pkg-A, pkg-B, pkg-C)"
+        isInfixOf "rejecting: pkg-C-1.0.0 (cyclic dependencies; conflict set: (pkg-A, ConflictAll), (pkg-B, ConflictAll), (pkg-C, ConflictAll))"
 
     -- Solve for pkg-D and pkg-E last.
     goals :: [ExampleVar]

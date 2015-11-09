@@ -5,19 +5,21 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , toList
   , keys
   , weights
+  , length
   , isZeroOrOne
   , filter
   , lookup
   , mapWithKey
   , mapWeightsWithKey
   , union
+  , zipWithIndex
   ) where
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
 import Data.Ord (comparing)
 import qualified Data.Traversable as T
-import Prelude hiding (filter, lookup)
+import Prelude hiding (filter, length, lookup)
 
 -- | An association list that is sorted by weight.
 --
@@ -29,6 +31,10 @@ newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
 -- | /O(N)/.
 filter :: (v -> Bool) -> WeightedPSQ k w v -> WeightedPSQ k w v
 filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
+
+-- | /O(N)/. TODO: This may not be necessary.
+length :: WeightedPSQ k w v -> Int
+length (WeightedPSQ xs) = L.length xs
 
 -- | /O(1)/. Return @True@ if the @WeightedPSQ@ contains zero or one elements.
 isZeroOrOne :: WeightedPSQ w k v -> Bool
@@ -69,6 +75,12 @@ mapWeightsWithKey f (WeightedPSQ xs) = fromList $
 mapWithKey :: (k -> v1 -> v2) -> WeightedPSQ w k v1 -> WeightedPSQ w k v2
 mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
                                 L.map (\ (w, k, v) -> (w, k, f k v)) xs
+
+-- | /O(N)/. Pair the values with the elements' indexes.
+zipWithIndex :: WeightedPSQ w k v -> WeightedPSQ w k (v, Int)
+zipWithIndex (WeightedPSQ xs) = WeightedPSQ (zipWith f xs [0..])
+  where
+    f (w, k, v) i = (w, k, (v, i))
 
 -- | /O((N + M) log (N + M))/. Combine two @WeightedPSQ@s, preserving all
 -- elements. Elements from the first @WeightedPSQ@ come before elements in the

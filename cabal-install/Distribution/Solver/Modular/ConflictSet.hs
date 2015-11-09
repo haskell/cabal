@@ -14,6 +14,7 @@ module Distribution.Solver.Modular.ConflictSet (
 #ifdef DEBUG_CONFLICT_SETS
   , conflictSetOrigin
 #endif
+  , ConflictType(..)
   , showConflictSet
   , showCSSortedByFrequency
   , showCSWithFrequency
@@ -22,20 +23,20 @@ module Distribution.Solver.Modular.ConflictSet (
   , union
   , unions
   , insert
+  , insertWithConflictType
   , empty
   , singleton
   , member
+  , lookup
   , filter
   , fromList
   ) where
 
-import Prelude hiding (filter)
+import Prelude hiding (filter, lookup)
 import Data.List (intercalate, sortBy)
-import Data.Map (Map)
-import Data.Set (Set)
+import Distribution.Compat.Map.Strict (Map)
 import Data.Function (on)
-import qualified Data.Set as S
-import qualified Data.Map as M
+import qualified Distribution.Compat.Map.Strict as M
 
 #ifdef DEBUG_CONFLICT_SETS
 import Data.Tree
@@ -51,7 +52,7 @@ import Distribution.Solver.Types.PackagePath
 -- kept abstract.
 data ConflictSet = CS {
     -- | The set of variables involved on the conflict
-    conflictSetToSet :: Set (Var QPN)
+    conflictSetToMap :: Map (Var QPN) ConflictType
 
 #ifdef DEBUG_CONFLICT_SETS
     -- | The origin of the conflict set
@@ -70,13 +71,32 @@ data ConflictSet = CS {
   deriving (Show)
 
 instance Eq ConflictSet where
-  (==) = (==) `on` conflictSetToSet
+  (==) = (==) `on` conflictSetToMap
 
 instance Ord ConflictSet where
-  compare = compare `on` conflictSetToSet
+  compare = compare `on` conflictSetToMap
+
+-- TODO: The name of this type and its constructors could be improved.
+data ConflictType =
+
+  -- | Any other value in the variable's domain might resolve the conflict.
+  ConflictAll
+
+  -- | Only values that are less than the current assignment can resolve the
+  -- conflict.
+  | ConflictLessThan
+  deriving (Eq, Ord, Show)
+
+combineConflictType :: ConflictType -> ConflictType -> ConflictType
+combineConflictType ConflictLessThan ConflictLessThan = ConflictLessThan
+combineConflictType _ _ = ConflictAll
 
 showConflictSet :: ConflictSet -> String
-showConflictSet = intercalate ", " . map showVar . toList
+showConflictSet =
+    intercalate ", " . map (uncurry showConflict) . M.toList . conflictSetToMap
+  where
+    -- TODO: How should we display the type of conflict?
+    showConflict v t = "(" ++ showVar v ++ ", " ++ show t ++ ")"
 
 showCSSortedByFrequency :: ConflictMap -> ConflictSet -> String
 showCSSortedByFrequency = showCS False
@@ -86,9 +106,9 @@ showCSWithFrequency = showCS True
 
 showCS :: Bool -> ConflictMap -> ConflictSet -> String
 showCS showCount cm =
-    intercalate ", " . map showWithFrequency . indexByFrequency
+    intercalate ", " . map showWithFrequency . indexByFrequency . toList
   where
-    indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm)) . toList
+    indexByFrequency = sortBy (flip compare `on` snd) . map (\c -> (c, M.lookup c cm))
     showWithFrequency (conflict, maybeFrequency) = case maybeFrequency of
       Just frequency
         | showCount -> showVar conflict ++ " (" ++ show frequency ++ ")"
@@ -99,7 +119,7 @@ showCS showCount cm =
 -------------------------------------------------------------------------------}
 
 toList :: ConflictSet -> [Var QPN]
-toList = S.toList . conflictSetToSet
+toList = map fst . M.toList . conflictSetToMap
 
 union ::
 #ifdef DEBUG_CONFLICT_SETS
@@ -107,7 +127,8 @@ union ::
 #endif
   ConflictSet -> ConflictSet -> ConflictSet
 union cs cs' = CS {
-      conflictSetToSet = S.union (conflictSetToSet cs) (conflictSetToSet cs')
+      conflictSetToMap = M.unionWith combineConflictType
+                         (conflictSetToMap cs) (conflictSetToMap cs')
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc (map conflictSetOrigin [cs, cs'])
 #endif
@@ -119,19 +140,24 @@ unions ::
 #endif
   [ConflictSet] -> ConflictSet
 unions css = CS {
-      conflictSetToSet = S.unions (map conflictSetToSet css)
+      conflictSetToMap = M.unionsWith combineConflictType
+                         (map conflictSetToMap css)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc (map conflictSetOrigin css)
 #endif
     }
 
-insert ::
+insert :: Var QPN -> ConflictSet -> ConflictSet
+insert v = insertWithConflictType v ConflictAll
+
+insertWithConflictType ::
 #ifdef DEBUG_CONFLICT_SETS
   (?loc :: CallStack) =>
 #endif
-  Var QPN -> ConflictSet -> ConflictSet
-insert var cs = CS {
-      conflictSetToSet = S.insert (simplifyVar var) (conflictSetToSet cs)
+  Var QPN -> ConflictType -> ConflictSet -> ConflictSet
+insertWithConflictType var ct cs = CS {
+      conflictSetToMap = M.insertWith combineConflictType
+                         (simplifyVar var) ct (conflictSetToMap cs)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
 #endif
@@ -143,7 +169,7 @@ empty ::
 #endif
   ConflictSet
 empty = CS {
-      conflictSetToSet = S.empty
+      conflictSetToMap = M.empty
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif
@@ -155,14 +181,17 @@ singleton ::
 #endif
   Var QPN -> ConflictSet
 singleton var = CS {
-      conflictSetToSet = S.singleton (simplifyVar var)
+      conflictSetToMap = M.singleton (simplifyVar var) ConflictAll
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif
     }
 
 member :: Var QPN -> ConflictSet -> Bool
-member var = S.member (simplifyVar var) . conflictSetToSet
+member var = M.member (simplifyVar var) . conflictSetToMap
+
+lookup :: Var QPN -> ConflictSet -> Maybe ConflictType
+lookup var = M.lookup (simplifyVar var) . conflictSetToMap
 
 filter ::
 #ifdef DEBUG_CONFLICT_SETS
@@ -170,7 +199,7 @@ filter ::
 #endif
   (Var QPN -> Bool) -> ConflictSet -> ConflictSet
 filter p cs = CS {
-      conflictSetToSet = S.filter p (conflictSetToSet cs)
+      conflictSetToMap = M.filterWithKey (\v _ -> p v) (conflictSetToMap cs)
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc [conflictSetOrigin cs]
 #endif
@@ -182,7 +211,8 @@ fromList ::
 #endif
   [Var QPN] -> ConflictSet
 fromList vars = CS {
-      conflictSetToSet = S.fromList (map simplifyVar vars)
+      conflictSetToMap = M.fromListWith combineConflictType
+         $ map (\v -> (simplifyVar v, ConflictAll)) vars
 #ifdef DEBUG_CONFLICT_SETS
     , conflictSetOrigin = Node ?loc []
 #endif

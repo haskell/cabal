@@ -5,7 +5,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -20,7 +20,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -38,7 +38,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -53,7 +53,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -68,7 +68,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -83,7 +83,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:
@@ -95,7 +95,7 @@ Could not resolve dependencies:
 trying: AllowOlder-0.1.0.0 (user goal)
 next goal: base (dependency of AllowOlder-0.1.0.0)
 rejecting: base-<VERSION>/installed-<HASH>... (conflict: AllowOlder => base>42)
-fail (backjumping, conflict set: AllowOlder, base)
+fail (backjumping, conflict set: (AllowOlder, ConflictAll), (base, ConflictAll))
 After searching the rest of the dependency tree exhaustively, these were the goals I've had most trouble fulfilling: AllowOlder (3), base (2)Trying configure anyway.
 Configuring AllowOlder-0.1.0.0...
 cabal: Encountered missing dependencies:

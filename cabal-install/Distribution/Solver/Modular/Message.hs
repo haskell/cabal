@@ -18,6 +18,7 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
+import Distribution.Solver.Types.Settings
 
 data Message =
     Enter           -- ^ increase indentation level
@@ -144,6 +145,7 @@ showFR c Backjump                         = " (backjumping, conflict set: " ++ s
 showFR _ MultipleInstances                = " (multiple instances)"
 showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showConflictSet c ++ ")"
 showFR c CyclicDependencies               = " (cyclic dependencies; conflict set: " ++ showConflictSet c ++ ")"
+showFR _ (ExceedsMaxScore score)          = " (exceeds max score: " ++ showInstallPlanScore score ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
