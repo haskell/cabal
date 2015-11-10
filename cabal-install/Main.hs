@@ -1132,7 +1132,9 @@ unpackAction getFlags extraArgs globalFlags = do
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> Action
-initAction initFlags _extraArgs globalFlags = do
+initAction initFlags extraArgs globalFlags = do
+  when (extraArgs /= []) $
+    die $ "'init' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag (initVerbosity initFlags)
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
