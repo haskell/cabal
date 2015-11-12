@@ -610,7 +610,7 @@ be controlled with the following command line options.
     be a file or directory. Not all implementations support arbitrary
     package databases.
 
-`--constraints-file=` _file_
+`--default-user-config=` _file_
 :   Allows a "default" `cabal.config` freeze file to be passed in
     manually. This file will only be used if one does not exist in the
     project directory already. Typically, this can be set from the global

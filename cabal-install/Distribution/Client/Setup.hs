@@ -285,8 +285,8 @@ globalCommand commands = CommandUI {
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
 
-      ,option [] ["constraints-file"]
-         "Set a location for a global constraints file for projects without their own cabal.config freeze file."
+      ,option [] ["default-user-config"]
+         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
          globalConfigFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
