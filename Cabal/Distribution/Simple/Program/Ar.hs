@@ -84,7 +84,8 @@ createArLibArchive verbosity lbi targetPath files = do
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
 
-  unless (hostArch == Arm) $ -- See #1537
+  unless (hostArch == Arm -- See #1537
+          || hostOS == AIX) $ -- AIX uses its own "ar" format variant
     wipeMetadata tmpPath
   equal <- filesEqual tmpPath targetPath
   unless equal $ renameFile tmpPath targetPath
