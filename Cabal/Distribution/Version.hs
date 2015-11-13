@@ -4,13 +4,13 @@
 {-# LANGUAGE StandaloneDeriving #-}
 #endif
 
--- Hack approach to support bootstrapping
+-- Hack approach to support bootstrapping.
 -- Assume binary <0.8 when MIN_VERSION_binary marco is not available.
--- Starting with GHC>=8.0, compiler will hopfully provide this macros too.
+-- Starting with GHC>=8.0, the compiler will hopefully provide this macros too.
 -- https://ghc.haskell.org/trac/ghc/ticket/10970
 --
 -- Otherwise, one can specify -DMIN_VERSION_binary_0_8_0=1, when bootstrapping
--- with binary >=0.8.0.0
+-- with binary >=0.8.0.0.
 #ifdef MIN_VERSION_binary
 #define MIN_VERSION_binary_0_8_0 MIN_VERSION_binary(0,8,0)
 #else
