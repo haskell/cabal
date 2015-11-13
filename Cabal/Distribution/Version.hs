@@ -3,7 +3,25 @@
 #if __GLASGOW_HASKELL__ < 707
 {-# LANGUAGE StandaloneDeriving #-}
 #endif
+
+-- Hack approach to support bootstrapping
+-- Assume binary <0.8 when MIN_VERSION_binary marco is not available.
+-- Starting with GHC>=8.0, compiler will hopfully provide this macros too.
+-- https://ghc.haskell.org/trac/ghc/ticket/10970
+--
+-- Otherwise, one can specify -DMIN_VERSION_binary_0_8_0=1, when bootstrapping
+-- with binary >=0.8.0.0
+#ifdef MIN_VERSION_binary
+#define MIN_VERSION_binary_0_8_0 MIN_VERSION_binary(0,8,0)
+#else
+#ifndef MIN_VERSION_binary_0_8_0
+#define MIN_VERSION_binary_0_8_0 0
+#endif
+#endif
+
+#if !MIN_VERSION_binary_0_8_0
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -113,6 +131,7 @@ instance Binary VersionRange
 deriving instance Data Version
 #endif
 
+#if !(MIN_VERSION_binary_0_8_0)
 -- Deriving this instance from Generic gives trouble on GHC 7.2 because the
 -- Generic instance has to be standalone-derived. So, we hand-roll our own.
 -- We can't use a generic Binary instance on later versions because we must
@@ -123,6 +142,7 @@ instance Binary Version where
         tags <- get
         return $ Version br tags
     put (Version br tags) = put br >> put tags
+#endif
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
