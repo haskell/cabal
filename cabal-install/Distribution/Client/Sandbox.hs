@@ -90,7 +90,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
-                                              , fromFlagOrDefault )
+                                              , fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
@@ -523,7 +523,7 @@ loadConfigOrSandboxConfig :: Verbosity
 loadConfigOrSandboxConfig verbosity globalFlags = do
   let configFileFlag        = globalConfigFile        globalFlags
       sandboxConfigFileFlag = globalSandboxConfigFile globalFlags
-      ignoreSandboxFlag     = globalIgnoreSandbox globalFlags
+      ignoreSandboxFlag     = globalIgnoreSandbox     globalFlags
 
   pkgEnvDir  <- getPkgEnvDir sandboxConfigFileFlag
   pkgEnvType <- classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag
@@ -539,7 +539,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- Only @cabal.config@ is present.
     UserPackageEnvironment    -> do
       config <- loadConfig verbosity configFileFlag
-      userConfig <- loadUserConfig verbosity pkgEnvDir
+      userConfig <- loadUserConfig verbosity pkgEnvDir Nothing
       let config' = config `mappend` userConfig
       dieIfSandboxRequired config'
       return (NoSandbox, config')
@@ -547,8 +547,11 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- Neither @cabal.sandbox.config@ nor @cabal.config@ are present.
     AmbientPackageEnvironment -> do
       config <- loadConfig verbosity configFileFlag
+      let globalConstraintsOpt = flagToMaybe . globalConstraintsFile . savedGlobalFlags $ config
+      globalConstraintConfig <- loadUserConfig verbosity pkgEnvDir globalConstraintsOpt
+      let config' = config `mappend` globalConstraintConfig
       dieIfSandboxRequired config
-      return (NoSandbox, config)
+      return (NoSandbox, config')
 
   where
     -- Return the path to the package environment directory - either the

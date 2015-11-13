@@ -111,7 +111,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
                      "The following packages would be frozen:"
                    : formatPkgs pkgs
 
-             else freezePackages verbosity pkgs
+             else freezePackages globalFlags verbosity pkgs
 
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
@@ -211,10 +211,11 @@ pruneInstallPlan installPlan pkgSpecifiers =
                          ++ "unexpected package specifiers!"
 
 
-freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
-freezePackages verbosity pkgs = do
+freezePackages :: Package pkg => GlobalFlags -> Verbosity -> [pkg] -> IO ()
+freezePackages globalFlags verbosity pkgs = do
+
     pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
-                   loadUserConfig verbosity ""
+                   loadUserConfig verbosity ""  (flagToMaybe . globalConstraintsFile $ globalFlags)
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
     addFrozenConstraints config =
@@ -224,7 +225,7 @@ freezePackages verbosity pkgs = do
             }
         }
     constraint pkg =
-        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig)
+        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig userPackageEnvironmentFile)
       where
         pkgIdToConstraint pkgId =
             UserConstraintVersion (packageName pkgId)

@@ -217,6 +217,7 @@ instance Monoid SavedConfig where
         globalNumericVersion    = combine globalNumericVersion,
         globalConfigFile        = combine globalConfigFile,
         globalSandboxConfigFile = combine globalSandboxConfigFile,
+        globalConstraintsFile   = combine globalConstraintsFile,
         globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
         globalCacheDir          = combine globalCacheDir,
         globalLocalRepos        = lastNonEmptyNL globalLocalRepos,
