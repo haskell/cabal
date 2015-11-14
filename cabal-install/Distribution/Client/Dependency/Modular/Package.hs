@@ -1,7 +1,26 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Client.Dependency.Modular.Package
-  (module Distribution.Client.Dependency.Modular.Package,
-   module Distribution.Package) where
+  ( ComponentId
+  , I(..)
+  , Loc(..)
+  , PackageId
+  , PackageIdentifier(..)
+  , PackageName(..)
+  , PI(..)
+  , PN
+  , PP(..)
+  , QPN
+  , QPV
+  , Q(..)
+  , instI
+  , makeIndependent
+  , primaryPP
+  , showI
+  , showPI
+  , showQPN
+  , stripBase
+  , unPN
+  ) where
 
 import Data.List as L
 
@@ -56,11 +75,6 @@ data PI qpn = PI qpn I
 -- | String representation of a package instance.
 showPI :: PI QPN -> String
 showPI (PI qpn i) = showQPN qpn ++ "-" ++ showI i
-
--- | Checks if a package instance corresponds to an installed package.
-instPI :: PI qpn -> Bool
-instPI (PI _ (I _ (Inst _))) = True
-instPI _                     = False
 
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
@@ -129,6 +143,3 @@ makeIndependent :: [PN] -> [QPN]
 makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
                                , let pp = Independent i None
                      ]
-
-unQualify :: Q a -> a
-unQualify (Q _ x) = x

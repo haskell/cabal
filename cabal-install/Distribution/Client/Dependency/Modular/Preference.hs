@@ -1,5 +1,18 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Client.Dependency.Modular.Preference where
+module Distribution.Client.Dependency.Modular.Preference
+    ( avoidReinstalls
+    , deferSetupChoices
+    , deferWeakFlagChoices
+    , enforceManualFlags
+    , enforcePackageConstraints
+    , enforceSingleInstanceRestriction
+    , firstGoal
+    , lpreferEasyGoalChoices
+    , preferBaseGoalChoice
+    , preferLinked
+    , preferPackagePreferences
+    , requireInstalled
+    ) where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
@@ -25,7 +38,7 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
 
@@ -202,22 +215,6 @@ enforceManualFlags = trav go
         isDisabled _                                    = False
     go x                                                   = x
 
--- | Prefer installed packages over non-installed packages, generally.
--- All installed packages or non-installed packages are treated as
--- equivalent.
-preferInstalled :: Tree a -> Tree a
-preferInstalled = packageOrderFor (const True) (const preferInstalledOrdering)
-
--- | Prefer packages with higher version numbers over packages with
--- lower version numbers, for certain packages.
-preferLatestFor :: (PN -> Bool) -> Tree a -> Tree a
-preferLatestFor p = packageOrderFor p (const preferLatestOrdering)
-
--- | Prefer packages with higher version numbers over packages with
--- lower version numbers, for all packages.
-preferLatest :: Tree a -> Tree a
-preferLatest = preferLatestFor (const True)
-
 -- | Require installed packages.
 requireInstalled :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 requireInstalled p = trav go
@@ -251,7 +248,7 @@ avoidReinstalls p = trav go
       | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
-          let installed = [ v | (POption (I v (Inst _)) _, _) <- toList cs ]
+          let installed = [ v | (POption (I v (Inst _)) _, _) <- P.toList cs ]
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
@@ -269,8 +266,8 @@ avoidReinstalls p = trav go
 firstGoal :: Tree a -> Tree a
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = -- casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
-                          casePSQ xs (GoalChoiceF (fromList [])) (\ g t _ -> GoalChoiceF (fromList [(g, t)]))
+    go (GoalChoiceF xs) = -- P.casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
+                          P.casePSQ xs (GoalChoiceF (P.fromList [])) (\ g t _ -> GoalChoiceF (P.fromList [(g, t)]))
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 
@@ -301,17 +298,6 @@ deferSetupChoices = trav go
     deferSetup _ (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = LT
     deferSetup _ _                                                 = EQ
 
--- | Transformation that sorts choice nodes so that
--- child nodes with a small branching degree are preferred. As a
--- special case, choices with 0 branches will be preferred (as they
--- are immediately considered inconsistent), and choices with 1
--- branch will also be preferred (as they don't involve choice).
-preferEasyGoalChoices :: Tree a -> Tree a
-preferEasyGoalChoices = trav go
-  where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
-    go x                = x
-
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
 -- flags that are explicitly declared to be weak in the index.
@@ -326,25 +312,18 @@ deferWeakFlagChoices = trav go
     defer _ (FChoice _ _ True _ _) = LT
     defer _ _                      = EQ
 
--- | Variant of 'preferEasyGoalChoices'.
+-- Transformation that sorts choice nodes so that
+-- child nodes with a small branching degree are preferred. As a
+-- special case, choices with 0 branches will be preferred (as they
+-- are immediately considered inconsistent), and choices with 1
+-- branch will also be preferred (as they don't involve choice).
 --
--- Only approximates the number of choices in the branches. Less accurate,
--- more efficient.
+-- Only approximates the number of choices in the branches.
 lpreferEasyGoalChoices :: Tree a -> Tree a
 lpreferEasyGoalChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing lchoices) xs)
     go x                = x
-
--- | Variant of 'preferEasyGoalChoices'.
---
--- I first thought that using a paramorphism might be faster here,
--- but it doesn't seem to make any difference.
-preferEasyGoalChoices' :: Tree a -> Tree a
-preferEasyGoalChoices' = para (inn . go)
-  where
-    go (GoalChoiceF xs) = GoalChoiceF (P.map fst (P.sortBy (comparing (choices . snd)) xs))
-    go x                = fmap fst x
 
 -- | Monad used internally in enforceSingleInstanceRestriction
 type EnforceSIR = Reader (Map (PI PN) QPN)

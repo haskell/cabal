@@ -1,4 +1,15 @@
-module Distribution.Client.Dependency.Modular.Version where
+module Distribution.Client.Dependency.Modular.Version
+    ( Ver
+    , VR
+    , anyVR
+    , checkVR
+    , eqVR
+    , showVer
+    , showVR
+    , simplifyVR
+    , (.&&.)
+    , (.||.)
+    ) where
 
 import qualified Distribution.Version as CV -- from Cabal
 import Distribution.Text -- from Cabal
@@ -40,7 +51,3 @@ simplifyVR = CV.simplifyVersionRange
 -- | Checking a version against a version range.
 checkVR :: VR -> Ver -> Bool
 checkVR = flip CV.withinRange
-
--- | Make a version number.
-mkV :: [Int] -> Ver
-mkV xs = CV.Version xs []

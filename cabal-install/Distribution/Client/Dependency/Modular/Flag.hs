@@ -1,5 +1,19 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Distribution.Client.Dependency.Modular.Flag where
+module Distribution.Client.Dependency.Modular.Flag
+    ( FInfo(..)
+    , Flag
+    , FlagInfo
+    , FN(..)
+    , QFN
+    , QSN
+    , SN(..)
+    , mkFlag
+    , showFBool
+    , showQFN
+    , showQFNBool
+    , showQSN
+    , showQSNBool
+    ) where
 
 import Data.Map as M
 import Prelude hiding (pi)
@@ -12,10 +26,6 @@ import Distribution.Client.Types (OptionalStanza(..))
 -- | Flag name. Consists of a package instance and the flag identifier itself.
 data FN qpn = FN (PI qpn) Flag
   deriving (Eq, Ord, Show, Functor)
-
--- | Extract the package name from a flag name.
-getPN :: FN qpn -> qpn
-getPN (FN (PI qpn _) _) = qpn
 
 -- | Flag identifier. Just a string.
 type Flag = FlagName
