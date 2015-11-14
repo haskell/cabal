@@ -470,7 +470,7 @@ configure (pkg_descr0, pbi) cfg
                        pkg_descr0''
                 of Right r -> return r
                    Left missing ->
-                       die $ "At least the following dependencies are missing:\n"
+                       die $ "Encountered missing dependencies:\n"
                          ++ (render . nest 4 . sep . punctuate comma
                                     . map (disp . simplifyDependency)
                                     $ missing)
