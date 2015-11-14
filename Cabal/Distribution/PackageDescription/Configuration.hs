@@ -45,6 +45,7 @@ import Data.Char ( isAlphaNum )
 import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
+import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
 
@@ -176,8 +177,6 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
     x     <> DepOk = x
     (MissingDeps d) <> (MissingDeps d') = MissingDeps (d <> d')
 
-data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
-
 
 -- | Try to find a flag assignment that satisfies the constraints of all trees.
 --
@@ -211,10 +210,7 @@ resolveWithFlags ::
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
-resolveWithFlags dom os arch impl constrs trees checkDeps =
-    case try dom [] of
-      Right r -> Right r
-      Left dbt -> Left $ findShortest dbt
+resolveWithFlags dom os arch impl constrs trees checkDeps = explore $ build dom []
   where
     extraConstrs = toDepMap constrs
 
@@ -229,47 +225,53 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- either succeeds or returns a binary tree with the missing dependencies
     -- encountered in each run.  Since the tree is constructed lazily, we
     -- avoid some computation overhead in the successful case.
-    try :: [(FlagName, [Bool])]
-        -> [(FlagName, Bool)]
-        -> Either (BT [Dependency]) (TargetSet PDTagged, FlagAssignment)
-    try [] flags =
+    explore :: Tree FlagAssignment
+            -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
+    explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` extraConstrs) .
                 simplifyCondTree (env flags)
             deps = overallDependencies targetSet
         in case checkDeps (fromDepMap deps) of
-             DepOk           -> Right (targetSet, flags)
-             MissingDeps mds -> Left (BTN mds)
+             DepOk | null ts   -> Right (targetSet, flags)
+                   | otherwise -> tryAll $ map explore ts
+             MissingDeps mds   -> Left mds
 
-    try ((n, vals):rest) flags =
-        tryAll $ map (\v -> try rest ((n, v):flags)) vals
+    build :: [(FlagName, [Bool])]
+          -> FlagAssignment
+          -> Tree FlagAssignment
+    build [] flags = Node flags []
+    build ((n, vals):rest) flags =
+        Node flags $ map (\v -> build rest ((n, v):flags)) vals
 
+    tryAll :: [Either [a] b] -> Either [a] b
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp (Left xs)   (Left ys)   = (Left (BTB xs ys))
-    mp (Left _)    m@(Right _) = m
+    mp :: Either [a] b -> Either [a] b -> Either [a] b
     mp m@(Right _) _           = m
+    mp _           m@(Right _) = m
+    mp (Left xs)   (Left ys)   = let shortest = findShortest xs ys
+                                 in shortest `seq` Left shortest
 
     -- `mzero'
-    mz = Left (BTN [])
+    mz :: Either [a] b
+    mz = Left []
 
+    env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
     -- for the error case we inspect our lazy tree of missing dependencies and
     -- pick the shortest list of missing dependencies
-    findShortest (BTN x) = x
-    findShortest (BTB lt rt) =
-        let l = findShortest lt
-            r = findShortest rt
-        in case (l,r) of
-             ([], xs) -> xs  -- [] is too short
-             (xs, []) -> xs
-             ([x], _) -> [x] -- single elem is optimum
-             (_, [x]) -> [x]
-             (xs, ys) -> if lazyLengthCmp xs ys
-                         then xs else ys
+    findShortest l r =
+        case (l,r) of
+          ([], xs) -> xs  -- [] is too short
+          (xs, []) -> xs
+          ([x], _) -> [x] -- single elem is optimum
+          (_, [x]) -> [x]
+          (xs, ys) -> if lazyLengthCmp xs ys
+                      then xs else ys
     -- lazy variant of @\xs ys -> length xs <= length ys@
     lazyLengthCmp [] _ = True
     lazyLengthCmp _ [] = False
@@ -295,6 +297,8 @@ toDepMap ds =
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]
 
+-- | Flattens a CondTree using a partial flag assignment.  When a condition
+-- cannot be evaluated, both branches are ignored.
 simplifyCondTree :: (Monoid a, Monoid d) =>
                     (v -> Either v Bool)
                  -> CondTree v d a
@@ -306,7 +310,7 @@ simplifyCondTree env (CondNode a d ifs) =
         case simplifyCondition cnd env of
           (Lit True, _) -> Just $ simplifyCondTree env t
           (Lit False, _) -> fmap (simplifyCondTree env) me
-          _ -> error $ "Environment not defined for all free vars"
+          _ -> Nothing
 
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
