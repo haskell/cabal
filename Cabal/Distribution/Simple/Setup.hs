@@ -56,6 +56,7 @@ module Distribution.Simple.Setup (
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions,
   programConfigurationOptions, programConfigurationPaths',
+  splitArgs,
 
   defaultDistPref, optionDistPref,
 

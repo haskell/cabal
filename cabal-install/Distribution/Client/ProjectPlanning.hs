@@ -415,11 +415,12 @@ rebuildInstallPlan verbosity
         createDirectoryIfMissingVerbose verbosity False distDirectory
         createDirectoryIfMissingVerbose verbosity False distProjectCacheDirectory
 
-      readProjectConfig projectRootDir
-                        cliConfigSolver
-                        cliConfigAllPackages
-                        cliConfigLocalPackages
-
+      projectConfig <- readProjectConfig verbosity projectRootDir
+      return (projectConfigMergeCommandLineFlags
+                cliConfigSolver
+                cliConfigAllPackages
+                cliConfigLocalPackages
+                projectConfig)
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -501,7 +502,7 @@ rebuildInstallPlan verbosity
 
         ProjectConfigSolver {projectConfigSolverSolver} = projectConfigSolver
 
-        localPackagesEnabledStanzas = 
+        localPackagesEnabledStanzas =
           Map.fromList
             [ (pkgname, stanzas)
             | pkg <- localPackages
@@ -768,7 +769,7 @@ planPackages comp platform solver solverconfig
 
   where
 
-    --TODO: disable multiple instances restriction in the solver, but then
+    --TODO: [nice to have] disable multiple instances restriction in the solver, but then
     -- make sure we can cope with that in the output.
     resolverParams =
 

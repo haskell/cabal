@@ -122,7 +122,7 @@ build verbosity
     let distDirLayout = defaultDistDirLayout projectRootDir
 
     let (cliConfig,
-         cliBuildSettings) = convertCommandLineFlags
+         cliBuildSettings) = convertLegacyCommandLineFlags
                                globalFlags
                                configFlags configExFlags
                                installFlags haddockFlags
@@ -226,7 +226,7 @@ configure verbosity
     let distDirLayout  = defaultDistDirLayout projectRootDir
         cabalDirLayout = defaultCabalDirLayout cabalDir
         (cliConfig,
-         _cliBuildSettings) = convertCommandLineFlags 
+         _cliBuildSettings) = convertLegacyCommandLineFlags
                                 globalFlags
                                 configFlags configExFlags
                                 installFlags haddockFlags
