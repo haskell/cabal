@@ -184,8 +184,9 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
 -- resulting data, the associated dependencies, and the chosen flag
 -- assignments.
 --
--- In case of failure, the _smallest_ number of of missing dependencies is
--- returned. [TODO: Could also be specified with a function argument.]
+-- In case of failure, the union of the dependencies that led to backtracking
+-- on all branches is returned.
+-- [TODO: Could also be specified with a function argument.]
 --
 -- TODO: The current algorithm is rather naive.  A better approach would be to:
 --
@@ -210,7 +211,8 @@ resolveWithFlags ::
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
-resolveWithFlags dom os arch impl constrs trees checkDeps = explore $ build dom []
+resolveWithFlags dom os arch impl constrs trees checkDeps =
+    either (Left . fromDepMapUnion) Right $ explore (build dom [])
   where
     extraConstrs = toDepMap constrs
 
@@ -221,12 +223,13 @@ resolveWithFlags dom os arch impl constrs trees checkDeps = explore $ build dom 
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
 
-    -- @try@ recursively tries all possible flag assignments in the domain and
-    -- either succeeds or returns a binary tree with the missing dependencies
-    -- encountered in each run.  Since the tree is constructed lazily, we
-    -- avoid some computation overhead in the successful case.
+    -- @explore@ searches a tree of assignments, backtracking whenever a flag
+    -- introduces a dependency that cannot be satisfied.  If there is no
+    -- solution, @explore@ returns the union of all dependencies that caused
+    -- it to backtrack.  Since the tree is constructed lazily, we avoid some
+    -- computation overhead in the successful case.
     explore :: Tree FlagAssignment
-            -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
+            -> Either DepMapUnion (TargetSet PDTagged, FlagAssignment)
     explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
@@ -236,46 +239,44 @@ resolveWithFlags dom os arch impl constrs trees checkDeps = explore $ build dom 
         in case checkDeps (fromDepMap deps) of
              DepOk | null ts   -> Right (targetSet, flags)
                    | otherwise -> tryAll $ map explore ts
-             MissingDeps mds   -> Left mds
+             MissingDeps mds   -> Left (toDepMapUnion mds)
 
-    build :: [(FlagName, [Bool])]
-          -> FlagAssignment
-          -> Tree FlagAssignment
+    -- Builds a tree of all possible flag assignments.  Internal nodes
+    -- have only partial assignments.
+    build :: [(FlagName, [Bool])] -> FlagAssignment -> Tree FlagAssignment
     build [] flags = Node flags []
     build ((n, vals):rest) flags =
         Node flags $ map (\v -> build rest ((n, v):flags)) vals
 
-    tryAll :: [Either [a] b] -> Either [a] b
+    tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp :: Either [a] b -> Either [a] b -> Either [a] b
+    mp :: Either DepMapUnion a -> Either DepMapUnion a -> Either DepMapUnion a
     mp m@(Right _) _           = m
     mp _           m@(Right _) = m
-    mp (Left xs)   (Left ys)   = let shortest = findShortest xs ys
-                                 in shortest `seq` Left shortest
+    mp (Left xs)   (Left ys)   =
+        let union = Map.foldrWithKey (Map.insertWith' combine)
+                    (unDepMapUnion xs) (unDepMapUnion ys)
+            combine x y = simplifyVersionRange $ unionVersionRanges x y
+        in union `seq` Left (DepMapUnion union)
 
     -- `mzero'
-    mz :: Either [a] b
-    mz = Left []
+    mz :: Either DepMapUnion a
+    mz = Left (DepMapUnion Map.empty)
 
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
-    -- for the error case we inspect our lazy tree of missing dependencies and
-    -- pick the shortest list of missing dependencies
-    findShortest l r =
-        case (l,r) of
-          ([], xs) -> xs  -- [] is too short
-          (xs, []) -> xs
-          ([x], _) -> [x] -- single elem is optimum
-          (_, [x]) -> [x]
-          (xs, ys) -> if lazyLengthCmp xs ys
-                      then xs else ys
-    -- lazy variant of @\xs ys -> length xs <= length ys@
-    lazyLengthCmp [] _ = True
-    lazyLengthCmp _ [] = False
-    lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
+-- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
+
+toDepMapUnion :: [Dependency] -> DepMapUnion
+toDepMapUnion ds =
+  DepMapUnion $ fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+
+fromDepMapUnion :: DepMapUnion -> [Dependency]
+fromDepMapUnion m = [ Dependency p vr | (p,vr) <- toList (unDepMapUnion m) ]
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
@@ -463,9 +464,10 @@ instance Semigroup PDTagged where
 --
 -- This function will fail if it cannot find a flag assignment that leads to
 -- satisfiable dependencies.  (It will not try alternative assignments for
--- explicitly specified flags.)  In case of failure it will return a /minimum/
--- number of dependencies that could not be satisfied.  On success, it will
--- return the package description and the full flag assignment chosen.
+-- explicitly specified flags.)  In case of failure it will return the missing
+-- dependencies that it encountered when trying different flag assignments.
+-- On success, it will return the package description and the full flag
+-- assignment chosen.
 --
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
