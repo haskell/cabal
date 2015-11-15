@@ -47,10 +47,11 @@ stripExe verbosity (Platform _arch os) conf path =
 stripLib :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
 stripLib verbosity (Platform arch os) conf path = do
   case os of
-    OSX -> -- '--strip-unneeded' is not supported on OS X, iOS or
+    OSX -> -- '--strip-unneeded' is not supported on OS X, iOS, AIX, or
            -- Solaris. See #1630.
            return ()
     IOS -> return ()
+    AIX -> return ()
     Solaris -> return ()
     Windows -> -- Stripping triggers a bug in 'strip.exe' for
                -- libraries with lots identically named modules. See
