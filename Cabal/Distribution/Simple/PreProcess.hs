@@ -450,7 +450,7 @@ ppHsc2hs bi lbi =
   where
     pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
     isOSX = case buildOS of OSX -> True; _ -> False
-    isELF = case buildOS of OSX -> False; Windows -> False; _ -> True;
+    isELF = case buildOS of OSX -> False; Windows -> False; AIX -> False; _ -> True;
     packageHacks = case compilerFlavor (compiler lbi) of
       GHC   -> hackRtsPackage
       GHCJS -> hackRtsPackage
