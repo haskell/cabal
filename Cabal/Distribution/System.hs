@@ -225,10 +225,10 @@ platformFromTriple triple =
   fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
   where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
         parseTriple = do
-          arch <- fmap (classifyArch Strict) parseWord
+          arch <- fmap (classifyArch Permissive) parseWord
           _ <- Parse.char '-'
           _ <- parseWord -- Skip vendor
           _ <- Parse.char '-'
-          os <- fmap (classifyOS Compat) ident -- OS may have hyphens, like
+          os <- fmap (classifyOS Permissive) ident -- OS may have hyphens, like
                                                -- 'nto-qnx'
           return $ Platform arch os
