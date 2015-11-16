@@ -49,7 +49,7 @@ generate :: PackageDescription -> LocalBuildInfo -> String
 generate pkg_descr lbi =
    let pragmas = cpp_pragma ++ ffi_pragmas ++ warning_pragmas
 
-       cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}"
+       cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}\n"
                   | otherwise    = ""
 
        ffi_pragmas
@@ -61,7 +61,8 @@ generate pkg_descr lbi =
           "{-# OPTIONS_JHC -fffi #-}\n"
 
        warning_pragmas =
-        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
+        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"++
+        "{-# OPTIONS_GHC -fno-warn-implicit-prelude #-}\n"
 
        foreign_imports
         | absolute = ""
