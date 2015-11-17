@@ -28,7 +28,9 @@ import Distribution.Client.BuildReports.Anonymous (BuildReport)
 
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
+import Distribution.Solver.Types
+         ( ConfiguredPackage(..), confSrcId, SourcePackage(..) )
 import Distribution.Client.InstallPlan
          ( InstallPlan )
 

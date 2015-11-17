@@ -61,29 +61,37 @@ module Distribution.Client.Dependency (
 
 import Distribution.Client.Dependency.TopDown
          ( topDownResolver )
-import Distribution.Client.Dependency.Modular
+import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Solver.Types
+         ( SourcePackage(..)
+         , ConfiguredPackage(..)
+         , ConfiguredId(..)
+         , enableStanzas )
 import Distribution.Client.Types
-         ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
+         ( SourcePackageDb(SourcePackageDb), PackageLocation' )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         ( Solver(..)
+         , PreSolver(..)
+         , AllowNewer(..)
+         , PackagesPreferenceDefault(..) )
+import Distribution.Solver.Types
+         ( DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
-         , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
-         , PackagesPreferenceDefault(..)
+         , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Solver.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
@@ -97,7 +105,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
 import Distribution.PackageDescription.Configuration
          ( mapCondTree, finalizePackageDescription )
-import Distribution.Client.PackageUtils
+import Distribution.Solver.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
          ( VersionRange, anyVersion, thisVersion, withinRange
@@ -140,7 +148,7 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
-       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex (SourcePackage PackageLocation'),
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
@@ -188,7 +196,7 @@ showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
 
 basicDepResolverParams :: InstalledPackageIndex
-                       -> PackageIndex.PackageIndex SourcePackage
+                       -> PackageIndex.PackageIndex (SourcePackage PackageLocation')
                        -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
@@ -293,7 +301,7 @@ dontUpgradeNonUpgradeablePackages params =
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
 
-addSourcePackages :: [SourcePackage]
+addSourcePackages :: [SourcePackage PackageLocation']
                   -> DepResolverParams -> DepResolverParams
 addSourcePackages pkgs params =
     params {
@@ -364,13 +372,13 @@ removeUpperBounds allowNewer params =
       AllowNewerAll       -> fmap relaxAllPackageDeps         sourcePkgIndex
       AllowNewerSome pkgs -> fmap (relaxSomePackageDeps pkgs) sourcePkgIndex
 
-    relaxAllPackageDeps :: SourcePackage -> SourcePackage
+    relaxAllPackageDeps :: SourcePackage PackageLocation' -> SourcePackage PackageLocation'
     relaxAllPackageDeps = onAllBuildDepends doRelax
       where
         doRelax (Dependency pkgName verRange) =
           Dependency pkgName (removeUpperBound verRange)
 
-    relaxSomePackageDeps :: [PackageName] -> SourcePackage -> SourcePackage
+    relaxSomePackageDeps :: [PackageName] -> SourcePackage PackageLocation' -> SourcePackage PackageLocation'
     relaxSomePackageDeps pkgNames = onAllBuildDepends doRelax
       where
         doRelax d@(Dependency pkgName verRange)
@@ -381,7 +389,7 @@ removeUpperBounds allowNewer params =
     -- Walk a 'GenericPackageDescription' and apply 'f' to all 'build-depends'
     -- fields.
     onAllBuildDepends :: (Dependency -> Dependency)
-                      -> SourcePackage -> SourcePackage
+                      -> SourcePackage PackageLocation' -> SourcePackage PackageLocation'
     onAllBuildDepends f srcPkg = srcPkg'
       where
         gpd        = packageDescription srcPkg
@@ -440,7 +448,7 @@ reinstallTargets params =
 
 standardInstallPolicy :: InstalledPackageIndex
                       -> SourcePackageDb
-                      -> [PackageSpecifier SourcePackage]
+                      -> [PackageSpecifier (SourcePackage PackageLocation')]
                       -> DepResolverParams
 standardInstallPolicy
     installedPkgIndex (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
@@ -521,7 +529,7 @@ chooseSolver verbosity preSolver _cinfo =
         info verbosity "Choosing modular solver."
         return Modular
 
-runSolver :: Solver -> SolverConfig -> DependencyResolver
+runSolver :: Solver -> SolverConfig -> DependencyResolver PackageLocation'
 runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
 runSolver Modular = modularResolver
 
@@ -619,7 +627,7 @@ interpretPackagesPreference selected defaultPref prefs =
 validateSolverResult :: Platform
                      -> CompilerInfo
                      -> Bool
-                     -> [ResolverPackage]
+                     -> [ResolverPackage PackageLocation']
                      -> InstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
@@ -637,7 +645,7 @@ validateSolverResult platform comp indepGoals pkgs =
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
 
-    formatProblemMessage problems = 
+    formatProblemMessage problems =
       unlines $
         "internal error: could not construct a valid install plan."
       : "The proposed (invalid) plan contained the following problems:"
@@ -647,7 +655,7 @@ validateSolverResult platform comp indepGoals pkgs =
 
 
 data PlanPackageProblem =
-       InvalidConfiguredPackage ConfiguredPackage [PackageProblem]
+       InvalidConfiguredPackage (ConfiguredPackage PackageLocation') [PackageProblem]
 
 showPlanPackageProblem :: PlanPackageProblem -> String
 showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
@@ -657,7 +665,7 @@ showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
              | problem <- packageProblems ]
 
 planPackagesProblems :: Platform -> CompilerInfo
-                     -> [ResolverPackage]
+                     -> [ResolverPackage PackageLocation']
                      -> [PlanPackageProblem]
 planPackagesProblems platform cinfo pkgs =
      [ InvalidConfiguredPackage pkg packageProblems
@@ -706,7 +714,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- dependencies are satisfied by the specified packages.
 --
 configuredPackageProblems :: Platform -> CompilerInfo
-                          -> ConfiguredPackage -> [PackageProblem]
+                          -> ConfiguredPackage PackageLocation' -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
@@ -787,14 +795,14 @@ configuredPackageProblems platform cinfo
 -- It simply means preferences for installed packages will be ignored.
 --
 resolveWithoutDependencies :: DepResolverParams
-                           -> Either [ResolveNoDepsError] [SourcePackage]
+                           -> Either [ResolveNoDepsError] [SourcePackage PackageLocation']
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
     collectEithers (map selectPackage targets)
   where
-    selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage
+    selectPackage :: PackageName -> Either ResolveNoDepsError (SourcePackage PackageLocation')
     selectPackage pkgname
       | null choices = Left  $! ResolveUnsatisfiable pkgname requiredVersions
       | otherwise    = Right $! maximumBy bestByPrefs choices

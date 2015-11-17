@@ -3,8 +3,9 @@
 
 module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
-import Distribution.Client.Types ( Username(..), Password(..)
-                                 , Repo(..), RemoteRepo(..) )
+import Distribution.Client.Types
+         ( Username(..), Password(..)
+         , Repo(..), RemoteRepo(..) )
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 

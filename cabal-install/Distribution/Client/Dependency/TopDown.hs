@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.Dependency.Types
+-- Module      :  Distribution.Client.Dependency.TopDown
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
@@ -9,7 +9,6 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.TopDown (
     topDownResolver
@@ -19,24 +18,30 @@ import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Client.Dependency.TopDown.Constraints as Constraints
 import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
+import Distribution.Solver.Types
+         ( ConfiguredId(..)
+         , ConfiguredPackage(..)
+         , DependencyResolver
+         , InstalledPreference(..)
+         , PackageConstraint(..)
+         , PackagePreferences(..)
+         , Progress(..)
+         , ResolverPackage(..)
+         , SourcePackage(..)
+         , enableStanzas
+         , foldProgress
+         , fakeComponentId
+         , unlabelPackageConstraint )
 import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..)
-         , enableStanzas, ConfiguredId(..), fakeComponentId )
-import Distribution.Client.Dependency.Types
-         ( DependencyResolver, ResolverPackage(..)
-         , PackageConstraint(..), unlabelPackageConstraint
-         , PackagePreferences(..), InstalledPreference(..)
-         , Progress(..), foldProgress )
-
-import qualified Distribution.Client.PackageIndex as PackageIndex
+         ( PackageLocation' )
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-import Distribution.Client.ComponentDeps
-         ( ComponentDeps )
-import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
+import Distribution.Solver.ComponentDeps ( ComponentDeps )
+import qualified Distribution.Solver.ComponentDeps as CD
+import Distribution.Solver.PackageIndex
          ( PackageIndex )
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
          , ComponentId(..)
@@ -44,7 +49,7 @@ import Distribution.Package
          , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
-import Distribution.Client.PackageUtils
+import Distribution.Solver.PackageUtils
          ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
@@ -248,7 +253,7 @@ search configure pref constraints =
 -- | The main exported resolver, with string logging and failure types to fit
 -- the standard 'DependencyResolver' interface.
 --
-topDownResolver :: DependencyResolver
+topDownResolver :: DependencyResolver PackageLocation'
 topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
                 preferences constraints targets =
     mapMessages $ topDownResolver'
@@ -266,11 +271,11 @@ topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
 --
 topDownResolver' :: Platform -> CompilerInfo
                  -> PackageIndex InstalledPackage
-                 -> PackageIndex SourcePackage
+                 -> PackageIndex (SourcePackage PackageLocation')
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
-                 -> Progress Log Failure [ResolverPackage]
+                 -> Progress Log Failure [ResolverPackage PackageLocation']
 topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
@@ -298,7 +303,7 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
       . PackageIndex.fromList
       $ finaliseSelectedPackages preferences selected' constraints'
 
-    toResolverPackage :: FinalSelectedPackage -> ResolverPackage
+    toResolverPackage :: FinalSelectedPackage -> ResolverPackage PackageLocation'
     toResolverPackage (SelectedInstalled (InstalledPackage pkg _))
                                               = PreExisting pkg
     toResolverPackage (SelectedSource    pkg) = Configured  pkg
@@ -444,7 +449,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
 --
 annotateSourcePackages :: [PackageConstraint]
                        -> (PackageName -> TopologicalSortNumber)
-                       -> PackageIndex SourcePackage
+                       -> PackageIndex (SourcePackage PackageLocation')
                        -> PackageIndex UnconfiguredPackage
 annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     PackageIndex.fromList
@@ -481,7 +486,7 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
 -- heuristic.
 --
 topologicalSortNumbering :: PackageIndex InstalledPackage
-                         -> PackageIndex SourcePackage
+                         -> PackageIndex (SourcePackage PackageLocation')
                          -> (PackageName -> TopologicalSortNumber)
 topologicalSortNumbering installedPkgIndex sourcePkgIndex =
     \pkgname -> let Just vertex = toVertex pkgname
@@ -508,17 +513,15 @@ topologicalSortNumbering installedPkgIndex sourcePkgIndex =
 -- and looking at the names of all possible dependencies.
 --
 selectNeededSubset :: PackageIndex InstalledPackage
-                   -> PackageIndex SourcePackage
+                   -> PackageIndex (SourcePackage PackageLocation')
                    -> Set PackageName
-                   -> (PackageIndex InstalledPackage
-                      ,PackageIndex SourcePackage)
+                   -> (PackageIndex InstalledPackage, PackageIndex (SourcePackage PackageLocation'))
 selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
   where
     select :: PackageIndex InstalledPackage
-           -> PackageIndex SourcePackage
+           -> PackageIndex (SourcePackage PackageLocation')
            -> Set PackageName
-           -> (PackageIndex InstalledPackage
-              ,PackageIndex SourcePackage)
+           -> (PackageIndex InstalledPackage, PackageIndex (SourcePackage PackageLocation'))
     select installedPkgIndex' sourcePkgIndex' remaining
       | Set.null remaining = (installedPkgIndex', sourcePkgIndex')
       | otherwise = select installedPkgIndex'' sourcePkgIndex'' remaining''

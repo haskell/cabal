@@ -50,15 +50,17 @@ import Distribution.Package
          ( Package(..), PackageName(..)
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
-import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
+import Distribution.Solver.Types
+         ( SourcePackage(..), OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ConstraintSource(..)
          , LabeledPackageConstraint(..) )
+import Distribution.Client.Types
+         ( PackageLocation(..), PackageLocation' )
 
 import qualified Distribution.Client.World as World
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Solver.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils ( HttpTransport(..) )
@@ -361,7 +363,7 @@ resolveUserTargets :: Package pkg
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier SourcePackage]
+                   -> IO [PackageSpecifier (SourcePackage PackageLocation')]
 resolveUserTargets verbosity transport worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -471,7 +473,7 @@ fetchPackageTarget transport verbosity target = case target of
 --
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)
-                  -> IO (PackageTarget SourcePackage)
+                  -> IO (PackageTarget (SourcePackage PackageLocation'))
 readPackageTarget verbosity target = case target of
 
     PackageTargetNamed pkgname constraints userTarget ->

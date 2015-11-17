@@ -16,6 +16,7 @@ module Distribution.Client.Fetch (
   ) where
 
 import Distribution.Client.Types
+import Distribution.Solver.Types (SourcePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Targets
 import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
@@ -120,8 +121,8 @@ planPackages :: Verbosity
              -> FetchFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [PackageSpecifier SourcePackage]
-             -> IO [SourcePackage]
+             -> [PackageSpecifier (SourcePackage PackageLocation')]
+             -> IO [SourcePackage PackageLocation']
 planPackages verbosity comp platform fetchFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers
 

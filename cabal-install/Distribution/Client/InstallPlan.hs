@@ -53,13 +53,12 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasComponentId(..), ComponentId(..) )
 import Distribution.Client.Types
-         ( BuildSuccess, BuildFailure
-         , PackageFixedDeps(..), ConfiguredPackage
-         , GenericReadyPackage(..), fakeComponentId )
 import Distribution.Version
          ( Version )
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Solver.Types
+         ( ConfiguredPackage, fakeComponentId )
+import Distribution.Solver.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.ComponentDeps as CD
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -144,7 +143,7 @@ data GenericPlanPackage ipkg srcpkg iresult ifailure
    | Failed      srcpkg ifailure
 
 type PlanPackage = GenericPlanPackage
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledPackageInfo (ConfiguredPackage PackageLocation')
                    BuildSuccess BuildFailure
 
 instance (Package ipkg, Package srcpkg) =>
@@ -189,7 +188,7 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledPackageInfo (ConfiguredPackage PackageLocation')
                    BuildSuccess BuildFailure
 
 type PlanIndex ipkg srcpkg iresult ifailure =

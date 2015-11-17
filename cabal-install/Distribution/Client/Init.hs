@@ -93,12 +93,12 @@ import Distribution.Simple.PackageIndex
 import Distribution.Text
   ( display, Text(..) )
 
-import Distribution.Client.PackageIndex
+import Distribution.Solver.PackageIndex
   ( elemByPackageName )
 import Distribution.Client.IndexUtils
   ( getSourcePackages )
 import Distribution.Client.Types
-  ( SourcePackageDb(..), Repo )
+  ( Repo, SourcePackageDb(..) )
 
 initCabal :: Verbosity
           -> PackageDBStack

@@ -28,7 +28,7 @@ import Distribution.System
 symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan 
+                -> InstallPlan
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries _ _ _ _ _ = return []
 
@@ -38,9 +38,12 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
+         ( GenericReadyPackage(..), ReadyPackage )
+import Distribution.Solver.Types
          ( SourcePackage(..)
-         , GenericReadyPackage(..), ReadyPackage, enableStanzas
-         , ConfiguredPackage(..) , fakeComponentId)
+         , ConfiguredPackage(..)
+         , enableStanzas
+         , fakeComponentId)
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan

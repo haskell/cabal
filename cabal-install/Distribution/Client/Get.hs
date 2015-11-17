@@ -32,6 +32,9 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Client.Setup
          ( GlobalFlags(..), GetFlags(..) )
 import Distribution.Client.Types
+import Distribution.Solver.Types
+         ( SourcePackage(..)
+         , PackageDescriptionOverride )
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
@@ -117,13 +120,13 @@ get verbosity repos globalFlags getFlags userTargets = do
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
-    fork :: [SourcePackage] -> IO ()
+    fork :: [SourcePackage PackageLocation'] -> IO ()
     fork pkgs = do
       let kind = fromFlag . getSourceRepository $ getFlags
       branchers <- findUsableBranchers
       mapM_ (forkPackage verbosity branchers prefix kind) pkgs
 
-    unpack :: HttpTransport -> [SourcePackage] -> IO ()
+    unpack :: HttpTransport -> [SourcePackage PackageLocation'] -> IO ()
     unpack transport pkgs = do
       forM_ pkgs $ \pkg -> do
         location <- fetchPackage transport verbosity (packageSource pkg)
@@ -230,7 +233,7 @@ forkPackage :: Verbosity
                -- be created.
             -> (Maybe PD.RepoKind)
                -- ^ Which repo to choose.
-            -> SourcePackage
+            -> SourcePackage loc
                -- ^ The package to fork.
             -> IO ()
 forkPackage verbosity branchers prefix kind src = do

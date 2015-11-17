@@ -24,10 +24,12 @@ import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , typeCodeFromRefType
                                       , updatePackageIndexCacheFile
                                       , getSourcePackagesStrict )
-import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Types ( Repo(..), LocalRepo(..)
-                                 , SourcePackageDb(..)
-                                 , SourcePackage(..), PackageLocation(..) )
+import Distribution.Solver.PackageIndex ( allPackages )
+import Distribution.Solver.Types ( SourcePackage(..) )
+import Distribution.Client.Types ( LocalRepo(..)
+                                 , PackageLocation(..)
+                                 , Repo(..)
+                                 , SourcePackageDb(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
                                  , canonicalizePathNoThrow

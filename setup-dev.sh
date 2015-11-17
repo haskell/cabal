@@ -33,5 +33,6 @@ setup() {
 }
 
 # Build
-(cd ${SCRIPT_DIR}/Cabal         && setup "Cabal"                 ) || die "Failed to build Cabal"
-(cd ${SCRIPT_DIR}/cabal-install && setup "cabal-install" ../Cabal) || die "Failed to build cabal-install"
+(cd ${SCRIPT_DIR}/Cabal         && setup "Cabal"                                 ) || die "Failed to build Cabal"
+(cd ${SCRIPT_DIR}/cabal-solver  && setup "cabal-solver"  ../Cabal                ) || die "Failed to build cabal-install"
+(cd ${SCRIPT_DIR}/cabal-install && setup "cabal-install" ../Cabal ../cabal-solver) || die "Failed to build cabal-install"
