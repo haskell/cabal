@@ -1,3 +1,5 @@
+{-# LANGUAGE PatternGuards #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC
@@ -105,7 +107,7 @@ import Language.Haskell.Extension (Extension(..), KnownExtension(..))
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
-import qualified Data.Map as M  ( fromList )
+import qualified Data.Map as M  ( fromList, lookup )
 import Data.Maybe               ( catMaybes )
 import Data.Monoid as Mon       ( Monoid(..) )
 import Data.Version             ( showVersion )
@@ -155,10 +157,19 @@ configure verbosity hcPath hcPkgPath conf0 = do
               addKnownProgram hsc2hsProgram' conf2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcProg
+  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = M.fromList ghcInfo
+
+      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
+      -- `--supported-extensions` when it's not available.
+      -- for older GHCs we can use the "Have interpreter" property to
+      -- filter out `TemplateHaskell`
+      extensions | ghcVersion < Version [8] []
+                 , Just "NO" <- M.lookup "Have interpreter" ghcInfoMap
+                   = filter ((/= EnableExtension TemplateHaskell) . fst) extensions0
+                 | otherwise = extensions0
 
   let comp = Compiler {
         compilerId         = CompilerId GHC ghcVersion,
