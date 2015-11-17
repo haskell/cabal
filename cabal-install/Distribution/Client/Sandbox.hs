@@ -113,7 +113,7 @@ import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl' )
+import Data.List                              ( delete, foldl', isSuffixOf, intersperse )
 import Data.Maybe                             ( fromJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
@@ -453,12 +453,19 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   withRemoveTimestamps sandboxDir $ do
-    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+    removedRefs <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+    when (length buildTreeRefs > length removedRefs) $
+      die $ "Skipping nonregistered sources: " ++ (showL $ prune buildTreeRefs removedRefs)
+    notice verbosity $ "Success deleting sources: " ++ showL buildTreeRefs ++ "\n\n"
+    return removedRefs
 
   notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
     "source dependency, but does not remove the package " ++
     "from the sandbox package DB.\n\n" ++
     "Use 'sandbox hc-pkg -- unregister' to do that."
+  where
+    prune inp out = filter (\btr -> not . or $ map (btr `isSuffixOf`) out) inp
+    showL = concat . intersperse " " . fmap show 
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags

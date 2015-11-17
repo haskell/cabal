@@ -63,6 +63,7 @@ module Distribution.Client.Tar (
   unfoldrEntries,
   mapEntries,
   filterEntries,
+  filterEntriesW,
   entriesIndex,
 
   ) where
@@ -74,6 +75,7 @@ import Data.List     (foldl')
 import Numeric       (readOct, showOct)
 import Control.Applicative (Applicative(..))
 import Control.Monad (MonadPlus(mplus), when, ap, liftM)
+import Control.Monad.Writer.Lazy (WriterT(..), runWriterT)
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -459,6 +461,26 @@ filterEntries p =
                       then Next entry rest
                       else rest)
     Done Fail
+
+filterEntriesW :: (Monoid w, Monad m) =>
+                  (Entry -> WriterT w m Bool) -> Entries -> WriterT w m Entries
+filterEntriesW p =
+  foldrEntriesW
+  (\entry rest -> do
+       include <- p entry
+       if include
+         then return $ Next entry rest
+         else return rest)
+  Done (return . Fail)
+
+foldrEntriesW :: (Monoid w, Monad m) =>
+                 (Entry -> a -> WriterT w m a) -> a -> (String -> WriterT w m a) -> Entries -> WriterT w m a
+foldrEntriesW next done fail' = fold
+  where
+    fold (Next e es) = fold es >>= next e
+    fold Done        = return done
+    fold (Fail err)  = fail' err
+
 
 checkEntries :: (Entry -> Maybe String) -> Entries -> Entries
 checkEntries checkEntry =

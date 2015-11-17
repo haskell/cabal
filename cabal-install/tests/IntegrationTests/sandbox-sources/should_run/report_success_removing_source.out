@@ -1,0 +1,6 @@
+Success deleting sources: "p" "q"
+
+Note: 'sandbox delete-source' only unregisters the source dependency, but does
+not remove the package from the sandbox package DB.
+
+Use 'sandbox hc-pkg -- unregister' to do that.

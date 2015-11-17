@@ -30,7 +30,6 @@ import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
-                                 , canonicalizePathNoThrow
                                  , tryFindAddSourcePackageDesc  )
 
 import Distribution.Simple.Utils ( die, debug )
@@ -39,6 +38,7 @@ import Distribution.Verbosity    ( Verbosity )
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, unless )
+import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
 import Data.List                 ( (\\), intersect, nub )
 import Data.Maybe                ( catMaybes )
 import System.Directory          ( createDirectoryIfMissing,
@@ -159,28 +159,35 @@ addBuildTreeRefs verbosity path l' refType = do
 removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO [FilePath]
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
-removeBuildTreeRefs verbosity path l' = do
-  checkIndexExists path
-  l <- mapM canonicalizePathNoThrow l'
-  let tmpFile = path <.> "tmp"
+removeBuildTreeRefs verbosity indexPath l' = do
+  checkIndexExists indexPath
+  l <- mapM tryCanonicalizePath l'
+  let tmpFile = indexPath <.> "tmp"
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
-  BS.writeFile tmpFile . Tar.writeEntries . Tar.filterEntries (p l) . Tar.read
-    =<< BS.readFile path
-  renameFile tmpFile path
+  removedRefs <- doUpdate l tmpFile
+  renameFile tmpFile indexPath
   debug verbosity $ "Successfully renamed '" ++ tmpFile
-    ++ "' to '" ++ path ++ "'"
-  updatePackageIndexCacheFile verbosity path (path `replaceExtension` "cache")
-  -- FIXME: return only the refs that vere actually removed.
-  return l
+    ++ "' to '" ++ indexPath ++ "'"
+  updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+  return removedRefs
     where
-      p l entry = case readBuildTreeRef entry of
-        Nothing                     -> True
+      doUpdate :: [FilePath] -> FilePath -> IO [FilePath]
+      doUpdate srcRefs tmpFile = do
+        idxTarContent <- fmap Tar.read $ BS.readFile indexPath
+        (idxTarContent', changedPaths) <- runWriterT (Tar.filterEntriesW (p srcRefs) idxTarContent)
+        BS.writeFile tmpFile $ Tar.writeEntries idxTarContent'
+        return changedPaths
+      p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
+      p refs entry = case readBuildTreeRef entry of
+        Nothing -> return True
         -- FIXME: removing snapshot deps is done with `delete-source
         -- .cabal-sandbox/snapshots/$SNAPSHOT_NAME`. Perhaps we also want to
         -- support removing snapshots by providing the original path.
-        (Just (BuildTreeRef _ pth)) -> pth `notElem` l
+        (Just (BuildTreeRef _ pth)) -> if pth `elem` refs
+                                       then tell [pth] >> return False
+                                       else return True
 
 -- | A build tree ref can become ignored if the user later adds a build tree ref
 -- with the same package ID. We display ignored build tree refs when the user
