@@ -731,6 +731,11 @@ data KnownExtension =
   -- laziness using @~@.
   | StrictData
 
+  -- | Switches all pattern bindings to be strict by default (as if
+  -- they had a bang using @BangPatterns@), ordinary patterns are
+  -- recovered using @~@. Implies @StrictData@.
+  | Strict
+
   -- | Allows @do@-notation for types that are @'Applicative'@ as well
   -- as @'Monad'@. When enabled, desugaring @do@ notation tries to use
   -- @(<*>)@ and @'fmap'@ and @'join'@ as far as possible.
