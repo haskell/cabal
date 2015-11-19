@@ -166,18 +166,17 @@ removeBuildTreeRefs verbosity indexPath l' = do
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
-  removedRefs <- doUpdate l tmpFile
+  removedRefs <- doRemove l tmpFile
   renameFile tmpFile indexPath
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ indexPath ++ "'"
   updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
   return removedRefs
     where
-      doUpdate :: [FilePath] -> FilePath -> IO [FilePath]
-      doUpdate srcRefs tmpFile = do
-        idxTarContent <- fmap Tar.read $ BS.readFile indexPath
-        (idxTarContent', changedPaths) <- runWriterT (Tar.filterEntriesW (p srcRefs) idxTarContent)
-        BS.writeFile tmpFile $ Tar.writeEntries idxTarContent'
+      doRemove srcRefs tmpFile = do
+        (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
+                                          >>= runWriterT . Tar.filterEntriesW (p srcRefs)
+        BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
       p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
       p refs entry = case readBuildTreeRef entry of

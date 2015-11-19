@@ -59,6 +59,7 @@ module Distribution.Client.Tar (
   -- ** Sequences of tar entries
   Entries(..),
   foldrEntries,
+  foldrEntriesW,
   foldlEntries,
   unfoldrEntries,
   mapEntries,
@@ -458,8 +459,8 @@ filterEntries :: (Entry -> Bool) -> Entries -> Entries
 filterEntries p =
   foldrEntries
     (\entry rest -> if p entry
-                      then Next entry rest
-                      else rest)
+                    then Next entry rest
+                    else rest)
     Done Fail
 
 filterEntriesW :: (Monoid w, Monad m) =>
@@ -471,14 +472,15 @@ filterEntriesW p =
        if include
          then return $ Next entry rest
          else return rest)
-  Done (return . Fail)
+  (return Done) (return . Fail)
 
 foldrEntriesW :: (Monoid w, Monad m) =>
-                 (Entry -> a -> WriterT w m a) -> a -> (String -> WriterT w m a) -> Entries -> WriterT w m a
+                 (Entry -> a -> WriterT w m a) -> WriterT w m a -> (String -> WriterT w m a)
+                 -> Entries -> WriterT w m a
 foldrEntriesW next done fail' = fold
   where
     fold (Next e es) = fold es >>= next e
-    fold Done        = return done
+    fold Done        = done
     fold (Fail err)  = fail' err
 
 
