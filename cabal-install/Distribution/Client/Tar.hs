@@ -76,7 +76,8 @@ import Data.List     (foldl')
 import Numeric       (readOct, showOct)
 import Control.Applicative (Applicative(..))
 import Control.Monad (MonadPlus(mplus), when, ap, liftM)
-import Control.Monad.Writer.Lazy (WriterT(..), runWriterT)
+import Control.Monad.Identity (Identity(..), runIdentity)
+import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -456,12 +457,10 @@ mapEntries :: (Entry -> Entry) -> Entries -> Entries
 mapEntries f = foldrEntries (Next . f) Done Fail
 
 filterEntries :: (Entry -> Bool) -> Entries -> Entries
-filterEntries p =
-  foldrEntries
-    (\entry rest -> if p entry
-                    then Next entry rest
-                    else rest)
-    Done Fail
+filterEntries p es = let p' :: Entry -> WriterT () Identity Bool
+                         p' = return . p
+                     in runIdentity $ return . fst
+                        =<< (runWriterT $ filterEntriesW p' es)
 
 filterEntriesW :: (Monoid w, Monad m) =>
                   (Entry -> WriterT w m Bool) -> Entries -> WriterT w m Entries
