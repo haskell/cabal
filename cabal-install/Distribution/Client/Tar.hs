@@ -445,9 +445,10 @@ foldrEntries next done fail' = isoR . foldrEntriesW (isoL .: next) (isoL done) (
   where
     isoL :: a -> WriterT () Identity a
     isoL = return
-    isoR :: WriterT () Identity a -> a
-    isoR = fst . runIdentity . runWriterT
     f .: g = \e -> f . g e
+
+isoR :: WriterT () Identity a -> a
+isoR = fst . runIdentity . runWriterT
 
 foldlEntries :: (a -> Entry -> a) -> a -> Entries -> Either String a
 foldlEntries f = fold
@@ -460,10 +461,7 @@ mapEntries :: (Entry -> Entry) -> Entries -> Entries
 mapEntries f = foldrEntries (Next . f) Done Fail
 
 filterEntries :: (Entry -> Bool) -> Entries -> Entries
-filterEntries p es = let p' :: Entry -> WriterT () Identity Bool
-                         p' = return . p
-                     in runIdentity $ return . fst
-                        =<< (runWriterT $ filterEntriesW p' es)
+filterEntries p = isoR . filterEntriesW (return . p)
 
 filterEntriesW :: (Monoid w, Monad m) =>
                   (Entry -> WriterT w m Bool) -> Entries -> WriterT w m Entries
