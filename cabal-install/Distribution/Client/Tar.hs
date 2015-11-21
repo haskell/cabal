@@ -441,9 +441,13 @@ unfoldrEntries f = unfold
       Right (Just (e, x')) -> Next e (unfold x')
 
 foldrEntries :: (Entry -> a -> a) -> a -> (String -> a) -> Entries -> a
-foldrEntries next done fail' es = runIdentity $ return . fst =<< runWriterT foldIt
-  where foldIt = foldrEntriesW (\e -> return . next e)
-                 (tell () >> return done) (return . fail') es
+foldrEntries next done fail' = isoR . foldrEntriesW (isoL .: next) (isoL done) (isoL . fail')
+  where
+    isoL :: a -> WriterT () Identity a
+    isoL = return
+    isoR :: WriterT () Identity a -> a
+    isoR = fst . runIdentity . runWriterT
+    f .: g = \e -> f . g e
 
 foldlEntries :: (a -> Entry -> a) -> a -> Entries -> Either String a
 foldlEntries f = fold
