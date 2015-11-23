@@ -452,8 +452,11 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
+  refs <- Index.listBuildTreeRefs verbosity
+          Index.ListIgnored Index.LinksAndSnapshots indexFile
+
   withRemoveTimestamps sandboxDir $ do
-    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs refs
 
   notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
     "source dependency, but does not remove the package " ++
