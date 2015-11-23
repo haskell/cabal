@@ -30,6 +30,7 @@ import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
+                                 , canonicalizePathNoThrow
                                  , tryFindAddSourcePackageDesc  )
 
 import Distribution.Simple.Utils ( die, debug )
@@ -161,7 +162,7 @@ removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
   checkIndexExists indexPath
-  l <- mapM tryCanonicalizePath l'
+  l <- mapM canonicalizePathNoThrow l'
   let tmpFile = indexPath <.> "tmp"
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
