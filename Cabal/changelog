@@ -1,5 +1,7 @@
 1.22.5.0
 	* Don't recompile C sources unless needed (#2601). (Luke Iannini)
+	* Support Haddock response files.
+	* Add frameworks when linking a dynamic library.
 
 1.22.4.0 Ryan Thomas <ryan@ryant.org> June 2015
 	* Add libname install-dirs variable, use it by default. Fixes #2437. (Edward Z. Yang)
