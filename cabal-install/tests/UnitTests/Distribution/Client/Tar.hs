@@ -4,8 +4,8 @@ module UnitTests.Distribution.Client.Tar (
 
 import Distribution.Client.Tar (foldrEntries
                                , filterEntries
-                               , foldrEntriesW
-                               , filterEntriesW
+                               , foldrEntriesM
+                               , filterEntriesM
                                , EntryContent(..)
                                , simpleEntry
                                , Entry(..)
@@ -23,8 +23,8 @@ import Control.Monad.Writer.Lazy (runWriterT, tell)
 tests :: [TestTree]
 tests = [ testCase "foldrEntries" foldrTest
         , testCase "filterEntries" filterTest
-        , testCase "foldrEntriesW" foldrWTest
-        , testCase "filterEntriesW" filterWTest
+        , testCase "foldrEntriesM" foldrMTest
+        , testCase "filterEntriesM" filterMTest
         ]
 
 foldrTest :: Assertion
@@ -57,14 +57,14 @@ filterTest = do
   assertEqual "Unexpected result for filter" "xf" $
     entriesToString $ filterEntries p $ Next e1 $ Next e2 $ Fail "f"
 
-foldrWTest :: Assertion
-foldrWTest =  do
-  (r, w) <- runWriterT $ foldrEntriesW undefined
+foldrMTest :: Assertion
+foldrMTest =  do
+  (r, w) <- runWriterT $ foldrEntriesM undefined
             (tell [1::Int] >> tell [2::Int] >> return "x") undefined Done
   assertEqual "Unexpected result for Done" "x" r
   assertEqual "Unexpected result for Done w" [1,2] w
 
-  (r1, w1) <- runWriterT $ foldrEntriesW undefined undefined
+  (r1, w1) <- runWriterT $ foldrEntriesM undefined undefined
               (return . id) $ Fail "x"
   assertEqual "Unexpected result for Fail" "x" r1
   assertEqual "Unexpected result for Fail w" "" w1
@@ -75,36 +75,36 @@ foldrWTest =  do
                             str = BS.Char8.unpack dta
                         in tell "a" >> return (str ++ acc))
       done = tell "b" >> return "z"
-  (r2, w2) <- runWriterT $ foldrEntriesW next done undefined $
+  (r2, w2) <- runWriterT $ foldrEntriesM next done undefined $
               Next e1 $ Next e2 Done
   assertEqual "Unexpected result for Next" "xyz" r2
   assertEqual "Unexpected result for Next w" "baa" w2
 
   let fail' = (\f -> tell "c" >> return f) . id
-  (r3, w3) <- runWriterT $ foldrEntriesW next done fail' $
+  (r3, w3) <- runWriterT $ foldrEntriesM next done fail' $
               Next e1 $ Next e2 $ Fail "f"
   assertEqual "Unexpected result for Next" "xyf" r3
   assertEqual "Unexpected result for Next w" "caa" w3
 
-filterWTest :: Assertion
-filterWTest = do
+filterMTest :: Assertion
+filterMTest = do
   let e1 = getFileEntry "file1" "x"
       e2 = getFileEntry "file2" "y"
       p = (\e -> let (NormalFile dta _) = entryContent e
                      str = BS.Char8.unpack dta
                  in tell "t" >> return (not . (=="y") $ str))
 
-  (r, w) <- runWriterT $ filterEntriesW p $ Next e1 $ Next e2 Done
-  assertEqual "Unexpected result for filterW" "xz" $ entriesToString r
-  assertEqual "Unexpected result for filterW w" "tt" w
+  (r, w) <- runWriterT $ filterEntriesM p $ Next e1 $ Next e2 Done
+  assertEqual "Unexpected result for filterM" "xz" $ entriesToString r
+  assertEqual "Unexpected result for filterM w" "tt" w
 
-  (r1, w1) <- runWriterT $ filterEntriesW p $ Done
-  assertEqual "Unexpected result for filterW" "z" $ entriesToString r1
-  assertEqual "Unexpected result for filterW w" "" w1
+  (r1, w1) <- runWriterT $ filterEntriesM p $ Done
+  assertEqual "Unexpected result for filterM" "z" $ entriesToString r1
+  assertEqual "Unexpected result for filterM w" "" w1
 
-  (r2, w2) <- runWriterT $ filterEntriesW p $ Next e1 $ Next e2 $ Fail "f"
-  assertEqual "Unexpected result for filterW" "xf" $ entriesToString r2
-  assertEqual "Unexpected result for filterW w" "tt" w2
+  (r2, w2) <- runWriterT $ filterEntriesM p $ Next e1 $ Next e2 $ Fail "f"
+  assertEqual "Unexpected result for filterM" "xf" $ entriesToString r2
+  assertEqual "Unexpected result for filterM w" "tt" w2
 
 getFileEntry :: FilePath -> [Char] -> Entry
 getFileEntry pth dta =

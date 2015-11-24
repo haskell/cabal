@@ -1,4 +1,4 @@
-Success deleting sources: "q" "p"
+Success deleting sources: "p"
 
 Note: 'sandbox delete-source' only unregisters the source dependency, but does
 not remove the package from the sandbox package DB.

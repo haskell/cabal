@@ -59,12 +59,12 @@ module Distribution.Client.Tar (
   -- ** Sequences of tar entries
   Entries(..),
   foldrEntries,
-  foldrEntriesW,
+  foldrEntriesM,
   foldlEntries,
   unfoldrEntries,
   mapEntries,
   filterEntries,
-  filterEntriesW,
+  filterEntriesM,
   entriesIndex,
 
   ) where
@@ -441,7 +441,7 @@ unfoldrEntries f = unfold
       Right (Just (e, x')) -> Next e (unfold x')
 
 foldrEntries :: (Entry -> a -> a) -> a -> (String -> a) -> Entries -> a
-foldrEntries next done fail' = isoR . foldrEntriesW (isoL .: next) (isoL done) (isoL . fail')
+foldrEntries next done fail' = isoR . foldrEntriesM (isoL .: next) (isoL done) (isoL . fail')
   where
     isoL :: a -> WriterT () Identity a
     isoL = return
@@ -461,12 +461,11 @@ mapEntries :: (Entry -> Entry) -> Entries -> Entries
 mapEntries f = foldrEntries (Next . f) Done Fail
 
 filterEntries :: (Entry -> Bool) -> Entries -> Entries
-filterEntries p = isoR . filterEntriesW (return . p)
+filterEntries p = isoR . filterEntriesM (return . p)
 
-filterEntriesW :: (Monoid w, Monad m) =>
-                  (Entry -> WriterT w m Bool) -> Entries -> WriterT w m Entries
-filterEntriesW p =
-  foldrEntriesW
+filterEntriesM :: (Monad m) => (Entry -> m Bool) -> Entries -> m Entries
+filterEntriesM p =
+  foldrEntriesM
   (\entry rest -> do
        include <- p entry
        if include
@@ -474,10 +473,8 @@ filterEntriesW p =
          else return rest)
   (return Done) (return . Fail)
 
-foldrEntriesW :: (Monoid w, Monad m) =>
-                 (Entry -> a -> WriterT w m a) -> WriterT w m a -> (String -> WriterT w m a)
-                 -> Entries -> WriterT w m a
-foldrEntriesW next done fail' = fold
+foldrEntriesM :: (Monad m) => (Entry -> a -> m a) -> m a -> (String -> m a) -> Entries -> m a
+foldrEntriesM next done fail' = fold
   where
     fold (Next e es) = fold es >>= next e
     fold Done        = done

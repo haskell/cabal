@@ -162,21 +162,27 @@ removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
   checkIndexExists indexPath
-  l <- mapM canonicalizePathNoThrow l'
   let tmpFile = indexPath <.> "tmp"
+
+  l <- mapM canonicalizePathNoThrow l'
+
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
   removedRefs <- doRemove l tmpFile
+
   renameFile tmpFile indexPath
+
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ indexPath ++ "'"
+
   updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+
   return removedRefs
     where
       doRemove srcRefs tmpFile = do
         (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
-                                          >>= runWriterT . Tar.filterEntriesW (p srcRefs)
+                                          >>= runWriterT . Tar.filterEntriesM (p srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
       p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
