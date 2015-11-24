@@ -157,19 +157,20 @@ addBuildTreeRefs verbosity path l' refType = do
       (path `replaceExtension` "cache")
 
 -- | Remove given local build tree references from the index.
-removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO [FilePath]
+removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ([FilePath], [(FilePath, FilePath)])
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
   checkIndexExists indexPath
   let tmpFile = indexPath <.> "tmp"
 
-  l <- mapM canonicalizePathNoThrow l'
+  convDict <- mapM (\btr -> do pth <- canonicalizePathNoThrow btr
+                               return (btr, pth)) l'
 
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
-  removedRefs <- doRemove l tmpFile
+  removedRefs <- doRemove convDict tmpFile
 
   renameFile tmpFile indexPath
 
@@ -178,20 +179,20 @@ removeBuildTreeRefs verbosity indexPath l' = do
 
   updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
 
-  return removedRefs
+  return (removedRefs, convDict)
     where
       doRemove srcRefs tmpFile = do
         (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
                                           >>= runWriterT . Tar.filterEntriesM (p srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
-      p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
+      p :: [(FilePath, FilePath)] -> Tar.Entry -> WriterT [FilePath] IO Bool
       p refs entry = case readBuildTreeRef entry of
         Nothing -> return True
         -- FIXME: removing snapshot deps is done with `delete-source
         -- .cabal-sandbox/snapshots/$SNAPSHOT_NAME`. Perhaps we also want to
         -- support removing snapshots by providing the original path.
-        (Just (BuildTreeRef _ pth)) -> if pth `elem` refs
+        (Just (BuildTreeRef _ pth)) -> if pth `elem` fmap snd refs
                                        then tell [pth] >> return False
                                        else return True
 

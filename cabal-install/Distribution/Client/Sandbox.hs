@@ -74,8 +74,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Types              ( PackageLocation(..)
                                               , SourcePackage(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
-                                              , tryFindAddSourcePackageDesc
-                                              , canonicalizePathNoThrow)
+                                              , tryFindAddSourcePackageDesc)
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
@@ -453,14 +452,9 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  removedPaths <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+  (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
   withRemoveTimestamps sandboxDir $ return removedPaths
 
-  -- FIXME: we canonicalize paths here as well as in Index.removeBuildTreeRefs,
-  -- but we need the info here and there is no good way to share without larger
-  -- refactoring
-  convDict <- mapM (\btr -> do pth <- canonicalizePathNoThrow btr
-                               return (btr, pth)) buildTreeRefs
   let removedRefs = fmap (convertWith convDict) removedPaths
 
   when (not . null $ removedPaths) $
