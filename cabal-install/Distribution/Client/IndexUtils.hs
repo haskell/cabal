@@ -32,8 +32,10 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency) )
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex      as PackageIndex
+import Distribution.Solver.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.PackageIndex      as PackageIndex
+import Distribution.Solver.Types
+         ( SourcePackage(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
@@ -147,7 +149,7 @@ getSourcePackages' verbosity repos mode = do
 -- This is a higher level wrapper used internally in cabal-install.
 --
 readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
-              -> IO (PackageIndex SourcePackage, [Dependency])
+              -> IO (PackageIndex (SourcePackage PackageLocation'), [Dependency])
 readRepoIndex verbosity repo mode =
   let indexFile = repoLocalDir repo </> "00-index.tar"
       cacheFile = repoLocalDir repo </> "00-index.cache"

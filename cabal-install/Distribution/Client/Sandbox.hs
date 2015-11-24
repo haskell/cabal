@@ -71,8 +71,7 @@ import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.SetupWrapper
   ( SetupScriptOptions(..), defaultSetupScriptOptions )
-import Distribution.Client.Types              ( PackageLocation(..)
-                                              , SourcePackage(..) )
+import Distribution.Client.Types              ( PackageLocation(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
                                               , tryFindAddSourcePackageDesc )
 import Distribution.PackageDescription.Configuration
@@ -97,6 +96,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
+import Distribution.Solver.Types              ( SourcePackage(..) )
 import Distribution.System                    ( Platform )
 import Distribution.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )

@@ -91,7 +91,14 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..), UseSandbox(..), isUseSandbox
          , whenUsingSandbox )
 import Distribution.Client.Tar (extractTarGzFile)
-import Distribution.Client.Types as Source
+import qualified Distribution.Solver.Types as Source
+import Distribution.Solver.Types
+         ( ConfiguredPackage(..)
+         , PackageDescriptionOverride
+         , SourcePackage(..)
+         , OptionalStanza(..)
+         , enableStanzas )
+import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
@@ -101,13 +108,13 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
-import qualified Distribution.Client.PackageIndex as SourcePackageIndex
+import qualified Distribution.Solver.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
 
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
@@ -232,7 +239,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
-                      , [UserTarget], [PackageSpecifier SourcePackage]
+                      , [UserTarget], [PackageSpecifier (SourcePackage PackageLocation')]
                       , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -335,7 +342,7 @@ planPackages :: Compiler
              -> InstallFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [PackageSpecifier SourcePackage]
+             -> [PackageSpecifier (SourcePackage PackageLocation')]
              -> Progress String String InstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
@@ -462,7 +469,7 @@ checkPrintPlan :: Verbosity
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
-               -> [PackageSpecifier SourcePackage]
+               -> [PackageSpecifier (SourcePackage PackageLocation')]
                -> IO ()
 checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
@@ -673,14 +680,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
-    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
+    nonDefaultFlags :: ConfiguredPackage PackageLocation' -> FlagAssignment
     nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
-    stanzas :: ConfiguredPackage -> [OptionalStanza]
+    stanzas :: ConfiguredPackage PackageLocation' -> [OptionalStanza]
     stanzas (ConfiguredPackage _ _ sts _) = sts
 
     showStanzas :: [OptionalStanza] -> String
@@ -1231,7 +1238,7 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
 installReadyPackage :: Platform -> CompilerInfo
                     -> ConfigFlags
                     -> ReadyPackage
-                    -> (ConfigFlags -> PackageLocation (Maybe FilePath)
+                    -> (ConfigFlags -> PackageLocation'
                                     -> PackageDescription
                                     -> PackageDescriptionOverride
                                     -> a)
@@ -1268,7 +1275,7 @@ fetchSourcePackage
   :: HttpTransport
   -> Verbosity
   -> JobLimit
-  -> PackageLocation (Maybe FilePath)
+  -> PackageLocation'
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
 fetchSourcePackage transport verbosity fetchLimit src installPkg = do

@@ -58,7 +58,7 @@ import Network.URI
 -- | Returns @True@ if the package has already been fetched
 -- or does not need fetching.
 --
-isFetched :: PackageLocation (Maybe FilePath) -> IO Bool
+isFetched :: PackageLocation' -> IO Bool
 isFetched loc = case loc of
     LocalUnpackedPackage _dir       -> return True
     LocalTarballPackage  _file      -> return True
@@ -66,7 +66,7 @@ isFetched loc = case loc of
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
 
 
-checkFetched :: PackageLocation (Maybe FilePath)
+checkFetched :: PackageLocation'
              -> IO (Maybe (PackageLocation FilePath))
 checkFetched loc = case loc of
     LocalUnpackedPackage dir  ->
@@ -91,7 +91,7 @@ checkFetched loc = case loc of
 --
 fetchPackage :: HttpTransport
              -> Verbosity
-             -> PackageLocation (Maybe FilePath)
+             -> PackageLocation'
              -> IO (PackageLocation FilePath)
 fetchPackage transport verbosity loc = case loc of
     LocalUnpackedPackage dir  ->

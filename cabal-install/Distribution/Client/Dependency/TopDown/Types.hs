@@ -10,15 +10,17 @@
 --
 -- Types for the top-down dependency resolver.
 -----------------------------------------------------------------------------
-{-# LANGUAGE CPP #-}
 module Distribution.Client.Dependency.TopDown.Types where
 
-import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..)
-         , OptionalStanza, ConfiguredId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
+import Distribution.Solver.Types
+         ( SourcePackage(..)
+         , ConfiguredPackage(..)
+         , ConfiguredId(..)
+         , OptionalStanza )
+import Distribution.Client.Types
 
 import Distribution.Package
          ( PackageId, PackageIdentifier, Dependency
@@ -44,7 +46,7 @@ data InstalledOrSource installed source
 
 data FinalSelectedPackage
    = SelectedInstalled InstalledPackage
-   | SelectedSource    ConfiguredPackage
+   | SelectedSource    (ConfiguredPackage PackageLocation')
 
 type TopologicalSortNumber = Int
 
@@ -62,18 +64,19 @@ data InstalledPackageEx
 
 data UnconfiguredPackage
    = UnconfiguredPackage
-       SourcePackage
+       (SourcePackage PackageLocation')
        !TopologicalSortNumber
        FlagAssignment
        [OptionalStanza]
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
-       SourcePackage     -- package info
-       FlagAssignment    -- total flag assignment for the package
-       [OptionalStanza]  -- enabled optional stanzas
-       [Dependency]      -- dependencies we end up with when we apply
-                         -- the flag assignment
+       (SourcePackage PackageLocation')
+                                          -- package info
+       FlagAssignment                     -- total flag assignment for the package
+       [OptionalStanza]                   -- enabled optional stanzas
+       [Dependency]                       -- dependencies we end up with when we apply
+                                          -- the flag assignment
 
 instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
@@ -131,7 +134,7 @@ class Package a => PackageSourceDeps a where
 instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
-instance PackageSourceDeps ConfiguredPackage where
+instance PackageSourceDeps (ConfiguredPackage loc) where
   sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps InstalledPackage where

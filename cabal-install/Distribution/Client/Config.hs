@@ -41,7 +41,7 @@ module Distribution.Client.Config (
   ) where
 
 import Distribution.Client.Types
-         ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo )
+         ( Username(..), Password(..), RemoteRepo(..), emptyRemoteRepo )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types

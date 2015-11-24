@@ -18,6 +18,7 @@ module Distribution.Client.Freeze (
 
 import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
+import Distribution.Solver.Types ( SourcePackage(..), fakeComponentId, OptionalStanza(..) )
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
@@ -131,7 +132,7 @@ planPackages :: Verbosity
              -> FreezeFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [PackageSpecifier SourcePackage]
+             -> [PackageSpecifier (SourcePackage PackageLocation')]
              -> IO [PlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers = do
@@ -198,7 +199,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
 pruneInstallPlan :: InstallPlan
-                 -> [PackageSpecifier SourcePackage]
+                 -> [PackageSpecifier (SourcePackage PackageLocation')]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $

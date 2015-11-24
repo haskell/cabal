@@ -25,8 +25,9 @@ module Distribution.Client.Dependency.TopDown.Constraints (
   ) where
 
 import Distribution.Client.Dependency.TopDown.Types
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex
+import Distribution.Client.Utils (mergeBy, MergeResult(..))
+import qualified Distribution.Solver.PackageIndex as PackageIndex
+import Distribution.Solver.PackageIndex
         ( PackageIndex )
 import Distribution.Package
          ( PackageName, PackageId, PackageIdentifier(..)
@@ -34,8 +35,6 @@ import Distribution.Package
          , Dependency )
 import Distribution.Version
          ( Version )
-import Distribution.Client.Utils
-         ( mergeBy, MergeResult(..) )
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
@@ -49,7 +48,6 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Control.Exception
          ( assert )
-
 
 -- | A set of satisfiable constraints on a set of packages.
 --
