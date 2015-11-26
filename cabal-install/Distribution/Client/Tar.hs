@@ -59,10 +59,12 @@ module Distribution.Client.Tar (
   -- ** Sequences of tar entries
   Entries(..),
   foldrEntries,
+  foldrEntriesM,
   foldlEntries,
   unfoldrEntries,
   mapEntries,
   filterEntries,
+  filterEntriesM,
   entriesIndex,
 
   ) where
@@ -71,9 +73,12 @@ import Data.Char     (ord)
 import Data.Int      (Int64)
 import Data.Bits     (Bits, shiftL, testBit)
 import Data.List     (foldl')
+import Data.Monoid   (Monoid(..))
 import Numeric       (readOct, showOct)
 import Control.Applicative (Applicative(..))
 import Control.Monad (MonadPlus(mplus), when, ap, liftM)
+import Control.Monad.Identity (Identity(..), runIdentity)
+import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -436,11 +441,14 @@ unfoldrEntries f = unfold
       Right (Just (e, x')) -> Next e (unfold x')
 
 foldrEntries :: (Entry -> a -> a) -> a -> (String -> a) -> Entries -> a
-foldrEntries next done fail' = fold
+foldrEntries next done fail' = isoR . foldrEntriesM (isoL .: next) (isoL done) (isoL . fail')
   where
-    fold (Next e es) = next e (fold es)
-    fold Done        = done
-    fold (Fail err)  = fail' err
+    isoL :: a -> WriterT () Identity a
+    isoL = return
+    f .: g = \e -> f . g e
+
+isoR :: WriterT () Identity a -> a
+isoR = fst . runIdentity . runWriterT
 
 foldlEntries :: (a -> Entry -> a) -> a -> Entries -> Either String a
 foldlEntries f = fold
@@ -453,12 +461,25 @@ mapEntries :: (Entry -> Entry) -> Entries -> Entries
 mapEntries f = foldrEntries (Next . f) Done Fail
 
 filterEntries :: (Entry -> Bool) -> Entries -> Entries
-filterEntries p =
-  foldrEntries
-    (\entry rest -> if p entry
-                      then Next entry rest
-                      else rest)
-    Done Fail
+filterEntries p = isoR . filterEntriesM (return . p)
+
+filterEntriesM :: (Monad m) => (Entry -> m Bool) -> Entries -> m Entries
+filterEntriesM p =
+  foldrEntriesM
+  (\entry rest -> do
+       include <- p entry
+       if include
+         then return $ Next entry rest
+         else return rest)
+  (return Done) (return . Fail)
+
+foldrEntriesM :: (Monad m) => (Entry -> a -> m a) -> m a -> (String -> m a) -> Entries -> m a
+foldrEntriesM next done fail' = fold
+  where
+    fold (Next e es) = fold es >>= next e
+    fold Done        = done
+    fold (Fail err)  = fail' err
+
 
 checkEntries :: (Entry -> Maybe String) -> Entries -> Entries
 checkEntries checkEntry =
