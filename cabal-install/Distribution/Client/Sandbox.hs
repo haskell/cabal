@@ -453,7 +453,7 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
-  withRemoveTimestamps sandboxDir $ return removedPaths
+  withRemoveTimestamps sandboxDir removedPaths
 
   let removedRefs = fmap (convertWith convDict) removedPaths
 

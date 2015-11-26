@@ -157,7 +157,12 @@ addBuildTreeRefs verbosity path l' refType = do
       (path `replaceExtension` "cache")
 
 -- | Remove given local build tree references from the index.
-removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ([FilePath], [(FilePath, FilePath)])
+removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath]
+                       -> IO ([FilePath], [(FilePath, FilePath)]) -- ^ A tuple consisting of:
+                                                                  -- * removed build tree refs
+                                                                  -- * and mappings from provided
+                                                                  -- build tree refs to corresponding
+                                                                  -- full directory paths)
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
@@ -183,16 +188,16 @@ removeBuildTreeRefs verbosity indexPath l' = do
     where
       doRemove srcRefs tmpFile = do
         (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
-                                          >>= runWriterT . Tar.filterEntriesM (p srcRefs)
+                                          >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
-      p :: [(FilePath, FilePath)] -> Tar.Entry -> WriterT [FilePath] IO Bool
+      p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
       p refs entry = case readBuildTreeRef entry of
         Nothing -> return True
         -- FIXME: removing snapshot deps is done with `delete-source
         -- .cabal-sandbox/snapshots/$SNAPSHOT_NAME`. Perhaps we also want to
         -- support removing snapshots by providing the original path.
-        (Just (BuildTreeRef _ pth)) -> if pth `elem` fmap snd refs
+        (Just (BuildTreeRef _ pth)) -> if pth `elem` refs
                                        then tell [pth] >> return False
                                        else return True
 

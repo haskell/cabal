@@ -159,10 +159,11 @@ withAddTimestamps sandboxDir act = do
   let initialTimestamp = 0
   withActionOnAllTimestamps (addTimestamps initialTimestamp) sandboxDir act
 
--- | Given an IO action that returns a list of build tree refs, remove those
+-- | Given a list of build tree refs, remove those
 -- build tree refs from the timestamps file (for all compilers).
-withRemoveTimestamps :: FilePath -> IO [FilePath] -> IO ()
-withRemoveTimestamps = withActionOnAllTimestamps removeTimestamps
+withRemoveTimestamps :: FilePath -> [FilePath] -> IO ()
+withRemoveTimestamps idxFile =
+  withActionOnAllTimestamps removeTimestamps idxFile . return
 
 -- | Given an IO action that returns a list of build tree refs, update the
 -- timestamps of the returned build tree refs to the current time (only for the
