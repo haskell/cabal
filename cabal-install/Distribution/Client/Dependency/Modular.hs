@@ -37,7 +37,7 @@ modularResolver :: SolverConfig -> DependencyResolver
 modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess)      $ -- convert install plan
   logToProgress (maxBackjumps sc) $ -- convert log format into progress format
-  solve sc idx pprefs gcs pns
+  solve sc cinfo idx pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cinfo (shadowPkgs sc) (strongFlags sc) iidx sidx
