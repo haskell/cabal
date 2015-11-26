@@ -10,10 +10,10 @@
 module Distribution.Client.Sandbox.Timestamp (
   AddSourceTimestamp,
   withAddTimestamps,
-  withRemoveTimestamps,
   withUpdateTimestamps,
   maybeAddCompilerTimestampRecord,
   listModifiedDeps,
+  removeTimestamps,
   ) where
 
 import Control.Exception                             (IOException)
@@ -127,8 +127,8 @@ updateTimestamps timestamps pathsToUpdate newTimestamp =
 
 -- | Given a list of 'TimestampFileRecord's and a list of paths to add-source
 -- deps we've removed, remove those deps from the list.
-removeTimestamps :: [AddSourceTimestamp] -> [FilePath] -> [AddSourceTimestamp]
-removeTimestamps l pathsToRemove = foldr removeTimestamp [] l
+removeTimestamps' :: [AddSourceTimestamp] -> [FilePath] -> [AddSourceTimestamp]
+removeTimestamps' l pathsToRemove = foldr removeTimestamp [] l
   where
     removeTimestamp t@(path, _oldTimestamp) rest =
       if path `elem` pathsToRemove
@@ -161,9 +161,9 @@ withAddTimestamps sandboxDir act = do
 
 -- | Given a list of build tree refs, remove those
 -- build tree refs from the timestamps file (for all compilers).
-withRemoveTimestamps :: FilePath -> [FilePath] -> IO ()
-withRemoveTimestamps idxFile =
-  withActionOnAllTimestamps removeTimestamps idxFile . return
+removeTimestamps :: FilePath -> [FilePath] -> IO ()
+removeTimestamps idxFile =
+  withActionOnAllTimestamps removeTimestamps' idxFile . return
 
 -- | Given an IO action that returns a list of build tree refs, update the
 -- timestamps of the returned build tree refs to the current time (only for the

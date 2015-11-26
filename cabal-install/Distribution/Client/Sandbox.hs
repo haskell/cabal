@@ -49,7 +49,7 @@ import Distribution.Client.Setup
 import Distribution.Client.Sandbox.Timestamp  ( listModifiedDeps
                                               , maybeAddCompilerTimestampRecord
                                               , withAddTimestamps
-                                              , withRemoveTimestamps )
+                                              , removeTimestamps )
 import Distribution.Client.Config
   ( SavedConfig(..), defaultUserInstall, loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
@@ -453,7 +453,7 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
-  withRemoveTimestamps sandboxDir removedPaths
+  removeTimestamps sandboxDir removedPaths
 
   let removedRefs = fmap (convertWith convDict) removedPaths
 
