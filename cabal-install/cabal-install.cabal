@@ -217,6 +217,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Dependency.Modular.DSL
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
+    UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
   build-depends:
         base,
