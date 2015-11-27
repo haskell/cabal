@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Simple.Program.Types
+-- Module      :  Distribution.Simple.Program.Find
 -- Copyright   :  Duncan Coutts 2013
 --
 -- Maintainer  :  cabal-devel@haskell.org
