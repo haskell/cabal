@@ -126,10 +126,10 @@ data BuildTarget =
   deriving (Show,Eq)
 
 
--- ------------------------------------------------------------
--- * Do everything
--- ------------------------------------------------------------
-
+-- | Read a list of user-supplied build target strings and resolve them to
+-- 'BuildTarget's according to a 'PackageDescription'. If there are problems
+-- with any of the targets e.g. they don't exist or are misformatted, throw an
+-- 'IOException'.
 readBuildTargets :: PackageDescription -> [String] -> IO [BuildTarget]
 readBuildTargets pkg targetStrs = do
     let (uproblems, utargets) = readUserBuildTargets targetStrs
