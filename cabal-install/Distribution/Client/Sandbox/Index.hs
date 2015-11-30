@@ -12,7 +12,7 @@ module Distribution.Client.Sandbox.Index (
     addBuildTreeRefs,
     removeBuildTreeRefs,
     ListIgnoredBuildTreeRefs(..), RefTypesToList(..),
-    listBuildTreeRefs,
+    istBuildTreeRefs,
     validateIndexPath,
 
     defaultIndexFileName
@@ -174,7 +174,8 @@ removeBuildTreeRefs verbosity indexPath l = do
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
-  removedRefs <- doRemove convDict tmpFile
+  removedRefs <- doRemove (fmap snd convDict) tmpFile
+
   renameFile tmpFile indexPath
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ indexPath ++ "'"
@@ -186,9 +187,8 @@ removeBuildTreeRefs verbosity indexPath l = do
     where
       doRemove :: [(FilePath, FilePath)] -> FilePath -> IO [FilePath]
       doRemove srcRefs tmpFile = do
-        (newIdx, changedPaths) <-
-          Tar.read `fmap` BS.readFile indexPath
-          >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
+        (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
+                                          >>= runWriterT . Tar.filterEntriesM (p srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
 
