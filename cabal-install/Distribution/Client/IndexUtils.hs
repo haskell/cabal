@@ -58,7 +58,7 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe)
+import Data.Maybe  (mapMaybe, catMaybes)
 import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -75,7 +75,7 @@ import Distribution.Client.Utils ( byteStringToFilePath
                                  , tryFindAddSourcePackageDesc )
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Client.Compat.Time (getFileAge, getModTime)
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, doesDirectoryExist)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
@@ -245,7 +245,7 @@ typeCodeFromRefType :: BuildTreeRefType -> Tar.TypeCode
 typeCodeFromRefType LinkRef     = Tar.buildTreeRefTypeCode
 typeCodeFromRefType SnapshotRef = Tar.buildTreeSnapshotTypeCode
 
-type MkPackageEntry = IO PackageEntry
+type MkPackageEntry = IO (Maybe PackageEntry)
 
 instance Package PackageEntry where
   packageId (NormalPackage  pkgid _ _ _) = pkgid
@@ -262,7 +262,7 @@ packageDesc (BuildTreeRef _ _ descr _ _) = descr
 data PackageOrDep = Pkg PackageEntry | Dep Dependency
 
 parsePackageIndex :: ByteString
-                  -> [IO PackageOrDep]
+                  -> [IO (Maybe PackageOrDep)]
 parsePackageIndex = accum 0 . Tar.read
   where
     accum blockNo es = case es of
@@ -280,11 +280,11 @@ parsePackageIndex = accum 0 . Tar.read
 
         tryExtractPkg = do
           mkPkgEntry <- maybeToList $ extractPkg entry blockNo
-          return (fmap Pkg mkPkgEntry)
+          return $ fmap (fmap Pkg) mkPkgEntry
 
         tryExtractPrefs = do
           (_,prefs') <- maybeToList $ extractPrefs entry
-          map (return . Dep) $ prefs'
+          fmap (return . Just . Dep) prefs'
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
 extractPkg entry blockNo = case Tar.entryContent entry of
@@ -292,7 +292,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
      | takeExtension fileName == ".cabal"
     -> case splitDirectories (normalise fileName) of
         [pkgname,vers,_] -> case simpleParse vers of
-          Just ver -> Just $ return (NormalPackage pkgid descr content blockNo)
+          Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (PackageName pkgname) ver
               parsed = parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
@@ -307,12 +307,15 @@ extractPkg entry blockNo = case Tar.entryContent entry of
   Tar.OtherEntryType typeCode content _
     | Tar.isBuildTreeRefTypeCode typeCode ->
       Just $ do
-        let path   = byteStringToFilePath content
-            err = "Error reading package index."
-        cabalFile <- tryFindAddSourcePackageDesc path err
-        descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
-        return $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
-                              descr path blockNo
+        let path = byteStringToFilePath content
+        dirExists <- doesDirectoryExist path
+        result <- if not dirExists then return Nothing
+                  else do
+                    cabalFile <- tryFindAddSourcePackageDesc path "Error reading package index."
+                    descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
+                    return . Just $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
+                                                 descr path blockNo
+        return result
 
   _ -> Nothing
 
@@ -353,7 +356,7 @@ updatePackageIndexCacheFile verbosity indexFile cacheFile = do
                  . maybeDecompress
                =<< BS.readFile indexFile
     entries <- lazySequence pkgsOrPrefs
-    let cache = map toCache entries
+    let cache = map toCache $ catMaybes entries
     writeFile cacheFile (showIndexCache cache)
   where
     toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
