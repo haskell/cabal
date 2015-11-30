@@ -12,6 +12,7 @@ module Distribution.Client.Sandbox.Index (
     addBuildTreeRefs,
     removeBuildTreeRefs,
     ListIgnoredBuildTreeRefs(..), RefTypesToList(..),
+    DeleteSourceError(..),
     listBuildTreeRefs,
     validateIndexPath,
 
@@ -30,21 +31,22 @@ import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
-                                 , canonicalizePathNoThrow
                                  , tryFindAddSourcePackageDesc  )
 
 import Distribution.Simple.Utils ( die, debug )
+import Distribution.Compat.Exception   ( tryIO )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, unless )
 import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
-import Data.List                 ( (\\), intersect, nub )
-import Data.Maybe                ( catMaybes )
+import Data.List                 ( (\\), intersect, nub, find )
+import Data.Maybe                ( catMaybes, fromMaybe )
+import Data.Either               (partitionEithers)
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
-                                   renameFile )
+                                   renameFile, canonicalizePath)
 import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension
                                  , replaceExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
@@ -156,41 +158,56 @@ addBuildTreeRefs verbosity path l' refType = do
     updatePackageIndexCacheFile verbosity path
       (path `replaceExtension` "cache")
 
+data DeleteSourceError = ErrNonregisteredSource { nrPath :: FilePath }
+                       | ErrNonexistentSource   { nePath :: FilePath } deriving Show
+
 -- | Remove given local build tree references from the index.
 removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath]
-                       -> IO ([FilePath], [(FilePath, FilePath)]) -- ^ A tuple consisting of:
-                                                                  -- * removed build tree refs
-                                                                  -- * and mappings from provided
-                                                                  -- build tree refs to corresponding
-                                                                  -- full directory paths)
+                       -> IO ([Either DeleteSourceError FilePath],
+                              (FilePath -> FilePath)) -- ^ A tuple consisting of:
+                                                      -- * either removed build tree refs or errors
+                                                      -- * a functio that converts from a provided
+                                                      -- build tree ref to corresponding
+                                                      -- full directory path)
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
   checkIndexExists indexPath
   let tmpFile = indexPath <.> "tmp"
 
-  convDict <- mapM (\btr -> do pth <- canonicalizePathNoThrow btr
-                               return (btr, pth)) l'
+  canonRes <- mapM (\btr -> do res <- tryIO $ canonicalizePath btr
+                               return $ case res of
+                                 Right pth -> Right (btr, pth)
+                                 Left _ -> Left $ ErrNonexistentSource btr) l'
+  let (failures, convDict) = partitionEithers canonRes
+      allRefs = fmap snd convDict
 
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
-  removedRefs <- doRemove convDict tmpFile
+  removedRefs <- doRemove allRefs tmpFile
 
   renameFile tmpFile indexPath
 
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ indexPath ++ "'"
 
-  updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+  unless (null removedRefs) $
+    updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
 
-  return (removedRefs, convDict)
+  let results = fmap Right removedRefs
+                ++ fmap Left failures
+                ++ fmap (Left . ErrNonregisteredSource)
+                        (fmap (convertWith convDict) (allRefs \\ removedRefs))
+
+  return (results, convertWith convDict)
     where
       doRemove srcRefs tmpFile = do
         (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
-                                          >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
+                                          >>= runWriterT . Tar.filterEntriesM (p srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
+
       p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
       p refs entry = case readBuildTreeRef entry of
         Nothing -> return True
@@ -200,6 +217,8 @@ removeBuildTreeRefs verbosity indexPath l' = do
         (Just (BuildTreeRef _ pth)) -> if pth `elem` refs
                                        then tell [pth] >> return False
                                        else return True
+
+      convertWith dict pth = fromMaybe pth $ fmap fst $ find ((==pth) . snd) dict
 
 -- | A build tree ref can become ignored if the user later adds a build tree ref
 -- with the same package ID. We display ignored build tree refs when the user

@@ -108,13 +108,14 @@ import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
 import qualified Data.Map                          as M
 import qualified Data.Set                          as S
+import Data.Either                            (partitionEithers)
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl', intersperse, find, (\\))
-import Data.Maybe                             ( fromJust, fromMaybe )
+import Data.List                              ( delete, foldl', intersperse, groupBy)
+import Data.Maybe                             ( fromJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
 #endif
@@ -131,6 +132,8 @@ import System.FilePath                        ( (</>), equalFilePath
                                               , getSearchPath
                                               , searchPathSeparator
                                               , takeDirectory )
+import System.IO                              ( hPutStr
+                                              , stderr)
 
 
 --
@@ -452,26 +455,47 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
-  removeTimestamps sandboxDir removedPaths
+  (results, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
 
-  let removedRefs = fmap (convertWith convDict) removedPaths
+  let (failedPaths, removedPaths) = partitionEithers results
+      removedRefs = fmap convDict removedPaths
 
-  when (not . null $ removedPaths) $
+  unless (null removedPaths) $ do
+    removeTimestamps sandboxDir removedPaths
+
     notice verbosity $ "Success deleting sources: " ++
-    showL removedRefs ++ "\n\n"
+      showL removedRefs ++ "\n\n"
 
-  when (length buildTreeRefs > length removedPaths) $
-    die $ "Skipped the following nonregistered sources: " ++
-    (showL $ buildTreeRefs \\ removedRefs)
+  unless (null failedPaths) $ do
+    mapM_ handleErrors $ groupBy errorType failedPaths
+    putNewlineStdErr
+    die $ "The sources with the above errors were skipped."
 
   notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
     "source dependency, but does not remove the package " ++
     "from the sandbox package DB.\n\n" ++
     "Use 'sandbox hc-pkg -- unregister' to do that."
   where
-    convertWith dict pth = fromMaybe pth $ fmap fst $ find ((==pth) . snd) dict
-    showL = concat . intersperse " " . fmap show
+    showPaths f = concat . intersperse " " . fmap (show . f)
+
+    putNewlineStdErr = hPutStr stderr "\n"
+
+    showL = showPaths id
+
+    showE [] = return ' '
+    showE errs@(Index.ErrNonregisteredSource{}:_) = showPaths Index.nrPath errs
+    showE errs@(Index.ErrNonexistentSource{}:_) = showPaths Index.nePath errs
+
+    errorType Index.ErrNonregisteredSource{} Index.ErrNonregisteredSource{} = True
+    errorType Index.ErrNonexistentSource{} Index.ErrNonexistentSource{} = True
+    errorType _ _ = False
+
+    handleErrors [] = return ()
+    handleErrors errs@(Index.ErrNonregisteredSource{}:_) = putNewlineStdErr >> warn verbosity ("Sources not registered: " ++ showE errs)
+    handleErrors errs@(Index.ErrNonexistentSource{}:_)   = putNewlineStdErr >> warn verbosity
+                                                           ("Source directory not found for paths: " ++ showE errs ++ "\n"
+                                                           ++ "If you are trying to delete a reference to a removed directory, "
+                                                           ++ "please provide the full absolute path (as given by `sandbox list-sources`).")
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
