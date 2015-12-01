@@ -157,12 +157,11 @@ addBuildTreeRefs verbosity path l' refType = do
       (path `replaceExtension` "cache")
 
 -- | Remove given local build tree references from the index.
+--
+-- Returns a tuple consisting of removed build tree refs and mappings from
+-- provided build tree refs to corresponding full directory paths).
 removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath]
-                       -> IO ([FilePath], [(FilePath, FilePath)]) -- ^ A tuple consisting of:
-                                                                  -- * removed build tree refs
-                                                                  -- * and mappings from provided
-                                                                  -- build tree refs to corresponding
-                                                                  -- full directory paths)
+                       -> IO ([FilePath], [(FilePath, FilePath)])
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity indexPath l' = do
@@ -182,13 +181,15 @@ removeBuildTreeRefs verbosity indexPath l' = do
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ indexPath ++ "'"
 
-  updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+  updatePackageIndexCacheFile verbosity indexPath
+    (indexPath `replaceExtension` "cache")
 
   return (removedRefs, convDict)
     where
       doRemove srcRefs tmpFile = do
-        (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
-                                          >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
+        (newIdx, changedPaths) <-
+          Tar.read `fmap` BS.readFile indexPath
+          >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
         BS.writeFile tmpFile $ Tar.writeEntries newIdx
         return changedPaths
       p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
