@@ -33,7 +33,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Version   (Version(..), orLaterVersion)
 
 import System.FilePath ((</>), (<.>))
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, liftM)
 import System.Directory (doesFileExist, removeFile, canonicalizePath)
 import System.Process (runProcess, waitForProcess)
 import System.Exit    (ExitCode(..))
@@ -41,9 +41,8 @@ import System.Exit    (ExitCode(..))
 -- |Create a source distribution.
 sdist :: SDistFlags -> SDistExFlags -> IO ()
 sdist flags exflags = do
-  pkg <- return . flattenPackageDescription
-         =<< readPackageDescription verbosity
-         =<< defaultPackageDesc verbosity
+  pkg <- liftM flattenPackageDescription
+    (readPackageDescription verbosity =<< defaultPackageDesc verbosity)
   let withDir = if not needMakeArchive then (\f -> f tmpTargetDir)
                 else withTempDirectory verbosity tmpTargetDir "sdist."
   -- 'withTempDir' fails if we don't create 'tmpTargetDir'...
