@@ -17,6 +17,7 @@ module Distribution.Client.Haddock
     where
 
 import Data.List (maximumBy)
+import Data.Foldable (forM_)
 import System.Directory (createDirectoryIfMissing, renameFile)
 import System.FilePath ((</>), splitFileName)
 import Distribution.Package
@@ -40,9 +41,7 @@ regenerateHaddockIndex :: Verbosity
 regenerateHaddockIndex verbosity pkgs conf index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing
       let paths' = [ (interface, html) | (interface, Just html) <- paths]
-      case warns of
-        Nothing -> return ()
-        Just m  -> debug verbosity m
+      forM_ warns (debug verbosity)
 
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram
