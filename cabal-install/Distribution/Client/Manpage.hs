@@ -49,7 +49,7 @@ manpage pname commands = unlines $
   ] ++
   concatMap (commandSynopsisLines pname) commands ++
   [ ".SH DESCRIPTION"
-  , "Cabal is the standard package system for Haskell software. It helps people to configure, " 
+  , "Cabal is the standard package system for Haskell software. It helps people to configure, "
   , "build and install Haskell software and to distribute it easily to other users and developers."
   , ""
   , "The command line " ++ pname ++ " tool (also referred to as cabal-install) helps with "
@@ -84,7 +84,7 @@ commandSynopsisLines _ (CommandSpec _ _ HiddenCommand) = []
 
 commandDetailsLines :: String -> CommandSpec action -> [String]
 commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
-  [ ".B " ++ pname ++ " " ++ (commandName ui) 
+  [ ".B " ++ pname ++ " " ++ (commandName ui)
   , ""
   , commandUsage ui pname
   , ""
@@ -96,7 +96,7 @@ commandDetailsLines pname (CommandSpec ui _ NormalCommand) =
   ] ++
   optionsLines ui ++
   [ ".RE"
-  , "" 
+  , ""
   ]
   where
     optional field =
@@ -109,10 +109,10 @@ optionsLines :: CommandUI flags -> [String]
 optionsLines command = concatMap optionLines (concatMap optionDescr (commandOptions command ParseArgs))
 
 data ArgumentRequired = Optional | Required
-type OptionArg = (ArgumentRequired, ArgPlaceHolder)  
+type OptionArg = (ArgumentRequired, ArgPlaceHolder)
 
 optionLines :: OptDescr flags -> [String]
-optionLines (ReqArg description (optionChars, optionStrings) placeHolder _ _) = 
+optionLines (ReqArg description (optionChars, optionStrings) placeHolder _ _) =
   argOptionLines description optionChars optionStrings (Required, placeHolder)
 optionLines (OptArg description (optionChars, optionStrings) placeHolder _ _ _) =
   argOptionLines description optionChars optionStrings (Optional, placeHolder)

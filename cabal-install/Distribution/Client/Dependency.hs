@@ -282,7 +282,7 @@ dontUpgradeNonUpgradeablePackages params =
       [ LabeledPackageConstraint
         (PackageConstraintInstalled pkgname)
         ConstraintSourceNonUpgradeablePackage
-      | all (/=PackageName "base") (depResolverTargets params)
+      | notElem (PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
       , isInstalled pkgname ]
@@ -601,8 +601,8 @@ interpretPackagesPreference selected defaultPref prefs =
       [ (pkgname, pref)
       | PackageInstalledPreference pkgname pref <- prefs ]
     installPrefDefault = case defaultPref of
-      PreferAllLatest         -> \_       -> PreferLatest
-      PreferAllInstalled      -> \_       -> PreferInstalled
+      PreferAllLatest         -> const PreferLatest
+      PreferAllInstalled      -> const PreferInstalled
       PreferLatestForSelected -> \pkgname ->
         -- When you say cabal install foo, what you really mean is, prefer the
         -- latest version of foo, but the installed version of everything else
@@ -637,7 +637,7 @@ validateSolverResult platform comp indepGoals pkgs =
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
 
-    formatProblemMessage problems = 
+    formatProblemMessage problems =
       unlines $
         "internal error: could not construct a valid install plan."
       : "The proposed (invalid) plan contained the following problems:"
