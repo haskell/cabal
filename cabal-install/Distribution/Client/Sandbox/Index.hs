@@ -201,7 +201,6 @@ removeBuildTreeRefs verbosity indexPath l = do
                 ++ fmap Left failures
                 ++ fmap (Left . ErrNonregisteredSource)
                         (fmap (convertWith convDict) (allRefs \\ removedRefs))
-
   return (results, convertWith convDict)
 
     where
