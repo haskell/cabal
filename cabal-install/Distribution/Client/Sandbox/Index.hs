@@ -181,7 +181,7 @@ removeBuildTreeRefs verbosity indexPath l = do
   canonRes <- mapM (\btr -> do res <- tryIO $ canonicalizePath btr
                                return $ case res of
                                  Right pth -> Right (btr, pth)
-                                 Left _ -> Left $ ErrNonexistentSource btr) l'
+                                 Left _ -> Left $ ErrNonexistentSource btr) l
   let (failures, convDict) = partitionEithers canonRes
       allRefs = fmap snd convDict
 
@@ -204,7 +204,7 @@ removeBuildTreeRefs verbosity indexPath l = do
   return (results, convertWith convDict)
 
     where
-      doRemove :: [(FilePath, FilePath)] -> FilePath -> IO [FilePath]
+      doRemove :: [FilePath] -> FilePath -> IO [FilePath]
       doRemove srcRefs tmpFile = do
         (newIdx, changedPaths) <- Tar.read `fmap` BS.readFile indexPath
                                           >>= runWriterT . Tar.filterEntriesM (p srcRefs)
