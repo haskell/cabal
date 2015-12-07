@@ -197,8 +197,8 @@ MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
 HTTP_VER="4000.2.22";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
                        # >= 4000.2.5 < 4000.3
-ZLIB_VER="0.6.1.1";    ZLIB_VER_REGEXP="0\.[4-6]\."
-                       # == 0.4.* || == 0.5.*
+ZLIB_VER="0.6.1.1";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
+                       # >= 0.5.3 && <= 0.7
 TIME_VER="1.5.0.1"     TIME_VER_REGEXP="1\.[12345]\.?"
                        # >= 1.1 && < 1.6
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
