@@ -212,7 +212,7 @@ resolveWithFlags ::
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom os arch impl constrs trees checkDeps =
-    either (Left . fromDepMapUnion) Right $ explore (build dom [])
+    either (Left . fromDepMapUnion) Right $ explore (build [] dom)
   where
     extraConstrs = toDepMap constrs
 
@@ -243,10 +243,10 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
 
     -- Builds a tree of all possible flag assignments.  Internal nodes
     -- have only partial assignments.
-    build :: [(FlagName, [Bool])] -> FlagAssignment -> Tree FlagAssignment
-    build [] flags = Node flags []
-    build ((n, vals):rest) flags =
-        Node flags $ map (\v -> build rest ((n, v):flags)) vals
+    build :: FlagAssignment -> [(FlagName, [Bool])] -> Tree FlagAssignment
+    build assigned [] = Node assigned []
+    build assigned ((fn, vals) : unassigned) =
+        Node assigned $ map (\v -> build ((fn, v) : assigned) unassigned) vals
 
     tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
     tryAll = foldr mp mz
