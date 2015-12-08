@@ -61,6 +61,7 @@ import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
 import Data.Monoid as Mon
+import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
 
@@ -190,9 +191,6 @@ instance Monoid d => Mon.Monoid (DepTestRslt d) where
     mappend (MissingDeps d) (MissingDeps d') = MissingDeps (d `mappend` d')
 
 
-data Tree a = Tree a [Tree a]
-
-
 -- | Try to find a flag assignment that satisfies the constraints of all trees.
 --
 -- Returns either the missing dependencies, or a tuple containing the
@@ -244,7 +242,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- computation overhead in the successful case.
     explore :: Tree FlagAssignment
             -> Either DepMapUnion (TargetSet PDTagged, FlagAssignment)
-    explore (Tree flags ts) =
+    explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` extraConstrs) .
@@ -258,9 +256,9 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- Builds a tree of all possible flag assignments.  Internal nodes
     -- have only partial assignments.
     build :: [(FlagName, [Bool])] -> FlagAssignment -> Tree FlagAssignment
-    build [] flags = Tree flags []
+    build [] flags = Node flags []
     build ((n, vals):rest) flags =
-        Tree flags $ map (\v -> build rest ((n, v):flags)) vals
+        Node flags $ map (\v -> build rest ((n, v):flags)) vals
 
     tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
     tryAll = foldr mp mz
