@@ -22,6 +22,7 @@ module Distribution.Client.ProjectPlanning (
     DocsResult(..),
     TestsResult(..),
 
+    -- * Producing the elaborated install plan
     rebuildInstallPlan,
     
     -- * Setup.hs CLI flags for building
@@ -222,6 +223,8 @@ data ElaboratedConfiguredPackage
        --   is not the same as where it may be unpacked to for the build.
        pkgSourceLocation :: PackageLocation (Maybe FilePath),
 
+       -- | The hash of the source, e.g. the tarball. We don't have this for
+       -- local source dir packages.
        pkgSourceHash     :: Maybe PackageSourceHash,
 
        --pkgSourceDir ? -- currently passed in later because they can use temp locations
