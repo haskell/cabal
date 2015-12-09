@@ -604,12 +604,12 @@ buildInplaceUnpackedPackage verbosity
         whenChanged configChanged $ do
           when isParallelBuild $
             notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-          setup configureCommand' configureFlags
+          setup configureCommand' configureFlags []
 
         -- Build phase
         when isParallelBuild $
           notice verbosity $ "Building " ++ display pkgid ++ "..."
-        setup buildCommand' buildFlags
+        setup buildCommand' buildFlags buildArgs
 
         -- Register locally
         mipkg <- case configChanged of
@@ -676,17 +676,18 @@ buildInplaceUnpackedPackage verbosity
     buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
+    buildArgs        = setupHsBuildArgs  pkg
 
     scriptOptions    = setupHsScriptOptions rpkg pkgshared
                                             srcdir builddir
                                             isParallelBuild cacheLock
 
-    setup :: CommandUI flags -> (Version -> flags) -> IO ()
-    setup cmd flags =
+    setup :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
+    setup cmd flags args =
       setupWrapper verbosity
                    scriptOptions
                    (Just (pkgDescription pkg))
-                   cmd flags []
+                   cmd flags args
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
     generateInstalledPackageInfo =
@@ -698,7 +699,7 @@ buildInplaceUnpackedPackage verbosity
                                 pkg pkgshared
                                 verbosity builddir
                                 pkgConfFile'
-        setup Cabal.registerCommand registerFlags
+        setup Cabal.registerCommand registerFlags []
 
 
 -- helper

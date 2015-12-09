@@ -28,6 +28,7 @@ module Distribution.Client.ProjectPlanning (
     setupHsScriptOptions,
     setupHsConfigureFlags,
     setupHsBuildFlags,
+    setupHsBuildArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
 
@@ -81,7 +82,7 @@ import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
-import           Distribution.Simple.BuildTarget
+import           Distribution.Simple.BuildTarget as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -272,7 +273,7 @@ data ElaboratedConfiguredPackage
        pkgSetupScriptCliVersion :: Version,
 
        -- Build time related:
-       pkgBuildTargets          :: Maybe [BuildTarget]
+       pkgBuildTargets          :: [Cabal.BuildTarget]
      }
   deriving (Eq, Show, Generic)
 
@@ -1032,7 +1033,7 @@ elaborateInstallPlan platform compiler progdb
 
         -- These two sometimes get adjusted later
         pkgStanzasEnabled   = Set.empty
-        pkgBuildTargets     = Nothing
+        pkgBuildTargets     = []
 
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
@@ -1552,18 +1553,29 @@ setupHsBuildFlags :: ElaboratedConfiguredPackage
                   -> Verbosity
                   -> FilePath
                   -> Cabal.BuildFlags
-setupHsBuildFlags pkg@ElaboratedConfiguredPackage{..} _ verbosity builddir =
+setupHsBuildFlags ElaboratedConfiguredPackage{..} _ verbosity builddir =
     Cabal.BuildFlags {
       buildProgramPaths = mempty, --unused, set at configure time
       buildProgramArgs  = mempty, --unused, set at configure time
       buildVerbosity    = toFlag verbosity,
       buildDistPref     = toFlag builddir,
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
-      buildArgs         = maybe [] showBuildTargets pkgBuildTargets
+      buildArgs         = mempty  -- unused, passed via args not flags
     }
+
+
+setupHsBuildArgs :: ElaboratedConfiguredPackage
+                 -> [String]
+setupHsBuildArgs pkg@ElaboratedConfiguredPackage{pkgBuildTargets} =
+    showBuildTargets pkgBuildTargets
   where
-    showBuildTargets = map (showBuildTarget QL3 (packageId pkg))
- 
+    --TODO: [code cleanup] this is all a little hacky
+    showBuildTargets = map $ \t ->
+      Cabal.showBuildTarget (qlBuildTarget t) (packageId pkg) t
+
+    qlBuildTarget Cabal.BuildTargetComponent{} = QL2
+    qlBuildTarget _                            = QL3
+
 
 setupHsCopyFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig

@@ -414,8 +414,9 @@ prunePlanToTargets targets installPlan =
             pkgDependencies = CD.filterDeps keepNeeded (pkgDependencies pkg),
             pkgBuildTargets =
               if Set.member ipkgid hasReverseLibDeps
-                then Nothing  -- no specific targets, i.e. build everything
-                else Map.lookup ipkgid buildTargets
+                then []  -- no specific targets, i.e. build everything
+                else fromMaybe [] $
+                     Map.lookup ipkgid buildTargets
                               -- any specific targets, or everything
           }
         where
