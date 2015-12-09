@@ -522,10 +522,11 @@ printPlan verbosity dryRun pkgs
     showPkg pkg = display (packageId pkg)
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage pkg' _) =
-      display (packageId pkg') ++
-      showFlagAssignment (nonDefaultFlags pkg') ++
-      showStanzas pkg'
+    showPkgAndReason (ReadyPackage pkg _) =
+      display (packageId pkg) ++
+      showTargets pkg ++
+      showFlagAssignment (nonDefaultFlags pkg) ++
+      showStanzas pkg
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
     nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
@@ -535,6 +536,14 @@ printPlan verbosity dryRun pkgs
                       | TestStanzas  `Set.member` pkgStanzasEnabled pkg ]
                    ++ [ " *bench"
                       | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
+
+    showTargets pkg
+      | null (pkgBuildTargets pkg) = ""
+      | otherwise
+      = " (" ++ unwords
+                  [ Cabal.showBuildTarget Cabal.QL1 (packageId pkg) t
+                  | t <- pkgBuildTargets pkg ]
+             ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place
     showFlagAssignment :: FlagAssignment -> String
