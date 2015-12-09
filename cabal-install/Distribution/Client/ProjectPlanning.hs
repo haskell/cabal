@@ -63,6 +63,7 @@ import           Distribution.Package
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
+import qualified Distribution.PackageDescription.Configuration as PD
 import qualified Distribution.PackageDescription.Parse as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -189,10 +190,13 @@ data ElaboratedConfiguredPackage
 
        -- | TODO: [code cleanup] we don't need this, just a few bits from it:
        --   build type, spec version
-       pkgDescription :: Cabal.GenericPackageDescription,
+       pkgDescription :: Cabal.PackageDescription,
 
        -- | A total flag assignment for the package
        pkgFlagAssignment   :: Cabal.FlagAssignment,
+
+       -- | The original default flag assignment, used only for reporting.
+       pkgFlagDefaults     :: Cabal.FlagAssignment,
 
        -- | Which optional stanzas are enabled (testsuites, benchmarks)
        pkgTestsuitesEnable :: Bool,
@@ -982,8 +986,15 @@ elaborateInstallPlan platform compiler progdb
         -- All the other fields of the ElaboratedConfiguredPackage
         --
         pkgSourceId         = pkgid
-        pkgDescription      = gdesc
+        pkgDescription      = let Right (desc, _) =
+                                    PD.finalizePackageDescription
+                                    flags (const True)
+                                    platform (compilerInfo compiler)
+                                    [] gdesc
+                               in desc
         pkgFlagAssignment   = flags
+        pkgFlagDefaults     = [ (Cabal.flagName flag, Cabal.flagDefault flag)
+                              | flag <- PD.genPackageFlags gdesc ]
         pkgTestsuitesEnable = TestStanzas  `elem` stanzas
                            && perPkgOptionFlag pkgid False packageConfigTests
         pkgBenchmarksEnable = BenchStanzas `elem` stanzas
@@ -997,10 +1008,10 @@ elaborateInstallPlan platform compiler progdb
         pkgRegisterPackageDBStack = buildAndRegisterDbs
         pkgRequiresRegistration   = isJust (Cabal.condLibrary gdesc)
 
-        pkgSetupScriptStyle       = packageSetupScriptStyle desc
-        pkgSetupScriptCliVersion  = packageSetupScriptSpecVersion desc deps
+        pkgSetupScriptStyle       = packageSetupScriptStyle pkgDescription
+        pkgSetupScriptCliVersion  = packageSetupScriptSpecVersion
+                                      pkgDescription deps
         pkgSetupPackageDBStack    = buildAndRegisterDbs        
-        desc                      = Cabal.packageDescription gdesc
 
         pkgDescriptionOverride    = descOverride
 

@@ -27,7 +27,6 @@ import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 
 import           Distribution.Package
 import qualified Distribution.PackageDescription as Cabal
-import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -527,17 +526,8 @@ printPlan verbosity dryRun pkgs
       showFlagAssignment (nonDefaultFlags pkg') ++
       showStanzas pkg'
 
-    toFlagAssignment :: [PD.Flag] -> FlagAssignment
-    toFlagAssignment = map (\ f -> (Cabal.flagName f, Cabal.flagDefault f))
-
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
-    nonDefaultFlags ElaboratedConfiguredPackage {
-                      pkgFlagAssignment, pkgDescription
-                    } =
-      let defaultAssignment =
-            toFlagAssignment
-             (Cabal.genPackageFlags pkgDescription)
-      in  pkgFlagAssignment \\ defaultAssignment
+    nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
 
     showStanzas pkg = concat $ [ " *test"  | pkgTestsuitesEnable pkg ]
                             ++ [ " *bench" | pkgBenchmarksEnable pkg ]

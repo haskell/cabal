@@ -30,7 +30,6 @@ import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
 
 import           Distribution.Package
-import qualified Distribution.PackageDescription as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.Program
@@ -529,7 +528,7 @@ buildAndInstallUnpackedPackage verbosity
         setupWrapper
           verbosity
           scriptOptions { useLoggingHandle = mLogFileHandle }
-          (Just (Cabal.packageDescription (pkgDescription pkg)))
+          (Just (pkgDescription pkg))
           cmd flags []
 
     mlogFile =
@@ -686,7 +685,7 @@ buildInplaceUnpackedPackage verbosity
     setup cmd flags =
       setupWrapper verbosity
                    scriptOptions
-                   (Just (Cabal.packageDescription (pkgDescription pkg)))
+                   (Just (pkgDescription pkg))
                    cmd flags []
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
