@@ -454,7 +454,7 @@ rebuildInstallPlan verbosity
     -- some of which may be local src dirs, tarballs etc
     --
     phaseReadLocalPackages :: ProjectConfig
-                           -> Rebuild [PackageSpecifier SourcePackage]
+                           -> Rebuild [SourcePackage]
     phaseReadLocalPackages projectConfig = do
 
       localCabalFiles <- findProjectCabalFiles projectConfig
@@ -498,7 +498,7 @@ rebuildInstallPlan verbosity
     --
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
-                   -> [PackageSpecifier SourcePackage]
+                   -> [SourcePackage]
                    -> Rebuild SolverInstallPlan
     phaseRunSolver projectConfig@ProjectConfig{projectConfigSolver}
                    (compiler, platform, progdb)
@@ -534,7 +534,7 @@ rebuildInstallPlan verbosity
           Map.fromList
             [ (pkgname, stanzas)
             | pkg <- localPackages
-            , let pkgname            = pkgSpecifierTarget pkg
+            , let pkgname            = packageName pkg
                   testsEnabled       = lookupLocalPackageConfig
                                          packageConfigTests
                                          projectConfig pkgname
@@ -555,7 +555,7 @@ rebuildInstallPlan verbosity
     phaseElaboratePlan :: ProjectConfig
                        -> (Compiler, Platform, ProgramDb)
                        -> SolverInstallPlan
-                       -> [PackageSpecifier SourcePackage]
+                       -> [SourcePackage]
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
@@ -634,18 +634,17 @@ findProjectCabalFiles ProjectConfig{..} = do
     liftIO $ map (projectConfigRootDir </>) . concat
          <$> mapM (matchFileGlob projectConfigRootDir) projectConfigPackageGlobs
 
-readSourcePackage :: Verbosity -> FilePath -> Rebuild (PackageSpecifier SourcePackage)
+readSourcePackage :: Verbosity -> FilePath -> Rebuild SourcePackage
 readSourcePackage verbosity cabalFile = do
     -- no need to monitorFiles because findProjectCabalFiles did it already
     pkgdesc <- liftIO $ Cabal.readPackageDescription verbosity cabalFile
     let srcLocation = LocalUnpackedPackage (takeDirectory cabalFile)
-    return $ SpecificSourcePackage 
-               SourcePackage {
-                 packageInfoId        = packageId pkgdesc,
-                 packageDescription   = pkgdesc,
-                 packageSource        = srcLocation,
-                 packageDescrOverride = Nothing
-               }
+    return SourcePackage {
+             packageInfoId        = packageId pkgdesc,
+             packageDescription   = pkgdesc,
+             packageSource        = srcLocation,
+             packageDescrOverride = Nothing
+           }
 
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
 programsMonitorFiles progdb =
@@ -783,12 +782,12 @@ planPackages :: Compiler
              -> Solver -> ProjectConfigSolver
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [PackageSpecifier SourcePackage]
+             -> [SourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String InstallPlan
 planPackages comp platform solver solverconfig
              installedPkgIndex sourcePkgDb
-             pkgSpecifiers pkgStanzasEnable =
+             localPackages pkgStanzasEnable =
 
     resolveDependencies
       platform (compilerInfo comp)
@@ -836,8 +835,8 @@ planPackages comp platform solver solverconfig
       . addPreferences
           -- enable stanza preference where the user did not specify
           [ PackageStanzasPreference pkgname stanzas
-          | pkgSpecifier <- pkgSpecifiers
-          , let pkgname = pkgSpecifierTarget pkgSpecifier
+          | pkg <- localPackages
+          , let pkgname = packageName pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
                           , Map.lookup stanza stanzaM == Nothing ]
@@ -849,8 +848,8 @@ planPackages comp platform solver solverconfig
           [ LabeledPackageConstraint
               (PackageConstraintStanzas pkgname stanzas)
               ConstraintSourceConfigFlagOrTarget
-          | pkgSpecifier <- pkgSpecifiers
-          , let pkgname = pkgSpecifierTarget pkgSpecifier
+          | pkg <- localPackages
+          , let pkgname = packageName pkg
                 stanzaM = Map.findWithDefault Map.empty pkgname pkgStanzasEnable
                 stanzas = [ stanza | stanza <- [minBound..maxBound]
                           , Map.lookup stanza stanzaM == Just True ]
@@ -860,17 +859,19 @@ planPackages comp platform solver solverconfig
       . addConstraints
           --TODO: [nice to have] this just applies all flags to all targets which
           -- is silly. We should check if the flags are appropriate
-          [ let pc = PackageConstraintFlags
-                     (pkgSpecifierTarget pkgSpecifier) flags
-            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+          [ LabeledPackageConstraint
+              (PackageConstraintFlags pkgname flags)
+              ConstraintSourceConfigFlagOrTarget
           | let flags = projectConfigConfigurationsFlags
           , not (null flags)
-          , pkgSpecifier <- pkgSpecifiers ]
+          , pkg <- localPackages
+          , let pkgname = packageName pkg ]
 
       . reinstallTargets  --TODO: [required eventually] do we want this? we already hide all installed packages in the store from the solver
 
       $ standardInstallPolicy
-        installedPkgIndex sourcePkgDb pkgSpecifiers
+        installedPkgIndex sourcePkgDb
+        (map SpecificSourcePackage localPackages)
 
 --    reinstall        = fromFlag projectConfigSolverReinstall
     reorderGoals     = fromFlag projectConfigSolverReorderGoals
@@ -933,7 +934,7 @@ elaborateInstallPlan
   -> DistDirLayout
   -> CabalDirLayout
   -> SolverInstallPlan
-  -> [PackageSpecifier SourcePackage]
+  -> [SourcePackage]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> PackageConfigShared
@@ -943,7 +944,7 @@ elaborateInstallPlan
 elaborateInstallPlan platform compiler progdb
                      DistDirLayout{..}
                      cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
-                     solverPlan pkgSpecifiers
+                     solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
                      sharedPackageConfig
@@ -1154,17 +1155,14 @@ elaborateInstallPlan platform compiler progdb
       $ InstallPlan.reverseDependencyClosure
           solverPlan
           [ fakeInstalledPackageId (packageId pkg)
-          | SpecificSourcePackage pkg <- pkgSpecifiers ]
+          | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
     isLocalToProject pkg = Set.member (packageId pkg)
                                       pkgsLocalToProject
 
     pkgsLocalToProject :: Set PackageId
-    pkgsLocalToProject =
-      Set.fromList
-        [ packageId pkg
-        | SpecificSourcePackage pkg <- pkgSpecifiers ]
+    pkgsLocalToProject = Set.fromList [ packageId pkg | pkg <- localPackages ]
 
     pkgsUseSharedLibrary :: Set PackageId
     pkgsUseSharedLibrary =
