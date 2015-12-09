@@ -208,6 +208,7 @@ Test-Suite unit-tests
         time,
         HTTP,
         zlib,
+        binary,
         random,
         tasty,
         tasty-hunit,
