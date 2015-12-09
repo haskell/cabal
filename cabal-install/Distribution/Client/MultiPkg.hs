@@ -16,19 +16,15 @@ import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import           Distribution.Client.Dependency
-import           Distribution.Client.Targets
+import           Distribution.Client.BuildTarget hiding (BuildTargetProblem, reportBuildTargetProblems)
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.FileStatusCache (FilePathGlob(..), matchFileGlob)
-import           Distribution.Client.Glob --TODO [code cleanup] keep globbing in one place, here, not in file status cache
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 
 import           Distribution.Package
-import qualified Distribution.PackageDescription as Cabal
+import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed
-import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.BuildTarget as Cabal
 
@@ -38,11 +34,11 @@ import           Distribution.Text
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Map (Map)
 
-import           Control.Applicative
 import           Control.Monad
 import           Data.List
-import           Data.Monoid
+import           Data.Either
 
 import           System.FilePath
 import           System.Directory
@@ -120,7 +116,7 @@ build verbosity
                                configFlags configExFlags
                                installFlags haddockFlags
 
-    userTargets <- readUserTargets verbosity targetStrings
+    userTargets <- readUserBuildTargets targetStrings
 
     -- The (re)build is split into two major parts:
     --  * decide what to do
@@ -156,7 +152,6 @@ build verbosity
     --
     elaboratedInstallPlan' <-
       selectTargets verbosity
-                    cabalDirLayout
                     elaboratedInstallPlan
                     buildSettings
                     userTargets
@@ -173,7 +168,7 @@ build verbosity
                      sharedPackageConfig
                      buildSettings
 
-    -- Note that it is a deliberate design choice that the 'userTargets' is
+    -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
     -- passed to phase 2.
     --
@@ -263,65 +258,41 @@ findProjectRoot = do
 
 
 selectTargets :: Verbosity
-              -> CabalDirLayout
               -> ElaboratedInstallPlan
               -> BuildTimeSettings
-              -> [UserTarget]
+              -> [UserBuildTarget]
               -> IO ElaboratedInstallPlan
 selectTargets verbosity
-              CabalDirLayout{cabalWorldFile}
               installPlan
               buildSettings
-              userTargets = do
+              userBuildTargets = do
 
-    -- First do some defaulting, if no targets are given, use the package
-    -- in the current directory if any.
+    -- Match the user targets against the available targets. If no targets are
+    -- given this uses the package in the current directory, if any.
     --
-    userTargets' <- case userTargets of
-      [] -> do res <- matchFileGlob "." (GlobFile (Glob [WildCard, Literal ".cabal"]))
-               case res of
-                 [local] -> return [UserTargetLocalCabalFile local]
-                 []      -> die $ "TODO: [required feature] decide what to do when no targets are specified and there's no local package, suggest 'all' target?"
-                 files   -> die $ "Multiple cabal files found.\n"
-                               ++ "Please use only one of: "
-                               ++ intercalate ", " files
-      _  -> return userTargets
+    buildTargets <- resolveUserBuildTargets localPackages userBuildTargets
+    --TODO: [required eventually] report something if there are no targets
 
-    -- Expand the world target (not really necessary) and disambiguate case
-    -- insensitive package names to actual package names.
-    --
-    packageTargets <- concat <$> mapM (expandUserTarget cabalWorldFile) userTargets'
-    let packageSpecifiers :: [PackageSpecifier (PackageLocation ())]
-        (problems, packageSpecifiers) =
-           disambiguatePackageTargets available availableExtra packageTargets
-
-        --TODO: [required eventually] we're using an empty set of known package names here, which
-        -- means we cannot resolve names of packages other than those that are
-        -- directly in the current plan. We ought to keep a set of the known
-        -- hackage packages so we can resolve names to those. Though we don't
-        -- really need that until we can do something sensible with packages
-        -- outside of the project.
-        available :: SourcePackageIndex.PackageIndex PackageId
-        available      = mempty
-        availableExtra = map packageName (InstallPlan.toList installPlan)
-    reportPackageTargetProblems verbosity problems
+    --TODO: [required eventually]
+    -- we cannot resolve names of packages other than those that are
+    -- directly in the current plan. We ought to keep a set of the known
+    -- hackage packages so we can resolve names to those. Though we don't
+    -- really need that until we can do something sensible with packages
+    -- outside of the project.
 
     -- Now check if those targets belong to the current project or not.
     -- Ultimately we want to do something sensible for targets not in this
     -- project, but for now we just bail. This gives us back the ipkgid from
     -- the plan.
     --
-    targetPkgids <- checkTargets installPlan packageSpecifiers
+    buildTargets' <- either reportBuildTargetProblems return
+                   $ resolveAndCheckTargets installPlan buildTargets
 
     -- Finally, prune the install plan to cover just those target packages
     -- and their deps.
     --
     let installPlan' :: ElaboratedInstallPlan
-        installPlan' = pruneInstallPlanToTargets targetPkgids' installPlan
-
-        targetPkgids' = Map.fromList [ (t, [BuildAllDefaultComponents])
-                                     | t <- targetPkgids ]
-        --TODO: [required feature] ^^ add in the individual build targets
+        installPlan' = pruneInstallPlanToTargets buildTargets' installPlan
 
     -- Tell the user what we're going to do
     checkPrintPlan verbosity
@@ -329,58 +300,102 @@ selectTargets verbosity
                    buildSettings
 
     return installPlan'
-
-
-checkTargets :: ElaboratedInstallPlan
-             -> [PackageSpecifier (PackageLocation ())]
-             -> IO [InstalledPackageId]
-checkTargets installPlan targets = do
-
-    -- Our first task is to work out if a target refers to something inside
-    -- the project or outside, since we will behave differently in these cases.
-    --
-    -- It's not quite as simple as checking if the target refers to a package
-    -- name that is inside the project because one might refer to a local
-    -- package dir that is not in the project but that has the same name (e.g.
-    -- a different local fork of a package). So the logic looks like this:
-    -- * for targets with a package location, check it is in the set of
-    --   locations of packages within the project
-    -- * for targets with just a name, just check it is in the set of names of
-    --   packages in the project.
-
-    let projLocalPkgLocs =
-          Map.fromList
-            [ (fmap (const ()) (pkgSourceLocation pkg), installedPackageId pkg)
-            | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
-
-        projAllPkgs =
-          Map.fromList
-            [ (packageName pkg, installedPackageId pkg)
-            | pkg <- InstallPlan.toList installPlan ]
-        --TODO: [research required] what if the solution has multiple versions of this package?
-        --      e.g. due to setup deps or due to multiple independent sets of
-        --      packages being built (e.g. ghc + ghcjs in a project)
-
-    mapM (checkTarget projLocalPkgLocs projAllPkgs) targets
-
   where
-    checkTarget projLocalPkgLocs _projAllPkgs (SpecificSourcePackage loc) = do
-      absloc <- canonicalizePackageLocation loc
-      case Map.lookup absloc projLocalPkgLocs of
-        Nothing    -> die $ show loc ++ " is not in the project"
-        Just pkgid -> return pkgid
+    localPackages =
+      [ (pkgDescription pkg, pkgSourceLocation pkg)
+      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+      --TODO: [code cleanup] is there a better way to identify local packages?
 
-    checkTarget _projLocalPkgLocs projAllPkgs (NamedPackage pkgname _constraints) = do
-      case Map.lookup pkgname projAllPkgs of
-        Nothing     -> die $ display pkgname ++ " is not in the project"
-        Just ipkgid -> return ipkgid
 
-canonicalizePackageLocation :: PackageLocation a -> IO (PackageLocation a)
-canonicalizePackageLocation loc =
-  case loc of
-    LocalUnpackedPackage path -> LocalUnpackedPackage <$> canonicalizePath path
-    LocalTarballPackage  path -> LocalTarballPackage  <$> canonicalizePath path
-    _                         -> return loc
+
+
+data BuildTargetProblem
+   = BuildTargetNotInProject PackageName
+   | BuildTargetComponentNotProjectLocal (BuildTarget PackageName)
+   | BuildTargetOptionalStanzaDisabled Bool
+      -- ^ @True@: explicitly disabled by user
+      -- @False@: disabled by solver
+
+resolveAndCheckTargets :: ElaboratedInstallPlan
+                       -> [BuildTarget PackageName]
+                       -> Either [BuildTargetProblem]
+                                 (Map InstalledPackageId [ComponentTarget])
+resolveAndCheckTargets installPlan targets =
+    case partitionEithers (map checkTarget targets) of
+      ([], targets') -> Right $ Map.fromListWith (++)
+                                  [ (ipkgid, [t]) | (ipkgid, t) <- targets' ]
+      (problems, _)  -> Left problems
+  where
+    -- TODO [required eventually] currently all build targets refer to packages
+    -- inside the project. Ultimately this has to be generalised to allow
+    -- referring to other packages and targets.
+
+    -- We can ask to build any whole package, project-local or a dependency
+    checkTarget (BuildTargetPackage pn)
+      | Just ipkgid <- Map.lookup pn projAllPkgs
+      = Right (ipkgid, BuildAllDefaultComponents)
+
+    -- But if we ask to build an individual component, then that component
+    -- had better be in a package that is local to the project.
+    -- TODO: and if it's an optional stanza, then that stanza must be available
+    checkTarget t@(BuildTargetComponent pn cn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetComponent cn))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t@(BuildTargetModule pn cn mn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetModule cn mn))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t@(BuildTargetFile pn cn fn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetFile cn fn))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t
+      = Left (BuildTargetNotInProject (buildTargetPackage t))
+
+
+    projAllPkgs, projLocalPkgs :: Map PackageName InstalledPackageId
+    projAllPkgs =
+      Map.fromList
+        [ (packageName pkg, installedPackageId pkg)
+        | pkg <- InstallPlan.toList installPlan ]
+
+    projLocalPkgs =
+      Map.fromList
+        [ (packageName pkg, installedPackageId pkg)
+        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        , case pkgSourceLocation pkg of
+            LocalUnpackedPackage _ -> True; _ -> False
+          --TODO: [code cleanup] is there a better way to identify local packages?
+        ]
+
+    --TODO: [research required] what if the solution has multiple versions of this package?
+    --      e.g. due to setup deps or due to multiple independent sets of
+    --      packages being built (e.g. ghc + ghcjs in a project)
+
+reportBuildTargetProblems :: [BuildTargetProblem] -> IO a
+reportBuildTargetProblems = die . unlines . map reportBuildTargetProblem
+
+reportBuildTargetProblem :: BuildTargetProblem -> String
+reportBuildTargetProblem (BuildTargetNotInProject pn) =
+        "Cannot build the package " ++ display pn ++ ", it is not in this project."
+     ++ "(either directly or indirectly). If you want to add it to the "
+     ++ "project then edit the cabal.project file."
+
+reportBuildTargetProblem (BuildTargetComponentNotProjectLocal t) =
+        "The package " ++ display (buildTargetPackage t) ++ " is in the "
+     ++ "project but it is not a locally unpacked package, so  "
+
+reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
 
 
 -------------------------------
@@ -468,5 +483,5 @@ printPlan verbosity dryRun pkgs
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
-    showFlagName (Cabal.FlagName f) = f
+    showFlagName (PD.FlagName f) = f
 
