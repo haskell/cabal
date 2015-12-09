@@ -17,7 +17,6 @@ import           Distribution.Client.ProjectBuilding
 import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
-import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.Targets
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileStatusCache (FilePathGlob(..), matchFileGlob)
@@ -29,11 +28,9 @@ import           Distribution.Package
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.BuildTarget as Cabal
-import qualified Distribution.Simple.LocalBuildInfo as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Verbosity
@@ -41,13 +38,10 @@ import           Distribution.Text
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import qualified Data.Graph as Graph
-import qualified Data.Tree  as Tree
 
 import           Control.Applicative
 import           Control.Monad
 import           Data.List
-import           Data.Maybe
 import           Data.Monoid
 
 import           System.FilePath
@@ -323,9 +317,10 @@ selectTargets verbosity
     -- and their deps.
     --
     let installPlan' :: ElaboratedInstallPlan
-        installPlan' = prunePlanToTargets targetPkgids' installPlan
+        installPlan' = pruneInstallPlanToTargets targetPkgids' installPlan
 
-        targetPkgids' = map (\t -> (t, Nothing)) targetPkgids
+        targetPkgids' = Map.fromList [ (t, [BuildAllDefaultComponents])
+                                     | t <- targetPkgids ]
         --TODO: [required feature] ^^ add in the individual build targets
 
     -- Tell the user what we're going to do
@@ -386,83 +381,6 @@ canonicalizePackageLocation loc =
     LocalUnpackedPackage path -> LocalUnpackedPackage <$> canonicalizePath path
     LocalTarballPackage  path -> LocalTarballPackage  <$> canonicalizePath path
     _                         -> return loc
-
-
-
-prunePlanToTargets :: [(InstalledPackageId, Maybe [Cabal.BuildTarget])]
-                   -> ElaboratedInstallPlan -> ElaboratedInstallPlan
-prunePlanToTargets targets installPlan =
-      installPlan'
-    where
-      Right installPlan' =
-        InstallPlan.new False $
-          PackageIndex.fromList $
-            prunedPkgs
-
-      prunedPkgs = dependencyClosure
-                     (CD.flatDeps . depends)
-                     (map pruneDependencies (InstallPlan.toList installPlan))
-                     (map fst targets)
-
-      buildTargets      = Map.fromList [ (ipkgid, ts)
-                                       | (ipkgid, Just ts) <- targets ]
-      hasReverseLibDeps = Set.fromList [ depid | pkg <- prunedPkgs
-                                       , depid <- CD.flatDeps (depends pkg) ]
-
-      pruneDependencies (InstallPlan.Configured pkg) =
-          InstallPlan.Configured pkg {
-            pkgDependencies = CD.filterDeps keepNeeded (pkgDependencies pkg),
-            pkgBuildTargets =
-              if Set.member ipkgid hasReverseLibDeps
-                then []  -- no specific targets, i.e. build everything
-                else fromMaybe [] $
-                     Map.lookup ipkgid buildTargets
-                              -- any specific targets, or everything
-          }
-        where
-          keepNeeded (CD.ComponentTest  _) _ = keepTestsuites
-          keepNeeded (CD.ComponentBench _) _ = keepBenchmarks
-          keepNeeded _                     _ = True
-
-          ipkgid         = installedPackageId pkg
-          bts            = fromMaybe [] (Map.lookup ipkgid buildTargets)
-          keepTestsuites =
-            not $ null [ () | Cabal.CTestName _ <- map Cabal.buildTargetComponentName bts ]
-          keepBenchmarks =
-            not $ null [ () | Cabal.CBenchName _ <- map Cabal.buildTargetComponentName bts ]
-
-      pruneDependencies pkg = pkg
-
-
-dependencyClosure :: HasInstalledPackageId pkg
-                  => (pkg -> [InstalledPackageId])
-                  -> [pkg]
-                  -> [InstalledPackageId]
-                  -> [pkg]
-dependencyClosure deps allpkgs =
-    map vertexToPkg
-  . concatMap Tree.flatten
-  . Graph.dfs graph
-  . map pkgidToVertex
-  where
-    (graph, vertexToPkg, pkgidToVertex) = dependencyGraph deps allpkgs
-
-dependencyGraph :: HasInstalledPackageId pkg
-                => (pkg -> [InstalledPackageId])
-                -> [pkg]
-                -> (Graph.Graph,
-                    Graph.Vertex -> pkg,
-                    InstalledPackageId -> Graph.Vertex)
-dependencyGraph deps pkgs =
-    (graph, vertexToPkg', pkgidToVertex')
-  where
-    (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, installedPackageId pkg, deps pkg ) 
-                           | pkg <- pkgs ]
-    vertexToPkg'   = (\(pkg,_,_) -> pkg)
-                   . vertexToPkg
-    pkgidToVertex' = fromMaybe (error "dependencyGraph: lookup failure")
-                   . pkgidToVertex
 
 
 -------------------------------

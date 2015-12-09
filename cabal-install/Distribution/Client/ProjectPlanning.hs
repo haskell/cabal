@@ -24,6 +24,10 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Producing the elaborated install plan
     rebuildInstallPlan,
+
+    -- * Selecting a plan subset
+    ComponentTarget(..),
+    pruneInstallPlanToTargets,
     
     -- * Setup.hs CLI flags for building
     setupHsScriptOptions,
@@ -45,7 +49,7 @@ import           Distribution.Client.ProjectConfig
 
 import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, InstallPlan )
+                   ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
@@ -80,6 +84,7 @@ import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlag, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
+import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
@@ -94,6 +99,8 @@ import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Graph as Graph
+import qualified Data.Tree  as Tree
 import qualified Data.ByteString.Lazy as LBS
 
 import           Control.Applicative
@@ -104,6 +111,7 @@ import           Data.List
 import           Data.Either
 import           Data.Maybe
 import           Data.Monoid
+import           Data.Function
 
 import           Data.Binary
 import           GHC.Generics (Generic)
@@ -162,6 +170,11 @@ import           System.FilePath
 --
 type ElaboratedInstallPlan
    = GenericInstallPlan InstalledPackageInfo
+                        ElaboratedConfiguredPackage
+                        BuildSuccess BuildFailure
+
+type ElaboratedPlanPackage
+   = GenericPlanPackage InstalledPackageInfo
                         ElaboratedConfiguredPackage
                         BuildSuccess BuildFailure
 
@@ -1219,6 +1232,260 @@ elaborateInstallPlan platform compiler progdb
       -- * shared libs & exes, exe needs lib, recursive
       -- * vanilla libs & exes, exe needs lib, recursive
       -- * ghci or shared lib needed by TH, recursive, ghc version dependent
+
+
+------------------------------------------------------------------------------
+-- * Install plan pruning
+------------------------------------------------------------------------------
+
+-- | The particular bits within a package that we can build.
+--
+data ComponentTarget =
+     -- | Build all the default components. This means the lib and exes, but
+     -- can also mean the testsuites and benchmarks if the user requested
+     -- enabling tests and benchmarks. 
+     BuildAllDefaultComponents
+   | BuildSpecificComponent Cabal.BuildTarget
+  deriving (Eq, Show)
+
+-- | Given a set of package targets (and optionally component targets within
+-- those packages), take the subset of the install plan needed to build those
+-- targets. Also, update the package config to specify which optional stanzas
+-- to enable, and which targets within each package to build.
+--
+pruneInstallPlanToTargets :: Map InstalledPackageId [ComponentTarget]
+                          -> ElaboratedInstallPlan -> ElaboratedInstallPlan
+pruneInstallPlanToTargets perPkgTargetsMap =
+    either (\_ -> assert False undefined) id
+  . InstallPlan.new False
+  . PackageIndex.fromList
+    -- We have to do this in two passes
+  . pruneInstallPlanPass2 perPkgTargetsMap
+  . pruneInstallPlanPass1 perPkgTargetsMap
+  . InstallPlan.toList
+
+-- The first pass does three things:
+--
+-- * determine which optional stanzas (testsuites, benchmarks) are needed
+-- * then prune dependencies used only by unneeded optional stanzas
+-- * then take the dependency closure, given the pruned deps
+--
+pruneInstallPlanPass1 :: Map InstalledPackageId [ComponentTarget]
+                      -> [ElaboratedPlanPackage]
+                      -> [ElaboratedPlanPackage]
+pruneInstallPlanPass1 perPkgTargetsMap pkgs =
+    dependencyClosure
+      (CD.flatDeps . depends)
+      (map (mapConfiguredPackage pruneOptionalStanzaDependencies) pkgs)
+      (Map.keys perPkgTargetsMap)
+  where
+    -- Decide whether or not to enable testsuites and benchmarks
+    --
+    -- The testsuite and benchmark targets are somewhat special in that we need
+    -- to configure the packages with them enabled, and we need to do that even
+    -- if we only want to build one of several testsuites.
+    -- 
+    -- There are two cases in which we will enable the testsuites (or
+    -- benchmarks): if one of the targets is a testsuite, or if all of the
+    -- testsuite depencencies are already cached in the store. The rationale
+    -- for the latter is to minimise how often we have to reconfigure due to
+    -- the particular targets we choose to build. Otherwise choosing to build
+    -- a testsuite target, and then later choosing to build an exe target
+    -- would involve unnecessarily reconfiguring the package with testsuites
+    -- disabled. Technically this introduces a little bit of stateful
+    -- behaviour to make this "sticky", but it should be benign.
+    --
+    pruneOptionalStanzaDependencies pkg =
+        pkg {
+          pkgStanzasEnabled = stanzas,
+          pkgDependencies   = CD.filterDeps keepNeeded (pkgDependencies pkg)
+        }
+      where
+        stanzas :: Set OptionalStanza
+        stanzas = optionalStanzasRequiredByTargets  targets
+               <> optionalStanzasRequestedByDefault pkg
+               <> optionalStanzasWithDepsAvailable  pkg
+
+        targets = fromMaybe []
+                $ Map.lookup (installedPackageId pkg) perPkgTargetsMap
+
+        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
+        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+        keepNeeded _                     _ = True
+
+    optionalStanzasRequiredByTargets :: [ComponentTarget]
+                                     -> Set OptionalStanza
+    optionalStanzasRequiredByTargets ctargets =
+      Set.fromList
+        [ stanza
+        | BuildSpecificComponent c <- ctargets
+        , let cname = Cabal.buildTargetComponentName c
+        , stanza <- maybeToList (componentOptionalStanza cname)
+        ]
+
+    optionalStanzasRequestedByDefault :: ElaboratedConfiguredPackage
+                                      -> Set OptionalStanza
+    optionalStanzasRequestedByDefault =
+        Map.keysSet
+      . Map.filter (id :: Bool -> Bool)
+      . pkgStanzasRequested
+
+    optionalStanzasWithDepsAvailable :: ElaboratedConfiguredPackage 
+                                     -> Set OptionalStanza
+    optionalStanzasWithDepsAvailable pkg =
+        Set.fromList
+          [ stanza
+          | stanza <- Set.toList (pkgStanzasAvailable pkg)
+          , let deps :: [InstalledPackageId]
+                deps = map installedPackageId
+                     $ CD.select (optionalStanzaDeps stanza)
+                                 (pkgDependencies pkg)
+          , all (`Set.member` availablePkgs) deps
+          ]
+
+    optionalStanzaDeps TestStanzas  (CD.ComponentTest  _) = True
+    optionalStanzaDeps BenchStanzas (CD.ComponentBench _) = True
+    optionalStanzaDeps _            _                     = False
+
+    availablePkgs =
+      Set.fromList
+        [ installedPackageId pkg
+        | InstallPlan.PreExisting pkg <- pkgs ]
+
+
+-- The second pass does just one thing:
+--
+-- * set which targets within each package to actually build
+--
+-- This depends on knowing which packages have reverse dependencies
+-- (ie are needed). This requires the result of first pass, which is
+-- why we have to split it into two passes.
+--
+-- Note that just because we might enable testsuites or benchmarks in the
+-- first pass doesn't mean that we build all (or even any) of them.
+-- That depends on which targets we pick in the second pass.
+--
+pruneInstallPlanPass2 :: Map InstalledPackageId [ComponentTarget]
+                      -> [ElaboratedPlanPackage]
+                      -> [ElaboratedPlanPackage]
+pruneInstallPlanPass2 perPkgTargetsMap pkgs =
+    map (mapConfiguredPackage setBuildTargets) pkgs
+  where
+    setBuildTargets pkg =
+        pkg {
+          pkgBuildTargets = targets
+        }
+      where
+        targets :: [Cabal.BuildTarget]
+        targets  | Set.null (pkgStanzasEnabled pkg)
+                 , ctargets == [BuildAllDefaultComponents]
+                   -- common special case of building only the default things
+                 = []
+
+                 | otherwise
+                 = nubBuildTargets
+                 . concatMap (expandBuildTarget pkg) 
+                 $ ctargets
+
+        ctargets :: [ComponentTarget]
+        ctargets = [ BuildAllDefaultComponents
+                 -- all the normal stuff, if anything needs this pkg
+                 | installedPackageId pkg `Set.member` hasReverseLibDeps
+                 ]
+                 -- plus any specific targets
+              ++ perPkgTargets pkg
+
+    hasReverseLibDeps :: Set InstalledPackageId
+    hasReverseLibDeps =
+      Set.fromList [ depid | pkg <- pkgs
+                           , depid <- CD.flatDeps (depends pkg) ]
+
+    -- Given the specification of what targets to build, elaborate this into
+    -- more specific targets.
+    --
+    -- In particular, the "all components" target expands to all the lib and
+    -- exe targets, but sometimes also to the testsuites and benchmarks if the
+    -- user specifically requested them.
+    --
+    expandBuildTarget :: ElaboratedConfiguredPackage
+                      -> ComponentTarget -> [Cabal.BuildTarget]
+    expandBuildTarget _  (BuildSpecificComponent t) = [t]
+    expandBuildTarget pkg BuildAllDefaultComponents =
+        [ BuildTargetComponent cname
+        | c <- Cabal.pkgComponents (pkgDescription pkg)
+        , PD.buildable (Cabal.componentBuildInfo c)
+        , let cname = Cabal.componentName c
+        , enabledOptionalStanza cname
+        ]
+      where
+        enabledOptionalStanza cname =
+          case componentOptionalStanza cname of
+            Nothing     -> True
+            Just stanza -> Map.lookup stanza (pkgStanzasRequested pkg)
+                        == Just True
+
+    nubBuildTargets :: [Cabal.BuildTarget] -> [Cabal.BuildTarget]
+    nubBuildTargets =
+        concatMap (wholeComponentOverrides . map snd)
+      . groupBy ((==)    `on` fst)
+      . sortBy  (compare `on` fst)
+      . map (\bt -> (Cabal.buildTargetComponentName bt, bt))
+
+    -- If we're building the whole component then that the only target all we
+    -- need, otherwise we can have several targets within the component.
+    wholeComponentOverrides bts =
+      case [ bt | bt@(BuildTargetComponent _) <- bts ] of
+        (bt:_) -> [bt]
+        []     -> bts
+
+    -- utils:
+
+    perPkgTargets pkg = fromMaybe []
+                      $ Map.lookup (installedPackageId pkg) perPkgTargetsMap
+
+
+mapConfiguredPackage :: (ElaboratedConfiguredPackage -> ElaboratedConfiguredPackage)
+                     -> ElaboratedPlanPackage
+                     -> ElaboratedPlanPackage
+mapConfiguredPackage f (InstallPlan.Configured pkg) =
+  InstallPlan.Configured (f pkg)
+mapConfiguredPackage _ pkg = pkg
+
+componentOptionalStanza :: Cabal.ComponentName -> Maybe OptionalStanza
+componentOptionalStanza (Cabal.CTestName  _) = Just TestStanzas
+componentOptionalStanza (Cabal.CBenchName _) = Just BenchStanzas
+componentOptionalStanza _                    = Nothing
+
+
+dependencyClosure :: HasInstalledPackageId pkg
+                  => (pkg -> [InstalledPackageId])
+                  -> [pkg]
+                  -> [InstalledPackageId]
+                  -> [pkg]
+dependencyClosure deps allpkgs =
+    map vertexToPkg
+  . concatMap Tree.flatten
+  . Graph.dfs graph
+  . map pkgidToVertex
+  where
+    (graph, vertexToPkg, pkgidToVertex) = dependencyGraph deps allpkgs
+
+dependencyGraph :: HasInstalledPackageId pkg
+                => (pkg -> [InstalledPackageId])
+                -> [pkg]
+                -> (Graph.Graph,
+                    Graph.Vertex -> pkg,
+                    InstalledPackageId -> Graph.Vertex)
+dependencyGraph deps pkgs =
+    (graph, vertexToPkg', pkgidToVertex')
+  where
+    (graph, vertexToPkg, pkgidToVertex) =
+      Graph.graphFromEdges [ ( pkg, installedPackageId pkg, deps pkg ) 
+                           | pkg <- pkgs ]
+    vertexToPkg'   = (\(pkg,_,_) -> pkg)
+                   . vertexToPkg
+    pkgidToVertex' = fromMaybe (error "dependencyGraph: lookup failure")
+                   . pkgidToVertex
 
 
 ---------------------------
