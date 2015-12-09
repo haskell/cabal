@@ -46,6 +46,7 @@ executable cabal
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
     other-modules:
+        Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types

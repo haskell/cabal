@@ -6,7 +6,9 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , inDir, determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
-                                 , makeAbsoluteToCwd, filePathToByteString
+                                 , makeAbsoluteToCwd
+                                 , makeRelativeToCwd, makeRelativeToDir
+                                 , filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow
                                  , moreRecentFile, existsAndIsMoreRecentThan
@@ -20,6 +22,7 @@ import Distribution.Client.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
+import Control.Applicative
 import Control.Monad
          ( when )
 import Data.Bits
@@ -41,7 +44,7 @@ import System.Directory
          ( canonicalizePath, doesFileExist, getCurrentDirectory
          , removeFile, setCurrentDirectory )
 import System.FilePath
-         ( (</>), isAbsolute )
+         ( (</>), isAbsolute, takeDrive, splitPath, joinPath )
 import System.IO
          ( Handle, hClose, openTempFile
 #if MIN_VERSION_base(4,4,0)
@@ -152,6 +155,31 @@ makeAbsoluteToCwd :: FilePath -> IO FilePath
 makeAbsoluteToCwd path | isAbsolute path = return path
                        | otherwise       = do cwd <- getCurrentDirectory
                                               return $! cwd </> path
+
+-- | Given a path (relative or absolute), make it relative to the current
+-- directory, including using @../..@ if necessary.
+makeRelativeToCwd :: FilePath -> IO FilePath
+makeRelativeToCwd path =
+    makeRelativeCanonical <$> canonicalizePath path <*> getCurrentDirectory
+
+-- | Given a path (relative or absolute), make it relative to the given
+-- directory, including using @../..@ if necessary.
+makeRelativeToDir :: FilePath -> FilePath -> IO FilePath
+makeRelativeToDir path dir =
+    makeRelativeCanonical <$> canonicalizePath path <*> canonicalizePath dir
+
+-- | Given a canonical absolute path and canonical absolute dir, make the path
+-- relative to the directory, including using @../..@ if necessary. Returns
+-- the original absolute path if it is not on the same drive as the given dir.
+makeRelativeCanonical :: FilePath -> FilePath -> FilePath
+makeRelativeCanonical path dir
+  | takeDrive path /= takeDrive dir = path
+  | otherwise                       = go (splitPath path) (splitPath dir)
+  where
+    go (p:ps) (d:ds) | p == d = go ps ds
+    go    []     []           = "./"
+    go    ps     ds           = joinPath (replicate (length ds) ".." ++ ps)
+
 
 -- | Convert a 'FilePath' to a lazy 'ByteString'. Each 'Char' is
 -- encoded as a little-endian 'Word32'.
