@@ -529,8 +529,11 @@ printPlan verbosity dryRun pkgs
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
     nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
 
-    showStanzas pkg = concat $ [ " *test"  | pkgTestsuitesEnable pkg ]
-                            ++ [ " *bench" | pkgBenchmarksEnable pkg ]
+    showStanzas pkg = concat
+                    $ [ " *test"
+                      | TestStanzas  `Set.member` pkgStanzasEnabled pkg ]
+                   ++ [ " *bench"
+                      | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
 
     -- TODO: [code cleanup] this should be a proper function in a proper place
     showFlagAssignment :: FlagAssignment -> String

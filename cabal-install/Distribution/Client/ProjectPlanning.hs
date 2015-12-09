@@ -198,13 +198,24 @@ data ElaboratedConfiguredPackage
        -- | The original default flag assignment, used only for reporting.
        pkgFlagDefaults     :: Cabal.FlagAssignment,
 
-       -- | Which optional stanzas are enabled (testsuites, benchmarks)
-       pkgTestsuitesEnable :: Bool,
-       pkgBenchmarksEnable :: Bool,
-
        -- | The exact dependencies (on other plan packages)
        --
        pkgDependencies     :: ComponentDeps [ConfiguredId],
+
+       -- | Which optional stanzas (ie testsuites, benchmarks) can be built.
+       -- This means the solver produced a plan that has them available.
+       -- This doesn't necessary mean we build them by default.
+       pkgStanzasAvailable :: Set OptionalStanza,
+
+       -- | Which optional stanzas the user explicitly asked to enable or
+       -- to disable. This tells us which ones we build by default, and
+       -- helps with error messages when the user asks to build something
+       -- they explicitly disabled.
+       pkgStanzasRequested :: Map OptionalStanza Bool,
+
+       -- | Which optional stanzas (ie testsuites, benchmarks) will actually
+       -- be enabled during the package configure step.
+       pkgStanzasEnabled :: Set OptionalStanza,
 
        -- | Where the package comes from, e.g. tarball, local dir etc. This
        --   is not the same as where it may be unpacked to for the build.
@@ -346,6 +357,19 @@ instance Binary BuildFailure
 instance Binary BuildSuccess
 instance Binary DocsResult
 instance Binary TestsResult
+
+
+sanityCheckElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Bool
+sanityCheckElaboratedConfiguredPackage ElaboratedConfiguredPackage{..} =
+    pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable
+
+    -- the stanzas explicitly enabled should be available and enabled
+ && Map.keysSet (Map.filter id pkgStanzasRequested)
+      `Set.isSubsetOf` pkgStanzasEnabled
+
+    -- the stanzas explicitly disabled should not be available
+ && Set.null (Map.keysSet (Map.filter not pkgStanzasRequested)
+                `Set.intersection` pkgStanzasAvailable)
 
 
 ------------------------------------------------------------------------------
@@ -995,11 +1019,20 @@ elaborateInstallPlan platform compiler progdb
         pkgFlagAssignment   = flags
         pkgFlagDefaults     = [ (Cabal.flagName flag, Cabal.flagDefault flag)
                               | flag <- PD.genPackageFlags gdesc ]
-        pkgTestsuitesEnable = TestStanzas  `elem` stanzas
-                           && perPkgOptionFlag pkgid False packageConfigTests
-        pkgBenchmarksEnable = BenchStanzas `elem` stanzas
-                           && perPkgOptionFlag pkgid False packageConfigBenchmarks
         pkgDependencies     = deps
+        pkgStanzasAvailable = Set.fromList stanzas
+        pkgStanzasRequested =
+            Map.fromList $ [ (TestStanzas,  v) | v <- maybeToList tests ]
+                        ++ [ (BenchStanzas, v) | v <- maybeToList benchmarks ]
+          where
+            tests, benchmarks :: Maybe Bool
+            tests      = perPkgOptionMaybe pkgid packageConfigTests
+            benchmarks = perPkgOptionMaybe pkgid packageConfigBenchmarks
+
+        -- These two sometimes get adjusted later
+        pkgStanzasEnabled   = Set.empty
+        pkgBuildTargets     = Nothing
+
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
@@ -1040,7 +1073,6 @@ elaborateInstallPlan platform compiler progdb
         pkgExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
         pkgProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
         pkgProgSuffix          = perPkgOptionMaybe pkgid packageConfigProgSuffix
-        pkgBuildTargets        = Nothing -- sometimes gets adjusted later
 
         pkgInstallDirs
           | shouldBuildInplaceOnly pkg
@@ -1427,10 +1459,11 @@ setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> FilePath
                       -> Cabal.ConfigFlags
 setupHsConfigureFlags (ReadyPackage
-                         ElaboratedConfiguredPackage{..}
+                         ecpkg@ElaboratedConfiguredPackage{..}
                          pkgdeps)
                       ElaboratedSharedConfig{..}
                       verbosity builddir =
+    assert (sanityCheckElaboratedConfiguredPackage ecpkg)
     Cabal.ConfigFlags {..}
   where
     configDistPref            = toFlag builddir
@@ -1488,8 +1521,8 @@ setupHsConfigureFlags (ReadyPackage
     configPackageDBs          = Nothing : map Just pkgBuildPackageDBStack
 
     configInstantiateWith     = mempty --TODO: [research required] unused within cabal-install
-    configTests               = toFlag pkgTestsuitesEnable
-    configBenchmarks          = toFlag pkgBenchmarksEnable
+    configTests               = toFlag (TestStanzas  `Set.member` pkgStanzasEnabled)
+    configBenchmarks          = toFlag (BenchStanzas `Set.member` pkgStanzasEnabled)
 
     configExactConfiguration  = toFlag True
     configFlagError           = mempty --TODO: [research required] appears not to be implemented
