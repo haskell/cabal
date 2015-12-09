@@ -581,7 +581,7 @@ buildInplaceUnpackedPackage verbosity
     -- The configChanged here includes the identity of the dependencies, so
     -- depsChanged below is just needed for the changes in the content of deps.
     --
-    configChanged <- checkFileMonitorChanged configFileMonitor srcdir rpkg
+    configChanged <- checkFileMonitorChanged configFileMonitor srcdir pkgconfig
     buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir ()
     let depsChanged = not $ null [ () | BuildOk True _ _ <- CD.flatDeps depResults ]
     --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
@@ -637,7 +637,7 @@ buildInplaceUnpackedPackage verbosity
         whenChanged configChanged $
           updateFileMonitor configFileMonitor srcdir
                             []
-                            rpkg mipkg
+                            pkgconfig mipkg
 
         --TODO: [required eventually] temporary hack. We need to look at the package description
         -- and work out the exact file monitors to use
@@ -653,6 +653,11 @@ buildInplaceUnpackedPackage verbosity
   where
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
+
+    pkgconfig = ignoreBuildTargets rpkg
+      where
+        ignoreBuildTargets (ReadyPackage p d) =
+          ReadyPackage (p { pkgBuildTargets = [] }) d
 
     isParallelBuild = buildSettingNumJobs >= 2
 
