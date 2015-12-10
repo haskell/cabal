@@ -40,9 +40,6 @@ import           Control.Monad
 import           Data.List
 import           Data.Either
 
-import           System.FilePath
-import           System.Directory
-
 
 ------------------------------------------------------------------------------
 -- * Understanding this module
@@ -224,32 +221,6 @@ configure verbosity
                             cliConfig
 
     return ()
-
-
--- | Find the root of this project.
---
--- Searches for an explicit @cabal.project@ file, in the current directory or
--- parent directories. If no project file is found then the current dir is the
--- project root (and the project will use an implicit config).
---
-findProjectRoot :: IO FilePath
-findProjectRoot = do
-
-    curdir  <- getCurrentDirectory
-    homedir <- getHomeDirectory
-
-    -- search upwards if we get to the users home dir or the filesystem root, then use the current dir
-    let probe dir | isDrive dir || dir == homedir
-                  = return curdir -- implicit project root
-        probe dir = do
-          exists <- doesFileExist (dir </> "cabal.project")
-          if exists
-            then return dir       -- explicit project root
-            else probe (takeDirectory dir)
-
-    probe curdir
-   --TODO: [nice to have] add compat support for old style sandboxes
-
 
 
 ------------------------------------------------------------------------------

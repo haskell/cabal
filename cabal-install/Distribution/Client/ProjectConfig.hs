@@ -16,6 +16,7 @@ module Distribution.Client.ProjectConfig (
     lookupNonLocalPackageConfig,
 
     -- * Project config files
+    findProjectRoot,
     readProjectConfig,
     projectConfigMergeCommandLineFlags,
     convertLegacyPerPackageFlags,
@@ -98,8 +99,63 @@ import System.FilePath hiding (combine)
 import System.Directory
 
 
+-- | Find the root of this project.
+--
+-- Searches for an explicit @cabal.project@ file, in the current directory or
+-- parent directories. If no project file is found then the current dir is the
+-- project root (and the project will use an implicit config).
+--
+findProjectRoot :: IO FilePath
+findProjectRoot = do
+
+    curdir  <- getCurrentDirectory
+    homedir <- getHomeDirectory
+
+    -- search upwards if we get to the users home dir or the filesystem root, then use the current dir
+    let probe dir | isDrive dir || dir == homedir
+                  = return curdir -- implicit project root
+        probe dir = do
+          exists <- doesFileExist (dir </> "cabal.project")
+          if exists
+            then return dir       -- explicit project root
+            else probe (takeDirectory dir)
+
+    probe curdir
+   --TODO: [nice to have] add compat support for old style sandboxes
+
+
+-- | Reads an explicit @cabal.project@ file in the given project root dir,
+-- or returns the default project config for an implicitly defined project.
+--
+readProjectConfig :: Verbosity
+                  -> FilePath
+                  -> Rebuild ProjectConfig
+readProjectConfig verbosity projectRootDir = do
+    usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
+    if usesExplicitProjectRoot
+      then do monitorFiles [MonitorFileHashed projectFile]
+              liftIO $ reportParseResult verbosity "project file" projectFile
+                     . parseProjectConfig projectRootDir
+                   =<< readFile projectFile
+
+      else do monitorFiles [MonitorNonExistantFile projectFile]
+              return defaultImplicitProjectConfig
+  where
+    projectFile = projectRootDir </> "cabal.project"
+
+    defaultImplicitProjectConfig :: ProjectConfig
+    defaultImplicitProjectConfig =
+      ProjectConfig
+        projectRootDir
+        [ GlobFile (Glob [WildCard, Literal ".cabal"])
+        , GlobDir  (Glob [WildCard]) $
+          GlobFile (Glob [WildCard, Literal ".cabal"])
+        ]
+        mempty mempty mempty mempty mempty
+
+
 -------------------------------
--- Project config
+-- Project config types
 --
 
 data ProjectConfig
@@ -204,8 +260,8 @@ data PackageConfig
        packageConfigSplitObjs           :: Flag Bool,
        packageConfigStripExes           :: Flag Bool,
        packageConfigStripLibs           :: Flag Bool,
-       packageConfigTests               :: Flag Bool, --TODO: [required eventually] use this
-       packageConfigBenchmarks          :: Flag Bool, --TODO: [required eventually] use this
+       packageConfigTests               :: Flag Bool,
+       packageConfigBenchmarks          :: Flag Bool,
        packageConfigCoverage            :: Flag Bool,
        packageConfigDebugInfo           :: Flag DebugInfoLevel,
        packageConfigRunTests            :: Flag Bool, --TODO: [required eventually] use this
@@ -448,37 +504,6 @@ lookupNonLocalPackageConfig field ProjectConfig {
                               projectConfigSpecificPackage
                             } pkgname =
     maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
-
-
-
--- | Reads an explicit @cabal.project@ file in the given project root dir,
--- or returns the default project config for an implicitly defined project.
---
-readProjectConfig :: Verbosity
-                  -> FilePath
-                  -> Rebuild ProjectConfig
-readProjectConfig verbosity projectRootDir = do
-    usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
-    if usesExplicitProjectRoot
-      then do monitorFiles [MonitorFileHashed projectFile]
-              liftIO $ reportParseResult verbosity "project file" projectFile
-                     . parseProjectConfig projectRootDir
-                   =<< readFile projectFile
-
-      else do monitorFiles [MonitorNonExistantFile projectFile]
-              return defaultImplicitProjectConfig
-  where
-    projectFile = projectRootDir </> "cabal.project"
-
-    defaultImplicitProjectConfig :: ProjectConfig
-    defaultImplicitProjectConfig =
-      ProjectConfig
-        projectRootDir
-        [ GlobFile (Glob [WildCard, Literal ".cabal"])
-        , GlobDir  (Glob [WildCard]) $
-          GlobFile (Glob [WildCard, Literal ".cabal"])
-        ]
-        mempty mempty mempty mempty mempty
 
 
 reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
