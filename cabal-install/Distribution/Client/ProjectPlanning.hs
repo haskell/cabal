@@ -1957,12 +1957,25 @@ packageHashInputs
     PackageHashInputs {
       pkgHashPkgId       = pkgSourceId,
       pkgHashSourceHash  = srchash,
-      -- Yes, we use all the deps here (lib, exe and setup)
-      pkgHashDirectDeps  = map installedPackageId (CD.flatDeps pkgDependencies),
+      pkgHashDirectDeps  = Set.fromList
+                             [ installedPackageId dep
+                             | dep <- CD.select relevantDeps pkgDependencies ],
       pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
     }
-packageHashInputs _ _ =
-    error "packageHashInputs: only for packages with source hashes"
+  where
+    -- Obviously the main deps are relevant
+    relevantDeps  CD.ComponentLib      = True
+    relevantDeps (CD.ComponentExe _)   = True
+    -- Setup deps can affect the Setup.hs behaviour and thus what is built
+    relevantDeps  CD.ComponentSetup    = True
+    -- However testsuites and benchmarks do not get installed and should not
+    -- affect the result, so we do not include them.
+    relevantDeps (CD.ComponentTest  _) = False
+    relevantDeps (CD.ComponentBench _) = False
+
+packageHashInputs _ pkg =
+    error $ "packageHashInputs: only for packages with source hashes. "
+         ++ display (packageId pkg)
 
 packageHashConfigInputs :: ElaboratedSharedConfig
                         -> ElaboratedConfiguredPackage

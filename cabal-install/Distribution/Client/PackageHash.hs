@@ -40,9 +40,11 @@ import Distribution.Text
 
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Digest.Pure.SHA       as SHA
+import qualified Data.Set as Set
+import           Data.Set (Set)
 
 import Data.Maybe        (catMaybes)
-import Data.List         (group, sort, sortBy, intercalate)
+import Data.List         (sortBy, intercalate)
 import Data.Function     (on)
 import Data.Binary       (Binary)
 import Control.Exception (evaluate)
@@ -69,7 +71,7 @@ hashedInstalledPackageId pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
        pkgHashSourceHash    :: PackageSourceHash,
-       pkgHashDirectDeps    :: [InstalledPackageId],
+       pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
      }
 
@@ -144,7 +146,7 @@ renderPackageHashInputs PackageHashInputs{
       [ entry "pkgid"       display pkgHashPkgId
       , entry "src"         showHashValue pkgHashSourceHash
       , entry "deps"        (intercalate ", " . map display
-                                   . map head . group . sort) pkgHashDirectDeps
+                                              . Set.toList) pkgHashDirectDeps
         -- and then all the config
       , entry "compilerid"  display pkgHashCompilerId
       , entry "platform"    display pkgHashPlatform
