@@ -108,7 +108,6 @@ import           Control.Monad
 import           Control.Monad.State as State
 import           Control.Exception
 import           Data.List
-import           Data.Either
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Function
@@ -2010,88 +2009,31 @@ packageHashConfigInputs
     }
 
 
--- | Given the 'InstalledPackageIndex' for a nix-style package store, and
--- enough information to calculate 'InstalledPackageId' for a selection of
--- source packages 
+-- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
+-- 'ElaboratedInstallPlan', replace configured source packages by pre-existing
+-- installed packages whenever they exist.
 -- 
-improveInstallPlanWithPreExistingPackages
-  :: forall srcpkg iresult ifailure.
-     (HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
-  => InstalledPackageIndex
-  -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-  -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-improveInstallPlanWithPreExistingPackages installedPkgIndex =
-
-    go []
+improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
+                                          -> ElaboratedInstallPlan
+                                          -> ElaboratedInstallPlan
+improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
+    replaceWithPreExisting installPlan
+      [ ipkg
+      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+      , ipkg <- maybeToList (canPackageBeImproved pkg) ]
   where
-    -- So here's the strategy:
-    --
-    --  * Go through each ready package in dependency order. Indeed we
-    --    simulate executing the plan, but instead of going from ready to
-    --    processing to installed, we go from ready to either pre-existing
-    --    or processing.
-    --
-    --  * Calculate the 'InstalledPackageId' if we can (ie if we've been able
-    --    to get the tarball hash)
-    --
-    --  * Check if that package is already installed and if so, we replace the
-    --    ready pacage by the pre-existing package.
-    --
-    --  * If we cannot calculate the 'InstalledPackageId' or it's not already
-    --    installed (ie we would have to build it) then we put it into the
-    --    'Processing' state so that it doesn't keep appearing in the ready
-    --    list.
-    --
-    --  * When there are no more packages in the ready state then we're done,
-    --    except that we need to reset the packages we put into the processing
-    --    state.
-    --
-    -- When we have ready packages that we cannot replace with pre-existing
-    -- packages then none of their dependencies can be replaced either. This
-    -- constraint is respected here because we put those packages into the
-    -- processing state, and so none of their deps will be able to appear in
-    -- the ready list.
-    --
-    -- We accumulate the packages in the processing state. These are the ones
-    -- that will have to be built because they cannot be replaced with
-    -- pre-existing installed packages.
+    --TODO: sanity checks:
+    -- * the installed package must have the expected deps etc
+    -- * the installed package must not be broken, valid dep closure
 
-    go :: [GenericReadyPackage srcpkg InstalledPackageInfo]
-       -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-       -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-    go cannotBeImproved installPlan =
-      case InstallPlan.ready installPlan of
-        -- no more source packages can be replaced with pre-existing ones,
-        --  just need to reset the ones we put into the processing state
-        [] -> InstallPlan.reverted
-                [ pkg | ReadyPackage pkg _ <- cannotBeImproved ]
-                installPlan
+    --TODO: decide what to do if we encounter broken installed packages,
+    -- since overwriting is never safe.
 
-        -- we have some to look at
-        pkgs -> go (cannotBeImproved' ++ cannotBeImproved)
-                   installPlan'
-          where
-            installPlan' = InstallPlan.processing cannotBeImproved'
-                         . replaceWithPreExisting canBeImproved
-                         $ installPlan
+    canPackageBeImproved pkg =
+      PackageIndex.lookupInstalledPackageId
+        installedPkgIndex (installedPackageId pkg)
 
-            (cannotBeImproved', canBeImproved) =
-              partitionEithers
-                [ case canPackageBeImproved pkg of
-                    Nothing   -> Left pkg
-                    Just ipkg -> Right (pkg, ipkg)
-                | (pkg, _) <- pkgs ]
-
-    canPackageBeImproved :: GenericReadyPackage srcpkg InstalledPackageInfo
-                         -> Maybe InstalledPackageInfo
-    canPackageBeImproved pkg = PackageIndex.lookupInstalledPackageId
-                                 installedPkgIndex (installedPackageId pkg)
-
-    replaceWithPreExisting :: [(GenericReadyPackage srcpkg InstalledPackageInfo, InstalledPackageInfo)]
-                           -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-                           -> GenericInstallPlan InstalledPackageInfo srcpkg iresult ifailure
-    replaceWithPreExisting canBeImproved plan0 =
-      foldl' (\plan (pkg, ipkg) -> InstallPlan.preexisting (installedPackageId pkg) ipkg plan)
-             plan0
-             canBeImproved
+    replaceWithPreExisting =
+      foldl' (\plan ipkg -> InstallPlan.preexisting
+                              (installedPackageId ipkg) ipkg plan)
 
