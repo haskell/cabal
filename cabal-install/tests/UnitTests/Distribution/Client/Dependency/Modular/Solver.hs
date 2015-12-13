@@ -13,6 +13,9 @@ import Test.Tasty as TF
 import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 import Test.Tasty.Options
 
+-- Cabal
+import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(..))
+
 -- cabal-install
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 
@@ -67,6 +70,21 @@ tests = [
         , runTest $ mkTest db12 "baseShim5" ["D"] Nothing
         , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
         ]
+    , testGroup "Extensions" [
+          runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] Nothing
+        , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupportedIndirect" ["B"] Nothing
+        , runTest $ mkTestExts [EnableExtension RankNTypes] dbExts1 "supported" ["A"] (Just [("A",1)])
+        , runTest $ mkTestExts (map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedIndirect" ["C"] (Just [("A",1),("B",1), ("C",1)])
+        , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "disabledExtension" ["D"] Nothing
+        , runTest $ mkTestExts (map EnableExtension [CPP,RankNTypes]) dbExts1 "disabledExtension" ["D"] Nothing
+        , runTest $ mkTestExts (UnknownExtension "custom" : map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedUnknown" ["E"] (Just [("A",1),("B",1),("C",1),("E",1)])
+        ]
+    , testGroup "Languages" [
+          runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupported" ["A"] Nothing
+        , runTest $ mkTestLangs [Haskell98,Haskell2010] dbLangs1 "supported" ["A"] (Just [("A",1)])
+        , runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupportedIndirect" ["B"] Nothing
+        , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (Just [("A",1),("B",1),("C",1)])
+        ]
     ]
   where
     indep test = test { testIndepGoals = True }
@@ -76,11 +94,13 @@ tests = [
 -------------------------------------------------------------------------------}
 
 data SolverTest = SolverTest {
-    testLabel      :: String
-  , testTargets    :: [String]
-  , testResult     :: Maybe [(String, Int)]
-  , testIndepGoals :: Bool
-  , testDb         :: ExampleDb
+    testLabel          :: String
+  , testTargets        :: [String]
+  , testResult         :: Maybe [(String, Int)]
+  , testIndepGoals     :: Bool
+  , testDb             :: ExampleDb
+  , testSupportedExts  :: [Extension]
+  , testSupportedLangs :: [Language]
   }
 
 mkTest :: ExampleDb
@@ -88,18 +108,45 @@ mkTest :: ExampleDb
        -> [String]
        -> Maybe [(String, Int)]
        -> SolverTest
-mkTest db label targets result = SolverTest {
-    testLabel      = label
-  , testTargets    = targets
-  , testResult     = result
-  , testIndepGoals = False
-  , testDb         = db
+mkTest = mkTestExtLang [] []
+
+mkTestExts :: [Extension]
+           -> ExampleDb
+           -> String
+           -> [String]
+           -> Maybe [(String, Int)]
+           -> SolverTest
+mkTestExts exts = mkTestExtLang exts []
+
+mkTestLangs :: [Language]
+            -> ExampleDb
+            -> String
+            -> [String]
+            -> Maybe [(String, Int)]
+            -> SolverTest
+mkTestLangs = mkTestExtLang []
+
+mkTestExtLang :: [Extension]
+              -> [Language]
+              -> ExampleDb
+              -> String
+              -> [String]
+              -> Maybe [(String, Int)]
+              -> SolverTest
+mkTestExtLang exts langs db label targets result = SolverTest {
+    testLabel          = label
+  , testTargets        = targets
+  , testResult         = result
+  , testIndepGoals     = False
+  , testDb             = db
+  , testSupportedExts  = exts
+  , testSupportedLangs = langs
   }
 
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let (_msgs, result) = exResolve testDb testTargets testIndepGoals
+      let (_msgs, result) = exResolve testDb testSupportedExts testSupportedLangs testTargets testIndepGoals
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (isNothing testResult)
@@ -339,6 +386,23 @@ db12 =
     , Right $ exAv "D" 1 [ExFix "base" 3, ExFix "syb" 2]
     , Right $ exAv "E" 1 [ExFix "base" 4, ExFix "syb" 2]
     ]
+
+dbExts1 :: ExampleDb
+dbExts1 = [
+    Right $ exAv "A" 1 [ExExt (EnableExtension RankNTypes)]
+  , Right $ exAv "B" 1 [ExExt (EnableExtension CPP), ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "B"]
+  , Right $ exAv "D" 1 [ExExt (DisableExtension CPP), ExAny "B"]
+  , Right $ exAv "E" 1 [ExExt (UnknownExtension "custom"), ExAny "C"]
+  ]
+
+dbLangs1 :: ExampleDb
+dbLangs1 = [
+    Right $ exAv "A" 1 [ExLang Haskell2010]
+  , Right $ exAv "B" 1 [ExLang Haskell98, ExAny "A"]
+  , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
+  ]
+
 
 {-------------------------------------------------------------------------------
   Test options

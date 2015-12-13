@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -- -fno-warn-deprecations for use of Map.foldWithKey
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
@@ -57,12 +56,10 @@ import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Data.Char ( isAlphaNum )
-import Data.Maybe ( catMaybes, maybeToList )
+import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 
 ------------------------------------------------------------------------------
 
@@ -185,7 +182,7 @@ mapTreeData f = mapCondTree f id id
 --   clarity.
 data DepTestRslt d = DepOk | MissingDeps d
 
-instance Monoid d => Monoid (DepTestRslt d) where
+instance Monoid d => Mon.Monoid (DepTestRslt d) where
     mempty = DepOk
     mappend DepOk x = x
     mappend x DepOk = x
@@ -309,7 +306,7 @@ simplifyCondTree :: (Monoid a, Monoid d) =>
                  -> CondTree v d a
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
-    mconcat $ (d, a) : catMaybes (map simplifyIf ifs)
+    mconcat $ (d, a) : mapMaybe simplifyIf ifs
   where
     simplifyIf (cnd, t, me) =
         case simplifyCondition cnd env of

@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternGuards #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC
@@ -63,7 +64,7 @@ import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
+                                ( InstalledPackageInfo(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -109,11 +110,9 @@ import Language.Haskell.Extension (Extension(..), KnownExtension(..))
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
-import qualified Data.Map as M  ( fromList )
+import qualified Data.Map as M  ( fromList, lookup )
 import Data.Maybe               ( catMaybes )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
+import Data.Monoid as Mon       ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing )
@@ -161,10 +160,19 @@ configure verbosity hcPath hcPkgPath conf0 = do
               addKnownProgram hsc2hsProgram' conf2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
-  extensions <- Internal.getExtensions verbosity implInfo ghcProg
+  extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = M.fromList ghcInfo
+
+      -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
+      -- `--supported-extensions` when it's not available.
+      -- for older GHCs we can use the "Have interpreter" property to
+      -- filter out `TemplateHaskell`
+      extensions | ghcVersion < Version [8] []
+                 , Just "NO" <- M.lookup "Have interpreter" ghcInfoMap
+                   = filter ((/= EnableExtension TemplateHaskell) . fst) extensions0
+                 | otherwise = extensions0
 
   let comp = Compiler {
         compilerId         = CompilerId GHC ghcVersion,
@@ -282,11 +290,11 @@ getPackageDBContents verbosity packagedb conf = do
   toPackageIndex verbosity pkgss conf
 
 -- | Given a package DB stack, return all installed packages.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs conf = do
   checkPackageDbEnvVar
-  checkPackageDbStack packagedbs
+  checkPackageDbStack comp packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   index <- toPackageIndex verbosity pkgss conf
   return $! hackRtsPackage index
@@ -352,15 +360,30 @@ checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
     Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: PackageDBStack -> IO ()
-checkPackageDbStack (GlobalPackageDB:rest)
+checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack comp = if flagPackageConf implInfo
+                              then checkPackageDbStackPre76
+                              else checkPackageDbStackPost76
+  where implInfo = ghcVersionImplInfo (compilerVersion comp)
+
+checkPackageDbStackPost76 :: PackageDBStack -> IO ()
+checkPackageDbStackPost76 (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStack rest
+checkPackageDbStackPost76 rest
+  | GlobalPackageDB `elem` rest =
+  die $ "If the global package db is specified, it must be "
+     ++ "specified first and cannot be specified multiple times"
+checkPackageDbStackPost76 _ = return ()
+
+checkPackageDbStackPre76 :: PackageDBStack -> IO ()
+checkPackageDbStackPre76 (GlobalPackageDB:rest)
+  | GlobalPackageDB `notElem` rest = return ()
+checkPackageDbStackPre76 rest
   | GlobalPackageDB `notElem` rest =
   die $ "With current ghc versions the global package db is always used "
-     ++ "and must be listed first. This ghc limitation may be lifted in "
-     ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
-checkPackageDbStack _ =
+     ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
+     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+checkPackageDbStackPre76 _ =
   die $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
@@ -459,7 +482,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentLibraryName clbi
+  let libName = componentId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
@@ -494,6 +517,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = Mon.mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
         | otherwise = mempty
 
@@ -730,7 +754,7 @@ startInterpreter verbosity conf comp packageDBs = do
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
-  checkPackageDbStack packageDBs
+  checkPackageDbStack comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram conf
   runGHC verbosity ghcProg comp replOpts
 
@@ -774,6 +798,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
         | otherwise = mempty
 
@@ -878,7 +903,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       linkOpts = commonOpts `mappend`
                  linkerOpts `mappend`
                  mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
-                 (if withStaticExe then mempty else dynLinkerOpts)
+                 (if withDynExe lbi then dynLinkerOpts else mempty)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
@@ -1103,11 +1128,13 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
+
       if isShared
-        then do when (stripLibs lbi) $ Strip.stripLib verbosity
-                                       (hostPlatform lbi) (withPrograms lbi) src
-                installExecutableFile verbosity src dst
+        then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
+
+      when (stripLibs lbi) $ Strip.stripLib verbosity
+                             (hostPlatform lbi) (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -1117,7 +1144,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

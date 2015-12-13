@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
@@ -28,9 +27,7 @@ import Distribution.Utils.NubList   ( NubListR, fromNubListR )
 import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import qualified Data.Map as M
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
@@ -76,7 +73,7 @@ data GhcOptions = GhcOptions {
 
   -- | The package key the modules will belong to; the @ghc -this-package-key@
   -- flag.
-  ghcOptPackageKey   :: Flag PackageKey,
+  ghcOptComponentId   :: Flag ComponentId,
 
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
@@ -85,7 +82,7 @@ data GhcOptions = GhcOptions {
   -- requires both the short and long form of the package id;
   -- the @ghc -package@ or @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (InstalledPackageId, PackageId, ModuleRenaming),
+    NubListR (ComponentId, PackageId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -95,7 +92,7 @@ data GhcOptions = GhcOptions {
   ghcOptNoAutoLinkPackages :: Flag Bool,
 
   -- | What packages are implementing the signatures
-  ghcOptSigOf :: [(ModuleName, (PackageKey, ModuleName))],
+  ghcOptSigOf :: [(ModuleName, (ComponentId, ModuleName))],
 
   -----------------
   -- Linker stuff
@@ -379,7 +376,7 @@ renderGhcOptions comp opts
   , concat [ [if packageKeySupported comp
                 then "-this-package-key"
                 else "-package-name", display pkgid]
-             | pkgid <- flag ghcOptPackageKey ]
+             | pkgid <- flag ghcOptComponentId ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
@@ -452,30 +449,49 @@ verbosityOpts verbosity
   | otherwise              = ["-w", "-v0"]
 
 
-packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
-packageDbArgs implInfo dbstack = case dbstack of
+-- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
+packageDbArgsConf :: PackageDBStack -> [String]
+packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> ("-no-user-" ++ packageDbFlag)
+  (GlobalPackageDB:dbs)               -> ("-no-user-package-conf")
                                        : concatMap specific dbs
   _ -> ierror
   where
-    specific (SpecificPackageDB db) = [ '-':packageDbFlag , db ]
-    specific _ = ierror
-    ierror     = error $ "internal error: unexpected package db stack: "
-                      ++ show dbstack
-    packageDbFlag
-      | flagPackageConf implInfo
-      = "package-conf"
-      | otherwise
-      = "package-db"
+    specific (SpecificPackageDB db) = [ "-package-conf", db ]
+    specific _                      = ierror
+    ierror = error $ "internal error: unexpected package db stack: "
+                  ++ show dbstack
 
+-- | GHC >= 7.6 uses the '-package-db' flag. See
+-- https://ghc.haskell.org/trac/ghc/ticket/5977.
+packageDbArgsDb :: PackageDBStack -> [String]
+-- special cases to make arguments prettier in common scenarios
+packageDbArgsDb dbstack = case dbstack of
+  (GlobalPackageDB:UserPackageDB:dbs)
+    | all isSpecific dbs              -> concatMap single dbs
+  (GlobalPackageDB:dbs)
+    | all isSpecific dbs              -> "-no-user-package-db"
+                                       : concatMap single dbs
+  dbs                                 -> "-clear-package-db"
+                                       : concatMap single dbs
+ where
+   single (SpecificPackageDB db) = [ "-package-db", db ]
+   single GlobalPackageDB        = [ "-global-package-db" ]
+   single UserPackageDB          = [ "-user-package-db" ]
+   isSpecific (SpecificPackageDB _) = True
+   isSpecific _                     = False
+
+packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
+packageDbArgs implInfo
+  | flagPackageConf implInfo = packageDbArgsConf
+  | otherwise                = packageDbArgsDb
 
 -- -----------------------------------------------------------------------------
 -- Boilerplate Monoid instance for GhcOptions
 
 instance Monoid GhcOptions where
   mempty = GhcOptions {
-    ghcOptMode               = mempty,
+    ghcOptMode               = Mon.mempty,
     ghcOptExtra              = mempty,
     ghcOptExtraDefault       = mempty,
     ghcOptInputFiles         = mempty,
@@ -484,7 +500,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = mempty,
     ghcOptSourcePathClear    = mempty,
     ghcOptSourcePath         = mempty,
-    ghcOptPackageKey         = mempty,
+    ghcOptComponentId        = mempty,
     ghcOptPackageDBs         = mempty,
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
@@ -538,7 +554,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
     ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
     ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptPackageKey         = combine ghcOptPackageKey,
+    ghcOptComponentId         = combine ghcOptComponentId,
     ghcOptPackageDBs         = combine ghcOptPackageDBs,
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,

@@ -19,9 +19,9 @@ description:
   organizing, and cataloging Haskell libraries and tools.
 category: Distribution
 cabal-version: >=1.10
-build-type: Custom
--- Even though we do use the default Setup.lhs it's vital to bootstrapping
--- that we build Setup.lhs using our own local Cabal source code.
+build-type: Simple
+-- If we use a new Cabal feature, this needs to be changed to Custom so
+-- we can bootstrap.
 
 extra-source-files:
   README.md tests/README.md changelog
@@ -74,6 +74,7 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
@@ -94,6 +95,9 @@ extra-source-files:
   tests/PackageTests/PreProcess/Foo.hsc
   tests/PackageTests/PreProcess/Main.hs
   tests/PackageTests/PreProcess/my.cabal
+  tests/PackageTests/PreProcessExtraSources/Foo.hsc
+  tests/PackageTests/PreProcessExtraSources/Main.hs
+  tests/PackageTests/PreProcessExtraSources/my.cabal
   tests/PackageTests/ReexportedModules/ReexportedModules.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
@@ -113,10 +117,18 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
   tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
   tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
-  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
+  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/UniqueIPID/P1/M.hs
+  tests/PackageTests/UniqueIPID/P1/my.cabal
+  tests/PackageTests/UniqueIPID/P2/M.hs
+  tests/PackageTests/UniqueIPID/P2/my.cabal
+  tests/PackageTests/multInst/my.cabal
   tests/Setup.hs
+  tests/Test/Distribution/Version.hs
+  tests/Test/Laws.hs
+  tests/Test/QuickCheck/Utils.hs
   tests/hackage/check.sh
   tests/hackage/download.sh
   tests/hackage/unpack.sh
@@ -132,16 +144,16 @@ flag bundled-binary-generic
 
 library
   build-depends:
-    base       >= 4.4 && < 5,
-    deepseq    >= 1.3 && < 1.5,
-    filepath   >= 1   && < 1.5,
-    directory  >= 1   && < 1.3,
-    process    >= 1.1.0.1 && < 1.3,
-    time       >= 1.1 && < 1.6,
-    containers >= 0.1 && < 0.6,
     array      >= 0.1 && < 0.6,
-    pretty     >= 1   && < 1.2,
-    bytestring >= 0.9
+    base       >= 4.5 && < 5,
+    bytestring >= 0.9 && < 1,
+    containers >= 0.4 && < 0.6,
+    deepseq    >= 1.3 && < 1.5,
+    directory  >= 1.1 && < 1.3,
+    filepath   >= 1.3 && < 1.5,
+    pretty     >= 1.1 && < 1.2,
+    process    >= 1.1.0.1 && < 1.5,
+    time       >= 1.4 && < 1.6
 
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5 && < 0.7
@@ -154,7 +166,7 @@ library
 
   if !os(windows)
     build-depends:
-      unix >= 2.0 && < 2.8
+      unix >= 2.5 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
@@ -162,6 +174,7 @@ library
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
+    Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -236,7 +249,6 @@ library
   other-modules:
     Distribution.Compat.Binary
     Distribution.Compat.CopyFile
-    Distribution.Compat.TempFile
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
@@ -251,7 +263,9 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
-  default-extensions: CPP
+  -- starting with GHC 7.0, rely on {-# LANGUAGE CPP #-} instead
+  if !impl(ghc >= 7.0)
+    default-extensions: CPP
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -262,6 +276,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.System
   main-is: UnitTests.hs
   build-depends:
     base,
@@ -309,6 +324,7 @@ test-suite package-tests
     PackageTests.TestStanza.Check
     PackageTests.TestSuiteTests.ExeV10.Check
     PackageTests.TestSuiteTests.LibV09.Check
+    PackageTests.UniqueIPID.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils

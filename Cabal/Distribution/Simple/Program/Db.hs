@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program.Db
@@ -75,9 +72,6 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Distribution.Compat.Binary (Binary(..))
-#if __GLASGOW_HASKELL__ < 710
-import Data.Functor ((<$>))
-#endif
 import Data.List
          ( foldl' )
 import Data.Maybe
@@ -478,5 +472,5 @@ requireProgramVersion :: Verbosity -> Program -> VersionRange
                       -> ProgramDb
                       -> IO (ConfiguredProgram, Version, ProgramDb)
 requireProgramVersion verbosity prog range programDb =
-  join $ either die return <$>
+  join $ either die return `fmap`
   lookupProgramVersion verbosity prog range programDb

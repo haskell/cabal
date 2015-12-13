@@ -4,21 +4,22 @@ module UnitTests.Distribution.Client.UserConfig
     ) where
 
 import Control.Exception (bracket)
+import Control.Monad (replicateM_)
 import Data.List (sort, nub)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
 #endif
-import System.Directory (getCurrentDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
-import System.FilePath (takeDirectory)
+import System.Directory (getCurrentDirectory)
+import System.FilePath ((</>))
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Distribution.Compat.Environment (lookupEnv, setEnv)
 import Distribution.Client.Config
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
-import Distribution.Simple.Setup (ConfigFlags (..), fromFlag)
+import Distribution.Client.Utils (removeExistingFile)
+import Distribution.Simple.Setup (Flag (..), ConfigFlags (..), fromFlag)
 import Distribution.Verbosity (silent)
 
 tests :: [TestTree]
@@ -29,48 +30,44 @@ tests = [ testCase "nullDiffOnCreate" nullDiffOnCreateTest
         ]
 
 nullDiffOnCreateTest :: Assertion
-nullDiffOnCreateTest = bracketTest . const $ do
+nullDiffOnCreateTest = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty
+    _ <- loadConfig silent (Flag configFile)
     -- Now we read it in and compare it against the default.
-    diff <- userConfigDiff mempty
+    diff <- userConfigDiff $ globalFlags configFile
     assertBool (unlines $ "Following diff should be empty:" : diff) $ null diff
 
 
 canDetectDifference :: Assertion
-canDetectDifference = bracketTest . const $ do
+canDetectDifference = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty
-    cabalFile <- defaultConfigFile
-    appendFile cabalFile "verbose: 0\n"
-    diff <- userConfigDiff mempty
+    _ <- loadConfig silent (Flag configFile)
+    appendFile configFile "verbose: 0\n"
+    diff <- userConfigDiff $ globalFlags configFile
     assertBool (unlines $ "Should detect a difference:" : diff) $
         diff == [ "- verbose: 1", "+ verbose: 0" ]
 
 
 canUpdateConfig :: Assertion
-canUpdateConfig = bracketTest . const $ do
-    cabalFile <- defaultConfigFile
-    createDirectoryIfMissing True $ takeDirectory cabalFile
+canUpdateConfig = bracketTest $ \configFile -> do
     -- Write a trivial cabal file.
-    writeFile cabalFile "tests: True\n"
+    writeFile configFile "tests: True\n"
     -- Update the config file.
-    userConfigUpdate silent mempty
+    userConfigUpdate silent $ globalFlags configFile
     -- Load it again.
-    updated <- loadConfig silent mempty
+    updated <- loadConfig silent (Flag configFile)
     assertBool ("Field 'tests' should be True") $
         fromFlag (configTests $ savedConfigureFlags updated)
 
 
 doubleUpdateConfig :: Assertion
-doubleUpdateConfig = bracketTest . const $ do
+doubleUpdateConfig = bracketTest $ \configFile -> do
     -- Create a new default config file in our test directory.
-    _ <- loadConfig silent mempty
-    -- Update it.
-    userConfigUpdate silent mempty
-    userConfigUpdate silent mempty
+    _ <- loadConfig silent (Flag configFile)
+    -- Update it twice.
+    replicateM_ 2 . userConfigUpdate silent $ globalFlags configFile
     -- Load it again.
-    updated <- loadConfig silent mempty
+    updated <- loadConfig silent (Flag configFile)
 
     assertBool ("Field 'remote-repo' doesn't contain duplicates") $
         listUnique (map show . fromNubList . globalRemoteRepos $ savedGlobalFlags updated)
@@ -80,24 +77,23 @@ doubleUpdateConfig = bracketTest . const $ do
         listUnique (map show . fromNubList . installSummaryFile $ savedInstallFlags updated)
 
 
+globalFlags :: FilePath -> GlobalFlags
+globalFlags configFile = mempty { globalConfigFile = Flag configFile }
+
+
 listUnique :: Ord a => [a] -> Bool
 listUnique xs =
     let sorted = sort xs
     in nub sorted == xs
 
 
-bracketTest :: ((FilePath, FilePath) -> IO ()) -> Assertion
+bracketTest :: (FilePath -> IO ()) -> Assertion
 bracketTest =
     bracket testSetup testTearDown
   where
-    testSetup :: IO (FilePath, FilePath)
-    testSetup = do
-        Just oldHome <- lookupEnv "HOME"
-        testdir <- fmap (++ "/test-user-config") getCurrentDirectory
-        setEnv "HOME" testdir
-        return (oldHome, testdir)
+    testSetup :: IO FilePath
+    testSetup = fmap (</> "test-user-config") getCurrentDirectory
 
-    testTearDown :: (FilePath, FilePath) -> IO ()
-    testTearDown (oldHome, testdir) = do
-        setEnv "HOME" oldHome
-        removeDirectoryRecursive testdir
+    testTearDown :: FilePath -> IO ()
+    testTearDown configFile =
+        mapM_ removeExistingFile [configFile, configFile ++ ".backup"]

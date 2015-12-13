@@ -53,7 +53,7 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Distribution.Simple.Compiler
-         ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
+         ( Compiler, CompilerFlavor(..), compilerFlavor, compilerVersion
          , PackageDB, PackageDBStack, absolutePackageDBPaths
          , registrationPackageDB )
 import Distribution.Simple.Program
@@ -68,11 +68,11 @@ import Distribution.Simple.Setup
 import Distribution.PackageDescription
          ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
-         ( Package(..), packageName, InstalledPackageId(..)
+         ( Package(..), packageName
          , getHSLibraryName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
-         , showInstalledPackageInfo )
+         ( InstalledPackageInfo, InstalledPackageInfo(InstalledPackageInfo)
+         , showInstalledPackageInfo, AbiHash(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( writeUTF8File, writeFileAtomic, setFileExecutable
@@ -81,7 +81,6 @@ import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
          ( display )
-import Distribution.Version ( Version(..) )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 
@@ -90,6 +89,7 @@ import System.Directory
          ( getCurrentDirectory, removeDirectoryRecursive, removeFile
          , doesDirectoryExist, doesFileExist )
 
+import Data.Version
 import Control.Monad (when)
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
@@ -113,7 +113,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
                            (registrationPackageDB absPackageDBs)
 
     when (fromFlag (regPrintId regFlags)) $ do
-      putStrLn (display (IPI.installedPackageId installedPkgInfo))
+      putStrLn (display (IPI.installedComponentId installedPkgInfo))
 
      -- Three different modes:
     case () of
@@ -173,46 +173,43 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
-  --TODO: the method of setting the InstalledPackageId is compiler specific
+  --TODO: the method of setting the ComponentId is compiler specific
   --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
-  ipid <-
+  abi_hash <-
     case compilerFlavor comp of
      GHC | compilerVersion comp >= Version [6,11] [] -> do
-            s <- GHC.libAbiHash verbosity pkg lbi lib clbi
-            return (InstalledPackageId (display (packageId pkg) ++ '-':s))
+            fmap AbiHash $ GHC.libAbiHash verbosity pkg lbi lib clbi
      GHCJS -> do
-            s <- GHCJS.libAbiHash verbosity pkg lbi lib clbi
-            return (InstalledPackageId (display (packageId pkg) ++ '-':s))
-     _other -> do
-            return (InstalledPackageId (display (packageId pkg)))
+            fmap AbiHash $ GHCJS.libAbiHash verbosity pkg lbi lib clbi
+     _ -> return (AbiHash "")
 
   installedPkgInfo <-
     if inplace
       then return (inplaceInstalledPackageInfo pwd distPref
-                     pkg ipid lib lbi clbi)
+                     pkg abi_hash lib lbi clbi)
     else if reloc
       then relocRegistrationInfo verbosity
-                     pkg lib lbi clbi ipid packageDb
+                     pkg lib lbi clbi abi_hash packageDb
       else return (absoluteInstalledPackageInfo
-                     pkg ipid lib lbi clbi)
+                     pkg abi_hash lib lbi clbi)
 
 
-  return installedPkgInfo{ IPI.installedPackageId = ipid }
+  return installedPkgInfo{ IPI.abiHash = abi_hash }
 
 relocRegistrationInfo :: Verbosity
                       -> PackageDescription
                       -> Library
                       -> LocalBuildInfo
                       -> ComponentLocalBuildInfo
-                      -> InstalledPackageId
+                      -> AbiHash
                       -> PackageDB
                       -> IO InstalledPackageInfo
-relocRegistrationInfo verbosity pkg lib lbi clbi ipid packageDb =
+relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
   case (compilerFlavor (compiler lbi)) of
     GHC -> do fs <- GHC.pkgRoot verbosity lbi packageDb
               return (relocatableInstalledPackageInfo
-                        pkg ipid lib lbi clbi fs)
+                        pkg abi_hash lib lbi clbi fs)
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
@@ -316,17 +313,17 @@ generalInstalledPackageInfo
   :: ([FilePath] -> [FilePath]) -- ^ Translate relative include dir paths to
                                 -- absolute paths.
   -> PackageDescription
-  -> InstalledPackageId
+  -> AbiHash
   -> Library
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> InstallDirs FilePath
   -> InstalledPackageInfo
-generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
+generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
   InstalledPackageInfo {
-    IPI.installedPackageId = ipid,
     IPI.sourcePackageId    = packageId   pkg,
-    IPI.packageKey         = componentPackageKey clbi,
+    IPI.installedComponentId= componentId clbi,
+    IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
@@ -337,11 +334,12 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.synopsis           = synopsis    pkg,
     IPI.description        = description pkg,
     IPI.category           = category    pkg,
+    IPI.abiHash            = abi_hash,
     IPI.exposed            = libExposed  lib,
-    IPI.exposedModules     = map fixupSelf (componentExposedModules clbi),
+    IPI.exposedModules     = componentExposedModules clbi,
     IPI.hiddenModules      = otherModules bi,
     IPI.instantiatedWith   = map (\(k,(p,n)) ->
-                                   (k,IPI.OriginalModule (IPI.installedPackageId p) n))
+                                   (k,IPI.OriginalModule (IPI.installedComponentId p) n))
                                  (instantiatedWith lbi),
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
@@ -352,7 +350,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
                                else                      extraLibDirs bi,
     IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = if hasLibrary
-                               then [getHSLibraryName (componentLibraryName clbi)]
+                               then [getHSLibraryName (componentId clbi)]
                                else [],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
@@ -377,18 +375,6 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)
 
-    -- Since we currently don't decide the InstalledPackageId of our package
-    -- until just before we register, we didn't have one for the re-exports
-    -- of modules defined within this package, so we used an empty one that
-    -- we fill in here now that we know what it is. It's a bit of a hack,
-    -- we ought really to decide the InstalledPackageId ahead of time.
-    fixupSelf (IPI.ExposedModule n o o') =
-        IPI.ExposedModule n (fmap fixupOriginalModule o)
-                            (fmap fixupOriginalModule o')
-    fixupOriginalModule (IPI.OriginalModule i m) = IPI.OriginalModule (fixupIpid i) m
-    fixupIpid (InstalledPackageId []) = ipid
-    fixupIpid x = x
-
 -- | Construct 'InstalledPackageInfo' for a library that is in place in the
 -- build tree.
 --
@@ -397,14 +383,14 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
 inplaceInstalledPackageInfo :: FilePath -- ^ top of the build tree
                             -> FilePath -- ^ location of the dist tree
                             -> PackageDescription
-                            -> InstalledPackageId
+                            -> AbiHash
                             -> Library
                             -> LocalBuildInfo
                             -> ComponentLocalBuildInfo
                             -> InstalledPackageInfo
-inplaceInstalledPackageInfo inplaceDir distPref pkg ipid lib lbi clbi =
+inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     generalInstalledPackageInfo adjustRelativeIncludeDirs
-                                pkg ipid lib lbi clbi installDirs
+                                pkg abi_hash lib lbi clbi installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
     installDirs =
@@ -425,14 +411,14 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg ipid lib lbi clbi =
 -- This function knows about the layout of installed packages.
 --
 absoluteInstalledPackageInfo :: PackageDescription
-                             -> InstalledPackageId
+                             -> AbiHash
                              -> Library
                              -> LocalBuildInfo
                              -> ComponentLocalBuildInfo
                              -> InstalledPackageInfo
-absoluteInstalledPackageInfo pkg ipid lib lbi clbi =
+absoluteInstalledPackageInfo pkg abi_hash lib lbi clbi =
     generalInstalledPackageInfo adjustReativeIncludeDirs
-                                pkg ipid lib lbi clbi installDirs
+                                pkg abi_hash lib lbi clbi installDirs
   where
     -- For installed packages we install all include files into one dir,
     -- whereas in the build tree they may live in multiple local dirs.
@@ -444,15 +430,15 @@ absoluteInstalledPackageInfo pkg ipid lib lbi clbi =
 
 
 relocatableInstalledPackageInfo :: PackageDescription
-                                -> InstalledPackageId
+                                -> AbiHash
                                 -> Library
                                 -> LocalBuildInfo
                                 -> ComponentLocalBuildInfo
                                 -> FilePath
                                 -> InstalledPackageInfo
-relocatableInstalledPackageInfo pkg ipid lib lbi clbi pkgroot =
+relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     generalInstalledPackageInfo adjustReativeIncludeDirs
-                                pkg ipid lib lbi clbi installDirs
+                                pkg abi_hash lib lbi clbi installDirs
   where
     -- For installed packages we install all include files into one dir,
     -- whereas in the build tree they may live in multiple local dirs.

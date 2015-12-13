@@ -113,9 +113,9 @@ data InstalledConstraint = InstalledConstraint
 --
 -- The top-down solver uses its down type class for package dependencies,
 -- because it wants to know these dependencies as PackageIds, rather than as
--- InstalledPackageIds (so it cannot use PackageFixedDeps).
+-- ComponentIds (so it cannot use PackageFixedDeps).
 --
--- Ideally we would switch the top-down solver over to use InstalledPackageIds
+-- Ideally we would switch the top-down solver over to use ComponentIds
 -- throughout; that means getting rid of this type class, and changing over the
 -- package index type to use Cabal's rather than cabal-install's. That will
 -- avoid the need for the local definitions of dependencyGraph and

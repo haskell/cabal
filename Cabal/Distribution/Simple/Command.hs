@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE ExistentialQuantification #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command
@@ -6,7 +6,7 @@
 -- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
--- Portability :  portable
+-- Portability :  non-portable (ExistentialQuantification)
 --
 -- This is to do with command line handling. The Cabal command line is
 -- organised into a number of named sub-commands (much like darcs). The
@@ -38,6 +38,11 @@ module Distribution.Simple.Command (
   commandAddAction,
   noExtraFlags,
 
+  -- ** Building lists of commands
+  CommandType(..),
+  CommandSpec(..),
+  commandFromSpec,
+
   -- ** Running commands
   commandsRun,
 
@@ -64,9 +69,7 @@ import Control.Monad
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import Data.Maybe
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-#endif
+import Data.Monoid as Mon
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
          ( Text(disp, parse) )
@@ -171,7 +174,7 @@ reqArg' ad mkflag showflag =
     reqArg ad (succeedReadE mkflag) showflag
 
 -- | (String -> a) variant of "optArg"
-optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b)
+optArg' :: Mon.Monoid b => ArgPlaceHolder -> (Maybe String -> b)
            -> (b -> [Maybe String])
            -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =
@@ -605,3 +608,13 @@ helpCommandUI =
     ++ "  " ++ pname ++ " help help\n"
     ++ "    Oh, appararently you already know this.\n"
   }
+
+-- | wraps a @CommandUI@ together with a function that turns it into a @Command@.
+-- By hiding the type of flags for the UI allows construction of a list of all UIs at the
+-- top level of the program. That list can then be used for generation of manual page
+-- as well as for executing the selected command.
+data CommandSpec action
+  = forall flags. CommandSpec (CommandUI flags) (CommandUI flags -> Command action) CommandType
+
+commandFromSpec :: CommandSpec a -> Command a
+commandFromSpec (CommandSpec ui action _) = action ui

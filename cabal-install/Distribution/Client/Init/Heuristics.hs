@@ -175,7 +175,7 @@ findImportsAndExts projectRoot sf = do
               . lines
               $ s
 
-      -- XXX we should probably make a better attempt at parsing
+      -- TODO: We should probably make a better attempt at parsing
       -- comments above.  Unfortunately we can't use a full-fledged
       -- Haskell parser since cabal's dependencies must be kept at a
       -- minimum.

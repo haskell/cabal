@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LHC
@@ -49,7 +48,7 @@ import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
+                                ( InstalledPackageInfo(..) )
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
@@ -59,7 +58,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( Package(..), LibraryName, getHSLibraryName )
+         ( Package(..), getHSLibraryName, ComponentId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
@@ -87,12 +86,10 @@ import Language.Haskell.Extension
          ( Language(Haskell98), Extension(..), KnownExtension(..) )
 
 import Control.Monad            ( unless, when )
+import Data.Monoid as Mon
 import Data.List
 import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( catMaybes )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
@@ -231,7 +228,7 @@ getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! (mconcat indexes)
+  return $! (Mon.mconcat indexes)
 
   where
     -- On Windows, various fields have $topdir/foo rather than full
@@ -319,7 +316,7 @@ substTopDir topDir ipo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  let libName = componentLibraryName clbi
+  let libName = componentId clbi
       pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
@@ -683,7 +680,7 @@ ghcCcOptions lbi bi clbi odir
            _              -> ["-optc-O2"])
      ++ ["-odir", odir]
 
-mkGHCiLibName :: LibraryName -> String
+mkGHCiLibName :: ComponentId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 -- -----------------------------------------------------------------------------
@@ -758,7 +755,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
   where
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentId clbi
     vanillaLibName = mkLibName           libName
     profileLibName = mkProfLibName       libName
     ghciLibName    = mkGHCiLibName       libName

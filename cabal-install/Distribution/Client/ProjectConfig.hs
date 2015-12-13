@@ -778,7 +778,7 @@ data BuildTimeSettings
        buildSettingOnlyDeps              :: Bool,
        buildSettingSummaryFile           :: [PathTemplate],
        buildSettingLogFile               :: Maybe (Compiler  -> Platform
-                                                -> PackageId -> LibraryName
+                                                -> PackageId -> ComponentId
                                                              -> FilePath),
        buildSettingLogVerbosity          :: Verbosity,
        buildSettingBuildReports          :: ReportLevel,
@@ -841,7 +841,7 @@ resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
     -- parallel (in which case the default location is used).
     --
     buildSettingLogFile :: Maybe (Compiler -> Platform
-                               -> PackageId -> LibraryName -> FilePath)
+                               -> PackageId -> ComponentId -> FilePath)
     buildSettingLogFile
       | useDefaultTemplate = Just (substLogFileName defaultTemplate)
       | otherwise          = fmap  substLogFileName givenTemplate
@@ -860,12 +860,12 @@ resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
 
     substLogFileName :: PathTemplate
                      -> Compiler -> Platform
-                     -> PackageId -> LibraryName -> FilePath
-    substLogFileName template compiler platform pkgid libname =
+                     -> PackageId -> ComponentId -> FilePath
+    substLogFileName template compiler platform pkgid compid =
         fromPathTemplate (substPathTemplate env template)
       where
         env = initialPathTemplateEnv
-                pkgid libname (compilerInfo compiler) platform
+                pkgid compid (compilerInfo compiler) platform
 
     -- If the user has specified --remote-build-reporting=detailed or
     -- --build-log, use more verbose logging.

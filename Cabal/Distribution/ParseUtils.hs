@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ParseUtils
@@ -62,9 +61,7 @@ import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
 import Control.Monad (foldM, ap)
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..))
-#endif
+import Control.Applicative as AP (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
 
@@ -98,12 +95,12 @@ instance Functor ParseResult where
         fmap f (ParseOk ws x) = ParseOk ws $ f x
 
 instance Applicative ParseResult where
-        pure = return
+        pure = ParseOk []
         (<*>) = ap
 
 
 instance Monad ParseResult where
-        return = ParseOk []
+        return = AP.pure
         ParseFailed err >>= _ = ParseFailed err
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err

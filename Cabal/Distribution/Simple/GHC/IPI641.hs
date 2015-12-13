@@ -14,7 +14,7 @@ module Distribution.Simple.GHC.IPI641 (
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (installedPackageId)
+import qualified Distribution.Package as Current hiding (installedComponentId)
 import Distribution.Text (display)
 
 import Distribution.Simple.GHC.IPI642
@@ -61,17 +61,17 @@ data InstalledPackageInfo = InstalledPackageInfo {
   }
   deriving Read
 
-mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
-mkInstalledPackageId = Current.InstalledPackageId . display
+mkComponentId :: Current.PackageIdentifier -> Current.ComponentId
+mkComponentId = Current.ComponentId . display
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing Nothing
   in Current.InstalledPackageInfo {
-    Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
     Current.sourcePackageId    = pid,
-    Current.packageKey         = Current.OldPackageKey pid,
+    Current.installedComponentId         = mkComponentId pid,
+    Current.compatPackageKey   = mkComponentId pid,
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,
@@ -82,6 +82,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.synopsis           = "",
     Current.description        = description ipi,
     Current.category           = category ipi,
+    Current.abiHash            = Current.AbiHash "",
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.instantiatedWith   = [],
@@ -95,7 +96,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = [],
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (mkInstalledPackageId.convertPackageId) (depends ipi),
+    Current.depends            = map (mkComponentId.convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

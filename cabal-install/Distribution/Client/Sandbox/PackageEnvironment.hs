@@ -11,7 +11,6 @@
 
 module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
-  , IncludeComments(..)
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironmentFile
@@ -281,27 +280,30 @@ inheritedPackageEnvironment verbosity pkgEnv = do
       return $ mempty { pkgEnvSavedConfig = conf }
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
--- file).
-userPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
-userPackageEnvironment verbosity pkgEnvDir = do
-  let path = pkgEnvDir </> userPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile ConstraintSourceUserConfig mempty path
-  case minp of
-    Nothing -> return mempty
-    Just (ParseOk warns parseResult) -> do
+-- file). If it does not exist locally, attempt to load an optional global one.
+userPackageEnvironment :: Verbosity -> FilePath -> Maybe FilePath -> IO PackageEnvironment
+userPackageEnvironment verbosity pkgEnvDir globalConfigLocation = do
+    let path = pkgEnvDir </> userPackageEnvironmentFile
+    minp <- readPackageEnvironmentFile (ConstraintSourceUserConfig path) mempty path
+    case (minp, globalConfigLocation) of
+      (Just parseRes, _)  -> processConfigParse path parseRes
+      (_, Just globalLoc) -> maybe (warn verbosity ("no constraints file found at " ++ globalLoc) >> return mempty) (processConfigParse globalLoc) =<< readPackageEnvironmentFile (ConstraintSourceUserConfig globalLoc) mempty globalLoc
+      _ -> return mempty
+  where
+    processConfigParse path (ParseOk warns parseResult) = do
       when (not $ null warns) $ warn verbosity $
         unlines (map (showPWarning path) warns)
       return parseResult
-    Just (ParseFailed err) -> do
+    processConfigParse path (ParseFailed err) = do
       let (line, msg) = locatedErrorMsg err
-      warn verbosity $ "Error parsing user package environment file " ++ path
+      warn verbosity $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
 
 -- | Same as @userPackageEnvironmentFile@, but returns a SavedConfig.
-loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
-loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
-                                     $ userPackageEnvironment verbosity pkgEnvDir
+loadUserConfig :: Verbosity -> FilePath -> Maybe FilePath -> IO SavedConfig
+loadUserConfig verbosity pkgEnvDir globalConfigLocation =
+    fmap pkgEnvSavedConfig $ userPackageEnvironment verbosity pkgEnvDir globalConfigLocation
 
 -- | Common error handling code used by 'tryLoadSandboxPackageEnvironment' and
 -- 'updatePackageEnvironment'.
@@ -348,7 +350,7 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
 
   let base   = basePackageEnvironment
   let common = commonPackageEnvironment sandboxDir
-  user      <- userPackageEnvironment verbosity pkgEnvDir
+  user      <- userPackageEnvironment verbosity pkgEnvDir Nothing --TODO
   inherited <- inheritedPackageEnvironment verbosity user
 
   -- Layer the package environment settings over settings from ~/.cabal/config.
@@ -383,24 +385,16 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
              }
           }
 
--- | Should the generated package environment file include comments?
-data IncludeComments = IncludeComments | NoComments
-
 -- | Create a new package environment file, replacing the existing one if it
 -- exists. Note that the path parameters should point to existing directories.
 createPackageEnvironmentFile :: Verbosity -> FilePath -> FilePath
-                                -> IncludeComments
                                 -> Compiler
                                 -> Platform
                                 -> IO ()
-createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
-  compiler platform = do
-  notice verbosity $ "Writing a default package environment file to "
-    ++ pkgEnvFile
-
-  commentPkgEnv <- commentPackageEnvironment sandboxDir
+createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile compiler platform = do
+  notice verbosity $ "Writing a default package environment file to " ++ pkgEnvFile
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
-  writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
+  writePackageEnvironmentFile pkgEnvFile initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
@@ -536,18 +530,13 @@ type SectionsAccum = (HaddockFlags, InstallDirs (Flag PathTemplate)
                      , [(String, FilePath)], [(String, [String])])
 
 -- | Write out the package environment file.
-writePackageEnvironmentFile :: FilePath -> IncludeComments
-                               -> PackageEnvironment -> PackageEnvironment
-                               -> IO ()
-writePackageEnvironmentFile path incComments comments pkgEnv = do
+writePackageEnvironmentFile :: FilePath -> PackageEnvironment -> IO ()
+writePackageEnvironmentFile path pkgEnv = do
   let tmpPath = (path <.> "tmp")
   writeFile tmpPath $ explanation ++ pkgEnvStr ++ "\n"
   renameFile tmpPath path
   where
-    pkgEnvStr = case incComments of
-      IncludeComments -> showPackageEnvironmentWithComments
-                         (Just comments) pkgEnv
-      NoComments      -> showPackageEnvironment pkgEnv
+    pkgEnvStr = showPackageEnvironment pkgEnv
     explanation = unlines
       ["-- This is a Cabal package environment file."
       ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."

@@ -39,7 +39,7 @@ module Distribution.Client.Sandbox (
     updateInstallDirs,
 
     -- FIXME: move somewhere else
-    configPackageDB', configCompilerAux'
+    configPackageDB', configCompilerAux', getPersistOrConfigCompiler
   ) where
 
 import Distribution.Client.Setup
@@ -49,7 +49,7 @@ import Distribution.Client.Setup
 import Distribution.Client.Sandbox.Timestamp  ( listModifiedDeps
                                               , maybeAddCompilerTimestampRecord
                                               , withAddTimestamps
-                                              , withRemoveTimestamps )
+                                              , removeTimestamps )
 import Distribution.Client.Config
   ( SavedConfig(..), defaultUserInstall, loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
@@ -61,11 +61,12 @@ import Distribution.Client.Install            ( InstallArgs,
 import Distribution.Utils.NubList            ( fromNubList )
 
 import Distribution.Client.Sandbox.PackageEnvironment
-  ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
+  ( PackageEnvironment(..), PackageEnvironmentType(..)
   , createPackageEnvironmentFile, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironmentFile, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile )
+  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile
+  , sandboxPackageDBPath )
 import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.SetupWrapper
@@ -73,7 +74,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Types              ( PackageLocation(..)
                                               , SourcePackage(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
-                                              , tryFindAddSourcePackageDesc )
+                                              , tryFindAddSourcePackageDesc)
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
@@ -82,11 +83,14 @@ import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , interpretPackageDbFlags
                                               , getPackageDBContents
+                                              , maybeGetPersistBuildConfig
+                                              , findDistPrefOrDefault
                                               , findDistPref )
+import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
-                                              , fromFlagOrDefault )
+                                              , fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
@@ -108,10 +112,9 @@ import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
-import Data.Foldable                          ( forM_ )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl' )
-import Data.Maybe                             ( fromJust )
+import Data.List                              ( delete, foldl', intersperse, find, (\\))
+import Data.Maybe                             ( fromJust, fromMaybe )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
 #endif
@@ -177,11 +180,7 @@ updateSandboxConfigFileFlag globalFlags =
   case globalSandboxConfigFile globalFlags of
     Flag _ -> return globalFlags
     NoFlag -> do
-      fp <- lookupEnv "CABAL_SANDBOX_CONFIG"
-      forM_ fp $ \fp' -> do      -- Check for existence if environment variable set
-        exists <- doesFileExist fp'
-        unless exists $ die $ "Cabal sandbox file in $CABAL_SANDBOX_CONFIG does not exist: " ++ fp'
-      let f' = maybe NoFlag Flag fp
+      f' <- fmap (maybe NoFlag Flag) . lookupEnv $ "CABAL_SANDBOX_CONFIG"
       return globalFlags { globalSandboxConfigFile = f' }
 
 -- | Return the path to the sandbox config file - either the default or the one
@@ -318,8 +317,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags
-  createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile
-    NoComments comp platform
+  createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile comp platform
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   let config      = pkgEnvSavedConfig pkgEnv
       configFlags = savedConfigureFlags config
@@ -454,13 +452,26 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  withRemoveTimestamps sandboxDir $ do
-    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+  (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+  removeTimestamps sandboxDir removedPaths
+
+  let removedRefs = fmap (convertWith convDict) removedPaths
+
+  when (not . null $ removedPaths) $
+    notice verbosity $ "Success deleting sources: " ++
+    showL removedRefs ++ "\n\n"
+
+  when (length buildTreeRefs > length removedPaths) $
+    die $ "Skipped the following nonregistered sources: " ++
+    (showL $ buildTreeRefs \\ removedRefs)
 
   notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
     "source dependency, but does not remove the package " ++
     "from the sandbox package DB.\n\n" ++
     "Use 'sandbox hc-pkg -- unregister' to do that."
+  where
+    convertWith dict pth = fromMaybe pth $ fmap fst $ find ((==pth) . snd) dict
+    showL = concat . intersperse " " . fmap show
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
@@ -485,11 +496,13 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
 -- tool with provided arguments, restricted to the sandbox.
 sandboxHcPkg :: Verbosity -> SandboxFlags -> GlobalFlags -> [String] -> IO ()
 sandboxHcPkg verbosity _sandboxFlags globalFlags extraArgs = do
-  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv
-      dbStack     = configPackageDB' configFlags
-  (comp, _platform, conf) <- configCompilerAux' configFlags
-
+  -- Invoke hc-pkg for the most recently configured compiler (if any),
+  -- using the right package-db for the compiler (see #1935).
+  (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
+  let dir         = sandboxPackageDBPath sandboxDir comp platform
+      dbStack     = [GlobalPackageDB, SpecificPackageDB dir]
   Register.invokeHcPkg verbosity comp conf dbStack extraArgs
 
 updateInstallDirs :: Flag Bool
@@ -523,7 +536,7 @@ loadConfigOrSandboxConfig :: Verbosity
 loadConfigOrSandboxConfig verbosity globalFlags = do
   let configFileFlag        = globalConfigFile        globalFlags
       sandboxConfigFileFlag = globalSandboxConfigFile globalFlags
-      ignoreSandboxFlag     = globalIgnoreSandbox globalFlags
+      ignoreSandboxFlag     = globalIgnoreSandbox     globalFlags
 
   pkgEnvDir  <- getPkgEnvDir sandboxConfigFileFlag
   pkgEnvType <- classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag
@@ -539,7 +552,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- Only @cabal.config@ is present.
     UserPackageEnvironment    -> do
       config <- loadConfig verbosity configFileFlag
-      userConfig <- loadUserConfig verbosity pkgEnvDir
+      userConfig <- loadUserConfig verbosity pkgEnvDir Nothing
       let config' = config `mappend` userConfig
       dieIfSandboxRequired config'
       return (NoSandbox, config')
@@ -547,8 +560,11 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- Neither @cabal.sandbox.config@ nor @cabal.config@ are present.
     AmbientPackageEnvironment -> do
       config <- loadConfig verbosity configFileFlag
+      let globalConstraintsOpt = flagToMaybe . globalConstraintsFile . savedGlobalFlags $ config
+      globalConstraintConfig <- loadUserConfig verbosity pkgEnvDir globalConstraintsOpt
+      let config' = config `mappend` globalConstraintConfig
       dieIfSandboxRequired config
-      return (NoSandbox, config)
+      return (NoSandbox, config')
 
   where
     -- Return the path to the package environment directory - either the
@@ -700,8 +716,8 @@ withSandboxPackageInfo verbosity configFlags globalFlags
     toSourcePackage (path, pkgDesc) = SourcePackage
       (packageId pkgDesc) pkgDesc (LocalUnpackedPackage path) Nothing
 
--- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and a no-op
--- otherwise.
+-- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and the
+-- identity otherwise.
 maybeWithSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
                                -> Compiler -> Platform -> ProgramConfiguration
                                -> UseSandbox
@@ -797,3 +813,18 @@ configCompilerAux' configFlags =
   configCompilerAuxEx configFlags
     --FIXME: make configCompilerAux use a sensible verbosity
     { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
+
+-- | Try to read the most recently configured compiler from the
+-- 'localBuildInfoFile', falling back on 'configCompilerAuxEx' if it
+-- cannot be read.
+getPersistOrConfigCompiler :: ConfigFlags
+                           -> IO (Compiler, Platform, ProgramConfiguration)
+getPersistOrConfigCompiler configFlags = do
+  distPref <- findDistPrefOrDefault (configDistPref configFlags)
+  mlbi <- maybeGetPersistBuildConfig distPref
+  case mlbi of
+    Nothing  -> do configCompilerAux' configFlags
+    Just lbi -> return ( LocalBuildInfo.compiler lbi
+                       , LocalBuildInfo.hostPlatform lbi
+                       , LocalBuildInfo.withPrograms lbi
+                       )

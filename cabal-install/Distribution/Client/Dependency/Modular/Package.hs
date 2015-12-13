@@ -24,7 +24,7 @@ type PV = PackageId
 type QPV = Q PV
 
 -- | Package id. Currently just a black-box string.
-type PId = InstalledPackageId
+type PId = ComponentId
 
 -- | Location. Info about whether a package is installed or not, and where
 -- exactly it is located. For installed packages, uniquely identifies the
@@ -41,7 +41,7 @@ data I = I Ver Loc
 -- | String representation of an instance.
 showI :: I -> String
 showI (I v InRepo)   = showVer v
-showI (I v (Inst (InstalledPackageId i))) = showVer v ++ "/installed" ++ shortId i
+showI (I v (Inst (ComponentId i))) = showVer v ++ "/installed" ++ shortId i
   where
     -- A hack to extract the beginning of the package ABI hash
     shortId = snip (splitAt 4) (++ "...") .

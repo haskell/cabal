@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Simple.GHCJS (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
@@ -25,8 +24,8 @@ import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
-import Distribution.Package ( LibraryName(..), getHSLibraryName )
+                                ( InstalledPackageInfo(..) )
+import Distribution.Package ( ComponentId(..), getHSLibraryName )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -72,9 +71,7 @@ import Language.Haskell.Extension ( Extension(..)
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import qualified Data.Map as M  ( fromList  )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
+import Data.Monoid as Mon       ( Monoid(..) )
 import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
@@ -304,7 +301,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  let libName@(LibraryName cname) = componentLibraryName clbi
+  let libName@(ComponentId cname) = componentId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -315,7 +312,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp
-      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n)))
+      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.installedComponentId p,n)))
                        (instantiatedWith lbi)
       nativeToo = ghcjsNativeToo comp
 
@@ -335,7 +332,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
-        | otherwise = mempty
+        | otherwise = Mon.mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
@@ -743,11 +740,13 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
+
       if isShared
-        then do when (stripLibs lbi) $ Strip.stripLib verbosity
-                                       (hostPlatform lbi) (withPrograms lbi) src
-                installExecutableFile verbosity src dst
+        then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
+
+      when (stripLibs lbi) $ Strip.stripLib verbosity
+                             (hostPlatform lbi) (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
@@ -757,7 +756,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

@@ -53,7 +53,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     addSourcePackages,
-    hideInstalledPackagesSpecificByInstalledPackageId,
+    hideInstalledPackagesSpecificByComponentId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds,
@@ -90,7 +90,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
-         , InstalledPackageId, Dependency(Dependency))
+         , ComponentId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), Library(..), Executable(..)
          , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
@@ -293,7 +293,7 @@ dontUpgradeNonUpgradeablePackages params =
       [ LabeledPackageConstraint
         (PackageConstraintInstalled pkgname)
         ConstraintSourceNonUpgradeablePackage
-      | all (/=PackageName "base") (depResolverTargets params)
+      | notElem (PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
       , isInstalled pkgname ]
@@ -313,14 +313,14 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecificByInstalledPackageId :: [InstalledPackageId]
+hideInstalledPackagesSpecificByComponentId :: [ComponentId]
                                                      -> DepResolverParams
                                                      -> DepResolverParams
-hideInstalledPackagesSpecificByInstalledPackageId pkgids params =
+hideInstalledPackagesSpecificByComponentId pkgids params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteInstalledPackageId)
+        foldl' (flip InstalledPackageIndex.deleteComponentId)
                (depResolverInstalledPkgIndex params) pkgids
     }
 
@@ -348,12 +348,12 @@ hideInstalledPackagesAllVersions pkgnames params =
 
 hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
 hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByInstalledPackageId pkgids params
+    hideInstalledPackagesSpecificByComponentId pkgids params
   where
-    pkgids = map Installed.installedPackageId
+    pkgids = map Installed.installedComponentId
            . InstalledPackageIndex.reverseDependencyClosure
                             (depResolverInstalledPkgIndex params)
-           . map (Installed.installedPackageId . fst)
+           . map (Installed.installedComponentId . fst)
            . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 
@@ -625,8 +625,8 @@ interpretPackagesPreference selected defaultPref prefs =
       [ (pkgname, pref)
       | PackageInstalledPreference pkgname pref <- prefs ]
     installPrefDefault = case defaultPref of
-      PreferAllLatest         -> \_       -> PreferLatest
-      PreferAllInstalled      -> \_       -> PreferInstalled
+      PreferAllLatest         -> const PreferLatest
+      PreferAllInstalled      -> const PreferInstalled
       PreferLatestForSelected -> \pkgname ->
         -- When you say cabal install foo, what you really mean is, prefer the
         -- latest version of foo, but the installed version of everything else
@@ -668,7 +668,7 @@ validateSolverResult platform comp indepGoals pkgs =
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
 
-    formatProblemMessage problems = 
+    formatProblemMessage problems =
       unlines $
         "internal error: could not construct a valid install plan."
       : "The proposed (invalid) plan contained the following problems:"

@@ -3,7 +3,25 @@
 #if __GLASGOW_HASKELL__ < 707
 {-# LANGUAGE StandaloneDeriving #-}
 #endif
+
+-- Hack approach to support bootstrapping.
+-- Assume binary <0.8 when MIN_VERSION_binary marco is not available.
+-- Starting with GHC>=8.0, the compiler will hopefully provide this macros too.
+-- https://ghc.haskell.org/trac/ghc/ticket/10970
+--
+-- Otherwise, one can specify -DMIN_VERSION_binary_0_8_0=1, when bootstrapping
+-- with binary >=0.8.0.0.
+#ifdef MIN_VERSION_binary
+#define MIN_VERSION_binary_0_8_0 MIN_VERSION_binary(0,8,0)
+#else
+#ifndef MIN_VERSION_binary_0_8_0
+#define MIN_VERSION_binary_0_8_0 0
+#endif
+#endif
+
+#if !MIN_VERSION_binary_0_8_0
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -44,6 +62,8 @@ module Distribution.Version (
   simplifyVersionRange,
   foldVersionRange,
   foldVersionRange',
+  hasUpperBound,
+  hasLowerBound,
 
   -- ** Modification
   removeUpperBound,
@@ -111,6 +131,7 @@ instance Binary VersionRange
 deriving instance Data Version
 #endif
 
+#if !(MIN_VERSION_binary_0_8_0)
 -- Deriving this instance from Generic gives trouble on GHC 7.2 because the
 -- Generic instance has to be standalone-derived. So, we hand-roll our own.
 -- We can't use a generic Binary instance on later versions because we must
@@ -121,6 +142,7 @@ instance Binary Version where
         tags <- get
         return $ Version br tags
     put (Version br tags) = put br >> put tags
+#endif
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
@@ -284,9 +306,10 @@ foldVersionRange anyv this later earlier union intersect = fold
                    (orLaterVersion v)
                    (earlierVersion (wildcardUpperBound v))
 
--- | An extended variant of 'foldVersionRange' that also provides a view of
--- in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"== v.*\"@ is presented
--- explicitly rather than in terms of the other basic syntax.
+-- | An extended variant of 'foldVersionRange' that also provides a view of the
+-- expression in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"==
+-- v.*\"@ is presented explicitly rather than in terms of the other basic
+-- syntax.
 --
 foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                   -> (Version -> a)            -- ^ @\"== v\"@
@@ -805,3 +828,28 @@ instance Text VersionRange where
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
                      ("==", ThisVersion) ]
+
+-- | Does the version range have an upper bound?
+--
+-- @since 1.24.0.0
+hasUpperBound :: VersionRange -> Bool
+hasUpperBound = foldVersionRange
+                False
+                (const True)
+                (const False)
+                (const True)
+                (&&) (||)
+
+-- | Does the version range have an explicit lower bound?
+--
+-- Note: this function only considers the user-specified lower bounds, but not
+-- the implicit >=0 lower bound.
+--
+-- @since 1.24.0.0
+hasLowerBound :: VersionRange -> Bool
+hasLowerBound = foldVersionRange
+                False
+                (const True)
+                (const True)
+                (const False)
+                (&&) (||)

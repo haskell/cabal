@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -33,6 +33,7 @@ module Distribution.Simple.Utils (
         rawSystemStdout,
         rawSystemStdInOut,
         rawSystemIOWithEnv,
+        createProcessWithEnv,
         maybeExit,
         xargs,
         findProgramLocation,
@@ -136,7 +137,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( join, when, unless, filterM )
+    ( when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
@@ -146,7 +147,9 @@ import Data.Char as Char
 import Data.Foldable
     ( traverse_ )
 import Data.List
-   ( nub, unfoldr, isPrefixOf, tails, intercalate )
+    ( nub, unfoldr, isPrefixOf, tails, intercalate )
+import Data.Typeable
+    ( cast )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
@@ -195,12 +198,12 @@ import Control.Concurrent (forkIO)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
 import System.Process
-         ( createProcess, rawSystem, runInteractiveProcess
+         ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
          , showCommandForUser, waitForProcess)
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
          , setFileOrdinary, setFileExecutable, setDirOrdinary )
-import Distribution.Compat.TempFile
+import Distribution.Compat.Internal.TempFile
          ( openTempFile, createTempDirectory )
 import Distribution.Compat.Exception
          ( tryIO, catchIO, catchExit )
@@ -235,23 +238,48 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
-topHandlerWith :: (Exception.IOException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = catchIO prog handle
+topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
+topHandlerWith cont prog =
+    Exception.catches prog [
+        Exception.Handler rethrowAsyncExceptions
+      , Exception.Handler rethrowExitStatus
+      , Exception.Handler handle
+      ]
   where
-    handle ioe = do
+    -- Let async exceptions rise to the top for the default top-handler
+    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
+    rethrowAsyncExceptions = throwIO
+
+    -- ExitCode gets thrown asynchronously too, and we don't want to print it
+    rethrowExitStatus :: ExitCode -> IO a
+    rethrowExitStatus = throwIO
+
+    -- Print all other exceptions
+    handle :: Exception.SomeException -> IO a
+    handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (mesage pname)
-      cont ioe
-      where
-        mesage pname = wrapText (pname ++ ": " ++ file ++ detail)
-        file         = case ioeGetFileName ioe of
-                         Nothing   -> ""
-                         Just path -> path ++ location ++ ": "
-        location     = case ioeGetLocation ioe of
-                         l@(n:_) | Char.isDigit n -> ':' : l
-                         _                        -> ""
-        detail       = ioeGetErrorString ioe
+      hPutStr stderr (message pname se)
+      cont se
+
+    message :: String -> Exception.SomeException -> String
+    message pname (Exception.SomeException se) =
+      case cast se :: Maybe Exception.IOException of
+        Just ioe ->
+          let file         = case ioeGetFileName ioe of
+                               Nothing   -> ""
+                               Just path -> path ++ location ++ ": "
+              location     = case ioeGetLocation ioe of
+                               l@(n:_) | Char.isDigit n -> ':' : l
+                               _                        -> ""
+              detail       = ioeGetErrorString ioe
+          in wrapText (pname ++ ": " ++ file ++ detail)
+        Nothing ->
+#if __GLASGOW_HASKELL__ < 710
+          show se
+#else
+          Exception.displayException se
+#endif
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
@@ -423,22 +451,8 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
-    printRawCommandAndArgsAndEnv verbosity path args menv
-    hFlush stdout
-    (_,_,_,ph) <- createProcess $
-                  (Process.proc path args) { Process.cwd           = mcwd
-                                           , Process.env           = menv
-                                           , Process.std_in        = mbToStd inp
-                                           , Process.std_out       = mbToStd out
-                                           , Process.std_err       = mbToStd err
-#ifdef MIN_VERSION_process
-#if MIN_VERSION_process(1,2,0)
--- delegate_ctlc has been added in process 1.2, and we still want to be able to
--- bootstrap GHC on systems not having that version
-                                           , Process.delegate_ctlc = True
-#endif
-#endif
-                                           }
+    (_,_,_,ph) <- createProcessWithEnv verbosity path args mcwd menv
+                                       (mbToStd inp) (mbToStd out) (mbToStd err)
     exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
@@ -446,6 +460,37 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
   where
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
+
+createProcessWithEnv :: Verbosity
+                     -> FilePath
+                     -> [String]
+                     -> Maybe FilePath           -- ^ New working dir or inherit
+                     -> Maybe [(String, String)] -- ^ New environment or inherit
+                     -> Process.StdStream  -- ^ stdin
+                     -> Process.StdStream  -- ^ stdout
+                     -> Process.StdStream  -- ^ stderr
+                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
+                        -- ^ Any handles created for stdin, stdout, or stderr
+                        -- with 'CreateProcess', and a handle to the process.
+createProcessWithEnv verbosity path args mcwd menv inp out err = do
+    printRawCommandAndArgsAndEnv verbosity path args menv
+    hFlush stdout
+    (inp', out', err', ph) <- createProcess $
+                                (Process.proc path args) {
+                                    Process.cwd           = mcwd
+                                  , Process.env           = menv
+                                  , Process.std_in        = inp
+                                  , Process.std_out       = out
+                                  , Process.std_err       = err
+#ifdef MIN_VERSION_process
+#if MIN_VERSION_process(1,2,0)
+-- delegate_ctlc has been added in process 1.2, and we still want to be able to
+-- bootstrap GHC on systems not having that version
+                                  , Process.delegate_ctlc = True
+#endif
+#endif
+                                  }
+    return (inp', out', err', ph)
 
 -- | Run a command and return its output.
 --
@@ -1165,7 +1210,7 @@ findPackageDesc dir
 
 -- |Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: FilePath -> IO FilePath
-tryFindPackageDesc dir = join . fmap (either die return) $ findPackageDesc dir
+tryFindPackageDesc dir = either die return =<< findPackageDesc dir
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)

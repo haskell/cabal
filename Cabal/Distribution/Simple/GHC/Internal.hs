@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternGuards #-}
 -----------------------------------------------------------------------------
 -- |
@@ -33,12 +32,11 @@ module Distribution.Simple.GHC.Internal (
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
 import Distribution.Package
-         ( InstalledPackageId, PackageId, LibraryName
-         , getHSLibraryName )
+         ( PackageId, ComponentId, getHSLibraryName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
+                                ( InstalledPackageInfo(..) )
 import Distribution.PackageDescription as PD
          ( BuildInfo(..), Library(..), libModules
          , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )
@@ -73,9 +71,7 @@ import qualified Data.Map as M
 import Data.Char                ( isSpace )
 import Data.Maybe               ( fromMaybe, maybeToList, isJust )
 import Control.Monad            ( unless, when )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid              ( Monoid(..) )
-#endif
+import Data.Monoid as Mon       ( Monoid(..) )
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension, takeDirectory )
@@ -377,9 +373,10 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptVerbosity       = toFlag verbosity,
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
-      ghcOptPackageKey  = case clbi of
-        LibComponentLocalBuildInfo { componentPackageKey = pk } -> toFlag pk
-        _ -> mempty,
+      ghcOptComponentId  = case clbi of
+        LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
+          -> toFlag pk
+        _ -> Mon.mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
@@ -416,7 +413,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
 
-    hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
+    hole_insts = map (\(k,(p,n))
+                      -> (k, (InstalledPackageInfo.installedComponentId p,n)))
                  (instantiatedWith lbi)
 
 -- | Strip out flags that are not supported in ghci
@@ -432,7 +430,7 @@ filterGhciFlags = filter supported
     supported "-unreg"    = False
     supported _           = True
 
-mkGHCiLibName :: LibraryName -> String
+mkGHCiLibName :: ComponentId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
@@ -463,7 +461,7 @@ getHaskellObjects implInfo lib lbi pref wanted_obj_ext allow_split_objs
                | x <- libModules lib ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(InstalledPackageId, PackageId, ModuleRenaming)]
+                 -> [(ComponentId, PackageId, ModuleRenaming)]
 mkGhcOptPackages clbi =
   map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
       (componentPackageDeps clbi)
@@ -505,7 +503,8 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
         unless (mPP == mcsPP) abort
     where
         lookupEnv :: String -> IO (Maybe String)
-        lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
+        lookupEnv name = (Just `fmap` getEnv name)
+                         `catchIO` const (return Nothing)
         abort =
             die $ "Use of " ++ compilerName ++ "'s environment variable "
                ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "

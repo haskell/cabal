@@ -62,10 +62,7 @@ import Distribution.Compat.Binary (Binary)
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (Applicative(..))
-#endif
-import Control.Applicative (Alternative(..))
+import Control.Applicative as AP (Alternative(..), Applicative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
@@ -142,10 +139,10 @@ buildTargetComponentName (BuildTargetComponent cn)   = cn
 buildTargetComponentName (BuildTargetModule    cn _) = cn
 buildTargetComponentName (BuildTargetFile      cn _) = cn
 
--- ------------------------------------------------------------
--- * Do everything
--- ------------------------------------------------------------
-
+-- | Read a list of user-supplied build target strings and resolve them to
+-- 'BuildTarget's according to a 'PackageDescription'. If there are problems
+-- with any of the targets e.g. they don't exist or are misformatted, throw an
+-- 'IOException'.
 readBuildTargets :: PackageDescription -> [String] -> IO [BuildTarget]
 readBuildTargets pkg targetStrs = do
     let (uproblems, utargets) = readUserBuildTargets targetStrs
@@ -814,11 +811,12 @@ instance Functor Match where
   fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
 
 instance Applicative Match where
-  pure = return
+  pure a = ExactMatch 0 [a]
   (<*>) = ap
 
 instance Monad Match where
-  return a                = ExactMatch 0 [a]
+  return = AP.pure
+
   NoMatch      d ms >>= _ = NoMatch d ms
   ExactMatch   d xs >>= f = addDepth d
                           $ foldr matchPlus matchZero (map f xs)

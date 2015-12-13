@@ -36,9 +36,11 @@ import PackageTests.TestSuiteTests.ExeV10.Check
 import PackageTests.TestSuiteTests.LibV09.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
+import PackageTests.UniqueIPID.Check
 
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile )
+import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
 import Distribution.Simple.Program.Builtin
@@ -52,6 +54,9 @@ import Distribution.Version (Version(Version))
 
 import Control.Exception (try, throw)
 import Distribution.Compat.Environment ( setEnv )
+#if !MIN_VERSION_base(4,8,0)
+import Data.Functor ((<$>))
+#endif
 import System.Directory
     ( canonicalizePath, setCurrentDirectory )
 import System.FilePath ((</>))
@@ -109,6 +114,8 @@ tests config version =
       (PackageTests.TemplateHaskell.Check.dynamic config)
     , testCase "ReexportedModules"
       (PackageTests.ReexportedModules.Check.suite config)
+    , testCase "UniqueIPID"
+      (PackageTests.UniqueIPID.Check.suite config)
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
@@ -141,8 +148,9 @@ main = do
     (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
     (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
+    packageDBStack' <- mapM canonicalizePackageDB $ withPackageDB lbi
     let haddockPath = programPath haddock
-        dbFile = distPref_ </> "package.conf.inplace"
+        inplaceDBFile = distPref_ </> "package.conf.inplace"
         config = SuiteConfig
                  { cabalDistPref = distPref_
                  , ghcPath = programPath ghc
@@ -150,11 +158,12 @@ main = do
                  , inplaceSpec = PackageSpec
                    { directory = []
                    , configOpts =
-                     [ "--package-db=" ++ dbFile
+                     [ "--package-db=" ++ inplaceDBFile
                      , "--constraint=Cabal == " ++ display cabalVersion
                      ]
                    , distPref = Nothing
                    }
+                 , packageDBStack = packageDBStack'
                  }
     putStrLn $ "Cabal test suite - testing cabal version " ++ display cabalVersion
     putStrLn $ "Using ghc: " ++ ghcPath config
@@ -162,6 +171,7 @@ main = do
     putStrLn $ "Using haddock: " ++ haddockPath
     setCurrentDirectory "tests"
     -- Create a shared Setup executable to speed up Simple tests
+    putStrLn $ "Building shared ./Setup executable"
     compileSetup config "."
     defaultMain $ testGroup "Package Tests"
       (tests config cabalVersion)
@@ -177,3 +187,7 @@ getPersistBuildConfig_ filename = do
       Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
       Left err -> throw err
       Right lbi -> return lbi
+
+canonicalizePackageDB :: PackageDB -> IO PackageDB
+canonicalizePackageDB (SpecificPackageDB path) = SpecificPackageDB <$> canonicalizePath path
+canonicalizePackageDB x = return x

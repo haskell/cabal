@@ -28,12 +28,17 @@ module Distribution.System (
   -- * Platform is a pair of arch and OS
   Platform(..),
   buildPlatform,
-  platformFromTriple
+  platformFromTriple,
+
+  -- * Internal
+  knownOSs,
+  knownArches
   ) where
 
 import qualified System.Info (os, arch)
-import qualified Data.Char as Char (toLower, isAlphaNum)
+import qualified Data.Char as Char (toLower, isAlphaNum, isAlpha)
 
+import Control.Monad (liftM2)
 import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
@@ -178,11 +183,21 @@ instance Binary Platform
 
 instance Text Platform where
   disp (Platform arch os) = disp arch <> Disp.char '-' <> disp os
+  -- TODO: there are ambigious platforms like: `arch-word-os`
+  -- which could be parsed as
+  --   * Platform "arch-word" "os"
+  --   * Platform "arch" "word-os"
+  -- We could support that preferring variants 'OtherOS' or 'OtherArch'
+  --
+  -- For now we split into arch and os parts on the first dash.
   parse = do
-    arch <- parse
+    arch <- parseDashlessArch
     _ <- Parse.char '-'
     os   <- parse
     return (Platform arch os)
+      where
+        parseDashlessArch :: Parse.ReadP r Arch
+        parseDashlessArch = fmap (classifyArch Strict) dashlessIdent
 
 -- | The platform Cabal was compiled on. In most cases,
 -- @LocalBuildInfo.hostPlatform@ should be used instead (the platform we're
@@ -193,8 +208,14 @@ buildPlatform = Platform buildArch buildOS
 -- Utils:
 
 ident :: Parse.ReadP r String
-ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
-  --TODO: probably should disallow starting with a number
+ident = liftM2 (:) first rest
+  where first = Parse.satisfy Char.isAlpha
+        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+
+dashlessIdent :: Parse.ReadP r String
+dashlessIdent = liftM2 (:) first rest
+  where first = Parse.satisfy Char.isAlpha
+        rest = Parse.munch (\c -> Char.isAlphaNum c || c == '_')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
@@ -204,10 +225,10 @@ platformFromTriple triple =
   fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
   where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
         parseTriple = do
-          arch <- fmap (classifyArch Strict) parseWord
+          arch <- fmap (classifyArch Permissive) parseWord
           _ <- Parse.char '-'
           _ <- parseWord -- Skip vendor
           _ <- Parse.char '-'
-          os <- fmap (classifyOS Compat) ident -- OS may have hyphens, like
+          os <- fmap (classifyOS Permissive) ident -- OS may have hyphens, like
                                                -- 'nto-qnx'
           return $ Platform arch os

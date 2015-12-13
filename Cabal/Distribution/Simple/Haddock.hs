@@ -27,7 +27,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Distribution.Package
          ( PackageIdentifier(..)
          , Package(..)
-         , PackageName(..), packageName, LibraryName(..) )
+         , PackageName(..), packageName, ComponentId(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), usedExtensions
@@ -49,7 +49,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
          ( defaultHscolourFlags
          , Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
-         , HaddockFlags(..), HscolourFlags(..) )
+         , fromFlagOrDefault, HaddockFlags(..), HscolourFlags(..) )
 import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..)
@@ -64,7 +64,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo_(..) )
+         ( InstalledPackageInfo(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils
@@ -162,7 +162,27 @@ haddock pkg_descr _ _ haddockFlags
         ++ "a library. Perhaps you want to use the --executables, --tests or"
         ++ " --benchmarks flags."
 
-haddock pkg_descr lbi suffixes flags = do
+haddock pkg_descr lbi suffixes flags' = do
+    let verbosity     = flag haddockVerbosity
+        comp          = compiler lbi
+
+        flags
+          | fromFlag (haddockForHackage flags') = flags'
+            { haddockHoogle       = Flag True
+            , haddockHtml         = Flag True
+            , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
+            , haddockContents     = Flag (toPathTemplate pkg_url)
+            , haddockHscolour     = Flag True
+            }
+          | otherwise = flags'
+        pkg_url       = "/package/$pkg-$version"
+        flag f        = fromFlag $ f flags
+
+        tmpFileOpts   = defaultTempFileOptions
+                       { optKeepTempFiles = flag haddockKeepTempFiles }
+        htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
+                        $ flags
+
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
       requireProgramVersion verbosity haddockProgram
@@ -198,7 +218,8 @@ haddock pkg_descr lbi suffixes flags = do
     let commonArgs = mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription pkg_descr ]
+            , fromPackageDescription forDist pkg_descr ]
+        forDist = fromFlagOrDefault False (haddockForHackage flags)
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
     withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
@@ -231,14 +252,6 @@ haddock pkg_descr lbi suffixes flags = do
     forM_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
       forM_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
-  where
-    verbosity     = flag haddockVerbosity
-    keepTempFiles = flag haddockKeepTempFiles
-    comp          = compiler lbi
-    tmpFileOpts   = defaultTempFileOptions { optKeepTempFiles = keepTempFiles }
-    flag f        = fromFlag $ f flags
-    htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
-                    $ flags
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
@@ -266,12 +279,11 @@ fromFlags env flags =
       argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
     }
 
-fromPackageDescription :: PackageDescription -> HaddockArgs
-fromPackageDescription pkg_descr =
+fromPackageDescription :: Bool -> PackageDescription -> HaddockArgs
+fromPackageDescription forDist pkg_descr =
       mempty { argInterfaceFile = Flag $ haddockName pkg_descr,
                argPackageName = Flag $ packageId $ pkg_descr,
-               argOutputDir = Dir $ "doc" </> "html"
-                              </> display (packageName pkg_descr),
+               argOutputDir = Dir $ "doc" </> "html" </> name,
                argPrologue = Flag $ if null desc then synopsis pkg_descr
                                     else desc,
                argTitle = Flag $ showPkg ++ subtitle
@@ -279,6 +291,9 @@ fromPackageDescription pkg_descr =
       where
         desc = PD.description pkg_descr
         showPkg = display (packageId pkg_descr)
+        name
+          | forDist = showPkg ++ "-docs"
+          | otherwise = display (packageName pkg_descr)
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
@@ -477,7 +492,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
                  renderedArgs = pflag : renderPureArgs version comp args
-             if haddockSupportsResponseFiles 
+             if haddockSupportsResponseFiles
                then
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do
@@ -631,7 +646,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (LibraryName (display pkg_id)) (compilerInfo (compiler lbi))
+  : initialPathTemplateEnv pkg_id (ComponentId (display pkg_id)) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

@@ -8,6 +8,8 @@ import Data.Map as M
 import Data.Maybe
 import Prelude hiding (pi)
 
+import Language.Haskell.Extension (Extension, Language)
+
 import Distribution.PackageDescription (FlagAssignment) -- from Cabal
 import Distribution.Client.Types (OptionalStanza)
 import Distribution.Client.Utils.LabeledGraph
@@ -53,14 +55,27 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
-extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
-extend var pa qa = foldM (\ a (Dep qpn ci) ->
-                     let ci' = M.findWithDefault (Constrained []) qpn a
-                     in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
-                           Left (c, (d, d')) -> Left  (c, L.map (Dep qpn) (simplify (P qpn) d d'))
-                           Right x           -> Right x)
-                    pa qa
+extend :: (Extension -> Bool) -- ^ is a given extension supported
+       -> (Language  -> Bool) -- ^ is a given language supported
+       -> Goal QPN
+       -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
+extend extSupported langSupported goal@(Goal var _) = foldM extendSingle
   where
+
+    extendSingle :: PPreAssignment -> Dep QPN
+                 -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
+    extendSingle a (Ext  ext )  =
+      if extSupported  ext  then Right a
+                            else Left (toConflictSet goal, [Ext ext])
+    extendSingle a (Lang lang)  =
+      if langSupported lang then Right a
+                            else Left (toConflictSet goal, [Lang lang])
+    extendSingle a (Dep qpn ci) =
+      let ci' = M.findWithDefault (Constrained []) qpn a
+      in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
+            Left (c, (d, d')) -> Left  (c, L.map (Dep qpn) (simplify (P qpn) d d'))
+            Right x           -> Right x
+
     -- We're trying to remove trivial elements of the conflict. If we're just
     -- making a choice pkg == instance, and pkg => pkg == instance is a part
     -- of the conflict, then this info is clear from the context and does not

@@ -30,8 +30,6 @@
 -- read and written from files. This would allow us to save configure flags in
 -- config files.
 
-{-# LANGUAGE CPP #-}
-
 module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
@@ -77,7 +75,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.Package ( Dependency(..)
                             , PackageName
-                            , InstalledPackageId )
+                            , ComponentId(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -310,6 +308,7 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
+    configIPID          :: Flag String, -- ^ explicit IPID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configVerbosity :: Flag Verbosity, -- ^verbosity level
@@ -321,8 +320,8 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, InstalledPackageId)],
-    configInstantiateWith :: [(ModuleName, (InstalledPackageId, ModuleName))],
+    configDependencies :: [(PackageName, ComponentId)],
+    configInstantiateWith :: [(ModuleName, (ComponentId, ModuleName))],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -574,6 +573,11 @@ configureOptions showOrParseArgs =
          configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
+      ,option "" ["ipid"]
+         "Installed package ID to compile this package as"
+         configIPID (\v flags -> flags {configIPID = v})
+         (reqArgFlag "IPID")
+
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
@@ -671,14 +675,14 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parseDependency :: Parse.ReadP r (PackageName, InstalledPackageId)
+parseDependency :: Parse.ReadP r (PackageName, ComponentId)
 parseDependency = do
   x <- parse
   _ <- Parse.char '='
   y <- parse
   return (x, y)
 
-parseHoleMapEntry :: Parse.ReadP r (ModuleName, (InstalledPackageId, ModuleName))
+parseHoleMapEntry :: Parse.ReadP r (ModuleName, (ComponentId, ModuleName))
 parseHoleMapEntry = do
   x <- parse
   _ <- Parse.char '='
@@ -788,6 +792,7 @@ instance Monoid ConfigFlags where
     configDependencies  = mempty,
     configInstantiateWith     = mempty,
     configExtraIncludeDirs    = mempty,
+    configIPID          = mempty,
     configConfigurationsFlags = mempty,
     configTests               = mempty,
     configCoverage         = mempty,
@@ -833,6 +838,7 @@ instance Monoid ConfigFlags where
     configDependencies  = combine configDependencies,
     configInstantiateWith     = combine configInstantiateWith,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
+    configIPID          = combine configIPID,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,
     configCoverage         = combine configCoverage,
@@ -1297,6 +1303,7 @@ data HaddockFlags = HaddockFlags {
     haddockHoogle       :: Flag Bool,
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
+    haddockForHackage   :: Flag Bool,
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
     haddockBenchmarks   :: Flag Bool,
@@ -1318,6 +1325,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHoogle       = Flag False,
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
+    haddockForHackage   = Flag False,
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
     haddockBenchmarks   = Flag False,
@@ -1383,6 +1391,11 @@ haddockOptions showOrParseArgs =
    haddockHtmlLocation (\v flags -> flags { haddockHtmlLocation = v })
    (reqArgFlag "URL")
 
+  ,option "" ["for-hackage"]
+   "Collection of flags to generate documentation suitable for upload to hackage"
+   haddockForHackage (\v flags -> flags { haddockForHackage = v })
+   trueArg
+
   ,option "" ["executables"]
    "Run haddock for Executables targets"
    haddockExecutables (\v flags -> flags { haddockExecutables = v })
@@ -1446,6 +1459,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = mempty,
     haddockHtml         = mempty,
     haddockHtmlLocation = mempty,
+    haddockForHackage   = mempty,
     haddockExecutables  = mempty,
     haddockTestSuites   = mempty,
     haddockBenchmarks   = mempty,
@@ -1464,6 +1478,7 @@ instance Monoid HaddockFlags where
     haddockHoogle       = combine haddockHoogle,
     haddockHtml         = combine haddockHtml,
     haddockHtmlLocation = combine haddockHtmlLocation,
+    haddockForHackage   = combine haddockForHackage,
     haddockExecutables  = combine haddockExecutables,
     haddockTestSuites   = combine haddockTestSuites,
     haddockBenchmarks   = combine haddockBenchmarks,
@@ -1753,7 +1768,7 @@ replCommand progConf = CommandUI
 -- * Test flags
 -- ------------------------------------------------------------
 
-data TestShowDetails = Never | Failures | Always | Streaming
+data TestShowDetails = Never | Failures | Always | Streaming | Direct
     deriving (Eq, Ord, Enum, Bounded, Show)
 
 knownTestShowDetails :: [TestShowDetails]
@@ -1841,7 +1856,8 @@ testCommand = CommandUI
             ("'always': always show results of individual test cases. "
              ++ "'never': never show results of individual test cases. "
              ++ "'failures': show results of failing test cases. "
-             ++ "'streaming': show results of test cases in real time.")
+             ++ "'streaming': show results of test cases in real time."
+             ++ "'direct': send results of test cases in real time; no log file.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
             (reqArg "FILTER"
                 (readP_to_E (\_ -> "--show-details flag expects one of "

@@ -1081,9 +1081,7 @@ machine-readable log files.  The `detailed-0.9` interface requires the
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
@@ -1115,12 +1113,10 @@ main = do
 #### Example: Package using `detailed-0.9` interface ####
 
 The example package description and test module source file below demonstrate
-the use of the `detailed-0.9` interface.  For brevity, the example package does
-note include a library or any normal executables, but a real package would be
-required to have at least one library or executable.  The test module below
-also develops a simple implementation of the interface set by
-`Distribution.TestSuite`, but in actual usage the implementation would be
-provided by the library that provides the testing facility.
+the use of the `detailed-0.9` interface.  The test module also develops a simple
+implementation of the interface set by `Distribution.TestSuite`, but in actual
+usage the implementation would be provided by the library that provides the
+testing facility.
 
 bar.cabal:
 
@@ -1208,9 +1204,7 @@ channels.
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
@@ -1349,6 +1343,22 @@ values for these fields.
     ~~~~~~~~~~~~~~~~
     {-# LANGUAGE CPP, MultiParamTypeClasses #-}
     ~~~~~~~~~~~~~~~~
+
+    In Cabal-1.24 the dependency solver will use this and `default-extensions` information.
+    Cabal prior to 1.24 will abort compilation if the current compiler doesn't provide
+    the extensions.
+
+    If you use some extensions conditionally, using CPP or conditional module lists,
+    it is good to replicate the condition in `other-extensions` declarations:
+
+    ~~~~~~~~~~~~~~~~
+    other-extensions: CPP
+    if impl(ghc >= 7.5)
+      other-extensions: PolyKinds
+    ~~~~~~~~~~~~~~~~
+
+    You could also omit the conditionally used extensions, as they are for information only,
+    but it is recommended to replicate them in `other-extensions` declarations.
 
 `build-tools:` _program list_
 :   A list of programs, possibly annotated with versions, needed to
@@ -1707,15 +1717,15 @@ and outside then they are combined using the following rules.
     items, for example
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP
+    other-extensions: CPP
     if impl(ghc)
-      Extensions: MultiParamTypeClasses
+      other-extensions: MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     when compiled using GHC will be combined to
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP, MultiParamTypeClasses
+    other-extensions: CPP, MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     Similarly, if two conditional sections appear at the same nesting

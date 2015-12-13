@@ -6,6 +6,7 @@ import Test.Tasty.Options
 
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.UserConfig
+import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
@@ -17,6 +18,8 @@ tests = testGroup "Unit Tests" [
        UnitTests.Distribution.Client.UserConfig.tests
   ,testGroup "Distribution.Client.Sandbox"
        UnitTests.Distribution.Client.Sandbox.tests
+  ,testGroup "Distribution.Client.Tar"
+       UnitTests.Distribution.Client.Tar.tests
   ,testGroup "Distribution.Client.Targets"
        UnitTests.Distribution.Client.Targets.tests
   ,testGroup "Distribution.Client.GZipUtils"

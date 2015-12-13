@@ -39,6 +39,7 @@ module Distribution.Client.Setup
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..)
     , userConfigCommand, UserConfigFlags(..)
+    , manpageCommand
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -122,6 +123,7 @@ data GlobalFlags = GlobalFlags {
     globalNumericVersion    :: Flag Bool,
     globalConfigFile        :: Flag FilePath,
     globalSandboxConfigFile :: Flag FilePath,
+    globalConstraintsFile   :: Flag FilePath,
     globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
     globalLocalRepos        :: NubList FilePath,
@@ -138,6 +140,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalNumericVersion    = Flag False,
     globalConfigFile        = mempty,
     globalSandboxConfigFile = mempty,
+    globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
@@ -264,7 +267,7 @@ globalCommand commands = CommandUI {
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 7; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 8; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -283,6 +286,11 @@ globalCommand commands = CommandUI {
       ,option [] ["sandbox-config-file"]
          "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
+         (reqArgFlag "FILE")
+
+      ,option [] ["default-user-config"]
+         "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
+         globalConfigFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
       ,option [] ["require-sandbox"]
@@ -333,6 +341,7 @@ instance Monoid GlobalFlags where
     globalNumericVersion    = mempty,
     globalConfigFile        = mempty,
     globalSandboxConfigFile = mempty,
+    globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
@@ -347,6 +356,7 @@ instance Monoid GlobalFlags where
     globalNumericVersion    = combine globalNumericVersion,
     globalConfigFile        = combine globalConfigFile,
     globalSandboxConfigFile = combine globalConfigFile,
+    globalConstraintsFile   = combine globalConstraintsFile,
     globalRemoteRepos       = combine globalRemoteRepos,
     globalCacheDir          = combine globalCacheDir,
     globalLocalRepos        = combine globalLocalRepos,
@@ -413,7 +423,8 @@ filterConfigureFlags flags cabalLibVersion
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
-                                , configProfLibDetail = NoFlag }
+                                , configProfLibDetail = NoFlag
+                                , configIPID          = NoFlag }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
     flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
@@ -878,6 +889,18 @@ uninstallCommand = CommandUI {
     commandUsage        = usageAlternatives "uninstall" ["PACKAGES"],
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
+  }
+
+manpageCommand :: CommandUI (Flag Verbosity)
+manpageCommand = CommandUI {
+    commandName         = "manpage",
+    commandSynopsis     = "Outputs manpage source.",
+    commandDescription  = Just $ \_ ->
+      "Output manpage source to STDOUT.\n",
+    commandNotes        = Nothing,
+    commandUsage        = usageFlags "manpage",
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> [optionVerbosity id const]
   }
 
 runCommand :: CommandUI (BuildFlags, BuildExFlags)
@@ -1548,6 +1571,7 @@ instance Monoid InstallFlags where
 
 data UploadFlags = UploadFlags {
     uploadCheck       :: Flag Bool,
+    uploadDoc         :: Flag Bool,
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
@@ -1557,6 +1581,7 @@ data UploadFlags = UploadFlags {
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
     uploadCheck       = toFlag False,
+    uploadDoc         = toFlag False,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
@@ -1566,7 +1591,7 @@ defaultUploadFlags = UploadFlags {
 uploadCommand :: CommandUI UploadFlags
 uploadCommand = CommandUI {
     commandName         = "upload",
-    commandSynopsis     = "Uploads source packages to Hackage.",
+    commandSynopsis     = "Uploads source packages or documentation to Hackage.",
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n"
@@ -1580,6 +1605,11 @@ uploadCommand = CommandUI {
       ,option ['c'] ["check"]
          "Do not upload, just do QA checks."
         uploadCheck (\v flags -> flags { uploadCheck = v })
+        trueArg
+
+      ,option ['d'] ["doc"]
+        "Upload documentation instead of a source package. Cannot be used together with --check."
+        uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg
 
       ,option ['u'] ["username"]
@@ -1604,6 +1634,7 @@ uploadCommand = CommandUI {
 instance Monoid UploadFlags where
   mempty = UploadFlags {
     uploadCheck       = mempty,
+    uploadDoc         = mempty,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
@@ -1611,6 +1642,7 @@ instance Monoid UploadFlags where
   }
   mappend a b = UploadFlags {
     uploadCheck       = combine uploadCheck,
+    uploadDoc         = combine uploadDoc,
     uploadUsername    = combine uploadUsername,
     uploadPassword    = combine uploadPassword,
     uploadPasswordCmd = combine uploadPasswordCmd,
@@ -2307,6 +2339,7 @@ paragraph = (++"\n")
 
 indentParagraph :: String -> String
 indentParagraph = unlines
+                . (flip (++)) [""]
                 . map (("  "++).unwords)
                 . wrapLine 77
                 . words

@@ -14,7 +14,7 @@ import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig (BuildTimeSettings(..))
 import           Distribution.Client.ProjectPlanning
 
-import           Distribution.Client.Types (PackageLocation(..), GenericReadyPackage(..), PackageFixedDeps, readyLibraryName)
+import           Distribution.Client.Types (PackageLocation(..), GenericReadyPackage(..), PackageFixedDeps)
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -221,8 +221,8 @@ waitAsyncPackageDownload verbosity downloadMap pkg = do
 
 executeInstallPlan
   :: forall ipkg srcpkg iresult.
-     (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
-      HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
+     (HasComponentId ipkg,   PackageFixedDeps ipkg,
+      HasComponentId srcpkg, PackageFixedDeps srcpkg)
   => Verbosity
   -> JobControl IO ( GenericReadyPackage srcpkg ipkg
                    , GenericBuildResult ipkg iresult BuildFailure )
@@ -478,7 +478,7 @@ buildAndInstallUnpackedPackage verbosity
           -- We register ourselves rather than via Setup.hs. We need to
           -- grab and modify the InstalledPackageInfo. We decide what
           -- the installed package id is, not the build system.
-          let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
+          let ipkg' = ipkg { Installed.installedComponentId = ipkgid }
           Cabal.registerPackage verbosity compiler progdb
                                 True -- multi-instance, nix style
                                 (pkgRegisterPackageDBStack pkg) ipkg'
@@ -534,10 +534,7 @@ buildAndInstallUnpackedPackage verbosity
     mlogFile =
       case buildSettingLogFile of
         Nothing        -> Nothing
-        Just mkLogFile -> Just (mkLogFile compiler platform pkgid libname)
-          where
-            --TODO: [code cleanup] please, can we not get rid of package keys in templates?
-            libname = readyLibraryName compiler rpkg 
+        Just mkLogFile -> Just (mkLogFile compiler platform pkgid ipkgid)
 
     initLogFile =
       case mlogFile of
@@ -620,7 +617,7 @@ buildInplaceUnpackedPackage verbosity
                 -- We register ourselves rather than via Setup.hs. We need to
                 -- grab and modify the InstalledPackageInfo. We decide what
                 -- the installed package id is, not the build system.
-                let ipkg' = ipkg { Installed.installedPackageId = ipkgid }
+                let ipkg' = ipkg { Installed.installedComponentId = ipkgid }
                 Cabal.registerPackage verbosity compiler progdb False
                                       (pkgRegisterPackageDBStack pkg)
                                       ipkg'

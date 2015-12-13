@@ -66,8 +66,12 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration, addKnownPrograms, builtinPrograms
-         , restoreProgramConfiguration, reconfigurePrograms )
+         ( defaultProgramConfiguration, builtinPrograms
+         , restoreProgramConfiguration)
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program.Find
+import Distribution.Simple.Program.Run
+import Distribution.Simple.Program.Types
 import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
@@ -91,9 +95,8 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
-          rawSystemExitWithEnv, cabalVersion, topHandler )
-import Distribution.System
-         ( OS(..), buildOS )
+          cabalVersion, topHandler )
+import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
@@ -106,10 +109,8 @@ import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit       (exitWith,ExitCode(..))
-import System.IO.Error   (isDoesNotExistError)
-import Control.Exception (throwIO)
+import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
-import Distribution.Compat.Exception (catchIO)
 
 import Control.Monad   (when)
 import Data.Foldable   (traverse_)
@@ -626,7 +627,6 @@ autoconfUserHooks
 runConfigureScript :: Verbosity -> Bool -> ConfigFlags -> LocalBuildInfo
                    -> IO ()
 runConfigureScript verbosity backwardsCompatHack flags lbi = do
-
   env <- getEnvironment
   let programConfig = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programConfig
@@ -636,32 +636,25 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- to ccFlags
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
-  let env' = appendToEnvironment ("CFLAGS",  unwords ccFlags)
-             env
+  let extraPath = fromNubList $ configProgramPathExtra flags
+  let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $ lookup "CFLAGS" env
+      spSep = [searchPathSeparator]
+      pathEnv = maybe (intercalate spSep extraPath) ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
+      overEnv = ("CFLAGS", Just cflagsEnv) : [("PATH", Just pathEnv) | not (null extraPath)]
       args' = args ++ ["--with-gcc=" ++ ccProg]
-  handleNoWindowsSH $
-    rawSystemExitWithEnv verbosity "sh" args' env'
+      shProg = simpleProgram "sh"
+      progDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+  shConfiguredProg <- lookupProgram shProg `fmap` configureProgram  verbosity shProg progDb
+  case shConfiguredProg of
+      Just sh -> runProgramInvocation verbosity (programInvocation (sh {programOverrideEnv = overEnv}) args')
+      Nothing -> die notFoundMsg
 
   where
     args = "./configure" : configureArgs backwardsCompatHack flags
 
-    appendToEnvironment (key, val) [] = [(key, val)]
-    appendToEnvironment (key, val) (kv@(k, v) : rest)
-     | key == k  = (key, v ++ " " ++ val) : rest
-     | otherwise = kv : appendToEnvironment (key, val) rest
-
-    handleNoWindowsSH action
-      | buildOS /= Windows
-      = action
-
-      | otherwise
-      = action
-          `catchIO` \ioe -> if isDoesNotExistError ioe
-                              then die notFoundMsg
-                              else throwIO ioe
-
-    notFoundMsg = "The package has a './configure' script. This requires a "
-               ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin."
+    notFoundMsg = "The package has a './configure' script. If you are on Windows, This requires a "
+               ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
+               ++ "If you are not on Windows, ensure that an 'sh' command is discoverable in your path."
 
 getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
 getHookedBuildInfo verbosity = do

@@ -59,6 +59,10 @@ import Data.Set (Set)
 import qualified Data.List as L
 import qualified Data.Set  as S
 
+import Language.Haskell.Extension (Extension(..), Language(..))
+
+import Distribution.Text
+
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Version
@@ -201,7 +205,9 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 
 -- | A dependency (constraint) associates a package name with a
 -- constrained instance.
-data Dep qpn = Dep qpn (CI qpn)
+data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
+             | Ext  Extension     -- dependency on a language extension
+             | Lang Language      -- dependency on a language version
   deriving (Eq, Show, Functor)
 
 showDep :: Dep QPN -> String
@@ -212,6 +218,8 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
+showDep (Ext ext)   = "requires " ++ display ext
+showDep (Lang lang) = "requires " ++ display lang
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -253,6 +261,8 @@ qualifyDeps QO{..} (Q pp' pn) = go
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: Dep PN -> Bool
     qBase (Dep dep _ci) = qoBaseShim && unPackageName dep == "base"
+    qBase (Ext _)       = False
+    qBase (Lang _)      = False
 
     -- Should we qualify this goal with the 'Setup' packaeg path?
     qSetup :: Component -> Bool
@@ -381,6 +391,8 @@ instance ResetGoal CI where
 
 instance ResetGoal Dep where
   resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
+  resetGoal _ (Ext ext)    = Ext ext
+  resetGoal _ (Lang lang)  = Lang lang
 
 instance ResetGoal Goal where
   resetGoal = const
@@ -415,6 +427,10 @@ data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReasonChain
 -- need only during the build phase.
 close :: OpenGoal comp -> Goal QPN
 close (OpenGoal (Simple (Dep qpn _) _) gr) = Goal (P qpn) gr
+close (OpenGoal (Simple (Ext     _) _) _ ) =
+  error "Distribution.Client.Dependency.Modular.Dependency.close: called on Ext goal"
+close (OpenGoal (Simple (Lang    _) _) _ ) =
+  error "Distribution.Client.Dependency.Modular.Dependency.close: called on Lang goal"
 close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
 close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 

@@ -21,6 +21,13 @@ list, which is a good place to ask questions.
 
 [Cabal/tests/README.md]: Cabal/tests/README.md
 
+Setting up on a Unix-like system
+--------------------------------
+
+The instructions below have been compiled into a Bash script which can
+do the setup in a fully automated fashion. See the file `setup-dev.sh`
+in the root directory of this Git repository.
+
 Building Cabal from git cloned sources and running the tests
 ------------------------------------------------------------
 
@@ -91,7 +98,7 @@ To build and test the `Cabal` library, do:
 
     We will refer to this as `PACKAGEDB`.
 
-5. Configure and build Cabal, and run all tests:
+5. Configure and build Cabal, and run all tests.  (Note that many of the package tests require shared libraries, which are not provided by GHC >= 7.8 on Windows: https://ghc.haskell.org/trac/ghc/ticket/8228)
 
     ~~~~
     ./Setup configure --enable-tests --package-db=$PACKAGEDB

@@ -392,12 +392,12 @@ linearizeInstallPlan =
       []          -> Nothing
       ((pkg,_):_) -> Just (pkg, plan')
         where
-          pkgid  = installedPackageId pkg
+          ipkgid = installedPackageId pkg
           ipkg   = Installed.emptyInstalledPackageInfo {
                      Installed.sourcePackageId    = packageId pkg,
-                     Installed.installedPackageId = pkgid
+                     Installed.installedComponentId = ipkgid
                    }
-          plan'  = InstallPlan.completed pkgid (Just ipkg)
+          plan'  = InstallPlan.completed ipkgid (Just ipkg)
                      (BuildOk True DocsNotTried TestsNotTried)
                      (InstallPlan.processing [pkg] plan)
     --TODO: [code cleanup] This is a bit of a hack, pretending that each package is installed

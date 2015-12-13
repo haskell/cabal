@@ -1,0 +1,2 @@
+. ../common.sh
+cabal freeze

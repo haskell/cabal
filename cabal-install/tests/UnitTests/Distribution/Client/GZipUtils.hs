@@ -20,7 +20,9 @@ import Test.Tasty.QuickCheck
 
 tests :: [TestTree]
 tests = [ testCase "maybeDecompress" maybeDecompressUnitTest
-        , testProperty "decompress plain" prop_maybeDecompress_plain
+        -- "decompress plain" property is non-trivial to state,
+        -- maybeDecompress returns input bytestring only if error occurs right at the beginning of the decompression process
+        -- generating such input would essentially duplicate maybeDecompress implementation
         , testProperty "decompress zlib"  prop_maybeDecompress_zlib
         , testProperty "decompress gzip"  prop_maybeDecompress_gzip
         ]
@@ -42,17 +44,13 @@ maybeDecompressUnitTest =
     runBrokenStream :: IO (Either SomeException ())
     runBrokenStream = try . void . evaluate . BSLL.length $ maybeDecompress (BSLL.init compressedZlib <> BSLL.pack "*")
 
-prop_maybeDecompress_plain :: [Word8] -> Property
-prop_maybeDecompress_plain ws = property $ maybeDecompress original == original
-  where original = BSL.pack ws
-
 prop_maybeDecompress_zlib :: [Word8] -> Property
-prop_maybeDecompress_zlib ws = property $ maybeDecompress compressedZlib == original
+prop_maybeDecompress_zlib ws = property $ maybeDecompress compressedZlib === original
   where original = BSL.pack ws
         compressedZlib = Zlib.compress original
 
 prop_maybeDecompress_gzip :: [Word8] -> Property
-prop_maybeDecompress_gzip ws = property $ maybeDecompress compressedGZip == original
+prop_maybeDecompress_gzip ws = property $ maybeDecompress compressedGZip === original
   where original = BSL.pack ws
         compressedGZip = GZip.compress original
 

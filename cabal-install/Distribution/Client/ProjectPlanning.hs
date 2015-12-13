@@ -297,8 +297,8 @@ instance Binary ElaboratedConfiguredPackage
 instance Package ElaboratedConfiguredPackage where
   packageId = pkgSourceId
 
-instance HasInstalledPackageId ElaboratedConfiguredPackage where
-  installedPackageId = pkgInstalledId
+instance HasComponentId ElaboratedConfiguredPackage where
+  installedComponentId = pkgInstalledId
 
 instance PackageFixedDeps ElaboratedConfiguredPackage where
   depends = fmap (map installedPackageId) . pkgDependencies
@@ -1011,7 +1011,7 @@ elaborateInstallPlan platform compiler progdb
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
-          = InstalledPackageId (display pkgid ++ "-inplace")
+          = ComponentId (display pkgid ++ "-inplace")
           
           | otherwise
           = assert (isJust pkgSourceHash) $
@@ -1096,7 +1096,7 @@ elaborateInstallPlan platform compiler progdb
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               (LibraryName (display pkgid))
+               (installedComponentId pkg)
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1160,7 +1160,7 @@ elaborateInstallPlan platform compiler progdb
     -- dir (as opposed to a tarball), or depends on such a package, will be
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
-    shouldBuildInplaceOnly :: HasInstalledPackageId pkg => pkg -> Bool
+    shouldBuildInplaceOnly :: HasComponentId pkg => pkg -> Bool
     shouldBuildInplaceOnly pkg = Set.member (installedPackageId pkg)
                                             pkgsToBuildInplaceOnly
 
@@ -1170,7 +1170,7 @@ elaborateInstallPlan platform compiler progdb
       $ map installedPackageId
       $ InstallPlan.reverseDependencyClosure
           solverPlan
-          [ fakeInstalledPackageId (packageId pkg)
+          [ fakeComponentId (packageId pkg)
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
@@ -1456,7 +1456,7 @@ componentOptionalStanza (Cabal.CBenchName _) = Just BenchStanzas
 componentOptionalStanza _                    = Nothing
 
 
-dependencyClosure :: HasInstalledPackageId pkg
+dependencyClosure :: HasComponentId pkg
                   => (pkg -> [InstalledPackageId])
                   -> [pkg]
                   -> [InstalledPackageId]
@@ -1469,7 +1469,7 @@ dependencyClosure deps allpkgs =
   where
     (graph, vertexToPkg, pkgidToVertex) = dependencyGraph deps allpkgs
 
-dependencyGraph :: HasInstalledPackageId pkg
+dependencyGraph :: HasComponentId pkg
                 => (pkg -> [InstalledPackageId])
                 -> [pkg]
                 -> (Graph.Graph,
@@ -1727,15 +1727,17 @@ setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> FilePath
                       -> Cabal.ConfigFlags
 setupHsConfigureFlags (ReadyPackage
-                         ecpkg@ElaboratedConfiguredPackage{..}
+                         pkg@ElaboratedConfiguredPackage{..}
                          pkgdeps)
                       ElaboratedSharedConfig{..}
                       verbosity builddir =
-    assert (sanityCheckElaboratedConfiguredPackage ecpkg)
+    assert (sanityCheckElaboratedConfiguredPackage pkg)
     Cabal.ConfigFlags {..}
   where
     configDistPref            = toFlag builddir
     configVerbosity           = toFlag verbosity
+
+    configIPID                = toFlag (display (installedComponentId pkg))
 
     configProgramPaths        = programDbProgramPaths pkgConfigProgramDb
     configProgramArgs         = programDbProgramArgs  pkgConfigProgramDb
@@ -1779,7 +1781,7 @@ setupHsConfigureFlags (ReadyPackage
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
     configDependencies        = [ (packageName (Installed.sourcePackageId deppkg),
-                                  Installed.installedPackageId deppkg)
+                                  Installed.installedComponentId deppkg)
                                 | deppkg <- CD.nonSetupDeps pkgdeps ]
     configConstraints         = [ thisPackageVersion (packageId deppkg)
                                 | deppkg <- CD.nonSetupDeps pkgdeps ]
@@ -2030,7 +2032,7 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     -- since overwriting is never safe.
 
     canPackageBeImproved pkg =
-      PackageIndex.lookupInstalledPackageId
+      PackageIndex.lookupComponentId
         installedPkgIndex (installedPackageId pkg)
 
     replaceWithPreExisting =
