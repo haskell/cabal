@@ -18,7 +18,8 @@
 	* Automatically use https for cabal upload for the main
 	hackage.haskell.org (other repos will use whatever they are
 	configured to use).
-	* Support for dependencies of custom Setup.hs scripts.
+	* Support for dependencies of custom Setup.hs scripts
+	(see http://www.well-typed.com/blog/2015/07/cabal-setup-deps/).
 	* 'cabal' program itself now can be used as an external setup
 	method. This fixes an issue when Cabal version mismatch caused
 	unnecessary reconfigures (#2633).
@@ -29,7 +30,9 @@
 	compiler (#2859).
 	* New 'cabal haddock' option: '--for-hackage' (#2852).
 	* Added a warning when the solver cannot find a dependency (#2853).
-	* New 'cabal upload' option: '--doc': upload documentation to hackage (#2890).
+	* New 'cabal upload' option: '--doc': upload documentation to
+	hackage (#2890).
+	* Improved error handling for 'sandbox delete-source' (#2943).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
