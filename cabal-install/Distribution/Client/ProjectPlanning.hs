@@ -2021,7 +2021,8 @@ improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
 improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     replaceWithPreExisting installPlan
       [ ipkg
-      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+      | InstallPlan.Configured pkg
+          <- InstallPlan.reverseTopologicalOrder installPlan
       , ipkg <- maybeToList (canPackageBeImproved pkg) ]
   where
     --TODO: sanity checks:
