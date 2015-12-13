@@ -108,13 +108,14 @@ import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
 import qualified Data.Map                          as M
 import qualified Data.Set                          as S
+import Data.Either                            (partitionEithers)
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl', intersperse, find, (\\))
-import Data.Maybe                             ( fromJust, fromMaybe )
+import Data.List                              ( delete, foldl', intersperse, groupBy)
+import Data.Maybe                             ( fromJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
 #endif
@@ -131,7 +132,6 @@ import System.FilePath                        ( (</>), equalFilePath
                                               , getSearchPath
                                               , searchPathSeparator
                                               , takeDirectory )
-
 
 --
 -- * Constants
@@ -452,26 +452,53 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  (removedPaths, convDict) <- Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
-  removeTimestamps sandboxDir removedPaths
+  (results, convDict) <-
+    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
 
-  let removedRefs = fmap (convertWith convDict) removedPaths
+  let (failedPaths, removedPaths) = partitionEithers results
+      removedRefs = fmap convDict removedPaths
 
-  when (not . null $ removedPaths) $
+  unless (null removedPaths) $ do
+    removeTimestamps sandboxDir removedPaths
+
     notice verbosity $ "Success deleting sources: " ++
-    showL removedRefs ++ "\n\n"
+      showL removedRefs ++ "\n\n"
 
-  when (length buildTreeRefs > length removedPaths) $
-    die $ "Skipped the following nonregistered sources: " ++
-    (showL $ buildTreeRefs \\ removedRefs)
+  unless (null failedPaths) $ do
+    let groupedFailures = groupBy errorType failedPaths
+    mapM_ handleErrors groupedFailures
+    die $ "The sources with the above errors were skipped. (" ++
+      showL (fmap getPath failedPaths) ++ ")"
 
   notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
     "source dependency, but does not remove the package " ++
     "from the sandbox package DB.\n\n" ++
     "Use 'sandbox hc-pkg -- unregister' to do that."
   where
-    convertWith dict pth = fromMaybe pth $ fmap fst $ find ((==pth) . snd) dict
-    showL = concat . intersperse " " . fmap show
+    getPath (Index.ErrNonregisteredSource p) = p
+    getPath (Index.ErrNonexistentSource p) = p
+
+    showPaths f = concat . intersperse " " . fmap (show . f)
+
+    showL = showPaths id
+
+    showE [] = return ' '
+    showE errs = showPaths getPath errs
+
+    errorType Index.ErrNonregisteredSource{} Index.ErrNonregisteredSource{} =
+      True
+    errorType Index.ErrNonexistentSource{} Index.ErrNonexistentSource{} = True
+    errorType _ _ = False
+
+    handleErrors [] = return ()
+    handleErrors errs@(Index.ErrNonregisteredSource{}:_) =
+      warn verbosity ("Sources not registered: " ++ showE errs ++ "\n\n")
+    handleErrors errs@(Index.ErrNonexistentSource{}:_)   =
+      warn verbosity
+      ("Source directory not found for paths: " ++ showE errs ++ "\n"
+       ++ "If you are trying to delete a reference to a removed directory, "
+       ++ "please provide the full absolute path "
+       ++ "(as given by `sandbox list-sources`).\n\n")
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
@@ -560,8 +587,10 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- Neither @cabal.sandbox.config@ nor @cabal.config@ are present.
     AmbientPackageEnvironment -> do
       config <- loadConfig verbosity configFileFlag
-      let globalConstraintsOpt = flagToMaybe . globalConstraintsFile . savedGlobalFlags $ config
-      globalConstraintConfig <- loadUserConfig verbosity pkgEnvDir globalConstraintsOpt
+      let globalConstraintsOpt =
+            flagToMaybe . globalConstraintsFile . savedGlobalFlags $ config
+      globalConstraintConfig <-
+        loadUserConfig verbosity pkgEnvDir globalConstraintsOpt
       let config' = config `mappend` globalConstraintConfig
       dieIfSandboxRequired config
       return (NoSandbox, config')
@@ -652,7 +681,9 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
       die' message = die (message ++ installFailedInSandbox)
       -- TODO: use a better error message, remove duplication.
       installFailedInSandbox =
-        "Note: when using a sandbox, all packages are required to have consistent dependencies. Try reinstalling/unregistering the offending packages or recreating the sandbox."
+        "Note: when using a sandbox, all packages are required to have consistent "
+        ++ "dependencies. Try reinstalling/unregistering the offending packages "
+        ++ "or recreating the sandbox."
       logMsg message rest = debugNoWrap verbosity message >> rest
 
       topHandler' = topHandlerWith $ \_ -> do
