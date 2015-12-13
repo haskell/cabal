@@ -21,7 +21,6 @@ module Distribution.Simple.BuildTarget (
     -- * Parsing user build targets
     UserBuildTarget,
     readUserBuildTargets,
-    showUserBuildTarget,
     UserBuildTargetProblem(..),
     reportUserBuildTargetProblems,
 

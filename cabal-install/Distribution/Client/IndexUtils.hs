@@ -95,7 +95,6 @@ getInstalledPackages verbosity comp packageDbs conf =
     --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
 
-
 ------------------------------------------------------------------------
 -- Reading the source package index
 --

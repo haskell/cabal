@@ -38,8 +38,7 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion
-         , HasComponentId(..) )
+         ( Package, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -201,11 +200,11 @@ pruneInstallPlan :: InstallPlan
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    InstallPlan.dependencyClosure installPlan pkgIds
+    InstallPlan.dependencyClosure installPlan (map fakeComponentId pkgIds)
   where
-    pkgIds = [ fakeComponentId (packageId pkg)
+    pkgIds = [ packageId pkg
              | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    removeSelf [thisPkg] = filter (\pp -> installedComponentId pp /= thisPkg)
+    removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)
     removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
                          ++ "unexpected package specifiers!"
 
