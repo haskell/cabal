@@ -304,7 +304,8 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
 externalSetupMethod :: SetupMethod
 externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
-  debug verbosity $ "Using explicit dependencies: " ++ show (useDependenciesExclusive options)
+  debug verbosity $ "Using explicit dependencies: "
+    ++ show (useDependenciesExclusive options)
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
   debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
