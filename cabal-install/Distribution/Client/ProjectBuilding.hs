@@ -14,14 +14,17 @@ import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig (BuildTimeSettings(..))
 import           Distribution.Client.ProjectPlanning
 
-import           Distribution.Client.Types (PackageLocation(..), GenericReadyPackage(..), PackageFixedDeps)
+import           Distribution.Client.Types
+                   ( PackageLocation(..), GenericReadyPackage(..)
+                   , PackageFixedDeps, installedPackageId )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.FileStatusCache (Changed(..), checkFileMonitorChanged, updateFileMonitor)
+import           Distribution.Client.FileStatusCache
+                   ( Changed(..), checkFileMonitorChanged, updateFileMonitor )
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.HttpUtils

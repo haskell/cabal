@@ -34,7 +34,7 @@ module Distribution.Package (
 
         -- * Package classes
         Package(..), packageName, packageVersion,
-        HasComponentId(..), installedPackageId,
+        HasComponentId(..),
         PackageInstalled(..),
   ) where
 
@@ -116,9 +116,6 @@ data ComponentId
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 type InstalledPackageId = ComponentId
-
-installedPackageId :: HasComponentId pkg => pkg -> InstalledPackageId
-installedPackageId = installedComponentId
 
 instance Binary ComponentId
 

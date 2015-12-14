@@ -57,11 +57,11 @@ import Distribution.InstalledPackageInfo
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasComponentId(..), ComponentId(..)
-         , InstalledPackageId, installedPackageId )
+         , InstalledPackageId )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
          , PackageFixedDeps(..), ConfiguredPackage
-         , GenericReadyPackage(..), fakeComponentId )
+         , GenericReadyPackage(..), fakeComponentId, installedPackageId )
 import Distribution.Version
          ( Version )
 import Distribution.Client.ComponentDeps (ComponentDeps)

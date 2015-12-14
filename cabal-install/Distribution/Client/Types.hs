@@ -17,7 +17,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..), Dependency
-         , ComponentId(..)
+         , ComponentId(..), InstalledPackageId
          , HasComponentId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -60,6 +60,9 @@ instance Binary SourcePackageDb
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
+
+installedPackageId :: HasComponentId pkg => pkg -> InstalledPackageId
+installedPackageId = installedComponentId
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
@@ -166,26 +169,7 @@ instance HasComponentId srcpkg =>
   installedComponentId (ReadyPackage pkg _) = installedComponentId pkg
 
 instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg)
-{-
--- | Extracts a package key from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyPackageKey :: Package srcpkg
-                => Compiler
-                -> GenericReadyPackage srcpkg InstalledPackageInfo
-                -> PackageKey
-readyPackageKey comp (ReadyPackage pkg deps) =
-    mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.libraryName (CD.nonSetupDeps deps))
 
--- | Extracts a library name from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyLibraryName :: Package srcpkg
-                 => Compiler
-                 -> GenericReadyPackage srcpkg InstalledPackageInfo
-                 -> LibraryName
-readyLibraryName comp rpkg =
-    packageKeyLibraryName (packageId rpkg) (readyPackageKey comp rpkg)
--}
 
 -- | A package description along with the location of the package sources.
 --
