@@ -641,7 +641,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       spSep = [searchPathSeparator]
       pathEnv = maybe (intercalate spSep extraPath) ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) : [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = args ++ ["--with-gcc=" ++ ccProg]
+      args' = args ++ ["CC=" ++ ccProg]
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
   shConfiguredProg <- lookupProgram shProg `fmap` configureProgram  verbosity shProg progDb
