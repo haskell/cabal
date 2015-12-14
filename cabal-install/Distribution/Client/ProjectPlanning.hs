@@ -375,8 +375,12 @@ instance Binary DocsResult
 instance Binary TestsResult
 
 
-sanityCheckElaboratedConfiguredPackage :: ElaboratedConfiguredPackage -> Bool
-sanityCheckElaboratedConfiguredPackage ElaboratedConfiguredPackage{..} =
+sanityCheckElaboratedConfiguredPackage :: ElaboratedSharedConfig
+                                       -> ElaboratedConfiguredPackage
+                                       -> Bool
+sanityCheckElaboratedConfiguredPackage sharedConfig
+                                       pkg@ElaboratedConfiguredPackage{..} =
+
     pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable
 
     -- the stanzas explicitly enabled should be available and enabled
@@ -386,6 +390,13 @@ sanityCheckElaboratedConfiguredPackage ElaboratedConfiguredPackage{..} =
     -- the stanzas explicitly disabled should not be available
  && Set.null (Map.keysSet (Map.filter not pkgStanzasRequested)
                 `Set.intersection` pkgStanzasAvailable)
+
+ && (pkgBuildStyle == BuildInplaceOnly ||
+     installedPackageId pkg == hashedInstalledPackageId
+                                 (packageHashInputs sharedConfig pkg))
+
+ && (pkgBuildStyle == BuildInplaceOnly ||
+     Set.null pkgStanzasAvailable)
 
 
 ------------------------------------------------------------------------------
@@ -649,6 +660,10 @@ findProjectCabalFiles ProjectConfig{..} = do
     monitorFiles (map MonitorFileGlob projectConfigPackageGlobs)
     liftIO $ map (projectConfigRootDir </>) . concat
          <$> mapM (matchFileGlob projectConfigRootDir) projectConfigPackageGlobs
+    --TODO: certain package things must match. Globs perhaps can match nothing,
+    -- but specific files really must match or fail noisily.
+    -- silently matching nothing is not ok.
+
 
 readSourcePackage :: Verbosity -> FilePath -> Rebuild SourcePackage
 readSourcePackage verbosity cabalFile = do
@@ -1729,9 +1744,9 @@ setupHsConfigureFlags :: ElaboratedReadyPackage
 setupHsConfigureFlags (ReadyPackage
                          pkg@ElaboratedConfiguredPackage{..}
                          pkgdeps)
-                      ElaboratedSharedConfig{..}
+                      sharedConfig@ElaboratedSharedConfig{..}
                       verbosity builddir =
-    assert (sanityCheckElaboratedConfiguredPackage pkg)
+    assert (sanityCheckElaboratedConfiguredPackage sharedConfig pkg)
     Cabal.ConfigFlags {..}
   where
     configDistPref            = toFlag builddir
