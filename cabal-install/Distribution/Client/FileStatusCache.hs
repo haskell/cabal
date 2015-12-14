@@ -213,8 +213,11 @@ checkFileMonitorChanged (FileMonitorCacheFile monitorStateFile)
                         root currentKey =
 
     -- Consider it a change if the cache file does not exist,
-    -- or we cannot decode it.
+    -- or we cannot decode it. Sadly ErrorCall can still happen, despite
+    -- using decodeFileOrFail, e.g. Data.Char.chr errors
+
     handleDoesNotExist (Changed Nothing) $
+    handleErrorCall    (Changed Nothing) $
           Binary.decodeFileOrFail monitorStateFile
       >>= either (\_ -> return (Changed Nothing))
                  checkStatusCache
@@ -571,6 +574,10 @@ handleDoesNotExist e =
     handleJust
       (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
       (\_ -> return e)
+
+handleErrorCall :: a -> IO a -> IO a
+handleErrorCall e =
+    handle (\(ErrorCall _) -> return e)
 
 ------------------------------------------------------------------------------
 -- Instances
