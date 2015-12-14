@@ -90,7 +90,7 @@ data Compiler = Compiler {
         compilerProperties      :: M.Map String String
         -- ^ A key-value map for properties not covered by the above fields.
     }
-    deriving (Generic, Show, Read)
+    deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
 

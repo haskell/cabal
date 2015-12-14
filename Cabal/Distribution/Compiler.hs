@@ -180,7 +180,7 @@ instance Binary CompilerInfo
 data AbiTag
   = NoAbiTag
   | AbiTag String
-  deriving (Generic, Show, Read)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary AbiTag
 

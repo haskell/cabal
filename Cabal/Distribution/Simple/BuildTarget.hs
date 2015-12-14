@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -53,6 +54,8 @@ import Data.Maybe
          ( listToMaybe, catMaybes )
 import Data.Either
          ( partitionEithers )
+import Distribution.Compat.Binary (Binary)
+import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Control.Monad
 import Control.Applicative as AP (Alternative(..), Applicative(..))
@@ -123,8 +126,9 @@ data BuildTarget =
      -- | A specific file within a specific component.
      --
    | BuildTargetFile ComponentName FilePath
-  deriving (Show,Eq)
+  deriving (Eq, Show, Generic)
 
+instance Binary BuildTarget
 
 -- | Read a list of user-supplied build target strings and resolve them to
 -- 'BuildTarget's according to a 'PackageDescription'. If there are problems

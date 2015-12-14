@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP, DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program.Find
@@ -42,7 +44,8 @@ import System.FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator )
 import Data.List
          ( intercalate )
-
+import Distribution.Compat.Binary
+import GHC.Generics
 
 -- | A search path to use when locating executables. This is analogous
 -- to the unix @$PATH@ or win32 @%PATH%@ but with the ability to use
@@ -60,6 +63,9 @@ type ProgramSearchPath = [ProgramSearchPathEntry]
 data ProgramSearchPathEntry =
          ProgramSearchPathDir FilePath  -- ^ A specific dir
        | ProgramSearchPathDefault       -- ^ The system default
+  deriving (Eq, Generic)
+
+instance Binary ProgramSearchPathEntry
 
 defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]
