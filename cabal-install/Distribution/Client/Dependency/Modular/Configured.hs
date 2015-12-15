@@ -1,4 +1,6 @@
-module Distribution.Client.Dependency.Modular.Configured where
+module Distribution.Client.Dependency.Modular.Configured
+    ( CP(..)
+    ) where
 
 import Distribution.PackageDescription (FlagAssignment) -- from Cabal
 import Distribution.Client.Types (OptionalStanza)

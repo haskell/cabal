@@ -1,5 +1,20 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
-module Distribution.Client.Dependency.Modular.Tree where
+module Distribution.Client.Dependency.Modular.Tree
+    ( FailReason(..)
+    , POption(..)
+    , Tree(..)
+    , TreeF(..)
+    , ana
+    , anaM
+    , cata
+    , cataM
+    , choices
+    , inn
+    , innM
+    , lchoices
+    , para
+    , trav
+    ) where
 
 import Control.Monad hiding (mapM, sequence)
 import Data.Foldable
@@ -9,7 +24,8 @@ import Prelude hiding (foldr, mapM, sequence)
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.PSQ as P
+import Distribution.Client.Dependency.Modular.PSQ (PSQ)
+import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Version
 import Distribution.Client.Dependency.Types ( ConstraintSource(..) )
 

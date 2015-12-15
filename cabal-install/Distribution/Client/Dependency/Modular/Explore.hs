@@ -1,4 +1,8 @@
-module Distribution.Client.Dependency.Modular.Explore where
+module Distribution.Client.Dependency.Modular.Explore
+    ( backjump
+    , exploreTree
+    , exploreTreeLog
+    ) where
 
 import Control.Applicative as A
 import Data.Foldable
@@ -11,7 +15,7 @@ import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Log
 import Distribution.Client.Dependency.Modular.Message
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 
 -- | Backjumping.
@@ -93,7 +97,7 @@ explore = cata go
         (\ k r -> r (A pa fa (M.insert qsn k sa))) -- record the flag choice
       ts
     go (GoalChoiceF        ts) a              =
-      casePSQ ts A.empty                      -- empty goal choice is an internal error
+      P.casePSQ ts A.empty                    -- empty goal choice is an internal error
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
 
 -- | Version of 'explore' that returns a 'Log'.
@@ -125,7 +129,7 @@ exploreLog = cata go
                     r (A pa fa (M.insert qsn k sa))) -- record the pkg choice
       ts
     go (GoalChoiceF        ts) a           =
-      casePSQ ts
+      P.casePSQ ts
         (failWith (Failure S.empty EmptyGoalChoice))   -- empty goal choice is an internal error
         (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
 

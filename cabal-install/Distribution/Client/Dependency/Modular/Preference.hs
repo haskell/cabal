@@ -1,5 +1,22 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Client.Dependency.Modular.Preference where
+module Distribution.Client.Dependency.Modular.Preference
+    ( avoidReinstalls
+    , deferSetupChoices
+    , deferWeakFlagChoices
+    , enforceManualFlags
+    , enforcePackageConstraints
+    , enforceSingleInstanceRestriction
+    , firstGoal
+    , lpreferEasyGoalChoices
+    , preferBaseGoalChoice
+    , preferEasyGoalChoices
+    , preferEasyGoalChoices'
+    , preferInstalled
+    , preferLatest
+    , preferLinked
+    , preferPackagePreferences
+    , requireInstalled
+    ) where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
@@ -25,7 +42,7 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
 
@@ -251,7 +268,7 @@ avoidReinstalls p = trav go
       | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
-          let installed = [ v | (POption (I v (Inst _)) _, _) <- toList cs ]
+          let installed = [ v | (POption (I v (Inst _)) _, _) <- P.toList cs ]
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
@@ -269,8 +286,8 @@ avoidReinstalls p = trav go
 firstGoal :: Tree a -> Tree a
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = -- casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
-                          casePSQ xs (GoalChoiceF (fromList [])) (\ g t _ -> GoalChoiceF (fromList [(g, t)]))
+    go (GoalChoiceF xs) = -- P.casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
+                          P.casePSQ xs (GoalChoiceF (P.fromList [])) (\ g t _ -> GoalChoiceF (P.fromList [(g, t)]))
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 

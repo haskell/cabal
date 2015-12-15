@@ -1,4 +1,12 @@
-module Distribution.Client.Dependency.Modular.Assignment where
+module Distribution.Client.Dependency.Modular.Assignment
+    ( Assignment(..)
+    , FAssignment
+    , SAssignment
+    , PreAssignment(..)
+    , extend
+    , finalize
+    , toCPs
+    ) where
 
 import Control.Applicative
 import Control.Monad

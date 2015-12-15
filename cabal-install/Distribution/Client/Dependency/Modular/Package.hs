@@ -1,7 +1,28 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Client.Dependency.Modular.Package
-  (module Distribution.Client.Dependency.Modular.Package,
-   module Distribution.Package) where
+  ( ComponentId
+  , I(..)
+  , Loc(..)
+  , PackageId
+  , PackageIdentifier(..)
+  , PackageName(..)
+  , PI(..)
+  , PN
+  , PP(..)
+  , QPN
+  , QPV
+  , Q(..)
+  , instI
+  , instPI
+  , makeIndependent
+  , primaryPP
+  , showI
+  , showPI
+  , showQPN
+  , stripBase
+  , unPN
+  , unQualify
+  ) where
 
 import Data.List as L
 

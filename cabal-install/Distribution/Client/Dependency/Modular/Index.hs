@@ -1,4 +1,9 @@
-module Distribution.Client.Dependency.Modular.Index where
+module Distribution.Client.Dependency.Modular.Index
+    ( Index
+    , PInfo(..)
+    , defaultQualifyOptions
+    , mkIndex
+    ) where
 
 import Data.List as L
 import Data.Map as M

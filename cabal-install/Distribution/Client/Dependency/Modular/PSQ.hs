@@ -1,5 +1,28 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveFoldable, DeriveTraversable #-}
-module Distribution.Client.Dependency.Modular.PSQ where
+module Distribution.Client.Dependency.Modular.PSQ
+    ( PSQ(..)  -- Unit test needs constructor access
+    , casePSQ
+    , cons
+    , delete
+    , length
+    , llength
+    , lookup
+    , filter
+    , filterKeys
+    , fromList
+    , keys
+    , map
+    , mapKeys
+    , mapWithKey
+    , mapWithKeyState
+    , null
+    , snoc
+    , sortBy
+    , sortByKeys
+    , splits
+    , toList
+    , union
+    ) where
 
 -- Priority search queues.
 --
@@ -8,14 +31,14 @@ module Distribution.Client.Dependency.Modular.PSQ where
 -- (inefficiently implemented) lookup, because I think that queue-based
 -- operations and sorting turn out to be more efficiency-critical in practice.
 
-import Data.Foldable
+import qualified Data.Foldable as F
 import Data.Function
-import Data.List as S hiding (foldr)
+import qualified Data.List as S
 import Data.Traversable
-import Prelude hiding (foldr)
+import Prelude hiding (foldr, length, lookup, filter, null, map)
 
 newtype PSQ k v = PSQ [(k, v)]
-  deriving (Eq, Show, Functor, Foldable, Traversable)
+  deriving (Eq, Show, Functor, F.Foldable, Traversable) -- Qualified Foldable to avoid issues with FTP
 
 keys :: PSQ k v -> [k]
 keys (PSQ xs) = fmap fst xs
@@ -34,12 +57,12 @@ mapWithKey f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f k v)) xs)
 
 mapWithKeyState :: (s -> k -> a -> (b, s)) -> PSQ k a -> s -> PSQ k b
 mapWithKeyState p (PSQ xs) s0 =
-  PSQ (foldr (\ (k, v) r s -> case p s k v of
-                                (w, n) -> (k, w) : (r n))
-             (const []) xs s0)
+  PSQ (F.foldr (\ (k, v) r s -> case p s k v of
+                                  (w, n) -> (k, w) : (r n))
+               (const []) xs s0)
 
 delete :: Eq k => k -> PSQ k a -> PSQ k a
-delete k (PSQ xs) = PSQ (snd (partition ((== k) . fst) xs))
+delete k (PSQ xs) = PSQ (snd (S.partition ((== k) . fst) xs))
 
 fromList :: [(k, a)] -> PSQ k a
 fromList = PSQ

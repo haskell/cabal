@@ -1,4 +1,6 @@
-module Distribution.Client.Dependency.Modular.ConfiguredConversion where
+module Distribution.Client.Dependency.Modular.ConfiguredConversion
+    ( convCP
+    ) where
 
 import Data.Maybe
 import Prelude hiding (pi)

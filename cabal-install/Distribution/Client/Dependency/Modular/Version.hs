@@ -1,4 +1,16 @@
-module Distribution.Client.Dependency.Modular.Version where
+module Distribution.Client.Dependency.Modular.Version
+    ( Ver
+    , VR
+    , anyVR
+    , checkVR
+    , eqVR
+    , mkV
+    , showVer
+    , showVR
+    , simplifyVR
+    , (.&&.)
+    , (.||.)
+    ) where
 
 import qualified Distribution.Version as CV -- from Cabal
 import Distribution.Text -- from Cabal
