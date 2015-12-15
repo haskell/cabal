@@ -247,13 +247,13 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
             else "Registering"
   setupMessage verbosity msg (packageId pkg)
   case compilerFlavor (compiler lbi) of
-    GHC   -> GHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
-    GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
-    LHC   -> LHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
-    UHC   -> UHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
+    GHC   -> GHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
+    GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo lbi packageDbs
+    LHC   -> LHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
+    UHC   -> UHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
-      HaskellSuite.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+      HaskellSuite.registerPackage verbosity installedPkgInfo lbi packageDbs
     _    -> die "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity

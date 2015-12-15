@@ -265,12 +265,10 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 registerPackage
   :: Verbosity
   -> InstalledPackageInfo
-  -> PackageDescription
   -> LocalBuildInfo
-  -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+registerPackage verbosity installedPkgInfo lbi packageDbs = do
     dbdir <- case last packageDbs of
       GlobalPackageDB       -> getGlobalPackageDir verbosity (withPrograms lbi)
       UserPackageDB         -> getUserPackageDir

@@ -775,12 +775,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 registerPackage
   :: Verbosity
   -> InstalledPackageInfo
-  -> PackageDescription
   -> LocalBuildInfo
-  -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
+registerPackage verbosity installedPkgInfo lbi packageDbs =
   HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
     (Right installedPkgInfo)
 
