@@ -313,27 +313,22 @@ reregisterInvocation = registerInvocation' "update"
 registerInvocation' :: String -> HcPkgInfo -> Verbosity -> PackageDBStack
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
-registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
-    programInvocation (hcPkgProgram hpi) args
-  where
-    args = [cmdname, pkgFile]
-        ++ (if noPkgDbStack hpi
-              then [packageDbOpts hpi (last packagedbs)]
-              else packageDbStackOpts hpi packagedbs)
-        ++ verbosityOpts hpi verbosity
+registerInvocation' cmdname hpi verbosity packagedbs pkgFileOrInfo =
+    case pkgFileOrInfo of
+      Left pkgFile ->
+        programInvocation (hcPkgProgram hpi) (args pkgFile)
 
-registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
-    (programInvocation (hcPkgProgram hpi) args) {
-      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
-      progInvokeInputEncoding = IOEncodingUTF8
-    }
+      Right pkgInfo ->
+        (programInvocation (hcPkgProgram hpi) (args "-")) {
+          progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+          progInvokeInputEncoding = IOEncodingUTF8
+        }
   where
-    args = [cmdname, "-"]
-        ++ (if noPkgDbStack hpi
-              then [packageDbOpts hpi (last packagedbs)]
-              else packageDbStackOpts hpi packagedbs)
-        ++ verbosityOpts hpi verbosity
-
+    args file = [cmdname, file]
+             ++ (if noPkgDbStack hpi
+                   then [packageDbOpts hpi (last packagedbs)]
+                   else packageDbStackOpts hpi packagedbs)
+             ++ verbosityOpts hpi verbosity
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
                      -> ProgramInvocation
