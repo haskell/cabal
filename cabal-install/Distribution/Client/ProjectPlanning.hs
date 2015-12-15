@@ -898,13 +898,10 @@ planPackages comp platform solver solverconfig
           , pkg <- localPackages
           , let pkgname = packageName pkg ]
 
-      . reinstallTargets  --TODO: [required eventually] do we want this? we already hide all installed packages in the store from the solver
-
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb
         (map SpecificSourcePackage localPackages)
 
---    reinstall        = fromFlag projectConfigSolverReinstall
     reorderGoals     = fromFlag projectConfigSolverReorderGoals
     independentGoals = fromFlag projectConfigSolverIndependentGoals
     avoidReinstalls  = fromFlag projectConfigSolverAvoidReinstalls
