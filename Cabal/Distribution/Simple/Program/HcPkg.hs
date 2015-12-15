@@ -304,18 +304,20 @@ initInvocation hpi verbosity path =
     args = ["init", path]
         ++ verbosityOpts hpi verbosity
 
-registerInvocation, reregisterInvocation
+registerInvocation, reregisterInvocation, registerMultiInstanceInvocation
   :: HcPkgInfo -> Verbosity -> PackageDBStack
   -> Either FilePath InstalledPackageInfo
   -> ProgramInvocation
-registerInvocation   = registerInvocation' "register"
-reregisterInvocation = registerInvocation' "update"
+registerInvocation   = registerInvocation' "register" False
+reregisterInvocation = registerInvocation' "update"   False
+registerMultiInstanceInvocation = registerInvocation' "update" True
 
-
-registerInvocation' :: String -> HcPkgInfo -> Verbosity -> PackageDBStack
+registerInvocation' :: String -> Bool
+                    -> HcPkgInfo -> Verbosity -> PackageDBStack
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
-registerInvocation' cmdname hpi verbosity packagedbs pkgFileOrInfo =
+registerInvocation' cmdname multiInstance hpi
+                    verbosity packagedbs pkgFileOrInfo =
     case pkgFileOrInfo of
       Left pkgFile ->
         programInvocation (hcPkgProgram hpi) (args pkgFile)
@@ -330,6 +332,7 @@ registerInvocation' cmdname hpi verbosity packagedbs pkgFileOrInfo =
              ++ (if noPkgDbStack hpi
                    then [packageDbOpts hpi (last packagedbs)]
                    else packageDbStackOpts hpi packagedbs)
+             ++ [ "--enable-multi-instance" | multiInstance ]
              ++ verbosityOpts hpi verbosity
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
@@ -337,6 +340,14 @@ unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
 unregisterInvocation hpi verbosity packagedb pkgid =
   programInvocation (hcPkgProgram hpi) $
        ["unregister", packageDbOpts hpi packagedb, display pkgid]
+    ++ verbosityOpts hpi verbosity
+
+
+recacheInvocation :: HcPkgInfo -> Verbosity -> PackageDB
+                  -> ProgramInvocation
+recacheInvocation hpi verbosity packagedb =
+  programInvocation (hcPkgProgram hpi) $
+       ["recache", packageDbOpts hpi packagedb]
     ++ verbosityOpts hpi verbosity
 
 
