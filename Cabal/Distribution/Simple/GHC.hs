@@ -34,7 +34,10 @@
 
 module Distribution.Simple.GHC (
         getGhcInfo,
-        configure, getInstalledPackages, getPackageDBContents,
+        configure,
+        getInstalledPackages,
+        getInstalledPackagesMonitorFiles,
+        getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
         startInterpreter,
@@ -335,6 +338,19 @@ getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
+getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath
+getUserPackageDB _verbosity ghcProg (Platform arch os) = do
+    appdir <- getAppUserDataDirectory "ghc"
+    return (appdir </> platformAndVersion </> packageConfFileName)
+  where
+    platformAndVersion = intercalate "-" [ Internal.showArchString arch
+                                         , Internal.showOsString os
+                                         , display ghcVersion ]
+    packageConfFileName
+      | ghcVersion >= Version [6,12] []  = "package.conf.d"
+      | otherwise                        = "package.conf"
+    Just ghcVersion = programVersion ghcProg
+
 checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
     Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
@@ -420,6 +436,31 @@ getInstalledPackages' verbosity packagedbs conf = do
     Just ghcProg = lookupProgram ghcProgram conf
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
+
+getInstalledPackagesMonitorFiles :: Verbosity -> Platform
+                                 -> ProgramConfiguration
+                                 -> [PackageDB]
+                                 -> IO [FilePath]
+getInstalledPackagesMonitorFiles verbosity platform progdb =
+    mapM getPackageDBPath
+  where
+    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath GlobalPackageDB =
+      selectMonitorFile =<< getGlobalPackageDB verbosity ghcProg
+
+    getPackageDBPath UserPackageDB =
+      selectMonitorFile =<< getUserPackageDB verbosity ghcProg platform
+
+    getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
+
+    -- GHC has old style file dbs, and new style directory dbs.
+    selectMonitorFile path = do
+      isFileStyle <- doesFileExist path
+      if isFileStyle then return path
+                     else return (path </> "package.cache")
+
+    Just ghcProg = lookupProgram ghcProgram progdb
+
 
 -- -----------------------------------------------------------------------------
 -- Building
