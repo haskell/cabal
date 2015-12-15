@@ -28,6 +28,10 @@ module Distribution.Simple.Register (
     unregister,
 
     initPackageDB,
+    doesPackageDBExist,
+    createPackageDB,
+    deletePackageDB,
+
     invokeHcPkg,
     registerPackage,
     generateRegistrationInfo,
@@ -82,7 +86,8 @@ import Distribution.Verbosity as Verbosity
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
-         ( getCurrentDirectory )
+         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
+         , doesDirectoryExist, doesFileExist )
 
 import Data.Version
 import Control.Monad (when)
@@ -225,6 +230,22 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
       _              -> die $ "Distribution.Simple.Register.createPackageDB: "
                            ++ "not implemented for this compiler"
 
+doesPackageDBExist :: FilePath -> IO Bool
+doesPackageDBExist dbPath = do
+    -- currently one impl for all compiler flavours, but could change if needed
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then return True
+        else doesFileExist dbPath
+
+deletePackageDB :: FilePath -> IO ()
+deletePackageDB dbPath = do
+    -- currently one impl for all compiler flavours, but could change if needed
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then removeDirectoryRecursive dbPath
+        else do file_exists <- doesFileExist dbPath
+                when file_exists $ removeFile dbPath
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.
