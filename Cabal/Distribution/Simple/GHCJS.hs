@@ -823,12 +823,18 @@ adjustExts hiSuf objSuf opts =
 
 registerPackage :: Verbosity
                 -> ProgramConfiguration
+                -> Bool
                 -> PackageDBStack
                 -> InstalledPackageInfo
                 -> IO ()
-registerPackage verbosity progdb packageDbs installedPkgInfo =
-  HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
-    (Right installedPkgInfo)
+registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
+  | multiInstance
+  = HcPkg.registerMultiInstance (hcPkgInfo progdb) verbosity
+      packageDbs installedPkgInfo
+
+  | otherwise
+  = HcPkg.reregister (hcPkgInfo progdb) verbosity
+      packageDbs (Right installedPkgInfo)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
