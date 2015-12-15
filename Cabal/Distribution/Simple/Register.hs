@@ -116,7 +116,8 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
        | otherwise             -> do
            setupMessage verbosity "Registering" (packageId pkg)
-           registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+           registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                           packageDbs installedPkgInfo
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -236,13 +237,12 @@ withHcPkg name comp conf f =
                   \not implemented for this compiler")
 
 registerPackage :: Verbosity
-                -> InstalledPackageInfo
-                -> PackageDescription
-                -> LocalBuildInfo
-                -> Bool
+                -> Compiler
+                -> ProgramConfiguration
                 -> PackageDBStack
+                -> InstalledPackageInfo
                 -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
   case compilerFlavor comp of
     GHC   -> GHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
     GHCJS -> GHCJS.registerPackage verbosity      progdb packageDbs installedPkgInfo
@@ -252,9 +252,6 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
     HaskellSuite {} ->
       HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _    -> die "Registering is not implemented for this compiler"
-  where
-    comp   = compiler lbi
-    progdb = withPrograms lbi
 
 writeHcPkgRegisterScript :: Verbosity
                          -> InstalledPackageInfo

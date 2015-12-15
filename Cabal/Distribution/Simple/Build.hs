@@ -209,9 +209,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
                                                        (IPI.AbiHash "") lib' lbi clbi
 
-    registerPackage verbosity
-      installedPkgInfo pkg_descr lbi True -- True meaning in place
-      (withPackageDB lbi)
+    registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                    (withPackageDB lbi) installedPkgInfo
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
@@ -251,7 +250,8 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     extras <- preprocessExtras comp lbi
     info verbosity $ "Building test suite " ++ testName test ++ "..."
     buildLib verbosity numJobs pkg lbi lib libClbi
-    registerPackage verbosity ipi pkg lbi True $ withPackageDB lbi
+    registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                    (withPackageDB lbi) ipi
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
