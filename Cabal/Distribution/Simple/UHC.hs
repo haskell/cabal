@@ -16,7 +16,7 @@
 
 module Distribution.Simple.UHC (
     configure, getInstalledPackages,
-    buildLib, buildExe, installLib, registerPackage
+    buildLib, buildExe, installLib, registerPackage, inplacePackageDbPath
   ) where
 
 import Control.Monad
@@ -281,3 +281,6 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
   where
     pkgid      = sourcePackageId installedPkgInfo
     compilerid = compilerId comp
+
+inplacePackageDbPath :: LocalBuildInfo -> FilePath
+inplacePackageDbPath lbi = buildDir lbi

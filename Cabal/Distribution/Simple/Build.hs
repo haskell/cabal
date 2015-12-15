@@ -63,11 +63,11 @@ import Distribution.Simple.LocalBuildInfo
          , ComponentDisabledReason(..), componentDisabledReason )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
-import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
-         ( registerPackage, inplaceInstalledPackageInfo )
+         ( registerPackage, inplaceInstalledPackageInfo
+         , doesPackageDBExist, deletePackageDB, createPackageDB )
 import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
@@ -89,8 +89,7 @@ import Control.Monad
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
-         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
-         , doesDirectoryExist, doesFileExist )
+         ( getCurrentDirectory )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -472,22 +471,14 @@ benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
                         -> IO PackageDB
 createInternalPackageDB verbosity lbi distPref = do
-    case compilerFlavor (compiler lbi) of
-      GHC   -> createWith $ GHC.hcPkgInfo   (withPrograms lbi)
-      GHCJS -> createWith $ GHCJS.hcPkgInfo (withPrograms lbi)
-      LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
-      _     -> return packageDB
-    where
-      dbPath = distPref </> "package.conf.inplace"
-      packageDB = SpecificPackageDB dbPath
-      createWith hpi = do
-        dir_exists <- doesDirectoryExist dbPath
-        if dir_exists
-            then removeDirectoryRecursive dbPath
-            else do file_exists <- doesFileExist dbPath
-                    when file_exists $ removeFile dbPath
-        HcPkg.init hpi verbosity True dbPath
-        return packageDB
+    existsAlready <- doesPackageDBExist dbPath
+    when existsAlready $ deletePackageDB dbPath
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) True dbPath 
+    return (SpecificPackageDB dbPath)
+  where
+      dbPath = case compilerFlavor (compiler lbi) of
+        UHC -> UHC.inplacePackageDbPath lbi
+        _   -> distPref </> "package.conf.inplace"
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb
