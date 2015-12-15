@@ -91,14 +91,13 @@ getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfig
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs conf = do
   let compilerid = compilerId comp
-  systemPkgDir <- rawSystemProgramStdoutConf verbosity uhcProgram conf ["--meta-pkgdir-system"]
+  systemPkgDir <- getGlobalPackageDir verbosity conf
   userPkgDir   <- getUserPackageDir
   let pkgDirs    = nub (concatMap (packageDbPaths userPkgDir systemPkgDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
-  -- call to "lines" necessary, because pkgdir contains an extra newline at the end
-  pkgs <- liftM (map addBuiltinVersions . concat) .
-          mapM (\ d -> getDirectoryContents d >>= filterM (isPkgDir (display compilerid) d)) .
-          concatMap lines $ pkgDirs
+  pkgs <- liftM (map addBuiltinVersions . concat) $
+          mapM (\ d -> getDirectoryContents d >>= filterM (isPkgDir (display compilerid) d))
+          pkgDirs
   -- putStrLn $ "pkgs: " ++ show pkgs
   let iPkgs =
         map mkInstalledPackageInfo $
@@ -107,9 +106,16 @@ getInstalledPackages verbosity comp packagedbs conf = do
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
+getGlobalPackageDir :: Verbosity -> ProgramConfiguration -> IO FilePath
+getGlobalPackageDir verbosity conf = do
+    output <- rawSystemProgramStdoutConf verbosity
+                uhcProgram conf ["--meta-pkgdir-system"]
+    -- call to "lines" necessary, because pkgdir contains an extra newline at the end
+    let [pkgdir] = lines output
+    return pkgdir
+
 getUserPackageDir :: IO FilePath
-getUserPackageDir =
-  do
+getUserPackageDir = do
     homeDir <- getHomeDirectory
     return $ homeDir </> ".cabal" </> "lib"  -- TODO: determine in some other way
 
@@ -161,7 +167,7 @@ buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
 
-  systemPkgDir <- rawSystemProgramStdoutConf verbosity uhcProgram (withPrograms lbi) ["--meta-pkgdir-system"]
+  systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
   let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- set package name
@@ -183,7 +189,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe verbosity _pkg_descr lbi exe clbi = do
-  systemPkgDir <- rawSystemProgramStdoutConf verbosity uhcProgram (withPrograms lbi) ["--meta-pkgdir-system"]
+  systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
   let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- common flags lib/exe
