@@ -264,13 +264,14 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> LocalBuildInfo
+  -> Compiler
+  -> ProgramConfiguration
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo lbi packageDbs = do
+registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
     dbdir <- case last packageDbs of
-      GlobalPackageDB       -> getGlobalPackageDir verbosity (withPrograms lbi)
+      GlobalPackageDB       -> getGlobalPackageDir verbosity progdb
       UserPackageDB         -> getUserPackageDir
       SpecificPackageDB dir -> return dir
     let pkgdir = dbdir </> uhcPackageDir (display pkgid) (display compilerid)
@@ -279,4 +280,4 @@ registerPackage verbosity installedPkgInfo lbi packageDbs = do
                   (showInstalledPackageInfo installedPkgInfo)
   where
     pkgid      = sourcePackageId installedPkgInfo
-    compilerid = compilerId (compiler lbi)
+    compilerid = compilerId comp

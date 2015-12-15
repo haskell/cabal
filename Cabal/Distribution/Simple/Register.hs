@@ -243,15 +243,18 @@ registerPackage :: Verbosity
                 -> PackageDBStack
                 -> IO ()
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  case compilerFlavor (compiler lbi) of
-    GHC   -> GHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
-    GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo lbi packageDbs
-    LHC   -> LHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
-    UHC   -> UHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
+  case compilerFlavor comp of
+    GHC   -> GHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
+    GHCJS -> GHCJS.registerPackage verbosity      progdb packageDbs installedPkgInfo
+    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
+    UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
-      HaskellSuite.registerPackage verbosity installedPkgInfo lbi packageDbs
+      HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _    -> die "Registering is not implemented for this compiler"
+  where
+    comp   = compiler lbi
+    progdb = withPrograms lbi
 
 writeHcPkgRegisterScript :: Verbosity
                          -> InstalledPackageInfo

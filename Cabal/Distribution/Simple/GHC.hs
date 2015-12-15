@@ -1128,12 +1128,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> LocalBuildInfo
+  -> ProgramConfiguration
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo lbi packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity
+registerPackage verbosity progdb packageDbs installedPkgInfo =
+  HcPkg.reregister (hcPkgInfo progdb) verbosity
     packageDbs (Right installedPkgInfo)
 
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
