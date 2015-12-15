@@ -77,6 +77,8 @@ data HcPkgInfo = HcPkgInfo
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , supportsDirDbs  :: Bool -- ^ supports directory style package databases
   , requiresDirDbs  :: Bool -- ^ requires directory style package databases
+  , nativeMultiInstance  :: Bool -- ^ supports --enable-multi-instance flag
+  , recacheMultiInstance :: Bool -- ^ supports multi-instance via recache
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.

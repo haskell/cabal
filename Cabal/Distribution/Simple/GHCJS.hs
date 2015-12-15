@@ -871,6 +871,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                  , HcPkg.flagPackageConf = False
                                  , HcPkg.supportsDirDbs  = True
                                  , HcPkg.requiresDirDbs  = v >= [7,10]
+                                 , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                 , HcPkg.recacheMultiInstance = True
                                  }
   where
     v                 = versionBranch ver

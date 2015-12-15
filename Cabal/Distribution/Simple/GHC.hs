@@ -1121,6 +1121,8 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                  , HcPkg.flagPackageConf = v < [7,5]
                                  , HcPkg.supportsDirDbs  = v >= [6,8]
                                  , HcPkg.requiresDirDbs  = v >= [7,10]
+                                 , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                 , HcPkg.recacheMultiInstance = v >= [6,12]
                                  }
   where
     v               = versionBranch ver
