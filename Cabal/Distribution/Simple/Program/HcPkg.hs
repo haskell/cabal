@@ -16,7 +16,9 @@ module Distribution.Simple.Program.HcPkg (
     invoke,
     register,
     reregister,
+    registerMultiInstance,
     unregister,
+    recache,
     expose,
     hide,
     dump,
@@ -27,7 +29,9 @@ module Distribution.Simple.Program.HcPkg (
     initInvocation,
     registerInvocation,
     reregisterInvocation,
+    registerMultiInstanceInvocation,
     unregisterInvocation,
+    recacheInvocation,
     exposeInvocation,
     hideInvocation,
     dumpInvocation,
@@ -53,7 +57,7 @@ import Distribution.Simple.Program.Run
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Simple.Utils
-         ( die )
+         ( die, writeUTF8File )
 import Distribution.Verbosity
          ( Verbosity, deafening, silent )
 import Distribution.Compat.Exception
@@ -64,7 +68,8 @@ import Data.Char
 import Data.List
          ( stripPrefix )
 import System.FilePath as FilePath
-         ( (</>), splitPath, splitDirectories, joinPath, isPathSeparator )
+         ( (</>), (<.>)
+         , splitPath, splitDirectories, joinPath, isPathSeparator )
 import qualified System.FilePath.Posix as FilePath.Posix
 
 -- | Information about the features and capabilities of an @hc-pkg@
@@ -128,6 +133,41 @@ reregister hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
     (reregisterInvocation hpi verbosity packagedb pkgFile)
 
+registerMultiInstance :: HcPkgInfo -> Verbosity
+                      -> PackageDBStack
+                      -> InstalledPackageInfo
+                      -> IO ()
+registerMultiInstance hpi verbosity packagedbs pkgInfo
+  | nativeMultiInstance hpi
+  = runProgramInvocation verbosity
+      (registerMultiInstanceInvocation hpi verbosity packagedbs (Right pkgInfo))
+
+  | recacheMultiInstance hpi
+  = do let pkgdb = last packagedbs
+       writeRegistrationFileDirectly hpi pkgdb pkgInfo
+       recache hpi verbosity pkgdb
+
+  | otherwise
+  = die $ "HcPkg.registerMultiInstance: the compiler does not support "
+       ++ "registering multiple instances of packages."
+
+writeRegistrationFileDirectly :: HcPkgInfo
+                              -> PackageDB
+                              -> InstalledPackageInfo
+                              -> IO ()
+writeRegistrationFileDirectly hpi (SpecificPackageDB dir) pkgInfo
+  | supportsDirDbs hpi
+  = do let pkgfile = dir </> display (installedComponentId pkgInfo) <.> "conf"
+       writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
+
+  | otherwise
+  = die $ "HcPkg.writeRegistrationFileDirectly: compiler does not support dir style package dbs"
+
+writeRegistrationFileDirectly _ _ _ =
+    -- We don't know here what the dir for the global or user dbs are,
+    -- if that's needed it'll require a bit more plumbing to support.
+    die $ "HcPkg.writeRegistrationFileDirectly: only supports SpecificPackageDB for now"
+
 
 -- | Call @hc-pkg@ to unregister a package
 --
@@ -137,6 +177,16 @@ unregister :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId -> IO ()
 unregister hpi verbosity packagedb pkgid =
   runProgramInvocation verbosity
     (unregisterInvocation hpi verbosity packagedb pkgid)
+
+
+-- | Call @hc-pkg@ to recache the registered packages.
+--
+-- > hc-pkg recache [--user | --global | --package-db]
+--
+recache :: HcPkgInfo -> Verbosity -> PackageDB -> IO ()
+recache hpi verbosity packagedb =
+  runProgramInvocation verbosity
+    (recacheInvocation hpi verbosity packagedb)
 
 
 -- | Call @hc-pkg@ to expose a package.
