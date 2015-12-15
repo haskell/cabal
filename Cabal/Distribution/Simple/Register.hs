@@ -208,15 +208,23 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
+initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath -> IO ()
+initPackageDB verbosity comp progdb dbPath =
+    createPackageDB verbosity comp progdb True dbPath
+
 -- | Create an empty package DB at the specified location.
-initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
-                 -> IO ()
-initPackageDB verbosity comp conf dbPath =
-  case compilerFlavor comp of
-    HaskellSuite {} -> HaskellSuite.initPackageDB verbosity conf dbPath
-    _               -> withHcPkg "Distribution.Simple.Register.initPackageDB: \
-                                 \not implemented for this compiler" comp conf
-                                 (\hpi -> HcPkg.init hpi verbosity dbPath)
+createPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> Bool
+                -> FilePath -> IO ()
+createPackageDB verbosity comp progdb preferCompat dbPath =
+    case compilerFlavor comp of
+      GHC   -> HcPkg.init (GHC.hcPkgInfo   progdb) verbosity preferCompat dbPath
+      GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
+      LHC   -> HcPkg.init (LHC.hcPkgInfo   progdb) verbosity False dbPath
+      UHC   -> return ()
+      HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
+      _              -> die $ "Distribution.Simple.Register.createPackageDB: "
+                           ++ "not implemented for this compiler"
+
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.

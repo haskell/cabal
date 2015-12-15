@@ -486,9 +486,7 @@ createInternalPackageDB verbosity lbi distPref = do
             then removeDirectoryRecursive dbPath
             else do file_exists <- doesFileExist dbPath
                     when file_exists $ removeFile dbPath
-        if HcPkg.useSingleFileDb hpi
-            then writeFile dbPath "[]"
-            else HcPkg.init hpi verbosity dbPath
+        HcPkg.init hpi verbosity True dbPath
         return packageDB
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo

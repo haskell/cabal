@@ -75,16 +75,22 @@ data HcPkgInfo = HcPkgInfo
   , noPkgDbStack    :: Bool -- ^ no package DB stack supported
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
-  , useSingleFileDb :: Bool -- ^ requires single file package database
+  , supportsDirDbs  :: Bool -- ^ supports directory style package databases
+  , requiresDirDbs  :: Bool -- ^ requires directory style package databases
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
 --
 -- > hc-pkg init {path}
 --
-init :: HcPkgInfo -> Verbosity -> FilePath -> IO ()
-init hpi verbosity path =
-  runProgramInvocation verbosity (initInvocation hpi verbosity path)
+init :: HcPkgInfo -> Verbosity -> Bool -> FilePath -> IO ()
+init hpi verbosity preferCompat path
+  |  not (supportsDirDbs hpi)
+ || (not (requiresDirDbs hpi) && preferCompat)
+  = writeFile path "[]"
+
+  | otherwise
+  = runProgramInvocation verbosity (initInvocation hpi verbosity path)
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.
