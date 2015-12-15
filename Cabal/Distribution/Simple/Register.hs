@@ -114,8 +114,9 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     case () of
      _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
-       | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo pkg lbi inplace packageDbs
+       | otherwise             -> do
+           setupMessage verbosity "Registering" (packageId pkg)
+           registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -241,11 +242,7 @@ registerPackage :: Verbosity
                 -> Bool
                 -> PackageDBStack
                 -> IO ()
-registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
-  let msg = if inplace
-            then "In-place registering"
-            else "Registering"
-  setupMessage verbosity msg (packageId pkg)
+registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   case compilerFlavor (compiler lbi) of
     GHC   -> GHC.registerPackage   verbosity installedPkgInfo lbi packageDbs
     GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo lbi packageDbs
