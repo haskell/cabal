@@ -270,13 +270,15 @@ registerPackage
   -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo pkg lbi inplace _packageDbs = do
-    let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
-        pkgdir  | inplace   = buildDir lbi       </> uhcPackageDir    (display pkgid) (display compilerid)
-                | otherwise = libdir installDirs </> uhcPackageSubDir                 (display compilerid)
+registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+    dbdir <- case last packageDbs of
+      GlobalPackageDB       -> getGlobalPackageDir verbosity (withPrograms lbi)
+      UserPackageDB         -> getUserPackageDir
+      SpecificPackageDB dir -> return dir
+    let pkgdir = dbdir </> uhcPackageDir (display pkgid) (display compilerid)
     createDirectoryIfMissingVerbose verbosity True pkgdir
     writeUTF8File (pkgdir </> installedPkgConfig)
                   (showInstalledPackageInfo installedPkgInfo)
   where
-    pkgid      = packageId pkg
+    pkgid      = sourcePackageId installedPkgInfo
     compilerid = compilerId (compiler lbi)
