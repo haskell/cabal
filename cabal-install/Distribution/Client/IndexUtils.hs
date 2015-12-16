@@ -368,7 +368,7 @@ updatePackageIndexCacheFile verbosity index = do
                  . maybeDecompress
                =<< BS.readFile (indexFile index)
     entries <- lazySequence pkgsOrPrefs
-    let cache = map toCache $ catMaybes entries
+    let cache = Cache { cacheEntries = map toCache $ catMaybes entries }
     writeFile (cacheFile index) (showIndexCache cache)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
@@ -398,10 +398,10 @@ readPackageIndexCacheFile mkPkg index mode = do
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
                       -> Handle
-                      -> [IndexCacheEntry]
+                      -> Cache
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
+packageIndexFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
   where
     accum srcpkgs prefs [] = do
       -- Have to reverse entries, since in a tar file, later entries mask
@@ -551,8 +551,15 @@ showIndexCacheEntry entry = unwords $ case entry of
                              , display dep
                              ]
 
-readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
-readIndexCache = mapMaybe readIndexCacheEntry . BSS.lines
+-- | Cabal caches various information about the Hackage index
+data Cache = Cache {
+    cacheEntries :: [IndexCacheEntry]
+  }
 
-showIndexCache :: [IndexCacheEntry] -> String
-showIndexCache = unlines . map showIndexCacheEntry
+readIndexCache :: BSS.ByteString -> Cache
+readIndexCache bs = Cache {
+    cacheEntries = mapMaybe readIndexCacheEntry $ BSS.lines bs
+  }
+
+showIndexCache :: Cache -> String
+showIndexCache Cache{..} = unlines $ map showIndexCacheEntry cacheEntries
