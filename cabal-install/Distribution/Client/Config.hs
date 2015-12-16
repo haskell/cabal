@@ -72,7 +72,7 @@ import Distribution.ParseUtils
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, spaceListField
+         , simpleField, listField, boolField, spaceListField
          , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
@@ -103,7 +103,7 @@ import Data.Monoid
          ( Monoid(..) )
 #endif
 import Control.Monad
-         ( unless, foldM, liftM, liftM2 )
+         ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
 import qualified Text.PrettyPrint as Disp
@@ -487,7 +487,7 @@ defaultUserInstall = True
 -- global installs on Windows but that no longer works on Windows Vista or 7.
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo name uri () False
+defaultRemoteRepo = RemoteRepo name uri False [] 0 False
   where
     name = "hackage.haskell.org"
     uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
@@ -496,6 +496,7 @@ defaultRemoteRepo = RemoteRepo name uri () False
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
 
+    -- TODO: Once we make secure access opt-out rather than opt-in, we could
     -- Use this as a source for crypto credentials when finding old remote-repo
     -- entries that match repo name and url (not only be used for generating
     -- fresh config files).
@@ -856,6 +857,12 @@ parseConfig src initial = \str -> do
     parseSections (rs, h, u, g, p, a)
                  (ParseUtils.Section _ "remote-repo" name fs) = do
       r' <- parseFields remoteRepoFields (emptyRemoteRepo name) fs
+      when (remoteRepoKeyThreshold r' > length (remoteRepoRootKeys r')) $
+        warning $ "'key-threshold' for repository " ++ show (remoteRepoName r')
+               ++ " higher than number of keys"
+      when (not (null (remoteRepoRootKeys r')) && not (remoteRepoSecure r')) $
+        warning $ "'root-keys' for repository " ++ show (remoteRepoName r')
+               ++ " non-empty, but 'secure' not set to True."
       return (r':rs, h, u, g, p, a)
 
     parseSections (rs, h, u, g, p, a)
@@ -947,14 +954,30 @@ ppRemoteRepoSection vals = ppSection "remote-repo" (remoteRepoName vals)
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
-    [ FieldDescr { fieldName = "url",
-                   fieldGet = text . show . remoteRepoURI,
-                   fieldSet = \ _ uriString remoteRepo -> maybe
-                          (fail $ "remote-repo: no parse on " ++ show uriString)
-                          (\ uri -> return $ remoteRepo { remoteRepoURI = uri })
-                          (parseURI uriString)
-                 }
+    [ simpleField "url"
+        (text . show)            (parseTokenQ >>= parseURI')
+        remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
+    , boolField "secure"
+        remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
+    , listField "root-keys"
+        text                     parseTokenQ
+        remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
+    , simpleField "key-threshold"
+        (text . show)            (parseTokenQ >>= parseInt)
+        remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
     ]
+  where
+    parseURI' uriString =
+      case parseURI uriString of
+        Nothing  -> fail $ "remote-repo: no parse on " ++ show uriString
+        Just uri -> return uri
+
+    -- from base >= 4.6 we can use 'Text.Read.readEither' but right now we
+    -- support everything back to ghc 7.2 (base 4.4)
+    parseInt intString =
+      case filter (null . snd) (reads intString) of
+        [(n, _)] -> return n
+        _ -> fail $ "remote-remo: could not parse int " ++ show intString
 
 -- | Fields for the 'haddock' section.
 haddockFlagsFields :: [FieldDescr HaddockFlags]
