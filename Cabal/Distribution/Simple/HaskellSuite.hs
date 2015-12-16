@@ -56,7 +56,7 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
       let
         haskellSuiteProgram' =
           haskellSuiteProgram
-            { programFindLocation = \v _p -> findProgramLocation v hcPath }
+            { programFindLocation = \v p -> findProgramOnSearchPath v p hcPath }
 
       -- NB: cannot call requireProgram right away — it'd think that
       -- the program is already configured and won't reconfigure it again.
