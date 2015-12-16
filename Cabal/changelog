@@ -17,6 +17,7 @@
 	  program to detect that is connected to a terminal, and works
 	  reliable with a non-threaded runtime (#2911, and serves as a
 	  work-around for #2398)
+	* Library support for multi-instance package DBs (#2948).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
@@ -49,7 +50,7 @@
 	* Make 'cabal test'/'cabal bench' build only what's needed for
 	running tests/benchmarks (#1821).
 	* Build shared libraries by default when linking executables dynamically.
-	* Build profiled libraries by default when profiling executable.s
+	* Build profiled libraries by default when profiling executables.
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
