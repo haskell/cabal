@@ -21,7 +21,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Client.FetchUtils
          ( downloadIndex )
 import Distribution.Client.IndexUtils
-         ( updateRepoIndexCache )
+         ( updateRepoIndexCache, Index(..) )
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 
@@ -64,4 +64,4 @@ updateRepo transport verbosity repo = case repoKind repo of
       FileDownloaded indexPath -> do
         writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                 =<< BS.readFile indexPath
-        updateRepoIndexCache verbosity repo
+        updateRepoIndexCache verbosity (GlobalIndex repo)

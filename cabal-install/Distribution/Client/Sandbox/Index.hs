@@ -24,7 +24,8 @@ import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , refTypeFromTypeCode
                                       , typeCodeFromRefType
                                       , updatePackageIndexCacheFile
-                                      , getSourcePackagesStrict )
+                                      , getSourcePackagesStrict
+                                      , Index(..) )
 import Distribution.Client.PackageIndex ( allPackages )
 import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
@@ -155,8 +156,10 @@ addBuildTreeRefs verbosity path l' refType = do
       hSeek h AbsoluteSeek (fromIntegral offset)
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
-    updatePackageIndexCacheFile verbosity path
-      (path `replaceExtension` "cache")
+    updatePackageIndexCacheFile verbosity $ LocalIndex {
+        localIndexFile = path
+      , localCacheFile = path `replaceExtension` "cache"
+      }
 
 data DeleteSourceError = ErrNonregisteredSource { nrPath :: FilePath }
                        | ErrNonexistentSource   { nePath :: FilePath } deriving Show
@@ -191,7 +194,10 @@ removeBuildTreeRefs verbosity indexPath l = do
     ++ "' to '" ++ indexPath ++ "'"
 
   unless (null removedRefs) $
-    updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+    updatePackageIndexCacheFile verbosity LocalIndex {
+        localIndexFile = indexPath
+      , localCacheFile = indexPath `replaceExtension` "cache"
+      }
 
   let results = fmap Right removedRefs
                 ++ fmap Left failures
