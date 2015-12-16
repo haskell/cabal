@@ -2310,7 +2310,9 @@ parseRepo = do
   return RemoteRepo {
     remoteRepoName           = name,
     remoteRepoURI            = uri,
-    remoteRepoRootKeys       = (),
+    remoteRepoSecure         = False,
+    remoteRepoRootKeys       = [],
+    remoteRepoKeyThreshold   = 0,
     remoteRepoShouldTryHttps = False
   }
 
