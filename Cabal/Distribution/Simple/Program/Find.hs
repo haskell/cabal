@@ -178,7 +178,7 @@ getSystemSearchPath = fmap nub $ do
 #endif
 
 findExecutable :: FilePath -> IO (Maybe FilePath)
-#if HAVE_directory_121
+#ifdef HAVE_directory_121
 findExecutable = Directory.findExecutable
 #else
 findExecutable prog = do
