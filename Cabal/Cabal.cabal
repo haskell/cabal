@@ -158,7 +158,7 @@ library
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5 && < 0.7
   else
-    build-depends: binary >= 0.7 && < 0.8
+    build-depends: binary >= 0.7 && < 0.9
 
   -- Needed for GHC.Generics before GHC 7.6
   if impl(ghc < 7.6)
