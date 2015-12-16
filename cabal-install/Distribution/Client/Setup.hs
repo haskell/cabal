@@ -49,7 +49,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
+         ( Username(..), Password(..), Repo(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -381,12 +381,12 @@ globalRepos :: GlobalFlags -> [Repo]
 globalRepos globalFlags = remoteRepos ++ localRepos
   where
     remoteRepos =
-      [ Repo (Left remote) cacheDir
+      [ RepoRemote remote cacheDir
       | remote <- fromNubList $ globalRemoteRepos globalFlags
       , let cacheDir = fromFlag (globalCacheDir globalFlags)
                    </> remoteRepoName remote ]
     localRepos =
-      [ Repo (Right LocalRepo) local
+      [ RepoLocal local
       | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------

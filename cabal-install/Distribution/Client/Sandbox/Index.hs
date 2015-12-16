@@ -27,7 +27,7 @@ import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , getSourcePackagesStrict
                                       , Index(..) )
 import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Types ( Repo(..), LocalRepo(..)
+import Distribution.Client.Types ( Repo(..)
                                  , SourcePackageDb(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
@@ -271,8 +271,7 @@ listBuildTreeRefs verbosity listIgnored refTypesToList path = do
 
       listWithoutIgnored :: IO [FilePath]
       listWithoutIgnored = do
-        let repo = Repo { repoKind = Right LocalRepo
-                        , repoLocalDir = takeDirectory path }
+        let repo = RepoLocal { repoLocalDir = takeDirectory path }
         pkgIndex <- fmap packageIndex
                     . getSourcePackagesStrict verbosity $ [repo]
         return [ pkgPath | (LocalUnpackedPackage pkgPath) <-

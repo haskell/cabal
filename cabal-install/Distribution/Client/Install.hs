@@ -839,7 +839,8 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
          createDirectoryIfMissing True reportsDir -- FIXME
          writeFile reportFile (show (BuildReports.show report, buildLog))
 
-  | (report, Just Repo { repoKind = Left remoteRepo }) <- reports
+  | (report, Just repo) <- reports
+  , Just remoteRepo <- [repoRemote' repo]
   , isLikelyToHaveLogFile (BuildReports.installOutcome report) ]
 
   where

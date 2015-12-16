@@ -173,24 +173,24 @@ readRepoIndex verbosity repo mode =
 
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
-        case repoKind repo of
-          Left  remoteRepo -> warn verbosity $
-               "The package list for '" ++ remoteRepoName remoteRepo
+        case repo of
+          RepoRemote{..} -> warn verbosity $
+               "The package list for '" ++ remoteRepoName repoRemote
             ++ "' does not exist. Run 'cabal update' to download it."
-          Right _localRepo -> warn verbosity $
-               "The package list for the local repo '" ++ repoLocalDir repo
+          RepoLocal{..} -> warn verbosity $
+               "The package list for the local repo '" ++ repoLocalDir
             ++ "' is missing. The repo is invalid."
         return mempty
       else ioError e
 
     isOldThreshold = 15 --days
     warnIfIndexIsOld dt = do
-      when (dt >= isOldThreshold) $ case repoKind repo of
-        Left  remoteRepo -> warn verbosity $
-             "The package list for '" ++ remoteRepoName remoteRepo
+      when (dt >= isOldThreshold) $ case repo of
+        RepoRemote{..} -> warn verbosity $
+             "The package list for '" ++ remoteRepoName repoRemote
           ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
           ++ "'cabal update' to get the latest list of available packages."
-        Right _localRepo -> return ()
+        RepoLocal{..} -> return ()
 
 
 -- | Return the age of the index file in days (as a Double).

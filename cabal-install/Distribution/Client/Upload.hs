@@ -4,7 +4,7 @@
 module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
-                                 , Repo(..), RemoteRepo(..) )
+                                 , Repo(..), RemoteRepo(..), repoRemote' )
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 
@@ -25,6 +25,7 @@ import System.FilePath  ((</>), takeExtension, takeFileName)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
 import Control.Monad (forM_, when)
+import Data.Maybe (catMaybes)
 
 type Auth = Maybe (String, String)
 
@@ -37,7 +38,7 @@ upload :: HttpTransport -> Verbosity -> [Repo]
        -> IO ()
 upload transport verbosity repos mUsername mPassword paths = do
     targetRepo <-
-      case [ remoteRepo | Left remoteRepo <- map repoKind repos ] of
+      case [ remoteRepo | Just remoteRepo <- map repoRemote' repos ] of
         [] -> die "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
@@ -58,7 +59,7 @@ uploadDoc :: HttpTransport -> Verbosity -> [Repo]
           -> IO ()
 uploadDoc transport verbosity repos mUsername mPassword path = do
     targetRepo <-
-      case [ remoteRepo | Left remoteRepo <- map repoKind repos ] of
+      case [ remoteRepo | Just remoteRepo <- map repoRemote' repos ] of
         [] -> die $ "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
@@ -112,8 +113,8 @@ report verbosity repos mUsername mPassword = do
   Username username <- maybe promptUsername return mUsername
   Password password <- maybe promptPassword return mPassword
   let auth = (username,password)
-  forM_ repos $ \repo -> case repoKind repo of
-    Left remoteRepo ->
+  let remoteRepos = catMaybes (map repoRemote' repos)
+  forM_ remoteRepos $ \remoteRepo ->
       do dotCabal <- defaultCabalDir
          let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
          -- We don't want to bomb out just because we haven't built any packages
@@ -132,7 +133,6 @@ report verbosity repos mUsername mPassword = do
                        BuildReport.uploadReports verbosity auth
                          (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                        return ()
-    Right{} -> return ()
 
 check :: HttpTransport -> Verbosity -> [FilePath] -> IO ()
 check transport verbosity paths =
