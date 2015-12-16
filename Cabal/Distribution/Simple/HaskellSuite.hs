@@ -200,7 +200,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
 
 registerPackage
   :: Verbosity
-  -> ProgramDb
+  -> ProgramConfiguration
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()

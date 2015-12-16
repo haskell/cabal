@@ -60,7 +60,8 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
-import Distribution.System ( Arch(..), buildOS, OS(..), Platform, platformFromTriple )
+import Distribution.System
+         ( Arch(..), buildOS, OS(..), Platform, platformFromTriple )
 import Distribution.Text ( display, simpleParse )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
@@ -538,4 +539,3 @@ showOsString Windows = "mingw32"
 showOsString OSX     = "darwin"
 showOsString Solaris = "solaris2"
 showOsString other   = display other
-

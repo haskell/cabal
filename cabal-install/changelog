@@ -33,6 +33,7 @@
 	* New 'cabal upload' option: '--doc': upload documentation to
 	hackage (#2890).
 	* Improved error handling for 'sandbox delete-source' (#2943).
+	* Solver support for extension and language flavours (#2873).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

@@ -124,17 +124,24 @@ updateConfiguredProgs update conf =
 
 
 -- Read & Show instances are based on listToFM
--- Note that we only serialise the configured part of the database, this is
--- because we don't need the unconfigured part after the configure stage, and
--- additionally because we cannot read/show 'Program' as it contains functions.
+
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Show ProgramDb where
   show = show . Map.toAscList . configuredProgs
 
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Read ProgramDb where
   readsPrec p s =
     [ (emptyProgramDb { configuredProgs = Map.fromList s' }, r)
     | (s', r) <- readsPrec p s ]
 
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Binary ProgramDb where
   put db = do
     put (progSearchPath db)
@@ -149,10 +156,10 @@ instance Binary ProgramDb where
     }
 
 
--- | The Read\/Show instance does not preserve all the unconfigured 'Programs'
--- because 'Program' is not in Read\/Show because it contains functions. So to
--- fully restore a deserialised 'ProgramDb' use this function to add
--- back all the known 'Program's.
+-- | The 'Read'\/'Show' and 'Binary' instances do not preserve all the
+-- unconfigured 'Programs' because 'Program' is not in 'Read'\/'Show' because
+-- it contains functions. So to fully restore a deserialised 'ProgramDb' use
+-- this function to add back all the known 'Program's.
 --
 -- * It does not add the default programs, but you probably want them, use
 --   'builtinPrograms' in addition to any extra you might need.
@@ -321,7 +328,7 @@ configureProgram :: Verbosity
 configureProgram verbosity prog conf = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog conf of
-    Nothing   -> do
+    Nothing   ->
       programFindLocation prog verbosity (progSearchPath conf)
       >>= return . fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
@@ -330,7 +337,7 @@ configureProgram verbosity prog conf = do
         then return (Just (UserSpecified path, []))
         else findProgramOnSearchPath verbosity (progSearchPath conf) path
              >>= maybe (die notFound)
-                       (return . Just . swap . fmap FoundOnSystem . swap)
+                       (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
                      ++ "'. User-specified path '"
                      ++ path ++ "' does not refer to an executable and "

@@ -35,7 +35,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , ProgramSearchPath
          , rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
@@ -825,7 +825,7 @@ adjustExts hiSuf objSuf opts =
   }
 
 registerPackage :: Verbosity
-                -> ProgramDb
+                -> ProgramConfiguration
                 -> Bool
                 -> PackageDBStack
                 -> InstalledPackageInfo

@@ -266,9 +266,17 @@ globalCommand commands = CommandUI {
       ++ "  " ++ pname ++ " update\n",
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
-    commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 8; ParseArgs -> id)
-      [option ['V'] ["version"]
+    commandOptions = args
+  }
+  where
+    args :: ShowOrParseArgs -> [OptionField GlobalFlags]
+    args ShowArgs  = argsShown
+    args ParseArgs = argsShown ++ argsNotShown
+
+    -- arguments we want to show in the help
+    argsShown :: [OptionField GlobalFlags]
+    argsShown = [
+       option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
          trueArg
@@ -307,8 +315,12 @@ globalCommand commands = CommandUI {
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalConfigFile (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
+      ]
 
-      ,option [] ["remote-repo"]
+    -- arguments we don't want shown in the help
+    argsNotShown :: [OptionField GlobalFlags]
+    argsNotShown = [
+       option [] ["remote-repo"]
          "The name and url for a remote repository"
          globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
          (reqArg' "NAME:URL" (toNubList . maybeToList . readRepo) (map showRepo . fromNubList))
@@ -333,7 +345,6 @@ globalCommand commands = CommandUI {
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
       ]
-  }
 
 instance Monoid GlobalFlags where
   mempty = GlobalFlags {
@@ -2316,7 +2327,9 @@ parseRepo = do
   return RemoteRepo {
     remoteRepoName           = name,
     remoteRepoURI            = uri,
-    remoteRepoRootKeys       = (),
+    remoteRepoSecure         = False,
+    remoteRepoRootKeys       = [],
+    remoteRepoKeyThreshold   = 0,
     remoteRepoShouldTryHttps = False
   }
 

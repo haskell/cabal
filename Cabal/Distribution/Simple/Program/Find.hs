@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program.Find
@@ -170,20 +171,20 @@ getSystemSearchPath = fmap nub $ do
     FilePath.getSearchPath
 #endif
 
-findExecutable :: FilePath -> IO (Maybe FilePath)
-#if defined(MIN_VERSION_directory)
+#ifdef MIN_VERSION_directory
 #if MIN_VERSION_directory(1,2,1)
-#define HAS_dir_1_2_1
+#define HAVE_directory_121
 #endif
 #endif
 
-#ifdef HAS_dir_1_2_1
+findExecutable :: FilePath -> IO (Maybe FilePath)
+#ifdef HAVE_directory_121
 findExecutable = Directory.findExecutable
 #else
 findExecutable prog = do
       -- With directory < 1.2.1 'findExecutable' doesn't check that the path
       -- really refers to an executable.
-      mExe <- findExecutable prog
+      mExe <- Directory.findExecutable prog
       case mExe of
         Just exe -> do
           exeExists <- doesExecutableExist exe

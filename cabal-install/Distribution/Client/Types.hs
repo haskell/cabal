@@ -258,7 +258,15 @@ data RemoteRepo =
     RemoteRepo {
       remoteRepoName     :: String,
       remoteRepoURI      :: URI,
-      remoteRepoRootKeys :: (),
+
+      -- | Enable secure access to Hackage?
+      remoteRepoSecure :: Bool,
+
+      -- | Root key IDs (for bootstrapping)
+      remoteRepoRootKeys :: [String],
+
+      -- | Threshold for verification during bootstrapping
+      remoteRepoKeyThreshold :: Int,
 
       -- | Normally a repo just specifies an HTTP or HTTPS URI, but as a
       -- special case we may know a repo supports both and want to try HTTPS
@@ -277,7 +285,7 @@ instance Binary RemoteRepo
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
-emptyRemoteRepo name = RemoteRepo name nullURI () False
+emptyRemoteRepo name = RemoteRepo name nullURI False [] 0 False
 
 data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,

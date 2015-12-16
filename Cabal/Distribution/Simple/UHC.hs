@@ -265,7 +265,7 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 registerPackage
   :: Verbosity
   -> Compiler
-  -> ProgramDb
+  -> ProgramConfiguration
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()
@@ -274,7 +274,7 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
       GlobalPackageDB       -> getGlobalPackageDir verbosity progdb
       UserPackageDB         -> getUserPackageDir
       SpecificPackageDB dir -> return dir
-    let pkgdir = dbdir </> uhcPackageDir    (display pkgid) (display compilerid)
+    let pkgdir = dbdir </> uhcPackageDir (display pkgid) (display compilerid)
     createDirectoryIfMissingVerbose verbosity True pkgdir
     writeUTF8File (pkgdir </> installedPkgConfig)
                   (showInstalledPackageInfo installedPkgInfo)
@@ -284,4 +284,3 @@ registerPackage verbosity comp progdb packageDbs installedPkgInfo = do
 
 inplacePackageDbPath :: LocalBuildInfo -> FilePath
 inplacePackageDbPath lbi = buildDir lbi
-

@@ -78,7 +78,7 @@ import Distribution.Package
          ( PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , ProgramSearchPath
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput, requireProgramVersion, requireProgram
@@ -337,14 +337,19 @@ getLibDir' verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
+
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
+-- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath
 getUserPackageDB _verbosity ghcProg (Platform arch os) = do
+    -- It's rather annoying that we have to reconstruct this, because ghc
+    -- hides this information from us otherwise. But for certain use cases
+    -- like change monitoring it really can't remain hidden.
     appdir <- getAppUserDataDirectory "ghc"
     return (appdir </> platformAndVersion </> packageConfFileName)
   where
@@ -459,6 +464,9 @@ getInstalledPackagesMonitorFiles verbosity platform progdb =
     getPackageDBPath (SpecificPackageDB path) = selectMonitorFile path
 
     -- GHC has old style file dbs, and new style directory dbs.
+    -- Note that for dir style dbs, we only need to monitor the cache file, not
+    -- the whole directory. The ghc program itself only reads the cache file
+    -- so it's safe to only monitor this one file.
     selectMonitorFile path = do
       isFileStyle <- doesFileExist path
       if isFileStyle then return path
@@ -1177,7 +1185,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> ProgramDb
+  -> ProgramConfiguration
   -> Bool
   -> PackageDBStack
   -> InstalledPackageInfo

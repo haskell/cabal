@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -21,6 +21,7 @@ module Distribution.Simple.BuildTarget (
     -- * Parsing user build targets
     UserBuildTarget,
     readUserBuildTargets,
+    showUserBuildTarget,
     UserBuildTargetProblem(..),
     reportUserBuildTargetProblems,
 
@@ -129,7 +130,7 @@ data BuildTarget =
      -- | A specific file within a specific component.
      --
    | BuildTargetFile ComponentName FilePath
-  deriving (Show,Eq,Generic)
+  deriving (Eq, Show, Generic)
 
 instance Binary BuildTarget
 
@@ -242,7 +243,7 @@ showUserBuildTarget = intercalate ":" . components
 
 showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
 showBuildTarget ql pkgid bt =
-    showUserBuildTarget (renderBuildTarget ql pkgid bt)
+    showUserBuildTarget (renderBuildTarget ql bt pkgid)
 
 
 -- ------------------------------------------------------------
@@ -324,13 +325,13 @@ disambiguateBuildTargets pkgid original =
             . partition (\g -> length g > 1)
             . groupBy (equating fst)
             . sortBy (comparing fst)
-            . map (\t -> (renderBuildTarget ql pkgid t, t))
+            . map (\t -> (renderBuildTarget ql t pkgid, t))
 
 data QualLevel = QL1 | QL2 | QL3
   deriving (Enum, Show)
 
-renderBuildTarget :: QualLevel -> PackageId -> BuildTarget -> UserBuildTarget
-renderBuildTarget ql pkgid target =
+renderBuildTarget :: QualLevel -> BuildTarget -> PackageId -> UserBuildTarget
+renderBuildTarget ql target pkgid =
     case ql of
       QL1 -> UserBuildTargetSingle s1        where  s1          = single target
       QL2 -> UserBuildTargetDouble s1 s2     where (s1, s2)     = double target

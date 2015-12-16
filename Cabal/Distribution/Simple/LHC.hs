@@ -61,7 +61,7 @@ import Distribution.Package
          ( Package(..), getHSLibraryName, ComponentId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgramDb
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , ProgramSearchPath, ProgramLocation(..)
          , rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
@@ -775,7 +775,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
 registerPackage
   :: Verbosity
-  -> ProgramDb
+  -> ProgramConfiguration
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()

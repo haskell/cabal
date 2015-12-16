@@ -72,7 +72,6 @@ module Distribution.Simple.Program (
     , emptyProgramConfiguration
     , defaultProgramConfiguration
     , restoreProgramConfiguration
-
     , addKnownProgram
     , addKnownPrograms
     , lookupKnownProgram
@@ -229,7 +228,5 @@ restoreProgramConfiguration = restoreProgramDb
 {-# DEPRECATED findProgramOnPath "use findProgramOnSearchPath instead" #-}
 findProgramOnPath :: String -> Verbosity -> IO (Maybe FilePath)
 findProgramOnPath name verbosity =
-    fmap fst
-    `fmap`
+    fmap (fmap fst) $
     findProgramOnSearchPath verbosity defaultProgramSearchPath name
-

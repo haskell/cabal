@@ -952,9 +952,8 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Compiler
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity comp packageDBs progconf platform =
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackagesMonitorFiles 
+    GHC   -> GHC.getInstalledPackagesMonitorFiles
                verbosity platform progconf packageDBs
---    GHCJS -> GHCJS.getInstalledPackagesMonitorFiles verbosity comp packageDBs
     other -> do
       warn verbosity $ "don't know how to find change monitoring files for "
                     ++ "the installed package databases for " ++ display other

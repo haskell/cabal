@@ -116,22 +116,22 @@ register :: HcPkgInfo -> Verbosity -> PackageDBStack
          -> Either FilePath
                    InstalledPackageInfo
          -> IO ()
-register hpi verbosity packagedbs pkgFile =
+register hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
-    (registerInvocation hpi verbosity packagedbs pkgFile)
+    (registerInvocation hpi verbosity packagedb pkgFile)
 
 
 -- | Call @hc-pkg@ to re-register a package.
 --
--- > hc-pkg update {filename | -} [--user | --global | --package-db]
+-- > hc-pkg register {filename | -} [--user | --global | --package-db]
 --
 reregister :: HcPkgInfo -> Verbosity -> PackageDBStack
            -> Either FilePath
                      InstalledPackageInfo
            -> IO ()
-reregister hpi verbosity packagedbs pkgFile =
+reregister hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
-    (reregisterInvocation hpi verbosity packagedbs pkgFile)
+    (reregisterInvocation hpi verbosity packagedb pkgFile)
 
 registerMultiInstance :: HcPkgInfo -> Verbosity
                       -> PackageDBStack
@@ -142,6 +142,15 @@ registerMultiInstance hpi verbosity packagedbs pkgInfo
   = runProgramInvocation verbosity
       (registerMultiInstanceInvocation hpi verbosity packagedbs (Right pkgInfo))
 
+    -- This is a trick. Older versions of GHC do not support the
+    -- --enable-multi-instance flag for ghc-pkg register but it turns out that
+    -- the same ability is available by using ghc-pkg recache. The recache
+    -- command is there to support distro package managers that like to work
+    -- by just installing files and running update commands, rather than
+    -- special add/remove commands. So the way to register by this method is
+    -- to write the package registration file directly into the package db and
+    -- then call hc-pkg recache.
+    --
   | recacheMultiInstance hpi
   = do let pkgdb = last packagedbs
        writeRegistrationFileDirectly hpi pkgdb pkgInfo
