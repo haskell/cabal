@@ -1,10 +1,7 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-#if __GLASGOW_HASKELL__ >= 711
-{-# LANGUAGE PatternSynonyms #-}
-#endif
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -132,11 +129,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Prelude hiding ( mapM )
 import Control.Exception
     ( Exception, evaluate, throw, throwIO, try )
-#if __GLASGOW_HASKELL__ >= 711
-import Control.Exception ( pattern ErrorCall )
-#else
-import Control.Exception ( ErrorCall(..) )
-#endif
+import Control.Exception ( ErrorCall )
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
@@ -151,10 +144,7 @@ import Data.Maybe
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid
-    ( Monoid(..) )
-#endif
+import Data.Monoid as Mon ( Monoid(..) )
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Traversable
@@ -232,7 +222,7 @@ getConfigStateFile filename = do
     headerParseResult <- try $ evaluate $ parseHeader header
     let (cabalId, compId) =
             case headerParseResult of
-              Left (ErrorCall _) -> throw ConfigStateFileBadHeader
+              Left (_ :: ErrorCall) -> throw ConfigStateFileBadHeader
               Right x -> x
 
     let getStoredValue = do
@@ -1208,7 +1198,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
                           \bench bi -> bench { benchmarkBuildInfo = bi }
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
-    pkgconfigBuildInfo []      = return mempty
+    pkgconfigBuildInfo []      = return Mon.mempty
     pkgconfigBuildInfo pkgdeps = do
       let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
