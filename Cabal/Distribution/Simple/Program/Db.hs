@@ -136,10 +136,17 @@ instance Read ProgramDb where
     | (s', r) <- readsPrec p s ]
 
 instance Binary ProgramDb where
-  put = put . configuredProgs
+  put db = do
+    put (progSearchPath db)
+    put (configuredProgs db)
+
   get = do
-      progs <- get
-      return $! emptyProgramDb { configuredProgs = progs }
+    searchpath <- get
+    progs      <- get
+    return $! emptyProgramDb {
+      progSearchPath  = searchpath,
+      configuredProgs = progs
+    }
 
 
 -- | The Read\/Show instance does not preserve all the unconfigured 'Programs'
