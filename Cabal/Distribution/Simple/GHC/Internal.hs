@@ -26,6 +26,8 @@ module Distribution.Simple.GHC.Internal (
         substTopDir,
         checkPackageDbEnvVar,
         profDetailLevelFlag,
+        showArchString,
+        showOsString,
  ) where
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
@@ -58,7 +60,8 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
-import Distribution.System ( buildOS, OS(..), Platform, platformFromTriple )
+import Distribution.System
+         ( Arch(..), buildOS, OS(..), Platform, platformFromTriple )
 import Distribution.Text ( display, simpleParse )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
@@ -129,7 +132,8 @@ configureToolchain implInfo ghcProg ghcInfo =
           in  (b, b, b, b)
 
     findProg :: Program -> [FilePath]
-             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+             -> Verbosity -> ProgramSearchPath
+             -> IO (Maybe (FilePath, [FilePath]))
     findProg prog extraPath v searchpath =
         programFindLocation prog v searchpath'
       where
@@ -518,3 +522,20 @@ profDetailLevelFlag forLib mpl =
       ProfDetailToplevelFunctions   -> toFlag GhcProfAutoToplevel
       ProfDetailAllFunctions        -> toFlag GhcProfAutoAll
       ProfDetailOther _             -> mempty
+
+-- | GHC's rendering of it's host or target 'Arch' as used in its platform
+-- strings and certain file locations (such as user package db location).
+--
+showArchString :: Arch -> String
+showArchString PPC   = "powerpc"
+showArchString PPC64 = "powerpc64"
+showArchString other = display other
+
+-- | GHC's rendering of it's host or target 'OS' as used in its platform
+-- strings and certain file locations (such as user package db location).
+--
+showOsString :: OS -> String
+showOsString Windows = "mingw32"
+showOsString OSX     = "darwin"
+showOsString Solaris = "solaris2"
+showOsString other   = display other

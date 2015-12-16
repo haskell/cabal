@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -13,10 +14,14 @@ module Distribution.Simple.BuildTarget (
     -- * Build targets
     BuildTarget(..),
     readBuildTargets,
+    showBuildTarget,
+    QualLevel(..),
+    buildTargetComponentName,
 
     -- * Parsing user build targets
     UserBuildTarget,
     readUserBuildTargets,
+    showUserBuildTarget,
     UserBuildTargetProblem(..),
     reportUserBuildTargetProblems,
 
@@ -53,6 +58,8 @@ import Data.Maybe
          ( listToMaybe, catMaybes )
 import Data.Either
          ( partitionEithers )
+import Distribution.Compat.Binary (Binary)
+import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Control.Monad
 import Control.Applicative as AP (Alternative(..), Applicative(..))
@@ -123,8 +130,14 @@ data BuildTarget =
      -- | A specific file within a specific component.
      --
    | BuildTargetFile ComponentName FilePath
-  deriving (Show,Eq)
+  deriving (Eq, Show, Generic)
 
+instance Binary BuildTarget
+
+buildTargetComponentName :: BuildTarget -> ComponentName
+buildTargetComponentName (BuildTargetComponent cn)   = cn
+buildTargetComponentName (BuildTargetModule    cn _) = cn
+buildTargetComponentName (BuildTargetFile      cn _) = cn
 
 -- | Read a list of user-supplied build target strings and resolve them to
 -- 'BuildTarget's according to a 'PackageDescription'. If there are problems
@@ -227,6 +240,10 @@ showUserBuildTarget = intercalate ":" . components
     components (UserBuildTargetSingle s1)       = [s1]
     components (UserBuildTargetDouble s1 s2)    = [s1,s2]
     components (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
+
+showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget ql pkgid bt =
+    showUserBuildTarget (renderBuildTarget ql bt pkgid)
 
 
 -- ------------------------------------------------------------

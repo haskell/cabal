@@ -39,7 +39,9 @@ module Distribution.Simple.Configure (configure,
                                       findDistPref, findDistPrefOrDefault,
                                       computeComponentId,
                                       localBuildInfoFile,
-                                      getInstalledPackages, getPackageDBContents,
+                                      getInstalledPackages,
+                                      getInstalledPackagesMonitorFiles,
+                                      getPackageDBContents,
                                       configCompiler, configCompilerAux,
                                       configCompilerEx, configCompilerAuxEx,
                                       ccLdOptionsBuildInfo,
@@ -940,6 +942,22 @@ getPackageDBContents verbosity comp packageDB progconf = do
     -- For other compilers, try to fall back on 'getInstalledPackages'.
     _   -> getInstalledPackages verbosity comp [packageDB] progconf
 
+
+-- | A set of files (or directories) that can be monitored to detect when
+-- there might have been a change in the installed packages.
+--
+getInstalledPackagesMonitorFiles :: Verbosity -> Compiler
+                                 -> PackageDBStack
+                                 -> ProgramConfiguration -> Platform
+                                 -> IO [FilePath]
+getInstalledPackagesMonitorFiles verbosity comp packageDBs progconf platform =
+  case compilerFlavor comp of
+    GHC   -> GHC.getInstalledPackagesMonitorFiles
+               verbosity platform progconf packageDBs
+    other -> do
+      warn verbosity $ "don't know how to find change monitoring files for "
+                    ++ "the installed package databases for " ++ display other
+      return []
 
 -- | The user interface specifies the package dbs to use with a combination of
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.

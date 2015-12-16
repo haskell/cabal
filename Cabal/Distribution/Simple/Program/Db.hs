@@ -76,6 +76,7 @@ import Data.List
          ( foldl' )
 import Data.Maybe
          ( catMaybes )
+import Data.Tuple (swap)
 import qualified Data.Map as Map
 import Control.Monad
          ( join, foldM )
@@ -123,28 +124,42 @@ updateConfiguredProgs update conf =
 
 
 -- Read & Show instances are based on listToFM
--- Note that we only serialise the configured part of the database, this is
--- because we don't need the unconfigured part after the configure stage, and
--- additionally because we cannot read/show 'Program' as it contains functions.
+
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Show ProgramDb where
   show = show . Map.toAscList . configuredProgs
 
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Read ProgramDb where
   readsPrec p s =
     [ (emptyProgramDb { configuredProgs = Map.fromList s' }, r)
     | (s', r) <- readsPrec p s ]
 
+-- | Note that this instance does not preserve the known 'Program's.
+-- See 'restoreProgramDb' for details.
+--
 instance Binary ProgramDb where
-  put = put . configuredProgs
+  put db = do
+    put (progSearchPath db)
+    put (configuredProgs db)
+
   get = do
-      progs <- get
-      return $! emptyProgramDb { configuredProgs = progs }
+    searchpath <- get
+    progs      <- get
+    return $! emptyProgramDb {
+      progSearchPath  = searchpath,
+      configuredProgs = progs
+    }
 
 
--- | The Read\/Show instance does not preserve all the unconfigured 'Programs'
--- because 'Program' is not in Read\/Show because it contains functions. So to
--- fully restore a deserialised 'ProgramDb' use this function to add
--- back all the known 'Program's.
+-- | The 'Read'\/'Show' and 'Binary' instances do not preserve all the
+-- unconfigured 'Programs' because 'Program' is not in 'Read'\/'Show' because
+-- it contains functions. So to fully restore a deserialised 'ProgramDb' use
+-- this function to add back all the known 'Program's.
 --
 -- * It does not add the default programs, but you probably want them, use
 --   'builtinPrograms' in addition to any extra you might need.
@@ -313,21 +328,23 @@ configureProgram :: Verbosity
 configureProgram verbosity prog conf = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog conf of
-    Nothing   -> programFindLocation prog verbosity (progSearchPath conf)
-             >>= return . fmap FoundOnSystem
+    Nothing   ->
+      programFindLocation prog verbosity (progSearchPath conf)
+      >>= return . fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
       absolute <- doesExecutableExist path
       if absolute
-        then return (Just (UserSpecified path))
+        then return (Just (UserSpecified path, []))
         else findProgramOnSearchPath verbosity (progSearchPath conf) path
-         >>= maybe (die notFound) (return . Just . UserSpecified)
+             >>= maybe (die notFound)
+                       (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
                      ++ "'. User-specified path '"
                      ++ path ++ "' does not refer to an executable and "
                      ++ "the program is not on the system path."
   case maybeLocation of
     Nothing -> return conf
-    Just location -> do
+    Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
       newPath <- programSearchPathAsPATHVar (progSearchPath conf)
       let configuredProg        = ConfiguredProgram {
@@ -337,7 +354,8 @@ configureProgram verbosity prog conf = do
             programOverrideArgs = userSpecifiedArgs prog conf,
             programOverrideEnv  = [("PATH", Just newPath)],
             programProperties   = Map.empty,
-            programLocation     = location
+            programLocation     = location,
+            programMonitorFiles = triedLocations
           }
       configuredProg' <- programPostConf prog verbosity configuredProg
       return (updateConfiguredProgs (Map.insert name configuredProg') conf)

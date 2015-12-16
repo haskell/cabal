@@ -112,7 +112,7 @@ data InstalledPackageInfo
         haddockHTMLs      :: [FilePath],
         pkgRoot           :: Maybe FilePath
     }
-    deriving (Generic, Read, Show)
+    deriving (Eq, Generic, Read, Show)
 
 instance Binary InstalledPackageInfo
 
@@ -172,7 +172,7 @@ noVersion = Version [] []
 -- Exposed modules
 
 newtype AbiHash = AbiHash String
-    deriving (Show, Read, Generic)
+    deriving (Eq, Show, Read, Generic)
 instance Binary AbiHash
 
 instance Text AbiHash where
@@ -195,7 +195,7 @@ data ExposedModule
        exposedReexport  :: Maybe OriginalModule,
        exposedSignature :: Maybe OriginalModule -- This field is unused for now.
      }
-  deriving (Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show)
 
 instance Text OriginalModule where
     disp (OriginalModule ipi m) =

@@ -28,6 +28,10 @@ module Distribution.Simple.Register (
     unregister,
 
     initPackageDB,
+    doesPackageDBExist,
+    createPackageDB,
+    deletePackageDB,
+
     invokeHcPkg,
     registerPackage,
     generateRegistrationInfo,
@@ -82,7 +86,8 @@ import Distribution.Verbosity as Verbosity
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
-         ( getCurrentDirectory )
+         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
+         , doesDirectoryExist, doesFileExist )
 
 import Data.Version
 import Control.Monad (when)
@@ -114,8 +119,10 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     case () of
      _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
-       | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo pkg lbi inplace packageDbs
+       | otherwise             -> do
+           setupMessage verbosity "Registering" (packageId pkg)
+           registerPackage verbosity (compiler lbi) (withPrograms lbi) False
+                           packageDbs installedPkgInfo
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -206,15 +213,39 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
+initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath -> IO ()
+initPackageDB verbosity comp progdb dbPath =
+    createPackageDB verbosity comp progdb True dbPath
+
 -- | Create an empty package DB at the specified location.
-initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
-                 -> IO ()
-initPackageDB verbosity comp conf dbPath =
-  case compilerFlavor comp of
-    HaskellSuite {} -> HaskellSuite.initPackageDB verbosity conf dbPath
-    _               -> withHcPkg "Distribution.Simple.Register.initPackageDB: \
-                                 \not implemented for this compiler" comp conf
-                                 (\hpi -> HcPkg.init hpi verbosity dbPath)
+createPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> Bool
+                -> FilePath -> IO ()
+createPackageDB verbosity comp progdb preferCompat dbPath =
+    case compilerFlavor comp of
+      GHC   -> HcPkg.init (GHC.hcPkgInfo   progdb) verbosity preferCompat dbPath
+      GHCJS -> HcPkg.init (GHCJS.hcPkgInfo progdb) verbosity False dbPath
+      LHC   -> HcPkg.init (LHC.hcPkgInfo   progdb) verbosity False dbPath
+      UHC   -> return ()
+      HaskellSuite _ -> HaskellSuite.initPackageDB verbosity progdb dbPath
+      _              -> die $ "Distribution.Simple.Register.createPackageDB: "
+                           ++ "not implemented for this compiler"
+
+doesPackageDBExist :: FilePath -> IO Bool
+doesPackageDBExist dbPath = do
+    -- currently one impl for all compiler flavours, but could change if needed
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then return True
+        else doesFileExist dbPath
+
+deletePackageDB :: FilePath -> IO ()
+deletePackageDB dbPath = do
+    -- currently one impl for all compiler flavours, but could change if needed
+    dir_exists <- doesDirectoryExist dbPath
+    if dir_exists
+        then removeDirectoryRecursive dbPath
+        else do file_exists <- doesFileExist dbPath
+                when file_exists $ removeFile dbPath
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.
@@ -235,25 +266,23 @@ withHcPkg name comp conf f =
                   \not implemented for this compiler")
 
 registerPackage :: Verbosity
-                -> InstalledPackageInfo
-                -> PackageDescription
-                -> LocalBuildInfo
+                -> Compiler
+                -> ProgramConfiguration
                 -> Bool
                 -> PackageDBStack
+                -> InstalledPackageInfo
                 -> IO ()
-registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
-  let msg = if inplace
-            then "In-place registering"
-            else "Registering"
-  setupMessage verbosity msg (packageId pkg)
-  case compilerFlavor (compiler lbi) of
-    GHC   -> GHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
-    GHCJS -> GHCJS.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
-    LHC   -> LHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
-    UHC   -> UHC.registerPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
+registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo =
+  case compilerFlavor comp of
+    GHC   -> GHC.registerPackage   verbosity progdb multiInstance packageDbs installedPkgInfo
+    GHCJS -> GHCJS.registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
+    _ | multiInstance
+          -> die "Registering multiple package instances is not yet supported for this compiler"
+    LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
+    UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo
     JHC   -> notice verbosity "Registering for jhc (nothing to do)"
     HaskellSuite {} ->
-      HaskellSuite.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+      HaskellSuite.registerPackage verbosity      progdb packageDbs installedPkgInfo
     _    -> die "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity

@@ -54,6 +54,7 @@ module Distribution.Simple.Setup (
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions,
   programConfigurationOptions, programConfigurationPaths',
+  splitArgs,
 
   defaultDistPref, optionDistPref,
 
@@ -83,7 +84,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , DebugInfoLevel(..), flagToDebugInfoLevel
          , OptimisationLevel(..), flagToOptimisationLevel
-         , ProfDetailLevel(..), flagToProfDetailLevel
+         , ProfDetailLevel(..), flagToProfDetailLevel, showProfDetailLevel
          , absolutePackageDBPath )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine, lowercase, intercalate )
@@ -671,16 +672,8 @@ showPackageDbList = map showPackageDb
     showPackageDb (Just (SpecificPackageDB db)) = db
 
 showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
-showProfDetailLevelFlag dl =
-  case dl of
-    NoFlag                           -> []
-    Flag ProfDetailNone              -> ["none"]
-    Flag ProfDetailDefault           -> ["default"]
-    Flag ProfDetailExportedFunctions -> ["exported-functions"]
-    Flag ProfDetailToplevelFunctions -> ["toplevel-functions"]
-    Flag ProfDetailAllFunctions      -> ["all-functions"]
-    Flag (ProfDetailOther other)     -> [other]
-
+showProfDetailLevelFlag NoFlag    = []
+showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
 parseDependency :: Parse.ReadP r (PackageName, ComponentId)
 parseDependency = do

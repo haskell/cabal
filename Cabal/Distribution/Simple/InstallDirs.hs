@@ -96,7 +96,7 @@ data InstallDirs dir = InstallDirs {
         htmldir      :: dir,
         haddockdir   :: dir,
         sysconfdir   :: dir
-    } deriving (Generic, Read, Show)
+    } deriving (Eq, Read, Show, Generic)
 
 instance Binary dir => Binary (InstallDirs dir)
 
@@ -349,7 +349,8 @@ prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
 -- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 --
-newtype PathTemplate = PathTemplate [PathComponent] deriving (Eq, Generic, Ord)
+newtype PathTemplate = PathTemplate [PathComponent]
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplate
 

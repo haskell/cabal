@@ -60,6 +60,7 @@ module Distribution.Simple.Compiler (
         ProfDetailLevel(..),
         knownProfDetailLevels,
         flagToProfDetailLevel,
+        showProfDetailLevel,
   ) where
 
 import Distribution.Compiler
@@ -90,7 +91,7 @@ data Compiler = Compiler {
         compilerProperties      :: M.Map String String
         -- ^ A key-value map for properties not covered by the above fields.
     }
-    deriving (Generic, Show, Read)
+    deriving (Eq, Generic, Show, Read)
 
 instance Binary Compiler
 
@@ -336,4 +337,13 @@ knownProfDetailLevels =
   , ("toplevel-functions", ["toplevel", "top"], ProfDetailToplevelFunctions)
   , ("all-functions",      ["all"],             ProfDetailAllFunctions)
   ]
+
+showProfDetailLevel :: ProfDetailLevel -> String
+showProfDetailLevel dl = case dl of
+    ProfDetailNone              -> "none"
+    ProfDetailDefault           -> "default"
+    ProfDetailExportedFunctions -> "exported-functions"
+    ProfDetailToplevelFunctions -> "toplevel-functions"
+    ProfDetailAllFunctions      -> "all-functions"
+    ProfDetailOther other       -> other
 

@@ -117,7 +117,7 @@ data PackageIndex a = PackageIndex
   -- preserved. See #1463 for discussion.
   !(Map PackageName (Map Version [a]))
 
-  deriving (Generic, Show, Read)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary a => Binary (PackageIndex a)
 

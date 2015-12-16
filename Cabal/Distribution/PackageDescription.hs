@@ -1129,12 +1129,12 @@ data GenericPackageDescription =
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
       }
-    deriving (Show, Eq, Typeable, Data)
+    deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
 
---TODO: make PackageDescription an instance of Text.
+instance Binary GenericPackageDescription
 
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.
@@ -1144,7 +1144,9 @@ data Flag = MkFlag
     , flagDefault     :: Bool
     , flagManual      :: Bool
     }
-    deriving (Show, Eq, Typeable, Data)
+    deriving (Show, Eq, Typeable, Data, Generic)
+
+instance Binary Flag
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 newtype FlagName = FlagName String
@@ -1164,7 +1166,9 @@ data ConfVar = OS OS
              | Arch Arch
              | Flag FlagName
              | Impl CompilerFlavor VersionRange
-    deriving (Eq, Show, Typeable, Data)
+    deriving (Eq, Show, Typeable, Data, Generic)
+
+instance Binary ConfVar
 
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
@@ -1172,7 +1176,7 @@ data Condition c = Var c
                  | CNot (Condition c)
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
-    deriving (Show, Eq, Typeable, Data)
+    deriving (Show, Eq, Typeable, Data, Generic)
 
 cNot :: Condition a -> Condition a
 cNot (Lit b)  = Lit (not b)
@@ -1226,6 +1230,8 @@ instance MonadPlus Condition where
   mzero = mempty
   mplus = mappend
 
+instance Binary c => Binary (Condition c)
+
 data CondTree v c a = CondNode
     { condTreeData        :: a
     , condTreeConstraints :: c
@@ -1233,4 +1239,6 @@ data CondTree v c a = CondNode
                               , CondTree v c a
                               , Maybe (CondTree v c a))]
     }
-    deriving (Show, Eq, Typeable, Data)
+    deriving (Show, Eq, Typeable, Data, Generic)
+
+instance (Binary v, Binary c, Binary a) => Binary (CondTree v c a)

@@ -572,6 +572,8 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
       return (out, err, exitcode)
 
 
+{-# DEPRECATED findProgramLocation
+    "No longer used within Cabal, try findProgramOnSearchPath" #-}
 -- | Look for a program on the path.
 findProgramLocation :: Verbosity -> FilePath -> IO (Maybe FilePath)
 findProgramLocation verbosity prog = do

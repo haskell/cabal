@@ -56,7 +56,7 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
       let
         haskellSuiteProgram' =
           haskellSuiteProgram
-            { programFindLocation = \v _p -> findProgramLocation v hcPath }
+            { programFindLocation = \v p -> findProgramOnSearchPath v p hcPath }
 
       -- NB: cannot call requireProgram right away — it'd think that
       -- the program is already configured and won't reconfigure it again.
@@ -200,14 +200,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
+  -> ProgramConfiguration
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  (hspkg, _) <- requireProgram verbosity haskellSuitePkgProgram (withPrograms lbi)
+registerPackage verbosity progdb packageDbs installedPkgInfo = do
+  (hspkg, _) <- requireProgram verbosity haskellSuitePkgProgram progdb
 
   runProgramInvocation verbosity $
     (programInvocation hspkg

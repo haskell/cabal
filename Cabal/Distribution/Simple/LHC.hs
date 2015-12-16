@@ -158,10 +158,11 @@ configureToolchain lhcProg =
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
     findProg :: Program -> FilePath
-             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+             -> Verbosity -> ProgramSearchPath
+             -> IO (Maybe (FilePath, [FilePath]))
     findProg prog location | isWindows = \verbosity searchpath -> do
         exists <- doesFileExist location
-        if exists then return (Just location)
+        if exists then return (Just (location, []))
                   else do warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
                           programFindLocation prog verbosity searchpath
       | otherwise = programFindLocation prog
@@ -774,14 +775,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
+  -> ProgramConfiguration
   -> PackageDBStack
+  -> InstalledPackageInfo
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
+registerPackage verbosity progdb packageDbs installedPkgInfo =
+  HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
     (Right installedPkgInfo)
 
 hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
@@ -789,7 +788,10 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
-                                 , HcPkg.useSingleFileDb = True
+                                 , HcPkg.supportsDirDbs  = True
+                                 , HcPkg.requiresDirDbs  = True
+                                 , HcPkg.nativeMultiInstance  = False -- ?
+                                 , HcPkg.recacheMultiInstance = False -- ?
                                  }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram conf
