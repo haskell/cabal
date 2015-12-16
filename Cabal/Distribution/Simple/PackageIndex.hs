@@ -29,7 +29,6 @@ module Distribution.Simple.PackageIndex (
   deleteSourcePackageId,
   deletePackageName,
 --  deleteDependency,
-  mapPreservingId,
 
   -- * Queries
 
@@ -305,30 +304,6 @@ deleteDependency (Dependency name verstionRange) =
   delete' name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 -}
 
--- | Map over all the packages in the index, but each package's id is not
--- allowed to change (allowing a somewhat more efficient implementation).
---
-mapPreservingId :: (HasComponentId a, HasComponentId b)
-                => (a -> b)
-                -> PackageIndex a
-                -> PackageIndex b
-mapPreservingId f (PackageIndex _pids pnames) =
-    PackageIndex pids' pnames'
-  where
-    f' pkg = assert (installedComponentId pkg == installedComponentId pkg'
-                     && packageId pkg == packageId pkg')
-             pkg'
-      where
-        pkg' = f pkg
-
-    -- map over the auxiliary name version maps
-    pnames' = fmap (fmap (map f')) pnames
-    -- but reconstruct the primary index to preserve sharing  
-    pids'   = Map.fromList [ (installedComponentId pkg, pkg)
-                           | pvers <- Map.elems pnames'
-                           , pkgs <- Map.elems pvers
-                           , pkg  <- pkgs ]
-
 --
 -- * Bulk queries
 --
@@ -362,7 +337,7 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- * Lookups
 --
 
--- | Does a lookup by installed package id.
+-- | Does a lookup by source package id (name & version).
 --
 -- Since multiple package DBs mask each other by 'ComponentId',
 -- then we get back at most one package.

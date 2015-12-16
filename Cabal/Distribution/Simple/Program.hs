@@ -63,11 +63,6 @@ module Distribution.Simple.Program (
     , builtinPrograms
 
     -- * The collection of configured programs we can run
-    , ProgramDb
-    , emptyProgramDb
-    , defaultProgramDb
-    , restoreProgramDb
-
     , ProgramConfiguration
     , emptyProgramConfiguration
     , defaultProgramConfiguration
