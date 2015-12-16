@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, globalRepos
+    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, withGlobalRepos
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
@@ -377,8 +377,9 @@ instance Monoid GlobalFlags where
   }
     where combine field = field a `mappend` field b
 
-globalRepos :: GlobalFlags -> [Repo]
-globalRepos globalFlags = remoteRepos ++ localRepos
+withGlobalRepos :: Verbosity -> GlobalFlags -> ([Repo] -> IO a) -> IO a
+withGlobalRepos _verbosity globalFlags callback =
+    callback $ remoteRepos ++ localRepos
   where
     remoteRepos =
       [ RepoRemote remote cacheDir
