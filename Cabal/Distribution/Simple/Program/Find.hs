@@ -37,10 +37,8 @@ import Distribution.Simple.Utils
          ( debug, doesExecutableExist )
 import Distribution.System
          ( OS(..), buildOS )
-#if MIN_VERSION_directory(1,2,1)
 import qualified System.Directory as Directory
          ( findExecutable )
-#endif
 import Distribution.Compat.Environment
          ( getEnvironment )
 import System.FilePath as FilePath
@@ -173,14 +171,20 @@ getSystemSearchPath = fmap nub $ do
     FilePath.getSearchPath
 #endif
 
-findExecutable :: FilePath -> IO (Maybe FilePath)
+#ifdef MIN_VERSION_directory
 #if MIN_VERSION_directory(1,2,1)
+#define HAVE_directory_121
+#endif
+#endif
+
+findExecutable :: FilePath -> IO (Maybe FilePath)
+#if HAVE_directory_121
 findExecutable = Directory.findExecutable
 #else
 findExecutable prog = do
       -- With directory < 1.2.1 'findExecutable' doesn't check that the path
       -- really refers to an executable.
-      mExe <- findExecutable prog
+      mExe <- Directory.findExecutable prog
       case mExe of
         Just exe -> do
           exeExists <- doesExecutableExist exe
