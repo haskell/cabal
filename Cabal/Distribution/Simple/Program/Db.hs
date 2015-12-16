@@ -76,6 +76,7 @@ import Data.List
          ( foldl' )
 import Data.Maybe
          ( catMaybes )
+import Data.Tuple (swap)
 import qualified Data.Map as Map
 import Control.Monad
          ( join, foldM )
@@ -313,21 +314,23 @@ configureProgram :: Verbosity
 configureProgram verbosity prog conf = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog conf of
-    Nothing   -> programFindLocation prog verbosity (progSearchPath conf)
-             >>= return . fmap FoundOnSystem
+    Nothing   ->
+      programFindLocation prog verbosity (progSearchPath conf)
+      >>= return . fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
       absolute <- doesExecutableExist path
       if absolute
-        then return (Just (UserSpecified path))
+        then return (Just (UserSpecified path, []))
         else findProgramOnSearchPath verbosity (progSearchPath conf) path
-         >>= maybe (die notFound) (return . Just . UserSpecified)
+             >>= maybe (die notFound)
+                       (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
                      ++ "'. User-specified path '"
                      ++ path ++ "' does not refer to an executable and "
                      ++ "the program is not on the system path."
   case maybeLocation of
     Nothing -> return conf
-    Just location -> do
+    Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
       newPath <- programSearchPathAsPATHVar (progSearchPath conf)
       let configuredProg        = ConfiguredProgram {
@@ -337,7 +340,8 @@ configureProgram verbosity prog conf = do
             programOverrideArgs = userSpecifiedArgs prog conf,
             programOverrideEnv  = [("PATH", Just newPath)],
             programProperties   = Map.empty,
-            programLocation     = location
+            programLocation     = location,
+            programMonitorFiles = triedLocations
           }
       configuredProg' <- programPostConf prog verbosity configuredProg
       return (updateConfiguredProgs (Map.insert name configuredProg') conf)

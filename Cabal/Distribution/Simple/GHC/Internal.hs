@@ -132,7 +132,8 @@ configureToolchain implInfo ghcProg ghcInfo =
           in  (b, b, b, b)
 
     findProg :: Program -> [FilePath]
-             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+             -> Verbosity -> ProgramSearchPath
+             -> IO (Maybe (FilePath, [FilePath]))
     findProg prog extraPath v searchpath =
         programFindLocation prog v searchpath'
       where

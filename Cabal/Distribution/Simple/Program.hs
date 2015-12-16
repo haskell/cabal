@@ -223,4 +223,5 @@ restoreProgramConfiguration = restoreProgramDb
 {-# DEPRECATED findProgramOnPath "use findProgramOnSearchPath instead" #-}
 findProgramOnPath :: String -> Verbosity -> IO (Maybe FilePath)
 findProgramOnPath name verbosity =
+    fmap (fmap fst) $
     findProgramOnSearchPath verbosity defaultProgramSearchPath name

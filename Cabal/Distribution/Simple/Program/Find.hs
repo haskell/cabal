@@ -78,14 +78,14 @@ defaultProgramSearchPath :: ProgramSearchPath
 defaultProgramSearchPath = [ProgramSearchPathDefault]
 
 findProgramOnSearchPath :: Verbosity -> ProgramSearchPath
-                        -> FilePath -> IO (Maybe FilePath)
+                        -> FilePath -> IO (Maybe (FilePath, [FilePath]))
 findProgramOnSearchPath verbosity searchpath prog = do
     debug verbosity $ "Searching for " ++ prog ++ " in path."
     res <- tryPathElems [] searchpath
     case res of
       Nothing   -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
       Just (path, _) -> debug verbosity ("Found " ++ prog ++ " at "++ path)
-    return (fmap fst res)
+    return res
   where
     tryPathElems :: [[FilePath]] -> [ProgramSearchPathEntry]
                  -> IO (Maybe (FilePath, [FilePath]))

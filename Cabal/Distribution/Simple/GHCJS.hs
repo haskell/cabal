@@ -152,24 +152,24 @@ ghcjsNativeToo :: Compiler -> Bool
 ghcjsNativeToo = Internal.ghcLookupProperty "Native Too"
 
 guessGhcjsPkgFromGhcjsPath :: ConfiguredProgram -> Verbosity
-                           -> ProgramSearchPath -> IO (Maybe FilePath)
+                           -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessGhcjsPkgFromGhcjsPath = guessToolFromGhcjsPath ghcjsPkgProgram
 
 guessHsc2hsFromGhcjsPath :: ConfiguredProgram -> Verbosity
-                         -> ProgramSearchPath -> IO (Maybe FilePath)
+                         -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessHsc2hsFromGhcjsPath = guessToolFromGhcjsPath hsc2hsProgram
 
 guessC2hsFromGhcjsPath :: ConfiguredProgram -> Verbosity
-                       -> ProgramSearchPath -> IO (Maybe FilePath)
+                       -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessC2hsFromGhcjsPath = guessToolFromGhcjsPath c2hsProgram
 
 guessHaddockFromGhcjsPath :: ConfiguredProgram -> Verbosity
-                          -> ProgramSearchPath -> IO (Maybe FilePath)
+                          -> ProgramSearchPath -> IO (Maybe (FilePath, [FilePath]))
 guessHaddockFromGhcjsPath = guessToolFromGhcjsPath haddockProgram
 
 guessToolFromGhcjsPath :: Program -> ConfiguredProgram
                        -> Verbosity -> ProgramSearchPath
-                       -> IO (Maybe FilePath)
+                       -> IO (Maybe (FilePath, [FilePath]))
 guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
   = do let toolname          = programName tool
            path              = programPath ghcjsProg
@@ -194,7 +194,10 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
                    -- method.
          []     -> programFindLocation tool verbosity searchpath
          (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
-                      return (Just fp)
+                      let lookedAt = map fst
+                                   . takeWhile (\(_file, exist) -> not exist)
+                                   $ zip guesses exists
+                      return (Just (fp, lookedAt))
 
   where takeVersionSuffix :: FilePath -> String
         takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
