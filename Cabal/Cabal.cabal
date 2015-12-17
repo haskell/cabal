@@ -253,6 +253,7 @@ library
   other-modules:
     Distribution.Compat.Binary
     Distribution.Compat.CopyFile
+    Distribution.Compat.Semigroup
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal

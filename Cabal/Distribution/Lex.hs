@@ -14,7 +14,7 @@ module Distribution.Lex (
  ) where
 
 import Data.Char (isSpace)
-import Data.Monoid as Mon
+import Distribution.Compat.Semigroup as Semi
 
 newtype DList a = DList ([a] -> [a])
 
@@ -24,9 +24,12 @@ runDList (DList run) = run []
 singleton :: a -> DList a
 singleton a = DList (a:)
 
-instance Mon.Monoid (DList a) where
+instance Monoid (DList a) where
   mempty = DList id
-  DList a `mappend` DList b = DList (a . b)
+  mappend = (Semi.<>)
+
+instance Semigroup (DList a) where
+  DList a <> DList b = DList (a . b)
 
 tokenizeQuotedWords :: String -> [String]
 tokenizeQuotedWords = filter (not . null) . go False mempty

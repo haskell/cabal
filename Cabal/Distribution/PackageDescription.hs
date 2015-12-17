@@ -110,11 +110,12 @@ module Distribution.PackageDescription (
   ) where
 
 import Distribution.Compat.Binary (Binary)
+import qualified Distribution.Compat.Semigroup as Semi ((<>))
+import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup)
 import Data.Data                  (Data)
 import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
 import Data.Maybe                 (fromMaybe, maybeToList)
-import Data.Monoid as Mon         (Monoid(..))
 import Data.Foldable as Fold      (Foldable(foldMap))
 import Data.Traversable as Trav   (Traversable(traverse))
 import Data.Typeable               ( Typeable )
@@ -320,11 +321,12 @@ instance Binary SetupBuildInfo
 
 instance Monoid SetupBuildInfo where
   mempty = SetupBuildInfo {
-    setupDepends = Mon.mempty
+    setupDepends = Semi.mempty
   }
-  mappend a b = SetupBuildInfo {
-    setupDepends = combine setupDepends
-  }
+  mappend = (Semi.<>)
+
+instance Semigroup SetupBuildInfo where
+  a <> b = SetupBuildInfo { setupDepends = combine setupDepends }
     where combine field = field a `mappend` field b
 
 -- ---------------------------------------------------------------------------
@@ -348,9 +350,12 @@ lookupRenaming = Map.findWithDefault defaultRenaming . packageName
 instance Binary ModuleRenaming where
 
 instance Monoid ModuleRenaming where
-    ModuleRenaming b rns `mappend` ModuleRenaming b' rns'
-        = ModuleRenaming (b || b') (rns ++ rns') -- ToDo: dedupe?
     mempty = ModuleRenaming False []
+    mappend = (Semi.<>)
+
+instance Semigroup ModuleRenaming where
+    ModuleRenaming b rns <> ModuleRenaming b' rns'
+        = ModuleRenaming (b || b') (rns ++ rns') -- ToDo: dedupe?
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.
@@ -410,7 +415,10 @@ instance Monoid Library where
     libExposed     = True,
     libBuildInfo   = mempty
   }
-  mappend a b = Library {
+  mappend = (Semi.<>)
+
+instance Semigroup Library where
+  a <> b = Library {
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
     requiredSignatures = combine requiredSignatures,
@@ -500,7 +508,10 @@ instance Monoid Executable where
     modulePath = mempty,
     buildInfo  = mempty
   }
-  mappend a b = Executable{
+  mappend = (Semi.<>)
+
+instance Semigroup Executable where
+  a <> b = Executable{
     exeName    = combine' exeName,
     modulePath = combine modulePath,
     buildInfo  = combine buildInfo
@@ -585,8 +596,10 @@ instance Monoid TestSuite where
         testBuildInfo = mempty,
         testEnabled   = False
     }
+    mappend = (Semi.<>)
 
-    mappend a b = TestSuite {
+instance Semigroup TestSuite where
+    a <> b = TestSuite {
         testName      = combine' testName,
         testInterface = combine  testInterface,
         testBuildInfo = combine  testBuildInfo,
@@ -601,8 +614,11 @@ instance Monoid TestSuite where
 
 instance Monoid TestSuiteInterface where
     mempty  =  TestSuiteUnsupported (TestTypeUnknown mempty (Version [] []))
-    mappend a (TestSuiteUnsupported _) = a
-    mappend _ b                        = b
+    mappend = (Semi.<>)
+
+instance Semigroup TestSuiteInterface where
+    a <> (TestSuiteUnsupported _) = a
+    _ <> b                        = b
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
@@ -718,8 +734,10 @@ instance Monoid Benchmark where
         benchmarkBuildInfo = mempty,
         benchmarkEnabled   = False
     }
+    mappend = (Semi.<>)
 
-    mappend a b = Benchmark {
+instance Semigroup Benchmark where
+    a <> b = Benchmark {
         benchmarkName      = combine' benchmarkName,
         benchmarkInterface = combine  benchmarkInterface,
         benchmarkBuildInfo = combine  benchmarkBuildInfo,
@@ -734,8 +752,11 @@ instance Monoid Benchmark where
 
 instance Monoid BenchmarkInterface where
     mempty  =  BenchmarkUnsupported (BenchmarkTypeUnknown mempty (Version [] []))
-    mappend a (BenchmarkUnsupported _) = a
-    mappend _ b                        = b
+    mappend = (Semi.<>)
+
+instance Semigroup BenchmarkInterface where
+    a <> (BenchmarkUnsupported _) = a
+    _ <> b                        = b
 
 emptyBenchmark :: Benchmark
 emptyBenchmark = mempty
@@ -857,7 +878,10 @@ instance Monoid BuildInfo where
     targetBuildDepends = [],
     targetBuildRenaming = Map.empty
   }
-  mappend a b = BuildInfo {
+  mappend = (Semi.<>)
+
+instance Semigroup BuildInfo where
+  a <> b = BuildInfo {
     buildable         = buildable a && buildable b,
     buildTools        = combine    buildTools,
     cppOptions        = combine    cppOptions,
@@ -1220,7 +1244,10 @@ instance Monad Condition where
 
 instance Monoid (Condition a) where
   mempty = Lit False
-  mappend = COr
+  mappend = (Semi.<>)
+
+instance Semigroup (Condition a) where
+  (<>) = COr
 
 instance Alternative Condition where
   empty = mempty

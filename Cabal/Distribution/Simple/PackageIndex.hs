@@ -65,11 +65,11 @@ import Control.Exception (assert)
 import Data.Array ((!))
 import qualified Data.Array as Array
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup as Semi
 import qualified Data.Graph as Graph
 import Data.List as List
          ( null, foldl', sort
          , groupBy, sortBy, find, isInfixOf, nubBy, deleteBy, deleteFirstsBy )
-import Data.Monoid as Mon (Monoid(..))
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (isNothing, fromMaybe)
@@ -127,10 +127,13 @@ type InstalledPackageIndex = PackageIndex InstalledPackageInfo
 
 instance HasComponentId a => Monoid (PackageIndex a) where
   mempty  = PackageIndex Map.empty Map.empty
-  mappend = merge
+  mappend = (Semi.<>)
   --save one mappend with empty in the common case:
-  mconcat [] = Mon.mempty
+  mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
+
+instance HasComponentId a => Semigroup (PackageIndex a) where
+  (<>) = merge
 
 invariant :: HasComponentId a => PackageIndex a -> Bool
 invariant (PackageIndex pids pnames) =

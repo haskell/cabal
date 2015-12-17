@@ -12,6 +12,7 @@ module Distribution.Simple.Program.GHC (
 
   ) where
 
+import Distribution.Compat.Semigroup as Semi
 import Distribution.Simple.GHC.ImplInfo ( getImplInfo, GhcImplInfo(..) )
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
@@ -27,7 +28,6 @@ import Distribution.Utils.NubList   ( NubListR, fromNubListR )
 import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import qualified Data.Map as M
-import Data.Monoid as Mon
 import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
@@ -491,7 +491,7 @@ packageDbArgs implInfo
 
 instance Monoid GhcOptions where
   mempty = GhcOptions {
-    ghcOptMode               = Mon.mempty,
+    ghcOptMode               = mempty,
     ghcOptExtra              = mempty,
     ghcOptExtraDefault       = mempty,
     ghcOptInputFiles         = mempty,
@@ -544,7 +544,10 @@ instance Monoid GhcOptions where
     ghcOptVerbosity          = mempty,
     ghcOptCabal              = mempty
   }
-  mappend a b = GhcOptions {
+  mappend = (Semi.<>)
+
+instance Semigroup GhcOptions where
+  a <> b = GhcOptions {
     ghcOptMode               = combine ghcOptMode,
     ghcOptExtra              = combine ghcOptExtra,
     ghcOptExtraDefault       = combine ghcOptExtraDefault,

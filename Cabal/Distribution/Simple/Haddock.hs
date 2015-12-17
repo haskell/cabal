@@ -24,6 +24,7 @@ import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
+import Distribution.Compat.Semigroup as Semi
 import Distribution.Package
          ( PackageIdentifier(..)
          , Package(..)
@@ -86,7 +87,6 @@ import Language.Haskell.Extension
 import Control.Monad    ( when, forM_ )
 import Data.Either      ( rights )
 import Data.Foldable    ( traverse_ )
-import Data.Monoid
 import Data.Maybe       ( fromMaybe, listToMaybe )
 
 import System.Directory (doesFileExist)
@@ -794,7 +794,10 @@ instance Monoid HaddockArgs where
                 argGhcLibDir = mempty,
                 argTargets = mempty
              }
-    mappend a b = HaddockArgs {
+    mappend = (Semi.<>)
+
+instance Semigroup HaddockArgs where
+    a <> b = HaddockArgs {
                 argInterfaceFile = mult argInterfaceFile,
                 argPackageName = mult argPackageName,
                 argHideModules = mult argHideModules,
@@ -816,4 +819,7 @@ instance Monoid HaddockArgs where
 
 instance Monoid Directory where
     mempty = Dir "."
-    mappend (Dir m) (Dir n) = Dir $ m </> n
+    mappend = (Semi.<>)
+
+instance Semigroup Directory where
+    Dir m <> Dir n = Dir $ m </> n
