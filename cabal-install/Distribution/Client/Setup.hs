@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, globalRepos
+    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, withGlobalRepos
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
@@ -49,7 +49,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
+         ( Username(..), Password(..), Repo(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -377,16 +377,17 @@ instance Monoid GlobalFlags where
   }
     where combine field = field a `mappend` field b
 
-globalRepos :: GlobalFlags -> [Repo]
-globalRepos globalFlags = remoteRepos ++ localRepos
+withGlobalRepos :: Verbosity -> GlobalFlags -> ([Repo] -> IO a) -> IO a
+withGlobalRepos _verbosity globalFlags callback =
+    callback $ remoteRepos ++ localRepos
   where
     remoteRepos =
-      [ Repo (Left remote) cacheDir
+      [ RepoRemote remote cacheDir
       | remote <- fromNubList $ globalRemoteRepos globalFlags
       , let cacheDir = fromFlag (globalCacheDir globalFlags)
                    </> remoteRepoName remote ]
     localRepos =
-      [ Repo (Right LocalRepo) local
+      [ RepoLocal local
       | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------

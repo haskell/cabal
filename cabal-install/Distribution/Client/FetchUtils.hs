@@ -11,6 +11,7 @@
 --
 -- Functions for fetching packages
 -----------------------------------------------------------------------------
+{-# LANGUAGE RecordWildCards #-}
 module Distribution.Client.FetchUtils (
 
     -- * fetching packages
@@ -131,14 +132,14 @@ fetchRepoTarball transport verbosity repo pkgid = do
     else do setupMessage verbosity "Downloading" pkgid
             downloadRepoPackage
   where
-    downloadRepoPackage = case repoKind repo of
-      Right LocalRepo -> return (packageFile repo pkgid)
+    downloadRepoPackage = case repo of
+      RepoLocal{..} -> return (packageFile repo pkgid)
 
-      Left remoteRepo -> do
-        remoteRepoCheckHttps transport remoteRepo
-        let uri  = packageURI remoteRepo pkgid
-            dir  = packageDir       repo pkgid
-            path = packageFile      repo pkgid
+      RepoRemote{..} -> do
+        remoteRepoCheckHttps transport repoRemote
+        let uri  = packageURI  repoRemote pkgid
+            dir  = packageDir  repo       pkgid
+            path = packageFile repo       pkgid
         createDirectoryIfMissing True dir
         _ <- downloadURI transport verbosity uri path
         return path

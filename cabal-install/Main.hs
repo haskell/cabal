@@ -16,7 +16,7 @@
 module Main (main) where
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), globalCommand, globalRepos
+         ( GlobalFlags(..), globalCommand, withGlobalRepos
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
@@ -326,9 +326,10 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       (compilerId comp) platform
 
   maybeWithSandboxDirOnSearchPath useSandbox $
+   withGlobalRepos verbosity globalFlags' $ \globalRepos ->
     configure verbosity
               (configPackageDB' configFlags'')
-              (globalRepos globalFlags')
+              globalRepos
               comp platform conf configFlags'' configExFlags' extraArgs
 
 buildAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
@@ -733,9 +734,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
                               comp platform conf useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
+    withGlobalRepos verbosity globalFlags' $ \globalRepos ->
       install verbosity
               (configPackageDB' configFlags'')
-              (globalRepos globalFlags')
+              globalRepos
               comp platform conf'
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
@@ -897,9 +899,10 @@ listAction listFlags extraArgs globalFlags = do
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
-  List.list verbosity
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+    List.list verbosity
        (configPackageDB' configFlags)
-       (globalRepos globalFlags')
+       globalRepos
        comp
        conf
        listFlags
@@ -918,9 +921,10 @@ infoAction infoFlags extraArgs globalFlags = do
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAuxEx configFlags
-  List.info verbosity
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+    List.info verbosity
        (configPackageDB' configFlags)
-       (globalRepos globalFlags')
+       globalRepos
        comp
        conf
        globalFlags'
@@ -936,7 +940,8 @@ updateAction verbosityFlag extraArgs globalFlags = do
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
-  update transport verbosity (globalRepos globalFlags')
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+    update transport verbosity globalRepos
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> Action
@@ -961,9 +966,10 @@ fetchAction fetchFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags
-  fetch verbosity
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+    fetch verbosity
         (configPackageDB' configFlags)
-        (globalRepos globalFlags')
+        globalRepos
         comp platform conf globalFlags' fetchFlags
         targets
 
@@ -978,9 +984,10 @@ freezeAction freezeFlags _extraArgs globalFlags = do
   maybeWithSandboxPackageInfo verbosity configFlags globalFlags'
                               comp platform conf useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
+    withGlobalRepos verbosity globalFlags' $ \globalRepos ->
       freeze verbosity
             (configPackageDB' configFlags)
-            (globalRepos globalFlags')
+            globalRepos
             comp platform conf
             mSandboxPkgInfo
             globalFlags' freezeFlags
@@ -1011,10 +1018,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
     when (length tarfiles > 1) $
      die "the 'upload' command can only upload documentation for one package at a time."
     tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
-    Upload.uploadDoc transport verbosity (globalRepos globalFlags')
+    withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+      Upload.uploadDoc transport verbosity globalRepos
                     (flagToMaybe $ uploadUsername uploadFlags') maybe_password tarfile
   else do
-    Upload.upload transport verbosity (globalRepos globalFlags')
+    withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+      Upload.upload transport verbosity globalRepos
                   (flagToMaybe $ uploadUsername uploadFlags') maybe_password tarfiles
 
   where
@@ -1088,7 +1097,8 @@ reportAction reportFlags extraArgs globalFlags = do
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
       reportFlags' = savedReportFlags config `mappend` reportFlags
 
-  Upload.report verbosity (globalRepos globalFlags')
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+   Upload.report verbosity globalRepos
     (flagToMaybe $ reportUsername reportFlags')
     (flagToMaybe $ reportPassword reportFlags')
 
@@ -1121,8 +1131,9 @@ getAction getFlags extraArgs globalFlags = do
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  get verbosity
-    (globalRepos (savedGlobalFlags config))
+  withGlobalRepos verbosity (savedGlobalFlags config) $ \globalRepos ->
+   get verbosity
+    globalRepos
     globalFlags'
     getFlags
     targets
@@ -1141,9 +1152,10 @@ initAction initFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
-  initCabal verbosity
+  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
+    initCabal verbosity
             (configPackageDB' configFlags)
-            (globalRepos globalFlags')
+            globalRepos
             comp
             conf
             initFlags

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -208,9 +209,6 @@ data PackageLocation local =
 --  | ScmPackage
   deriving (Show, Functor)
 
-data LocalRepo = LocalRepo
-  deriving (Show,Eq)
-
 data RemoteRepo =
     RemoteRepo {
       remoteRepoName     :: String,
@@ -242,11 +240,24 @@ data RemoteRepo =
 emptyRemoteRepo :: String -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI False [] 0 False
 
-data Repo = Repo {
-    repoKind     :: Either RemoteRepo LocalRepo,
-    repoLocalDir :: FilePath
-  }
-  deriving (Show,Eq)
+data Repo =
+    -- | Local repositories
+    RepoLocal {
+        repoLocalDir :: FilePath
+      }
+
+    -- | Standard (unsecured) remote repositores
+  | RepoRemote {
+        repoRemote   :: RemoteRepo
+      , repoLocalDir :: FilePath
+      }
+
+deriving instance Show Repo
+
+-- | Check if this is a remote repo
+maybeRepoRemote :: Repo -> Maybe RemoteRepo
+maybeRepoRemote (RepoLocal    _localDir  ) = Nothing
+maybeRepoRemote (RepoRemote r _localDir  ) = Just r
 
 -- ------------------------------------------------------------
 -- * Build results

@@ -24,9 +24,10 @@ import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , refTypeFromTypeCode
                                       , typeCodeFromRefType
                                       , updatePackageIndexCacheFile
-                                      , getSourcePackagesStrict )
+                                      , getSourcePackagesStrict
+                                      , Index(..) )
 import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Types ( Repo(..), LocalRepo(..)
+import Distribution.Client.Types ( Repo(..)
                                  , SourcePackageDb(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
@@ -47,8 +48,7 @@ import Data.Either               (partitionEithers)
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile, canonicalizePath)
-import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension
-                                 , replaceExtension )
+import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
@@ -155,8 +155,7 @@ addBuildTreeRefs verbosity path l' refType = do
       hSeek h AbsoluteSeek (fromIntegral offset)
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
-    updatePackageIndexCacheFile verbosity path
-      (path `replaceExtension` "cache")
+    updatePackageIndexCacheFile verbosity $ SandboxIndex path
 
 data DeleteSourceError = ErrNonregisteredSource { nrPath :: FilePath }
                        | ErrNonexistentSource   { nePath :: FilePath } deriving Show
@@ -191,7 +190,7 @@ removeBuildTreeRefs verbosity indexPath l = do
     ++ "' to '" ++ indexPath ++ "'"
 
   unless (null removedRefs) $
-    updatePackageIndexCacheFile verbosity indexPath (indexPath `replaceExtension` "cache")
+    updatePackageIndexCacheFile verbosity $ SandboxIndex indexPath
 
   let results = fmap Right removedRefs
                 ++ fmap Left failures
@@ -265,8 +264,7 @@ listBuildTreeRefs verbosity listIgnored refTypesToList path = do
 
       listWithoutIgnored :: IO [FilePath]
       listWithoutIgnored = do
-        let repo = Repo { repoKind = Right LocalRepo
-                        , repoLocalDir = takeDirectory path }
+        let repo = RepoLocal { repoLocalDir = takeDirectory path }
         pkgIndex <- fmap packageIndex
                     . getSourcePackagesStrict verbosity $ [repo]
         return [ pkgPath | (LocalUnpackedPackage pkgPath) <-

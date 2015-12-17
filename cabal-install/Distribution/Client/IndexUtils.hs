@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -17,6 +18,7 @@ module Distribution.Client.IndexUtils (
   getSourcePackages,
   getSourcePackagesStrict,
 
+  Index(..),
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
@@ -76,7 +78,8 @@ import Distribution.Client.Utils ( byteStringToFilePath
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Client.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist, doesDirectoryExist)
-import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
+import System.FilePath
+         ( (</>), takeExtension, replaceExtension, splitDirectories, normalise )
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
 import System.IO
@@ -149,13 +152,10 @@ getSourcePackages' verbosity repos mode = do
 readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
               -> IO (PackageIndex SourcePackage, [Dependency])
 readRepoIndex verbosity repo mode =
-  let indexFile = repoLocalDir repo </> "00-index.tar"
-      cacheFile = repoLocalDir repo </> "00-index.cache"
-  in handleNotFound $ do
+  handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
-    whenCacheOutOfDate indexFile cacheFile $ do
-      updatePackageIndexCacheFile verbosity indexFile cacheFile
-    readPackageIndexCacheFile mkAvailablePackage indexFile cacheFile mode
+    updateRepoIndexCache verbosity (RepoIndex repo)
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo) mode
 
   where
     mkAvailablePackage pkgEntry =
@@ -174,24 +174,24 @@ readRepoIndex verbosity repo mode =
 
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
-        case repoKind repo of
-          Left  remoteRepo -> warn verbosity $
-               "The package list for '" ++ remoteRepoName remoteRepo
+        case repo of
+          RepoRemote{..} -> warn verbosity $
+               "The package list for '" ++ remoteRepoName repoRemote
             ++ "' does not exist. Run 'cabal update' to download it."
-          Right _localRepo -> warn verbosity $
-               "The package list for the local repo '" ++ repoLocalDir repo
+          RepoLocal{..} -> warn verbosity $
+               "The package list for the local repo '" ++ repoLocalDir
             ++ "' is missing. The repo is invalid."
         return mempty
       else ioError e
 
     isOldThreshold = 15 --days
     warnIfIndexIsOld dt = do
-      when (dt >= isOldThreshold) $ case repoKind repo of
-        Left  remoteRepo -> warn verbosity $
-             "The package list for '" ++ remoteRepoName remoteRepo
+      when (dt >= isOldThreshold) $ case repo of
+        RepoRemote{..} -> warn verbosity $
+             "The package list for '" ++ remoteRepoName repoRemote
           ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
           ++ "'cabal update' to get the latest list of available packages."
-        Right _localRepo -> return ()
+        RepoLocal{..} -> return ()
 
 
 -- | Return the age of the index file in days (as a Double).
@@ -202,23 +202,20 @@ getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.
 --
-updateRepoIndexCache :: Verbosity -> Repo -> IO ()
-updateRepoIndexCache verbosity repo =
-    whenCacheOutOfDate indexFile cacheFile $ do
-      updatePackageIndexCacheFile verbosity indexFile cacheFile
-  where
-    indexFile = repoLocalDir repo </> "00-index.tar"
-    cacheFile = repoLocalDir repo </> "00-index.cache"
+updateRepoIndexCache :: Verbosity -> Index -> IO ()
+updateRepoIndexCache verbosity index =
+    whenCacheOutOfDate index $ do
+      updatePackageIndexCacheFile verbosity index
 
-whenCacheOutOfDate :: FilePath -> FilePath -> IO () -> IO ()
-whenCacheOutOfDate origFile cacheFile action = do
-  exists <- doesFileExist cacheFile
+whenCacheOutOfDate :: Index -> IO () -> IO ()
+whenCacheOutOfDate index action = do
+  exists <- doesFileExist $ cacheFile index
   if not exists
     then action
     else do
-      origTime  <- getModTime origFile
-      cacheTime <- getModTime cacheFile
-      when (origTime > cacheTime) action
+      indexTime <- getModTime $ indexFile index
+      cacheTime <- getModTime $ cacheFile index
+      when (indexTime > cacheTime) action
 
 ------------------------------------------------------------------------
 -- Reading the index file
@@ -348,17 +345,35 @@ lazySequence (x:xs) = unsafeInterleaveIO $ do
     xs' <- lazySequence xs
     return (x':xs')
 
-updatePackageIndexCacheFile :: Verbosity -> FilePath -> FilePath -> IO ()
-updatePackageIndexCacheFile verbosity indexFile cacheFile = do
-    info verbosity ("Updating index cache file " ++ cacheFile)
+-- | Which index do we mean?
+data Index =
+    -- | The main index for the specified repository
+    RepoIndex Repo
+
+    -- | A sandbox-local repository
+    -- Argument is the location of the index file
+  | SandboxIndex FilePath
+
+indexFile :: Index -> FilePath
+indexFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.tar"
+indexFile (SandboxIndex index) = index
+
+cacheFile :: Index -> FilePath
+cacheFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.cache"
+cacheFile (SandboxIndex index) = index `replaceExtension` "cache"
+
+updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
+updatePackageIndexCacheFile verbosity index = do
+    info verbosity ("Updating index cache file " ++ cacheFile index)
     pkgsOrPrefs <- return
                  . parsePackageIndex
                  . maybeDecompress
-               =<< BS.readFile indexFile
+               =<< BS.readFile (indexFile index)
     entries <- lazySequence pkgsOrPrefs
-    let cache = map toCache $ catMaybes entries
-    writeFile cacheFile (showIndexCache cache)
+    let cache = Cache { cacheEntries = map toCache $ catMaybes entries }
+    writeFile (cacheFile index) (showIndexCache cache)
   where
+    toCache :: PackageOrDep -> IndexCacheEntry
     toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
     toCache (Dep d) = CachePreference d
@@ -368,13 +383,12 @@ data ReadPackageIndexMode = ReadPackageIndexStrict
 
 readPackageIndexCacheFile :: Package pkg
                           => (PackageEntry -> pkg)
-                          -> FilePath
-                          -> FilePath
+                          -> Index
                           -> ReadPackageIndexMode
                           -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile mkPkg indexFile cacheFile mode = do
-  cache    <- liftM readIndexCache (BSS.readFile cacheFile)
-  myWithFile indexFile ReadMode $ \indexHnd ->
+readPackageIndexCacheFile mkPkg index mode = do
+  cache    <- liftM readIndexCache $ BSS.readFile (cacheFile index)
+  myWithFile (indexFile index) ReadMode $ \indexHnd ->
     packageIndexFromCache mkPkg indexHnd cache mode
   where
     myWithFile f m act = case mode of
@@ -386,10 +400,10 @@ readPackageIndexCacheFile mkPkg indexFile cacheFile mode = do
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
                       -> Handle
-                      -> [IndexCacheEntry]
+                      -> Cache
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
+packageIndexFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
   where
     accum srcpkgs prefs [] = do
       -- Have to reverse entries, since in a tar file, later entries mask
@@ -539,8 +553,15 @@ showIndexCacheEntry entry = unwords $ case entry of
                              , display dep
                              ]
 
-readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
-readIndexCache = mapMaybe readIndexCacheEntry . BSS.lines
+-- | Cabal caches various information about the Hackage index
+data Cache = Cache {
+    cacheEntries :: [IndexCacheEntry]
+  }
 
-showIndexCache :: [IndexCacheEntry] -> String
-showIndexCache = unlines . map showIndexCacheEntry
+readIndexCache :: BSS.ByteString -> Cache
+readIndexCache bs = Cache {
+    cacheEntries = mapMaybe readIndexCacheEntry $ BSS.lines bs
+  }
+
+showIndexCache :: Cache -> String
+showIndexCache Cache{..} = unlines $ map showIndexCacheEntry cacheEntries
