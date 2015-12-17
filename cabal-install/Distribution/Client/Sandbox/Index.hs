@@ -48,8 +48,7 @@ import Data.Either               (partitionEithers)
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile, canonicalizePath)
-import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension
-                                 , replaceExtension )
+import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
@@ -156,10 +155,7 @@ addBuildTreeRefs verbosity path l' refType = do
       hSeek h AbsoluteSeek (fromIntegral offset)
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
-    updatePackageIndexCacheFile verbosity $ LocalIndex {
-        localIndexFile = path
-      , localCacheFile = path `replaceExtension` "cache"
-      }
+    updatePackageIndexCacheFile verbosity $ SandboxIndex path
 
 data DeleteSourceError = ErrNonregisteredSource { nrPath :: FilePath }
                        | ErrNonexistentSource   { nePath :: FilePath } deriving Show
@@ -194,10 +190,7 @@ removeBuildTreeRefs verbosity indexPath l = do
     ++ "' to '" ++ indexPath ++ "'"
 
   unless (null removedRefs) $
-    updatePackageIndexCacheFile verbosity LocalIndex {
-        localIndexFile = indexPath
-      , localCacheFile = indexPath `replaceExtension` "cache"
-      }
+    updatePackageIndexCacheFile verbosity $ SandboxIndex indexPath
 
   let results = fmap Right removedRefs
                 ++ fmap Left failures

@@ -16,7 +16,7 @@ module Distribution.Client.Update
     ) where
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), repoRemote' )
+         ( Repo(..), RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..), HttpTransport(..) )
 import Distribution.Client.FetchUtils
@@ -43,7 +43,7 @@ update _ verbosity [] =
                 ++ "you would have one specified in the config file."
 update transport verbosity repos = do
   jobCtrl <- newParallelJobControl
-  let remoteRepos = catMaybes (map repoRemote' repos)
+  let remoteRepos = catMaybes (map maybeRepoRemote repos)
   case remoteRepos of
     [] -> return ()
     [remoteRepo] ->
@@ -65,4 +65,4 @@ updateRepo transport verbosity repo = case repo of
       FileDownloaded indexPath -> do
         writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                 =<< BS.readFile indexPath
-        updateRepoIndexCache verbosity (GlobalIndex repo)
+        updateRepoIndexCache verbosity (RepoIndex repo)

@@ -840,7 +840,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
          writeFile reportFile (show (BuildReports.show report, buildLog))
 
   | (report, Just repo) <- reports
-  , Just remoteRepo <- [repoRemote' repo]
+  , Just remoteRepo <- [maybeRepoRemote repo]
   , isLikelyToHaveLogFile (BuildReports.installOutcome report) ]
 
   where

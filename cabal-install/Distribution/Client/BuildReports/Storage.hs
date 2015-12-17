@@ -80,7 +80,7 @@ storeAnonymous reports = sequence_
     onlyRemote rs =
       [ (report, repo, remoteRepo)
       | (report, Just repo) <- rs
-      , Just remoteRepo     <- [repoRemote' repo]
+      , Just remoteRepo     <- [maybeRepoRemote repo]
       ]
 
 storeLocal :: CompilerInfo -> [PathTemplate] -> [(BuildReport, Maybe Repo)]

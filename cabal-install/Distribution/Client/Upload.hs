@@ -4,7 +4,7 @@
 module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
-                                 , Repo(..), RemoteRepo(..), repoRemote' )
+                                 , Repo(..), RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 
@@ -38,7 +38,7 @@ upload :: HttpTransport -> Verbosity -> [Repo]
        -> IO ()
 upload transport verbosity repos mUsername mPassword paths = do
     targetRepo <-
-      case [ remoteRepo | Just remoteRepo <- map repoRemote' repos ] of
+      case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
@@ -59,7 +59,7 @@ uploadDoc :: HttpTransport -> Verbosity -> [Repo]
           -> IO ()
 uploadDoc transport verbosity repos mUsername mPassword path = do
     targetRepo <-
-      case [ remoteRepo | Just remoteRepo <- map repoRemote' repos ] of
+      case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die $ "Cannot upload. No remote repositories are configured."
         rs -> remoteRepoTryUpgradeToHttps transport (last rs)
     let targetRepoURI = remoteRepoURI targetRepo
@@ -113,7 +113,7 @@ report verbosity repos mUsername mPassword = do
   Username username <- maybe promptUsername return mUsername
   Password password <- maybe promptPassword return mPassword
   let auth = (username,password)
-  let remoteRepos = catMaybes (map repoRemote' repos)
+  let remoteRepos = catMaybes (map maybeRepoRemote repos)
   forM_ remoteRepos $ \remoteRepo ->
       do dotCabal <- defaultCabalDir
          let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo

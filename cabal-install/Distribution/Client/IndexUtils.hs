@@ -78,7 +78,8 @@ import Distribution.Client.Utils ( byteStringToFilePath
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Client.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist, doesDirectoryExist)
-import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
+import System.FilePath
+         ( (</>), takeExtension, replaceExtension, splitDirectories, normalise )
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
 import System.IO
@@ -153,8 +154,8 @@ readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
 readRepoIndex verbosity repo mode =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
-    updateRepoIndexCache verbosity (GlobalIndex repo)
-    readPackageIndexCacheFile mkAvailablePackage (GlobalIndex repo) mode
+    updateRepoIndexCache verbosity (RepoIndex repo)
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo) mode
 
   where
     mkAvailablePackage pkgEntry =
@@ -346,19 +347,20 @@ lazySequence (x:xs) = unsafeInterleaveIO $ do
 
 -- | Which index do we mean?
 data Index =
-    -- | The global index for the specified repository
-    GlobalIndex Repo
+    -- | The main index for the specified repository
+    RepoIndex Repo
 
-    -- | A (sandbox) local repository
-  | LocalIndex { localIndexFile :: FilePath, localCacheFile :: FilePath }
+    -- | A sandbox-local repository
+    -- Argument is the location of the index file
+  | SandboxIndex FilePath
 
 indexFile :: Index -> FilePath
-indexFile (GlobalIndex repo) = repoLocalDir repo </> "00-index.tar"
-indexFile (LocalIndex{..})   = localIndexFile
+indexFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.tar"
+indexFile (SandboxIndex index) = index
 
 cacheFile :: Index -> FilePath
-cacheFile (GlobalIndex repo) = repoLocalDir repo </> "00-index.cache"
-cacheFile (LocalIndex{..})   = localCacheFile
+cacheFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.cache"
+cacheFile (SandboxIndex index) = index `replaceExtension` "cache"
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do

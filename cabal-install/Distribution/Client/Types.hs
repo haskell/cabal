@@ -255,9 +255,9 @@ data Repo =
 deriving instance Show Repo
 
 -- | Check if this is a remote repo
-repoRemote' :: Repo -> Maybe RemoteRepo
-repoRemote' (RepoLocal    _localDir  ) = Nothing
-repoRemote' (RepoRemote r _localDir  ) = Just r
+maybeRepoRemote :: Repo -> Maybe RemoteRepo
+maybeRepoRemote (RepoLocal    _localDir  ) = Nothing
+maybeRepoRemote (RepoRemote r _localDir  ) = Just r
 
 -- ------------------------------------------------------------
 -- * Build results
