@@ -102,12 +102,16 @@ data FilePathGlob
 
 instance Binary FilePathGlob
 
-
+-- | Creates a list of files to monitor when you search for a file which
+-- unsuccessfully looked in @notFoundAtPaths@ before finding it at
+-- @foundAtPath@.
 monitorFileSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileSearchPath notFoundAtPaths foundAtPath =
     MonitorFile foundAtPath
   : map MonitorNonExistentFile notFoundAtPaths
 
+-- | Similar to 'monitorFileSearchPath', but also instructs us to
+-- monitor the hash of the found file.
 monitorFileHashedSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
     MonitorFileHashed foundAtPath
@@ -125,6 +129,10 @@ newtype FileMonitorCacheFile a b
 -- Implementation types, files status
 --
 
+-- | The state necessary to determine whether a set of monitored
+-- files has changed.  It consists of two parts: a set of specific
+-- files to be monitored (index by their path), and a list of
+-- globs, which monitor may files at once.
 data MonitorStateFileSet
    = MonitorStateFileSet !(Map FilePath MonitorStateFile)
                          ![FileGlobMonitorState]
@@ -138,7 +146,7 @@ data MonitorStateFileSet
 type Hash = Int
 type ModTime = UTCTime
 
--- | The state necessary to determine whether monitored files have changed.
+-- | The state necessary to determine whether a monitored file has changed.
 --
 -- This covers all the cases of 'MonitorFilePath' except for globs which is
 -- covered separately by 'FileGlobMonitorState'.
