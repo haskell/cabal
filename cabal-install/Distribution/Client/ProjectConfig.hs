@@ -151,7 +151,7 @@ readProjectLocalConfig verbosity projectRootDir = do
              . parseProjectConfig projectRootDir
            =<< readFile projectFile
     else do
-      monitorFiles [MonitorNonExistantFile projectFile]
+      monitorFiles [MonitorNonExistentFile projectFile]
       return defaultImplicitProjectConfig
 
   where

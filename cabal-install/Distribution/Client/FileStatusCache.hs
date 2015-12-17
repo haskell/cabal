@@ -77,10 +77,10 @@ data MonitorFilePath =
      --
    | MonitorFileHashed !FilePath
 
-     -- | Monitor a single non-existant file for changes. The monitored file
+     -- | Monitor a single non-existent file for changes. The monitored file
      -- is considered to have changed if it exists.
      --
-   | MonitorNonExistantFile !FilePath
+   | MonitorNonExistentFile !FilePath
 
      -- | Monitor a set of files identified by a file glob. The monitored glob
      -- is considered to have changed if the set of files matching the glob
@@ -106,12 +106,12 @@ instance Binary FilePathGlob
 monitorFileSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileSearchPath notFoundAtPaths foundAtPath =
     MonitorFile foundAtPath
-  : map MonitorNonExistantFile notFoundAtPaths
+  : map MonitorNonExistentFile notFoundAtPaths
 
 monitorFileHashedSearchPath :: [FilePath] -> FilePath -> [MonitorFilePath]
 monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
     MonitorFileHashed foundAtPath
-  : map MonitorNonExistantFile notFoundAtPaths
+  : map MonitorNonExistentFile notFoundAtPaths
 
 -- | A file used to store the state of a file monitor.
 --
@@ -146,7 +146,7 @@ type ModTime = UTCTime
 data MonitorStateFile
    = MonitorStateFile       !ModTime         -- ^ cached file mtime
    | MonitorStateFileHashed !ModTime !Hash   -- ^ cached file mtime and content hash
-   | MonitorStateFileNonExistant
+   | MonitorStateFileNonExistent
 
      -- | These two are to deal with the situation where we've been asked
      -- to monitor a file that's expected to exist, but when we come to
@@ -186,7 +186,7 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
       case monitorState of
         MonitorStateFile{}          -> MonitorFile            filepath
         MonitorStateFileHashed{}    -> MonitorFileHashed      filepath
-        MonitorStateFileNonExistant -> MonitorNonExistantFile filepath
+        MonitorStateFileNonExistent -> MonitorNonExistentFile filepath
         MonitorStateFileChanged     -> MonitorFile            filepath
         MonitorStateFileHashChanged -> MonitorFileHashed      filepath
 
@@ -313,7 +313,7 @@ probeFileStatus root file cached = do
                                              root file mtime
       MonitorStateFileHashed mtime hash -> probeFileModificationTimeAndHash
                                              root file mtime hash
-      MonitorStateFileNonExistant       -> probeFileNonExistance root file
+      MonitorStateFileNonExistent       -> probeFileNonExistance root file
       MonitorStateFileChanged           -> somethingChanged file
       MonitorStateFileHashChanged       -> somethingChanged file
 
@@ -462,8 +462,8 @@ buildMonitorStateFileSet root =
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
 
-    go !singlePaths !globPaths (MonitorNonExistantFile path : monitors) = do
-      let singlePaths' = Map.insert path MonitorStateFileNonExistant singlePaths
+    go !singlePaths !globPaths (MonitorNonExistentFile path : monitors) = do
+      let singlePaths' = Map.insert path MonitorStateFileNonExistent singlePaths
       go singlePaths' globPaths monitors
 
     go !singlePaths !globPaths (MonitorFileGlob globPath : monitors) = do
