@@ -122,6 +122,10 @@ import qualified System.Win32 as Win32
 
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion          :: VersionRange,
+
+    -- | This is the version of the Cabal specification that we believe that
+    -- this package uses. This affects the semantics and in particular the
+    -- Setup command line interface.
     useCabalSpecVersion      :: Maybe Version,
     useCompiler              :: Maybe Compiler,
     usePlatform              :: Maybe Platform,
@@ -145,6 +149,11 @@ data SetupScriptOptions = SetupScriptOptions {
     -- that the setup script gets linked against (this was the only "dependency
     -- constraint" that we had previously for Setup scripts).
     useDependenciesExclusive :: Bool,
+
+    -- | Should we build the Setup.hs with CPP version macros available?
+    -- We turn this on when we have a setup stanza in .cabal that declares
+    -- explicit setup dependencies.
+    --
     useVersionMacros         :: Bool,
 
     -- Used only by 'cabal clean' on Windows.
