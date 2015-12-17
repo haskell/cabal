@@ -168,6 +168,10 @@ library
     build-depends:
       unix >= 2.5 && < 2.8
 
+  if os(windows)
+    build-depends:
+      Win32 >= 2.2 && < 2.4
+
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
   exposed-modules:
