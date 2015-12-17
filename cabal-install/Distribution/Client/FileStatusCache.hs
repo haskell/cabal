@@ -207,10 +207,24 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
 -- Checking the status of monitored files
 --
 
-data Changed b = Unchanged b | Changed (Maybe FilePath)
+-- | Encapsulates a value that is either unchanged, or needs
+-- to be recomputed.
+data Changed b =
+    -- | The value is unchanged, and it is @b@.
+      Unchanged b
+    -- | The value is changed.  @Just f@ indicates @f@ was the
+    -- file which changed which required a rebuild; @Nothing@
+    -- indicates the value changed for some other reason.
+    | Changed (Maybe FilePath)
   deriving Show
 
 
+-- | Attempt to lookup @currentKey@ from the 'FileMonitorCacheFile'
+-- for some @root@ directory.  This returns @Unchanged@ if the
+-- value is fresh (with the files which are monitored), and @Changed@ if
+-- something changed and this needs to be recomputed.  See also the
+-- 'Rebuild' monad, which uses this check and rebuilds the value if it
+-- is stale.
 checkFileMonitorChanged
   :: (Eq a, Binary a, Binary b)
   => FileMonitorCacheFile a b            -- ^ cache file path
@@ -526,11 +540,16 @@ matchFileGlob root glob0 = go glob0 ""
 -- Utils
 -- 
 
+-- | Within the @root@ directory, check if @file@ has its 'ModTime' is
+-- the same as @mtime@, short-circuiting if it is different.
 probeFileModificationTime :: FilePath -> FilePath -> ModTime -> ChangedM ()
 probeFileModificationTime root file mtime = do
     unchanged <- liftIO $ checkModificationTimeUnchanged root file mtime
     unless unchanged (somethingChanged file)
 
+-- | Within the @root@ directory, check if @file@ has its 'ModTime' and
+-- 'Hash' is the same as @mtime@ and @hash@, short-circuiting if it is
+-- different.
 probeFileModificationTimeAndHash :: FilePath -> FilePath -> ModTime -> Hash
                                  -> ChangedM ()
 probeFileModificationTimeAndHash root file mtime hash = do
@@ -538,12 +557,15 @@ probeFileModificationTimeAndHash root file mtime hash = do
       checkFileModificationTimeAndHashUnchanged root file mtime hash
     unless unchanged (somethingChanged file)
 
+-- | Within the @root@ directory, check if @file@ still does not exist.
+-- If it *does* exist, short-circuit.
 probeFileNonExistance :: FilePath -> FilePath -> ChangedM ()
 probeFileNonExistance root file = do
     exists <- liftIO $ doesFileExist (root </> file)
     when exists (somethingChanged file)
 
--- | File name relative to @root@
+-- | Returns @True@ if, inside the @root@ directory, @file@ has the same
+-- 'ModTime' as @mtime@.
 checkModificationTimeUnchanged :: FilePath -> FilePath
                                -> ModTime -> IO Bool
 checkModificationTimeUnchanged root file mtime =
@@ -551,7 +573,8 @@ checkModificationTimeUnchanged root file mtime =
     mtime' <- getModificationTime (root </> file)
     return (mtime == mtime')
 
--- | File name relative to @root@
+-- | Returns @True@ if, inside the @root@ directory, @file@ has the
+-- same 'ModTime' and 'Hash' as @mtime and @chash@.
 checkFileModificationTimeAndHashUnchanged :: FilePath -> FilePath
                                           -> ModTime -> Hash -> IO Bool
 checkFileModificationTimeAndHashUnchanged root file mtime chash =
@@ -564,11 +587,14 @@ checkFileModificationTimeAndHashUnchanged root file mtime chash =
         chash' <- readFileHash (root </> file)
         return (chash == chash')
 
+-- | Read a non-cryptographic hash of a @file@.
 readFileHash :: FilePath -> IO Hash
 readFileHash file =
     withBinaryFile file ReadMode $ \hnd ->
       evaluate . Hashable.hash =<< BS.hGetContents hnd
 
+-- | Given a directory @dir@, return @Nothing@ if its 'ModTime'
+-- is the same as @mtime@, and the new 'ModTime' if it is not.
 checkDirectoryModificationTime :: FilePath -> ModTime -> IO (Maybe ModTime)
 checkDirectoryModificationTime dir mtime =
   handleDoesNotExist Nothing $ do
@@ -577,12 +603,16 @@ checkDirectoryModificationTime dir mtime =
       then return Nothing
       else return (Just mtime')
 
+-- | Run an IO computation, returning @e@ if it raises a "file
+-- does not exist" error.
 handleDoesNotExist :: a -> IO a -> IO a
 handleDoesNotExist e =
     handleJust
       (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
       (\_ -> return e)
 
+-- | Run an IO computation, returning @e@ if there is an 'error'
+-- call. ('ErrorCall')
 handleErrorCall :: a -> IO a -> IO a
 handleErrorCall e =
     handle (\(ErrorCall _) -> return e)
