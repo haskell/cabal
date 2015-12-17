@@ -60,7 +60,9 @@ import Distribution.Simple.InstallDirs
          ( InstallDirs, PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.Program
-         ( programName, ProgramDb, defaultProgramDb, knownPrograms )
+         ( programName, knownPrograms )
+import Distribution.Simple.Program.Db
+         ( ProgramDb, defaultProgramDb )
 import Distribution.Simple.Utils
          ( die, warn, lowercase )
 import Distribution.Client.Utils (determineNumJobs)
