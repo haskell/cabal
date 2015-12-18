@@ -60,7 +60,7 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, catMaybes)
+import Data.Maybe  (mapMaybe, catMaybes, maybeToList)
 import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -242,8 +242,6 @@ typeCodeFromRefType :: BuildTreeRefType -> Tar.TypeCode
 typeCodeFromRefType LinkRef     = Tar.buildTreeRefTypeCode
 typeCodeFromRefType SnapshotRef = Tar.buildTreeSnapshotTypeCode
 
-type MkPackageEntry = IO (Maybe PackageEntry)
-
 instance Package PackageEntry where
   packageId (NormalPackage  pkgid _ _ _) = pkgid
   packageId (BuildTreeRef _ pkgid _ _ _) = pkgid
@@ -258,32 +256,41 @@ packageDesc (BuildTreeRef _ _ descr _ _) = descr
 
 data PackageOrDep = Pkg PackageEntry | Dep Dependency
 
-parsePackageIndex :: ByteString
-                  -> [IO (Maybe PackageOrDep)]
-parsePackageIndex = accum 0 . Tar.read
+-- | Read @00-index.tar.gz@ and extract @.cabal@ and @preferred-versions@ files
+--
+-- We read the index using 'Tar.read', which gives us a lazily constructed
+-- 'TarEntries'. We translate it to a list of entries using  'tarEntriesList',
+-- which preserves the lazy nature of 'TarEntries', and finally 'concatMap' a
+-- function over this to translate it to a list of IO actions returning
+-- 'PackageOrDep's. We can use 'lazySequence' to turn this into a list of
+-- 'PackageOrDep's, still maintaining the lazy nature of the original tar read.
+parsePackageIndex :: ByteString -> [IO (Maybe PackageOrDep)]
+parsePackageIndex = concatMap (uncurry extract) . tarEntriesList . Tar.read
   where
-    accum blockNo es = case es of
-      Tar.Fail err   -> error ("parsePackageIndex: " ++ err)
-      Tar.Done       -> []
-      Tar.Next e es' -> ps ++ accum blockNo' es'
-        where
-          ps       = extract blockNo e
-          blockNo' = blockNo + Tar.entrySizeInBlocks e
-
+    extract :: BlockNo -> Tar.Entry -> [IO (Maybe PackageOrDep)]
     extract blockNo entry = tryExtractPkg ++ tryExtractPrefs
       where
-        maybeToList Nothing  = []
-        maybeToList (Just a) = [a]
-
         tryExtractPkg = do
           mkPkgEntry <- maybeToList $ extractPkg entry blockNo
           return $ fmap (fmap Pkg) mkPkgEntry
 
         tryExtractPrefs = do
-          (_,prefs') <- maybeToList $ extractPrefs entry
+          prefs' <- maybeToList $ extractPrefs entry
           fmap (return . Just . Dep) prefs'
 
-extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
+-- | Turn the 'Entries' data structure from the @tar@ package into a list,
+-- and pair each entry with its block number.
+--
+-- NOTE: This preserves the lazy nature of 'Entries': the tar file is only read
+-- as far as the list is evaluated.
+tarEntriesList :: Tar.Entries -> [(BlockNo, Tar.Entry)]
+tarEntriesList = go 0
+  where
+    go _ Tar.Done         = []
+    go _ (Tar.Fail e)     = error ("tarEntriesList: " ++ e)
+    go n (Tar.Next e es') = (n, e) : go (n + Tar.entrySizeInBlocks e) es'
+
+extractPkg :: Tar.Entry -> BlockNo -> Maybe (IO (Maybe PackageEntry))
 extractPkg entry blockNo = case Tar.entryContent entry of
   Tar.NormalFile content _
      | takeExtension fileName == ".cabal"
@@ -319,31 +326,38 @@ extractPkg entry blockNo = case Tar.entryContent entry of
   where
     fileName = Tar.entryPath entry
 
-extractPrefs :: Tar.Entry -> Maybe (FilePath, [Dependency])
+extractPrefs :: Tar.Entry -> Maybe [Dependency]
 extractPrefs entry = case Tar.entryContent entry of
   Tar.NormalFile content _
      | takeFileName entrypath == "preferred-versions"
-    -> Just (entrypath, prefs)
+    -> Just prefs
     where
       entrypath = Tar.entryPath entry
-      prefs     = parsePreferredVersions (BS.Char8.unpack content)
+      prefs     = parsePreferredVersions content
   _ -> Nothing
 
-parsePreferredVersions :: String -> [Dependency]
+parsePreferredVersions :: ByteString -> [Dependency]
 parsePreferredVersions = mapMaybe simpleParse
                        . filter (not . isPrefixOf "--")
                        . lines
+                       . BS.Char8.unpack -- TODO: Are we sure no unicode?
 
 ------------------------------------------------------------------------
 -- Reading and updating the index cache
 --
 
+-- | Variation on 'sequence' which evaluates the actions lazily
+--
+-- Pattern matching on the result list will execute just the first action;
+-- more generally pattern matching on the first @n@ '(:)' nodes will execute
+-- the first @n@ actions.
 lazySequence :: [IO a] -> IO [a]
-lazySequence [] = return []
-lazySequence (x:xs) = unsafeInterleaveIO $ do
-    x'  <- unsafeInterleaveIO x
-    xs' <- lazySequence xs
-    return (x':xs')
+lazySequence = unsafeInterleaveIO . go
+  where
+    go []     = return []
+    go (x:xs) = do x'  <- x
+                   xs' <- lazySequence xs
+                   return (x' : xs')
 
 -- | Which index do we mean?
 data Index =
@@ -365,13 +379,23 @@ cacheFile (SandboxIndex index) = index `replaceExtension` "cache"
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
     info verbosity ("Updating index cache file " ++ cacheFile index)
-    pkgsOrPrefs <- return
-                 . parsePackageIndex
-                 . maybeDecompress
-               =<< BS.readFile (indexFile index)
-    entries <- lazySequence pkgsOrPrefs
-    let cache = Cache { cacheEntries = map toCache $ catMaybes entries }
-    writeFile (cacheFile index) (showIndexCache cache)
+    withIndexEntries index $ \entries -> do
+      let cache = Cache { cacheEntries = entries }
+      writeFile (cacheFile index) (showIndexCache cache)
+
+-- | Read the index (for the purpose of building a cache)
+--
+-- The callback is provided with list of cache entries, which is guaranteed to
+-- be lazily constructed. This list must ONLY be used in the scope of the
+-- callback; when the callback is terminated the file handle to the index will
+-- be closed and further attempts to read from the list will result in (pure)
+-- I/O exceptions.
+withIndexEntries :: Index -> ([IndexCacheEntry] -> IO a) -> IO a
+withIndexEntries index callback = do
+    withFile (indexFile index) ReadMode $ \h -> do
+      bs          <- maybeDecompress `fmap` BS.hGetContents h
+      pkgsOrPrefs <- lazySequence $ parsePackageIndex bs
+      callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
     toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
