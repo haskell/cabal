@@ -23,7 +23,7 @@ module Distribution.Simple.Reconfigure
          ConfigStateFileError(..), ReconfigureError(..)
          -- * Reconfiguration
        , Reconfigure
-       , reconfigure, forceReconfigure
+       , reconfigure, forceReconfigure, toRequirement
        , readArgs, writeArgs, setupConfigArgsFile
          -- * Persistent build configuration
        , writePersistBuildConfig, localBuildInfoFile
@@ -188,6 +188,13 @@ extraRequirements dist = [ sameDistPref ]
           let flags = config { configDistPref = toFlag dist }
           in Just (flags, "--build-dir changed")
       where savedDist = fromFlagOrDefault defaultDistPref (configDistPref config)
+
+toRequirement :: String -> (ConfigFlags -> ConfigFlags) -> Requirement
+toRequirement desc apply flags
+  | applied == flags = Nothing
+  | otherwise = Just (applied, desc)
+  where
+    applied = apply flags
 
 -- | Reconfigure the package unconditionally.
 forceReconfigure :: CommandUI ConfigFlags

@@ -50,6 +50,7 @@ module Distribution.Simple.Setup (
   TestShowDetails(..),
   BenchmarkFlags(..), emptyBenchmarkFlags,
   defaultBenchmarkFlags, benchmarkCommand,
+  ReconfigureFlags(..), emptyReconfigureFlags, defaultReconfigureFlags, reconfigureCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions,
@@ -104,6 +105,7 @@ import Distribution.Utils.NubList
 import Control.Monad (liftM)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
+import Data.Function ( on )
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import GHC.Generics (Generic)
@@ -275,6 +277,7 @@ instance Semigroup GlobalFlags where
 --
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
 -- should be updated.
+-- IMPORTANT: every time a new flag is added, it should be added to the Eq instance
 data ConfigFlags = ConfigFlags {
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
@@ -344,6 +347,55 @@ data ConfigFlags = ConfigFlags {
   deriving (Generic, Read, Show)
 
 instance Binary ConfigFlags
+
+instance Eq ConfigFlags where
+  (==) a b =
+    -- configPrograms skipped: not user specified, has no Eq instance
+    equal configProgramPaths
+    && equal configProgramArgs
+    && equal configProgramPathExtra
+    && equal configHcFlavor
+    && equal configHcPath
+    && equal configHcPkg
+    && equal configVanillaLib
+    && equal configProfLib
+    && equal configSharedLib
+    && equal configDynExe
+    && equal configProfExe
+    && equal configProf
+    && equal configProfDetail
+    && equal configProfLibDetail
+    && equal configConfigureArgs
+    && equal configOptimization
+    && equal configProgPrefix
+    && equal configProgSuffix
+    && equal configInstallDirs
+    && equal configScratchDir
+    && equal configExtraLibDirs
+    && equal configExtraIncludeDirs
+    && equal configIPID
+    && equal configDistPref
+    && equal configVerbosity
+    && equal configUserInstall
+    && equal configPackageDBs
+    && equal configGHCiLib
+    && equal configSplitObjs
+    && equal configStripExes
+    && equal configStripLibs
+    && equal configConstraints
+    && equal configDependencies
+    && equal configInstantiateWith
+    && equal configConfigurationsFlags
+    && equal configTests
+    && equal configBenchmarks
+    && equal configCoverage
+    && equal configLibCoverage
+    && equal configExactConfiguration
+    && equal configFlagError
+    && equal configRelocatable
+    && equal configDebugInfo
+    where
+      equal f = on (==) f a b
 
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
@@ -2038,6 +2090,61 @@ instance Semigroup BenchmarkFlags where
     benchmarkOptions   = combine benchmarkOptions
   }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Reconfigure flags
+-- ------------------------------------------------------------
+
+data ReconfigureFlags a = ReconfigureFlags
+                          { reconfigureForce :: Flag Bool
+                          , reconfigureConfigFlags :: a
+                          }
+
+instance Monoid a => Monoid (ReconfigureFlags a) where
+  mempty = ReconfigureFlags
+           { reconfigureForce = mempty
+           , reconfigureConfigFlags = mempty
+           }
+  mappend a b = ReconfigureFlags
+                { reconfigureForce = combine reconfigureForce
+                , reconfigureConfigFlags = combine reconfigureConfigFlags
+                }
+    where combine field = mappend (field a) (field b)
+
+emptyReconfigureFlags :: Monoid a => ReconfigureFlags a
+emptyReconfigureFlags = mempty
+
+defaultReconfigureFlags :: Monoid a => ReconfigureFlags a
+defaultReconfigureFlags  = emptyReconfigureFlags
+
+reconfigureCommand :: Monoid a => CommandUI a -> CommandUI (ReconfigureFlags a)
+reconfigureCommand configCommand
+  = CommandUI
+    { commandName         = "reconfigure"
+    , commandSynopsis     = "Reconfigure the package if necessary."
+    , commandDescription  = Just $ \pname -> wrapText $
+         "Reconfigures the package if it was not configured with"
+         ++ " the specified `" ++ commandName configCommand ++ "` flags."
+         ++ " Accepts the same flags as"
+         ++ " `"++ pname ++ " " ++ commandName configCommand ++ "`"
+         ++ " and has the same effect if the package has never been configured."
+    , commandNotes        = Nothing
+    , commandUsage        = usageAlternatives "reconfigure"
+                            [ "[FLAGS]" ]
+    , commandDefaultFlags = defaultReconfigureFlags
+    , commandOptions = \showOrParseArgs ->
+      [ option "f" ["force"]
+        "always reconfigure, even if it is not necessary"
+        reconfigureForce (\f flags -> flags { reconfigureForce = f })
+        (noArg (toFlag True))
+      ]
+      ++ (case showOrParseArgs of
+            ShowArgs -> [] -- hide configure flags from `--help` output
+            ParseArgs -> liftConfigFlags (commandOptions configCommand showOrParseArgs))
+    }
+  where
+    liftConfigFlags =
+      liftOptions reconfigureConfigFlags (\f rf -> rf { reconfigureConfigFlags = f })
 
 -- ------------------------------------------------------------
 -- * Shared options utils

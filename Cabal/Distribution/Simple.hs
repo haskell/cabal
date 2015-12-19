@@ -86,7 +86,7 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Reconfigure
-    ( reconfigure, setupConfigArgsFile, writeArgs )
+    ( forceReconfigure, reconfigure, setupConfigArgsFile, toRequirement, writeArgs )
 import Distribution.Simple.Register
          ( register, unregister )
 import Distribution.Simple.SrcDist      ( sdist )
@@ -185,6 +185,9 @@ defaultMainHelper hooks args = topHandler $
           (testCommand (buildOptions progs) defaultBuildFlags)
           (testAction hooks)
       ,benchmarkCommand       `commandAddAction` benchAction        hooks
+      , commandAddAction
+          (reconfigureCommand (configureCommand progs))
+          (reconfigureAction hooks)
       ]
 
 -- | Combine the preprocessors in the given hooks with the
@@ -392,6 +395,31 @@ unregisterAction hooks flags args = do
     hookedAction preUnreg unregHook postUnreg
                  (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
+
+reconfigureAction :: UserHooks -> ReconfigureFlags ConfigFlags -> Args -> IO ()
+reconfigureAction hooks flags _ = do
+    let config = reconfigureConfigFlags flags
+        config' = config { configVerbosity = NoFlag }
+    reqs <- mapM getRequirement (commandShowOptions cmd config')
+    distPref <- findDistPrefOrDefault (configDistPref config)
+    let verbosity = fromFlag (configVerbosity config)
+        force = fromFlagOrDefault False (reconfigureForce flags)
+        reconf | force = forceReconfigure
+               | otherwise = reconfigure
+    _ <- reconf cmd (configureAction hooks) setupConfigArgsFile reqs verbosity distPref
+    return ()
+  where
+    cmd = configureCommand progs
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
+    getRequirement flag =
+      case commandParseArgs cmd True [flag] of
+        CommandHelp _ -> printErrors ["reconfigure: unexpected `--help`"]
+        CommandList _ -> printErrors ["reconfigure: unexcepted `--list-options`"]
+        CommandErrors errs -> printErrors errs
+        CommandReadyToGo (apply, _) -> return (toRequirement flag apply)
+    printErrors errs = do
+      putStr (intercalate "\n" errs)
+      exitWith (ExitFailure 1)
 
 getBuildConfig :: UserHooks -> [ConfigFlags -> Maybe (ConfigFlags, String)]
                -> Verbosity -> FilePath -> IO LocalBuildInfo
