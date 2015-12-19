@@ -126,16 +126,9 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
 import Prelude hiding ( mapM )
-import Control.Exception
-    ( Exception, evaluate, throw, throwIO, try )
-import Control.Exception ( ErrorCall )
 import Control.Monad
     ( filterM, foldM, liftM, unless, when )
-import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
-import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
 import Data.Maybe
@@ -148,7 +141,6 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Traversable
     ( mapM )
-import Data.Typeable
 import Data.Char ( chr, isAlphaNum )
 import Numeric ( showIntAtBase )
 import Data.Bits ( shift )
