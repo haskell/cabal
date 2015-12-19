@@ -39,7 +39,7 @@ import Data.Maybe (mapMaybe)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
 #endif
-import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
+import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 
