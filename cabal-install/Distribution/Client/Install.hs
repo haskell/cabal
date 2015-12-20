@@ -95,7 +95,7 @@ import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
-         ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+         ( AnyCommand(..), setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
@@ -1550,7 +1550,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           scriptOptions { useLoggingHandle = logFileHandle
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          (\version -> [AnyCommand (cmd, flags version, [])]))
 
     reexec cmd = do
       -- look for our own executable file and re-exec ourselves using a helper

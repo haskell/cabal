@@ -31,7 +31,7 @@ import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
-         ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+         ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions, AnyCommand(..) )
 import Distribution.Client.Targets
          ( userToPackageConstraint, userConstraintPackageName )
 import qualified Distribution.Client.ComponentDeps as CD
@@ -122,7 +122,7 @@ configure verbosity packageDBs repos comp platform conf
         ++ message
         ++ "Trying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
-        Nothing configureCommand (const configFlags) extraArgs
+        Nothing (const [AnyCommand (configureCommand, configFlags, extraArgs)])
 
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
@@ -345,7 +345,8 @@ configurePackage verbosity platform comp scriptOptions configFlags
                  extraArgs =
 
   setupWrapper verbosity
-    scriptOptions (Just pkg) configureCommand configureFlags extraArgs
+    scriptOptions (Just pkg)
+    (\version -> [AnyCommand (configureCommand, configureFlags version, extraArgs)])
 
   where
     configureFlags   = filterConfigureFlags configFlags {
