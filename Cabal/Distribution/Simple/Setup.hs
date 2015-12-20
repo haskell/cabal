@@ -2133,7 +2133,7 @@ reconfigureCommand configCommand
                             [ "[FLAGS]" ]
     , commandDefaultFlags = defaultReconfigureFlags
     , commandOptions = \showOrParseArgs ->
-      [ option "f" ["force"]
+      [ option [] ["force"]
         "always reconfigure, even if it is not necessary"
         reconfigureForce (\f flags -> flags { reconfigureForce = f })
         (noArg (toFlag True))
