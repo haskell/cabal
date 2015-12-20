@@ -115,6 +115,11 @@ instance Exception ConfigStateFileError
 -- * Reconfiguration
 -- -----------------------------------------------------------------------------
 
+-- | 'True' if the given version of Cabal supports the @reconfigure@ command and
+-- will reconfigure the package automatically if needed.
+canReconfigure :: Version -> Bool
+canReconfigure = (<=) (Version [1, 23, 0, 1] [])
+
 reconfigure :: Bool  -- ^ reconfigure even if unnecessary
             -> CommandUI ConfigFlags
             -> (ConfigFlags -> Args -> IO LocalBuildInfo)
