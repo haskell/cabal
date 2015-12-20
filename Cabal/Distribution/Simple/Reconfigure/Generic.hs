@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
 module Distribution.Simple.Reconfigure.Generic
@@ -20,6 +21,9 @@ import Data.Foldable (foldlM)
 import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Typeable
+#if __GLASGOW_HASKELL__ < 706
+import Prelude hiding ( catch )
+#endif
 import System.Directory ( doesFileExist )
 import System.FilePath ( takeDirectory )
 
