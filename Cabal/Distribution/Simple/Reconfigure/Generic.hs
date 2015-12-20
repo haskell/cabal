@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Distribution.Simple.Reconfigure.Generic
        ( Reconfigure, Requirement, reconfigure
        , readArgs, writeArgs
