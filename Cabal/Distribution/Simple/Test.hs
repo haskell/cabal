@@ -44,7 +44,7 @@ import System.Directory
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>) )
 
-action :: Reconfigure
+action :: Reconfigure ConfigFlags LocalBuildInfo
        -> (BuildFlags -> Args -> IO ())
        -> (LocalBuildInfo -> TestFlags -> Args -> IO ())
        -> (BuildFlags, TestFlags) -> Args -> IO ()

@@ -85,8 +85,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Reconfigure
-    ( forceReconfigure, reconfigure, setupConfigArgsFile, writeArgs )
+import Distribution.Simple.Reconfigure ( reconfigure, setupConfigArgsFile, writeArgs )
 import Distribution.Simple.Register
          ( register, unregister )
 import Distribution.Simple.SrcDist      ( sdist )
@@ -417,9 +416,7 @@ reconfigureAction hooks flags _ = do
             message = "flags changed: " ++ unwords (commandShowOptions cmd config')
         verbosity = fromFlag (configVerbosity config)
         force = fromFlagOrDefault False (reconfigureForce flags)
-        reconf | force = forceReconfigure
-               | otherwise = reconfigure
-    _ <- reconf cmd (configureAction hooks) setupConfigArgsFile [requirement] verbosity distPref
+    _ <- reconfigure force cmd (configureAction hooks) [requirement] verbosity distPref
     return ()
   where
     cmd = configureCommand progs
@@ -428,7 +425,7 @@ reconfigureAction hooks flags _ = do
 getBuildConfig :: UserHooks -> [ConfigFlags -> Maybe (ConfigFlags, String)]
                -> Verbosity -> FilePath -> IO LocalBuildInfo
 getBuildConfig hooks reqs verbosity distPref = do
-    lbi_wo_programs <- reconfigure cmd (configureAction hooks) setupConfigArgsFile
+    lbi_wo_programs <- reconfigure False cmd (configureAction hooks)
                                    reqs verbosity distPref
     -- Restore info about unconfigured programs, since it is not serialized
     return lbi_wo_programs {

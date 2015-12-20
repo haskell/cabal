@@ -43,7 +43,7 @@ import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 
-action :: Reconfigure
+action :: Reconfigure ConfigFlags LocalBuildInfo
        -> (BuildFlags -> Args -> IO ())
        -> (LocalBuildInfo -> BenchmarkFlags -> Args -> IO ())
        -> BenchmarkFlags -> Args -> IO ()

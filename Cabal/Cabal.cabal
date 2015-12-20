@@ -233,6 +233,7 @@ library
     Distribution.Simple.Program.Strip
     Distribution.Simple.Program.Types
     Distribution.Simple.Reconfigure
+    Distribution.Simple.Reconfigure.Generic
     Distribution.Simple.Register
     Distribution.Simple.Setup
     Distribution.Simple.SrcDist

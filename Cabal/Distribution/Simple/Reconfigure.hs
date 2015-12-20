@@ -22,8 +22,7 @@ module Distribution.Simple.Reconfigure
        ( -- * Exceptions
          ConfigStateFileError(..), ReconfigureError(..)
          -- * Reconfiguration
-       , Reconfigure
-       , reconfigure, forceReconfigure
+       , Reconfigure, reconfigure
        , readArgs, writeArgs, setupConfigArgsFile
          -- * Persistent build configuration
        , writePersistBuildConfig, localBuildInfoFile
@@ -36,18 +35,14 @@ module Distribution.Simple.Reconfigure
 
 import Distribution.Package
     ( PackageIdentifier(..), PackageName(PackageName), packageId )
-import Distribution.Simple.Command
-    ( CommandParse(..), CommandUI, commandAddAction, commandsRun )
+import Distribution.Simple.Command ( CommandUI )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Setup
-    ( ConfigFlags(..), GlobalFlags(..), defaultDistPref
-    , fromFlag, fromFlagOrDefault, globalCommand, toFlag )
-import Distribution.Simple.UserHooks (Args)
-import Distribution.Simple.Utils
-    ( cabalVersion, createDirectoryIfMissingVerbose, info, moreRecentFile
-    , notice, writeFileAtomic )
+import Distribution.Simple.Reconfigure.Generic hiding (reconfigure)
+import qualified Distribution.Simple.Reconfigure.Generic as Generic
+import Distribution.Simple.Setup ( ConfigFlags(..), toFlag )
+import Distribution.Simple.UserHooks ( Args )
+import Distribution.Simple.Utils ( cabalVersion, moreRecentFile, writeFileAtomic )
 import Distribution.Text (display, simpleParse)
-import Distribution.Verbosity (Verbosity, lessVerbose)
 
 import Control.Exception
     ( Exception, evaluate, throw, throwIO, try )
@@ -60,13 +55,11 @@ import Control.Monad (liftM, unless)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
-import Data.Foldable (foldlM)
-import Data.List (intercalate)
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe ( fromMaybe )
 import Data.Typeable
 import Distribution.Compat.Binary (decodeOrFailIO, encode)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath ( (</>) )
 import qualified System.Info (compilerName, compilerVersion)
 
 -- -----------------------------------------------------------------------------
@@ -114,147 +107,19 @@ instance Show ConfigStateFileError where
 
 instance Exception ConfigStateFileError
 
-data ReconfigureError
-    = ReconfigureErrorHelp Args
-    | ReconfigureErrorList Args
-    | ReconfigureErrorOther Args [String]
-  deriving (Typeable)
-
-instance Show ReconfigureError where
-  show (ReconfigureErrorHelp args) =
-    "reconfigure: unexpected flag '--help', saved command line was:\n"
-    ++ intercalate " " args
-  show (ReconfigureErrorList args) =
-    "reconfigure: unexpected flag '--list-options', saved command line was:\n"
-    ++ intercalate " " args
-  show (ReconfigureErrorOther args errs) =
-    "reconfigure: saved command line was:\n"
-    ++ intercalate " " args ++ "\n"
-    ++ "encountered errors:\n"
-    ++ intercalate "\n" errs
-
-instance Exception ReconfigureError
-
 -- -----------------------------------------------------------------------------
 -- * Reconfiguration
 -- -----------------------------------------------------------------------------
 
-type Requirement = ConfigFlags -> Maybe (ConfigFlags, String)
-type Reconfigure = [Requirement] -> Verbosity -> FilePath -> IO LocalBuildInfo
-
--- | Read the 'localBuildInfoFile', reconfiguring if necessary. Throws
--- 'ConfigStateFileError' if the file cannot be read and the package cannot
--- be reconfigured.
-reconfigure :: CommandUI ConfigFlags
+reconfigure :: Bool  -- ^ reconfigure even if unnecessary
+            -> CommandUI ConfigFlags
             -> (ConfigFlags -> Args -> IO LocalBuildInfo)
                -- ^ configure action
-            -> (FilePath -> FilePath)
-               -- ^ path to saved command-line arguments,
-               -- relative to @--build-dir@
-            -> Reconfigure
-reconfigure cmd configureAction configArgsFile reqs verbosity dist = do
-    elbi <- tryGetPersistBuildConfig dist
-    lbi <- case elbi of
-      Left err -> do info verbosity (show err)
-                     forceReconfigure_
-      Right lbi_wo_programs -> return lbi_wo_programs
-    case pkgDescrFile lbi of
-      Nothing -> return lbi
-      Just pkg_descr_file -> do
-        outdated <- checkPersistBuildConfigOutdated dist pkg_descr_file
-        if outdated
-          then do
-            notice verbosity (pkg_descr_file ++ " has changed; reconfiguring...")
-            forceReconfigure_
-          else if checkRequirements (configFlags lbi)
-               then forceReconfigure_
-               else return lbi
+            -> Reconfigure ConfigFlags LocalBuildInfo
+reconfigure force command action =
+  Generic.reconfigure force command setVerbosity getPersistBuildConfig action setupConfigArgsFile
   where
-    forceReconfigure_ = forceReconfigure cmd configureAction configArgsFile
-                                         reqs_ verbosity dist
-
-    reqs_ = reqs ++ extraRequirements dist
-
-    checkRequirements :: ConfigFlags -> Bool -- ^ needs to be reconfigured?
-    checkRequirements flags = (not . null . catMaybes) (map ($ flags) reqs_)
-
-extraRequirements :: FilePath -> [Requirement]
-extraRequirements dist = [ sameDistPref ]
-  where
-    sameDistPref config
-      | savedDist == dist = Nothing
-      | otherwise =
-          let flags = config { configDistPref = toFlag dist }
-          in Just (flags, "--build-dir changed")
-      where savedDist = fromFlagOrDefault defaultDistPref (configDistPref config)
-
--- | Reconfigure the package unconditionally.
-forceReconfigure :: CommandUI ConfigFlags
-                 -> (ConfigFlags -> Args -> IO LocalBuildInfo)
-                    -- ^ configure action
-                 -> (FilePath -> FilePath)
-                    -- ^ path to saved command-line arguments,
-                    -- relative to @--build-dir@
-                 -> Reconfigure
-forceReconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
-    saved <- readArgs (configArgsFile distPref)
-    let args = fromMaybe ["configure"] saved
-        commands = [ commandAddAction cmd configureAction_ ]
-    case commandsRun (globalCommand commands) commands args of
-      CommandHelp   _    -> throwIO (ReconfigureErrorHelp args)
-      CommandList   _    -> throwIO (ReconfigureErrorList args)
-      CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
-      CommandReadyToGo (flags, commandParse)  ->
-        case commandParse of
-          _ | fromFlag (globalVersion flags)
-              || fromFlag (globalNumericVersion flags) ->
-                throwIO (ReconfigureErrorOther args ["not a 'configure' command"])
-          CommandHelp   _    -> throwIO (ReconfigureErrorHelp args)
-          CommandList   _    -> throwIO (ReconfigureErrorList args)
-          CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
-          CommandReadyToGo action        -> action
-  where
-    configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
-    configureAction_ config extraArgs = do
-      flags <- setRequirements config { configVerbosity = toFlag verbosity }
-      configureAction flags extraArgs
-
-    setRequirements :: ConfigFlags -> IO ConfigFlags
-    setRequirements orig = foldlM setRequirements_go orig reqs where
-      setRequirements_go flags req =
-        case req flags of
-          Nothing -> return flags
-          Just (flags', reason) -> do
-            notice verbosity ("reconfigure: " ++ reason)
-            return flags'
-
--- | Write command-line arguments to a file, separated by null characters. This
--- format is also suitable for the @xargs -0@ command. Using the null
--- character also avoids the problem of escaping newlines or spaces,
--- because unlike other whitespace characters, the null character is
--- not valid in command-line arguments.
-writeArgs :: Verbosity -> FilePath -> [String] -> IO ()
-writeArgs verbosity path args = do
-    createDirectoryIfMissingVerbose
-      (lessVerbose verbosity) True (takeDirectory path)
-    writeFile path (intercalate "\0" args)
-
--- | Read command-line arguments, separated by null characters, from a file.
--- Returns 'Nothing' if the file does not exist.
-readArgs :: FilePath -> IO (Maybe [String])
-readArgs path = do
-  exists <- doesFileExist path
-  if exists
-     then liftM (Just . unintersperse '\0') (readFile path)
-    else return Nothing
-
-unintersperse :: Eq a => a -> [a] -> [[a]]
-unintersperse _ [] = []
-unintersperse mark list =
-  let (this, rest) = break (== mark) list
-  in case rest of
-       [] -> [this]
-       (_:rest') -> this : unintersperse mark rest'
+    setVerbosity flags verbosity = flags { configVerbosity = toFlag verbosity }
 
 -- | The path (relative to @--build-dir@) where the arguments to @configure@
 -- should be saved.
@@ -375,7 +240,7 @@ showHeader pkgId = BLC8.unwords
 -- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
-checkPersistBuildConfigOutdated distPref pkg_descr_file = do
+checkPersistBuildConfigOutdated distPref pkg_descr_file =
   pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
 -- | Get the path of @dist\/setup-config@.
