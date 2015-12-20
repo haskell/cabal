@@ -37,8 +37,7 @@ module Distribution.Simple.Reconfigure
 import Distribution.Package
     ( PackageIdentifier(..), PackageName(PackageName), packageId )
 import Distribution.Simple.Command
-    ( CommandParse(..), CommandUI, commandAddAction, commandsRun
-    , commandShowOptions )
+    ( CommandParse(..), CommandUI, commandAddAction, commandsRun )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Setup
     ( ConfigFlags(..), GlobalFlags(..), defaultDistPref
@@ -147,7 +146,7 @@ type Reconfigure = [Requirement] -> Verbosity -> FilePath -> IO LocalBuildInfo
 -- 'ConfigStateFileError' if the file cannot be read and the package cannot
 -- be reconfigured.
 reconfigure :: CommandUI ConfigFlags
-            -> (Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+            -> (ConfigFlags -> Args -> IO LocalBuildInfo)
                -- ^ configure action
             -> (FilePath -> FilePath)
                -- ^ path to saved command-line arguments,
@@ -191,7 +190,7 @@ extraRequirements dist = [ sameDistPref ]
 
 -- | Reconfigure the package unconditionally.
 forceReconfigure :: CommandUI ConfigFlags
-                 -> (Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+                 -> (ConfigFlags -> Args -> IO LocalBuildInfo)
                     -- ^ configure action
                  -> (FilePath -> FilePath)
                     -- ^ path to saved command-line arguments,
@@ -218,8 +217,7 @@ forceReconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
     configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
     configureAction_ config extraArgs = do
       flags <- setRequirements config { configVerbosity = toFlag verbosity }
-      let args' = "configure" : commandShowOptions cmd flags
-      configureAction args' flags extraArgs
+      configureAction flags extraArgs
 
     setRequirements :: ConfigFlags -> IO ConfigFlags
     setRequirements orig = foldlM setRequirements_go orig reqs where

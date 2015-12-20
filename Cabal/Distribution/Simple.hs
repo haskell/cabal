@@ -170,7 +170,7 @@ defaultMainHelper hooks args = topHandler $
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
       [configureCommand progs `commandAddAction` \fs as ->
-           void (configureAction hooks args fs as)
+           void (configureAction hooks fs as)
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
@@ -200,10 +200,11 @@ allSuffixHandlers hooks
       overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
       overridesPP = unionBy (\x y -> fst x == fst y)
 
-configureAction :: UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo
-configureAction hooks allArgs flags args = do
+configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
+configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
+        allArgs = commandShowOptions (configureCommand progs) flags'
     -- save command-line options so we can reconfigure later
     writeArgs verbosity (setupConfigArgsFile distPref) allArgs
 
@@ -228,6 +229,7 @@ configureAction hooks allArgs flags args = do
     return localbuildinfo
   where
     verbosity = fromFlag (configVerbosity flags)
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
 
     confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
     confPkgDescr = do
