@@ -86,7 +86,7 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Reconfigure
-    ( forceReconfigure, reconfigure, setupConfigArgsFile, toRequirement, writeArgs )
+    ( forceReconfigure, reconfigure, setupConfigArgsFile, writeArgs )
 import Distribution.Simple.Register
          ( register, unregister )
 import Distribution.Simple.SrcDist      ( sdist )
@@ -399,27 +399,29 @@ unregisterAction hooks flags args = do
 reconfigureAction :: UserHooks -> ReconfigureFlags ConfigFlags -> Args -> IO ()
 reconfigureAction hooks flags _ = do
     let config = reconfigureConfigFlags flags
-        config' = config { configVerbosity = NoFlag }
-    reqs <- mapM getRequirement (commandShowOptions cmd config')
     distPref <- findDistPrefOrDefault (configDistPref config)
-    let verbosity = fromFlag (configVerbosity config)
+    let config' = config { configVerbosity = NoFlag
+                         , configDistPref = toFlag distPref
+                         }
+        requirement savedFlags
+          | savedFlags == applied = Nothing
+          | otherwise = Just (applied, message)
+          where
+            applied = mappend savedFlags config'
+            -- This message is correct, but not very detailed. It will list all of the
+            -- requested flags, even if some of them are not actually changed, i.e.
+            -- it does not list the *minimal* set of changed flags because this is
+            -- more difficult to determine.
+            message = "flags changed: " ++ unwords (commandShowOptions cmd config')
+        verbosity = fromFlag (configVerbosity config)
         force = fromFlagOrDefault False (reconfigureForce flags)
         reconf | force = forceReconfigure
                | otherwise = reconfigure
-    _ <- reconf cmd (configureAction hooks) setupConfigArgsFile reqs verbosity distPref
+    _ <- reconf cmd (configureAction hooks) setupConfigArgsFile [requirement] verbosity distPref
     return ()
   where
     cmd = configureCommand progs
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
-    getRequirement flag =
-      case commandParseArgs cmd True [flag] of
-        CommandHelp _ -> printErrors ["reconfigure: unexpected `--help`"]
-        CommandList _ -> printErrors ["reconfigure: unexcepted `--list-options`"]
-        CommandErrors errs -> printErrors errs
-        CommandReadyToGo (apply, _) -> return (toRequirement flag apply)
-    printErrors errs = do
-      putStr (intercalate "\n" errs)
-      exitWith (ExitFailure 1)
 
 getBuildConfig :: UserHooks -> [ConfigFlags -> Maybe (ConfigFlags, String)]
                -> Verbosity -> FilePath -> IO LocalBuildInfo
