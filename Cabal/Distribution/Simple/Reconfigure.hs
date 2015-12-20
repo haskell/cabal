@@ -22,7 +22,7 @@ module Distribution.Simple.Reconfigure
        ( -- * Exceptions
          ConfigStateFileError(..), ReconfigureError(..)
          -- * Reconfiguration
-       , Reconfigure, reconfigure
+       , Reconfigure, reconfigure, canReconfigure
        , readArgs, writeArgs, setupConfigArgsFile
          -- * Persistent build configuration
        , writePersistBuildConfig, localBuildInfoFile
@@ -42,7 +42,8 @@ import qualified Distribution.Simple.Reconfigure.Generic as Generic
 import Distribution.Simple.Setup ( ConfigFlags(..), toFlag )
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils ( cabalVersion, moreRecentFile, writeFileAtomic )
-import Distribution.Text (display, simpleParse)
+import Distribution.Text ( display, simpleParse )
+import Distribution.Version ( Version(..) )
 
 import Control.Exception
     ( Exception, evaluate, throw, throwIO, try )
