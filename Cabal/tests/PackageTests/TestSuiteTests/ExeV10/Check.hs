@@ -81,7 +81,7 @@ checkTestWithHpc config name extraOpts = do
     when isCorrectVersion $ do
         let distPref' = dir </> "dist-" ++ name
         buildAndTest config name [] ("--enable-coverage" : extraOpts)
-        lbi <- inDir dir (getPersistBuildConfig distPref')
+        lbi <- inDir dir (getPersistBuildConfig ("dist-" ++ name))
         let way = guessWay lbi
             CompilerId comp version = compilerId (compiler lbi)
             subdir
@@ -102,7 +102,7 @@ checkTestNoHpcNoTix config = do
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
       , "--ghc-option=dist-NoHpcNoTix/hpc/vanilla" ]
-    lbi <- inDir dir (getPersistBuildConfig (dir </> "dist-NoHpcNoTix"))
+    lbi <- inDir dir (getPersistBuildConfig "dist-NoHpcNoTix")
     let way = guessWay lbi
     shouldNotExist $ tixFilePath (dir </> "dist-NoHpcNoTix") way "test-Foo"
 
