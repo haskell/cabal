@@ -23,7 +23,8 @@ module Distribution.Simple.Reconfigure
          ConfigStateFileError(..), ReconfigureError(..)
          -- * Reconfiguration
        , Reconfigure, reconfigure, canReconfigure
-       , readArgs, writeArgs, setupConfigArgsFile
+       , readCommandFlags, writeCommandFlags
+       , setupConfigArgsFile
          -- * Persistent build configuration
        , writePersistBuildConfig, localBuildInfoFile
        , getPersistBuildConfig, tryGetPersistBuildConfig

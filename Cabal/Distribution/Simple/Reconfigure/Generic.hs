@@ -3,12 +3,12 @@
 
 module Distribution.Simple.Reconfigure.Generic
        ( Reconfigure, Requirement, reconfigure
-       , readArgs, writeArgs
+       , readCommandFlags, writeCommandFlags
        , ReconfigureError(..)
        ) where
 
 import Distribution.Simple.Command
-    ( CommandParse(..), CommandUI(..), commandParseArgs )
+    ( CommandParse(..), CommandUI(..), commandParseArgs, commandShowOptions )
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils
     ( createDirectoryIfMissingVerbose, info, notice )
@@ -48,13 +48,7 @@ reconfigure :: Bool  -- ^ reconfigure even if unnecessary
             -> Reconfigure flags a
 reconfigure force cmd setVerbosity getConfig configureAction
             argsFile reqs verbosity distPref = do
-    savedArgs <- liftM (fromMaybe []) (readArgs (argsFile distPref))
-    (savedFlags, savedExtraArgs) <- case (commandParseArgs cmd True savedArgs) of
-      CommandHelp _ -> throwIO (ReconfigureErrorHelp savedArgs)
-      CommandList _ -> throwIO (ReconfigureErrorList savedArgs)
-      CommandErrors errs -> throwIO (ReconfigureErrorOther savedArgs errs)
-      CommandReadyToGo (mkFlags, extraArgs) ->
-        return (mkFlags (commandDefaultFlags cmd), extraArgs)
+    (savedFlags, savedExtraArgs) <- readCommandFlags cmd (argsFile distPref)
 
     let forceReconfigure = do
           flags <- setRequirements (setVerbosity savedFlags verbosity)
@@ -77,25 +71,39 @@ reconfigure force cmd setVerbosity getConfig configureAction
             notice verbosity ("reconfigure: " ++ reason)
             return flags'
 
--- | Write command-line arguments to a file, separated by null characters. This
--- format is also suitable for the @xargs -0@ command. Using the null
--- character also avoids the problem of escaping newlines or spaces,
--- because unlike other whitespace characters, the null character is
--- not valid in command-line arguments.
 writeArgs :: Verbosity -> FilePath -> [String] -> IO ()
 writeArgs verbosity path args = do
     createDirectoryIfMissingVerbose
       (lessVerbose verbosity) True (takeDirectory path)
     writeFile path (intercalate "\0" args)
 
--- | Read command-line arguments, separated by null characters, from a file.
--- Returns 'Nothing' if the file does not exist.
+-- | Write command-line flags to a file, separated by null characters. This
+-- format is also suitable for the @xargs -0@ command. Using the null
+-- character also avoids the problem of escaping newlines or spaces,
+-- because unlike other whitespace characters, the null character is
+-- not valid in command-line arguments.
+writeCommandFlags :: Verbosity -> FilePath -> CommandUI flags -> (flags, [String]) -> IO ()
+writeCommandFlags verbosity path command (flags, extraArgs) =
+  writeArgs verbosity path (commandShowOptions command flags ++ extraArgs)
+
 readArgs :: FilePath -> IO (Maybe [String])
 readArgs path = do
   exists <- doesFileExist path
   if exists
      then liftM (Just . unintersperse '\0') (readFile path)
     else return Nothing
+
+-- | Read command-line arguments, separated by null characters, from a file.
+-- Returns the default flags if the file does not exist.
+readCommandFlags :: CommandUI flags -> FilePath -> IO (flags, [String])
+readCommandFlags command path = do
+  savedArgs <- liftM (fromMaybe []) (readArgs path)
+  case (commandParseArgs command True savedArgs) of
+    CommandHelp _ -> throwIO (ReconfigureErrorHelp savedArgs)
+    CommandList _ -> throwIO (ReconfigureErrorList savedArgs)
+    CommandErrors errs -> throwIO (ReconfigureErrorOther savedArgs errs)
+    CommandReadyToGo (mkFlags, extraArgs) ->
+      return (mkFlags (commandDefaultFlags command), extraArgs)
 
 unintersperse :: Eq a => a -> [a] -> [[a]]
 unintersperse _ [] = []

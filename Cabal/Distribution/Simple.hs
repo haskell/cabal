@@ -87,7 +87,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Reconfigure ( reconfigure, setupConfigArgsFile, writeArgs )
+import Distribution.Simple.Reconfigure ( reconfigure, setupConfigArgsFile, writeCommandFlags )
 import Distribution.Simple.Register
          ( register, unregister )
 import Distribution.Simple.SrcDist      ( sdist )
@@ -208,9 +208,9 @@ configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
-        allArgs = commandShowOptions (configureCommand progs) flags'
     -- save command-line options so we can reconfigure later
-    writeArgs verbosity (setupConfigArgsFile distPref) allArgs
+    writeCommandFlags verbosity (setupConfigArgsFile distPref)
+      (configureCommand progs) (flags', args)
 
     pbi <- preConf hooks args flags'
 
