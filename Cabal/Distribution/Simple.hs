@@ -25,6 +25,8 @@
 -- presented the same compatible command line interfaces. There is still a
 -- "Distribution.Make" system but in practice no packages use it.
 
+{-# LANGUAGE CPP #-}
+
 {-
 Work around this warning:
 libraries/Cabal/Distribution/Simple.hs:78:0:
@@ -113,6 +115,9 @@ import Distribution.Compat.Environment (getEnvironment)
 import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
 import Data.List       (intercalate, unionBy)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid (mappend)
+#endif
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
