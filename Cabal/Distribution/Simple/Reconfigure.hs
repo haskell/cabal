@@ -72,6 +72,8 @@ data ConfigStateFileError
     | ConfigStateFileBadHeader -- ^ Incorrect header.
     | ConfigStateFileNoParse -- ^ Cannot parse file contents.
     | ConfigStateFileMissing -- ^ No file!
+    | ConfigStateFileOutdated FilePath LocalBuildInfo
+      -- ^ 'LocalBuildInfo' is present, but outdated
     | ConfigStateFileBadVersion
         PackageIdentifier
         PackageIdentifier
@@ -90,6 +92,8 @@ instance Show ConfigStateFileError where
         "Saved package config file body is corrupt. "
         ++ "Try re-running the 'configure' command."
     show ConfigStateFileMissing = "Run the 'configure' command first."
+    show (ConfigStateFileOutdated pdFile _) =
+        pdFile ++ " has been changed."
     show (ConfigStateFileBadVersion oldCabal oldCompiler _) =
         "You need to re-run the 'configure' command. "
         ++ "The version of Cabal being used has changed (was "
@@ -143,11 +147,19 @@ writePersistBuildConfig distPref lbi = do
     pkgId = packageId $ localPkgDescr lbi
 
 -- | Read the 'localBuildInfoFile'. Throw an exception if the file is
--- missing, if the file cannot be read, or if the file was created by an older
--- version of Cabal.
+-- missing, if the file cannot be read, if the file was created by an older
+-- version of Cabal, or if the file is outdated.
 getPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                       -> IO LocalBuildInfo
-getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
+getPersistBuildConfig distPref = do
+  lbi <- getConfigStateFile (localBuildInfoFile distPref)
+  case pkgDescrFile lbi of
+    Nothing -> return lbi
+    Just pdFile -> do
+      outdated <- checkPersistBuildConfigOutdated distPref pdFile
+      if outdated
+        then throwIO (ConfigStateFileOutdated pdFile lbi)
+        else return lbi
 
 -- | Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
@@ -237,7 +249,7 @@ showHeader pkgId = BLC8.unwords
     , BLC8.pack $ display currentCompilerId
     ]
 
--- | Check that localBuildInfoFile is up-to-date with respect to the
+-- | 'True' if 'localBuildInfoFile' is outdated with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file =
