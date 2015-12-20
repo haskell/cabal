@@ -102,11 +102,9 @@ import Distribution.Utils.NubList
 
 import Control.Monad (liftM)
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup as Semi
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid ( Monoid(..) )
-#endif
 import GHC.Generics (Generic)
 
 -- FIXME Not sure where this should live
@@ -144,8 +142,11 @@ instance Functor Flag where
 
 instance Monoid (Flag a) where
   mempty = NoFlag
-  _ `mappend` f@(Flag _) = f
-  f `mappend` NoFlag     = f
+  mappend = (Semi.<>)
+
+instance Semigroup (Flag a) where
+  _ <> f@(Flag _) = f
+  f <> NoFlag     = f
 
 instance Bounded a => Bounded (Flag a) where
   minBound = toFlag minBound
@@ -256,7 +257,10 @@ instance Monoid GlobalFlags where
     globalVersion        = mempty,
     globalNumericVersion = mempty
   }
-  mappend a b = GlobalFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup GlobalFlags where
+  a <> b = GlobalFlags {
     globalVersion        = combine globalVersion,
     globalNumericVersion = combine globalNumericVersion
   }
@@ -803,7 +807,10 @@ instance Monoid ConfigFlags where
     configRelocatable   = mempty,
     configDebugInfo     = mempty
   }
-  mappend a b =  ConfigFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup ConfigFlags where
+  a <> b =  ConfigFlags {
     configPrograms      = configPrograms b,
     configProgramPaths  = combine configProgramPaths,
     configProgramArgs   = combine configProgramArgs,
@@ -905,7 +912,10 @@ instance Monoid CopyFlags where
     copyDistPref  = mempty,
     copyVerbosity = mempty
   }
-  mappend a b = CopyFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup CopyFlags where
+  a <> b = CopyFlags {
     copyDest      = combine copyDest,
     copyDistPref  = combine copyDistPref,
     copyVerbosity = combine copyVerbosity
@@ -984,7 +994,10 @@ instance Monoid InstallFlags where
     installInPlace    = mempty,
     installVerbosity = mempty
   }
-  mappend a b = InstallFlags{
+  mappend = (Semi.<>)
+
+instance Semigroup InstallFlags where
+  a <> b = InstallFlags{
     installPackageDB = combine installPackageDB,
     installDistPref  = combine installDistPref,
     installUseWrapper = combine installUseWrapper,
@@ -1061,7 +1074,10 @@ instance Monoid SDistFlags where
     sDistListSources = mempty,
     sDistVerbosity   = mempty
   }
-  mappend a b = SDistFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup SDistFlags where
+  a <> b = SDistFlags {
     sDistSnapshot    = combine sDistSnapshot,
     sDistDirectory   = combine sDistDirectory,
     sDistDistPref    = combine sDistDistPref,
@@ -1186,7 +1202,10 @@ instance Monoid RegisterFlags where
     regDistPref    = mempty,
     regVerbosity   = mempty
   }
-  mappend a b = RegisterFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup RegisterFlags where
+  a <> b = RegisterFlags {
     regPackageDB   = combine regPackageDB,
     regGenScript   = combine regGenScript,
     regGenPkgConf  = combine regGenPkgConf,
@@ -1233,7 +1252,10 @@ instance Monoid HscolourFlags where
     hscolourDistPref    = mempty,
     hscolourVerbosity   = mempty
   }
-  mappend a b = HscolourFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup HscolourFlags where
+  a <> b = HscolourFlags {
     hscolourCSS         = combine hscolourCSS,
     hscolourExecutables = combine hscolourExecutables,
     hscolourTestSuites  = combine hscolourTestSuites,
@@ -1471,7 +1493,10 @@ instance Monoid HaddockFlags where
     haddockKeepTempFiles= mempty,
     haddockVerbosity    = mempty
   }
-  mappend a b = HaddockFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup HaddockFlags where
+  a <> b = HaddockFlags {
     haddockProgramPaths = combine haddockProgramPaths,
     haddockProgramArgs  = combine haddockProgramArgs,
     haddockHoogle       = combine haddockHoogle,
@@ -1542,7 +1567,10 @@ instance Monoid CleanFlags where
     cleanDistPref  = mempty,
     cleanVerbosity = mempty
   }
-  mappend a b = CleanFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup CleanFlags where
+  a <> b = CleanFlags {
     cleanSaveConf  = combine cleanSaveConf,
     cleanDistPref  = combine cleanDistPref,
     cleanVerbosity = combine cleanVerbosity
@@ -1646,7 +1674,10 @@ instance Monoid BuildFlags where
     buildNumJobs     = mempty,
     buildArgs        = mempty
   }
-  mappend a b = BuildFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup BuildFlags where
+  a <> b = BuildFlags {
     buildProgramPaths = combine buildProgramPaths,
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
@@ -1686,7 +1717,10 @@ instance Monoid ReplFlags where
     replDistPref    = mempty,
     replReload      = mempty
   }
-  mappend a b = ReplFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup ReplFlags where
+  a <> b = ReplFlags {
     replProgramPaths = combine replProgramPaths,
     replProgramArgs = combine replProgramArgs,
     replVerbosity   = combine replVerbosity,
@@ -1787,7 +1821,10 @@ instance Text TestShowDetails where
 --TODO: do we need this instance?
 instance Monoid TestShowDetails where
     mempty = Never
-    mappend a b = if a < b then b else a
+    mappend = (Semi.<>)
+
+instance Semigroup TestShowDetails where
+    a <> b = if a < b then b else a
 
 data TestFlags = TestFlags {
     testDistPref    :: Flag FilePath,
@@ -1899,7 +1936,10 @@ instance Monoid TestFlags where
     testKeepTix     = mempty,
     testOptions     = mempty
   }
-  mappend a b = TestFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup TestFlags where
+  a <> b = TestFlags {
     testDistPref    = combine testDistPref,
     testVerbosity   = combine testVerbosity,
     testHumanLog    = combine testHumanLog,
@@ -1982,7 +2022,10 @@ instance Monoid BenchmarkFlags where
     benchmarkVerbosity = mempty,
     benchmarkOptions   = mempty
   }
-  mappend a b = BenchmarkFlags {
+  mappend = (Semi.<>)
+
+instance Semigroup BenchmarkFlags where
+  a <> b = BenchmarkFlags {
     benchmarkDistPref  = combine benchmarkDistPref,
     benchmarkVerbosity = combine benchmarkVerbosity,
     benchmarkOptions   = combine benchmarkOptions

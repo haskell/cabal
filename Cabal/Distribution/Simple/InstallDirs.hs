@@ -46,11 +46,9 @@ module Distribution.Simple.InstallDirs (
 
 
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup as Semi
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (Monoid(..))
-#endif
 import GHC.Generics (Generic)
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
@@ -118,7 +116,7 @@ instance Functor InstallDirs where
     sysconfdir   = f (sysconfdir dirs)
   }
 
-instance Monoid dir => Monoid (InstallDirs dir) where
+instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
   mempty = InstallDirs {
       prefix       = mempty,
       bindir       = mempty,
@@ -135,7 +133,10 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       haddockdir   = mempty,
       sysconfdir   = mempty
   }
-  mappend = combineInstallDirs mappend
+  mappend = (Semi.<>)
+
+instance Semigroup dir => Semigroup (InstallDirs dir) where
+  (<>) = combineInstallDirs (<>)
 
 combineInstallDirs :: (a -> b -> c)
                    -> InstallDirs a

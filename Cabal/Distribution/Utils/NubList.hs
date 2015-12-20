@@ -10,9 +10,8 @@ module Distribution.Utils.NubList
     , overNubListR
     ) where
 
+import Distribution.Compat.Semigroup as Semi
 import Distribution.Compat.Binary
-import Data.Monoid
-import Prelude
 
 import Distribution.Simple.Utils (ordNub, listUnion, ordNubRight, listUnionRight)
 
@@ -52,7 +51,10 @@ overNubList f (NubList list) = toNubList . f $ list
 
 instance Ord a => Monoid (NubList a) where
     mempty = NubList []
-    mappend (NubList xs) (NubList ys) = NubList $ xs `listUnion` ys
+    mappend = (Semi.<>)
+
+instance Ord a => Semigroup (NubList a) where
+    (NubList xs) <> (NubList ys) = NubList $ xs `listUnion` ys
 
 instance Show a => Show (NubList a) where
     show (NubList list) = show list
@@ -89,7 +91,10 @@ overNubListR f (NubListR list) = toNubListR . f $ list
 
 instance Ord a => Monoid (NubListR a) where
   mempty = NubListR []
-  mappend (NubListR xs) (NubListR ys) = NubListR $ xs `listUnionRight` ys
+  mappend = (Semi.<>)
+
+instance Ord a => Semigroup (NubListR a) where
+  (NubListR xs) <> (NubListR ys) = NubListR $ xs `listUnionRight` ys
 
 instance Show a => Show (NubListR a) where
   show (NubListR list) = show list
