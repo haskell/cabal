@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -286,9 +287,9 @@ parsePackageIndex = concatMap (uncurry extract) . tarEntriesList . Tar.read
 tarEntriesList :: Tar.Entries -> [(BlockNo, Tar.Entry)]
 tarEntriesList = go 0
   where
-    go _ Tar.Done         = []
-    go _ (Tar.Fail e)     = error ("tarEntriesList: " ++ e)
-    go n (Tar.Next e es') = (n, e) : go (n + Tar.entrySizeInBlocks e) es'
+    go !_ Tar.Done         = []
+    go !_ (Tar.Fail e)     = error ("tarEntriesList: " ++ e)
+    go !n (Tar.Next e es') = (n, e) : go (n + Tar.entrySizeInBlocks e) es'
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe (IO (Maybe PackageEntry))
 extractPkg entry blockNo = case Tar.entryContent entry of
