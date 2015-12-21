@@ -53,15 +53,11 @@ import Control.Applicative (Applicative(..))
 import Control.Arrow    (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-import Data.Typeable
-import Data.Data
-import qualified Data.Map as Map
 
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Distribution.Compat.ReadP
          ((+++), option)
-import qualified Distribution.Compat.ReadP as Parse
 import Text.PrettyPrint
 
 import Distribution.ParseUtils hiding (parseFields)
@@ -402,8 +398,7 @@ binfoFieldDescrs =
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , commaListFieldWithSep vcat "build-depends"
            disp                   parse
-           buildDependsWithRenaming
-           setBuildDependsWithRenaming
+           targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
  , spaceListField "cpp-options"
            showToken          parseTokenQ'
            cppOptions          (\val binfo -> binfo{cppOptions=val})
@@ -597,7 +592,8 @@ mapSimpleFields f = mapM walk
 -- prop_isMapM fs = mapSimpleFields return fs == return fs
 
 
--- names of fields that represents dependencies, thus consrca
+-- names of fields that represents dependencies
+-- TODO: maybe build-tools should go here too?
 constraintFieldNames :: [String]
 constraintFieldNames = ["build-depends"]
 
@@ -605,9 +601,9 @@ constraintFieldNames = ["build-depends"]
 -- they add and define an accessor that specifies what the dependencies
 -- are.  This way we would completely reuse the parsing knowledge from the
 -- field descriptor.
-parseConstraint :: Field -> ParseResult [DependencyWithRenaming]
+parseConstraint :: Field -> ParseResult [Dependency]
 parseConstraint (F l n v)
-    | n == "build-depends" = runP l n (parseCommaList parse) v
+    | n `elem` constraintFieldNames = runP l n (parseCommaList parse) v
 parseConstraint f = userBug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 {-
@@ -1066,17 +1062,29 @@ parsePackageDescription file = do
             condFlds = [ f | f@IfBlock{} <- allflds ]
             sections = [ s | s@Section{} <- allflds ]
 
-        -- Put these through the normal parsing pass too, so that we
-        -- collect the ModRenamings
-        let depFlds = filter isConstraint simplFlds
-        
         mapM_
             (\(Section l n _ _) -> lift . warning $
                 "Unexpected section '" ++ n ++ "' on line " ++ show l)
             sections
 
         a <- parser simplFlds
-        deps <- liftM concat . mapM (lift . fmap (map dependency) .  parseConstraint) $ depFlds
+
+        -- Dependencies must be treated specially: when we
+        -- parse into a CondTree, not only do we parse them into
+        -- the targetBuildDepends/etc field inside the
+        -- PackageDescription, but we also have to put the
+        -- combined dependencies into CondTree.
+        --
+        -- This information is, in principle, redundant, but
+        -- putting it here makes it easier for the constraint
+        -- solver to pick a flag assignment which supports
+        -- all of the dependencies (because it only has
+        -- to check the CondTree, rather than grovel everywhere
+        -- inside the conditional bits).
+        deps <- liftM concat
+              . mapM (lift . parseConstraint)
+              . filter isConstraint
+              $ simplFlds
 
         ifs <- mapM processIfs condFlds
 
@@ -1280,32 +1288,3 @@ findIndentTabs = concatMap checkLine
 
 --test_findIndentTabs = findIndentTabs $ unlines $
 --    [ "foo", "  bar", " \t baz", "\t  biz\t", "\t\t \t mib" ]
-
--- | Dependencies plus module renamings.  This is what users specify; however,
--- renaming information is not used for dependency resolution.
-data DependencyWithRenaming = DependencyWithRenaming Dependency ModuleRenaming
-  deriving (Read, Show, Eq, Typeable, Data)
-
-dependency :: DependencyWithRenaming -> Dependency
-dependency (DependencyWithRenaming dep _) = dep
-
-instance Text DependencyWithRenaming where
-  disp (DependencyWithRenaming d rns) = disp d <+> disp rns
-  parse = do d <- parse
-             Parse.skipSpaces
-             rns <- parse
-             Parse.skipSpaces
-             return (DependencyWithRenaming d rns)
-
-buildDependsWithRenaming :: BuildInfo -> [DependencyWithRenaming]
-buildDependsWithRenaming pkg =
-    map (\dep@(Dependency n _) ->
-            DependencyWithRenaming dep
-                (Map.findWithDefault defaultRenaming n (targetBuildRenaming pkg)))
-        (targetBuildDepends pkg)
-
-setBuildDependsWithRenaming :: [DependencyWithRenaming] -> BuildInfo -> BuildInfo
-setBuildDependsWithRenaming deps pkg = pkg {
-    targetBuildDepends = map dependency deps,
-    targetBuildRenaming = Map.fromList (map (\(DependencyWithRenaming (Dependency n _) rns) -> (n, rns)) deps)
-  }

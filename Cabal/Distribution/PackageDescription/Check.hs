@@ -1152,8 +1152,7 @@ checkCabalVersion pkg =
     depsUsingThinningRenamingSyntax =
       [ name
       | bi <- allBuildInfo pkg
-      , (name, rns) <- Map.toList (targetBuildRenaming bi)
-      , rns /= ModuleRenaming True [] ]
+      , (name, _) <- Map.toList (targetBuildRenaming bi) ]
 
     testedWithUsingWildcardSyntax =
       [ Dependency (PackageName (display compiler)) vr

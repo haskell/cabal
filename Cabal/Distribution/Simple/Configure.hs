@@ -483,9 +483,9 @@ configure (pkg_descr0, pbi) cfg
         let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
         unless (renamingPackageFlagsSupported comp ||
-                    and [ rn == defaultRenaming
+                    and [ True
                         | bi <- allBuildInfo pkg_descr
-                        , rn <- Map.elems (targetBuildRenaming bi)]) $
+                        , _ <- Map.elems (targetBuildRenaming bi)]) $
             die $ "Your compiler does not support thinning and renaming on "
                ++ "package flags.  To use this feature you probably must use "
                ++ "GHC 7.9 or later."
