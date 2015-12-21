@@ -174,6 +174,7 @@ data PackageDescription
         customFieldsPD :: [(String,String)], -- ^Custom fields starting
                                              -- with x-, stored in a
                                              -- simple assoc-list.
+
         -- | YOU PROBABLY DON'T WANT TO USE THIS FIELD. This field is
         -- special! Depending on how far along processing the
         -- PackageDescription we are, the contents of this field are
