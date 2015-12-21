@@ -37,6 +37,9 @@ import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath (dropExtension)
 import Data.Maybe (catMaybes)
+import Data.Time (getCurrentTime)
+
+import qualified Hackage.Security.Client as Sec
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> RepoContext -> IO ()
@@ -70,4 +73,16 @@ updateRepo verbosity repoCtxt repo = do
         FileDownloaded indexPath -> do
           writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                   =<< BS.readFile indexPath
+          updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
+    RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \repoSecure -> do
+      ce <- if repoContextIgnoreExpiry repoCtxt
+              then Just `fmap` getCurrentTime
+              else return Nothing
+      updated <- Sec.uncheckClientErrors $ Sec.checkForUpdates repoSecure ce
+      -- Update cabal's internal index as well so that it's not out of sync
+      -- (If all access to the cache goes through hackage-security this can go)
+      case updated of
+        Sec.NoUpdates  ->
+          return ()
+        Sec.HasUpdates ->
           updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)

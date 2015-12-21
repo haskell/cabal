@@ -72,7 +72,7 @@ import Distribution.ParseUtils
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, boolField, spaceListField
+         , simpleField, listField, spaceListField
          , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
@@ -488,7 +488,7 @@ defaultUserInstall = True
 -- global installs on Windows but that no longer works on Windows Vista or 7.
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo name uri False [] 0 False
+defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
   where
     name = "hackage.haskell.org"
     uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
@@ -497,11 +497,6 @@ defaultRemoteRepo = RemoteRepo name uri False [] 0 False
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
 
-    -- TODO: Once we make secure access opt-out rather than opt-in, we could
-    -- Use this as a source for crypto credentials when finding old remote-repo
-    -- entries that match repo name and url (not only be used for generating
-    -- fresh config files).
-
 -- For the default repo we know extra information, fill this in.
 --
 -- We need this because the 'defaultRemoteRepo' above is only used for the
@@ -509,11 +504,15 @@ defaultRemoteRepo = RemoteRepo name uri False [] 0 False
 -- we might have only have older info. This lets us fill that in even for old
 -- config files.
 --
+-- TODO: Once we migrate from opt-in to opt-out security for the central
+-- Hackage repository, we should enable security and specify keys and threshold
+-- for repositories that have their security setting as 'Nothing' (default).
 addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
 addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
-    tryHttps $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
+      tryHttps
+    $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
   where
-    tryHttps       r = r { remoteRepoShouldTryHttps = True }
+    tryHttps r = r { remoteRepoShouldTryHttps = True }
 addInfoForKnownRepos other = other
 
 --
@@ -844,7 +843,7 @@ parseConfig src initial = \str -> do
   }
 
   where
-    isKnownSection (ParseUtils.Section _ "remote-repo" _ _)             = True
+    isKnownSection (ParseUtils.Section _ "repository" _ _)              = True
     isKnownSection (ParseUtils.F _ "remote-repo" _)                     = True
     isKnownSection (ParseUtils.Section _ "haddock" _ _)                 = True
     isKnownSection (ParseUtils.Section _ "install-dirs" _ _)            = True
@@ -856,12 +855,12 @@ parseConfig src initial = \str -> do
                       ++ deprecatedFieldDescriptions) initial
 
     parseSections (rs, h, u, g, p, a)
-                 (ParseUtils.Section _ "remote-repo" name fs) = do
+                 (ParseUtils.Section _ "repository" name fs) = do
       r' <- parseFields remoteRepoFields (emptyRemoteRepo name) fs
       when (remoteRepoKeyThreshold r' > length (remoteRepoRootKeys r')) $
         warning $ "'key-threshold' for repository " ++ show (remoteRepoName r')
                ++ " higher than number of keys"
-      when (not (null (remoteRepoRootKeys r')) && not (remoteRepoSecure r')) $
+      when (not (null (remoteRepoRootKeys r')) && remoteRepoSecure r' /= Just True) $
         warning $ "'root-keys' for repository " ++ show (remoteRepoName r')
                ++ " non-empty, but 'secure' not set to True."
       return (r':rs, h, u, g, p, a)
@@ -950,7 +949,7 @@ installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
 
 ppRemoteRepoSection :: RemoteRepo -> Doc
-ppRemoteRepoSection vals = ppSection "remote-repo" (remoteRepoName vals)
+ppRemoteRepoSection vals = ppSection "repository" (remoteRepoName vals)
         remoteRepoFields Nothing vals
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
@@ -958,13 +957,14 @@ remoteRepoFields =
     [ simpleField "url"
         (text . show)            (parseTokenQ >>= parseURI')
         remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
-    , boolField "secure"
+    , simpleField "secure"
+        showSecure               (parseTokenQ >>= parseSecure)
         remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
     , listField "root-keys"
         text                     parseTokenQ
         remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
     , simpleField "key-threshold"
-        (text . show)            (parseTokenQ >>= parseInt)
+        showThreshold            (parseTokenQ >>= parseInt)
         remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
     ]
   where
@@ -979,6 +979,22 @@ remoteRepoFields =
       case filter (null . snd) (reads intString) of
         [(n, _)] -> return n
         _ -> fail $ "remote-remo: could not parse int " ++ show intString
+
+
+    showSecure  Nothing      = mempty       -- default 'secure' setting
+    showSecure  (Just True)  = text "True"  -- user explicitly enabled it
+    showSecure  (Just False) = text "False" -- user explicitly disabled it
+
+    parseSecure "True"  = return $ Just True
+    parseSecure "False" = return $ Just False
+    parseSecure str = fail $ "remote-repo: could not parse bool " ++ show str
+
+    -- If the key-threshold is set to 0, we omit it as this is the default
+    -- and it looks odd to have a value for key-threshold but not for 'secure'
+    -- (note that an empty list of keys is already omitted by default, since
+    -- that is what we do for all list fields)
+    showThreshold 0 = mempty
+    showThreshold t = text (show t)
 
 -- | Fields for the 'haddock' section.
 haddockFlagsFields :: [FieldDescr HaddockFlags]

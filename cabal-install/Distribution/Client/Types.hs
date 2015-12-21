@@ -214,8 +214,13 @@ data RemoteRepo =
       remoteRepoName     :: String,
       remoteRepoURI      :: URI,
 
-      -- | Enable secure access to Hackage?
-      remoteRepoSecure :: Bool,
+      -- | Enable secure access?
+      --
+      -- 'Nothing' here represents "whatever the default is"; this is important
+      -- to allow for a smooth transition from opt-in to opt-out security
+      -- (once we switch to opt-out, all access to the central Hackage
+      -- repository should be secure by default)
+      remoteRepoSecure :: Maybe Bool,
 
       -- | Root key IDs (for bootstrapping)
       remoteRepoRootKeys :: [String],
@@ -236,8 +241,11 @@ data RemoteRepo =
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
-emptyRemoteRepo name = RemoteRepo name nullURI False [] 0 False
+emptyRemoteRepo name = RemoteRepo name nullURI Nothing [] 0 False
 
+-- | Different kinds of repositories
+--
+-- NOTE: It is important that this type remains serializable.
 data Repo =
     -- | Local repositories
     RepoLocal {
@@ -250,12 +258,25 @@ data Repo =
       , repoLocalDir :: FilePath
       }
 
-deriving instance Show Repo
+    -- | Secure repositories
+    --
+    -- Although this contains the same fields as 'RepoRemote', we use a separate
+    -- constructor to avoid confusing the two.
+    --
+    -- Not all access to a secure repo goes through the hackage-security
+    -- library currently; code paths that do not still make use of the
+    -- 'repoRemote' and 'repoLocalDir' fields directly.
+  | RepoSecure {
+        repoRemote   :: RemoteRepo
+      , repoLocalDir :: FilePath
+      }
+  deriving (Show, Eq, Ord)
 
 -- | Check if this is a remote repo
 maybeRepoRemote :: Repo -> Maybe RemoteRepo
-maybeRepoRemote (RepoLocal    _localDir  ) = Nothing
-maybeRepoRemote (RepoRemote r _localDir  ) = Just r
+maybeRepoRemote (RepoLocal    _localDir) = Nothing
+maybeRepoRemote (RepoRemote r _localDir) = Just r
+maybeRepoRemote (RepoSecure r _localDir) = Just r
 
 -- ------------------------------------------------------------
 -- * Build results

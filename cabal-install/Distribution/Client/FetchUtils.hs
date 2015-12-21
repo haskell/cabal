@@ -54,6 +54,8 @@ import qualified System.FilePath.Posix as FilePath.Posix
 import Network.URI
          ( URI(uriPath) )
 
+import qualified Hackage.Security.Client as Sec
+
 -- ------------------------------------------------------------
 -- * Actually fetch things
 -- ------------------------------------------------------------
@@ -146,6 +148,15 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
             path = packageFile repo       pkgid
         createDirectoryIfMissing True dir
         _ <- downloadURI transport verbosity uri path
+        return path
+
+      RepoSecure{} -> repoContextWithSecureRepo repoCtxt repo $ \rep -> do
+        let dir  = packageDir  repo pkgid
+            path = packageFile repo pkgid
+        createDirectoryIfMissing True dir
+        Sec.uncheckClientErrors $ do
+          info verbosity ("writing " ++ path)
+          Sec.downloadPackage' rep pkgid path
         return path
 
 -- | Downloads an index file to [config-dir/packages/serv-id].
