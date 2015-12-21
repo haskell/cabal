@@ -129,6 +129,7 @@ data GlobalFlags = GlobalFlags {
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
     globalIgnoreSandbox     :: Flag Bool,
+    globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String
   }
 
@@ -146,6 +147,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
     globalIgnoreSandbox     = Flag False,
+    globalIgnoreExpiry      = Flag False,
     globalHttpTransport     = mempty
   }
 
@@ -309,6 +311,11 @@ globalCommand commands = CommandUI {
          globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
          trueArg
 
+      ,option [] ["ignore-expiry"]
+         "Ignore expiry dates on signed metadata (use only in exception circumstances)"
+         globalIgnoreExpiry (\v flags -> flags { globalIgnoreExpiry = v })
+         trueArg
+
       ,option [] ["http-transport"]
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalConfigFile (\v flags -> flags { globalHttpTransport = v })
@@ -358,6 +365,7 @@ instance Monoid GlobalFlags where
     globalWorldFile         = mempty,
     globalRequireSandbox    = mempty,
     globalIgnoreSandbox     = mempty,
+    globalIgnoreExpiry      = mempty,
     globalHttpTransport     = mempty
   }
   mappend a b = GlobalFlags {
@@ -373,6 +381,7 @@ instance Monoid GlobalFlags where
     globalWorldFile         = combine globalWorldFile,
     globalRequireSandbox    = combine globalRequireSandbox,
     globalIgnoreSandbox     = combine globalIgnoreSandbox,
+    globalIgnoreExpiry      = combine globalIgnoreExpiry,
     globalHttpTransport     = combine globalHttpTransport
   }
     where combine field = field a `mappend` field b

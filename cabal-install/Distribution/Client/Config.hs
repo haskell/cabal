@@ -225,6 +225,7 @@ instance Monoid SavedConfig where
         globalWorldFile         = combine globalWorldFile,
         globalRequireSandbox    = combine globalRequireSandbox,
         globalIgnoreSandbox     = combine globalIgnoreSandbox,
+        globalIgnoreExpiry      = combine globalIgnoreExpiry,
         globalHttpTransport     = combine globalHttpTransport
         }
         where
