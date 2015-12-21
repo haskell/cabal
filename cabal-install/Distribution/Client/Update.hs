@@ -37,11 +37,11 @@ import System.FilePath (dropExtension)
 import Data.Maybe (catMaybes)
 
 -- | 'update' downloads the package list from all known servers
-update :: HttpTransport -> Verbosity -> [Repo] -> IO ()
-update _ verbosity [] =
+update :: HttpTransport -> Verbosity -> Bool -> [Repo] -> IO ()
+update _ verbosity _ [] =
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
-update transport verbosity repos = do
+update transport verbosity ignoreExpiry repos = do
   jobCtrl <- newParallelJobControl
   let remoteRepos = catMaybes (map maybeRepoRemote repos)
   case remoteRepos of
@@ -52,11 +52,11 @@ update transport verbosity repos = do
     _ -> notice verbosity . unlines
             $ "Downloading the latest package lists from: "
             : map (("- " ++) . remoteRepoName) remoteRepos
-  mapM_ (spawnJob jobCtrl . updateRepo transport verbosity) repos
+  mapM_ (spawnJob jobCtrl . updateRepo transport verbosity ignoreExpiry) repos
   mapM_ (\_ -> collectJob jobCtrl) repos
 
-updateRepo :: HttpTransport -> Verbosity -> Repo -> IO ()
-updateRepo transport verbosity repo = case repo of
+updateRepo :: HttpTransport -> Verbosity -> Bool -> Repo -> IO ()
+updateRepo transport verbosity _ignoreExpiry repo = case repo of
   RepoLocal{..} -> return ()
   RepoRemote{..} -> do
     downloadResult <- downloadIndex transport verbosity repoRemote repoLocalDir

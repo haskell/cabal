@@ -940,8 +940,9 @@ updateAction verbosityFlag extraArgs globalFlags = do
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
-  withGlobalRepos verbosity globalFlags' $ \globalRepos ->
-    update transport verbosity globalRepos
+  withGlobalRepos verbosity globalFlags' $ \globalRepos -> do
+    let ignoreExpiry = fromFlagOrDefault False (globalIgnoreExpiry globalFlags)
+    update transport verbosity ignoreExpiry globalRepos
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> Action
