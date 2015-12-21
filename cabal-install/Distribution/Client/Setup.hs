@@ -312,7 +312,7 @@ globalCommand commands = CommandUI {
          trueArg
 
       ,option [] ["ignore-expiry"]
-         "Ignore expiry dates on signed metadata (use only in exception circumstances)"
+         "Ignore expiry dates on signed metadata (use only in exceptional circumstances)"
          globalIgnoreExpiry (\v flags -> flags { globalIgnoreExpiry = v })
          trueArg
 
