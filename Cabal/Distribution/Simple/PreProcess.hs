@@ -448,6 +448,12 @@ ppHsc2hs bi lbi =
        ++ ["-o", outFile, inFile]
   }
   where
+    -- TODO: installedPkgs contains ALL dependencies associated with
+    -- the package, but we really only want to look at packages for the
+    -- *current* dependency.  We should use PackageIndex.dependencyClosure
+    -- on the direct depends of the component.  Can't easily do that,
+    -- because the signature of this function is wrong.  Tracked with
+    -- #2971 (which has a test case.)
     pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
     isOSX = case buildOS of OSX -> True; _ -> False
     isELF = case buildOS of OSX -> False; Windows -> False; AIX -> False; _ -> True;

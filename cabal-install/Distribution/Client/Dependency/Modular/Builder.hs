@@ -24,7 +24,8 @@ import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.PSQ as P
+import Distribution.Client.Dependency.Modular.PSQ (PSQ)
+import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 
 import Distribution.Client.ComponentDeps (Component)
@@ -61,7 +62,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go g o (   (OpenGoal (Simple (Ext _ext ) _) _gr) : ngs) = go g o ngs
     go g o (   (OpenGoal (Simple (Lang _lang)_) _gr) : ngs) = go g o ngs
 
-    cons' = cons . forgetCompOpenGoal
+    cons' = P.cons . forgetCompOpenGoal
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.

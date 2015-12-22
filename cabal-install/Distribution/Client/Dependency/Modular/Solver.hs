@@ -1,4 +1,7 @@
-module Distribution.Client.Dependency.Modular.Solver where
+module Distribution.Client.Dependency.Modular.Solver
+    ( SolverConfig(..)
+    , solve
+    ) where
 
 import Data.Map as M
 

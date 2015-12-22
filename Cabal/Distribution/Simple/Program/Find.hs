@@ -49,7 +49,7 @@ import Data.List
 import Distribution.Compat.Binary
 import GHC.Generics
 #if defined(mingw32_HOST_OS)
-import qualified System.Win32
+import qualified System.Win32 as Win32
 #endif
 
 -- | A search path to use when locating executables. This is analogous
@@ -158,8 +158,8 @@ programSearchPathAsPATHVar searchpath = do
 getSystemSearchPath :: IO [FilePath]
 getSystemSearchPath = fmap nub $ do
 #if defined(mingw32_HOST_OS)
-    processdir <- liftM takeDirectory (Win32.getModuleFileName Win32.nullHANDLE)
-    currentdir <- getCurrentDirectory
+    processdir <- takeDirectory `fmap` Win32.getModuleFileName Win32.nullHANDLE
+    currentdir <- Win32.getCurrentDirectory
     systemdir  <- Win32.getSystemDirectory
     windowsdir <- Win32.getWindowsDirectory
     pathdirs   <- FilePath.getSearchPath

@@ -1,5 +1,20 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Distribution.Client.Dependency.Modular.Flag where
+module Distribution.Client.Dependency.Modular.Flag
+    ( FInfo(..)
+    , Flag
+    , FlagInfo
+    , FN(..)
+    , QFN
+    , QSN
+    , SN(..)
+    , getPN
+    , mkFlag
+    , showFBool
+    , showQFN
+    , showQFNBool
+    , showQSN
+    , showQSNBool
+    ) where
 
 import Data.Map as M
 import Prelude hiding (pi)

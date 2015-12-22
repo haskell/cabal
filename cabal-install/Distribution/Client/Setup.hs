@@ -12,7 +12,7 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, globalRepos
+    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, withGlobalRepos
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
@@ -49,7 +49,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
+         ( Username(..), Password(..), Repo(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -131,6 +131,7 @@ data GlobalFlags = GlobalFlags {
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
     globalIgnoreSandbox     :: Flag Bool,
+    globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String
   }
 
@@ -148,6 +149,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
     globalIgnoreSandbox     = Flag False,
+    globalIgnoreExpiry      = Flag False,
     globalHttpTransport     = mempty
   }
 
@@ -311,6 +313,11 @@ globalCommand commands = CommandUI {
          globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
          trueArg
 
+      ,option [] ["ignore-expiry"]
+         "Ignore expiry dates on signed metadata (use only in exceptional circumstances)"
+         globalIgnoreExpiry (\v flags -> flags { globalIgnoreExpiry = v })
+         trueArg
+
       ,option [] ["http-transport"]
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalConfigFile (\v flags -> flags { globalHttpTransport = v })
@@ -360,6 +367,7 @@ instance Monoid GlobalFlags where
     globalWorldFile         = mempty,
     globalRequireSandbox    = mempty,
     globalIgnoreSandbox     = mempty,
+    globalIgnoreExpiry      = mempty,
     globalHttpTransport     = mempty
   }
   mappend a b = GlobalFlags {
@@ -375,20 +383,22 @@ instance Monoid GlobalFlags where
     globalWorldFile         = combine globalWorldFile,
     globalRequireSandbox    = combine globalRequireSandbox,
     globalIgnoreSandbox     = combine globalIgnoreSandbox,
+    globalIgnoreExpiry      = combine globalIgnoreExpiry,
     globalHttpTransport     = combine globalHttpTransport
   }
     where combine field = field a `mappend` field b
 
-globalRepos :: GlobalFlags -> [Repo]
-globalRepos globalFlags = remoteRepos ++ localRepos
+withGlobalRepos :: Verbosity -> GlobalFlags -> ([Repo] -> IO a) -> IO a
+withGlobalRepos _verbosity globalFlags callback =
+    callback $ remoteRepos ++ localRepos
   where
     remoteRepos =
-      [ Repo (Left remote) cacheDir
+      [ RepoRemote remote cacheDir
       | remote <- fromNubList $ globalRemoteRepos globalFlags
       , let cacheDir = fromFlag (globalCacheDir globalFlags)
                    </> remoteRepoName remote ]
     localRepos =
-      [ Repo (Right LocalRepo) local
+      [ RepoLocal local
       | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------

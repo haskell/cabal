@@ -1,5 +1,9 @@
-{-# LANGUAGE DeriveFunctor, DeriveGeneric, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -287,13 +291,25 @@ instance Binary RemoteRepo
 emptyRemoteRepo :: String -> RemoteRepo
 emptyRemoteRepo name = RemoteRepo name nullURI False [] 0 False
 
-data Repo = Repo {
-    repoKind     :: Either RemoteRepo LocalRepo,
-    repoLocalDir :: FilePath
-  }
+data Repo =
+    -- | Local repositories
+    RepoLocal {
+        repoLocalDir :: FilePath
+      }
+
+    -- | Standard (unsecured) remote repositores
+  | RepoRemote {
+        repoRemote   :: RemoteRepo
+      , repoLocalDir :: FilePath
+      }
   deriving (Show, Eq, Ord, Generic)
 
 instance Binary Repo
+
+-- | Check if this is a remote repo
+maybeRepoRemote :: Repo -> Maybe RemoteRepo
+maybeRepoRemote (RepoLocal    _localDir  ) = Nothing
+maybeRepoRemote (RepoRemote r _localDir  ) = Just r
 
 -- ------------------------------------------------------------
 -- * Build results

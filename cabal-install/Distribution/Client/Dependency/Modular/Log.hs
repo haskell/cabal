@@ -1,4 +1,13 @@
-module Distribution.Client.Dependency.Modular.Log where
+module Distribution.Client.Dependency.Modular.Log
+    ( Log
+    , continueWith
+    , failWith
+    , logToProgress
+    , logToProgress'
+    , runLogIO
+    , succeedWith
+    , tryWith
+    ) where
 
 import Control.Applicative
 import Data.List as L

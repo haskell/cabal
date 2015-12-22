@@ -830,12 +830,12 @@ projectConfigRepos downloadCacheRootDir
     remoteRepos ++ localRepos
   where
     remoteRepos =
-      [ Repo (Left remote) cacheDir
+      [ RepoRemote remote cacheDir
       | remote <- fromNubList projectConfigRemoteRepos
       , let cacheDir = downloadCacheRootDir
                    </> remoteRepoName remote ]
     localRepos =
-      [ Repo (Right LocalRepo) local
+      [ RepoLocal local
       | local <- fromNubList projectConfigLocalRepos ]
 
 

@@ -1,10 +1,12 @@
-module Distribution.Client.Dependency.Modular.ConfiguredConversion where
+module Distribution.Client.Dependency.Modular.ConfiguredConversion
+    ( convCP
+    ) where
 
 import Data.Maybe
 import Prelude hiding (pi)
 
 import Distribution.Client.Types
-import Distribution.Client.Dependency.Types (ResolverPackage(..))
+import Distribution.Client.Dependency.Types (ResolverPackage(..),Dependency)
 import qualified Distribution.Client.PackageIndex as CI
 import qualified Distribution.Simple.PackageIndex as SI
 import qualified Distribution.PackageDescription  as PD

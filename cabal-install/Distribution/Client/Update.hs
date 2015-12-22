@@ -10,18 +10,19 @@
 --
 --
 -----------------------------------------------------------------------------
+{-# LANGUAGE RecordWildCards #-}
 module Distribution.Client.Update
     ( update
     ) where
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), LocalRepo(..) )
+         ( Repo(..), RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..), HttpTransport(..) )
 import Distribution.Client.FetchUtils
          ( downloadIndex )
 import Distribution.Client.IndexUtils
-         ( updateRepoIndexCache )
+         ( updateRepoIndexCache, Index(..) )
 import Distribution.Client.JobControl
          ( newParallelJobControl, spawnJob, collectJob )
 
@@ -33,16 +34,16 @@ import Distribution.Verbosity
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath (dropExtension)
-import Data.Either (lefts)
+import Data.Maybe (catMaybes)
 
 -- | 'update' downloads the package list from all known servers
-update :: HttpTransport -> Verbosity -> [Repo] -> IO ()
-update _ verbosity [] =
+update :: HttpTransport -> Verbosity -> Bool -> [Repo] -> IO ()
+update _ verbosity _ [] =
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
-update transport verbosity repos = do
+update transport verbosity ignoreExpiry repos = do
   jobCtrl <- newParallelJobControl
-  let remoteRepos = lefts (map repoKind repos)
+  let remoteRepos = catMaybes (map maybeRepoRemote repos)
   case remoteRepos of
     [] -> return ()
     [remoteRepo] ->
@@ -51,17 +52,17 @@ update transport verbosity repos = do
     _ -> notice verbosity . unlines
             $ "Downloading the latest package lists from: "
             : map (("- " ++) . remoteRepoName) remoteRepos
-  mapM_ (spawnJob jobCtrl . updateRepo transport verbosity) repos
+  mapM_ (spawnJob jobCtrl . updateRepo transport verbosity ignoreExpiry) repos
   mapM_ (\_ -> collectJob jobCtrl) repos
 
-updateRepo :: HttpTransport -> Verbosity -> Repo -> IO ()
-updateRepo transport verbosity repo = case repoKind repo of
-  Right LocalRepo -> return ()
-  Left remoteRepo -> do
-    downloadResult <- downloadIndex transport verbosity remoteRepo (repoLocalDir repo)
+updateRepo :: HttpTransport -> Verbosity -> Bool -> Repo -> IO ()
+updateRepo transport verbosity _ignoreExpiry repo = case repo of
+  RepoLocal{..} -> return ()
+  RepoRemote{..} -> do
+    downloadResult <- downloadIndex transport verbosity repoRemote repoLocalDir
     case downloadResult of
       FileAlreadyInCache -> return ()
       FileDownloaded indexPath -> do
         writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                 =<< BS.readFile indexPath
-        updateRepoIndexCache verbosity repo
+        updateRepoIndexCache verbosity (RepoIndex repo)

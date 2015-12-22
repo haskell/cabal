@@ -54,12 +54,12 @@ import Distribution.Text
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
+import Distribution.Compat.Semigroup as Semi
 
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
-import Data.Monoid as Mon
 
 ------------------------------------------------------------------------------
 
@@ -182,12 +182,14 @@ mapTreeData f = mapCondTree f id id
 --   clarity.
 data DepTestRslt d = DepOk | MissingDeps d
 
-instance Monoid d => Mon.Monoid (DepTestRslt d) where
+instance Semigroup d => Monoid (DepTestRslt d) where
     mempty = DepOk
-    mappend DepOk x = x
-    mappend x DepOk = x
-    mappend (MissingDeps d) (MissingDeps d') = MissingDeps (d `mappend` d')
+    mappend = (Semi.<>)
 
+instance Semigroup d => Semigroup (DepTestRslt d) where
+    DepOk <> x     = x
+    x     <> DepOk = x
+    (MissingDeps d) <> (MissingDeps d') = MissingDeps (d <> d')
 
 data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 
@@ -291,7 +293,10 @@ newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName Versi
 
 instance Monoid DependencyMap where
     mempty = DependencyMap Map.empty
-    (DependencyMap a) `mappend` (DependencyMap b) =
+    mappend = (Semi.<>)
+
+instance Semigroup DependencyMap where
+    (DependencyMap a) <> (DependencyMap b) =
         DependencyMap (Map.unionWith intersectVersionRanges a b)
 
 toDepMap :: [Dependency] -> DependencyMap
@@ -437,13 +442,16 @@ data PDTagged = Lib Library
 
 instance Monoid PDTagged where
     mempty = PDNull
-    PDNull `mappend` x = x
-    x `mappend` PDNull = x
-    Lib l `mappend` Lib l' = Lib (l `mappend` l')
-    Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
-    Test n t `mappend` Test n' t' | n == n' = Test n (t `mappend` t')
-    Bench n b `mappend` Bench n' b' | n == n' = Bench n (b `mappend` b')
-    _ `mappend` _ = cabalBug "Cannot combine incompatible tags"
+    mappend = (Semi.<>)
+
+instance Semigroup PDTagged where
+    PDNull    <> x      = x
+    x         <> PDNull = x
+    Lib l     <> Lib l' = Lib (l <> l')
+    Exe n e   <> Exe   n' e' | n == n' = Exe n (e <> e')
+    Test n t  <> Test  n' t' | n == n' = Test n (t <> t')
+    Bench n b <> Bench n' b' | n == n' = Bench n (b <> b')
+    _         <> _  = cabalBug "Cannot combine incompatible tags"
 
 -- | Create a package description with all configurations resolved.
 --

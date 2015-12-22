@@ -46,8 +46,7 @@ module Distribution.Simple.CCompiler (
    filenameCDialect
   ) where
 
-import Data.Monoid as Mon
-     ( Monoid(..) )
+import Distribution.Compat.Semigroup as Semi
 
 import System.FilePath
      ( takeExtension )
@@ -62,17 +61,18 @@ data CDialect = C
               | ObjectiveCPlusPlus
               deriving (Eq, Show)
 
-instance Mon.Monoid CDialect where
+instance Monoid CDialect where
   mempty = C
+  mappend = (Semi.<>)
 
-  mappend C                  anything           = anything
-  mappend ObjectiveC         CPlusPlus          = ObjectiveCPlusPlus
-  mappend CPlusPlus          ObjectiveC         = ObjectiveCPlusPlus
-  mappend _                  ObjectiveCPlusPlus = ObjectiveCPlusPlus
-  mappend ObjectiveC         _                  = ObjectiveC
-  mappend CPlusPlus          _                  = CPlusPlus
-  mappend ObjectiveCPlusPlus _                  = ObjectiveCPlusPlus
-
+instance Semigroup CDialect where
+  C                  <> anything           = anything
+  ObjectiveC         <> CPlusPlus          = ObjectiveCPlusPlus
+  CPlusPlus          <> ObjectiveC         = ObjectiveCPlusPlus
+  _                  <> ObjectiveCPlusPlus = ObjectiveCPlusPlus
+  ObjectiveC         <> _                  = ObjectiveC
+  CPlusPlus          <> _                  = CPlusPlus
+  ObjectiveCPlusPlus <> _                  = ObjectiveCPlusPlus
 
 -- | A list of all file extensions which are recognized as possibly containing
 --   some dialect of C code.  Note that this list is only for source files,

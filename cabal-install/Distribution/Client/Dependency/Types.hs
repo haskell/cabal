@@ -14,6 +14,7 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
+    Dependency,
     DependencyResolver,
     ResolverPackage(..),
 
