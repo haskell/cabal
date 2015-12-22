@@ -11,40 +11,88 @@
 -- \"@.\/setup test@\" action. It runs test suites designated in the package
 -- description and reports on the results.
 
-module Distribution.Simple.Test
-    ( test
-    ) where
+module Distribution.Simple.Test (action, test) where
 
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(buildable)
-         , TestSuite(..)
-         , TestSuiteInterface(..), testType, hasTests )
+    ( PackageDescription(..), BuildInfo(..), TestSuite(..)
+    , TestSuiteInterface(..), testType, hasTests )
 import Distribution.Simple.Compiler ( compilerInfo )
+import Distribution.Simple.Configure ( findDistPrefOrDefault )
 import Distribution.Simple.Hpc ( markupPackage )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, substPathTemplate
     , PathTemplate )
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( TestFlags(..), fromFlag, configCoverage )
+import Distribution.Simple.Reconfigure (Reconfigure)
+import Distribution.Simple.Setup
+    ( BuildFlags(..), ConfigFlags(..), TestFlags(..)
+    , configCoverage, fromFlag, fromFlagOrDefault, toFlag )
 import Distribution.Simple.UserHooks ( Args )
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
 import qualified Distribution.Simple.Test.LibV09 as LibV09
 import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils ( die, notice )
+import Distribution.Simple.Utils ( die, notice, warn )
 import Distribution.TestSuite ( Result(..) )
 import Distribution.Text
 
 import Control.Monad ( when, unless, filterM )
+import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>) )
 
+action :: Reconfigure ConfigFlags LocalBuildInfo
+       -> (BuildFlags -> Args -> IO ())
+       -> (LocalBuildInfo -> TestFlags -> Args -> IO ())
+       -> (BuildFlags, TestFlags) -> Args -> IO ()
+action reconfigure build test_ (buildFlags, testFlags) args = do
+    distPref <- findDistPrefOrDefault (testDistPref testFlags)
+    let testFlags' = testFlags { testDistPref = toFlag distPref }
+        verbosity = fromFlag (testVerbosity testFlags')
+
+        withEnabledTests fs
+          | fromFlagOrDefault False (configTests fs) = Nothing
+          | otherwise = Just (enableTests fs, "enabling tests")
+        enableTests fs = fs { configTests = toFlag True }
+
+    -- Get the persistent build config.
+    -- If necessary, reconfigure with tests enabled.
+    lbi <- reconfigure [withEnabledTests] verbosity distPref
+
+    let buildFlags' = buildFlags
+                      { buildDistPref = testDistPref testFlags
+                      , buildVerbosity = testVerbosity testFlags
+                      }
+        buildArgs_ -- extra arguments to 'build'
+          | null args = tests -- build all tests, but *only* tests
+          | otherwise = args -- build only named tests
+        tests = mapMaybe nameTestsOnly $ LBI.pkgComponents pkgDescr
+        pkgDescr = LBI.localPkgDescr lbi
+        nameTestsOnly =
+            LBI.foldComponent
+              (const Nothing)
+              (const Nothing)
+              (\t ->
+                if PD.buildable (PD.testBuildInfo t)
+                  then Just (PD.testName t)
+                else Nothing)
+              (const Nothing)
+
+    if null tests
+       then warn verbosity "test: no buildable test suites"
+      else do
+        -- Ensure that all requested test suites are built.
+        build buildFlags' buildArgs_
+
+        test_ lbi testFlags' args
+
 -- |Perform the \"@.\/setup test@\" action.
 test :: Args                    -- ^positional command-line arguments
      -> PD.PackageDescription   -- ^information from the .cabal file
-     -> LBI.LocalBuildInfo      -- ^information from the configure step
+     -> LocalBuildInfo          -- ^information from the configure step
      -> TestFlags               -- ^flags sent to test
      -> IO ()
 test args pkg_descr lbi flags = do

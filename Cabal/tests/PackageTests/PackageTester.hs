@@ -19,6 +19,7 @@ module PackageTests.PackageTester
     , unregister
     , compileSetup
     , run
+    , inDir
 
     -- * Test helpers
     , assertConfigureSucceeded
@@ -39,7 +40,8 @@ import Control.Monad
 import qualified Data.ByteString.Char8 as C
 import Data.List
 import Data.Maybe
-import System.Directory (canonicalizePath, doesFileExist)
+import System.Directory
+    ( canonicalizePath, doesFileExist, getCurrentDirectory, setCurrentDirectory )
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath
@@ -91,6 +93,10 @@ nullResult = Result True Failure ""
 
 ------------------------------------------------------------------------
 -- * Running cabal commands
+
+inDir :: FilePath -> IO a -> IO a
+inDir path act = E.bracket getCurrentDirectory setCurrentDirectory
+                 (\_ -> setCurrentDirectory path >> act)
 
 recordRun :: (String, ExitCode, String) -> Success -> Result -> Result
 recordRun (cmd, exitCode, exeOutput) thisSucc res =

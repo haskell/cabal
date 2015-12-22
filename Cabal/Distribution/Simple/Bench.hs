@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Bench
@@ -11,33 +13,84 @@
 -- package. It performs the \"@.\/setup bench@\" action. It runs
 -- benchmarks designated in the package description.
 
-module Distribution.Simple.Bench
-    ( bench
-    ) where
+module Distribution.Simple.Bench (action, bench) where
 
 import qualified Distribution.PackageDescription as PD
     ( PackageDescription(..), BuildInfo(buildable)
     , Benchmark(..), BenchmarkInterface(..), benchmarkType, hasBenchmarks )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( compilerInfo )
+import Distribution.Simple.Configure ( findDistPrefOrDefault )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( BenchmarkFlags(..), fromFlag )
+import Distribution.Simple.Reconfigure (Reconfigure)
+import Distribution.Simple.Setup
+    ( BenchmarkFlags(..), BuildFlags(..), ConfigFlags(..)
+    , fromFlag, fromFlagOrDefault, toFlag )
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils ( die, notice, rawSystemExitCode )
 import Distribution.Text
 
-import Control.Monad ( when, unless, forM )
+import Control.Monad ( forM, unless, when )
+import Data.Maybe (mapMaybe)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid
+#endif
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 
+action :: Reconfigure ConfigFlags LocalBuildInfo
+       -> (BuildFlags -> Args -> IO ())
+       -> (LocalBuildInfo -> BenchmarkFlags -> Args -> IO ())
+       -> BenchmarkFlags -> Args -> IO ()
+action reconfigure buildAction benchAction flags args = do
+    distPref <- findDistPrefOrDefault (benchmarkDistPref flags)
+    let flags' = flags { benchmarkDistPref = toFlag distPref }
+        verbosity = fromFlag (benchmarkVerbosity flags')
+
+        withEnabledBenchs fs
+          | fromFlagOrDefault False (configBenchmarks fs) = Nothing
+          | otherwise = Just (enableBenchs fs, "enabling benchmarks")
+        enableBenchs fs = fs { configBenchmarks = toFlag True }
+
+    lbi <- reconfigure [withEnabledBenchs] verbosity distPref
+
+    let buildFlags =
+            mempty
+            { buildDistPref = benchmarkDistPref flags'
+            , buildVerbosity = benchmarkVerbosity flags'
+            }
+        buildArgs_
+          | null args = benchs
+          | otherwise = args
+        benchs = mapMaybe nameBenchsOnly $ LBI.pkgComponents pkgDescr
+        pkgDescr = LBI.localPkgDescr lbi
+        nameBenchsOnly =
+          LBI.foldComponent
+            (const Nothing)
+            (const Nothing)
+            (const Nothing)
+            (\b ->
+              if PD.buildable (PD.benchmarkBuildInfo b)
+                then Just (PD.benchmarkName b)
+              else Nothing)
+
+    if null benchs
+      then notice verbosity "benchmark: no buildable benchmarks"
+      else do
+        -- Ensure that all requested benchmarks are built.
+        buildAction buildFlags buildArgs_
+
+        benchAction lbi flags' args
+
 -- | Perform the \"@.\/setup bench@\" action.
 bench :: Args                    -- ^positional command-line arguments
       -> PD.PackageDescription   -- ^information from the .cabal file
-      -> LBI.LocalBuildInfo      -- ^information from the configure step
+      -> LocalBuildInfo          -- ^information from the configure step
       -> BenchmarkFlags          -- ^flags sent to benchmark
       -> IO ()
 bench args pkg_descr lbi flags = do

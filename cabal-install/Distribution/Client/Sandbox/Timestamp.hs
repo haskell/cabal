@@ -44,6 +44,7 @@ import Distribution.Client.Sandbox.Index
   (ListIgnoredBuildTreeRefs (ListIgnored), RefTypesToList(OnlyLinks)
   ,listBuildTreeRefs)
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
+                                                      AnyCommand(..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
 import Distribution.Client.Utils
@@ -232,7 +233,8 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
 
       doListSources :: IO [FilePath]
       doListSources = do
-        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+        setupWrapper verbosity setupOpts (Just pkg)
+          (const [AnyCommand (sdistCommand, flags, [])])
         srcs <- fmap lines . readFile $ file
         mapM tryCanonicalizePath srcs
 

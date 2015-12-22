@@ -43,7 +43,7 @@ suite config = do
     assertBuildSucceeded result
 
     let distBuild = dir </> "dist" </> "build"
-    lbi    <- getPersistBuildConfig (dir </> "dist")
+    lbi    <- inDir dir (getPersistBuildConfig "dist")
     checkMetadata lbi distBuild
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata

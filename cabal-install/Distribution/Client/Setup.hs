@@ -73,7 +73,8 @@ import Distribution.Simple.Setup
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg, optionNumJobs )
+         , boolOpt, boolOpt', trueArg, falseArg
+         , liftOptions, optionVerbosity, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -632,26 +633,18 @@ replCommand = parent {
 -- * Test command
 -- ------------------------------------------------------------
 
-testCommand :: CommandUI (TestFlags, BuildFlags, BuildExFlags)
-testCommand = parent {
-  commandDefaultFlags = (commandDefaultFlags parent,
-                         Cabal.defaultBuildFlags, mempty),
-  commandOptions      =
-    \showOrParseArgs -> liftOptions get1 set1
-                        (commandOptions parent showOrParseArgs)
-                        ++
-                        liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
-                        ++
-                        liftOptions get3 set3 (buildExOptions showOrParseArgs)
-  }
+testCommand :: CommandUI ((BuildFlags, BuildExFlags), TestFlags)
+testCommand = parent buildOpts buildDefaults
   where
-    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
-    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
-    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
+    get1 (a,_) = a; set1 a (_,b) = (a,b)
+    get2 (_,b) = b; set2 b (a,_) = (a,b)
 
     parent   = Cabal.testCommand
     progConf = defaultProgramConfiguration
+    buildOpts showOrParseArgs =
+      liftOptions get1 set1 (Cabal.buildOptions progConf showOrParseArgs)
+      ++ liftOptions get2 set2 (buildExOptions showOrParseArgs)
+    buildDefaults = (Cabal.defaultBuildFlags, mempty)
 
 -- ------------------------------------------------------------
 -- * Bench command
@@ -2223,10 +2216,6 @@ userConfigCommand = CommandUI {
 reqArgFlag :: ArgPlaceHolder ->
               MkOptDescr (b -> Flag String) (Flag String -> b -> b) b
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
-
-liftOptions :: (b -> a) -> (a -> b -> b)
-            -> [OptionField a] -> [OptionField b]
-liftOptions get set = map (liftOption get set)
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf

@@ -25,6 +25,8 @@
 -- presented the same compatible command line interfaces. There is still a
 -- "Distribution.Make" system but in practice no packages use it.
 
+{-# LANGUAGE CPP #-}
+
 {-
 Work around this warning:
 libraries/Cabal/Distribution/Simple.hs:78:0:
@@ -58,7 +60,7 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting module.
 import Distribution.PackageDescription
-         ( PackageDescription(..), GenericPackageDescription, Executable(..)
+         ( PackageDescription(..), GenericPackageDescription
          , updatePackageDescription, hasLibs
          , HookedBuildInfo, emptyHookedBuildInfo )
 import Distribution.PackageDescription.Parse
@@ -66,8 +68,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration, builtinPrograms
-         , restoreProgramConfiguration)
+         ( defaultProgramConfiguration, restoreProgramConfiguration
+         , builtinPrograms )
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
@@ -76,22 +78,20 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
+import qualified Distribution.Simple.Bench as Bench
+import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Build        ( build, repl )
-import Distribution.Simple.SrcDist      ( sdist )
+import Distribution.Simple.Configure
+         ( maybeGetPersistBuildConfig, writePersistBuildConfig
+         , configure, checkForeignDeps, findDistPrefOrDefault )
+import Distribution.Simple.Haddock (haddock, hscolour)
+import Distribution.Simple.Install (install)
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.Reconfigure ( reconfigure, setupConfigArgsFile, writeCommandFlags )
 import Distribution.Simple.Register
          ( register, unregister )
-
-import Distribution.Simple.Configure
-         ( getPersistBuildConfig, maybeGetPersistBuildConfig
-         , writePersistBuildConfig, checkPersistBuildConfigOutdated
-         , configure, checkForeignDeps, findDistPrefOrDefault )
-
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Bench (bench)
-import Distribution.Simple.BuildPaths ( srcPref)
-import Distribution.Simple.Test (test)
-import Distribution.Simple.Install (install)
-import Distribution.Simple.Haddock (haddock, hscolour)
+import Distribution.Simple.SrcDist      ( sdist )
+import qualified Distribution.Simple.Test as Test
 import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
@@ -105,16 +105,19 @@ import Distribution.Text
          ( display )
 
 -- Base
-import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
+import System.Environment(getArgs, getProgName)
 import System.Exit       (exitWith,ExitCode(..))
 import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
 
-import Control.Monad   (when)
+import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
-import Data.List       (intercalate, unionBy, nub, (\\))
+import Data.List       (intercalate, unionBy)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid (mappend)
+#endif
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -171,7 +174,7 @@ defaultMainHelper hooks args = topHandler $
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
       [configureCommand progs `commandAddAction` \fs as ->
-                                                 configureAction    hooks fs as >> return ()
+           void (configureAction hooks fs as)
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
@@ -182,8 +185,13 @@ defaultMainHelper hooks args = topHandler $
       ,hscolourCommand        `commandAddAction` hscolourAction     hooks
       ,registerCommand        `commandAddAction` registerAction     hooks
       ,unregisterCommand      `commandAddAction` unregisterAction   hooks
-      ,testCommand            `commandAddAction` testAction         hooks
+      , commandAddAction
+          (testCommand (buildOptions progs) defaultBuildFlags)
+          (testAction hooks)
       ,benchmarkCommand       `commandAddAction` benchAction        hooks
+      , commandAddAction
+          (reconfigureCommand (configureCommand progs))
+          (reconfigureAction hooks)
       ]
 
 -- | Combine the preprocessors in the given hooks with the
@@ -200,16 +208,15 @@ configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
+    -- save command-line options so we can reconfigure later
+    writeCommandFlags verbosity (setupConfigArgsFile distPref)
+      (configureCommand progs) (flags', args)
+
     pbi <- preConf hooks args flags'
 
     (mb_pd_file, pkg_descr0) <- confPkgDescr
 
-    --get_pkg_descr (configVerbosity flags')
-    --let pkg_descr = updatePackageDescription pbi pkg_descr0
     let epkg_descr = (pkg_descr0, pbi)
-
-    --(warns, ers) <- sanityCheckPackage pkg_descr
-    --errorOut (configVerbosity flags') warns ers
 
     localbuildinfo0 <- confHook hooks epkg_descr flags'
 
@@ -226,15 +233,17 @@ configureAction hooks flags args = do
     return localbuildinfo
   where
     verbosity = fromFlag (configVerbosity flags)
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
+
     confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
     confPkgDescr = do
-        mdescr <- readDesc hooks
-        case mdescr of
-          Just descr -> return (Nothing, descr)
-          Nothing -> do
-              pdfile <- defaultPackageDesc verbosity
-              descr  <- readPackageDescription verbosity pdfile
-              return (Just pdfile, descr)
+      mdescr <- readDesc hooks
+      case mdescr of
+        Just descr -> return (Nothing, descr)
+        Nothing -> do
+          pdfile <- defaultPackageDesc verbosity
+          descr  <- readPackageDescription verbosity pdfile
+          return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
@@ -242,7 +251,7 @@ buildAction hooks flags args = do
   let verbosity = fromFlag $ buildVerbosity flags
       flags' = flags { buildDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (buildProgramPaths flags')
              (buildProgramArgs flags')
@@ -258,7 +267,7 @@ replAction hooks flags args = do
   let verbosity = fromFlag $ replVerbosity flags
       flags' = flags { replDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (replProgramPaths flags')
              (replProgramArgs flags')
@@ -277,7 +286,7 @@ hscolourAction hooks flags args = do
     let verbosity = fromFlag $ hscolourVerbosity flags
         flags' = flags { hscolourDistPref = toFlag distPref }
     hookedAction preHscolour hscolourHook postHscolour
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
@@ -286,7 +295,7 @@ haddockAction hooks flags args = do
   let verbosity = fromFlag $ haddockVerbosity flags
       flags' = flags { haddockDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (haddockProgramPaths flags')
              (haddockProgramArgs flags')
@@ -322,7 +331,7 @@ copyAction hooks flags args = do
     let verbosity = fromFlag $ copyVerbosity flags
         flags' = flags { copyDistPref = toFlag distPref }
     hookedAction preCopy copyHook postCopy
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
@@ -331,7 +340,7 @@ installAction hooks flags args = do
     let verbosity = fromFlag $ installVerbosity flags
         flags' = flags { installDistPref = toFlag distPref }
     hookedAction preInst instHook postInst
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
@@ -352,30 +361,28 @@ sdistAction hooks flags args = do
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
-testAction :: UserHooks -> TestFlags -> Args -> IO ()
-testAction hooks flags args = do
-    distPref <- findDistPrefOrDefault (testDistPref flags)
-    let verbosity = fromFlag $ testVerbosity flags
-        flags' = flags { testDistPref = toFlag distPref }
+testAction :: UserHooks -> (BuildFlags, TestFlags) -> Args -> IO ()
+testAction hooks =
+    Test.action
+      (getBuildConfig hooks)
+      (buildAction hooks)
+      (\lbi flags args -> do
+           -- It is safe to do 'runTests' before the new test handler because the
+           -- default action is a no-op and if the package uses the old test
+           -- interface the new handler will find no tests.
+           runTests hooks args False (localPkgDescr lbi) lbi
 
-    localBuildInfo <- getBuildConfig hooks verbosity distPref
-    let pkg_descr = localPkgDescr localBuildInfo
-    -- It is safe to do 'runTests' before the new test handler because the
-    -- default action is a no-op and if the package uses the old test interface
-    -- the new handler will find no tests.
-    runTests hooks args False pkg_descr localBuildInfo
-    hookedActionWithArgs preTest testHook postTest
-            (getBuildConfig hooks verbosity distPref)
-            hooks flags' args
+           hookedActionWithArgs preTest testHook postTest
+             (return lbi) -- already got the persistent build config
+             hooks flags args)
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
-benchAction hooks flags args = do
-    distPref <- findDistPrefOrDefault (benchmarkDistPref flags)
-    let verbosity = fromFlag $ benchmarkVerbosity flags
-        flags' = flags { benchmarkDistPref = toFlag distPref }
-    hookedActionWithArgs preBench benchHook postBench
-            (getBuildConfig hooks verbosity distPref)
-            hooks flags' args
+benchAction hooks =
+    Bench.action
+      (getBuildConfig hooks)
+      (buildAction hooks)
+      (\lbi ->
+         hookedActionWithArgs preBench benchHook postBench (return lbi) hooks)
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args = do
@@ -383,7 +390,7 @@ registerAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preReg regHook postReg
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
@@ -392,94 +399,48 @@ unregisterAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preUnreg unregHook postUnreg
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
-hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
-        -> (UserHooks -> PackageDescription -> LocalBuildInfo
-                      -> UserHooks -> flags -> IO ())
-        -> (UserHooks -> Args -> flags -> PackageDescription
-                      -> LocalBuildInfo -> IO ())
-        -> IO LocalBuildInfo
-        -> UserHooks -> flags -> Args -> IO ()
-hookedAction pre_hook cmd_hook =
-    hookedActionWithArgs pre_hook (\h _ pd lbi uh flags -> cmd_hook h pd lbi uh flags)
-
-hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
-        -> (UserHooks -> Args -> PackageDescription -> LocalBuildInfo
-                      -> UserHooks -> flags -> IO ())
-        -> (UserHooks -> Args -> flags -> PackageDescription
-                      -> LocalBuildInfo -> IO ())
-        -> IO LocalBuildInfo
-        -> UserHooks -> flags -> Args -> IO ()
-hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags args = do
-   pbi <- pre_hook hooks args flags
-   localbuildinfo <- get_build_config
-   let pkg_descr0 = localPkgDescr localbuildinfo
-   --pkg_descr0 <- get_pkg_descr (get_verbose flags)
-   sanityCheckHookedBuildInfo pkg_descr0 pbi
-   let pkg_descr = updatePackageDescription pbi pkg_descr0
-   -- TODO: should we write the modified package descr back to the
-   -- localbuildinfo?
-   cmd_hook hooks args pkg_descr localbuildinfo hooks flags
-   post_hook hooks args flags pkg_descr localbuildinfo
-
-sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
-sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
-    = die $ "The buildinfo contains info for a library, "
-         ++ "but the package does not have a library."
-
-sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
-    | not (null nonExistant)
-    = die $ "The buildinfo contains info for an executable called '"
-         ++ head nonExistant ++ "' but the package does not have a "
-         ++ "executable with that name."
+reconfigureAction :: UserHooks -> ReconfigureFlags ConfigFlags -> Args -> IO ()
+reconfigureAction hooks flags _ = do
+    let config = reconfigureConfigFlags flags
+    distPref <- findDistPrefOrDefault (configDistPref config)
+    let config' = config { configVerbosity = NoFlag
+                         , configDistPref = toFlag distPref
+                         }
+        requirement savedFlags
+          | savedFlags == applied = Nothing
+          | otherwise = Just (applied, message)
+          where
+            applied = mappend savedFlags config'
+            -- This message is correct, but not very detailed. It will list all of the
+            -- requested flags, even if some of them are not actually changed, i.e.
+            -- it does not list the *minimal* set of changed flags because this is
+            -- more difficult to determine.
+            message = "flags changed: " ++ unwords (commandShowOptions cmd config')
+        verbosity = fromFlag (configVerbosity config)
+        force = fromFlagOrDefault False (reconfigureForce flags)
+    _ <- reconfigure force cmd (configureAction hooks) [requirement] verbosity distPref
+    return ()
   where
-    pkgExeNames  = nub (map exeName (executables pkg_descr))
-    hookExeNames = nub (map fst hookExes)
-    nonExistant  = hookExeNames \\ pkgExeNames
+    cmd = configureCommand progs
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
 
-sanityCheckHookedBuildInfo _ _ = return ()
-
-
-getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig hooks verbosity distPref = do
-  lbi_wo_programs <- getPersistBuildConfig distPref
-  -- Restore info about unconfigured programs, since it is not serialized
-  let lbi = lbi_wo_programs {
-    withPrograms = restoreProgramConfiguration
+getBuildConfig :: UserHooks -> [ConfigFlags -> Maybe (ConfigFlags, String)]
+               -> Verbosity -> FilePath -> IO LocalBuildInfo
+getBuildConfig hooks reqs verbosity distPref = do
+    lbi_wo_programs <- reconfigure False cmd (configureAction hooks)
+                                   reqs verbosity distPref
+    -- Restore info about unconfigured programs, since it is not serialized
+    return lbi_wo_programs {
+      withPrograms = restoreProgramConfiguration
                      (builtinPrograms ++ hookedPrograms hooks)
                      (withPrograms lbi_wo_programs)
-  }
-
-  case pkgDescrFile lbi of
-    Nothing -> return lbi
-    Just pkg_descr_file -> do
-      outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
-      if outdated
-        then reconfigure pkg_descr_file lbi
-        else return lbi
-
+    }
   where
-    reconfigure :: FilePath -> LocalBuildInfo -> IO LocalBuildInfo
-    reconfigure pkg_descr_file lbi = do
-      notice verbosity $ pkg_descr_file ++ " has been changed. "
-                      ++ "Re-configuring with most recently used options. "
-                      ++ "If this fails, please run configure manually.\n"
-      let cFlags = configFlags lbi
-      let cFlags' = cFlags {
-            -- Since the list of unconfigured programs is not serialized,
-            -- restore it to the same value as normally used at the beginning
-            -- of a configure run:
-            configPrograms = restoreProgramConfiguration
-                               (builtinPrograms ++ hookedPrograms hooks)
-                               (configPrograms cFlags),
-
-            -- Use the current, not saved verbosity level:
-            configVerbosity = Flag verbosity
-          }
-      configureAction hooks cFlags' (extraConfigArgs lbi)
-
+    cmd = configureCommand progs
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
 
 -- --------------------------------------------------------------------------
 -- Cleaning
@@ -668,12 +629,12 @@ getHookedBuildInfo verbosity = do
 defaultTestHook :: Args -> PackageDescription -> LocalBuildInfo
                 -> UserHooks -> TestFlags -> IO ()
 defaultTestHook args pkg_descr localbuildinfo _ flags =
-    test args pkg_descr localbuildinfo flags
+    Test.test args pkg_descr localbuildinfo flags
 
 defaultBenchHook :: Args -> PackageDescription -> LocalBuildInfo
                  -> UserHooks -> BenchmarkFlags -> IO ()
 defaultBenchHook args pkg_descr localbuildinfo _ flags =
-    bench args pkg_descr localbuildinfo flags
+    Bench.bench args pkg_descr localbuildinfo flags
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()

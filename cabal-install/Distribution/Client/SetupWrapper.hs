@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ExistentialQuantification #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.SetupWrapper
@@ -19,6 +21,7 @@ module Distribution.Client.SetupWrapper (
     setupWrapper,
     SetupScriptOptions(..),
     defaultSetupScriptOptions,
+    AnyCommand(..)
   ) where
 
 import qualified Distribution.Make as Make
@@ -189,14 +192,14 @@ defaultSetupScriptOptions = SetupScriptOptions {
     setupCacheLock           = Nothing
   }
 
+data AnyCommand = forall flags. AnyCommand (CommandUI flags, flags, [String])
+
 setupWrapper :: Verbosity
              -> SetupScriptOptions
              -> Maybe PackageDescription
-             -> CommandUI flags
-             -> (Version -> flags)
-             -> [String]
+             -> (Version -> [AnyCommand])
              -> IO ()
-setupWrapper verbosity options mpkg cmd flags extraArgs = do
+setupWrapper verbosity options mpkg cmds = do
   pkg <- maybe getPkg return mpkg
   let setupMethod = determineSetupMethod options' buildType'
       options'    = options {
@@ -205,11 +208,8 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
                                           (orLaterVersion (specVersion pkg))
                     }
       buildType'  = fromMaybe Custom (buildType pkg)
-      mkArgs cabalLibVersion = commandName cmd
-                             : commandShowOptions cmd (flags cabalLibVersion)
-                            ++ extraArgs
   checkBuildType buildType'
-  setupMethod verbosity options' (packageId pkg) buildType' mkArgs
+  setupMethod verbosity options' (packageId pkg) buildType' cmds
   where
     getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
@@ -247,19 +247,22 @@ type SetupMethod = Verbosity
                 -> SetupScriptOptions
                 -> PackageIdentifier
                 -> BuildType
-                -> (Version -> [String]) -> IO ()
+                -> (Version -> [AnyCommand]) -> IO ()
 
 -- ------------------------------------------------------------
 -- * Internal SetupMethod
 -- ------------------------------------------------------------
 
 internalSetupMethod :: SetupMethod
-internalSetupMethod verbosity options _ bt mkargs = do
-  let args = mkargs cabalVersion
-  debug verbosity $ "Using internal setup method with build-type " ++ show bt
-                 ++ " and args:\n  " ++ show args
-  inDir (useWorkingDir options) $
-    buildTypeAction bt args
+internalSetupMethod verbosity options _ bt mkCmds = do
+  debug verbosity ("Using internal setup method with build-type " ++ show bt)
+  inDir (useWorkingDir options) $ mapM_ action (mkCmds cabalVersion)
+  where
+    action (AnyCommand (cmd, flags, extraArgs)) = do
+      let args = commandName cmd : commandShowOptions cmd flags
+                 ++ extraArgs
+      debug verbosity ("Internal setup args: " ++ show args)
+      buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -274,14 +277,10 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 -- ------------------------------------------------------------
 
 selfExecSetupMethod :: SetupMethod
-selfExecSetupMethod verbosity options _pkg bt mkargs = do
-  let args = ["act-as-setup",
-              "--build-type=" ++ display bt,
-              "--"] ++ mkargs cabalVersion
-  debug verbosity $ "Using self-exec internal setup method with build-type "
-                 ++ show bt ++ " and args:\n  " ++ show args
+selfExecSetupMethod verbosity options _pkg bt mkCmds = do
+  debug verbosity ("Using self-exec internal setup method with build-type "
+                   ++ show bt)
   path <- getExecutablePath
-  info verbosity $ unwords (path : args)
   case useLoggingHandle options of
     Nothing        -> return ()
     Just logHandle -> info verbosity $ "Redirecting build log to "
@@ -291,18 +290,26 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
                 (getProgramSearchPath (useProgramConfig options))
   env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
 
-  process <- runProcess path args
-             (useWorkingDir options) env Nothing
-             (useLoggingHandle options) (useLoggingHandle options)
-  exitCode <- waitForProcess process
-  unless (exitCode == ExitSuccess) $ exitWith exitCode
+  mapM_ (action path env) (mkCmds cabalVersion)
+
+  where
+    action path env (AnyCommand (cmd, flags, extraArgs)) = do
+      let args = [ "act-as-setup", "--build-type=" ++ display bt, "--" ]
+                 ++ (commandName cmd : commandShowOptions cmd flags)
+                 ++ extraArgs
+      info verbosity (unwords (path : args))
+      process <- runProcess path args
+                (useWorkingDir options) env Nothing
+                (useLoggingHandle options) (useLoggingHandle options)
+      exitCode <- waitForProcess process
+      unless (exitCode == ExitSuccess) $ exitWith exitCode
 
 -- ------------------------------------------------------------
 -- * External SetupMethod
 -- ------------------------------------------------------------
 
 externalSetupMethod :: SetupMethod
-externalSetupMethod verbosity options pkg bt mkargs = do
+externalSetupMethod verbosity options pkg bt mkCmds = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
   debug verbosity $ "Using explicit dependencies: "
     ++ show (useDependenciesExclusive options)
@@ -314,7 +321,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                cabalLibVersion mCabalLibInstalledPkgId
           else compileSetupExecutable   options'
                cabalLibVersion mCabalLibInstalledPkgId False
-  invokeSetupScript options' path (mkargs cabalLibVersion)
+
+  mapM_ (action path options') (mkCmds cabalLibVersion)
 
   where
   workingDir       = case fromMaybe "" (useWorkingDir options) of
@@ -651,3 +659,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
         when oldPathDirExists $
           Win32.moveFile path' oldPath
 #endif
+
+  action path options' (AnyCommand (cmd, flags, extraArgs)) = do
+    let args = commandName cmd : commandShowOptions cmd flags
+               ++ extraArgs
+    invokeSetupScript options' path args

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -104,11 +105,9 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
-    ( die, warn, info, setupMessage
-    , createDirectoryIfMissingVerbose, moreRecentFile
-    , intercalate, cabalVersion
-    , writeFileAtomic
-    , withTempFile )
+    ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
+    , intercalate, withTempFile )
+import Distribution.Simple.Reconfigure
 import Distribution.System
     ( OS(..), buildOS, Platform (..), buildPlatform )
 import Distribution.Version
@@ -127,16 +126,9 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
 import Prelude hiding ( mapM )
-import Control.Exception
-    ( Exception, evaluate, throw, throwIO, try )
-import Control.Exception ( ErrorCall )
 import Control.Monad
-    ( liftM, when, unless, foldM, filterM )
-import Distribution.Compat.Binary ( decodeOrFailIO, encode )
+    ( filterM, foldM, liftM, unless, when )
 import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
-import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
 import Data.Maybe
@@ -149,16 +141,13 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Traversable
     ( mapM )
-import Data.Typeable
 import Data.Char ( chr, isAlphaNum )
 import Numeric ( showIntAtBase )
 import Data.Bits ( shift )
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( getTemporaryDirectory )
 import System.FilePath
     ( (</>), isAbsolute )
-import qualified System.Info
-    ( compilerName, compilerVersion )
 import System.IO
     ( hPutStrLn, hClose )
 import Distribution.Text
@@ -168,154 +157,6 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
-
--- | The errors that can be thrown when reading the @setup-config@ file.
-data ConfigStateFileError
-    = ConfigStateFileNoHeader -- ^ No header found.
-    | ConfigStateFileBadHeader -- ^ Incorrect header.
-    | ConfigStateFileNoParse -- ^ Cannot parse file contents.
-    | ConfigStateFileMissing -- ^ No file!
-    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
-  deriving (Typeable)
-
-instance Show ConfigStateFileError where
-    show ConfigStateFileNoHeader =
-        "Saved package config file header is missing. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileBadHeader =
-        "Saved package config file header is corrupt. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileNoParse =
-        "Saved package config file body is corrupt. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileMissing = "Run the 'configure' command first."
-    show (ConfigStateFileBadVersion oldCabal oldCompiler _) =
-        "You need to re-run the 'configure' command. "
-        ++ "The version of Cabal being used has changed (was "
-        ++ display oldCabal ++ ", now "
-        ++ display currentCabalId ++ ")."
-        ++ badCompiler
-      where
-        badCompiler
-          | oldCompiler == currentCompilerId = ""
-          | otherwise =
-              " Additionally the compiler is different (was "
-              ++ display oldCompiler ++ ", now "
-              ++ display currentCompilerId
-              ++ ") which is probably the cause of the problem."
-
-instance Exception ConfigStateFileError
-
--- | Read the 'localBuildInfoFile'.  Throw an exception if the file is
--- missing, if the file cannot be read, or if the file was created by an older
--- version of Cabal.
-getConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
-                   -> IO LocalBuildInfo
-getConfigStateFile filename = do
-    exists <- doesFileExist filename
-    unless exists $ throwIO ConfigStateFileMissing
-    -- Read the config file into a strict ByteString to avoid problems with
-    -- lazy I/O, then convert to lazy because the binary package needs that.
-    contents <- BS.readFile filename
-    let (header, body) = BLC8.span (/='\n') (BLC8.fromChunks [contents])
-
-    headerParseResult <- try $ evaluate $ parseHeader header
-    let (cabalId, compId) =
-            case headerParseResult of
-              Left (_ :: ErrorCall) -> throw ConfigStateFileBadHeader
-              Right x -> x
-
-    let getStoredValue = do
-          result <- decodeOrFailIO (BLC8.tail body)
-          case result of
-            Left _ -> throw ConfigStateFileNoParse
-            Right x -> return x
-        deferErrorIfBadVersion act
-          | cabalId /= currentCabalId = do
-              eResult <- try act
-              throw $ ConfigStateFileBadVersion cabalId compId eResult
-          | otherwise = act
-    deferErrorIfBadVersion getStoredValue
-
--- | Read the 'localBuildInfoFile', returning either an error or the local build info.
-tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
-                      -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetConfigStateFile = try . getConfigStateFile
-
--- | Try to read the 'localBuildInfoFile'.
-tryGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
-                         -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetPersistBuildConfig = try . getPersistBuildConfig
-
--- | Read the 'localBuildInfoFile'. Throw an exception if the file is
--- missing, if the file cannot be read, or if the file was created by an older
--- version of Cabal.
-getPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
-                      -> IO LocalBuildInfo
-getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
-
--- | Try to read the 'localBuildInfoFile'.
-maybeGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
-                           -> IO (Maybe LocalBuildInfo)
-maybeGetPersistBuildConfig =
-    liftM (either (const Nothing) Just) . tryGetPersistBuildConfig
-
--- | After running configure, output the 'LocalBuildInfo' to the
--- 'localBuildInfoFile'.
-writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
-                        -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
-                        -> IO ()
-writePersistBuildConfig distPref lbi = do
-    createDirectoryIfMissing False distPref
-    writeFileAtomic (localBuildInfoFile distPref) $
-      BLC8.unlines [showHeader pkgId, encode lbi]
-  where
-    pkgId = packageId $ localPkgDescr lbi
-
--- | Identifier of the current Cabal package.
-currentCabalId :: PackageIdentifier
-currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
-
--- | Identifier of the current compiler package.
-currentCompilerId :: PackageIdentifier
-currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
-                                      System.Info.compilerVersion
-
--- | Parse the @setup-config@ file header, returning the package identifiers 
--- for Cabal and the compiler.
-parseHeader :: ByteString -- ^ The file contents.
-            -> (PackageIdentifier, PackageIdentifier)
-parseHeader header = case BLC8.words header of
-  ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
-      fromMaybe (throw ConfigStateFileBadHeader) $ do
-          _ <- simpleParse (BLC8.unpack pkgId) :: Maybe PackageIdentifier
-          cabalId' <- simpleParse (BLC8.unpack cabalId)
-          compId' <- simpleParse (BLC8.unpack compId)
-          return (cabalId', compId')
-  _ -> throw ConfigStateFileNoHeader
-
--- | Generate the @setup-config@ file header.
-showHeader :: PackageIdentifier -- ^ The processed package.
-            -> ByteString
-showHeader pkgId = BLC8.unwords
-    [ "Saved", "package", "config", "for"
-    , BLC8.pack $ display pkgId
-    , "written", "by"
-    , BLC8.pack $ display currentCabalId
-    , "using"
-    , BLC8.pack $ display currentCompilerId
-    ]
-
--- | Check that localBuildInfoFile is up-to-date with respect to the
--- .cabal file.
-checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
-checkPersistBuildConfigOutdated distPref pkg_descr_file = do
-  pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
-
--- | Get the path of @dist\/setup-config@.
-localBuildInfoFile :: FilePath -- ^ The @dist@ directory path.
-                    -> FilePath
-localBuildInfoFile distPref = distPref </> "setup-config"
 
 -- -----------------------------------------------------------------------------
 -- * Configuration

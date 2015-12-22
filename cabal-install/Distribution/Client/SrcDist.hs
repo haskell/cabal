@@ -7,7 +7,7 @@ module Distribution.Client.SrcDist (
 
 
 import Distribution.Client.SetupWrapper
-        ( SetupScriptOptions(..), defaultSetupScriptOptions, setupWrapper )
+        ( AnyCommand(..), SetupScriptOptions(..), defaultSetupScriptOptions, setupWrapper )
 import Distribution.Client.Tar (createTarGzFile)
 
 import Distribution.Package
@@ -58,7 +58,7 @@ sdist flags exflags = do
     -- Run 'setup sdist --output-directory=tmpDir' (or
     -- '--list-source'/'--output-directory=someOtherDir') in case we were passed
     -- those options.
-    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') []
+    setupWrapper verbosity setupOpts (Just pkg) (const [AnyCommand (sdistCommand, flags', [])])
 
     -- Unless we were given --list-sources or --output-directory ourselves,
     -- create an archive.
