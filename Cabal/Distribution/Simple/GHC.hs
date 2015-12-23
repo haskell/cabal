@@ -115,7 +115,8 @@ import Data.Maybe               ( catMaybes )
 import Data.Monoid as Mon       ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
-         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing )
+         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
+         , canonicalizePath )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension, isRelative )
@@ -200,20 +201,26 @@ guessToolFromGhcPath :: Program -> ConfiguredProgram
                      -> IO (Maybe (FilePath, [FilePath]))
 guessToolFromGhcPath tool ghcProg verbosity searchpath
   = do let toolname          = programName tool
-           path              = programPath ghcProg
-           dir               = takeDirectory path
-           versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> toolname <.> exeExtension
-           guessGhcVersioned = dir </> (toolname ++ "-ghc" ++ versionSuffix)
-                               <.> exeExtension
-           guessVersioned    = dir </> (toolname ++ versionSuffix)
-                               <.> exeExtension
-           guesses | null versionSuffix = [guessNormal]
-                   | otherwise          = [guessGhcVersioned,
-                                           guessVersioned,
-                                           guessNormal]
+           given_path        = programPath ghcProg
+           given_dir         = takeDirectory given_path
+       real_path <- canonicalizePath given_path
+       let real_dir           = takeDirectory real_path
+           versionSuffix path = takeVersionSuffix (dropExeExtension path)
+           guessNormal       dir = dir </> toolname <.> exeExtension
+           guessGhcVersioned dir = dir </> (toolname ++ "-ghc" ++ versionSuffix dir)
+                                       <.> exeExtension
+           guessVersioned    dir = dir </> (toolname ++ versionSuffix dir)
+                                       <.> exeExtension
+           mkGuesses dir | null (versionSuffix dir) = [guessNormal dir]
+                         | otherwise                = [guessGhcVersioned dir,
+                                                       guessVersioned dir,
+                                                       guessNormal dir]
+           guesses = mkGuesses given_dir ++
+                            if real_path == given_path
+                                then []
+                                else mkGuesses real_dir
        info verbosity $ "looking for tool " ++ toolname
-         ++ " near compiler in " ++ dir
+         ++ " near compiler in " ++ given_dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
