@@ -24,7 +24,7 @@ module Distribution.Package (
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId(..),
         getHSLibraryName,
-        InstalledPackageId, -- backwards compat
+        InstalledPackageId(..), -- backwards compat
 
         -- * Package source dependencies
         Dependency(..),
