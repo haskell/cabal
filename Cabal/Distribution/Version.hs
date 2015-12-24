@@ -5,7 +5,7 @@
 #endif
 
 -- Hack approach to support bootstrapping.
--- Assume binary <0.8 when MIN_VERSION_binary marco is not available.
+-- Assume binary <0.8 when MIN_VERSION_binary macro is not available.
 -- Starting with GHC>=8.0, the compiler will hopefully provide this macros too.
 -- https://ghc.haskell.org/trac/ghc/ticket/10970
 --
