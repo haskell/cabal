@@ -32,6 +32,7 @@ module Distribution.Simple.BuildPaths (
 
 
 import System.FilePath ((</>), (<.>))
+import System.Directory (exeExtension)
 
 import Distribution.Package
          ( packageName, getHSLibraryName, ComponentId )
@@ -98,14 +99,6 @@ mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
 -- ------------------------------------------------------------
 -- * Platform file extensions
 -- ------------------------------------------------------------
-
--- ToDo: This should be determined via autoconf (AC_EXEEXT)
--- | Extension for executable files
--- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
-exeExtension :: String
-exeExtension = case buildOS of
-                   Windows -> "exe"
-                   _       -> ""
 
 -- TODO: This should be determined via autoconf (AC_OBJEXT)
 -- | Extension for object files. For GHC the extension is @\"o\"@.
