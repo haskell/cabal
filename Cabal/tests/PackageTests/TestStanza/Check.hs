@@ -1,36 +1,19 @@
 module PackageTests.TestStanza.Check where
 
-import Test.Tasty.HUnit
-import System.FilePath
 import PackageTests.PackageTester
-import Distribution.Version
-import Distribution.PackageDescription.Parse (readPackageDescription)
-import Distribution.PackageDescription.Configuration
-    (finalizePackageDescription)
-import Distribution.Package (PackageName(..), Dependency(..))
-import Distribution.PackageDescription
-    ( PackageDescription(..), BuildInfo(..), TestSuite(..)
-    , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite )
-import Distribution.Verbosity (silent)
-import Distribution.System (buildPlatform)
-import Distribution.Compiler
-    ( CompilerId(..), CompilerFlavor(..), unknownCompilerInfo, AbiTag(..) )
-import Distribution.Text
 
-suite :: SuiteConfig -> Assertion
-suite config = do
-    let dir = "PackageTests" </> "TestStanza"
-        pdFile = dir </> "my" <.> "cabal"
-        spec = PackageSpec
-            { directory = dir
-            , configOpts = []
-            , distPref = Nothing
-            }
-    result <- cabal_configure config spec
-    assertOutputDoesNotContain "unknown section type" result
-    genPD <- readPackageDescription silent pdFile
-    let compiler = unknownCompilerInfo (CompilerId GHC $ Version [6, 12, 2] []) NoAbiTag
-        anticipatedTestSuite = emptyTestSuite
+import Distribution.Version
+import Distribution.Simple.LocalBuildInfo
+import Distribution.Package
+import Distribution.PackageDescription
+
+suite :: TestM ()
+suite = do
+    assertOutputDoesNotContain "unknown section type"
+        =<< cabal "configure" []
+    dist_dir <- distDir
+    lbi <- liftIO $ getPersistBuildConfig dist_dir
+    let anticipatedTestSuite = emptyTestSuite
             { testName = "dummy"
             , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
             , testBuildInfo = emptyBuildInfo
@@ -40,10 +23,7 @@ suite config = do
                     }
             , testEnabled = False
             }
-    case finalizePackageDescription [] (const True) buildPlatform compiler [] genPD of
-        Left xs -> let depMessage = "should not have missing dependencies:\n" ++
-                                    (unlines $ map (show . disp) xs)
-                   in assertEqual depMessage True False
-        Right (f, _) -> let gotTest = head $ testSuites f
-                        in assertEqual "parsed test-suite stanza does not match anticipated"
-                                gotTest anticipatedTestSuite
+        gotTestSuite = head $ testSuites (localPkgDescr lbi)
+    assertEqual "parsed test-suite stanza does not match anticipated"
+                            anticipatedTestSuite gotTestSuite
+    return ()

@@ -41,3 +41,10 @@ tags
 
 # stack artifacts
 /.stack-work/
+
+# Shake artifacts
+.shake
+progress.txt
+
+# test files
+dist-test

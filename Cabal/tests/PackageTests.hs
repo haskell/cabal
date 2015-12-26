@@ -6,179 +6,205 @@
 
 module Main where
 
-import PackageTests.BenchmarkExeV10.Check
-import PackageTests.BenchmarkOptions.Check
-import PackageTests.BenchmarkStanza.Check
--- import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
--- import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
-import PackageTests.BuildDeps.InternalLibrary0.Check
-import PackageTests.BuildDeps.InternalLibrary1.Check
-import PackageTests.BuildDeps.InternalLibrary2.Check
-import PackageTests.BuildDeps.InternalLibrary3.Check
-import PackageTests.BuildDeps.InternalLibrary4.Check
-import PackageTests.BuildDeps.SameDepsAllRound.Check
-import PackageTests.BuildDeps.TargetSpecificDeps1.Check
-import PackageTests.BuildDeps.TargetSpecificDeps2.Check
-import PackageTests.BuildDeps.TargetSpecificDeps3.Check
-import PackageTests.PackageTester (PackageSpec(..), SuiteConfig(..), compileSetup)
-import PackageTests.PathsModule.Executable.Check
-import PackageTests.PathsModule.Library.Check
-import PackageTests.PreProcess.Check
-import PackageTests.PreProcessExtraSources.Check
-import PackageTests.TemplateHaskell.Check
-import PackageTests.CMain.Check
-import PackageTests.DeterministicAr.Check
-import PackageTests.EmptyLib.Check
-import PackageTests.Haddock.Check
-import PackageTests.TestOptions.Check
-import PackageTests.TestStanza.Check
-import PackageTests.TestSuiteTests.ExeV10.Check
-import PackageTests.TestSuiteTests.LibV09.Check
-import PackageTests.OrderFlags.Check
-import PackageTests.ReexportedModules.Check
-import PackageTests.UniqueIPID.Check
+import PackageTests.PackageTester
+import PackageTests.Tests
 
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile )
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program.Types (programPath)
+import Distribution.Simple.Program.Types (programPath, programVersion)
 import Distribution.Simple.Program.Builtin
     ( ghcProgram, ghcPkgProgram, haddockProgram )
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Setup (Flag(..))
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
-import Distribution.Verbosity (normal)
-import Distribution.Version (Version(Version))
+import Distribution.Verbosity (normal, flagToVerbosity)
+import Distribution.ReadE (readEOrFail)
 
-import Control.Exception (try, throw)
-import Distribution.Compat.Environment ( setEnv )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Functor ((<$>))
-#endif
+import Control.Exception
+import Distribution.Compat.Environment ( lookupEnv )
 import System.Directory
-    ( canonicalizePath, setCurrentDirectory )
-import System.FilePath ((</>))
 import Test.Tasty
-import Test.Tasty.HUnit
+import Data.Maybe
 
-
-tests :: SuiteConfig -> Version -> [TestTree]
-tests config version =
-    [ testCase "BuildDeps/SameDepsAllRound"
-      (PackageTests.BuildDeps.SameDepsAllRound.Check.suite config)
-      -- The two following tests were disabled by Johan Tibell as
-      -- they have been failing for a long time:
-      -- , testCase "BuildDeps/GlobalBuildDepsNotAdditive1/"
-      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite ghcPath)
-      -- , testCase "BuildDeps/GlobalBuildDepsNotAdditive2/"
-      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite ghcPath)
-    , testCase "BuildDeps/InternalLibrary0"
-      (PackageTests.BuildDeps.InternalLibrary0.Check.suite config version)
-    , testCase "PreProcess" (PackageTests.PreProcess.Check.suite config)
-    , testCase "PreProcessExtraSources"
-      (PackageTests.PreProcessExtraSources.Check.suite config)
-    , testCase "TestStanza" (PackageTests.TestStanza.Check.suite config)
-      -- ^ The Test stanza test will eventually be required
-      -- only for higher versions.
-    , testGroup "TestSuiteTests"
-      [ testGroup "ExeV10"
-        (PackageTests.TestSuiteTests.ExeV10.Check.checks config)
-      , testGroup "LibV09"
-        (PackageTests.TestSuiteTests.LibV09.Check.checks config)
-      ]
-    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite config)
-    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite config)
-      -- ^ The benchmark stanza test will eventually be required
-      -- only for higher versions.
-    , testCase "BenchmarkExeV10/Test"
-      (PackageTests.BenchmarkExeV10.Check.checkBenchmark config)
-    , testCase "BenchmarkOptions" (PackageTests.BenchmarkOptions.Check.suite config)
-    , testCase "TemplateHaskell/vanilla"
-      (PackageTests.TemplateHaskell.Check.vanilla config)
-    , testCase "TemplateHaskell/profiling"
-      (PackageTests.TemplateHaskell.Check.profiling config)
-    , testCase "PathsModule/Executable"
-      (PackageTests.PathsModule.Executable.Check.suite config)
-    , testCase "PathsModule/Library"
-      (PackageTests.PathsModule.Library.Check.suite config)
-    , testCase "DeterministicAr"
-      (PackageTests.DeterministicAr.Check.suite config)
-    , testCase "EmptyLib/emptyLib"
-      (PackageTests.EmptyLib.Check.emptyLib config)
-    , testCase "Haddock" (PackageTests.Haddock.Check.suite config)
-    , testCase "OrderFlags"
-      (PackageTests.OrderFlags.Check.suite config)
-    , testCase "TemplateHaskell/dynamic"
-      (PackageTests.TemplateHaskell.Check.dynamic config)
-    , testCase "ReexportedModules"
-      (PackageTests.ReexportedModules.Check.suite config)
-    , testCase "UniqueIPID"
-      (PackageTests.UniqueIPID.Check.suite config)
-    ] ++
-    -- These tests are only required to pass on cabal version >= 1.7
-    (if version >= Version [1, 7] []
-     then [ testCase "BuildDeps/TargetSpecificDeps1"
-            (PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite config)
-          , testCase "BuildDeps/TargetSpecificDeps2"
-            (PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite config)
-          , testCase "BuildDeps/TargetSpecificDeps3"
-            (PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite config)
-          , testCase "BuildDeps/InternalLibrary1"
-            (PackageTests.BuildDeps.InternalLibrary1.Check.suite config)
-          , testCase "BuildDeps/InternalLibrary2"
-            (PackageTests.BuildDeps.InternalLibrary2.Check.suite config)
-          , testCase "BuildDeps/InternalLibrary3"
-            (PackageTests.BuildDeps.InternalLibrary3.Check.suite config)
-          , testCase "BuildDeps/InternalLibrary4"
-            (PackageTests.BuildDeps.InternalLibrary4.Check.suite config)
-          , testCase "PackageTests/CMain"
-            (PackageTests.CMain.Check.checkBuild config)
-          ]
-     else [])
+#if MIN_VERSION_base(4,6,0)
+import System.Environment ( getExecutablePath )
+#endif
 
 main :: IO ()
 main = do
-    -- Find the builddir used to build Cabal
-    distPref_ <- findDistPrefOrDefault NoFlag >>= canonicalizePath
-    -- Use the default builddir for all of the subsequent package tests
-    setEnv "CABAL_BUILDDIR" "dist"
-    lbi <- getPersistBuildConfig_ (distPref_ </> "setup-config")
-    (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
-    (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
+    -- In abstract, the Cabal test suite makes calls to the "Setup"
+    -- executable and tests the output of Cabal.  However, we have to
+    -- responsible for building this executable in the first place,
+    -- since (1) Cabal doesn't support a test-suite depending on an
+    -- executable, so we can't put a "Setup" executable in the Cabal
+    -- file and then depend on it, (2) we don't want to call the Cabal
+    -- functions *directly* because we need to capture and save the
+    -- stdout and stderr, and (3) even if we could do all that, we will
+    -- want to test some Custom setup scripts, which will be specific to
+    -- the test at hand and need to be compiled against Cabal.
+    --
+    -- To be able to build the executable, there is some information
+    -- we need:
+    --
+    --      1. We need to know what ghc to use,
+    --
+    --      2. We need to know what package databases (plural!) contain
+    --      all of the necessary dependencies to make our Cabal package
+    --      well-formed.
+    --
+    -- We could have the user pass these all in as arguments (TODO: this
+    -- should be an option),  but there's a more convenient way to get
+    -- this information: the *build configuration* that was used to
+    -- build the Cabal library (and this test suite) in the first place.
+    -- To do this, we need to find the 'dist' directory that was set as
+    -- the build directory for Cabal.
+
+    dist_dir <- guessDistDir
+    lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
+
+    -- Put ourselves in the right directory.  We do this by looking
+    -- at the location of Cabal.cabal.  For the remainder of the
+    -- execution of this program, this will be our CWD; however,
+    -- subprocess calls may have different CWDs.
+    case pkgDescrFile lbi of
+        Nothing -> error "Can't find Cabal.cabal"
+        -- Double check!
+        Just f
+          -- Sufficiently new version of Cabal will have this working
+          | isAbsolute f -> do
+            test_dir <- canonicalizePath (dropFileName f)
+            setCurrentDirectory test_dir
+          -- Otherwise, just require package-tests to be run from
+          -- the correct directory
+          | otherwise -> return ()
+    test_dir <- getCurrentDirectory
+
+    -- Pull out the information we need from the LBI
+    -- TODO: The paths to GHC should be configurable by command line,
+    -- but it's tricky: some tests might depend on the Cabal library, in
+    -- which case you REALLY need to have built and installed Cabal for
+    -- the version that the test suite is being built against.  The
+    -- easiest thing to do is make sure you built Cabal the same way as
+    -- you will run the tests.
+    (ghcConf, _) <- requireProgram normal ghcProgram (withPrograms lbi)
+    (ghcPkgConf, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
     (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
-    packageDBStack' <- mapM canonicalizePackageDB $ withPackageDB lbi
-    let haddockPath = programPath haddock
-        inplaceDBFile = distPref_ </> "package.conf.inplace"
-        config = SuiteConfig
-                 { cabalDistPref = distPref_
-                 , ghcPath = programPath ghc
-                 , ghcPkgPath = programPath ghcPkg
-                 , inplaceSpec = PackageSpec
-                   { directory = []
-                   , configOpts =
-                     [ "--package-db=" ++ inplaceDBFile
-                     , "--constraint=Cabal == " ++ display cabalVersion
-                     ]
-                   , distPref = Nothing
-                   }
-                 , packageDBStack = packageDBStack'
+    -- Package DBs are not guaranteed to be absolute, so make them so in
+    -- case a subprocess using the package DB needs a different CWD.
+    packageDBStack0 <- mapM canonicalizePackageDB (withPackageDB lbi)
+
+    -- The packageDBStack is worth some commentary.  The database
+    -- stack we extract from the LBI will contain enough package
+    -- databases to make the Cabal package well-formed.  However,
+    -- it does not *contain* the inplace installed Cabal package.
+    -- So we need to add that to the stack.
+    let packageDBStack1
+            = packageDBStack0 ++
+              [SpecificPackageDB
+                (dist_dir </> "package.conf.inplace")]
+
+    -- THIS ISN'T EVEN MY FINAL FORM.  The package database stack
+    -- controls where we install a package; specifically, the package is
+    -- installed to the top-most package on the stack (this makes the
+    -- most sense, since it could depend on any of the packages below
+    -- it.)  If the test wants to register anything (as opposed to just
+    -- working in place), then we need to have another temporary
+    -- database we can install into (and not accidentally clobber any of
+    -- the other stacks.)  This is done on a per-test basis.
+    --
+    -- ONE MORE THING. On the subject of installing the package (with
+    -- copy/register) it is EXTREMELY important that we also overload
+    -- the install directories, so we don't clobber anything in the
+    -- default install paths.  VERY IMPORTANT.
+
+    -- TODO: make this controllable by a flag
+    verbosity <- maybe normal (readEOrFail flagToVerbosity) `fmap` lookupEnv "VERBOSE"
+        -- The inplaceDB is where the Cabal library was registered
+        -- in place (and is usable.)  inplaceConfig is a convenient
+        -- set of flags to make sure we make it visible.
+    let suite = SuiteConfig
+                 { cabalDistPref = dist_dir
+                 , ghcPath = programPath ghcConf
+                 , ghcVersion = fromJust (programVersion ghcConf)
+                 , ghcPkgPath = programPath ghcPkgConf
+                 , packageDBStack = packageDBStack1
+                 , suiteVerbosity = verbosity
+                 , absoluteCWD = test_dir
                  }
+
     putStrLn $ "Cabal test suite - testing cabal version " ++ display cabalVersion
-    putStrLn $ "Using ghc: " ++ ghcPath config
-    putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath config
-    putStrLn $ "Using haddock: " ++ haddockPath
-    setCurrentDirectory "tests"
+    putStrLn $ "Cabal build directory: " ++ dist_dir
+    putStrLn $ "Test directory: " ++ test_dir
+    putStrLn $ "Using ghc: " ++ ghcPath suite
+    putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath suite
+    putStrLn $ "Using haddock: " ++ programPath haddock
+
     -- Create a shared Setup executable to speed up Simple tests
     putStrLn $ "Building shared ./Setup executable"
-    compileSetup config "."
-    defaultMain $ testGroup "Package Tests"
-      (tests config cabalVersion)
+    rawCompileSetup verbosity suite [] "tests"
 
--- Like Distribution.Simple.Configure.getPersistBuildConfig but
+    defaultMain $ testGroup "Package Tests" (tests suite)
+
+-- | Guess what the 'dist' directory Cabal was installed in is.  There's
+-- no 100% reliable way to find this, but there are a few good shots:
+--
+--     1. Test programs are ~always built in-place, in a directory
+--        that looks like dist/build/package-tests/package-tests;
+--        thus the directory can be determined by looking at $0.
+--        This method is robust against sandboxes, Nix local
+--        builds, and Stack, but doesn't work if you're running
+--        in an interpreter.
+--
+--     2. We can use the normal input methods (as per Cabal),
+--        checking for the CABAL_BUILDDIR environment variable as
+--        well as the default location in the current working directory.
+guessDistDir :: IO FilePath
+guessDistDir = do
+#if MIN_VERSION_base(4,6,0)
+    -- Method (1)
+    -- TODO: this needs to be BC'ified, probably.
+    exe_path <- canonicalizePath =<< getExecutablePath
+    -- exe_path is something like /path/to/dist/build/package-tests/package-tests
+    let dist0 = dropFileName exe_path </> ".." </> ".."
+    b <- doesFileExist (dist0 </> "setup-config")
+#else
+    let dist0 = error "no path"
+        b = False
+#endif
+    -- Method (2)
+    if b then canonicalizePath dist0
+         else findDistPrefOrDefault NoFlag >>= canonicalizePath
+
+canonicalizePackageDB :: PackageDB -> IO PackageDB
+canonicalizePackageDB (SpecificPackageDB path)
+    = SpecificPackageDB `fmap` canonicalizePath path
+canonicalizePackageDB x = return x
+
+-- | Like Distribution.Simple.Configure.getPersistBuildConfig but
 -- doesn't check that the Cabal version matches, which it doesn't when
 -- we run Cabal's own test suite, due to bootstrapping issues.
+-- Here's the situation:
+--
+--      1. There's some system Cabal-1.0 installed.  We use this
+--         to build Setup.hs
+--      2. We run ./Setup configure, which uses Cabal-1.0 to
+--         write out the LocalBuildInfo
+--      3. We build the Cabal library, whose version is Cabal-2.0
+--      4. We build the package-tests executable, which LINKS AGAINST
+--         Cabal-2.0
+--      5. We try to read the LocalBuildInfo that ./Setup configure
+--         wrote out, but it's Cabal-1.0 format!
+--
+-- It's a bit skeevy that we're trying to read Cabal-1.0 LocalBuildInfo
+-- using Cabal-2.0's parser, but this seems to work OK in practice
+-- because LocalBuildInfo is a slow-moving data structure.  If
+-- we ever make a major change, this won't work, and we'll have to
+-- take a different approach (either setting "build-type: Custom"
+-- so we bootstrap with the most recent Cabal, or by writing the
+-- information we need in another format.)
 getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
 getPersistBuildConfig_ filename = do
     eLBI <- try $ getConfigStateFile filename
@@ -187,7 +213,3 @@ getPersistBuildConfig_ filename = do
       Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
       Left err -> throw err
       Right lbi -> return lbi
-
-canonicalizePackageDB :: PackageDB -> IO PackageDB
-canonicalizePackageDB (SpecificPackageDB path) = SpecificPackageDB <$> canonicalizePath path
-canonicalizePackageDB x = return x

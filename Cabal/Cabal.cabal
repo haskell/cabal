@@ -76,7 +76,6 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/CMain/Bar.hs
-  tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/DeterministicAr/Lib.hs
@@ -299,37 +298,11 @@ test-suite package-tests
   type: exitcode-stdio-1.0
   main-is: PackageTests.hs
   other-modules:
-    PackageTests.BenchmarkExeV10.Check
-    PackageTests.BenchmarkOptions.Check
     PackageTests.BenchmarkStanza.Check
-    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
-    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
-    PackageTests.BuildDeps.InternalLibrary0.Check
-    PackageTests.BuildDeps.InternalLibrary1.Check
-    PackageTests.BuildDeps.InternalLibrary2.Check
-    PackageTests.BuildDeps.InternalLibrary3.Check
-    PackageTests.BuildDeps.InternalLibrary4.Check
-    PackageTests.BuildDeps.SameDepsAllRound.Check
-    PackageTests.BuildDeps.TargetSpecificDeps1.Check
-    PackageTests.BuildDeps.TargetSpecificDeps2.Check
-    PackageTests.BuildDeps.TargetSpecificDeps3.Check
-    PackageTests.CMain.Check
-    PackageTests.DeterministicAr.Check
-    PackageTests.EmptyLib.Check
-    PackageTests.Haddock.Check
-    PackageTests.OrderFlags.Check
-    PackageTests.PackageTester
-    PackageTests.PathsModule.Executable.Check
-    PackageTests.PathsModule.Library.Check
-    PackageTests.PreProcess.Check
-    PackageTests.PreProcessExtraSources.Check
-    PackageTests.ReexportedModules.Check
-    PackageTests.TemplateHaskell.Check
-    PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
+    PackageTests.DeterministicAr.Check
     PackageTests.TestSuiteTests.ExeV10.Check
-    PackageTests.TestSuiteTests.LibV09.Check
-    PackageTests.UniqueIPID.Check
+    PackageTests.PackageTester
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils
@@ -341,16 +314,16 @@ test-suite package-tests
     tasty-quickcheck,
     tasty-hunit,
     QuickCheck >= 2.1.0.1 && < 2.9,
+    transformers,
     Cabal,
     process,
     directory,
     filepath,
-    extensible-exceptions,
     bytestring,
     regex-posix,
     old-time
   if !os(windows)
     build-depends: unix
-  ghc-options: -Wall
+  ghc-options: -Wall -fno-warn-unused-do-bind -fno-warn-incomplete-patterns -rtsopts
   default-extensions: CPP
   default-language: Haskell98
