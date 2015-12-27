@@ -688,7 +688,6 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showStanza TestStanzas  = "*test"
     showStanza BenchStanzas = "*bench"
 
-    -- FIXME: this should be a proper function in a proper place
     showFlagAssignment :: FlagAssignment -> String
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
     showFlagValue (f, True)   = '+' : showFlagName f

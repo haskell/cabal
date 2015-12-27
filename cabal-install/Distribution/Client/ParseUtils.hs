@@ -21,7 +21,6 @@ import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
          ( Doc, text, colon, vcat, empty, isEmpty, nest )
 
---FIXME: replace this with something better
 parseFields :: [FieldDescr a] -> a -> [ParseUtils.Field] -> ParseResult a
 parseFields fields = foldM setField
   where

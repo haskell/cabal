@@ -88,13 +88,13 @@ import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
 
 
+-- | Reduced-verbosity version of 'Configure.getInstalledPackages'
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs conf =
     Configure.getInstalledPackages verbosity' comp packageDbs conf
   where
-    --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
 
 ------------------------------------------------------------------------

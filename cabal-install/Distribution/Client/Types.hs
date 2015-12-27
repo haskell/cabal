@@ -232,8 +232,6 @@ data RemoteRepo =
       remoteRepoShouldTryHttps :: Bool
     }
 
-  -- FIXME: discuss this type some more.
-
   deriving (Show,Eq,Ord)
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.

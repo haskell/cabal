@@ -728,7 +728,6 @@ readUserConstraint str =
          "expected a package name followed by a constraint, which is "
       ++ "either a version range, 'installed', 'source' or flags"
 
---FIXME: use Text instance for FlagName and FlagAssignment
 instance Text UserConstraint where
   disp (UserConstraintVersion   pkgname verrange) = disp pkgname
                                                     <+> disp verrange
