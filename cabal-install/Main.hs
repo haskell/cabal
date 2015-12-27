@@ -726,7 +726,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
 
-  -- FIXME: Passing 'SandboxPackageInfo' to install unconditionally here means
+  -- TODO: Passing 'SandboxPackageInfo' to install unconditionally here means
   -- that 'cabal install some-package' inside a sandbox will sometimes reinstall
   -- modified add-source deps, even if they are not among the dependencies of
   -- 'some-package'. This can also prevent packages that depend on older
