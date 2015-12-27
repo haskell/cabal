@@ -1,4 +1,9 @@
 -*-change-log-*-
+1.22.7.0
+	* Remove GZipUtils tests
+	* maybeDecompress: bail on all errors at the beginning of the stream with zlib < 0.6
+	* Correct maybeDecompress
+
 1.22.6.0 Ryan Thomas <ryan@ryant.org> June 2015
 	* A fix for @ezyang's fix for #2502. (Mikhail Glushenkov)
 
