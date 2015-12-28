@@ -15,6 +15,7 @@ dist-*
 /Cabal/dist/
 /Cabal/tests/Setup
 /Cabal/Setup
+/Cabal/misc/source-file-list
 
 /cabal-install/dist/
 /cabal-install/Setup
