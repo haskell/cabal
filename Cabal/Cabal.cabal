@@ -110,6 +110,7 @@ extra-source-files:
   tests/PackageTests/TemplateHaskell/vanilla/Lib.hs
   tests/PackageTests/TemplateHaskell/vanilla/TH.hs
   tests/PackageTests/TemplateHaskell/vanilla/my.cabal
+  tests/PackageTests/Tests.hs
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
