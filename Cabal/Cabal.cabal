@@ -29,7 +29,9 @@ extra-source-files:
   doc/installing-packages.markdown
   doc/misc.markdown
 
-  -- Generated with 'misc/gen-extra-source-files.sh' & 'M-x sort-lines':
+  -- Generated with 'misc/gen-extra-source-files.sh'
+  -- Do NOT edit this section manually; instead, run the script.
+  -- BEGIN gen-extra-source-files
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
@@ -120,6 +122,7 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
   tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/Tests.hs
   tests/PackageTests/UniqueIPID/P1/M.hs
   tests/PackageTests/UniqueIPID/P1/my.cabal
   tests/PackageTests/UniqueIPID/P2/M.hs
@@ -133,6 +136,7 @@ extra-source-files:
   tests/hackage/download.sh
   tests/hackage/unpack.sh
   tests/misc/ghc-supported-languages.hs
+  -- END gen-extra-source-files
 
 source-repository head
   type:     git
