@@ -104,8 +104,7 @@ runTestM suite name subname m = do
                     testPackageDb = False,
                     testEnvironment = []
                }
-    runReaderT (cleanup >> m) (suite, test)
-    return ()
+    void $ runReaderT (cleanup >> m) (suite, test)
   where
     -- TODO: option not to clean up dist dirs; this should be
     -- harmless!
@@ -282,18 +281,16 @@ cabal cmd extraArgs0 = do
 -- | This abstracts the common pattern of configuring and then building.
 cabal_build :: [String] -> TestM ()
 cabal_build args = do
-    cabal "configure" args
-    cabal "build" []
-    return ()
+    void $ cabal "configure" args
+    void $ cabal "build" []
 
 -- | This abstracts the common pattern of "installing" a package.
 cabal_install :: [String] -> TestM ()
 cabal_install args = do
-    cabal "configure" args
-    cabal "build" []
-    cabal "copy" []
-    cabal "register" []
-    return ()
+    void $ cabal "configure" args
+    void $ cabal "build" []
+    void $ cabal "copy" []
+    void $ cabal "register" []
 
 -- | Determines what Setup executable to run and runs it
 doCabal :: [String]  -- ^ extra arguments
@@ -433,7 +430,7 @@ rawRun verbosity mb_cwd path envOverrides args = do
     pid <- runProcess path' args mb_cwd menv Nothing (Just writeh) (Just writeh)
 
     out <- hGetContents readh
-    E.evaluate (length out) -- force the output
+    void $ E.evaluate (length out) -- force the output
     hClose readh
 
     -- wait for the program to terminate
@@ -542,7 +539,7 @@ withPackageDb m = do
                                         = packageDBStack suite
                                        ++ [SpecificPackageDB db_path] },
                              test { testPackageDb = True }))
-               $ do ghcPkg "init" [db_path]
+               $ do void $ ghcPkg "init" [db_path]
                     m
 
 assertOutputContains :: MonadIO m => String -> Result -> m ()

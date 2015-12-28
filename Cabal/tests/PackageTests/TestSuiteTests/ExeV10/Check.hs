@@ -1,7 +1,7 @@
 module PackageTests.TestSuiteTests.ExeV10.Check (tests) where
 
 import qualified Control.Exception as E (IOException, catch)
-import Control.Monad (when)
+import Control.Monad (void, when)
 import Data.Maybe (catMaybes)
 import System.FilePath
 import Test.Tasty (TestTree, testGroup)
@@ -37,7 +37,7 @@ tests config =
               , "--ghc-option=-fhpc"
               , "--ghc-option=-hpcdir"
               , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
-            cabal "test" ["--show-details=direct"]
+            void $ cabal "test" ["--show-details=direct"]
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let way = guessWay lbi
             shouldNotExist $ tixFilePath dist_dir way "test-Foo"
@@ -47,12 +47,12 @@ tests config =
             dist_dir <- distDir
             let tixFile = tixFilePath dist_dir Vanilla "test-Foo"
             withEnv [("HPCTIXFILE", Just tixFile)] $ do
-                cabal_build
-                  [ "--enable-tests"
-                  , "--ghc-option=-fhpc"
-                  , "--ghc-option=-hpcdir"
-                  , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
-                cabal "test" ["--show-details=direct"]
+                void $ cabal_build
+                        [ "--enable-tests"
+                        , "--ghc-option=-fhpc"
+                        , "--ghc-option=-hpcdir"
+                        , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
+                void $ cabal "test" ["--show-details=direct"]
             shouldNotExist $ htmlDir dist_dir Vanilla "test-Foo" </> "hpc_index.html"
       ]
     ]
@@ -94,7 +94,7 @@ hpcTestMatrix config = do
         when isCorrectVersion $ do
             dist_dir <- distDir
             cabal_build ("--enable-tests" : "--enable-coverage" : opts)
-            cabal "test" ["--show-details=direct"]
+            void $ cabal "test" ["--show-details=direct"]
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let way = guessWay lbi
                 CompilerId comp version = compilerId (compiler lbi)
