@@ -178,6 +178,11 @@ tests config =
                     ["CPP.html", "Literate.html", "NoCPP.html", "Simple.html"]
       mapM_ (assertFindInFile "For hiding needles.") docFiles
 
+  -- Test that Haddock with a newline in synopsis works correctly, #3004
+  , tc "HaddockNewline" $ do
+        cabal "configure" []
+        cabal "haddock" []
+
   -- Test that Cabal properly orders GHC flags passed to GHC (when
   -- there are multiple ghc-options fields.)
   , tc "OrderFlags" $ cabal_build []
