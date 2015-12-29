@@ -18,12 +18,15 @@ module PackageTests.PackageTester
 
     -- * Running cabal commands
     , cabal
+    , cabal'
     , cabal_build
     , cabal_install
     , ghcPkg
+    , ghcPkg'
     , compileSetup
     , run
     , runExe
+    , runExe'
     , rawRun
     , rawCompileSetup
     , withPackage
@@ -104,8 +107,7 @@ runTestM suite name subname m = do
                     testPackageDb = False,
                     testEnvironment = []
                }
-    runReaderT (cleanup >> m) (suite, test)
-    return ()
+    void (runReaderT (cleanup >> m) (suite, test))
   where
     -- TODO: option not to clean up dist dirs; this should be
     -- harmless!
@@ -245,8 +247,11 @@ sharedDBPath = do
 ------------------------------------------------------------------------
 -- * Running cabal
 
-cabal :: String -> [String] -> TestM Result
-cabal cmd extraArgs0 = do
+cabal :: String -> [String] -> TestM ()
+cabal cmd extraArgs0 = void (cabal' cmd extraArgs0)
+
+cabal' :: String -> [String] -> TestM Result
+cabal' cmd extraArgs0 = do
     (suite, test) <- ask
     prefix_dir <- prefixDir
     when ((cmd == "register" || cmd == "copy") && not (testPackageDb test)) $
@@ -378,8 +383,11 @@ ghcPackageDBParams ghc_version dbs
 ------------------------------------------------------------------------
 -- * Running ghc-pkg
 
-ghcPkg :: String -> [String] -> TestM Result
-ghcPkg cmd args = do
+ghcPkg :: String -> [String] -> TestM ()
+ghcPkg cmd args = void (ghcPkg' cmd args)
+
+ghcPkg' :: String -> [String] -> TestM Result
+ghcPkg' cmd args = do
     db_path <- sharedDBPath
     (config, test) <- ask
     unless (testPackageDb test) $
@@ -404,9 +412,13 @@ ghcPkgPackageDBParams version dbs = concatMap convert dbs where
 ------------------------------------------------------------------------
 -- * Running other things
 
--- | Running an executable that was produced by cabal.
-runExe :: String -> [String] -> TestM Result
-runExe exe_name args = do
+-- | Run an executable that was produced by cabal.  The @exe_name@
+-- is precisely the name of the executable section in the file.
+runExe :: String -> [String] -> TestM ()
+runExe exe_name args = void (runExe' exe_name args)
+
+runExe' :: String -> [String] -> TestM Result
+runExe' exe_name args = do
     dist_dir <- distDir
     let exe = dist_dir </> "build" </> exe_name </> exe_name
     run Nothing exe args
@@ -433,7 +445,7 @@ rawRun verbosity mb_cwd path envOverrides args = do
     pid <- runProcess path' args mb_cwd menv Nothing (Just writeh) (Just writeh)
 
     out <- hGetContents readh
-    E.evaluate (length out) -- force the output
+    void $ E.evaluate (length out) -- force the output
     hClose readh
 
     -- wait for the program to terminate

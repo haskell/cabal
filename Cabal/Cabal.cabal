@@ -329,6 +329,6 @@ test-suite package-tests
     old-time
   if !os(windows)
     build-depends: unix
-  ghc-options: -Wall -fno-warn-unused-do-bind -fno-warn-incomplete-patterns -rtsopts
+  ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell98

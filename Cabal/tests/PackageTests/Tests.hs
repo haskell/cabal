@@ -85,7 +85,7 @@ tests config =
   -- Test attempt to have executable depend on internal
   -- library, but cabal-version is too old.
   , tc "BuildDeps/InternalLibrary0" $ do
-      r <- shouldFail $ cabal "configure" []
+      r <- shouldFail $ cabal' "configure" []
       -- Should tell you how to enable the desired behavior
       let sb = "library which is defined within the same package."
       assertOutputContains sb r
@@ -115,7 +115,7 @@ tests config =
   -- dep does not leak into the library.
   , tc "BuildDeps/TargetSpecificDeps1" $ do
       cabal "configure" []
-      r <- shouldFail $ cabal "build" []
+      r <- shouldFail $ cabal' "build" []
       assertBool "error should be in MyLibrary.hs" $
           resultOutput r =~ "^MyLibrary.hs:"
       assertBool "error should be \"Could not find module `System.Time\"" $
@@ -130,7 +130,7 @@ tests config =
   -- dep does not leak into the executable.
   , tc "BuildDeps/TargetSpecificDeps3" $ do
       cabal "configure" []
-      r <- shouldFail $ cabal "build" []
+      r <- shouldFail $ cabal' "build" []
       assertBool "error should be in lemon.hs" $
           resultOutput r =~ "^lemon.hs:"
       assertBool "error should be \"Could not find module `System.Time\"" $
@@ -193,9 +193,9 @@ tests config =
       withPackage "P2" $ cabal "configure" []
       withPackage "P1" $ cabal "build" []
       withPackage "P1" $ cabal "build" [] -- rebuild should work
-      r1 <- withPackage "P1" $ cabal "register" ["--print-ipid", "--inplace"]
+      r1 <- withPackage "P1" $ cabal' "register" ["--print-ipid", "--inplace"]
       withPackage "P2" $ cabal "build" []
-      r2 <- withPackage "P2" $ cabal "register" ["--print-ipid", "--inplace"]
+      r2 <- withPackage "P2" $ cabal' "register" ["--print-ipid", "--inplace"]
       let exIPID s = takeWhile (/= '\n') $
                head . filter (isPrefixOf $ "UniqueIPID-0.1-") $ (tails s)
       when ((exIPID $ resultOutput r1) == (exIPID $ resultOutput r2)) $
@@ -208,7 +208,7 @@ tests config =
     internal_lib_test expect = withPackageDb $ do
         withPackage "to-install" $ cabal_install []
         cabal_build []
-        r <- runExe "lemon" []
+        r <- runExe' "lemon" []
         assertEqual
             ("executable should have linked with the " ++ expect ++ " library")
             ("myLibFunc " ++ expect)

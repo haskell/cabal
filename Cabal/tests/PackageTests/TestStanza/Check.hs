@@ -10,7 +10,7 @@ import Distribution.PackageDescription
 suite :: TestM ()
 suite = do
     assertOutputDoesNotContain "unknown section type"
-        =<< cabal "configure" []
+        =<< cabal' "configure" []
     dist_dir <- distDir
     lbi <- liftIO $ getPersistBuildConfig dist_dir
     let anticipatedTestSuite = emptyTestSuite
