@@ -33,16 +33,11 @@ script:
 
 # Cabal
  - cd Cabal
- - mkdir -p ./dist/setup
- - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
-
-# Install test dependencies only after setup is built
  - cabal install --only-dependencies --enable-tests --enable-benchmarks
- - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
- - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
- - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - cabal configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
+ - cabal build   # this builds all libraries and executables (including tests/benchmarks)
+ - cabal haddock # see https://github.com/haskell/cabal/issues/2198
+ - cabal test --show-details=streaming
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
 
@@ -62,15 +57,12 @@ script:
 
 # Also build cabal-install.
  - cd ../cabal-install
- - mkdir -p ./dist/setup
- - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
  - cabal install --only-dependencies --enable-tests --enable-benchmarks
- - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
- - ./dist/setup/setup build
- - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - cabal configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
+ - cabal build
+ - cabal haddock # see https://github.com/haskell/cabal/issues/2198
+ - cabal test --show-details=streaming
  - cabal check
  - cabal sdist
  - install_from_tarball
