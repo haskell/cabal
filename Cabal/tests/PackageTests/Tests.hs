@@ -67,20 +67,20 @@ tests config =
   -- Test --benchmark-option(s) flags on ./Setup bench
   , tc "BenchmarkOptions" $ do
       cabal_build ["--enable-benchmarks"]
-      cabal "bench" [ "--benchmark-options=1 2 3" ]
-      cabal "bench" [ "--benchmark-option=1"
-                    , "--benchmark-option=2"
-                    , "--benchmark-option=3"
-                    ]
+      void $ cabal "bench" [ "--benchmark-options=1 2 3" ]
+      void $ cabal "bench" [ "--benchmark-option=1"
+                           , "--benchmark-option=2"
+                           , "--benchmark-option=3"
+                           ]
 
   -- Test --test-option(s) flags on ./Setup test
   , tc "TestOptions" $ do
       cabal_build ["--enable-tests"]
-      cabal "test" ["--test-options=1 2 3"]
-      cabal "test" [ "--test-option=1"
-                   , "--test-option=2"
-                   , "--test-option=3"
-                   ]
+      void $ cabal "test" ["--test-options=1 2 3"]
+      void $ cabal "test" [ "--test-option=1"
+                          , "--test-option=2"
+                          , "--test-option=3"
+                          ]
 
   -- Test attempt to have executable depend on internal
   -- library, but cabal-version is too old.
@@ -114,7 +114,7 @@ tests config =
   -- separate dependencies.  This tests that an executable
   -- dep does not leak into the library.
   , tc "BuildDeps/TargetSpecificDeps1" $ do
-      cabal "configure" []
+      void $ cabal "configure" []
       r <- shouldFail $ cabal "build" []
       assertBool "error should be in MyLibrary.hs" $
           resultOutput r =~ "^MyLibrary.hs:"
@@ -129,7 +129,7 @@ tests config =
   -- separate dependencies.  This tests that an library
   -- dep does not leak into the executable.
   , tc "BuildDeps/TargetSpecificDeps3" $ do
-      cabal "configure" []
+      void $ cabal "configure" []
       r <- shouldFail $ cabal "build" []
       assertBool "error should be in lemon.hs" $
           resultOutput r =~ "^lemon.hs:"
@@ -171,8 +171,8 @@ tests config =
   , tc "Haddock" $ do
       dist_dir <- distDir
       let haddocksDir = dist_dir </> "doc" </> "html" </> "Haddock"
-      cabal "configure" []
-      cabal "haddock" []
+      void $ cabal "configure" []
+      void $ cabal "haddock" []
       let docFiles
               = map (haddocksDir </>)
                     ["CPP.html", "Literate.html", "NoCPP.html", "Simple.html"]
@@ -189,12 +189,12 @@ tests config =
 
   -- Test that Cabal computes different IPIDs when the source changes.
   , tc "UniqueIPID" . withPackageDb $ do
-      withPackage "P1" $ cabal "configure" []
-      withPackage "P2" $ cabal "configure" []
-      withPackage "P1" $ cabal "build" []
-      withPackage "P1" $ cabal "build" [] -- rebuild should work
+      void $ withPackage "P1" $ cabal "configure" []
+      void $ withPackage "P2" $ cabal "configure" []
+      void $ withPackage "P1" $ cabal "build" []
+      void $ withPackage "P1" $ cabal "build" [] -- rebuild should work
       r1 <- withPackage "P1" $ cabal "register" ["--print-ipid", "--inplace"]
-      withPackage "P2" $ cabal "build" []
+      void $ withPackage "P2" $ cabal "build" []
       r2 <- withPackage "P2" $ cabal "register" ["--print-ipid", "--inplace"]
       let exIPID s = takeWhile (/= '\n') $
                head . filter (isPrefixOf $ "UniqueIPID-0.1-") $ (tails s)
