@@ -1290,28 +1290,15 @@ values for these fields.
 
     It is only syntactic sugar. It is exactly equivalent to `foo >= 1.2 && < 1.3`.
 
-    With Cabal 1.20 and GHC 7.10, `build-depends` also supports module
-    thinning and renaming, which allows you to selectively decide what
-    modules become visible from a package dependency.  For example:
-
-    ~~~~~~~~~~~~~~~~
-    build-depends: containers (Data.Set, Data.IntMap as Map)
-    ~~~~~~~~~~~~~~~~
-
-    This results in only the modules `Data.Set` and `Map` being visible to
-    the user from containers, hiding all other modules.  To add additional
-    names for modules without hiding the others, you can use the `with`
-    keyword:
-
-    ~~~~~~~~~~~~~~~~
-    build-depends: containers with (Data.IntMap as Map)
-    ~~~~~~~~~~~~~~~~
-
     Note: Prior to Cabal 1.8, build-depends specified in each section
     were global to all sections. This was unintentional, but some packages
     were written to depend on it, so if you need your build-depends to
     be local to each section, you must specify at least
     `Cabal-Version: >= 1.8` in your `.cabal` file.
+
+    Note: Cabal 1.20 experimentally supported module thinning and
+    renaming in `build-depends`; however, this support has since been
+    removed and should not be used.
 
 `other-modules:` _identifier list_
 :   A list of modules used by the component but not exposed to users.

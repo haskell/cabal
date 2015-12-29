@@ -428,9 +428,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                            hsSourceDirs       = [ testDir ],
                            targetBuildDepends = testLibDep
                              : (targetBuildDepends $ testBuildInfo test),
-                           targetBuildRenaming =
-                            Map.insert (packageName pkg) defaultRenaming
-                                (targetBuildRenaming $ testBuildInfo test)
+                           targetBuildRenaming = Map.empty
                          }
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'

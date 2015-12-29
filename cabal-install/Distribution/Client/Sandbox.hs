@@ -38,7 +38,6 @@ module Distribution.Client.Sandbox (
     updateSandboxConfigFileFlag,
     updateInstallDirs,
 
-    -- FIXME: move somewhere else
     configPackageDB', configCompilerAux', getPersistOrConfigCompiler
   ) where
 
@@ -384,7 +383,7 @@ doAddSource verbosity buildTreeRefs sandboxDir pkgEnv refType = do
     (compilerId comp) platform
 
   withAddTimestamps sandboxDir $ do
-    -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
+    -- Path canonicalisation is done in addBuildTreeRefs, but we do it
     -- twice because of the timestamps file.
     buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
     Index.addBuildTreeRefs verbosity indexFile buildTreeRefs' refType

@@ -29,7 +29,9 @@ extra-source-files:
   doc/installing-packages.markdown
   doc/misc.markdown
 
-  -- Generated with 'misc/gen-extra-source-files.sh' & 'M-x sort-lines':
+  -- Generated with 'misc/gen-extra-source-files.sh'
+  -- Do NOT edit this section manually; instead, run the script.
+  -- BEGIN gen-extra-source-files
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
@@ -76,7 +78,6 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/CMain/Bar.hs
-  tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/DeterministicAr/Lib.hs
@@ -111,6 +112,7 @@ extra-source-files:
   tests/PackageTests/TemplateHaskell/vanilla/Lib.hs
   tests/PackageTests/TemplateHaskell/vanilla/TH.hs
   tests/PackageTests/TemplateHaskell/vanilla/my.cabal
+  tests/PackageTests/Tests.hs
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
@@ -120,6 +122,7 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
   tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/Tests.hs
   tests/PackageTests/UniqueIPID/P1/M.hs
   tests/PackageTests/UniqueIPID/P1/my.cabal
   tests/PackageTests/UniqueIPID/P2/M.hs
@@ -133,6 +136,7 @@ extra-source-files:
   tests/hackage/download.sh
   tests/hackage/unpack.sh
   tests/misc/ghc-supported-languages.hs
+  -- END gen-extra-source-files
 
 source-repository head
   type:     git
@@ -299,37 +303,11 @@ test-suite package-tests
   type: exitcode-stdio-1.0
   main-is: PackageTests.hs
   other-modules:
-    PackageTests.BenchmarkExeV10.Check
-    PackageTests.BenchmarkOptions.Check
     PackageTests.BenchmarkStanza.Check
-    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
-    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
-    PackageTests.BuildDeps.InternalLibrary0.Check
-    PackageTests.BuildDeps.InternalLibrary1.Check
-    PackageTests.BuildDeps.InternalLibrary2.Check
-    PackageTests.BuildDeps.InternalLibrary3.Check
-    PackageTests.BuildDeps.InternalLibrary4.Check
-    PackageTests.BuildDeps.SameDepsAllRound.Check
-    PackageTests.BuildDeps.TargetSpecificDeps1.Check
-    PackageTests.BuildDeps.TargetSpecificDeps2.Check
-    PackageTests.BuildDeps.TargetSpecificDeps3.Check
-    PackageTests.CMain.Check
-    PackageTests.DeterministicAr.Check
-    PackageTests.EmptyLib.Check
-    PackageTests.Haddock.Check
-    PackageTests.OrderFlags.Check
-    PackageTests.PackageTester
-    PackageTests.PathsModule.Executable.Check
-    PackageTests.PathsModule.Library.Check
-    PackageTests.PreProcess.Check
-    PackageTests.PreProcessExtraSources.Check
-    PackageTests.ReexportedModules.Check
-    PackageTests.TemplateHaskell.Check
-    PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
+    PackageTests.DeterministicAr.Check
     PackageTests.TestSuiteTests.ExeV10.Check
-    PackageTests.TestSuiteTests.LibV09.Check
-    PackageTests.UniqueIPID.Check
+    PackageTests.PackageTester
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils
@@ -341,16 +319,16 @@ test-suite package-tests
     tasty-quickcheck,
     tasty-hunit,
     QuickCheck >= 2.1.0.1 && < 2.9,
+    transformers,
     Cabal,
     process,
     directory,
     filepath,
-    extensible-exceptions,
     bytestring,
     regex-posix,
     old-time
   if !os(windows)
     build-depends: unix
-  ghc-options: -Wall
+  ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell98

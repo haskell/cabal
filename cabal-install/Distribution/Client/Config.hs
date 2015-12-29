@@ -640,7 +640,7 @@ configFieldDescriptions src =
        (["builddir", "constraint", "dependency"]
         ++ map fieldName installDirsFields)
 
-        --FIXME: this is only here because viewAsFieldDescr gives us a parser
+        -- This is only here because viewAsFieldDescr gives us a parser
         -- that only recognises 'ghc' etc, the case-sensitive flag names, not
         -- what the normal case-insensitive parser gives us.
        [simpleField "compiler"

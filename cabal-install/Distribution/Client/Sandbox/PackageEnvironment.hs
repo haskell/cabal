@@ -403,7 +403,6 @@ pkgEnvFieldDescrs src = [
     (fromFlagOrDefault Disp.empty . fmap Disp.text) (optional parseFilePathQ)
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
 
-    -- FIXME: Should we make these fields part of ~/.cabal/config ?
   , commaNewLineListField "constraints"
     (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
     (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)

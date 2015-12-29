@@ -191,7 +191,6 @@ parse s = case parseFields s of
   ParseFailed perror -> Left  msg where (_, msg) = locatedErrorMsg perror
   ParseOk   _ report -> Right report
 
---FIXME: this does not allow for optional or repeated fields
 parseFields :: String -> ParseResult BuildReport
 parseFields input = do
   fields <- mapM extractField =<< readFields input

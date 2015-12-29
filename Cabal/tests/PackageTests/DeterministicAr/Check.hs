@@ -8,46 +8,23 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import PackageTests.PackageTester
-import System.FilePath
 import System.IO
-import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
 import Distribution.Version               (Version(..))
 import Distribution.Simple.Compiler       (compilerId)
-import Distribution.Simple.Configure      (getPersistBuildConfig)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localComponentId)
 
--- Perhaps these should live in PackageTester.
-
--- For a polymorphic @IO a@ rather than @Assertion = IO ()@.
-assertFailure' :: String -> IO a
-assertFailure' msg = assertFailure msg >> return {-unpossible!-}undefined
-
-------------------------------------------------------------------------
-
-this :: String
-this = "DeterministicAr"
-
-suite :: SuiteConfig -> Assertion
-suite config = do
-    let dir = "PackageTests" </> this
-    let spec = PackageSpec
-            { directory = dir
-            , configOpts = []
-            , distPref = Nothing
-            }
-
-    result <- cabal_build config spec
-    assertBuildSucceeded result
-
-    let distBuild = dir </> "dist" </> "build"
-    lbi    <- getPersistBuildConfig (dir </> "dist")
-    checkMetadata lbi distBuild
+suite :: TestM ()
+suite = do
+    cabal_build []
+    dist_dir <- distDir
+    lbi <- liftIO $ getPersistBuildConfig dist_dir
+    liftIO $ checkMetadata lbi (dist_dir </> "build")
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
-checkMetadata :: LocalBuildInfo -> FilePath -> Assertion
+checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
@@ -57,9 +34,9 @@ checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
       CompilerId GHC version | version >= Version [7, 10] [] -> True
       _                                                      -> False
 
-    checkError msg = assertFailure' $
+    checkError msg = assertFailure (
         "PackageTests.DeterministicAr.checkMetadata: " ++ msg ++
-        " in " ++ path
+        " in " ++ path) >> undefined
     archLF = "!<arch>\x0a" -- global magic, 8 bytes
     x60LF = "\x60\x0a" -- header magic, 2 bytes
     metadata = BS.concat
