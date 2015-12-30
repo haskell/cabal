@@ -87,6 +87,7 @@ import Control.Monad    ( when, forM_ )
 import Data.Char        ( isSpace )
 import Data.Either      ( rights )
 import Data.Monoid
+import Data.Foldable    ( foldl' )
 import Data.Maybe       ( fromMaybe, listToMaybe )
 
 import System.Directory (doesFileExist)
