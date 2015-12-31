@@ -107,8 +107,7 @@ import Distribution.Text
 -- Base
 import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
-                        doesDirectoryExist, removeDirectoryRecursive,
-                        canonicalizePath)
+                        doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit       (exitWith,ExitCode(..))
 import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
@@ -233,8 +232,7 @@ configureAction hooks flags args = do
         case mdescr of
           Just descr -> return (Nothing, descr)
           Nothing -> do
-              pdfile0 <- defaultPackageDesc verbosity
-              pdfile <- canonicalizePath pdfile0
+              pdfile <- defaultPackageDesc verbosity
               descr  <- readPackageDescription verbosity pdfile
               return (Just pdfile, descr)
 
