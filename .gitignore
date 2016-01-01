@@ -44,7 +44,7 @@ tags
 /.stack-work/
 
 # Shake artifacts
-.shake
+.shake*
 progress.txt
 
 # test files
