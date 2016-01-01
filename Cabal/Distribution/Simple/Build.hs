@@ -47,6 +47,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
@@ -225,7 +226,10 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     extras <- preprocessExtras comp lbi
     info verbosity $ "Building test suite " ++ testName test ++ "..."
     buildLib verbosity numJobs pkg lbi lib libClbi
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) False
+    -- NB: need to enable multiple instances here, because on 7.10+
+    -- the package name is the same as the library, and we still
+    -- want the registration to go through.
+    registerPackage verbosity (compiler lbi) (withPrograms lbi) True
                     (withPackageDB lbi) ipi
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
@@ -377,17 +381,22 @@ testSuiteLibV09AsLibAndExe pkg_descr
             libExposed     = True,
             libBuildInfo   = bi
           }
+    cid = computeComponentId (package pkg_descr)
+                             (CTestName (testName test))
+                             (map fst (componentPackageDeps clbi))
+                             (flagAssignment lbi)
+    (pkg_name, compat_key) = computeCompatPackageKey
+                                (compiler lbi) (package pkg_descr)
+                                (CTestName (testName test)) cid
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentId = ComponentId $ display (packageId pkg)
-                , componentCompatPackageKey = ComponentId $ display (packageId pkg)
+                , componentId = cid
+                , componentCompatPackageKey = compat_key
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 }
     pkg = pkg_descr {
-            package      = (package pkg_descr) {
-                             pkgName = PackageName (testName test)
-                           }
+            package      = (package pkg_descr) { pkgName = pkg_name }
           , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
@@ -415,9 +424,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi)),
-                componentPackageRenaming =
-                    Map.insert (packageName ipi) defaultRenaming
-                               (componentPackageRenaming clbi)
+                componentPackageRenaming = Map.empty
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
@@ -447,7 +454,7 @@ createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
 createInternalPackageDB verbosity lbi distPref = do
     existsAlready <- doesPackageDBExist dbPath
     when existsAlready $ deletePackageDB dbPath
-    createPackageDB verbosity (compiler lbi) (withPrograms lbi) True dbPath 
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath 
     return (SpecificPackageDB dbPath)
   where
       dbPath = case compilerFlavor (compiler lbi) of

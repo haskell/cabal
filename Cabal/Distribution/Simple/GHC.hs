@@ -475,7 +475,9 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   let libName = componentId clbi
-      libTargetDir = buildDir lbi
+      libTargetDir
+        | componentId clbi == localComponentId lbi = buildDir lbi
+        | otherwise = buildDir lbi </> display libName
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
