@@ -194,7 +194,7 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
 
 initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath -> IO ()
 initPackageDB verbosity comp progdb dbPath =
-    createPackageDB verbosity comp progdb True dbPath
+    createPackageDB verbosity comp progdb False dbPath
 
 -- | Create an empty package DB at the specified location.
 createPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> Bool
@@ -374,9 +374,12 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
                                 pkg abi_hash lib lbi clbi installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
+    libTargetDir
+        | componentId clbi == localComponentId lbi = buildDir lbi
+        | otherwise = buildDir lbi </> display (componentId clbi)
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
-        libdir     = inplaceDir </> buildDir lbi,
+        libdir     = inplaceDir </> libTargetDir,
         datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
         htmldir    = inplaceHtmldir,

@@ -1397,8 +1397,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   -- Compute the IPID
   let flags (ReadyPackage (ConfiguredPackage _ x _ _) _) = x
-  ipid <- inDir workingDir
-        $ Configure.computeComponentId pkg CLibName
+      ipid = Configure.computeComponentId (PackageDescription.package pkg) CLibName
                 (CD.libraryDeps (depends rpkg)) (flags rpkg)
 
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if

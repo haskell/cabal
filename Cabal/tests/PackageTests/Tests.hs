@@ -207,6 +207,22 @@ tests config =
         assertFailure $ "cabal has not calculated different Installed " ++
           "package ID when source is changed."
 
+  , tc "DuplicateModuleName" $ do
+      cabal_build ["--enable-tests"]
+      r1 <- shouldFail $ cabal' "test" ["foo"]
+      assertOutputContains "test B" r1
+      assertOutputContains "test A" r1
+      r2 <- shouldFail $ cabal' "test" ["foo2"]
+      assertOutputContains "test C" r2
+      assertOutputContains "test A" r2
+
+  , tc "TestNameCollision" $ do
+        withPackageDb $ do
+          withPackage "parent" $ cabal_install []
+          withPackage "child" $ do
+            cabal_build ["--enable-tests"]
+            cabal "test" []
+
   ]
   where
     -- Shared test function for BuildDeps/InternalLibrary* tests.
