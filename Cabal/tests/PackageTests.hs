@@ -212,8 +212,8 @@ getPersistBuildConfig_ filename = do
       Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
       Left (ConfigStateFileBadVersion _ _ (Left err))
         -> error $ "We couldn't understand the build configuration.  Try " ++
-                   "building Cabal with a more recent version of itself " ++
-                   "and then running the test suite.\n\nOriginal error: " ++
+                   "editing Cabal.cabal to have 'build-type: Custom' " ++
+                   "and then rebuilding.\n\nOriginal error: " ++
                    show err
       Left err -> throw err
       Right lbi -> return lbi
