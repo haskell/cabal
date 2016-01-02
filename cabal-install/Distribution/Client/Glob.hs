@@ -81,7 +81,7 @@ instance Text Glob where
       wildcard = char '*' >> return WildCard
 
       union = between (char '{') (char '}')
-              (Union . map Glob `fmap` sepBy1 (many1 globAtom) (char ','))
+              (fmap (Union . map Glob) $ sepBy1 (many1 globAtom) (char ','))
 
       literal = Literal `fmap` many1'
         where
