@@ -8,7 +8,6 @@ module Distribution.Client.Glob
 
 import Data.List (stripPrefix)
 import Control.Monad (liftM2)
-import Control.Applicative ((<$>))
 import Data.Binary
 import GHC.Generics (Generic)
 
@@ -82,7 +81,7 @@ instance Text Glob where
       wildcard = char '*' >> return WildCard
 
       union = between (char '{') (char '}')
-              (Union . map Glob <$> sepBy1 (many1 globAtom) (char ','))
+              (Union . map Glob `fmap` sepBy1 (many1 globAtom) (char ','))
 
       literal = Literal `fmap` many1'
         where
