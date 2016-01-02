@@ -23,6 +23,7 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
+import Distribution.Package
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
@@ -33,57 +34,32 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
-import Distribution.Package
-         ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion, packageName
-         , ComponentId(..), ComponentId(..) )
-import Distribution.Simple.Compiler
-         ( Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDB(..), PackageDBStack )
-import Distribution.PackageDescription
-         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..), allBuildInfo, defaultRenaming )
+import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.PackageDescription hiding (Flag)
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 
 import Distribution.Simple.Setup
-         ( Flag(..), BuildFlags(..), ReplFlags(..), fromFlag )
 import Distribution.Simple.BuildTarget
-         ( BuildTarget(..), readBuildTargets )
 import Distribution.Simple.PreProcess
-         ( preprocessComponent, preprocessExtras, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
-         , Component(..), componentName, getComponent, componentBuildInfo
-         , ComponentLocalBuildInfo(..), pkgEnabledComponents
-         , withComponentsInBuildOrder, componentsInBuildOrder
-         , ComponentName(..), showComponentName
-         , ComponentDisabledReason(..), componentDisabledReason )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.BuildPaths
-         ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
-         ( registerPackage, inplaceInstalledPackageInfo
-         , doesPackageDBExist, deletePackageDB, createPackageDB )
-import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
+import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, rewriteFile
-         , die, info, debug, warn, setupMessage )
 
 import Distribution.Verbosity
-         ( Verbosity )
 import Distribution.Text
-         ( display )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Either
          ( partitionEithers )
 import Data.List
-         ( intersect, intercalate )
+         ( intersect )
 import Control.Monad
          ( when, unless, forM_ )
 import System.FilePath
@@ -206,7 +182,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     pwd <- getCurrentDirectory
     let -- The in place registration uses the "-inplace" suffix, not an ABI hash
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       (IPI.AbiHash "") lib' lbi clbi
+                                                       (AbiHash "") lib' lbi clbi
 
     registerPackage verbosity (compiler lbi) (withPrograms lbi) False
                     (withPackageDB lbi) installedPkgInfo
@@ -417,7 +393,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , library      = Just lib
           }
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (IPI.AbiHash "") lib lbi libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (AbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg

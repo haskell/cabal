@@ -33,14 +33,10 @@ module Distribution.Simple.Program.Types (
   ) where
 
 import Distribution.Simple.Program.Find
-         ( ProgramSearchPath, ProgramSearchPathEntry(..)
-         , findProgramOnSearchPath )
 import Distribution.Version
-         ( Version )
 import Distribution.Verbosity
-         ( Verbosity )
+import Distribution.Compat.Binary
 
-import Distribution.Compat.Binary (Binary)
 import qualified Data.Map as Map
 import GHC.Generics (Generic)
 

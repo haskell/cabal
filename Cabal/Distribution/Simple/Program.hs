@@ -132,11 +132,8 @@ import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
 import Distribution.Simple.Program.Find
-
 import Distribution.Simple.Utils
-         ( die, findProgramLocation, findProgramVersion )
 import Distribution.Verbosity
-         ( Verbosity )
 
 
 -- | Runs the given configured program.

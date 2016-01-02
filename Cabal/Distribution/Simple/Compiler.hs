@@ -64,13 +64,13 @@ module Distribution.Simple.Compiler (
   ) where
 
 import Distribution.Compiler
-import Distribution.Version (Version(..))
-import Distribution.Text (display)
-import Language.Haskell.Extension (Language(Haskell98), Extension)
-import Distribution.Simple.Utils (lowercase)
+import Distribution.Version
+import Distribution.Text
+import Language.Haskell.Extension
+import Distribution.Simple.Utils
+import Distribution.Compat.Binary
 
 import Control.Monad (liftM)
-import Distribution.Compat.Binary (Binary)
 import Data.List (nub)
 import qualified Data.Map as M (Map, lookup)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)

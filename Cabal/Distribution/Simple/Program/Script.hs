@@ -17,9 +17,7 @@ module Distribution.Simple.Program.Script (
   ) where
 
 import Distribution.Simple.Program.Run
-         ( ProgramInvocation(..) )
 import Distribution.System
-         ( OS(..) )
 
 import Data.Maybe
          ( maybeToList )

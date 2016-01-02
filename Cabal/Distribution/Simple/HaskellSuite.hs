@@ -20,7 +20,6 @@ import Distribution.System (Platform)
 import Distribution.Compat.Exception
 import Language.Haskell.Extension
 import Distribution.Simple.Program.Builtin
-  (haskellSuiteProgram, haskellSuitePkgProgram)
 
 configure
   :: Verbosity -> Maybe FilePath -> Maybe FilePath

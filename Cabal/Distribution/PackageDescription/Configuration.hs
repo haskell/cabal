@@ -29,33 +29,18 @@ module Distribution.PackageDescription.Configuration (
   ) where
 
 import Distribution.Package
-         ( PackageName, Dependency(..) )
 import Distribution.PackageDescription
-         ( GenericPackageDescription(..), PackageDescription(..)
-         , Library(..), Executable(..), BuildInfo(..)
-         , Flag(..), FlagName(..), FlagAssignment
-         , Benchmark(..), CondTree(..), ConfVar(..), Condition(..)
-         , TestSuite(..) )
 import Distribution.PackageDescription.Utils
-         ( cabalBug, userBug )
 import Distribution.Version
-         ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
-         ( CompilerId(CompilerId) )
 import Distribution.System
-         ( Platform(..), OS, Arch )
 import Distribution.Simple.Utils
-         ( currentDir, lowercase )
-import Distribution.Simple.Compiler
-         ( CompilerInfo(..) )
-
 import Distribution.Text
-         ( Text(parse) )
 import Distribution.Compat.ReadP as ReadP hiding ( char )
-import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Compat.Semigroup as Semi
 
+import Control.Arrow (first)
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )

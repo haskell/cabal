@@ -39,21 +39,16 @@ module Distribution.ParseUtils (
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
-import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
+import Distribution.Compiler
 import Distribution.License
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion )
-import Distribution.Package     ( PackageName(..), Dependency(..) )
-import Distribution.ModuleName (ModuleName)
+import Distribution.Package
+import Distribution.ModuleName
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
-         ( Text(..) )
 import Distribution.Simple.Utils
-         ( comparing, dropWhileEndLE, intercalate, lowercase
-         , normaliseLineEndings )
 import Language.Haskell.Extension
-         ( Language, Extension )
 
 import Text.PrettyPrint hiding (braces)
 import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
@@ -657,8 +652,7 @@ parseVersionRangeQ = parseQuoted parse <++ parse
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
   where ver :: ReadP r Version
-        ver = parse <++ return noVersion
-        noVersion = Version [] []
+        ver = parse <++ return (Version [] [])
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw

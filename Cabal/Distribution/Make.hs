@@ -62,22 +62,19 @@ module Distribution.Make (
 
 -- local
 import Distribution.Compat.Exception
-import Distribution.Package --must not specify imports, since we're exporting moule.
-import Distribution.Simple.Program(defaultProgramConfiguration)
+import Distribution.Package
+import Distribution.Simple.Program
 import Distribution.PackageDescription
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Utils (rawSystemExit, cabalVersion)
+import Distribution.Simple.Utils
 
-import Distribution.License (License(..))
+import Distribution.License
 import Distribution.Version
-         ( Version(..) )
 import Distribution.Text
-         ( display )
 
 import System.Environment (getArgs, getProgName)
-import Data.List  (intercalate)
 import System.Exit
 
 defaultMain :: IO ()

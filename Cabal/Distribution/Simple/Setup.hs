@@ -66,43 +66,26 @@ module Distribution.Simple.Setup (
   flagToList,
   boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, optionNumJobs ) where
 
-import Distribution.Compiler ()
+import Distribution.Compiler
 import Distribution.ReadE
 import Distribution.Text
-         ( Text(..), display )
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
-import Distribution.Package ( Dependency(..)
-                            , PackageName
-                            , ComponentId(..) )
-import Distribution.PackageDescription
-         ( FlagName(..), FlagAssignment )
+import Distribution.Package
+import Distribution.PackageDescription hiding (Flag)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
-import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
-         , DebugInfoLevel(..), flagToDebugInfoLevel
-         , OptimisationLevel(..), flagToOptimisationLevel
-         , ProfDetailLevel(..), flagToProfDetailLevel, showProfDetailLevel
-         , absolutePackageDBPath )
+import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Utils
-         ( wrapText, wrapLine, lowercase, intercalate )
-import Distribution.Simple.Program (Program(..), ProgramConfiguration,
-                             requireProgram,
-                             programInvocation, progInvokePath, progInvokeArgs,
-                             knownPrograms,
-                             addKnownProgram, emptyProgramConfiguration,
-                             haddockProgram, ghcProgram, gccProgram, ldProgram)
+import Distribution.Simple.Program
 import Distribution.Simple.InstallDirs
-         ( InstallDirs(..), CopyDest(..),
-           PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Verbosity
 import Distribution.Utils.NubList
-
-import Control.Monad (liftM)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
+
+import Control.Monad (liftM)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import GHC.Generics (Generic)
@@ -227,8 +210,8 @@ globalCommand commands = CommandUI
         align str = str ++ replicate (maxlen - length str) ' '
       in
          "Commands:\n"
-      ++ unlines [ "  " ++ align name ++ "    " ++ description
-                 | (name, description) <- cmdDescs ]
+      ++ unlines [ "  " ++ align name ++ "    " ++ descr
+                 | (name, descr) <- cmdDescs ]
       ++ "\n"
       ++ "For more information about a command use\n"
       ++ "  " ++ pname ++ " COMMAND --help\n\n"

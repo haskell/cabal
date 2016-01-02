@@ -7,6 +7,7 @@ module Distribution.Compat.Internal.TempFile (
   createTempDirectory,
   ) where
 
+import Distribution.Compat.Exception
 
 import System.FilePath        ((</>))
 import Foreign.C              (CInt, eEXIST, getErrno, errnoToIOError)
@@ -18,7 +19,6 @@ import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                withFilePath, c_getpid)
 import System.IO.Error        (isAlreadyExistsError)
 import GHC.IO.Handle.FD       (fdToHandle)
-import Distribution.Compat.Exception (tryIO)
 import Control.Exception      (onException)
 
 #if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)

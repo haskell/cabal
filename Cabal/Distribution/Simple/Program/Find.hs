@@ -32,21 +32,18 @@ module Distribution.Simple.Program.Find (
   ) where
 
 import Distribution.Verbosity
-         ( Verbosity )
 import Distribution.Simple.Utils
-         ( debug, doesExecutableExist )
 import Distribution.System
-         ( OS(..), buildOS )
+import Distribution.Compat.Environment
+import Distribution.Compat.Binary
+
 import qualified System.Directory as Directory
          ( findExecutable )
-import Distribution.Compat.Environment
-         ( getEnvironment )
 import System.FilePath as FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator, getSearchPath
          , takeDirectory )
 import Data.List
-         ( intercalate, nub )
-import Distribution.Compat.Binary
+         ( nub )
 import GHC.Generics
 #if defined(mingw32_HOST_OS)
 import qualified System.Win32 as Win32

@@ -136,6 +136,20 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
+import Distribution.Text
+import Distribution.Package
+import Distribution.ModuleName as ModuleName
+import Distribution.System
+import Distribution.Version
+import Distribution.Compat.CopyFile
+import Distribution.Compat.Internal.TempFile
+import Distribution.Compat.Exception
+import Distribution.Verbosity
+
+#ifdef VERSION_base
+import qualified Paths_Cabal (version)
+#endif
+
 import Control.Monad
     ( when, unless, filterM )
 import Control.Concurrent.MVar
@@ -147,9 +161,11 @@ import Data.Char as Char
 import Data.Foldable
     ( traverse_ )
 import Data.List
-    ( nub, unfoldr, isPrefixOf, tails, intercalate )
+    ( nub, unfoldr, intercalate, isInfixOf )
 import Data.Typeable
     ( cast )
+import Data.Ord
+    ( comparing )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
@@ -182,17 +198,6 @@ import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
 
-import Distribution.Text
-    ( display, simpleParse )
-import Distribution.Package
-    ( PackageIdentifier )
-import Distribution.ModuleName (ModuleName)
-import qualified Distribution.ModuleName as ModuleName
-import Distribution.System
-    ( OS (..) )
-import Distribution.Version
-    (Version(..))
-
 import Control.Exception (IOException, evaluate, throwIO)
 import Control.Concurrent (forkIO)
 import qualified System.Process as Process
@@ -200,18 +205,6 @@ import qualified System.Process as Process
 import System.Process
          ( ProcessHandle, createProcess, rawSystem, runInteractiveProcess
          , showCommandForUser, waitForProcess)
-import Distribution.Compat.CopyFile
-         ( copyFile, copyOrdinaryFile, copyExecutableFile
-         , setFileOrdinary, setFileExecutable, setDirOrdinary )
-import Distribution.Compat.Internal.TempFile
-         ( openTempFile, createTempDirectory )
-import Distribution.Compat.Exception
-         ( tryIO, catchIO, catchExit )
-import Distribution.Verbosity
-
-#ifdef VERSION_base
-import qualified Paths_Cabal (version)
-#endif
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
@@ -1437,12 +1430,6 @@ listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
-
-comparing :: Ord a => (b -> a) -> b -> b -> Ordering
-comparing p x y = p x `compare` p y
-
-isInfixOf :: String -> String -> Bool
-isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
 
 lowercase :: String -> String
 lowercase = map Char.toLower

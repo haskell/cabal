@@ -109,9 +109,20 @@ module Distribution.PackageDescription (
         SetupBuildInfo(..),
   ) where
 
-import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Binary
 import qualified Distribution.Compat.Semigroup as Semi ((<>))
 import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup)
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP   ((<++))
+import Distribution.Package
+import Distribution.ModuleName
+import Distribution.Version
+import Distribution.License
+import Distribution.Compiler
+import Distribution.System
+import Distribution.Text
+import Language.Haskell.Extension
+
 import Data.Data                  (Data)
 import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
@@ -123,26 +134,9 @@ import Control.Applicative as AP   (Alternative(..), Applicative(..))
 import Control.Monad               (MonadPlus(mplus,mzero), ap)
 import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP   ((<++))
 import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
 import qualified Data.Map as Map
 import Data.Map                    (Map)
-
-import Distribution.Package
-         ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
-         , Dependency, Package(..), PackageName, packageName )
-import Distribution.ModuleName ( ModuleName )
-import Distribution.Version
-         ( Version(Version), VersionRange, anyVersion, orLaterVersion
-         , asVersionIntervals, LowerBound(..) )
-import Distribution.License  (License(UnspecifiedLicense))
-import Distribution.Compiler (CompilerFlavor)
-import Distribution.System   (OS, Arch)
-import Distribution.Text
-         ( Text(..), display )
-import Language.Haskell.Extension
-         ( Language, Extension )
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type

@@ -24,9 +24,10 @@ module Distribution.Verbosity (
   showForCabal, showForGHC
  ) where
 
-import Distribution.Compat.Binary (Binary)
-import Data.List (elemIndex)
+import Distribution.Compat.Binary
 import Distribution.ReadE
+
+import Data.List (elemIndex)
 import GHC.Generics
 
 data Verbosity = Silent | Normal | Verbose | Deafening

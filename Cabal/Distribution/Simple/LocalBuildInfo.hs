@@ -62,30 +62,18 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.Program
+import Distribution.InstalledPackageInfo
 import Distribution.PackageDescription
-         ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
-         , Executable(exeName, buildInfo), withTest, TestSuite(..)
-         , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageId, Package(..), ComponentId(..)
-         , PackageName, ComponentId(..) )
 import Distribution.Simple.Compiler
-         ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
-         , OptimisationLevel, ProfDetailLevel )
 import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex, allPackages )
-import Distribution.ModuleName ( ModuleName )
+import Distribution.ModuleName
 import Distribution.Simple.Setup
-         ( ConfigFlags )
 import Distribution.Simple.Utils
-         ( shortRelativePath )
 import Distribution.Text
-         ( display )
 import Distribution.System
-         ( Platform (..) )
 
 import Data.Array ((!))
 import Distribution.Compat.Binary (Binary)

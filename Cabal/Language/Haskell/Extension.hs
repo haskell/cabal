@@ -22,12 +22,13 @@ module Language.Haskell.Extension (
         deprecatedExtensions
   ) where
 
-import Distribution.Text (Text(..))
+import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Binary
+
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
-import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)

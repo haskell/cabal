@@ -17,25 +17,18 @@ module Distribution.PackageDescription.PrettyPrint (
     showGenericPackageDescription,
 ) where
 
-import Data.Monoid as Mon (Monoid(mempty))
 import Distribution.PackageDescription
-       ( Benchmark(..), BenchmarkInterface(..), benchmarkType
-       , TestSuite(..), TestSuiteInterface(..), testType
-       , SourceRepo(..),
-        customFieldsBI, CondTree(..), Condition(..), cNot,
-        FlagName(..), ConfVar(..), Executable(..), Library(..),
-        Flag(..), PackageDescription(..),
-        GenericPackageDescription(..))
+import Distribution.Simple.Utils
+import Distribution.ParseUtils
+import Distribution.PackageDescription.Parse
+import Distribution.Package
+import Distribution.Text
+
+import Data.Monoid as Mon (Monoid(mempty))
+import Data.Maybe (isJust)
 import Text.PrettyPrint
        (hsep, parens, char, nest, empty, isEmpty, ($$), (<+>),
         colon, (<>), text, vcat, ($+$), Doc, render)
-import Distribution.Simple.Utils (writeUTF8File)
-import Distribution.ParseUtils (showFreeText, FieldDescr(..), indentWith, ppField, ppFields)
-import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDescrs,libFieldDescrs,
-       sourceRepoFieldDescrs,flagFieldDescrs)
-import Distribution.Package (Dependency(..))
-import Distribution.Text (Text(..))
-import Data.Maybe (isJust)
 
 -- | Recompile with false for regression testing
 simplifiedPrinting :: Bool

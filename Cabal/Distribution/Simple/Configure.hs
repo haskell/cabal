@@ -51,72 +51,27 @@ module Distribution.Simple.Configure (configure,
     where
 
 import Distribution.Compiler
-    ( CompilerId(..) )
 import Distribution.Utils.NubList
-import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
-    , compilerInfo, ProfDetailLevel(..), knownProfDetailLevels
-    , showCompilerId, unsupportedLanguages, unsupportedExtensions
-    , PackageDB(..), PackageDBStack, reexportedModulesSupported
-    , packageKeySupported, renamingPackageFlagsSupported
-    , unifiedIPIDRequired )
-import Distribution.Simple.PreProcess ( platformDefines )
+import Distribution.Simple.Compiler hiding (Flag)
+import Distribution.Simple.PreProcess
 import Distribution.Package
-    ( PackageName(PackageName), PackageIdentifier(..), PackageId
-    , packageName, packageVersion, Package(..)
-    , Dependency(Dependency), simplifyDependency
-    , ComponentId(..), thisPackageVersion, ComponentId(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.PackageDescription as PD
-    ( PackageDescription(..), specVersion, GenericPackageDescription(..)
-    , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
-    , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) , defaultRenaming, FlagAssignment )
+import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.ModuleName
-    ( ModuleName )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription, mapTreeData )
-import Distribution.PackageDescription.Check
-    ( PackageCheck(..), checkPackage, checkPackageFiles )
+import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Simple.Program
-    ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
-    , ProgramConfiguration, defaultProgramConfiguration
-    , ProgramSearchPathEntry(..), getProgramSearchPath, setProgramSearchPath
-    , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
-    , userSpecifyArgss, userSpecifyPaths
-    , lookupProgram, requireProgram, requireProgramVersion
-    , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup as Setup
-    ( ConfigFlags(..), CopyDest(..), Flag(..), defaultDistPref
-    , fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
-import Distribution.Simple.InstallDirs
-    ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
-    ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs
-    , ComponentName(..), showComponentName, pkgEnabledComponents
-    , componentBuildInfo, componentName, checkComponentsCyclic
-    , lookupComponent )
 import Distribution.Simple.BuildPaths
-    ( autogenModulesDir )
 import Distribution.Simple.Utils
-    ( die, warn, info, setupMessage
-    , createDirectoryIfMissingVerbose, moreRecentFile
-    , intercalate, cabalVersion
-    , writeFileAtomic
-    , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Platform (..), buildPlatform )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
-    ( Verbosity, lessVerbose )
-import Distribution.Simple.InstallDirs
-    ( fromPathTemplate, substPathTemplate, toPathTemplate, packageTemplateEnv )
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -548,11 +503,11 @@ configure (pkg_descr0, pbi) cfg = do
     buildComponents <-
       case mkComponentsGraph pkg_descr internalPkgDeps of
         Left  componentCycle -> reportComponentCycle componentCycle
-        Right components     ->
+        Right comps          ->
           mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
                                      internalPkgDeps externalPkgDeps holeDeps
                                      (Map.fromList hole_insts)
-                                     components (configConfigurationsFlags cfg)
+                                     comps (configConfigurationsFlags cfg)
 
     split_objs <-
        if not (fromFlag $ configSplitObjs cfg)
@@ -1515,7 +1470,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
             -- Hack to reuse install dirs machinery
             -- NB: no real IPID available at this point
             let env = packageTemplateEnv (package pkg_descr) (ComponentId "")
-                str = fromPathTemplate (substPathTemplate env (toPathTemplate lib_hash0))
+                str = fromPathTemplate (InstallDirs.substPathTemplate env (toPathTemplate lib_hash0))
             in return (ComponentId str)
         _ ->
           computeComponentId pkg_descr CLibName (getDeps CLibName) flagAssignment

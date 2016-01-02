@@ -46,27 +46,16 @@ module Distribution.Simple.Program.Builtin (
   ) where
 
 import Distribution.Simple.Program.Find
-         ( findProgramOnSearchPath )
 import Distribution.Simple.Program.Internal
-         ( stripExtractVersion )
 import Distribution.Simple.Program.Run
-         ( getProgramInvocationOutput, programInvocation )
 import Distribution.Simple.Program.Types
-         ( Program(..), ConfiguredProgram(..), simpleProgram )
 import Distribution.Simple.Utils
-         ( findProgramVersion )
 import Distribution.Compat.Exception
-         ( catchIO )
 import Distribution.Verbosity
-         ( lessVerbose )
 import Distribution.Version
-         ( Version(..), withinRange, earlierVersion, laterVersion
-         , intersectVersionRanges )
+
 import Data.Char
          ( isDigit )
-
-import Data.List
-         ( isInfixOf )
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------

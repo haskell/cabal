@@ -99,9 +99,10 @@ import Data.Typeable    ( Typeable )
 import Data.Version     ( Version(..) )
 import GHC.Generics     ( Generic )
 
-import Distribution.Text ( Text(..) )
+import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP ((+++))
+import Distribution.Compat.ReadP hiding (get)
+
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>))
 import qualified Data.Char as Char (isDigit)

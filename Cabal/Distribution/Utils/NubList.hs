@@ -12,8 +12,7 @@ module Distribution.Utils.NubList
 
 import Distribution.Compat.Semigroup as Semi
 import Distribution.Compat.Binary
-
-import Distribution.Simple.Utils (ordNub, listUnion, ordNubRight, listUnionRight)
+import Distribution.Simple.Utils
 
 import qualified Text.Read as R
 

@@ -16,40 +16,23 @@ module Distribution.Simple.JHC (
         installLib, installExe
  ) where
 
-import Distribution.PackageDescription as PD
-       ( PackageDescription(..), BuildInfo(..), Executable(..)
-       , Library(..), libModules, hcOptions, usedExtensions )
+import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
-         ( emptyInstalledPackageInfo, )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
-                                ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), AbiTag(..)
-         , PackageDBStack, Flag, languageToFlags, extensionsToFlags )
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..), KnownExtension(..))
 import Distribution.Simple.Program
-         ( ConfiguredProgram(..), jhcProgram, ProgramConfiguration
-         , userMaybeSpecifyPath, requireProgramVersion, lookupProgram
-         , rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
 import Distribution.Package
-         ( Package(..), ComponentId(ComponentId),
-           pkgName, pkgVersion, )
 import Distribution.Simple.Utils
-        ( createDirectoryIfMissingVerbose, writeFileAtomic
-        , installOrdinaryFile, installExecutableFile
-        , intercalate )
-import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Text
-         ( Text(parse), display )
+
+import System.FilePath          ( (</>) )
 import Distribution.Compat.ReadP
     ( readP_to_S, string, skipSpaces )
 import Distribution.System ( Platform )

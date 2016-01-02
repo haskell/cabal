@@ -33,6 +33,18 @@ module Distribution.PackageDescription.Check (
         checkPackageFileNames,
   ) where
 
+import Distribution.PackageDescription
+import Distribution.PackageDescription.Configuration
+import Distribution.Compiler
+import Distribution.System
+import Distribution.License
+import Distribution.Simple.CCompiler
+import Distribution.Simple.Utils hiding (findPackageDesc, notice)
+import Distribution.Version
+import Distribution.Package
+import Distribution.Text
+import Language.Haskell.Extension
+
 import Data.Maybe
          ( isNothing, isJust, catMaybes, mapMaybe, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
@@ -42,41 +54,9 @@ import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
 
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Configuration
-         ( flattenPackageDescription, finalizePackageDescription )
-import Distribution.Compiler
-         ( CompilerFlavor(..), buildCompilerFlavor, CompilerId(..)
-         , unknownCompilerInfo, AbiTag(..) )
-import Distribution.System
-         ( OS(..), Arch(..), buildPlatform )
-import Distribution.License
-         ( License(..), knownLicenses )
-import Distribution.Simple.CCompiler
-         ( filenameCDialect )
-import Distribution.Simple.Utils
-         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..), lowercase, startsWithBOM, fromUTF8 )
-
-import Distribution.Version
-         ( Version(..)
-         , VersionRange(..), foldVersionRange'
-         , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
-         , orLaterVersion, orEarlierVersion
-         , unionVersionRanges, intersectVersionRanges
-         , asVersionIntervals, UpperBound(..), isNoVersion )
-import Distribution.Package
-         ( PackageName(PackageName), packageName, packageVersion
-         , Dependency(..), pkgName )
-
-import Distribution.Text
-         ( display, disp )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>))
 
-import qualified Language.Haskell.Extension as Extension (deprecatedExtensions)
-import Language.Haskell.Extension
-         ( Language(UnknownLanguage), knownLanguages
-         , Extension(..), KnownExtension(..) )
 import qualified System.Directory (getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
@@ -442,14 +422,14 @@ checkFields pkg =
         ++ ". Languages must be specified in either the 'default-language' "
         ++ " or the 'other-languages' field."
 
-  , check (not (null deprecatedExtensions)) $
+  , check (not (null ourDeprecatedExtensions)) $
       PackageDistSuspicious $
            "Deprecated extensions: "
-        ++ commaSep (map (quote . display . fst) deprecatedExtensions)
+        ++ commaSep (map (quote . display . fst) ourDeprecatedExtensions)
         ++ ". " ++ unwords
              [ "Instead of '" ++ display ext
             ++ "' use '" ++ display replacement ++ "'."
-             | (ext, Just replacement) <- deprecatedExtensions ]
+             | (ext, Just replacement) <- ourDeprecatedExtensions ]
 
   , check (null (category pkg)) $
       PackageDistSuspicious "No 'category' field."
@@ -491,8 +471,8 @@ checkFields pkg =
     unknownExtensions = [ name | bi <- allBuildInfo pkg
                                , UnknownExtension name <- allExtensions bi
                                , name `notElem` map display knownLanguages ]
-    deprecatedExtensions = nub $ catMaybes
-      [ find ((==ext) . fst) Extension.deprecatedExtensions
+    ourDeprecatedExtensions = nub $ catMaybes
+      [ find ((==ext) . fst) deprecatedExtensions
       | bi <- allBuildInfo pkg
       , ext <- allExtensions bi ]
     languagesUsedAsExtensions =
@@ -1340,10 +1320,10 @@ checkConditionals pkg =
     unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
     unknownArches = [ arch | Arch (OtherArch arch)       <- conditions ]
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
-    conditions = maybe [] freeVars (condLibrary pkg)
-              ++ concatMap (freeVars . snd) (condExecutables pkg)
-    freeVars (CondNode _ _ ifs) = concatMap compfv ifs
-    compfv (c, ct, mct) = condfv c ++ freeVars ct ++ maybe [] freeVars mct
+    conditions = maybe [] fvs (condLibrary pkg)
+              ++ concatMap (fvs . snd) (condExecutables pkg)
+    fvs (CondNode _ _ ifs) = concatMap compfv ifs -- free variables
+    compfv (c, ct, mct) = condfv c ++ fvs ct ++ maybe [] fvs mct
     condfv c = case c of
       Var v      -> [v]
       Lit _      -> []
@@ -1537,7 +1517,8 @@ checkCabalFileBOM ops = do
                                     pdfile ++ " starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions."
 
 -- |Find a package description file in the given directory.  Looks for
--- @.cabal@ files.
+-- @.cabal@ files.  Like 'Distribution.Simple.Utils.findPackageDesc',
+-- but generalized over monads.
 findPackageDesc :: Monad m => CheckPackageContentOps m
                  -> m (Either PackageCheck FilePath) -- ^<pkgname>.cabal
 findPackageDesc ops

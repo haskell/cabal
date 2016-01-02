@@ -11,18 +11,16 @@ module Distribution.Simple.Test.Log
        , testSuiteLogPath
        ) where
 
-import Distribution.Package ( PackageId )
+import Distribution.Package
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Compiler ( Compiler(..), compilerInfo, CompilerId )
+import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
-    ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
-    , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( TestShowDetails(..) )
-import Distribution.Simple.Utils ( notice )
-import Distribution.System ( Platform )
-import Distribution.TestSuite ( Options, Result(..) )
-import Distribution.Verbosity ( Verbosity )
+import Distribution.Simple.Setup
+import Distribution.Simple.Utils
+import Distribution.System
+import Distribution.TestSuite
+import Distribution.Verbosity
 
 import Control.Monad ( when )
 import Data.Char ( toUpper )
@@ -109,13 +107,13 @@ testSuiteLogPath :: PathTemplate
                  -> String -- ^ test suite name
                  -> TestLogs -- ^ test suite results
                  -> FilePath
-testSuiteLogPath template pkg_descr lbi name result =
+testSuiteLogPath template pkg_descr lbi test_name result =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (LBI.localComponentId lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)
-                ++  [ (TestSuiteNameVar, toPathTemplate name)
+                ++  [ (TestSuiteNameVar, toPathTemplate test_name)
                     , (TestSuiteResultVar, toPathTemplate $ resultString result)
                     ]
 

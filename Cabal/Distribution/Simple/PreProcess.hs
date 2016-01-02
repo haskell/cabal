@@ -27,49 +27,25 @@ module Distribution.Simple.PreProcess (preprocessComponent, preprocessExtras,
     where
 
 
-import Control.Monad
-import Distribution.Simple.PreProcess.Unlit (unlit)
+import Distribution.Simple.PreProcess.Unlit
 import Distribution.Package
-         ( Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..)
-         , Executable(..)
-         , Library(..), libModules
-         , TestSuite(..), testModules
-         , TestSuiteInterface(..)
-         , Benchmark(..), benchmarkModules, BenchmarkInterface(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
-         ( InstalledPackageInfo(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.CCompiler
-         ( cSourceExtensions )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..)
-         , compilerFlavor, compilerCompatVersion, compilerVersion )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), Component(..) )
-import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
+import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , die, setupMessage, intercalate, copyFileVerbose, moreRecentFile
-         , findFileWithExtension, findFileWithExtension'
-         , getDirectoryContentsRecursive )
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), programPath
-         , requireProgram, requireProgramVersion
-         , rawSystemProgramConf, rawSystemProgram
-         , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
-         , happyProgram, alexProgram, ghcProgram, ghcjsProgram, gccProgram )
 import Distribution.Simple.Test.LibV09
-         ( writeSimpleTestStub, stubFilePath, stubName )
 import Distribution.System
-         ( OS(..), buildOS, Arch(..), Platform(..) )
 import Distribution.Text
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 
+import Control.Monad
 import Data.Maybe (fromMaybe)
 import Data.List (nub, isSuffixOf)
 import System.Directory (doesFileExist)

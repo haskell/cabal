@@ -11,22 +11,13 @@
 module Distribution.Simple.GHC.IPI642 (
     InstalledPackageInfo(..),
     toCurrent,
-
-    -- Don't use these, they're only for conversion purposes
-    PackageIdentifier, convertPackageId,
-    License, convertLicense,
-    convertModuleName
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Package as Current hiding (installedComponentId)
-import qualified Distribution.License as Current
+import Distribution.Simple.GHC.IPIConvert
 
-import Distribution.Version (Version)
-import Distribution.ModuleName (ModuleName)
-import Distribution.Text (simpleParse,display)
-
-import Data.Maybe
+import Distribution.Text
 
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
@@ -70,34 +61,8 @@ data InstalledPackageInfo = InstalledPackageInfo {
   }
   deriving Read
 
-data PackageIdentifier = PackageIdentifier {
-    pkgName    :: String,
-    pkgVersion :: Version
-  }
-  deriving Read
-
-data License = GPL | LGPL | BSD3 | BSD4
-             | PublicDomain | AllRightsReserved | OtherLicense
-  deriving Read
-
-convertPackageId :: PackageIdentifier -> Current.PackageIdentifier
-convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
-  Current.PackageIdentifier (Current.PackageName n) v
-
 mkComponentId :: Current.PackageIdentifier -> Current.ComponentId
 mkComponentId = Current.ComponentId . display
-
-convertModuleName :: String -> ModuleName
-convertModuleName s = fromJust $ simpleParse s
-
-convertLicense :: License -> Current.License
-convertLicense GPL  = Current.GPL  Nothing
-convertLicense LGPL = Current.LGPL Nothing
-convertLicense BSD3 = Current.BSD3
-convertLicense BSD4 = Current.BSD4
-convertLicense PublicDomain = Current.PublicDomain
-convertLicense AllRightsReserved = Current.AllRightsReserved
-convertLicense OtherLicense = Current.OtherLicense
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
@@ -121,7 +86,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
-    Current.instantiatedWith   = [],
+    Current.installedInstantiatedWith   = [],
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,

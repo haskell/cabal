@@ -26,6 +26,9 @@ module Distribution.Package (
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
+        -- * ABI hash
+        AbiHash(..),
+
         -- * Package source dependencies
         Dependency(..),
         thisPackageVersion,
@@ -42,13 +45,13 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion
          , notThisVersion, simplifyVersionRange )
 
-import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
+import Distribution.Compat.ReadP
+import Distribution.Compat.Binary
+import Distribution.Text
 
 import Control.DeepSeq (NFData(..))
-import Distribution.Compat.Binary (Binary)
 import qualified Data.Char as Char
     ( isDigit, isAlphaNum, )
 import Data.Data ( Data )
@@ -202,3 +205,14 @@ class Package pkg => HasComponentId pkg where
 -- Installed packages have exact dependencies 'installedDepends'.
 class (HasComponentId pkg) => PackageInstalled pkg where
   installedDepends :: pkg -> [ComponentId]
+
+-- -----------------------------------------------------------------------------
+-- ABI hash
+
+newtype AbiHash = AbiHash String
+    deriving (Eq, Show, Read, Generic)
+instance Binary AbiHash
+
+instance Text AbiHash where
+    disp (AbiHash abi) = Disp.text abi
+    parse = fmap AbiHash (Parse.munch Char.isAlphaNum)

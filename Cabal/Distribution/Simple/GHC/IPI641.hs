@@ -15,11 +15,8 @@ module Distribution.Simple.GHC.IPI641 (
 
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Package as Current hiding (installedComponentId)
-import Distribution.Text (display)
-
-import Distribution.Simple.GHC.IPI642
-         ( PackageIdentifier, convertPackageId
-         , License, convertLicense, convertModuleName )
+import Distribution.Text
+import Distribution.Simple.GHC.IPIConvert
 
 -- | This is the InstalledPackageInfo type used by ghc-6.4 and 6.4.1.
 --
@@ -85,7 +82,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.abiHash            = Current.AbiHash "",
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
-    Current.instantiatedWith   = [],
+    Current.installedInstantiatedWith   = [],
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,

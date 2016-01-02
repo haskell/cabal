@@ -30,43 +30,26 @@ module Distribution.Simple.GHC.Internal (
         showOsString,
  ) where
 
-import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
+import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
-         ( PackageId, ComponentId, getHSLibraryName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
-import Distribution.PackageDescription as PD
-         ( BuildInfo(..), Library(..), libModules
-         , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )
-import Distribution.Compat.Exception ( catchExit, catchIO )
-import Distribution.Lex (tokenizeQuotedWords)
-import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), DebugInfoLevel(..)
-         , OptimisationLevel(..), ProfDetailLevel(..) )
+import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Compat.Exception
+import Distribution.Lex
+import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( Flag, toFlag )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramLocation(..), ProgramSearchPath, ProgramSearchPathEntry(..)
-         , rawSystemProgram, rawSystemProgramStdout, programPath
-         , addKnownProgram, arProgram, ldProgram, gccProgram, stripProgram
-         , getProgramOutput )
-import Distribution.Simple.Program.Types ( suppressOverrideArgs )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System
-         ( Arch(..), buildOS, OS(..), Platform, platformFromTriple )
 import Distribution.Text ( display, simpleParse )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Language.Haskell.Extension
-         ( Language(..), Extension(..), KnownExtension(..) )
 
 import qualified Data.Map as M
 import Data.Char                ( isSpace )

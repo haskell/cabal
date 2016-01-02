@@ -24,12 +24,9 @@ module Distribution.Simple.Program.Run (
   ) where
 
 import Distribution.Simple.Program.Types
-         ( ConfiguredProgram(..), programPath )
 import Distribution.Simple.Utils
-         ( die, rawSystemExit, rawSystemIOWithEnv, rawSystemStdInOut
-         , toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Verbosity
-         ( Verbosity )
+import Distribution.Compat.Environment
 
 import Data.List
          ( foldl', unfoldr )
@@ -38,8 +35,6 @@ import Control.Monad
          ( when )
 import System.Exit
          ( ExitCode(..), exitWith )
-import Distribution.Compat.Environment
-         ( getEnvironment )
 
 -- | Represents a specific invocation of a specific program.
 --

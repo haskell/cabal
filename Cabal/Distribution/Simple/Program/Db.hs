@@ -56,22 +56,14 @@ module Distribution.Simple.Program.Db (
   ) where
 
 import Distribution.Simple.Program.Types
-         ( Program(..), ProgArg, ConfiguredProgram(..), ProgramLocation(..) )
 import Distribution.Simple.Program.Find
-         ( ProgramSearchPath, defaultProgramSearchPath
-         , findProgramOnSearchPath, programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Builtin
-         ( builtinPrograms )
 import Distribution.Simple.Utils
-         ( die, doesExecutableExist )
 import Distribution.Version
-         ( Version, VersionRange, isAnyVersion, withinRange )
 import Distribution.Text
-         ( display )
 import Distribution.Verbosity
-         ( Verbosity )
+import Distribution.Compat.Binary
 
-import Distribution.Compat.Binary (Binary(..))
 import Data.List
          ( foldl' )
 import Data.Maybe
@@ -455,7 +447,7 @@ lookupProgramVersion verbosity prog range programDb = do
           | otherwise                 ->
             return $! Left (badVersion version location)
         Nothing                       ->
-          return $! Left (noVersion location)
+          return $! Left (unknownVersion location)
 
   where notFound       = "The program '"
                       ++ programName prog ++ "'" ++ versionRequirement
@@ -464,7 +456,7 @@ lookupProgramVersion verbosity prog range programDb = do
                       ++ programName prog ++ "'" ++ versionRequirement
                       ++ " is required but the version found at "
                       ++ locationPath l ++ " is version " ++ display v
-        noVersion l    = "The program '"
+        unknownVersion l = "The program '"
                       ++ programName prog ++ "'" ++ versionRequirement
                       ++ " is required but the version of "
                       ++ locationPath l ++ " could not be determined."

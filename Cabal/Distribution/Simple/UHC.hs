@@ -19,9 +19,6 @@ module Distribution.Simple.UHC (
     buildLib, buildExe, installLib, registerPackage, inplacePackageDbPath
   ) where
 
-import Control.Monad
-import Data.List
-import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
 import Distribution.Package hiding (installedComponentId)
@@ -35,10 +32,14 @@ import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Verbosity
 import Distribution.Version
+import Distribution.System
 import Language.Haskell.Extension
+
+import Control.Monad
+import Data.List
+import qualified Data.Map as M ( empty )
 import System.Directory
 import System.FilePath
-import Distribution.System ( Platform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring

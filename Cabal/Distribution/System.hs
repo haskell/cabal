@@ -38,13 +38,14 @@ module Distribution.System (
 import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum, isAlpha)
 
+import Distribution.Compat.Binary
+import Distribution.Text
+import qualified Distribution.Compat.ReadP as Parse
+
 import Control.Monad (liftM2)
-import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe, listToMaybe)
-import Distribution.Text (Text(..), display)
-import qualified Distribution.Compat.ReadP as Parse
 import GHC.Generics (Generic)
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>))

@@ -41,10 +41,7 @@ module Distribution.Simple.Register (
   ) where
 
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , ComponentName(..), getComponentLocalBuildInfo
-         , InstallDirs(..), absoluteInstallDirs )
-import Distribution.Simple.BuildPaths (haddockName)
+import Distribution.Simple.BuildPaths
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -53,36 +50,18 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Distribution.Simple.Compiler
-         ( Compiler, CompilerFlavor(..), compilerFlavor, compilerVersion
-         , PackageDB, PackageDBStack, absolutePackageDBPaths
-         , registrationPackageDB )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, runProgramInvocation )
 import Distribution.Simple.Program.Script
-         ( invocationAsSystemScript )
-import           Distribution.Simple.Program.HcPkg (HcPkgInfo)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
-         ( RegisterFlags(..), CopyDest(..)
-         , fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.PackageDescription
-         ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
-         ( Package(..), packageName
-         , getHSLibraryName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo(InstalledPackageInfo)
-         , showInstalledPackageInfo, AbiHash(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
-         ( writeUTF8File, writeFileAtomic, setFileExecutable
-         , die, notice, setupMessage, shortRelativePath )
 import Distribution.System
-         ( OS(..), buildOS )
 import Distribution.Text
-         ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
@@ -143,7 +122,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
 
     writeRegistrationFile installedPkgInfo = do
       notice verbosity ("Creating package registration file: " ++ regFile)
-      writeUTF8File regFile (showInstalledPackageInfo installedPkgInfo)
+      writeUTF8File regFile (IPI.showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
@@ -256,7 +235,7 @@ invokeHcPkg verbosity comp conf dbStack extraArgs =
     (\hpi -> HcPkg.invoke hpi verbosity dbStack extraArgs)
 
 withHcPkg :: String -> Compiler -> ProgramConfiguration
-          -> (HcPkgInfo -> IO a) -> IO a
+          -> (HcPkg.HcPkgInfo -> IO a) -> IO a
 withHcPkg name comp conf f =
   case compilerFlavor comp of
     GHC   -> f (GHC.hcPkgInfo conf)
@@ -288,7 +267,7 @@ registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo 
 writeHcPkgRegisterScript :: Verbosity
                          -> InstalledPackageInfo
                          -> PackageDBStack
-                         -> HcPkgInfo
+                         -> HcPkg.HcPkgInfo
                          -> IO ()
 writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs hpi = do
   let invocation  = HcPkg.reregisterInvocation hpi Verbosity.normal
@@ -322,7 +301,7 @@ generalInstalledPackageInfo
   -> InstallDirs FilePath
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
-  InstalledPackageInfo {
+  IPI.InstalledPackageInfo {
     IPI.sourcePackageId    = packageId   pkg,
     IPI.installedComponentId= componentId clbi,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
@@ -340,7 +319,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.exposed            = libExposed  lib,
     IPI.exposedModules     = componentExposedModules clbi,
     IPI.hiddenModules      = otherModules bi,
-    IPI.instantiatedWith   = map (\(k,(p,n)) ->
+    IPI.installedInstantiatedWith   = map (\(k,(p,n)) ->
                                    (k,IPI.OriginalModule (IPI.installedComponentId p) n))
                                  (instantiatedWith lbi),
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,

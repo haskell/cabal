@@ -40,35 +40,20 @@ module Distribution.Simple.SrcDist (
 
   )  where
 
-import Distribution.PackageDescription
-         ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
-         , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..) )
-import Distribution.PackageDescription.Check
-         ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
+import Distribution.PackageDescription hiding (Flag)
+import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Package
-         ( PackageIdentifier(pkgVersion), Package(..), packageVersion )
-import Distribution.ModuleName (ModuleName)
+import Distribution.ModuleName
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
-         ( Version(versionBranch) )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , installOrdinaryFiles, installMaybeExecutableFiles
-         , findFile, findFileWithExtension, findAllFilesWithExtension, matchFileGlob
-         , withTempDirectory, defaultPackageDesc
-         , die, warn, notice, info, setupMessage )
-import Distribution.Simple.Setup ( Flag(..), SDistFlags(..)
-                                 , fromFlag, flagToMaybe)
-import Distribution.Simple.PreProcess ( PPSuffixHandler, ppSuffixes
-                                      , preprocessComponent )
+import Distribution.Simple.Setup
+import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), withAllComponentsInBuildOrder )
-import Distribution.Simple.BuildPaths ( autogenModuleName )
-import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
-                                     runProgram, programProperties, tarProgram )
+import Distribution.Simple.BuildPaths
+import Distribution.Simple.Program
 import Distribution.Text
-         ( display )
+import Distribution.Verbosity
 
 import Control.Monad(when, unless, forM)
 import Data.Char (toLower)
@@ -78,7 +63,6 @@ import Data.Maybe (isNothing, catMaybes)
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
-import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), dropExtension, isAbsolute )
 
@@ -169,19 +153,19 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   fmap concat . sequence $
   [
     -- Library sources.
-    withLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
+    withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
      allSourcesBuildInfo libBi pps modules
 
     -- Executables sources.
   , fmap concat
-    . withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
+    . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
        biSrcs  <- allSourcesBuildInfo exeBi pps []
        mainSrc <- findMainExeFile exeBi pps mainPath
        return (mainSrc:biSrcs)
 
     -- Test suites sources.
   , fmap concat
-    . withTest $ \t -> do
+    . withAllTest $ \t -> do
        let bi  = testBuildInfo t
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
@@ -200,7 +184,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
 
     -- Benchmarks sources.
   , fmap concat
-    . withBenchmark $ \bm -> do
+    . withAllBenchmark $ \bm -> do
        let  bi = benchmarkBuildInfo bm
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
@@ -229,7 +213,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , return (licenseFiles pkg_descr)
 
     -- Install-include files.
-  , withLib $ \ l -> do
+  , withAllLib $ \ l -> do
        let lbi = libBuildInfo l
            relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
        mapM (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
@@ -244,10 +228,10 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   where
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
-    withLib       action = maybe (return []) action (library pkg_descr)
-    withExe       action = mapM action (executables pkg_descr)
-    withTest      action = mapM action (testSuites pkg_descr)
-    withBenchmark action = mapM action (benchmarks pkg_descr)
+    withAllLib       action = maybe (return []) action (library pkg_descr)
+    withAllExe       action = mapM action (executables pkg_descr)
+    withAllTest      action = mapM action (testSuites pkg_descr)
+    withAllBenchmark action = mapM action (benchmarks pkg_descr)
 
 
 -- |Prepare a directory tree of source files.

@@ -16,22 +16,17 @@ module Distribution.Simple.Test
     ) where
 
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(buildable)
-         , TestSuite(..)
-         , TestSuiteInterface(..), testType, hasTests )
-import Distribution.Simple.Compiler ( compilerInfo )
-import Distribution.Simple.Hpc ( markupPackage )
+import Distribution.Simple.Compiler
+import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
-    ( fromPathTemplate, initialPathTemplateEnv, substPathTemplate
-    , PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( TestFlags(..), fromFlag, configCoverage )
-import Distribution.Simple.UserHooks ( Args )
+import Distribution.Simple.Setup
+import Distribution.Simple.UserHooks
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
 import qualified Distribution.Simple.Test.LibV09 as LibV09
 import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils ( die, notice )
-import Distribution.TestSuite ( Result(..) )
+import Distribution.Simple.Utils
+import Distribution.TestSuite
 import Distribution.Text
 
 import Control.Monad ( when, unless, filterM )

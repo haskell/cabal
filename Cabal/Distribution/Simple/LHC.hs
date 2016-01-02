@@ -40,50 +40,25 @@ module Distribution.Simple.LHC (
         ghcVerbosityOptions
  ) where
 
-import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions, hcProfOptions, hcSharedOptions
-         , usedExtensions, allExtensions )
+import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
-                                ( InstalledPackageInfo
-                                , parseInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
-import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( Package(..), getHSLibraryName, ComponentId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramSearchPath, ProgramLocation(..)
-         , rawSystemProgram, rawSystemProgramConf
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , requireProgramVersion
-         , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
-         , arProgram, ldProgram
-         , gccProgram, stripProgram
-         , lhcProgram, lhcPkgProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
-         , Flag, languageToFlags, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
-import Distribution.System
-         ( OS(..), buildOS )
 import Distribution.Verbosity
 import Distribution.Text
-         ( display, simpleParse )
+import Distribution.Compat.Exception
+import Distribution.System
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..), KnownExtension(..) )
 
 import Control.Monad            ( unless, when )
 import Data.Monoid as Mon
@@ -96,8 +71,6 @@ import System.Directory         ( removeFile, renameFile,
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension )
 import System.IO (hClose, hPutStrLn)
-import Distribution.Compat.Exception (catchExit, catchIO)
-import Distribution.System ( Platform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring

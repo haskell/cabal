@@ -16,17 +16,13 @@ module Distribution.Simple.Bench
     ) where
 
 import qualified Distribution.PackageDescription as PD
-    ( PackageDescription(..), BuildInfo(buildable)
-    , Benchmark(..), BenchmarkInterface(..), benchmarkType, hasBenchmarks )
-import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.Compiler ( compilerInfo )
+import Distribution.Simple.BuildPaths
+import Distribution.Simple.Compiler
 import Distribution.Simple.InstallDirs
-    ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
-    , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( BenchmarkFlags(..), fromFlag )
-import Distribution.Simple.UserHooks ( Args )
-import Distribution.Simple.Utils ( die, notice, rawSystemExitCode )
+import Distribution.Simple.Setup
+import Distribution.Simple.UserHooks
+import Distribution.Simple.Utils
 import Distribution.Text
 
 import Control.Monad ( when, unless, forM )

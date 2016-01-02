@@ -41,6 +41,19 @@ module Distribution.PackageDescription.Parse (
         flagFieldDescrs
   ) where
 
+import Distribution.ParseUtils hiding (parseFields)
+import Distribution.PackageDescription
+import Distribution.PackageDescription.Utils
+import Distribution.Package
+import Distribution.ModuleName
+import Distribution.Version
+import Distribution.Verbosity
+import Distribution.Compiler
+import Distribution.PackageDescription.Configuration
+import Distribution.Simple.Utils
+import Distribution.Text
+import Distribution.Compat.ReadP hiding (get)
+
 import Data.Char     (isSpace)
 import Data.Foldable (traverse_)
 import Data.Maybe    (listToMaybe, isJust)
@@ -54,29 +67,7 @@ import Control.Arrow    (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
-import Distribution.Text
-         ( Text(disp, parse), display, simpleParse )
-import Distribution.Compat.ReadP
-         ((+++), option)
 import Text.PrettyPrint
-
-import Distribution.ParseUtils hiding (parseFields)
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Utils
-         ( cabalBug, userBug )
-import Distribution.Package
-         ( PackageIdentifier(..), Dependency(..), packageName, packageVersion )
-import Distribution.ModuleName ( ModuleName )
-import Distribution.Version
-        ( Version(Version), orLaterVersion
-        , LowerBound(..), asVersionIntervals )
-import Distribution.Verbosity (Verbosity)
-import Distribution.Compiler  (CompilerFlavor(..))
-import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
-import Distribution.Simple.Utils
-         ( die, dieWithLocation, warn, intercalate, lowercase, cabalVersion
-         , withFileContents, withUTF8FileContents
-         , writeFileAtomic, writeUTF8File )
 
 
 -- -----------------------------------------------------------------------------
@@ -902,7 +893,6 @@ parsePackageDescription file = do
                         -- Does the current node specify a test type?
                         hasTestType = testInterface ts'
                             /= testInterface emptyTestSuite
-                        components = condTreeComponents ct
                     -- If the current level of the tree specifies a type,
                     -- then we are done. If not, then one of the conditional
                     -- branches below the current node must specify a type.
@@ -910,7 +900,7 @@ parsePackageDescription file = do
                     -- only one need one to specify a type because the
                     -- configure step uses 'mappend' to join together the
                     -- results of flag resolution.
-                    in hasTestType || any checkComponent components
+                    in hasTestType || any checkComponent (condTreeComponents ct)
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
@@ -951,7 +941,6 @@ parsePackageDescription file = do
                         -- Does the current node specify a benchmark type?
                         hasBenchmarkType = benchmarkInterface ts'
                             /= benchmarkInterface emptyBenchmark
-                        components = condTreeComponents ct
                     -- If the current level of the tree specifies a type,
                     -- then we are done. If not, then one of the conditional
                     -- branches below the current node must specify a type.
@@ -959,7 +948,7 @@ parsePackageDescription file = do
                     -- only one need one to specify a type because the
                     -- configure step uses 'mappend' to join together the
                     -- results of flag resolution.
-                    in hasBenchmarkType || any checkComponent components
+                    in hasBenchmarkType || any checkComponent (condTreeComponents ct)
             if checkBenchmarkType emptyBenchmark flds
                 then do
                     skipField

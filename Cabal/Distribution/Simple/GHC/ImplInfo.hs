@@ -15,9 +15,7 @@ module Distribution.Simple.GHC.ImplInfo (
         ) where
 
 import Distribution.Simple.Compiler
-  ( Compiler(..), CompilerFlavor(..)
-  , compilerFlavor, compilerVersion, compilerCompatVersion )
-import Distribution.Version ( Version(..) )
+import Distribution.Version
 
 {- |
      Information about features and quirks of a GHC-based implementation.
