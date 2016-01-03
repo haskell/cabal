@@ -267,6 +267,14 @@ tests config = do
       tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
       tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
 
+  tc "MultipleLibraries" $ do
+      withPackageDb $ do
+          withPackage "q" $ cabal_install []
+          withPackage "p" $ do
+              cabal_install []
+              r <- runExe' "foo" []
+              assertOutputContains "I AM THE ONE" r
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir

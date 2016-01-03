@@ -139,7 +139,7 @@ data ExampleAvailable = ExAv {
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
 exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps ds }
+                   , exAvDeps = CD.fromLibraryDeps n ds }
 
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps = ex {
@@ -180,7 +180,7 @@ exAvSrcPkg ex =
          , packageDescription   = C.GenericPackageDescription {
                C.packageDescription = C.emptyPackageDescription {
                    C.package        = exAvPkgId ex
-                 , C.library        = error "not yet configured: library"
+                 , C.libraries      = error "not yet configured: library"
                  , C.executables    = error "not yet configured: executables"
                  , C.testSuites     = error "not yet configured: testSuites"
                  , C.benchmarks     = error "not yet configured: benchmarks"
@@ -191,9 +191,9 @@ exAvSrcPkg ex =
                  }
              , C.genPackageFlags = nub $ concatMap extractFlags
                                    (CD.libraryDeps (exAvDeps ex))
-             , C.condLibrary     = Just $ mkCondTree (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs)
+             , C.condLibraries   = [(exAvName ex, mkCondTree (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs)
                                                      disableLib
-                                                     (Buildable libraryDeps)
+                                                     (Buildable libraryDeps))]
              , C.condExecutables = []
              , C.condTestSuites  =
                  let mkTree = mkCondTree mempty disableTest . Buildable

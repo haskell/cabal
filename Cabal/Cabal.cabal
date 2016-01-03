@@ -119,6 +119,14 @@ extra-source-files:
   tests/PackageTests/HaddockNewline/A.hs
   tests/PackageTests/HaddockNewline/HaddockNewline.cabal
   tests/PackageTests/HaddockNewline/Setup.hs
+  tests/PackageTests/MultipleLibraries/p.cabal
+  tests/PackageTests/MultipleLibraries/p/P.hs
+  tests/PackageTests/MultipleLibraries/p/Foo.hs
+  tests/PackageTests/MultipleLibraries/p/p.cabal
+  tests/PackageTests/MultipleLibraries/p/p/P.hs
+  tests/PackageTests/MultipleLibraries/p/q/Q.hs
+  tests/PackageTests/MultipleLibraries/q/Q.hs
+  tests/PackageTests/MultipleLibraries/q/q.cabal
   tests/PackageTests/Options.hs
   tests/PackageTests/OrderFlags/Foo.hs
   tests/PackageTests/OrderFlags/my.cabal

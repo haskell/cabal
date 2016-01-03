@@ -153,7 +153,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   fmap concat . sequence $
   [
     -- Library sources.
-    withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
+    fmap concat
+    . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
      allSourcesBuildInfo libBi pps modules
 
     -- Executables sources.
@@ -213,7 +214,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , return (licenseFiles pkg_descr)
 
     -- Install-include files.
-  , withAllLib $ \ l -> do
+  , fmap concat
+    . withAllLib $ \ l -> do
        let lbi = libBuildInfo l
            relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
        mapM (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
@@ -228,7 +230,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   where
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
-    withAllLib       action = maybe (return []) action (library pkg_descr)
+    withAllLib       action = mapM action (libraries pkg_descr)
     withAllExe       action = mapM action (executables pkg_descr)
     withAllTest      action = mapM action (testSuites pkg_descr)
     withAllBenchmark action = mapM action (benchmarks pkg_descr)
@@ -309,7 +311,7 @@ filterAutogenModule :: PackageDescription -> PackageDescription
 filterAutogenModule pkg_descr0 = mapLib filterAutogenModuleLib $
                                  mapAllBuildInfo filterAutogenModuleBI pkg_descr0
   where
-    mapLib f pkg = pkg { library = fmap f (library pkg) }
+    mapLib f pkg = pkg { libraries = map f (libraries pkg) }
     filterAutogenModuleLib lib = lib {
       exposedModules = filter (/=autogenModule) (exposedModules lib)
     }
@@ -465,7 +467,7 @@ tarBallName = display . packageId
 mapAllBuildInfo :: (BuildInfo -> BuildInfo)
                 -> (PackageDescription -> PackageDescription)
 mapAllBuildInfo f pkg = pkg {
-    library     = fmap mapLibBi (library pkg),
+    libraries   = fmap mapLibBi (libraries pkg),
     executables = fmap mapExeBi (executables pkg),
     testSuites  = fmap mapTestBi (testSuites pkg),
     benchmarks  = fmap mapBenchBi (benchmarks pkg)

@@ -46,7 +46,7 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import Data.Maybe
-         ( isNothing, isJust, catMaybes, mapMaybe, maybeToList, fromMaybe )
+         ( isNothing, isJust, catMaybes, mapMaybe, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Monad
          ( filterM, liftM )
@@ -173,7 +173,7 @@ checkSanity pkg =
   , check (all ($ pkg) [ null . executables
                        , null . testSuites
                        , null . benchmarks
-                       , isNothing . library ]) $
+                       , null . libraries ]) $
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
@@ -185,7 +185,7 @@ checkSanity pkg =
   --TODO: check for name clashes case insensitively: windows file systems cannot
   --cope.
 
-  ++ maybe []  (checkLibrary    pkg) (library pkg)
+  ++ concatMap (checkLibrary    pkg) (libraries pkg)
   ++ concatMap (checkExecutable pkg) (executables pkg)
   ++ concatMap (checkTestSuite  pkg) (testSuites pkg)
   ++ concatMap (checkBenchmark  pkg) (benchmarks pkg)
@@ -681,7 +681,7 @@ checkGhcOptions pkg =
 
   where
     all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = maybe [] (get_ghc_options . libBuildInfo) (library pkg)
+    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo) (libraries pkg)
     get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
                          ++ hcSharedOptions GHC bi
 
@@ -904,9 +904,18 @@ checkCabalVersion pkg =
         ++ "different modules then list the other ones in the "
         ++ "'other-languages' field."
 
+  , checkVersion [1,23]
+    (case libraries pkg of
+        [lib] -> libName lib /= unPackageName (packageName pkg)
+        [] -> False
+        _ -> True) $
+      PackageDistInexcusable $
+           "To use multiple 'library' sections or a named library section "
+        ++ "the package needs to specify at least 'cabal-version >= 1.23'."
+
     -- check use of reexported-modules sections
   , checkVersion [1,21]
-    (maybe False (not.null.reexportedModules) (library pkg)) $
+    (any (not.null.reexportedModules) (libraries pkg)) $
       PackageDistInexcusable $
            "To use the 'reexported-module' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.21'."
@@ -1312,7 +1321,7 @@ checkConditionals pkg =
     unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
     unknownArches = [ arch | Arch (OtherArch arch)       <- conditions ]
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
-    conditions = maybe [] fvs (condLibrary pkg)
+    conditions = concatMap (fvs . snd) (condLibraries pkg)
               ++ concatMap (fvs . snd) (condExecutables pkg)
     fvs (CondNode _ _ ifs) = concatMap compfv ifs -- free variables
     compfv (c, ct, mct) = condfv c ++ fvs ct ++ maybe [] fvs mct
@@ -1416,8 +1425,8 @@ checkDevelopmentOnlyFlags pkg =
 
     allConditionalBuildInfo :: [([Condition ConfVar], BuildInfo)]
     allConditionalBuildInfo =
-        concatMap (collectCondTreePaths libBuildInfo)
-                  (maybeToList (condLibrary pkg))
+        concatMap (collectCondTreePaths libBuildInfo . snd)
+                  (condLibraries pkg)
 
      ++ concatMap (collectCondTreePaths buildInfo . snd)
                   (condExecutables pkg)

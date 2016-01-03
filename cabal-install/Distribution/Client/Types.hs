@@ -20,7 +20,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), mkUnitId
+         , UnitId(..), mkUnitId, pkgName
          , HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -91,7 +91,8 @@ class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> ComponentDeps [UnitId]
 
 instance PackageFixedDeps InstalledPackageInfo where
-  depends = CD.fromInstalled . installedDepends
+  depends pkg = CD.fromInstalled (display (pkgName (packageId pkg)))
+                                 (installedDepends pkg)
 
 
 -- | In order to reuse the implementation of PackageIndex which relies on

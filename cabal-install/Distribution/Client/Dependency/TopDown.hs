@@ -617,7 +617,8 @@ finaliseSelectedPackages pref selected constraints =
         -- We cheat in the cabal solver, and classify all dependencies as
         -- library dependencies.
         deps' :: ComponentDeps [ConfiguredId]
-        deps' = CD.fromLibraryDeps $ map (confId . pickRemaining mipkg) deps
+        deps' = CD.fromLibraryDeps (unPackageName (packageName pkg))
+                                   (map (confId . pickRemaining mipkg) deps)
 
     -- InstalledOrSource indicates that we either have a source package
     -- available, or an installed one, or both. In the case that we have both

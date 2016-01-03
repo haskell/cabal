@@ -1413,7 +1413,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   -- Compute the IPID
   let flags (ReadyPackage (ConfiguredPackage _ x _ _) _) = x
-      cid = Configure.computeComponentId (PackageDescription.package pkg) CLibName
+      pkg_name = pkgName (PackageDescription.package pkg)
+      cid = Configure.computeComponentId Cabal.NoFlag
+                (PackageDescription.package pkg) (CLibName (display pkg_name))
                 (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg))) (flags rpkg)
       ipid = SimpleUnitId cid
 

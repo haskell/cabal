@@ -27,8 +27,10 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Buildable package components
         Component(..),
         ComponentName(..),
+        defaultLibName,
         showComponentName,
         ComponentLocalBuildInfo(..),
+        libBuildDir,
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -39,6 +41,8 @@ module Distribution.Simple.LocalBuildInfo (
         pkgEnabledComponents,
         lookupComponent,
         getComponent,
+        maybeGetDefaultLibraryLocalBuildInfo,
+        maybeGetComponentLocalBuildInfo,
         getComponentLocalBuildInfo,
         allComponentsInBuildOrder,
         componentsInBuildOrder,
@@ -82,6 +86,7 @@ import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
 import Data.Map (Map)
+import System.FilePath
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
 
@@ -151,21 +156,21 @@ localComponentId lbi
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
-localUnitId lbi =
-    foldr go (mkLegacyUnitId (package (localPkgDescr lbi))) (componentsConfigs lbi)
-  where go (_, clbi, _) old_uid = case clbi of
-            LibComponentLocalBuildInfo { componentUnitId = uid } -> uid
-            _ -> old_uid
+localUnitId lbi
+    = case maybeGetDefaultLibraryLocalBuildInfo lbi of
+        Just LibComponentLocalBuildInfo { componentUnitId = uid } -> uid
+        -- Something fake:
+        _ -> mkLegacyUnitId (package (localPkgDescr lbi))
 
 -- | Extract the compatibility 'ComponentId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake compatibility package
 -- key based on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
-    foldr go (display (package (localPkgDescr lbi))) (componentsConfigs lbi)
-  where go (_, clbi, _) old_pk = case clbi of
-            LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
-            _ -> old_pk
+    case maybeGetDefaultLibraryLocalBuildInfo lbi of
+        Just LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
+        -- Something fake:
+        _ -> display (package (localPkgDescr lbi))
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
@@ -190,16 +195,20 @@ data Component = CLib   Library
                | CBench Benchmark
                deriving (Show, Eq, Read)
 
-data ComponentName = CLibName   -- currently only a single lib
+-- Libraries live in a separate namespace, so must distinguish
+data ComponentName = CLibName   String
                    | CExeName   String
                    | CTestName  String
                    | CBenchName String
                    deriving (Eq, Generic, Ord, Read, Show)
 
+defaultLibName :: PackageIdentifier -> ComponentName
+defaultLibName pid = CLibName (display (pkgName pid))
+
 instance Binary ComponentName
 
 showComponentName :: ComponentName -> String
-showComponentName CLibName          = "library"
+showComponentName (CLibName   name) = "library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
@@ -213,6 +222,7 @@ data ComponentLocalBuildInfo
     componentPackageDeps :: [(UnitId, PackageId)],
     componentUnitId :: UnitId,
     componentCompatPackageKey :: String,
+    componentCompatPackageName :: PackageName,
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
@@ -232,6 +242,11 @@ data ComponentLocalBuildInfo
 
 instance Binary ComponentLocalBuildInfo
 
+libBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
+libBuildDir lbi clbi
+    | componentUnitId clbi == localUnitId lbi = buildDir lbi
+    | otherwise = buildDir lbi </> display (componentUnitId clbi)
+
 foldComponent :: (Library -> a)
               -> (Executable -> a)
               -> (TestSuite -> a)
@@ -249,7 +264,7 @@ componentBuildInfo =
 
 componentName :: Component -> ComponentName
 componentName =
-  foldComponent (const CLibName)
+  foldComponent (CLibName . libName)
                 (CExeName . exeName)
                 (CTestName . testName)
                 (CBenchName . benchmarkName)
@@ -258,7 +273,7 @@ componentName =
 --
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
-    [ CLib  lib | Just lib <- [library pkg] ]
+    [ CLib  lib | lib <- libraries pkg ]
  ++ [ CExe  exe | exe <- executables pkg ]
  ++ [ CTest tst | tst <- testSuites  pkg ]
  ++ [ CBench bm | bm  <- benchmarks  pkg ]
@@ -291,8 +306,8 @@ componentDisabledReason (CBench bm)
 componentDisabledReason _                   = Nothing
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
-lookupComponent pkg CLibName =
-    fmap CLib $ library pkg
+lookupComponent pkg (CLibName name) =
+    fmap CLib $ find ((name ==) . libName) (libraries pkg)
 lookupComponent pkg (CExeName name) =
     fmap CExe $ find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =
@@ -314,16 +329,28 @@ getComponent pkg cname =
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName
                            -> ComponentLocalBuildInfo
 getComponentLocalBuildInfo lbi cname =
+    case maybeGetComponentLocalBuildInfo lbi cname of
+      Just clbi -> clbi
+      Nothing   ->
+          error $ "internal error: there is no configuration data "
+               ++ "for component " ++ show cname
+
+maybeGetComponentLocalBuildInfo
+    :: LocalBuildInfo -> ComponentName -> Maybe ComponentLocalBuildInfo
+maybeGetComponentLocalBuildInfo lbi cname =
     case [ clbi
          | (cname', clbi, _) <- componentsConfigs lbi
          , cname == cname' ] of
-      [clbi] -> clbi
-      _      -> missingComponent
-  where
-    missingComponent =
-      error $ "internal error: there is no configuration data "
-           ++ "for component " ++ show cname
+      [clbi] -> Just clbi
+      _      -> Nothing
 
+maybeGetDefaultLibraryLocalBuildInfo
+    :: LocalBuildInfo
+    -> Maybe ComponentLocalBuildInfo
+maybeGetDefaultLibraryLocalBuildInfo lbi =
+    maybeGetComponentLocalBuildInfo lbi (CLibName pkg_name)
+  where
+    pkg_name = display (pkgName (package (localPkgDescr lbi)))
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
@@ -332,7 +359,7 @@ withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withLibLBI pkg_descr lbi f =
     withLib pkg_descr $ \lib ->
-      f lib (getComponentLocalBuildInfo lbi CLibName)
+      f lib (getComponentLocalBuildInfo lbi (CLibName (libName lib)))
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
