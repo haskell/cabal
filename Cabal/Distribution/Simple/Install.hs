@@ -169,23 +169,21 @@ installDataFiles verbosity pkg_descr destDataDir =
 -- | Install the files listed in install-includes
 --
 installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbosity
-  PackageDescription { library = Just lib } destIncludeDir = do
-
-  incs <- mapM (findInc relincdirs) (installIncludes lbi)
-  sequence_
-    [ do createDirectoryIfMissingVerbose verbosity True destDir
-         installOrdinaryFile verbosity srcFile destFile
-    | (relFile, srcFile) <- incs
-    , let destFile = destIncludeDir </> relFile
-          destDir  = takeDirectory destFile ]
+installIncludeFiles verbosity pkg destIncludeDir = do
+  withLib pkg $ \lib -> do
+    let relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
+        lbi = libBuildInfo lib
+    incs <- mapM (findInc relincdirs) (installIncludes lbi)
+    sequence_
+      [ do createDirectoryIfMissingVerbose verbosity True destDir
+           installOrdinaryFile verbosity srcFile destFile
+      | (relFile, srcFile) <- incs
+      , let destFile = destIncludeDir </> relFile
+            destDir  = takeDirectory destFile ]
   where
-   relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
-   lbi = libBuildInfo lib
 
    findInc []         file = die ("can't find include file " ++ file)
    findInc (dir:dirs) file = do
      let path = dir </> file
      exists <- doesFileExist path
      if exists then return (file, path) else findInc dirs file
-installIncludeFiles _ _ _ = die "installIncludeFiles: Can't happen?"

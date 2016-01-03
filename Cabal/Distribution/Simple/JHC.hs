@@ -40,7 +40,6 @@ import Distribution.System ( Platform )
 import Data.List                ( nub )
 import Data.Char                ( isSpace )
 import qualified Data.Map as M  ( empty )
-import Data.Maybe               ( fromMaybe )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -155,7 +154,10 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
-      lib = fromMaybe (error "no library available") . library
+      lib pd' = case libraries pd' of
+                [lib'] -> lib'
+                [] -> error "no library available"
+                _ -> error "JHC does not support multiple libraries (yet)"
       comma = intercalate "," . map display
   in unlines [sline "name" (display . pkgName . packageId)
              ,sline "version" (display . pkgVersion . packageId)

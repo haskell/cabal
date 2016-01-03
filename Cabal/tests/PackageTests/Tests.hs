@@ -231,6 +231,14 @@ tests config =
         assertOutputContains "Flags chosen: build-exe=False" r
         cabal "build" []
 
+  , tc "MultipleLibraries" $ do
+        withPackageDb $ do
+            withPackage "q" $ cabal_install []
+            withPackage "p" $ do
+                cabal_install []
+                r <- runExe' "foo" []
+                assertOutputContains "I AM THE ONE" r
+
   ]
   where
     -- Shared test function for BuildDeps/InternalLibrary* tests.

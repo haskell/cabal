@@ -119,13 +119,13 @@ configureToolchain lhcProg =
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram (libDir </> "ld.exe"),
+      programFindLocation = findProg ldProgram (gccLibDir </> "ld.exe"),
       programPostConf     = configureLd
     }
   where
     compilerDir = takeDirectory (programPath lhcProg)
     baseDir     = takeDirectory compilerDir
-    libDir      = baseDir </> "gcc-lib"
+    gccLibDir      = baseDir </> "gcc-lib"
     includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
 
@@ -148,7 +148,7 @@ configureToolchain lhcProg =
           -- that means we should add this extra flag to tell ghc's gcc
           -- where it lives and thus where gcc can find its various files:
           FoundOnSystem {} -> return gccProg {
-                                programDefaultArgs = ["-B" ++ libDir,
+                                programDefaultArgs = ["-B" ++ gccLibDir,
                                                       "-I" ++ includeDir]
                               }
           UserSpecified {} -> return gccProg
@@ -289,8 +289,8 @@ substTopDir topDir ipo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  let libName = componentUnitId clbi
-      pref = buildDir lbi
+  let lib_name = componentUnitId clbi
+      pref = libBuildDir lbi clbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
@@ -344,10 +344,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
       cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
       cid = compilerId (compiler lbi)
-      vanillaLibFilePath = libTargetDir </> mkLibName           libName
-      profileLibFilePath = libTargetDir </> mkProfLibName       libName
-      sharedLibFilePath  = libTargetDir </> mkSharedLibName cid libName
-      ghciLibFilePath    = libTargetDir </> mkGHCiLibName       libName
+      vanillaLibFilePath = libTargetDir </> mkLibName           lib_name
+      profileLibFilePath = libTargetDir </> mkProfLibName       lib_name
+      sharedLibFilePath  = libTargetDir </> mkSharedLibName cid lib_name
+      ghciLibFilePath    = libTargetDir </> mkGHCiLibName       lib_name
 
   stubObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension [objExtension] [libTargetDir]
@@ -426,7 +426,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
             -- This method is called iteratively by xargs. The
             -- output goes to <ldLibName>.tmp, and any existing file
             -- named <ldLibName> is included when linking. The
-            -- output is renamed to <libName>.
+            -- output is renamed to <lib_name>.
           rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
             (args ++ if exists then [ldLibName] else [])
           renameFile (ldLibName <.> "tmp") ldLibName
@@ -496,7 +496,7 @@ buildExe verbosity _pkg_descr lbi
           ++ [srcMainFile]
           ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
           ++ ["-l"++lib | lib <- extraLibs exeBi]
-          ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
+          ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs exeBi]
           ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
           ++ if profExe
                 then ["-prof",
@@ -728,11 +728,11 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
   where
     cid = compilerId (compiler lbi)
-    libName = componentUnitId clbi
-    vanillaLibName = mkLibName           libName
-    profileLibName = mkProfLibName       libName
-    ghciLibName    = mkGHCiLibName       libName
-    sharedLibName  = mkSharedLibName cid libName
+    lib_name = componentUnitId clbi
+    vanillaLibName = mkLibName           lib_name
+    profileLibName = mkProfLibName       lib_name
+    ghciLibName    = mkGHCiLibName       lib_name
+    sharedLibName  = mkSharedLibName cid lib_name
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))

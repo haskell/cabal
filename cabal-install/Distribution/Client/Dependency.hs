@@ -396,7 +396,7 @@ removeUpperBounds allowNewer params =
       where
         gpd        = packageDescription srcPkg
         pd         = PD.packageDescription gpd
-        condLib    = PD.condLibrary        gpd
+        condLibs   = PD.condLibraries      gpd
         condExes   = PD.condExecutables    gpd
         condTests  = PD.condTestSuites     gpd
         condBenchs = PD.condBenchmarks     gpd
@@ -416,20 +416,20 @@ removeUpperBounds allowNewer params =
         srcPkg' = srcPkg { packageDescription = gpd' }
         gpd'    = gpd {
           PD.packageDescription = pd',
-          PD.condLibrary        = condLib',
+          PD.condLibraries      = condLibs',
           PD.condExecutables    = condExes',
           PD.condTestSuites     = condTests',
           PD.condBenchmarks     = condBenchs'
           }
         pd' = pd {
           PD.buildDepends = map  f            (PD.buildDepends pd),
-          PD.library      = fmap onLibrary    (PD.library pd),
+          PD.libraries    = map  onLibrary    (PD.libraries pd),
           PD.executables  = map  onExecutable (PD.executables pd),
           PD.testSuites   = map  onTestSuite  (PD.testSuites pd),
           PD.benchmarks   = map  onBenchmark  (PD.benchmarks pd),
           PD.setupBuildInfo = fmap onSetup    (PD.setupBuildInfo pd)
           }
-        condLib'    = fmap (onCondTree onLibrary)             condLib
+        condLibs'   = map  (mapSnd $ onCondTree onLibrary)    condLibs
         condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
         condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
         condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
