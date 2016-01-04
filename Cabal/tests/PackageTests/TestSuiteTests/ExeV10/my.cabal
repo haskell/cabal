@@ -13,3 +13,9 @@ test-suite test-Foo
     hs-source-dirs: tests
     main-is:    test-Foo.hs
     build-depends: base, my
+
+test-suite test-Short
+    type:   exitcode-stdio-1.0
+    hs-source-dirs: tests
+    main-is:    test-Short.hs
+    build-depends: base, my
