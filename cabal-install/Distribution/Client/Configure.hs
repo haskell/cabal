@@ -28,7 +28,8 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
 import Distribution.Client.Setup
-         ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
+         ( ConfigExFlags(..), configureCommand, filterConfigureFlags
+         , RepoContext(..) )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -93,7 +94,7 @@ chooseCabalVersion configExFlags maybeVersion =
 -- | Configure the package found in the local directory
 configure :: Verbosity
           -> PackageDBStack
-          -> [Repo]
+          -> RepoContext
           -> Compiler
           -> Platform
           -> ProgramConfiguration
@@ -101,11 +102,11 @@ configure :: Verbosity
           -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDBs repos comp platform conf
+configure verbosity packageDBs repoCtxt comp platform conf
   configFlags configExFlags extraArgs = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-  sourcePkgDb       <- getSourcePackages    verbosity repos
+  sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
   checkConfigExFlags verbosity installedPkgIndex
                      (packageIndex sourcePkgDb) configExFlags
 

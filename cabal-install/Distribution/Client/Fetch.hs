@@ -21,11 +21,9 @@ import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.HttpUtils
-         ( configureTransport, HttpTransport(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
-         ( GlobalFlags(..), FetchFlags(..) )
+         ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )
 
 import Distribution.Package
          ( packageId )
@@ -35,7 +33,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( fromFlag, flagToMaybe )
+         ( fromFlag )
 import Distribution.Simple.Utils
          ( die, notice, debug )
 import Distribution.System
@@ -66,7 +64,7 @@ import Control.Monad
 --
 fetch :: Verbosity
       -> PackageDBStack
-      -> [Repo]
+      -> RepoContext
       -> Compiler
       -> Platform
       -> ProgramConfiguration
@@ -77,17 +75,15 @@ fetch :: Verbosity
 fetch verbosity _ _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-fetch verbosity packageDBs repos comp platform conf
+fetch verbosity packageDBs repoCtxt comp platform conf
       globalFlags fetchFlags userTargets = do
 
     mapM_ checkTarget userTargets
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repos
+    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
 
-    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
-
-    pkgSpecifiers <- resolveUserTargets verbosity transport
+    pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        userTargets
@@ -109,7 +105,7 @@ fetch verbosity packageDBs repos comp platform conf
                      "The following packages would be fetched:"
                    : map (display . packageId) pkgs'
 
-             else mapM_ (fetchPackage transport verbosity . packageSource) pkgs'
+             else mapM_ (fetchPackage verbosity repoCtxt . packageSource) pkgs'
 
   where
     dryRun = fromFlag (fetchDryRun fetchFlags)
@@ -185,8 +181,8 @@ checkTarget target = case target of
             ++ "In the meantime you can use the 'unpack' commands."
     _ -> return ()
 
-fetchPackage :: HttpTransport -> Verbosity -> PackageLocation a -> IO ()
-fetchPackage transport verbosity pkgsrc = case pkgsrc of
+fetchPackage :: Verbosity -> RepoContext -> PackageLocation a -> IO ()
+fetchPackage verbosity repoCtxt pkgsrc = case pkgsrc of
     LocalUnpackedPackage _dir  -> return ()
     LocalTarballPackage  _file -> return ()
 
@@ -195,5 +191,5 @@ fetchPackage transport verbosity pkgsrc = case pkgsrc of
          ++ "In the meantime you can use the 'unpack' commands."
 
     RepoTarballPackage repo pkgid _ -> do
-      _ <- fetchRepoTarball transport verbosity repo pkgid
+      _ <- fetchRepoTarball verbosity repoCtxt repo pkgid
       return ()

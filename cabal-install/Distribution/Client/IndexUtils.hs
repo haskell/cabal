@@ -59,6 +59,8 @@ import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
+import Distribution.Client.Setup
+         ( RepoContext(..) )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, catMaybes, maybeToList)
@@ -108,17 +110,17 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
-getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
-getSourcePackages verbosity [] = do
+getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
+getSourcePackages verbosity repoCtxt | null (repoContextRepos repoCtxt) = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
   return SourcePackageDb {
     packageIndex       = mempty,
     packagePreferences = mempty
   }
-getSourcePackages verbosity repos = do
+getSourcePackages verbosity repoCtxt = do
   info verbosity "Reading available packages..."
-  pkgss <- mapM (\r -> readRepoIndex verbosity r) repos
+  pkgss <- mapM (\r -> readRepoIndex verbosity repoCtxt r) (repoContextRepos repoCtxt)
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
@@ -143,13 +145,13 @@ readCacheStrict verbosity index mkPkg = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> Repo
+readRepoIndex :: Verbosity -> RepoContext -> Repo
               -> IO (PackageIndex SourcePackage, [Dependency])
-readRepoIndex verbosity repo =
+readRepoIndex verbosity repoCtxt repo =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
-    updateRepoIndexCache verbosity (RepoIndex repo)
-    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo)
+    updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repoCtxt repo)
 
   where
     mkAvailablePackage pkgEntry =
@@ -356,19 +358,19 @@ lazySequence = unsafeInterleaveIO . go
 -- | Which index do we mean?
 data Index =
     -- | The main index for the specified repository
-    RepoIndex Repo
+    RepoIndex RepoContext Repo
 
     -- | A sandbox-local repository
     -- Argument is the location of the index file
   | SandboxIndex FilePath
 
 indexFile :: Index -> FilePath
-indexFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.tar"
-indexFile (SandboxIndex index) = index
+indexFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.tar"
+indexFile (SandboxIndex index)   = index
 
 cacheFile :: Index -> FilePath
-cacheFile (RepoIndex    repo)  = repoLocalDir repo </> "00-index.cache"
-cacheFile (SandboxIndex index) = index `replaceExtension` "cache"
+cacheFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.cache"
+cacheFile (SandboxIndex index)   = index `replaceExtension` "cache"
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do

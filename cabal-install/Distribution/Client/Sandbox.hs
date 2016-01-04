@@ -44,7 +44,7 @@ module Distribution.Client.Sandbox (
 import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
   , GlobalFlags(..), defaultConfigExFlags, defaultInstallFlags
-  , defaultSandboxLocation, withGlobalRepos )
+  , defaultSandboxLocation, withRepoContext )
 import Distribution.Client.Sandbox.Timestamp  ( listModifiedDeps
                                               , maybeAddCompilerTimestampRecord
                                               , withAddTimestamps
@@ -655,10 +655,10 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
                          comp platform conf sandboxDir $ \sandboxPkgInfo ->
     unless (null $ modifiedAddSourceDependencies sandboxPkgInfo) $ do
 
-     withGlobalRepos verbosity globalFlags $ \globalRepos -> do
+     withRepoContext verbosity globalFlags $ \repoContext -> do
       let args :: InstallArgs
           args = ((configPackageDB' configFlags)
-                 ,globalRepos
+                 ,repoContext
                  ,comp, platform, conf
                  ,UseSandbox sandboxDir, Just sandboxPkgInfo
                  ,globalFlags, configFlags, configExFlags, installFlags

@@ -12,7 +12,8 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, withGlobalRepos
+    ( globalCommand, GlobalFlags(..), defaultGlobalFlags
+    , RepoContext(..), withRepoContext
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
@@ -49,7 +50,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), Repo(..), RemoteRepo(..) )
+         ( Username(..), Password(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -73,7 +74,7 @@ import Distribution.Simple.Setup
          , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
-         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
+         , Flag(..), toFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
@@ -95,7 +96,9 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
-         ( GlobalFlags(..), defaultGlobalFlags )
+         ( GlobalFlags(..), defaultGlobalFlags
+         , RepoContext(..), withRepoContext
+         )
 
 import Data.Char
          ( isSpace, isAlphaNum )
@@ -313,19 +316,6 @@ globalCommand commands = CommandUI {
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
       ]
-
-withGlobalRepos :: Verbosity -> GlobalFlags -> ([Repo] -> IO a) -> IO a
-withGlobalRepos _verbosity globalFlags callback =
-    callback $ remoteRepos ++ localRepos
-  where
-    remoteRepos =
-      [ RepoRemote remote cacheDir
-      | remote <- fromNubList $ globalRemoteRepos globalFlags
-      , let cacheDir = fromFlag (globalCacheDir globalFlags)
-                   </> remoteRepoName remote ]
-    localRepos =
-      [ RepoLocal local
-      | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------
 -- * Config flags
