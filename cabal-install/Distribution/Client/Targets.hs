@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -59,6 +59,8 @@ import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.World as World
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Codec.Archive.Tar       as Tar
+import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils ( HttpTransport(..) )
@@ -524,7 +526,7 @@ readPackageTarget verbosity target = case target of
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc =
           either (die . formatErr) return
         . check
-        . Tar.entriesIndex
+        . accumEntryMap Map.empty
         . Tar.filterEntries isCabalFile
         . Tar.read
         . GZipUtils.maybeDecompress
@@ -532,7 +534,13 @@ readPackageTarget verbosity target = case target of
       where
         formatErr msg = "Error reading " ++ tarballOriginalLoc ++ ": " ++ msg
 
-        check (Left e)  = Left e
+        accumEntryMap !m  Tar.Done       = Right m
+        accumEntryMap !_ (Tar.Fail err)  = Left err
+        accumEntryMap !m (Tar.Next e es) = accumEntryMap m' es
+          where
+            m' = Map.insert (Tar.entryTarPath e) e m
+
+        check (Left e)  = Left (show e)
         check (Right m) = case Map.elems m of
             []     -> Left noCabalFile
             [file] -> case Tar.entryContent file of

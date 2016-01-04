@@ -171,6 +171,7 @@ executable cabal
         pretty     >= 1.1      && < 1.2,
         random     >= 1        && < 1.2,
         stm        >= 2.0      && < 3,
+        tar        >= 0.4.2    && < 0.5,
         time       >= 1.4      && < 1.6,
         zlib       >= 0.5.3    && < 0.7
 
