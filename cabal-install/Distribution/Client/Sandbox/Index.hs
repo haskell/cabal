@@ -19,6 +19,9 @@ module Distribution.Client.Sandbox.Index (
     defaultIndexFileName
   ) where
 
+import qualified Codec.Archive.Tar       as Tar
+import qualified Codec.Archive.Tar.Entry as Tar
+import qualified Codec.Archive.Tar.Index as Tar
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , refTypeFromTypeCode
@@ -39,7 +42,7 @@ import Distribution.Compat.Exception   ( tryIO )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
-import Control.Exception         ( evaluate )
+import Control.Exception         ( evaluate, throw, Exception )
 import Control.Monad             ( liftM, unless )
 import Control.Monad.Writer.Lazy (WriterT(..), runWriterT, tell)
 import Data.List                 ( (\\), intersect, nub, find )
@@ -49,8 +52,7 @@ import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile, canonicalizePath)
 import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
-import System.IO                 ( IOMode(..), SeekMode(..)
-                                 , hSeek, withBinaryFile )
+import System.IO                 ( IOMode(..), withBinaryFile )
 
 -- | A reference to a local build tree.
 data BuildTreeRef = BuildTreeRef {
@@ -83,11 +85,11 @@ readBuildTreeRef entry = case Tar.entryContent entry of
 
 -- | Given a sequence of tar archive entries, extract all references to local
 -- build trees.
-readBuildTreeRefs :: Tar.Entries -> [BuildTreeRef]
+readBuildTreeRefs :: Exception e => Tar.Entries e -> [BuildTreeRef]
 readBuildTreeRefs =
   catMaybes
-  . Tar.foldrEntries (\e r -> readBuildTreeRef e : r)
-  [] error
+  . Tar.foldEntries (\e r -> readBuildTreeRef e : r)
+                    [] throw
 
 -- | Given a path to a tar archive, extract all references to local build trees.
 readBuildTreeRefsFromFile :: FilePath -> IO [BuildTreeRef]
@@ -146,13 +148,9 @@ addBuildTreeRefs verbosity path l' refType = do
   treesToAdd <- mapM (buildTreeRefFromPath refType) (l \\ treesInIndex)
   let entries = map writeBuildTreeRef (catMaybes treesToAdd)
   unless (null entries) $ do
-    offset <-
-      fmap (Tar.foldrEntries (\e acc -> Tar.entrySizeInBytes e + acc) 0 error
-            . Tar.read) $ BS.readFile path
-    _ <- evaluate offset
-    debug verbosity $ "Writing at offset: " ++ show offset
     withBinaryFile path ReadWriteMode $ \h -> do
-      hSeek h AbsoluteSeek (fromIntegral offset)
+      block <- Tar.hSeekEndEntryOffset h Nothing
+      debug verbosity $ "Writing at tar block: " ++ show block
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
     updatePackageIndexCacheFile verbosity $ SandboxIndex path
@@ -205,7 +203,7 @@ removeBuildTreeRefs verbosity indexPath l = do
         (newIdx, changedPaths) <-
           Tar.read `fmap` BS.readFile indexPath
           >>= runWriterT . Tar.filterEntriesM (p $ fmap snd srcRefs)
-        BS.writeFile tmpFile $ Tar.writeEntries newIdx
+        BS.writeFile tmpFile . Tar.write . Tar.entriesToList $ newIdx
         return changedPaths
 
       p :: [FilePath] -> Tar.Entry -> WriterT [FilePath] IO Bool
