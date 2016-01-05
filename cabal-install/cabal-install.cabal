@@ -149,6 +149,7 @@ executable cabal
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Utils.LabeledGraph
+        Distribution.Client.Utils.Json
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
