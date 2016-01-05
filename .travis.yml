@@ -33,6 +33,9 @@ script:
 
 # Cabal
  - cd Cabal
+# Test if gen-extra-source-files.sh was run recently enough
+ - ./misc/gen-extra-source-files.sh
+ - ./misc/travis-diff-files.sh
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
  - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup

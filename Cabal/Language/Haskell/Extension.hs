@@ -744,6 +744,13 @@ data KnownExtension =
   -- | Allow records to use duplicated field labels for accessors.
   | DuplicateRecordFields
 
+  -- | Enable explicit type applications with the syntax @id \@Int@.
+  | TypeApplications
+
+  -- | A temporary extension to help library authors check if their
+  -- code will compile with the new planned desugaring of fail.
+  | MonadFailDesugaring
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
