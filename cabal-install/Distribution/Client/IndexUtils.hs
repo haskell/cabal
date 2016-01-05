@@ -17,13 +17,14 @@ module Distribution.Client.IndexUtils (
   getIndexFileAge,
   getInstalledPackages,
   getSourcePackages,
-  getSourcePackagesStrict,
 
   Index(..),
+  PackageEntry(..),
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
   updatePackageIndexCacheFile,
+  readCacheStrict,
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
@@ -113,12 +114,6 @@ getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
 getSourcePackages verbosity repos = getSourcePackages' verbosity repos
                                     ReadPackageIndexLazyIO
 
--- | Like 'getSourcePackages', but reads the package index strictly. Useful if
--- you want to write to the package index after having read it.
-getSourcePackagesStrict :: Verbosity -> [Repo] -> IO SourcePackageDb
-getSourcePackagesStrict verbosity repos = getSourcePackages' verbosity repos
-                                          ReadPackageIndexStrict
-
 -- | Common implementation used by getSourcePackages and
 -- getSourcePackagesStrict.
 getSourcePackages' :: Verbosity -> [Repo] -> ReadPackageIndexMode
@@ -142,6 +137,13 @@ getSourcePackages' verbosity repos mode = do
     packageIndex       = pkgs,
     packagePreferences = prefs'
   }
+
+readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
+readCacheStrict verbosity index mkPkg = do
+    updateRepoIndexCache verbosity index
+    cache <- liftM readIndexCache $ BSS.readFile (cacheFile index)
+    withFile (indexFile index) ReadMode $ \indexHnd ->
+      packageListFromCache mkPkg indexHnd cache ReadPackageIndexStrict
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
@@ -421,21 +423,30 @@ readPackageIndexCacheFile mkPkg index mode = do
       ReadPackageIndexLazyIO -> do indexHnd <- openFile f m
                                    act indexHnd
 
-
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
                       -> Handle
                       -> Cache
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
+packageIndexFromCache mkPkg hnd cache mode = do
+     (pkgs, prefs) <- packageListFromCache mkPkg hnd cache mode
+     pkgIndex <- evaluate $ PackageIndex.fromList pkgs
+     return (pkgIndex, prefs)
+
+-- | Read package list
+--
+-- The result packages (though not the preferences) are guaranteed to be listed
+-- in the same order as they are in the tar file (because later entries in a tar
+-- file mask earlier ones).
+packageListFromCache :: (PackageEntry -> pkg)
+                     -> Handle
+                     -> Cache
+                     -> ReadPackageIndexMode
+                     -> IO ([pkg], [Dependency])
+packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
   where
-    accum srcpkgs prefs [] = do
-      -- Have to reverse entries, since in a tar file, later entries mask
-      -- earlier ones, and PackageIndex.fromList does the same, but we
-      -- accumulate the list of entries in reverse order, so need to reverse.
-      pkgIndex <- evaluate $ PackageIndex.fromList (reverse srcpkgs)
-      return (pkgIndex, prefs)
+    accum srcpkgs prefs [] = return (reverse srcpkgs, prefs)
 
     accum srcpkgs prefs (CachePackageId pkgid blockno : entries) = do
       -- Given the cache entry, make a package index entry.
