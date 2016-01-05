@@ -127,7 +127,9 @@ explore pref (ChoiceNode _ choices)  =
       where
         isInstalled (SourceOnly _) = False
         isInstalled _              = True
-        isPreferred p = packageVersion p `withinRange` preferredVersions
+        isPreferred p = length . filter (packageVersion p `withinRange`) $
+                        preferredVersions
+
         (PackagePreferences preferredVersions packageInstalledPreference)
           = pref pkgname
 
@@ -669,9 +671,11 @@ finaliseSelectedPackages pref selected constraints =
         -- version constraints. TODO: distinguish hacks from prefs
         bounded = boundedAbove versionRange
         isPreferred p
-          | bounded   = True -- any constant will do
-          | otherwise = packageVersion p `withinRange` preferredVersions
+          | bounded   = boundedRank -- this is a dummy constant
+          | otherwise = length . filter (packageVersion p `withinRange`) $
+                        preferredVersions
           where (PackagePreferences preferredVersions _) = pref (packageName p)
+        boundedRank = 0 -- any value will do
 
         boundedAbove :: VersionRange -> Bool
         boundedAbove vr = case asVersionIntervals vr of

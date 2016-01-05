@@ -8,6 +8,9 @@ import Data.Maybe (isNothing)
 import Data.Proxy
 import Data.Typeable
 
+import qualified Data.Version         as V
+import qualified Distribution.Version as V
+
 -- test-framework
 import Test.Tasty as TF
 import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
@@ -85,9 +88,26 @@ tests = [
         , runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupportedIndirect" ["B"] Nothing
         , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (Just [("A",1),("B",1),("C",1)])
         ]
+
+     , testGroup "Soft Constraints" [
+          runTest $ soft [ ExPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (Just [("A", 1)])
+        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (Just [("A", 2)])
+        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2
+                         , ExPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (Just [("A", 1)])
+        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 1
+                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (Just [("A", 1)])
+        , runTest $ soft [ ExPref "A" $ mkvrThis 1
+                         , ExPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (Just [("A", 2)])
+        , runTest $ soft [ ExPref "A" $ mkvrThis 1
+                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (Just [("A", 1)])
+        ]
     ]
   where
-    indep test = test { testIndepGoals = True }
+    indep test      = test { testIndepGoals = True }
+    soft prefs test = test { testSoftConstraints = prefs }
+    mkvrThis        = V.thisVersion . makeV
+    mkvrOrEarlier   = V.orEarlierVersion . makeV
+    makeV v         = V.Version [v,0,0] []
 
 {-------------------------------------------------------------------------------
   Solver tests
@@ -98,6 +118,7 @@ data SolverTest = SolverTest {
   , testTargets        :: [String]
   , testResult         :: Maybe [(String, Int)]
   , testIndepGoals     :: Bool
+  , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: [Extension]
   , testSupportedLangs :: [Language]
@@ -138,6 +159,7 @@ mkTestExtLang exts langs db label targets result = SolverTest {
   , testTargets        = targets
   , testResult         = result
   , testIndepGoals     = False
+  , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
   , testSupportedLangs = langs
@@ -146,7 +168,8 @@ mkTestExtLang exts langs db label targets result = SolverTest {
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let (_msgs, result) = exResolve testDb testSupportedExts testSupportedLangs testTargets testIndepGoals
+      let (_msgs, result) = exResolve testDb testSupportedExts testSupportedLangs
+                            testTargets testIndepGoals testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (isNothing testResult)
@@ -387,6 +410,13 @@ db12 =
     , Right $ exAv "E" 1 [ExFix "base" 4, ExFix "syb" 2]
     ]
 
+db13 :: ExampleDb
+db13 = [
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "A" 3 []
+  ]
+
 dbExts1 :: ExampleDb
 dbExts1 = [
     Right $ exAv "A" 1 [ExExt (EnableExtension RankNTypes)]
@@ -402,7 +432,6 @@ dbLangs1 = [
   , Right $ exAv "B" 1 [ExLang Haskell98, ExAny "A"]
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
-
 
 {-------------------------------------------------------------------------------
   Test options
