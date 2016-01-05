@@ -20,6 +20,9 @@ import           Distribution.Client.BuildTarget hiding (BuildTargetProblem, rep
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
+import qualified Distribution.Client.Utils.Json as J
+
+import qualified Distribution.Client.ComponentDeps as ComponentDeps
 
 import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
@@ -136,6 +139,30 @@ build verbosity
     writeFile (distProjectCacheFile distDirLayout "plan.txt") $
                unlines $ show sharedPackageConfig
                        : map show (InstallPlan.toList elaboratedInstallPlan)
+
+    -- Write also an "plan.json" file alongside "plan.txt"
+    --TODO: expose more details, such as flag-settings when available; move
+    -- JSON serialiser to a top-evel function
+    let jsonIPlan = map toJ (InstallPlan.toList elaboratedInstallPlan)
+        toJ (InstallPlan.PreExisting ipi) =
+          J.object [ "type"        J..= J.String "pre-existing"
+                   , "compentId"   J..= (unCId $ installedComponentId ipi)
+                   , "lib" J..= (J.object $ [ "depends" J..= (map unCId $ installedDepends ipi) ])
+                   ]
+
+        toJ (InstallPlan.Configured ecp) =
+          J.object [ "type"        J..= J.String "configured"
+                   , "compentId"   J..= (unCId . installedComponentId) ecp
+                   , "lib" J..= (J.object $ [ "depends" J..= (map unCId . ComponentDeps.libraryDeps $ depends ecp) ])
+                   ]
+
+        -- TODO: do we need to handle any other InstallPlan-constructors?
+
+        unCId (ComponentId s) = J.String s
+
+    writeFile (distProjectCacheFile distDirLayout "plan.json") . J.encodeToString $
+                       J.object [ "install-plan" J..= jsonIPlan ]
+
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
