@@ -21,7 +21,6 @@ module Distribution.Client.IndexUtils (
   Index(..),
   PackageEntry(..),
   parsePackageIndex,
-  readRepoIndex,
   updateRepoIndexCache,
   updatePackageIndexCacheFile,
   readCacheStrict,
@@ -109,25 +108,17 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
---
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
-getSourcePackages verbosity repos = getSourcePackages' verbosity repos
-                                    ReadPackageIndexLazyIO
-
--- | Common implementation used by getSourcePackages and
--- getSourcePackagesStrict.
-getSourcePackages' :: Verbosity -> [Repo] -> ReadPackageIndexMode
-                      -> IO SourcePackageDb
-getSourcePackages' verbosity [] _mode = do
+getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
   return SourcePackageDb {
     packageIndex       = mempty,
     packagePreferences = mempty
   }
-getSourcePackages' verbosity repos mode = do
+getSourcePackages verbosity repos = do
   info verbosity "Reading available packages..."
-  pkgss <- mapM (\r -> readRepoIndex verbosity r mode) repos
+  pkgss <- mapM (\r -> readRepoIndex verbosity r) repos
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
@@ -152,13 +143,13 @@ readCacheStrict verbosity index mkPkg = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
+readRepoIndex :: Verbosity -> Repo
               -> IO (PackageIndex SourcePackage, [Dependency])
-readRepoIndex verbosity repo mode =
+readRepoIndex verbosity repo =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repo)
-    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo) mode
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo)
 
   where
     mkAvailablePackage pkgEntry =
@@ -411,17 +402,11 @@ data ReadPackageIndexMode = ReadPackageIndexStrict
 readPackageIndexCacheFile :: Package pkg
                           => (PackageEntry -> pkg)
                           -> Index
-                          -> ReadPackageIndexMode
                           -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile mkPkg index mode = do
+readPackageIndexCacheFile mkPkg index = do
   cache    <- liftM readIndexCache $ BSS.readFile (cacheFile index)
-  myWithFile (indexFile index) ReadMode $ \indexHnd ->
-    packageIndexFromCache mkPkg indexHnd cache mode
-  where
-    myWithFile f m act = case mode of
-      ReadPackageIndexStrict -> withFile f m act
-      ReadPackageIndexLazyIO -> do indexHnd <- openFile f m
-                                   act indexHnd
+  indexHnd <- openFile (indexFile index) ReadMode
+  packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
 
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
