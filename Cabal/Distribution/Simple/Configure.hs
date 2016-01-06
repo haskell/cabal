@@ -1019,6 +1019,11 @@ getInstalledPackages verbosity comp packageDBs progconf = do
               ++ display flv
 
 -- | Like 'getInstalledPackages', but for a single package DB.
+--
+-- NB: Why isn't this always a fall through to 'getInstalledPackages'?
+-- That is because 'getInstalledPackages' performs some sanity checks
+-- on the package database stack in question.  However, when sandboxes
+-- are involved these sanity checks are not desirable.
 getPackageDBContents :: Verbosity -> Compiler
                      -> PackageDB -> ProgramConfiguration
                      -> IO InstalledPackageIndex
