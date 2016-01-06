@@ -14,59 +14,33 @@ module Distribution.Simple.GHCJS (
         runCmd
   ) where
 
-import Distribution.Simple.GHC.ImplInfo ( getImplInfo, ghcjsVersionImplInfo )
+import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, exeModules
-         , hcOptions, hcProfOptions, hcSharedOptions
-         , allExtensions )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
-import Distribution.Package ( ComponentId(..), getHSLibraryName )
+import Distribution.Package
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import qualified Distribution.Simple.Hpc as Hpc
-import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramSearchPath
-         , rawSystemProgramConf
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , getProgramInvocationOutput
-         , requireProgramVersion, requireProgram
-         , userMaybeSpecifyPath, programPath
-         , lookupProgram, addKnownPrograms
-         , ghcjsProgram, ghcjsPkgProgram, c2hsProgram, hsc2hsProgram
-         , ldProgram, haddockProgram, stripProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup
-         ( toFlag, fromFlag, configCoverage, configDistPref )
+import Distribution.Simple.Setup hiding ( Flag )
 import qualified Distribution.Simple.Setup as Cabal
-        ( Flag(..) )
-import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-         , PackageDB(..), PackageDBStack, AbiTag(..) )
+import Distribution.Simple.Compiler hiding ( Flag )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
-         ( Platform(..) )
 import Distribution.Verbosity
 import Distribution.Utils.NubList
-         ( overNubListR, toNubListR )
-import Distribution.Text ( display )
-import Language.Haskell.Extension ( Extension(..)
-                                  , KnownExtension(..))
+import Distribution.Text
+import Language.Haskell.Extension
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
@@ -804,7 +778,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptInputModules = toNubListR $ exposedModules lib
+          ghcOptInputModules = toNubListR $ PD.exposedModules lib
         }
       profArgs = adjustExts "js_p_hi" "js_p_o" vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
