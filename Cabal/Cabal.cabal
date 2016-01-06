@@ -88,6 +88,9 @@ extra-source-files:
   tests/PackageTests/Haddock/NoCPP.hs
   tests/PackageTests/Haddock/Simple.hs
   tests/PackageTests/Haddock/my.cabal
+  tests/PackageTests/HaddockNewline/A.hs
+  tests/PackageTests/HaddockNewline/HaddockNewline.cabal
+  tests/PackageTests/HaddockNewline/Setup.hs
   tests/PackageTests/OrderFlags/Foo.hs
   tests/PackageTests/OrderFlags/my.cabal
   tests/PackageTests/PathsModule/Executable/Main.hs
