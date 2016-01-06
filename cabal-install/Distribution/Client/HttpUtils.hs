@@ -6,6 +6,7 @@ module Distribution.Client.HttpUtils (
     DownloadResult(..),
     configureTransport,
     HttpTransport(..),
+    HttpCode,
     downloadURI,
     transportCheckHttps,
     remoteRepoCheckHttps,
@@ -115,7 +116,7 @@ downloadURI transport verbosity uri path = do
           = transport
 
     withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
-      result <- getHttp transport' verbosity uri etag tmpFile
+      result <- getHttp transport' verbosity uri etag tmpFile []
 
       -- Only write the etag if we get a 200 response code.
       -- A 304 still sends us an etag header.
@@ -209,7 +210,7 @@ data HttpTransport = HttpTransport {
       -- | GET a URI, with an optional ETag (to do a conditional fetch),
       -- write the resource to the given file and return the HTTP status code,
       -- and optional ETag.
-      getHttp  :: Verbosity -> URI -> Maybe ETag -> FilePath
+      getHttp  :: Verbosity -> URI -> Maybe ETag -> FilePath -> [Header]
                -> IO (HttpCode, Maybe ETag),
 
       -- | POST a resource to a URI, with optional auth (username, password)
@@ -319,7 +320,7 @@ curlTransport :: ConfiguredProgram -> HttpTransport
 curlTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
-    gethttp verbosity uri etag destPath = do
+    gethttp verbosity uri etag destPath reqHeaders = do
         withTempFile (takeDirectory destPath)
                      "curl-headers.txt" $ \tmpFile tmpHandle -> do
           hClose tmpHandle
@@ -333,6 +334,9 @@ curlTransport prog =
                 ++ concat
                    [ ["--header", "If-None-Match: " ++ t]
                    | t <- maybeToList etag ]
+                ++ concat
+                   [ ["--header", show name ++ ": " ++ value]
+                   | Header name value <- reqHeaders ]
 
           resp <- getProgramInvocationOutput verbosity
                     (programInvocation prog args)
@@ -409,7 +413,7 @@ wgetTransport :: ConfiguredProgram -> HttpTransport
 wgetTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
-    gethttp verbosity uri etag destPath = do
+    gethttp verbosity uri etag destPath reqHeaders = do
         resp <- runWGet verbosity uri args
         (code, _err, etag') <- parseResponse uri resp
         return (code, etag')
@@ -422,6 +426,8 @@ wgetTransport prog =
             ++ concat
                [ ["--header", "If-None-Match: " ++ t]
                | t <- maybeToList etag ]
+            ++ [ "--header=" ++ show name ++ ": " ++ value
+               | Header name value <- reqHeaders ]
 
     posthttp = noPostYet
 
@@ -504,10 +510,10 @@ powershellTransport :: ConfiguredProgram -> HttpTransport
 powershellTransport prog =
     HttpTransport gethttp posthttp posthttpfile puthttpfile True False
   where
-    gethttp verbosity uri etag destPath = do
+    gethttp verbosity uri etag destPath reqHeaders = do
       resp <- runPowershellScript verbosity $
         webclientScript
-          (setupHeaders (useragentHeader : etagHeader))
+          (setupHeaders ((useragentHeader : etagHeader) ++ reqHeaders))
           [ "$wc.DownloadFile(" ++ escape (show uri)
               ++ "," ++ escape destPath ++ ");"
           , "Write-Host \"200\";"
@@ -617,12 +623,13 @@ plainHttpTransport :: HttpTransport
 plainHttpTransport =
     HttpTransport gethttp posthttp posthttpfile puthttpfile False False
   where
-    gethttp verbosity uri etag destPath = do
+    gethttp verbosity uri etag destPath reqHeaders = do
       let req = Request{
                   rqURI     = uri,
                   rqMethod  = GET,
                   rqHeaders = [ Header HdrIfNoneMatch t
-                              | t <- maybeToList etag ],
+                              | t <- maybeToList etag ]
+                           ++ reqHeaders,
                   rqBody    = BS.empty
                 }
       (_, resp) <- cabalBrowse verbosity Nothing (request req)
