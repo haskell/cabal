@@ -1280,7 +1280,8 @@ pruneInstallPlanToTargets perPkgTargetsMap =
 
 -- The first pass does three things:
 --
--- * determine which optional stanzas (testsuites, benchmarks) are needed
+-- * a first go at determining which optional stanzas (testsuites, benchmarks)
+--   are needed. (We have a second go in the next pass.)
 -- * then prune dependencies used only by unneeded optional stanzas
 -- * then take the dependency closure, given the pruned deps
 --
@@ -1288,9 +1289,13 @@ pruneInstallPlanPass1 :: Map InstalledPackageId [ComponentTarget]
                       -> [ElaboratedPlanPackage]
                       -> [ElaboratedPlanPackage]
 pruneInstallPlanPass1 perPkgTargetsMap pkgs =
+    map fst $
     dependencyClosure
-      (CD.flatDeps . depends)
-      (map (mapConfiguredPackage pruneOptionalStanzaDependencies) pkgs)
+      (installedPackageId . fst)  -- the pkg id
+      snd                         -- the pruned deps
+      [ (pkg', pruneOptionalDependencies pkg')
+      | pkg <- pkgs
+      , let pkg' = mapConfiguredPackage pruneOptionalStanzas pkg ]
       (Map.keys perPkgTargetsMap)
   where
     -- Decide whether or not to enable testsuites and benchmarks
@@ -1309,23 +1314,26 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- disabled. Technically this introduces a little bit of stateful
     -- behaviour to make this "sticky", but it should be benign.
     --
-    pruneOptionalStanzaDependencies pkg =
-        pkg {
-          pkgStanzasEnabled = stanzas,
-          pkgDependencies   = CD.filterDeps keepNeeded (pkgDependencies pkg)
-        }
+    pruneOptionalStanzas pkg = pkg { pkgStanzasEnabled = stanzas }
       where
         stanzas :: Set OptionalStanza
         stanzas = optionalStanzasRequiredByTargets  targets
                <> optionalStanzasRequestedByDefault pkg
-               <> optionalStanzasWithDepsAvailable  pkg
+               <> optionalStanzasWithDepsAvailable availablePkgs pkg
 
         targets = fromMaybe []
                 $ Map.lookup (installedPackageId pkg) perPkgTargetsMap
 
+    pruneOptionalDependencies :: ElaboratedPlanPackage -> [InstalledPackageId]
+    pruneOptionalDependencies (InstallPlan.Configured pkg) =
+        (CD.flatDeps . CD.filterDeps keepNeeded) (depends pkg)
+      where
         keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
         keepNeeded _                     _ = True
+        stanzas = pkgStanzasEnabled pkg
+    pruneOptionalDependencies pkg =
+        CD.flatDeps (depends pkg)
 
     optionalStanzasRequiredByTargets :: [ComponentTarget]
                                      -> Set OptionalStanza
@@ -1344,39 +1352,53 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
       . Map.filter (id :: Bool -> Bool)
       . pkgStanzasRequested
 
-    optionalStanzasWithDepsAvailable :: ElaboratedConfiguredPackage 
-                                     -> Set OptionalStanza
-    optionalStanzasWithDepsAvailable pkg =
-        Set.fromList
-          [ stanza
-          | stanza <- Set.toList (pkgStanzasAvailable pkg)
-          , let deps :: [InstalledPackageId]
-                deps = map installedPackageId
-                     $ CD.select (optionalStanzaDeps stanza)
-                                 (pkgDependencies pkg)
-          , all (`Set.member` availablePkgs) deps
-          ]
-
-    optionalStanzaDeps TestStanzas  (CD.ComponentTest  _) = True
-    optionalStanzaDeps BenchStanzas (CD.ComponentBench _) = True
-    optionalStanzaDeps _            _                     = False
-
     availablePkgs =
       Set.fromList
         [ installedPackageId pkg
         | InstallPlan.PreExisting pkg <- pkgs ]
 
+optionalStanzasWithDepsAvailable :: Set InstalledPackageId
+                                 -> ElaboratedConfiguredPackage 
+                                 -> Set OptionalStanza
+optionalStanzasWithDepsAvailable availablePkgs pkg =
+    Set.fromList
+      [ stanza
+      | stanza <- Set.toList (pkgStanzasAvailable pkg)
+      , let deps :: [InstalledPackageId]
+            deps = map installedPackageId
+                 $ CD.select (optionalStanzaDeps stanza)
+                             (pkgDependencies pkg)
+      , all (`Set.member` availablePkgs) deps
+      ]
+  where
+    optionalStanzaDeps TestStanzas  (CD.ComponentTest  _) = True
+    optionalStanzaDeps BenchStanzas (CD.ComponentBench _) = True
+    optionalStanzaDeps _            _                     = False
 
--- The second pass does just one thing:
+
+-- The second pass does two things:
 --
+-- * a second go at deciding which optional stanzas to enable
 -- * set which targets within each package to actually build
 --
--- This depends on knowing which packages have reverse dependencies
--- (ie are needed). This requires the result of first pass, which is
--- why we have to split it into two passes.
+-- Achieving sticky behaviour with enabling\/disabling optional stanzas is
+-- tricky. The first approximation was handled by the first pass above, but
+-- it's not quite enough. That pass will enable stanzas if all of the deps
+-- of the optional stanza are already instaled /in the store/. That's important
+-- but it does not account for depencencies that get built inplace as part of
+-- the project. We cannot take those inplace build deps into account in the
+-- pruning pass however because we don't yet know which ones we're going to
+-- build. Once we do know, we can have another go and enable stanzas that have
+-- all their deps available. Now we can consider all packages in the pruned
+-- plan to be available, including ones we already decided to build from
+-- source.
 --
--- Note that just because we might enable testsuites or benchmarks in the
--- first pass doesn't mean that we build all (or even any) of them.
+-- Deciding which targets to build depends on knowing which packages have
+-- reverse dependencies (ie are needed). This requires the result of first
+-- pass, which is another reason we have to split it into two passes.
+--
+-- Note that just because we might enable testsuites or benchmarks (in the
+-- first or second pass) doesn't mean that we build all (or even any) of them.
 -- That depends on which targets we pick in the second pass.
 --
 pruneInstallPlanPass2 :: Map InstalledPackageId [ComponentTarget]
@@ -1387,11 +1409,21 @@ pruneInstallPlanPass2 perPkgTargetsMap pkgs =
   where
     setBuildTargets pkg =
         pkg {
-          pkgBuildTargets = targets
+          pkgStanzasEnabled = stanzas,
+          pkgDependencies   = CD.filterDeps keepNeeded (pkgDependencies pkg),
+          pkgBuildTargets   = targets
         }
       where
+        stanzas :: Set OptionalStanza
+        stanzas = pkgStanzasEnabled pkg
+               <> optionalStanzasWithDepsAvailable availablePkgs pkg
+
+        keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
+        keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
+        keepNeeded _                     _ = True
+
         targets :: [Cabal.BuildTarget]
-        targets  | Set.null (pkgStanzasEnabled pkg)
+        targets  | Set.null stanzas
                  , ctargets == [BuildAllDefaultComponents]
                    -- common special case of building only the default things
                  = []
@@ -1408,6 +1440,9 @@ pruneInstallPlanPass2 perPkgTargetsMap pkgs =
                  ]
                  -- plus any specific targets
               ++ perPkgTargets pkg
+
+    availablePkgs :: Set InstalledPackageId
+    availablePkgs = Set.fromList (map installedPackageId pkgs)
 
     hasReverseLibDeps :: Set InstalledPackageId
     hasReverseLibDeps =
@@ -1471,30 +1506,30 @@ componentOptionalStanza (Cabal.CBenchName _) = Just BenchStanzas
 componentOptionalStanza _                    = Nothing
 
 
-dependencyClosure :: HasComponentId pkg
-                  => (pkg -> [InstalledPackageId])
+dependencyClosure :: (pkg -> InstalledPackageId)
+                  -> (pkg -> [InstalledPackageId])
                   -> [pkg]
                   -> [InstalledPackageId]
                   -> [pkg]
-dependencyClosure deps allpkgs =
+dependencyClosure pkgid deps allpkgs =
     map vertexToPkg
   . concatMap Tree.flatten
   . Graph.dfs graph
   . map pkgidToVertex
   where
-    (graph, vertexToPkg, pkgidToVertex) = dependencyGraph deps allpkgs
+    (graph, vertexToPkg, pkgidToVertex) = dependencyGraph pkgid deps allpkgs
 
-dependencyGraph :: HasComponentId pkg
-                => (pkg -> [InstalledPackageId])
+dependencyGraph :: (pkg -> InstalledPackageId)
+                -> (pkg -> [InstalledPackageId])
                 -> [pkg]
                 -> (Graph.Graph,
                     Graph.Vertex -> pkg,
                     InstalledPackageId -> Graph.Vertex)
-dependencyGraph deps pkgs =
+dependencyGraph pkgid deps pkgs =
     (graph, vertexToPkg', pkgidToVertex')
   where
     (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, installedPackageId pkg, deps pkg ) 
+      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg ) 
                            | pkg <- pkgs ]
     vertexToPkg'   = (\(pkg,_,_) -> pkg)
                    . vertexToPkg

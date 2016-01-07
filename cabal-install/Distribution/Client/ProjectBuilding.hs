@@ -41,6 +41,8 @@ import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
+import           Distribution.Simple.LocalBuildInfo (ComponentName)
+import           Distribution.Simple.BuildTarget (buildTargetComponentName)
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -50,6 +52,8 @@ import           Distribution.ParseUtils ( showPWarning )
 
 import           Data.Map (Map)
 import qualified Data.Map as Map
+import           Data.Set (Set)
+import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
 
 import           Control.Applicative
@@ -582,8 +586,10 @@ buildInplaceUnpackedPackage verbosity
     -- The configChanged here includes the identity of the dependencies, so
     -- depsChanged below is just needed for the changes in the content of deps.
     --
+    let buildComponents = Set.fromList (map buildTargetComponentName
+                                            (pkgBuildTargets pkg))
     configChanged <- checkFileMonitorChanged configFileMonitor srcdir pkgconfig
-    buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir ()
+    buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir buildComponents
     let depsChanged = not $ null [ () | BuildOk True _ _ <- CD.flatDeps depResults ]
     --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
 
@@ -604,7 +610,7 @@ buildInplaceUnpackedPackage verbosity
         createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
-        whenChanged configChanged $ do
+        whenChanged_ configChanged $ do
           when isParallelBuild $
             notice verbosity $ "Configuring " ++ display pkgid ++ "..."
           setup configureCommand' configureFlags []
@@ -615,10 +621,9 @@ buildInplaceUnpackedPackage verbosity
         setup buildCommand' buildFlags buildArgs
 
         -- Register locally
-        mipkg <- case configChanged of
-          MonitorUnchanged mipkg _ -> return mipkg
-          MonitorChanged   _
-            | pkgRequiresRegistration pkg -> do
+        mipkg <- whenChanged configChanged $
+          if pkgRequiresRegistration pkg
+            then do
                 ipkg <- generateInstalledPackageInfo
                 -- We register ourselves rather than via Setup.hs. We need to
                 -- grab and modify the InstalledPackageInfo. We decide what
@@ -629,7 +634,7 @@ buildInplaceUnpackedPackage verbosity
                                       ipkg'
                 return (Just ipkg')
 
-           | otherwise -> return Nothing
+           else return Nothing
 
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
@@ -637,7 +642,7 @@ buildInplaceUnpackedPackage verbosity
             buildSuccess :: BuildSuccess
             buildSuccess = BuildOk True docsResult testsResult
 
-        whenChanged configChanged $
+        whenChanged_ configChanged $
           updateFileMonitor configFileMonitor srcdir
                             []
                             pkgconfig mipkg
@@ -647,9 +652,22 @@ buildInplaceUnpackedPackage verbosity
         allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
                    <$> getDirectoryContentsRecursive srcdir
 
+        -- If the only thing that's changed is that we're now building extra
+        -- components, then we can avoid later unnecessary rebuilds by saving
+        -- the total set of components that have been built, namely the union
+        -- of the existing ones plus the new ones.
+        let buildComponents' =
+              case (configChanged, buildChanged) of
+                (MonitorUnchanged _ _,
+                 MonitorChanged (MonitoredValueChanged curBuildComponents))
+                  | not depsChanged -> curBuildComponents
+                           `Set.union` buildComponents
+
+                _otherwise          -> buildComponents
+
         updateFileMonitor buildFileMonitor srcdir
                           (map MonitorFileHashed allSrcFiles)
-                          () buildSuccess
+                          buildComponents' buildSuccess
 
         return (BuildSuccess mipkg buildSuccess)
 
@@ -670,11 +688,19 @@ buildInplaceUnpackedPackage verbosity
                            (Maybe InstalledPackageInfo)
     configFileMonitor = newFileMonitor (distPackageCacheFile pkgid "config")
 
-    buildFileMonitor :: FileMonitor () BuildSuccess
-    buildFileMonitor = newFileMonitor (distPackageCacheFile pkgid "build")
+    buildFileMonitor :: FileMonitor (Set ComponentName) BuildSuccess
+    buildFileMonitor =
+      FileMonitor {
+        fileMonitorCacheFile = distPackageCacheFile pkgid "build",
+        fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
+          componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt
+      }
 
-    whenChanged (MonitorChanged   _) action = action
-    whenChanged (MonitorUnchanged _ _) _    = return ()
+    whenChanged_ (MonitorChanged   _)   action = action
+    whenChanged_ (MonitorUnchanged _ _) _      = return ()
+
+    whenChanged (MonitorChanged   _)   action = action
+    whenChanged (MonitorUnchanged x _) _      = return x
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
