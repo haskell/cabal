@@ -20,7 +20,8 @@ module Distribution.Client.RebuildMonad (
     FilePathGlob(..),
 
     -- * Using a file monitor
-    FileMonitorCacheFile(..),
+    FileMonitor(..),
+    newFileMonitor,
     rerunIfChanged,
 
     -- * Utils
@@ -30,7 +31,8 @@ module Distribution.Client.RebuildMonad (
 import Distribution.Client.FileStatusCache
          ( MonitorFilePath(..), monitorFileSearchPath
          , FilePathGlob(..), matchFileGlob
-         , FileMonitorCacheFile(..), Changed(..)
+         , FileMonitor(..), newFileMonitor
+         , MonitorChanged(..), MonitorChangedReason(..)
          , checkFileMonitorChanged, updateFileMonitor )
 
 import Distribution.Simple.Utils (debug)
@@ -38,7 +40,6 @@ import Distribution.Verbosity    (Verbosity)
 
 import Control.Applicative
 import Control.Monad.State as State
-import Data.Maybe      (fromMaybe)
 import Data.Binary     (Binary)
 import System.FilePath (takeFileName)
 
@@ -62,29 +63,31 @@ runRebuild (Rebuild action) = evalStateT action []
 rerunIfChanged :: (Eq a, Binary a, Binary b)
                => Verbosity
                -> FilePath
-               -> FileMonitorCacheFile a b
+               -> FileMonitor a b
                -> a
                -> Rebuild b
                -> Rebuild b
-rerunIfChanged verbosity rootDir monitorCacheFile key action = do
-    changed <- liftIO $ checkFileMonitorChanged
-                          monitorCacheFile rootDir key
+rerunIfChanged verbosity rootDir monitor key action = do
+    changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
     case changed of
-      Unchanged (result, files) -> do
+      MonitorUnchanged result files -> do
         liftIO $ debug verbosity $ "File monitor '" ++ monitorName
                                                     ++ "' unchanged."
         monitorFiles files
         return result
 
-      Changed mbFile -> do
+      MonitorChanged reason -> do
         liftIO $ debug verbosity $ "File monitor '" ++ monitorName
-                                ++ "' changed: "
-                                ++ fromMaybe "non-file change" mbFile
+                                ++ "' changed: " ++ showReason reason
         (result, files) <- liftIO $ unRebuild action
-        liftIO $ updateFileMonitor monitorCacheFile rootDir
-                                   files key result
+        liftIO $ updateFileMonitor monitor rootDir files key result
         monitorFiles files
         return result
   where
-    monitorName = takeFileName (monitorCacheFilePath monitorCacheFile)
+    monitorName = takeFileName (fileMonitorCacheFile monitor)
+
+    showReason (MonitoredFileChanged file) = "file " ++ file
+    showReason (MonitoredValueChanged _)   = "monitor value changed"
+    showReason  MonitorFirstRun            = "first run"
+    showReason  MonitorCorruptCache        = "invalid cache file"
 

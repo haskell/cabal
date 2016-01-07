@@ -24,7 +24,8 @@ import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileStatusCache
-                   ( Changed(..), checkFileMonitorChanged, updateFileMonitor )
+                   ( MonitorChanged(..), MonitorChangedReason(..)
+                   , checkFileMonitorChanged, updateFileMonitor )
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.HttpUtils
@@ -587,7 +588,9 @@ buildInplaceUnpackedPackage verbosity
     --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
 
     case (configChanged, buildChanged, depsChanged) of
-      (Unchanged (mipkg, _), Unchanged (buildSuccess, _), False) ->
+      (MonitorUnchanged mipkg _,
+       MonitorUnchanged buildSuccess _,
+       False) ->
           return (BuildSuccess mipkg (markUnchanged buildSuccess)) --TODO: [code cleanup] make this cleaner
         where
           markUnchanged :: BuildSuccess -> BuildSuccess
@@ -613,8 +616,8 @@ buildInplaceUnpackedPackage verbosity
 
         -- Register locally
         mipkg <- case configChanged of
-          Unchanged (mipkg, _) -> return mipkg
-          Changed   _
+          MonitorUnchanged mipkg _ -> return mipkg
+          MonitorChanged   _
             | pkgRequiresRegistration pkg -> do
                 ipkg <- generateInstalledPackageInfo
                 -- We register ourselves rather than via Setup.hs. We need to
@@ -630,7 +633,7 @@ buildInplaceUnpackedPackage verbosity
 
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
-            
+
             buildSuccess :: BuildSuccess
             buildSuccess = BuildOk True docsResult testsResult
 
@@ -661,17 +664,17 @@ buildInplaceUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
-    configFileMonitor :: FileMonitorCacheFile
+    configFileMonitor :: FileMonitor
                            (GenericReadyPackage ElaboratedConfiguredPackage
                                                 InstalledPackageInfo)
                            (Maybe InstalledPackageInfo)
-    configFileMonitor = FileMonitorCacheFile (distPackageCacheFile pkgid "config")
+    configFileMonitor = newFileMonitor (distPackageCacheFile pkgid "config")
 
-    buildFileMonitor  :: FileMonitorCacheFile () BuildSuccess
-    buildFileMonitor  = FileMonitorCacheFile (distPackageCacheFile pkgid "build")
+    buildFileMonitor :: FileMonitor () BuildSuccess
+    buildFileMonitor = newFileMonitor (distPackageCacheFile pkgid "build")
 
-    whenChanged (Changed   _) action = action
-    whenChanged (Unchanged _) _      = return ()
+    whenChanged (MonitorChanged   _) action = action
+    whenChanged (MonitorUnchanged _ _) _    = return ()
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $

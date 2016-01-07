@@ -451,11 +451,14 @@ rebuildInstallPlan verbosity
       return (improvedPlan, elaboratedShared, projectConfig)
 
   where
-    fileMonitorCompiler       = FileMonitorCacheFile (distProjectCacheFile "compiler")
-    fileMonitorSolverPlan     = FileMonitorCacheFile (distProjectCacheFile "solver-plan")
-    fileMonitorSourceHashes   = FileMonitorCacheFile (distProjectCacheFile "source-hashes")
-    fileMonitorElaboratedPlan = FileMonitorCacheFile (distProjectCacheFile "elaborated-plan")
-    fileMonitorImprovedPlan   = FileMonitorCacheFile (distProjectCacheFile "improved-plan")
+    fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
+    fileMonitorSolverPlan     = newFileMonitorInCacheDir "solver-plan"
+    fileMonitorSourceHashes   = newFileMonitorInCacheDir "source-hashes"
+    fileMonitorElaboratedPlan = newFileMonitorInCacheDir "elaborated-plan"
+    fileMonitorImprovedPlan   = newFileMonitorInCacheDir "improved-plan"
+
+    newFileMonitorInCacheDir :: Eq a => FilePath -> FileMonitor a b
+    newFileMonitorInCacheDir  = newFileMonitor . distProjectCacheFile
 
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line

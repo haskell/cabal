@@ -1,7 +1,8 @@
 -- | A cache which tracks a value whose validity depends upon
 -- the state of various files in the filesystem.
 
-{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving, BangPatterns #-}
+{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving,
+             NamedFieldPuns, BangPatterns #-}
 
 module Distribution.Client.FileStatusCache (
   
@@ -12,8 +13,10 @@ module Distribution.Client.FileStatusCache (
   monitorFileHashedSearchPath,
 
   -- * Creating and checking sets of monitored files
-  FileMonitorCacheFile(..),
-  Changed(..),
+  FileMonitor(..),
+  newFileMonitor,
+  MonitorChanged(..),
+  MonitorChangedReason(..),
   checkFileMonitorChanged,
   updateFileMonitor,
 
@@ -117,13 +120,6 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
     MonitorFileHashed foundAtPath
   : map MonitorNonExistentFile notFoundAtPaths
 
--- | A file used to store the state of a file monitor.
---
--- It is typed to ensure it's used at consistent types.
---
-newtype FileMonitorCacheFile a b
-      = FileMonitorCacheFile { monitorCacheFilePath :: FilePath }
-  deriving Show
 
 ------------------------------------------------------------------------------
 -- Implementation types, files status
@@ -207,48 +203,131 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
 -- Checking the status of monitored files
 --
 
--- | Encapsulates a value that is either unchanged, or needs
--- to be recomputed.
-data Changed b =
-    -- | The value is unchanged, and it is @b@.
-      Unchanged b
-    -- | The value is changed.  @Just f@ indicates @f@ was the
-    -- file which changed which required a rebuild; @Nothing@
-    -- indicates the value changed for some other reason.
-    | Changed (Maybe FilePath)
+-- | A monitor for detecting changes to a set of files. It can be used to
+-- efficiently test if any of a set of files (specified individually or by
+-- glob patterns) has changed since some snapshot. In addition, it also checks
+-- for changes in a value, and when there are no changes in either it returns
+-- a saved value.
+--
+-- The main use case looks like this: suppose we have some expensive action
+-- that depends on certain pure inputs and reads some set of files, and
+-- produces some pure result. We want to avoid re-running this action when it
+-- would produce the same result. So we need to monitor the files the action
+-- looked at, the other pure input values, and we need to cache the result.
+-- Then at some later point, if the input value didn't change, and none of the
+-- files changed, then we can re-use the cached result rather than re-running
+-- the action.
+--
+-- This can be achieved using a 'FileMonitor'. Each 'FileMonitor' instance
+-- saves state in a disk file, so the file for that has to be specified,
+-- making sure it is unique. The pattern is to use 'checkFileMonitorChanged'
+-- to see if there's been any change. If there is, re-run the action, keeping
+-- track of the files, then use 'updateFileMonitor' to record the current
+-- set of files to monitor, the current input value for the action, and the
+-- result of the action.
+--
+-- The typical occurrence of this pattern is captured by 'rerunIfChanged'
+-- and the 'Rebuild' monad. More complicated cases may need to use
+-- 'checkFileMonitorChanged' and 'updateFileMonitor' directly.
+--
+data FileMonitor a b
+   = FileMonitor {
+
+       -- | The file where this 'FileMonitor' should store its state.
+       --
+       fileMonitorCacheFile :: FilePath,
+
+       -- | Compares a new cache key with old one to determine if a
+       -- corresponding cached value is still valid.
+       --
+       -- Typically this is just an equality test, but in some
+       -- circumstances it can make sense to do things like subset
+       -- comparisons.
+       --
+       -- The first arg is the new value, the second is the old cached value.
+       --
+       fileMonitorKeyValid :: a -> a -> Bool
+  }
+
+newFileMonitor :: Eq a => FilePath -> FileMonitor a b
+newFileMonitor path = FileMonitor path (==)
+
+-- | The result of 'checkFileMonitorChanged': either the monitored files or
+-- value changed (and it tells us which it was) or nothing changed and we get
+-- the cached result.
+--
+data MonitorChanged a b =
+     -- | The monitored files and value did not change. The cached result is
+     -- @b@.
+     --
+     -- The set of monitored files is also returned. This is useful
+     -- for composing or nesting 'FileMonitor's.
+     MonitorUnchanged b [MonitorFilePath]
+
+     -- | The monitor found that something changed. The reason is given.
+     --
+   | MonitorChanged (MonitorChangedReason a)
   deriving Show
 
+-- | What kind of change 'checkFileMonitorChanged' detected.
+--
+data MonitorChangedReason a =
 
--- | Attempt to lookup @currentKey@ from the 'FileMonitorCacheFile'
--- for some @root@ directory.  This returns @Unchanged@ if the
--- value is fresh (with the files which are monitored), and @Changed@ if
--- something changed and this needs to be recomputed.  See also the
--- 'Rebuild' monad, which uses this check and rebuilds the value if it
--- is stale.
+     -- | One of the files changed (existence, file type, mtime or file
+     -- content, depending on the 'MonitorFilePath' in question)
+     MonitoredFileChanged FilePath
+
+     -- | The pure input value changed.
+     --
+     -- The previous cached key value is also returned. This is sometimes
+     -- useful when using a 'fileMonitorKeyValid' function that is not simply
+     -- '(==)', when invalidation can be partial. In such cases it can make
+     -- sense to 'updateFileMonitor' with a key value that's a combination of
+     -- the new and old (e.g. set union).
+   | MonitoredValueChanged a
+
+     -- | There was no saved monitor state, cached value etc. Ie the file
+     -- for the 'FileMonitor' does not exist.
+   | MonitorFirstRun
+
+     -- | There was existing state, but we could not read it. This typically
+     -- happens when the code has changed compared to an existing 'FileMonitor'
+     -- cache file and type of the input value or cached value has changed such
+     -- that we cannot decode the values. This is completely benign as we can
+     -- treat is just as if there were no cache file and re-run.
+   | MonitorCorruptCache
+  deriving Show
+
+-- | Test if the input value or files monitored by the 'FileMonitor' have
+-- changed. If not, return the cached value.
+--
+-- See 'FileMonitor' for a full explanation.
+--
 checkFileMonitorChanged
-  :: (Eq a, Binary a, Binary b)
-  => FileMonitorCacheFile a b            -- ^ cache file path
-  -> FilePath                            -- ^ root directory
-  -> a                                   -- ^ key value
-  -> IO (Changed (b, [MonitorFilePath])) -- ^ did the key or any paths change?
-checkFileMonitorChanged (FileMonitorCacheFile monitorStateFile)
-                        root currentKey =
+  :: (Binary a, Binary b)
+  => FileMonitor a b            -- ^ cache file path
+  -> FilePath                   -- ^ root directory
+  -> a                          -- ^ guard or key value
+  -> IO (MonitorChanged a b)    -- ^ did the key or any paths change?
+checkFileMonitorChanged
+    FileMonitor {fileMonitorCacheFile, fileMonitorKeyValid}
+    root currentKey =
 
     -- Consider it a change if the cache file does not exist,
     -- or we cannot decode it. Sadly ErrorCall can still happen, despite
     -- using decodeFileOrFail, e.g. Data.Char.chr errors
 
-    handleDoesNotExist (Changed Nothing) $
-    handleErrorCall    (Changed Nothing) $
-          Binary.decodeFileOrFail monitorStateFile
-      >>= either (\_ -> return (Changed Nothing))
+    handleDoesNotExist (MonitorChanged MonitorFirstRun) $
+    handleErrorCall    (MonitorChanged MonitorCorruptCache) $
+          Binary.decodeFileOrFail fileMonitorCacheFile
+      >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))
                  checkStatusCache
 
   where
     -- It's also a change if the guard value has changed
     checkStatusCache (_, cachedKey, _)
-      | currentKey /= cachedKey
-      = return (Changed Nothing)
+      | not (fileMonitorKeyValid currentKey cachedKey)
+      = return (MonitorChanged (MonitoredValueChanged cachedKey))
 
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
 
@@ -256,7 +335,8 @@ checkFileMonitorChanged (FileMonitorCacheFile monitorStateFile)
       res <- probeFileSystem root cachedFileStatus
       case res of
         -- Some monitored file has changed
-        Left changedPath -> return (Changed (Just changedPath))
+        Left changedPath -> return (MonitorChanged
+                                     (MonitoredFileChanged changedPath))
 
         -- No monitored file has changed
         Right (cachedFileStatus', cacheStatus) -> do
@@ -266,10 +346,10 @@ checkFileMonitorChanged (FileMonitorCacheFile monitorStateFile)
             rewriteCache cachedFileStatus' cachedKey cachedResult
 
           let monitorFiles = reconstructMonitorFilePaths cachedFileStatus'
-          return (Unchanged (cachedResult, monitorFiles))
+          return (MonitorUnchanged cachedResult monitorFiles)
 
     rewriteCache cachedFileStatus' cachedKey cachedResult = 
-      Binary.encodeFile monitorStateFile
+      Binary.encodeFile fileMonitorCacheFile
                         (cachedFileStatus', cachedKey, cachedResult)
 
 -- | Probe the file system to see if any of the monitored files have changed.
@@ -445,17 +525,16 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
 
 updateFileMonitor
   :: (Binary a, Binary b)
-  => FileMonitorCacheFile a b -- ^ cache file path
+  => FileMonitor a b          -- ^ cache file path
   -> FilePath                 -- ^ root directory
-  -> [MonitorFilePath]        -- ^ patterns of interest relative to root
-  -> a                        -- ^ a cached key value
-  -> b                        -- ^ a cached value dependent upon the key and on
-                              --   the paths identified by the given patterns
+  -> [MonitorFilePath]        -- ^ files of interest relative to root
+  -> a                        -- ^ the current key value
+  -> b                        -- ^ the current result value
   -> IO ()
-updateFileMonitor (FileMonitorCacheFile cacheFile) root
-                  monitorFiles cachedKey cachedResult = do
+updateFileMonitor FileMonitor {fileMonitorCacheFile}
+                  root monitorFiles cachedKey cachedResult = do
     fsc <- buildMonitorStateFileSet root monitorFiles
-    Binary.encodeFile cacheFile (fsc, cachedKey, cachedResult)
+    Binary.encodeFile fileMonitorCacheFile (fsc, cachedKey, cachedResult)
 
 buildMonitorStateFileSet :: FilePath          -- ^ root directory
                          -> [MonitorFilePath] -- ^ patterns of interest relative to root
