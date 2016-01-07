@@ -24,12 +24,9 @@ import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , refTypeFromTypeCode
                                       , typeCodeFromRefType
                                       , updatePackageIndexCacheFile
-                                      , getSourcePackagesStrict
+                                      , readCacheStrict
                                       , Index(..) )
-import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Types ( Repo(..)
-                                 , SourcePackageDb(..)
-                                 , SourcePackage(..), PackageLocation(..) )
+import qualified Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
                                  , tryFindAddSourcePackageDesc  )
@@ -92,6 +89,17 @@ readBuildTreeRefs =
 -- | Given a path to a tar archive, extract all references to local build trees.
 readBuildTreeRefsFromFile :: FilePath -> IO [BuildTreeRef]
 readBuildTreeRefsFromFile = liftM (readBuildTreeRefs . Tar.read) . BS.readFile
+
+-- | Read build tree references from an index cache
+readBuildTreeRefsFromCache :: Verbosity -> FilePath -> IO [BuildTreeRef]
+readBuildTreeRefsFromCache verbosity indexPath = do
+    (mRefs, _prefs) <- readCacheStrict verbosity (SandboxIndex indexPath) buildTreeRef
+    return (catMaybes mRefs)
+  where
+    buildTreeRef pkgEntry =
+      case pkgEntry of
+         IndexUtils.NormalPackage _ _ _ _ -> Nothing
+         IndexUtils.BuildTreeRef typ _ _ path _ -> Just $ BuildTreeRef typ path
 
 -- | Given a local build tree ref, serialise it to a tar archive entry.
 writeBuildTreeRef :: BuildTreeRef -> Tar.Entry
@@ -260,15 +268,11 @@ listBuildTreeRefs verbosity listIgnored refTypesToList path = do
         LinksAndSnapshots -> const True
 
       listWithIgnored :: IO [BuildTreeRef]
-      listWithIgnored = readBuildTreeRefsFromFile $ path
+      listWithIgnored = readBuildTreeRefsFromFile path
 
       listWithoutIgnored :: IO [FilePath]
-      listWithoutIgnored = do
-        let repo = RepoLocal { repoLocalDir = takeDirectory path }
-        pkgIndex <- fmap packageIndex
-                    . getSourcePackagesStrict verbosity $ [repo]
-        return [ pkgPath | (LocalUnpackedPackage pkgPath) <-
-                    map packageSource . allPackages $ pkgIndex ]
+      listWithoutIgnored = fmap (map buildTreePath)
+                         $ readBuildTreeRefsFromCache verbosity path
 
 
 -- | Check that the package index file exists and exit with error if it does not.

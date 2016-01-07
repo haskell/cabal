@@ -17,13 +17,13 @@ module Distribution.Client.IndexUtils (
   getIndexFileAge,
   getInstalledPackages,
   getSourcePackages,
-  getSourcePackagesStrict,
 
   Index(..),
+  PackageEntry(..),
   parsePackageIndex,
-  readRepoIndex,
   updateRepoIndexCache,
   updatePackageIndexCacheFile,
+  readCacheStrict,
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
@@ -108,31 +108,17 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
---
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
-getSourcePackages verbosity repos = getSourcePackages' verbosity repos
-                                    ReadPackageIndexLazyIO
-
--- | Like 'getSourcePackages', but reads the package index strictly. Useful if
--- you want to write to the package index after having read it.
-getSourcePackagesStrict :: Verbosity -> [Repo] -> IO SourcePackageDb
-getSourcePackagesStrict verbosity repos = getSourcePackages' verbosity repos
-                                          ReadPackageIndexStrict
-
--- | Common implementation used by getSourcePackages and
--- getSourcePackagesStrict.
-getSourcePackages' :: Verbosity -> [Repo] -> ReadPackageIndexMode
-                      -> IO SourcePackageDb
-getSourcePackages' verbosity [] _mode = do
+getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
   return SourcePackageDb {
     packageIndex       = mempty,
     packagePreferences = mempty
   }
-getSourcePackages' verbosity repos mode = do
+getSourcePackages verbosity repos = do
   info verbosity "Reading available packages..."
-  pkgss <- mapM (\r -> readRepoIndex verbosity r mode) repos
+  pkgss <- mapM (\r -> readRepoIndex verbosity r) repos
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
@@ -143,6 +129,13 @@ getSourcePackages' verbosity repos mode = do
     packagePreferences = prefs'
   }
 
+readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
+readCacheStrict verbosity index mkPkg = do
+    updateRepoIndexCache verbosity index
+    cache <- liftM readIndexCache $ BSS.readFile (cacheFile index)
+    withFile (indexFile index) ReadMode $ \indexHnd ->
+      packageListFromCache mkPkg indexHnd cache ReadPackageIndexStrict
+
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
 --
@@ -150,13 +143,13 @@ getSourcePackages' verbosity repos mode = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> Repo -> ReadPackageIndexMode
+readRepoIndex :: Verbosity -> Repo
               -> IO (PackageIndex SourcePackage, [Dependency])
-readRepoIndex verbosity repo mode =
+readRepoIndex verbosity repo =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repo)
-    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo) mode
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repo)
 
   where
     mkAvailablePackage pkgEntry =
@@ -409,18 +402,11 @@ data ReadPackageIndexMode = ReadPackageIndexStrict
 readPackageIndexCacheFile :: Package pkg
                           => (PackageEntry -> pkg)
                           -> Index
-                          -> ReadPackageIndexMode
                           -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile mkPkg index mode = do
+readPackageIndexCacheFile mkPkg index = do
   cache    <- liftM readIndexCache $ BSS.readFile (cacheFile index)
-  myWithFile (indexFile index) ReadMode $ \indexHnd ->
-    packageIndexFromCache mkPkg indexHnd cache mode
-  where
-    myWithFile f m act = case mode of
-      ReadPackageIndexStrict -> withFile f m act
-      ReadPackageIndexLazyIO -> do indexHnd <- openFile f m
-                                   act indexHnd
-
+  indexHnd <- openFile (indexFile index) ReadMode
+  packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
 
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
@@ -428,14 +414,24 @@ packageIndexFromCache :: Package pkg
                       -> Cache
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
+packageIndexFromCache mkPkg hnd cache mode = do
+     (pkgs, prefs) <- packageListFromCache mkPkg hnd cache mode
+     pkgIndex <- evaluate $ PackageIndex.fromList pkgs
+     return (pkgIndex, prefs)
+
+-- | Read package list
+--
+-- The result packages (though not the preferences) are guaranteed to be listed
+-- in the same order as they are in the tar file (because later entries in a tar
+-- file mask earlier ones).
+packageListFromCache :: (PackageEntry -> pkg)
+                     -> Handle
+                     -> Cache
+                     -> ReadPackageIndexMode
+                     -> IO ([pkg], [Dependency])
+packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
   where
-    accum srcpkgs prefs [] = do
-      -- Have to reverse entries, since in a tar file, later entries mask
-      -- earlier ones, and PackageIndex.fromList does the same, but we
-      -- accumulate the list of entries in reverse order, so need to reverse.
-      pkgIndex <- evaluate $ PackageIndex.fromList (reverse srcpkgs)
-      return (pkgIndex, prefs)
+    accum srcpkgs prefs [] = return (reverse srcpkgs, prefs)
 
     accum srcpkgs prefs (CachePackageId pkgid blockno : entries) = do
       -- Given the cache entry, make a package index entry.
