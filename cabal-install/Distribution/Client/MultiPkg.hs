@@ -133,36 +133,10 @@ build verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 
-    --TODO: [nice to have] some debug or status feature to write out the full
-    -- elaboratedInstallPlan details
-    -- For now can use this:
-    writeFile (distProjectCacheFile distDirLayout "plan.txt") $
-               unlines $ show sharedPackageConfig
-                       : map show (InstallPlan.toList elaboratedInstallPlan)
-
-    -- Write also an "plan.json" file alongside "plan.txt"
-    --TODO: expose more details, such as flag-settings when available; move
-    -- JSON serialiser to a top-evel function
-    let jsonIPlan = map toJ (InstallPlan.toList elaboratedInstallPlan)
-        toJ (InstallPlan.PreExisting ipi) =
-          J.object [ "type"        J..= J.String "pre-existing"
-                   , "compentId"   J..= (unCId $ installedComponentId ipi)
-                   , "lib" J..= (J.object $ [ "depends" J..= (map unCId $ installedDepends ipi) ])
-                   ]
-
-        toJ (InstallPlan.Configured ecp) =
-          J.object [ "type"        J..= J.String "configured"
-                   , "compentId"   J..= (unCId . installedComponentId) ecp
-                   , "lib" J..= (J.object $ [ "depends" J..= (map unCId . ComponentDeps.libraryDeps $ depends ecp) ])
-                   ]
-
-        -- TODO: do we need to handle any other InstallPlan-constructors?
-
-        unCId (ComponentId s) = J.String s
-
-    writeFile (distProjectCacheFile distDirLayout "plan.json") . J.encodeToString $
-                       J.object [ "install-plan" J..= jsonIPlan ]
-
+    --TODO [code cleanup] move this inside the caching performed by
+    -- rebuildInstallPlan so that we do not need to write it out every time
+    writeFile (distProjectCacheFile distDirLayout "plan.json") $
+               encodePlanToJson sharedPackageConfig elaboratedInstallPlan
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
@@ -482,4 +456,40 @@ printPlan verbosity dryRun pkgs
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
     showFlagName (PD.FlagName f) = f
+
+-- | For the benefit of debugging and some external tools, write out a
+-- representation of the install plan.
+--
+encodePlanToJson :: ElaboratedSharedConfig -> ElaboratedInstallPlan -> String
+encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
+    --TODO: [nice to have] faster json encoding
+    --TODO: [nice to have] include all of the sharedPackageConfig and all of
+    --      the parts of the elaboratedInstallPlan
+    J.encodeToString $
+      J.object [ "install-plan" J..= jsonIPlan ]
+  where
+    jsonIPlan = map toJ (InstallPlan.toList elaboratedInstallPlan)
+    toJ (InstallPlan.PreExisting ipi) =
+      J.object
+        [ "type"      J..= J.String "pre-existing"
+        , "compentId" J..= unCId (installedComponentId ipi)
+        , "lib"       J..= J.object
+                             [ "depends" J..= map unCId (installedDepends ipi)
+                             ]
+        ]
+
+    toJ (InstallPlan.Configured ecp) =
+      J.object
+        [ "type"      J..= J.String "configured"
+        , "compentId" J..= (unCId . installedComponentId) ecp
+        , "lib"       J..= J.object
+                             [ "depends" J..= map unCId
+                                                (ComponentDeps.libraryDeps
+                                                  (depends ecp))
+                             ]
+        ]
+
+    toJ _ = error "encodePlanToJson: only expecting PreExisting and Configured"
+
+    unCId (ComponentId s) = J.String s
 
