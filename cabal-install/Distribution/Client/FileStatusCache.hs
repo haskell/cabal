@@ -38,6 +38,7 @@ import           Control.Applicative
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.State (StateT)
 import qualified Control.Monad.Trans.State as State
+import           Control.Monad.Trans.Maybe (MaybeT(MaybeT), runMaybeT)
 import           Control.Monad.Except
 import           Control.Exception
 
@@ -246,11 +247,18 @@ data FileMonitor a b
        --
        -- The first arg is the new value, the second is the old cached value.
        --
-       fileMonitorKeyValid :: a -> a -> Bool
+       fileMonitorKeyValid :: a -> a -> Bool,
+
+       -- | When this mode is enabled, if 'checkFileMonitorChanged' returns
+       -- 'MonitoredValueChanged' then we have the guarantee that no files
+       -- changed, that the value change was the only change. In the default
+       -- mode no such guarantee is provided which is slightly faster.
+       --
+       fileMonitorCheckIfOnlyValueChanged :: Bool
   }
 
 newFileMonitor :: Eq a => FilePath -> FileMonitor a b
-newFileMonitor path = FileMonitor path (==)
+newFileMonitor path = FileMonitor path (==) False
 
 -- | The result of 'checkFileMonitorChanged': either the monitored files or
 -- value changed (and it tells us which it was) or nothing changed and we get
@@ -310,7 +318,8 @@ checkFileMonitorChanged
   -> a                          -- ^ guard or key value
   -> IO (MonitorChanged a b)    -- ^ did the key or any paths change?
 checkFileMonitorChanged
-    FileMonitor {fileMonitorCacheFile, fileMonitorKeyValid}
+    FileMonitor { fileMonitorCacheFile, fileMonitorKeyValid,
+                  fileMonitorCheckIfOnlyValueChanged }
     root currentKey =
 
     -- Consider it a change if the cache file does not exist,
@@ -324,19 +333,37 @@ checkFileMonitorChanged
                  checkStatusCache
 
   where
-    -- It's also a change if the guard value has changed
-    checkStatusCache (_, cachedKey, _)
-      | not (fileMonitorKeyValid currentKey cachedKey)
-      = return (MonitorChanged (MonitoredValueChanged cachedKey))
-
     checkStatusCache (cachedFileStatus, cachedKey, cachedResult) = do
+        change <- checkForChanges
+        case change of
+          Just reason -> return (MonitorChanged reason)
+          Nothing     -> return (MonitorUnchanged cachedResult monitorFiles)
+            where monitorFiles = reconstructMonitorFilePaths cachedFileStatus
+      where
+        -- In fileMonitorCheckIfOnlyValueChanged mode we want to guarantee that
+        -- if we return MonitoredValueChanged that only the value changed.
+        -- We do that by checkin for file changes first. Otherwise it makes
+        -- more sense to do the cheaper test first.
+        checkForChanges =
+          runMaybeT $ msum $
+          (if fileMonitorCheckIfOnlyValueChanged then reverse else id)
+          [ MaybeT $ checkValueChange cachedKey
+          , MaybeT $ checkFileChange  cachedFileStatus cachedKey cachedResult ]
 
-      -- Now we have to go probe the file system.
+    -- Check if the guard value has changed
+    checkValueChange cachedKey
+      | not (fileMonitorKeyValid currentKey cachedKey)
+      = return (Just (MonitoredValueChanged cachedKey))
+      | otherwise
+      = return Nothing
+
+    -- Check if any file has changed
+    checkFileChange cachedFileStatus cachedKey cachedResult = do
       res <- probeFileSystem root cachedFileStatus
       case res of
         -- Some monitored file has changed
-        Left changedPath -> return (MonitorChanged
-                                     (MonitoredFileChanged changedPath))
+        Left changedPath ->
+          return (Just (MonitoredFileChanged changedPath))
 
         -- No monitored file has changed
         Right (cachedFileStatus', cacheStatus) -> do
@@ -345,8 +372,7 @@ checkFileMonitorChanged
           whenCacheChanged cacheStatus $
             rewriteCache cachedFileStatus' cachedKey cachedResult
 
-          let monitorFiles = reconstructMonitorFilePaths cachedFileStatus'
-          return (MonitorUnchanged cachedResult monitorFiles)
+          return Nothing
 
     rewriteCache cachedFileStatus' cachedKey cachedResult = 
       Binary.encodeFile fileMonitorCacheFile

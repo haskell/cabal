@@ -655,7 +655,11 @@ buildInplaceUnpackedPackage verbosity
         -- If the only thing that's changed is that we're now building extra
         -- components, then we can avoid later unnecessary rebuilds by saving
         -- the total set of components that have been built, namely the union
-        -- of the existing ones plus the new ones.
+        -- of the existing ones plus the new ones. If files also changed this
+        -- would be the wrong thing to do. Note that we rely on the
+        -- fileMonitorCheckIfOnlyValueChanged = True mode to get this guarantee
+        -- that it's /only/ the value that changed not any files that changed.
+        -- 
         let buildComponents' =
               case (configChanged, buildChanged) of
                 (MonitorUnchanged _ _,
@@ -693,7 +697,8 @@ buildInplaceUnpackedPackage verbosity
       FileMonitor {
         fileMonitorCacheFile = distPackageCacheFile pkgid "build",
         fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
-          componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt
+          componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt,
+        fileMonitorCheckIfOnlyValueChanged = True
       }
 
     whenChanged_ (MonitorChanged   _)   action = action
