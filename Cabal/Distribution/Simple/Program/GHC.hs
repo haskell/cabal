@@ -13,19 +13,18 @@ module Distribution.Simple.Program.GHC (
   ) where
 
 import Distribution.Compat.Semigroup as Semi
-import Distribution.Simple.GHC.ImplInfo ( getImplInfo, GhcImplInfo(..) )
+import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
-import Distribution.Simple.Setup    ( Flag(..), flagToMaybe, fromFlagOrDefault,
-                                      flagToList )
+import Distribution.Simple.Setup
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.Text
 import Distribution.Verbosity
-import Distribution.Utils.NubList   ( NubListR, fromNubListR )
-import Language.Haskell.Extension   ( Language(..), Extension(..) )
+import Distribution.Utils.NubList
+import Language.Haskell.Extension
 
 import qualified Data.Map as M
 import Data.List ( intercalate )

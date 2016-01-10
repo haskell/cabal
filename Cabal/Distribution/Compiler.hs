@@ -42,14 +42,14 @@ module Distribution.Compiler (
   AbiTag(..), abiTagString
   ) where
 
-import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Binary
+import Language.Haskell.Extension
+
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
 import GHC.Generics (Generic)
-
-import Language.Haskell.Extension (Language, Extension)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)

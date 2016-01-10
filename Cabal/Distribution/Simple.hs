@@ -56,53 +56,35 @@ module Distribution.Simple (
 -- local
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
-import Distribution.Package --must not specify imports, since we're exporting module.
-import Distribution.PackageDescription
-         ( PackageDescription(..), GenericPackageDescription, Executable(..)
-         , updatePackageDescription, hasLibs
-         , HookedBuildInfo, emptyHookedBuildInfo )
+import Distribution.Package
+import Distribution.PackageDescription hiding (Flag)
 import Distribution.PackageDescription.Parse
-         ( readPackageDescription, readHookedBuildInfo )
 import Distribution.PackageDescription.Configuration
-         ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration, builtinPrograms
-         , restoreProgramConfiguration)
 import Distribution.Simple.Program.Db
-import Distribution.Simple.Program.Find
-import Distribution.Simple.Program.Run
-import Distribution.Simple.Program.Types
-import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
+import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build, repl )
-import Distribution.Simple.SrcDist      ( sdist )
+import Distribution.Simple.Build
+import Distribution.Simple.SrcDist
 import Distribution.Simple.Register
-         ( register, unregister )
 
 import Distribution.Simple.Configure
-         ( getPersistBuildConfig, maybeGetPersistBuildConfig
-         , writePersistBuildConfig, checkPersistBuildConfigOutdated
-         , configure, checkForeignDeps, findDistPrefOrDefault )
 
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Bench (bench)
-import Distribution.Simple.BuildPaths ( srcPref)
-import Distribution.Simple.Test (test)
-import Distribution.Simple.Install (install)
-import Distribution.Simple.Haddock (haddock, hscolour)
+import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Bench
+import Distribution.Simple.BuildPaths
+import Distribution.Simple.Test
+import Distribution.Simple.Install
+import Distribution.Simple.Haddock
 import Distribution.Simple.Utils
-         (die, notice, info, warn, setupMessage, chattyTry,
-          defaultPackageDesc, defaultHookedPackageDesc,
-          cabalVersion, topHandler )
 import Distribution.Utils.NubList
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
 import Distribution.License
 import Distribution.Text
-         ( display )
 
 -- Base
 import System.Environment(getArgs, getProgName)
@@ -114,7 +96,7 @@ import Distribution.Compat.Environment (getEnvironment)
 
 import Control.Monad   (when)
 import Data.Foldable   (traverse_)
-import Data.List       (intercalate, unionBy, nub, (\\))
+import Data.List       (unionBy, nub, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -707,6 +689,5 @@ defaultRegHook :: PackageDescription -> LocalBuildInfo
 defaultRegHook pkg_descr localbuildinfo _ flags =
     if hasLibs pkg_descr
     then register pkg_descr localbuildinfo flags
-    else setupMessage verbosity
+    else setupMessage (fromFlag (regVerbosity flags))
            "Package contains no library to register:" (packageId pkg_descr)
-  where verbosity = fromFlag (regVerbosity flags)

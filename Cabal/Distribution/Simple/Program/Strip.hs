@@ -10,16 +10,13 @@
 module Distribution.Simple.Program.Strip (stripLib, stripExe)
        where
 
-import Distribution.Simple.Program (ProgramConfiguration, lookupProgram
-                                   , programVersion, rawSystemProgram
-                                   , stripProgram)
-import Distribution.Simple.Utils   (warn)
-import Distribution.System         (Arch(..), Platform(..), OS (..), buildOS)
-import Distribution.Verbosity      (Verbosity)
-import Distribution.Version        (orLaterVersion, withinRange)
+import Distribution.Simple.Program
+import Distribution.Simple.Utils
+import Distribution.System
+import Distribution.Verbosity
+import Distribution.Version
 
 import Control.Monad               (unless)
-import Data.Version                (Version(..))
 import System.FilePath             (takeBaseName)
 
 runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()

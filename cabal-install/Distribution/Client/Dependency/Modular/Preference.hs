@@ -74,11 +74,13 @@ preferLinked = trav go
     cmpL (Just _) (Just _) = EQ
 
 
--- | Ordering that treats preferred versions as greater than non-preferred
--- versions.
-preferredVersionsOrdering :: VR -> Ver -> Ver -> Ordering
-preferredVersionsOrdering vr v1 v2 =
-  compare (checkVR vr v1) (checkVR vr v2)
+-- | Ordering that treats versions satisfying more preferred ranges as greater
+--   than versions satisfying less preferred ranges.
+preferredVersionsOrdering :: [VR] -> Ver -> Ver -> Ordering
+preferredVersionsOrdering vrs v1 v2 = compare (check v1) (check v2)
+  where
+     check v = Prelude.length . Prelude.filter (==True) .
+               Prelude.map (flip checkVR v) $ vrs
 
 -- | Traversal that tries to establish package preferences (not constraints).
 -- Works by reordering choice nodes. Also applies stanza preferences.
@@ -87,8 +89,8 @@ preferPackagePreferences pcs = preferPackageStanzaPreferences pcs
                              . packageOrderFor (const True) preference
   where
     preference pn i1@(I v1 _) i2@(I v2 _) =
-      let PackagePreferences vr ipref _ = pcs pn
-      in  preferredVersionsOrdering vr v1 v2 `mappend` -- combines lexically
+      let PackagePreferences vrs ipref _ = pcs pn
+      in  preferredVersionsOrdering vrs v1 v2 `mappend` -- combines lexically
           locationsOrdering ipref i1 i2
 
     -- Note that we always rank installed before uninstalled, and later

@@ -22,12 +22,13 @@ module Language.Haskell.Extension (
         deprecatedExtensions
   ) where
 
-import Distribution.Text (Text(..))
+import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Binary
+
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
-import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
@@ -747,9 +748,23 @@ data KnownExtension =
   -- | Enable explicit type applications with the syntax @id \@Int@.
   | TypeApplications
 
+  -- | Dissolve the distinction between types and kinds, allowing the compiler
+  -- to reason about kind equality and therefore enabling GADTs to be promoted
+  -- to the type-level.
+  | TypeInType
+
+  -- | Allow recursive (and therefore undecideable) super-class relationships.
+  | UndecidableSuperClasses
+
   -- | A temporary extension to help library authors check if their
   -- code will compile with the new planned desugaring of fail.
   | MonadFailDesugaring
+
+  -- | A subset of @TemplateHaskell@ including only quasi-quoting.
+  | TemplateHaskellQuotes
+
+  -- | Allows use of the @#label@ syntax.
+  | OverloadedLabels
 
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 

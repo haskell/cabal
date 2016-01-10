@@ -47,21 +47,17 @@ module Distribution.Simple.InstallDirs (
 
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
+import Distribution.Package
+import Distribution.System
+import Distribution.Compiler
+import Distribution.Text
+
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import GHC.Generics (Generic)
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
-
-import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, ComponentId )
-import Distribution.System
-         ( OS(..), buildOS, Platform(..) )
-import Distribution.Compiler
-         ( AbiTag(..), abiTagString, CompilerInfo(..), CompilerFlavor(..) )
-import Distribution.Text
-         ( display )
 
 #if mingw32_HOST_OS
 import Foreign

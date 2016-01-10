@@ -58,54 +58,31 @@ import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
-         , allExtensions, libModules, exeModules
-         , hcOptions, hcSharedOptions, hcProfOptions )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , absoluteInstallDirs, depLibraryPaths )
 import qualified Distribution.Simple.Hpc as Hpc
-import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramSearchPath
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , getProgramInvocationOutput, requireProgramVersion, requireProgram
-         , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
-         , ghcProgram, ghcPkgProgram, haddockProgram, hsc2hsProgram, ldProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( toFlag, fromFlag, fromFlagOrDefault, configCoverage, configDistPref )
 import qualified Distribution.Simple.Setup as Cabal
-        ( Flag(..) )
-import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , PackageDB(..), PackageDBStack, AbiTag(..) )
+import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
-         ( Platform(..), OS(..) )
 import Distribution.Verbosity
 import Distribution.Text
-         ( display )
 import Distribution.Utils.NubList
-         ( NubListR, overNubListR, toNubListR )
-import Language.Haskell.Extension (Extension(..), KnownExtension(..))
+import Language.Haskell.Extension
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )

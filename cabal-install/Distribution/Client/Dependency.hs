@@ -614,10 +614,10 @@ interpretPackagesPreference selected defaultPref prefs =
                                  (stanzasPref pkgname)
   where
     versionPref pkgname =
-      fromMaybe anyVersion (Map.lookup pkgname versionPrefs)
-    versionPrefs = Map.fromList
-      [ (pkgname, pref)
-      | PackageVersionPreference pkgname pref <- prefs ]
+      fromMaybe [anyVersion] (Map.lookup pkgname versionPrefs)
+    versionPrefs = Map.fromListWith (++)
+                   [(pkgname, [pref])
+                   | PackageVersionPreference pkgname pref <- prefs]
 
     installPref pkgname =
       fromMaybe (installPrefDefault pkgname) (Map.lookup pkgname installPrefs)
@@ -849,7 +849,8 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                            . InstalledPackageIndex.lookupSourcePackageId
                                                      installedPkgIndex
                            . packageId
-        versionPref   pkg = packageVersion pkg `withinRange` preferredVersions
+        versionPref pkg = length . filter (packageVersion pkg `withinRange`) $
+                          preferredVersions
 
     packageConstraints :: PackageName -> VersionRange
     packageConstraints pkgname =

@@ -65,17 +65,17 @@ module Distribution.Simple.Command (
 
   ) where
 
+import qualified Distribution.GetOpt as GetOpt
+import Distribution.Text
+import Distribution.ParseUtils
+import Distribution.ReadE
+import Distribution.Simple.Utils
+
 import Control.Monad
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import Data.Maybe
 import Data.Monoid as Mon
-import qualified Distribution.GetOpt as GetOpt
-import Distribution.Text
-         ( Text(disp, parse) )
-import Distribution.ParseUtils
-import Distribution.ReadE
-import Distribution.Simple.Utils (die, intercalate)
 import Text.PrettyPrint ( punctuate, cat, comma, text )
 import Text.PrettyPrint as PP ( empty )
 

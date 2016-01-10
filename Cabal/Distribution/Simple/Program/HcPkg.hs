@@ -39,30 +39,18 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
-import Prelude hiding (init)
-import Distribution.Package
-         ( PackageId, ComponentId(..) )
+import Distribution.Package hiding (installedComponentId)
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo(..)
-         , showInstalledPackageInfo
-         , emptyInstalledPackageInfo, fieldsInstalledPackageInfo )
 import Distribution.ParseUtils
 import Distribution.Simple.Compiler
-         ( PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program.Types
-         ( ConfiguredProgram(programId) )
 import Distribution.Simple.Program.Run
-         ( ProgramInvocation(..), IOEncoding(..), programInvocation
-         , runProgramInvocation, getProgramInvocationOutput )
 import Distribution.Text
-         ( display, simpleParse )
 import Distribution.Simple.Utils
-         ( die, writeUTF8File )
 import Distribution.Verbosity
-         ( Verbosity, deafening, silent )
 import Distribution.Compat.Exception
-         ( catchIO )
 
+import Prelude hiding (init)
 import Data.Char
          ( isSpace )
 import Data.List

@@ -13,14 +13,13 @@ module Distribution.Simple.Program.Hpc
     , union
     ) where
 
-import Distribution.ModuleName ( ModuleName )
+import Distribution.ModuleName
 import Distribution.Simple.Program.Run
-         ( ProgramInvocation, programInvocation, runProgramInvocation )
-import Distribution.Simple.Program.Types ( ConfiguredProgram(..) )
-import Distribution.Text ( display )
-import Distribution.Simple.Utils ( warn )
-import Distribution.Verbosity ( Verbosity )
-import Distribution.Version ( Version(..), orLaterVersion, withinRange )
+import Distribution.Simple.Program.Types
+import Distribution.Text
+import Distribution.Simple.Utils
+import Distribution.Verbosity
+import Distribution.Version
 
 -- | Invoke hpc with the given parameters.
 --

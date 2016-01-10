@@ -31,21 +31,16 @@ module Distribution.Simple.BuildPaths (
   ) where
 
 
-import System.FilePath ((</>), (<.>))
-
 import Distribution.Package
-         ( packageName, getHSLibraryName, ComponentId )
-import Distribution.ModuleName (ModuleName)
-import qualified Distribution.ModuleName as ModuleName
+import Distribution.ModuleName as ModuleName
 import Distribution.Compiler
-         ( CompilerId(..) )
-import Distribution.PackageDescription (PackageDescription)
+import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(buildDir) )
-import Distribution.Simple.Setup (defaultDistPref)
+import Distribution.Simple.Setup
 import Distribution.Text
-         ( display )
-import Distribution.System (OS(..), buildOS)
+import Distribution.System
+
+import System.FilePath ((</>), (<.>))
 
 -- ---------------------------------------------------------------------------
 -- Build directories and files

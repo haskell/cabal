@@ -61,36 +61,27 @@ module Distribution.Simple.PackageIndex (
   moduleNameIndex,
   ) where
 
+import Distribution.Compat.Binary
+import Distribution.Compat.Semigroup as Semi
+import Distribution.Package
+import Distribution.ModuleName
+import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.Version
+import Distribution.Simple.Utils
+
 import Control.Exception (assert)
 import Data.Array ((!))
 import qualified Data.Array as Array
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup as Semi
 import qualified Data.Graph as Graph
 import Data.List as List
          ( null, foldl', sort
-         , groupBy, sortBy, find, isInfixOf, nubBy, deleteBy, deleteFirstsBy )
+         , groupBy, sortBy, find, nubBy, deleteBy, deleteFirstsBy )
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (isNothing, fromMaybe)
 import qualified Data.Tree  as Tree
 import GHC.Generics (Generic)
 import Prelude hiding (lookup)
-
-import Distribution.Package
-         ( PackageName(..), PackageId
-         , Package(..), packageName, packageVersion
-         , Dependency(Dependency)--, --PackageFixedDeps(..)
-         , HasComponentId(..), PackageInstalled(..)
-         , ComponentId )
-import Distribution.ModuleName
-         ( ModuleName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as IPI
-import Distribution.Version
-         ( Version, withinRange )
-import Distribution.Simple.Utils (lowercase, comparing, equating)
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -123,7 +114,7 @@ instance Binary a => Binary (PackageIndex a)
 
 -- | The default package index which contains 'InstalledPackageInfo'.  Normally
 -- use this.
-type InstalledPackageIndex = PackageIndex InstalledPackageInfo
+type InstalledPackageIndex = PackageIndex IPI.InstalledPackageInfo
 
 instance HasComponentId a => Monoid (PackageIndex a) where
   mempty  = PackageIndex Map.empty Map.empty
@@ -600,7 +591,7 @@ dependencyInconsistencies index =
 -- 'InstalledPackageIndex' and turns it into a map from module names to their
 -- source packages.  It's used to initialize the @build-deps@ field in @cabal
 -- init@.
-moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledPackageInfo]
+moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [IPI.InstalledPackageInfo]
 moduleNameIndex index =
   Map.fromListWith (++) $ do
     pkg <- allPackages index

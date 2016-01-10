@@ -47,13 +47,13 @@ module Distribution.License (
     knownLicenses,
   ) where
 
-import Distribution.Version (Version(Version))
-
-import Distribution.Text (Text(..), display)
+import Distribution.Version
+import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Binary
+
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>))
-import Distribution.Compat.Binary (Binary)
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Data (Data)
 import Data.Typeable (Typeable)

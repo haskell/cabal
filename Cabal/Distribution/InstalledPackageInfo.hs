@@ -27,7 +27,6 @@
 -- This module is meant to be local-only to Distribution...
 
 module Distribution.InstalledPackageInfo (
-        AbiHash(..),
         InstalledPackageInfo(..),
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
@@ -40,32 +39,18 @@ module Distribution.InstalledPackageInfo (
   ) where
 
 import Distribution.ParseUtils
-         ( FieldDescr(..), ParseResult(..), PError(..), PWarning
-         , simpleField, listField, parseLicenseQ
-         , showFields, showSingleNamedField, showSimpleSingleNamedField
-         , parseFieldsFlat
-         , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
-         , showFilePath, showToken, boolField, parseOptVersion
-         , parseFreeText, showFreeText, parseOptCommaList )
-import Distribution.License     ( License(..) )
-import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..)
-         , PackageId, ComponentId(..)
-         , packageName, packageVersion, ComponentId(..) )
+import Distribution.License
+import Distribution.Package hiding (installedComponentId)
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
-         ( ModuleName )
 import Distribution.Version
-         ( Version(..) )
 import Distribution.Text
-         ( Text(disp, parse) )
-import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Binary
 
-import Distribution.Compat.Binary  (Binary)
+import Text.PrettyPrint as Disp
 import Data.Maybe   (fromMaybe)
 import GHC.Generics (Generic)
-import qualified Data.Char as Char
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -92,7 +77,7 @@ data InstalledPackageInfo
         abiHash           :: AbiHash,
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
-        instantiatedWith  :: [(ModuleName, OriginalModule)],
+        installedInstantiatedWith  :: [(ModuleName, OriginalModule)],
         hiddenModules     :: [ModuleName],
         trusted           :: Bool,
         importDirs        :: [FilePath],
@@ -128,7 +113,7 @@ instance Package.PackageInstalled InstalledPackageInfo where
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
+        sourcePackageId    = PackageIdentifier (PackageName "") (Version [] []),
         installedComponentId         = ComponentId "",
         compatPackageKey   = ComponentId "",
         license           = UnspecifiedLicense,
@@ -145,7 +130,7 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
-        instantiatedWith  = [],
+        installedInstantiatedWith  = [],
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
@@ -164,20 +149,6 @@ emptyInstalledPackageInfo
         haddockHTMLs      = [],
         pkgRoot           = Nothing
     }
-
-noVersion :: Version
-noVersion = Version [] []
-
--- -----------------------------------------------------------------------------
--- Exposed modules
-
-newtype AbiHash = AbiHash String
-    deriving (Eq, Show, Read, Generic)
-instance Binary AbiHash
-
-instance Text AbiHash where
-    disp (AbiHash abi) = Disp.text abi
-    parse = fmap AbiHash (Parse.munch Char.isAlphaNum)
 
 -- -----------------------------------------------------------------------------
 -- Exposed modules
@@ -348,7 +319,7 @@ installedFieldDescrs = [
         abiHash            (\abi    pkg -> pkg{abiHash=abi})
  , listField   "instantiated-with"
         showInstantiatedWith parseInstantiatedWith
-        instantiatedWith   (\xs    pkg -> pkg{instantiatedWith=xs})
+        installedInstantiatedWith   (\xs    pkg -> pkg{installedInstantiatedWith=xs})
  , boolField   "trusted"
         trusted            (\val pkg -> pkg{trusted=val})
  , listField   "import-dirs"

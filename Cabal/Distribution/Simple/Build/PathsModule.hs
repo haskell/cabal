@@ -19,22 +19,14 @@ module Distribution.Simple.Build.PathsModule (
   ) where
 
 import Distribution.System
-         ( OS(Windows), buildOS, Arch(..), buildArch )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, compilerVersion )
 import Distribution.Package
-         ( packageId, packageName, packageVersion )
 import Distribution.PackageDescription
-         ( PackageDescription(..), hasLibs )
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
-         ( autogenModuleName )
 import Distribution.Simple.Utils
-         ( shortRelativePath )
 import Distribution.Text
-         ( display )
 import Distribution.Version
-         ( Version(..), orLaterVersion, withinRange )
 
 import System.FilePath
          ( pathSeparator )

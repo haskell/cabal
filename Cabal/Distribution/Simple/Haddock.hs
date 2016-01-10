@@ -26,74 +26,38 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 -- local
 import Distribution.Compat.Semigroup as Semi
 import Distribution.Package
-         ( PackageIdentifier(..)
-         , Package(..)
-         , PackageName(..), packageName, ComponentId(..) )
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), usedExtensions
-         , hcSharedOptions
-         , Library(..), hasLibs, Executable(..)
-         , TestSuite(..), TestSuiteInterface(..)
-         , Benchmark(..), BenchmarkInterface(..) )
-import Distribution.Simple.Compiler
-         ( Compiler, compilerInfo, CompilerFlavor(..)
-         , compilerFlavor, compilerCompatVersion )
+import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Program.GHC
-         ( GhcOptions(..), GhcDynLinkMode(..), renderGhcOptions )
 import Distribution.Simple.Program
-         ( ConfiguredProgram(..), lookupProgramVersion, requireProgramVersion
-         , rawSystemProgram, rawSystemProgramStdout
-         , hscolourProgram, haddockProgram )
 import Distribution.Simple.PreProcess
-         ( PPSuffixHandler, preprocessComponent)
 import Distribution.Simple.Setup
-         ( defaultHscolourFlags
-         , Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
-         , fromFlagOrDefault, HaddockFlags(..), HscolourFlags(..) )
-import Distribution.Simple.Build (initialBuildSteps)
+import Distribution.Simple.Build
 import Distribution.Simple.InstallDirs
-         ( InstallDirs(..)
-         , PathTemplateEnv, PathTemplate, PathTemplateVariable(..)
-         , toPathTemplate, fromPathTemplate
-         , substPathTemplate, initialPathTemplateEnv )
-import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-         , withAllComponentsInBuildOrder )
+import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import Distribution.Simple.BuildPaths
-         ( haddockName, hscolourPref, autogenModulesDir)
-import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import Distribution.Simple.Utils
-         ( die, copyFileTo, warn, notice, intercalate, setupMessage
-         , createDirectoryIfMissingVerbose
-         , TempFileOptions(..), defaultTempFileOptions
-         , withTempFileEx, copyFileVerbose
-         , withTempDirectoryEx, matchFileGlob
-         , findFileWithExtension, findFile )
 import Distribution.Text
-         ( display, simpleParse )
 import Distribution.Utils.NubList
-         ( toNubListR )
-
+import Distribution.Version
 import Distribution.Verbosity
 import Language.Haskell.Extension
 
 
 import Control.Monad    ( when, forM_ )
+import Data.Char        ( isSpace )
 import Data.Either      ( rights )
-import Data.Foldable    ( traverse_ )
+import Data.Foldable    ( traverse_, foldl' )
 import Data.Maybe       ( fromMaybe, listToMaybe )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>)
                         , normalise, splitPath, joinPath, isAbsolute )
-import System.IO        (hClose, hPutStrLn, hSetEncoding, utf8)
-import Distribution.Version
+import System.IO        (hClose, hPutStr, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------
 -- Types
@@ -482,7 +446,7 @@ renderArgs :: Verbosity
               -> IO a
 renderArgs verbosity tmpFileOpts version comp args k = do
   let haddockSupportsUTF8          = version >= Version [2,14,4] []
-      haddockSupportsResponseFiles = version >  Version [2,16,1] []
+      haddockSupportsResponseFiles = version >  Version [2,16,2] []
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
     \prologueFileName h -> do
@@ -497,7 +461,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do
                          when haddockSupportsUTF8 (hSetEncoding hf utf8)
-                         mapM_ (hPutStrLn hf) renderedArgs
+                         hPutStr hf $ unlines $ map escapeArg renderedArgs
                          hClose hf
                          let respFile = "@" ++ responseFileName
                          k ([respFile], result)
@@ -515,6 +479,19 @@ renderArgs verbosity tmpFileOpts version comp args k = do
               pkgstr = display $ packageName pkgid
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
+      -- Support a gcc-like response file syntax.  Each separate
+      -- argument and its possible parameter(s), will be separated in the
+      -- response file by an actual newline; all other whitespace,
+      -- single quotes, double quotes, and the character used for escaping
+      -- (backslash) are escaped.  The called program will need to do a similar
+      -- inverse operation to de-escape and re-constitute the argument list.
+      escape cs c
+        |    isSpace c
+          || '\\' == c
+          || '\'' == c
+          || '"'  == c = c:'\\':cs -- n.b., our caller must reverse the result
+        | otherwise    = c:cs
+      escapeArg = reverse . foldl' escape []
 
 renderPureArgs :: Version -> Compiler -> HaddockArgs -> [String]
 renderPureArgs version comp args = concat
@@ -631,7 +608,7 @@ haddockPackageFlags :: LocalBuildInfo
 haddockPackageFlags lbi clbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
       directDeps = map fst (componentPackageDeps clbi)
-  transitiveDeps <- case dependencyClosure allPkgs directDeps of
+  transitiveDeps <- case PackageIndex.dependencyClosure allPkgs directDeps of
     Left x    -> return x
     Right inf -> die $ "internal error when calculating transitive "
                     ++ "package dependencies.\nDebug info: " ++ show inf

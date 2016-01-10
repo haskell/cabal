@@ -32,40 +32,27 @@ module Distribution.Simple.BuildTarget (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, packageName )
-
 import Distribution.PackageDescription
-         ( PackageDescription
-         , Executable(..)
-         , TestSuite(..), TestSuiteInterface(..), testModules
-         , Benchmark(..), BenchmarkInterface(..), benchmarkModules
-         , BuildInfo(..), libModules, exeModules )
 import Distribution.ModuleName
-         ( ModuleName, toFilePath )
 import Distribution.Simple.LocalBuildInfo
-         ( Component(..), ComponentName(..)
-         , pkgComponents, componentName, componentBuildInfo )
-
 import Distribution.Text
-         ( display )
 import Distribution.Simple.Utils
-         ( die, lowercase, equating )
+
+import Distribution.Compat.Binary (Binary)
+import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP
+         ( (+++), (<++) )
 
 import Data.List
-         ( nub, stripPrefix, sortBy, groupBy, partition, intercalate )
-import Data.Ord
+         ( nub, stripPrefix, sortBy, groupBy, partition )
 import Data.Maybe
          ( listToMaybe, catMaybes )
 import Data.Either
          ( partitionEithers )
-import Distribution.Compat.Binary (Binary)
 import GHC.Generics (Generic)
 import qualified Data.Map as Map
 import Control.Monad
 import Control.Applicative as AP (Alternative(..), Applicative(..))
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
-         ( (+++), (<++) )
 import Data.Char
          ( isSpace, isAlphaNum )
 import System.FilePath as FilePath
@@ -235,11 +222,11 @@ reportUserBuildTargetProblems problems = do
            ++ " - build foo:Data/Foo.hsc  -- file qualified by component"
 
 showUserBuildTarget :: UserBuildTarget -> String
-showUserBuildTarget = intercalate ":" . components
+showUserBuildTarget = intercalate ":" . getComponents
   where
-    components (UserBuildTargetSingle s1)       = [s1]
-    components (UserBuildTargetDouble s1 s2)    = [s1,s2]
-    components (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
+    getComponents (UserBuildTargetSingle s1)       = [s1]
+    getComponents (UserBuildTargetDouble s1 s2)    = [s1,s2]
+    getComponents (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
 
 showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
 showBuildTarget ql pkgid bt =

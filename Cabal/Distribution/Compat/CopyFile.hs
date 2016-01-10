@@ -11,20 +11,18 @@ module Distribution.Compat.CopyFile (
   setDirOrdinary,
   ) where
 
+import Distribution.Compat.Exception
+import Distribution.Compat.Internal.TempFile
 
 import Control.Monad
          ( when, unless )
 import Control.Exception
          ( bracketOnError, throwIO )
 import qualified Data.ByteString.Lazy as BSL
-import Distribution.Compat.Exception
-         ( catchIO )
 import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
          ( doesFileExist, renameFile, removeFile )
-import Distribution.Compat.Internal.TempFile
-         ( openBinaryTempFile )
 import System.FilePath
          ( takeDirectory )
 import System.IO

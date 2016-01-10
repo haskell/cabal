@@ -2,7 +2,10 @@
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Client.Dependency.Modular.DSL (
     ExampleDependency(..)
+  , ExPreference(..)
   , ExampleDb
+  , ExampleVersionRange
+  , ExamplePkgVersion
   , exAv
   , exInst
   , exResolve
@@ -84,6 +87,7 @@ type ExamplePkgVersion = Int
 type ExamplePkgHash    = String  -- for example "installed" packages
 type ExampleFlagName   = String
 type ExampleTestName   = String
+type ExampleVersionRange = C.VersionRange
 
 data ExampleDependency =
     -- | Simple dependency on any version
@@ -104,6 +108,7 @@ data ExampleDependency =
     -- | Dependency on a language version
   | ExLang Language
 
+data ExPreference = ExPref String ExampleVersionRange
 
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
@@ -304,8 +309,9 @@ exResolve :: ExampleDb
           -> [Language]
           -> [ExamplePkgName]
           -> Bool
+          -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.InstallPlan)
-exResolve db exts langs targets indepGoals = runProgress $
+exResolve db exts langs targets indepGoals prefs = runProgress $
     resolveDependencies C.buildPlatform
                         compiler
                         Modular
@@ -325,15 +331,17 @@ exResolve db exts langs targets indepGoals = runProgress $
                        packageIndex       = exAvIdx avai
                      , packagePreferences = Map.empty
                      }
-    enableTests  = map (\p -> PackageConstraintStanzas
+    enableTests  = fmap (\p -> PackageConstraintStanzas
                               (C.PackageName p) [TestStanzas])
                        (exDbPkgs db)
-    targets'     = map (\p -> NamedPackage (C.PackageName p) []) targets
-    params       = addConstraints (map toLpc enableTests)
-                 $ (standardInstallPolicy instIdx avaiIdx targets') {
-                       depResolverIndependentGoals = indepGoals
+    targets'     = fmap (\p -> NamedPackage (C.PackageName p) []) targets
+    params       =   addPreferences (fmap toPref prefs)
+                   $ addConstraints (fmap toLpc enableTests)
+                   $ (standardInstallPolicy instIdx avaiIdx targets') {
+                     depResolverIndependentGoals = indepGoals
                      }
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
+    toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v
 
 extractInstallPlan :: CI.InstallPlan.InstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
