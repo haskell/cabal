@@ -28,6 +28,9 @@ module Distribution.Client.IndexUtils (
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
 
+import qualified Codec.Archive.Tar       as Tar
+import qualified Codec.Archive.Tar.Entry as Tar
+import qualified Codec.Archive.Tar.Index as Tar
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
 
@@ -277,12 +280,12 @@ parsePackageIndex = concatMap (uncurry extract) . tarEntriesList . Tar.read
 --
 -- NOTE: This preserves the lazy nature of 'Entries': the tar file is only read
 -- as far as the list is evaluated.
-tarEntriesList :: Tar.Entries -> [(BlockNo, Tar.Entry)]
+tarEntriesList :: Show e => Tar.Entries e -> [(BlockNo, Tar.Entry)]
 tarEntriesList = go 0
   where
     go !_ Tar.Done         = []
-    go !_ (Tar.Fail e)     = error ("tarEntriesList: " ++ e)
-    go !n (Tar.Next e es') = (n, e) : go (n + Tar.entrySizeInBlocks e) es'
+    go !_ (Tar.Fail e)     = error ("tarEntriesList: " ++ show e)
+    go !n (Tar.Next e es') = (n, e) : go (Tar.nextEntryOffset e n) es'
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe (IO (Maybe PackageEntry))
 extractPkg entry blockNo = case Tar.entryContent entry of
@@ -466,22 +469,13 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
 
     getEntryContent :: BlockNo -> IO ByteString
     getEntryContent blockno = do
-      hSeek hnd AbsoluteSeek (fromIntegral (blockno * 512))
-      header  <- BS.hGet hnd 512
-      size    <- getEntrySize header
-      BS.hGet hnd (fromIntegral size)
-
-    getEntrySize :: ByteString -> IO Tar.FileSize
-    getEntrySize header =
-      case Tar.read header of
-        Tar.Next e _ ->
-          case Tar.entryContent e of
-            Tar.NormalFile _ size -> return size
-            Tar.OtherEntryType typecode _ size
-              | Tar.isBuildTreeRefTypeCode typecode
-                                  -> return size
-            _                     -> interror "unexpected tar entry type"
-        _ -> interror "could not read tar file entry"
+      entry <- Tar.hReadEntry hnd blockno
+      case Tar.entryContent entry of
+        Tar.NormalFile content _size -> return content
+        Tar.OtherEntryType typecode content _size
+          | Tar.isBuildTreeRefTypeCode typecode
+          -> return content
+        _ -> interror "unexpected tar entry type"
 
     readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
@@ -500,7 +494,7 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
 -- | Tar files are block structured with 512 byte blocks. Every header and file
 -- content starts on a block boundary.
 --
-type BlockNo = Int
+type BlockNo = Tar.TarEntryOffset
 
 data IndexCacheEntry = CachePackageId PackageId BlockNo
                      | CacheBuildTreeRef BuildTreeRefType BlockNo
@@ -548,8 +542,9 @@ readIndexCacheEntry = \line ->
 
     parseBlockNo str =
       case BSS.readInt str of
-        Just (blockno, remainder) | BSS.null remainder -> Just blockno
-        _                                              -> Nothing
+        Just (blockno, remainder)
+          | BSS.null remainder -> Just (fromIntegral blockno)
+        _                      -> Nothing
 
     parseRefType str =
       case BSS.uncons str of
