@@ -526,7 +526,7 @@ readPackageTarget verbosity target = case target of
     extractTarballPackageCabalFile tarballFile tarballOriginalLoc =
           either (die . formatErr) return
         . check
-        . accumEntryMap Map.empty
+        . accumEntryMap
         . Tar.filterEntries isCabalFile
         . Tar.read
         . GZipUtils.maybeDecompress
@@ -534,11 +534,9 @@ readPackageTarget verbosity target = case target of
       where
         formatErr msg = "Error reading " ++ tarballOriginalLoc ++ ": " ++ msg
 
-        accumEntryMap !m  Tar.Done       = Right m
-        accumEntryMap !_ (Tar.Fail err)  = Left err
-        accumEntryMap !m (Tar.Next e es) = accumEntryMap m' es
-          where
-            m' = Map.insert (Tar.entryTarPath e) e m
+        accumEntryMap = Tar.foldlEntries
+                          (\m e -> Map.insert (Tar.entryTarPath e) e m)
+                          Map.empty
 
         check (Left e)  = Left (show e)
         check (Right m) = case Map.elems m of
