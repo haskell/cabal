@@ -207,6 +207,10 @@ executable cabal
     else
       build-depends: network     >= 2.4 && < 2.6
 
+    -- Needed for GHC.Generics before GHC 7.6
+    if impl(ghc < 7.6)
+      build-depends: ghc-prim >= 0.2 && < 0.3
+
     if os(windows)
       build-depends: Win32 >= 2 && < 3
       cpp-options: -DWIN32
