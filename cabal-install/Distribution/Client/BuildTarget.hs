@@ -69,9 +69,15 @@ import Data.Either
 import Data.Function
          ( on )
 import GHC.Generics (Generic)
-import qualified Data.Map        as Map.Lazy
+#if MIN_VERSION_containers(0,5,0)
+import qualified Data.Map.Lazy   as Map.Lazy
 import qualified Data.Map.Strict as Map
+import Data.Map.Strict (Map)
+#else
+import qualified Data.Map as Map.Lazy
+import qualified Data.Map as Map
 import Data.Map (Map)
+#endif
 import Control.Monad
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))

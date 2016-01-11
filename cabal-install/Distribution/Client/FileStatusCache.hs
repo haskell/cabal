@@ -1,8 +1,9 @@
 -- | A cache which tracks a value whose validity depends upon
 -- the state of various files in the filesystem.
 
-{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving,
+{-# LANGUAGE CPP, DeriveGeneric, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Distribution.Client.FileStatusCache (
   
@@ -23,15 +24,25 @@ module Distribution.Client.FileStatusCache (
   matchFileGlob,
   ) where
 
+
+#if MIN_VERSION_containers(0,5,0)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+#else
+import           Data.Map        (Map)
+import qualified Data.Map        as Map
+#endif
 import qualified Data.ByteString.Lazy as BS
 import           Data.Binary
 import qualified Data.Binary as Binary
 import           Data.Traversable (traverse)
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)
+#if MIN_VERSION_directory(1,2,0)
 import           Data.Time (UTCTime(..), Day(..))
+#else
+import           System.Time (ClockTime(..))
+#endif
 
 import           Control.Monad
 import           Control.Applicative
@@ -141,7 +152,11 @@ data MonitorStateFileSet
 --    MonitorStateFileSet (a<>x) (b<>y)
 
 type Hash = Int
+#if MIN_VERSION_directory(1,2,0)
 type ModTime = UTCTime
+#else
+type ModTime = ClockTime
+#endif
 
 -- | The state necessary to determine whether a monitored file has changed.
 --
@@ -386,7 +401,7 @@ checkFileMonitorChanged
 -- We may need to update the cache since there may be changes in the filesystem
 -- state which don't change any of our affected files.
 --
--- Consider the glob @{proj1,proj2}/*.cabal@. Say we first run and find a
+-- Consider the glob @{proj1,proj2}\/\*.cabal@. Say we first run and find a
 -- @proj1@ directory containing @proj1.cabal@ yet no @proj2@. If we later run
 -- and find @proj2@ was created, yet contains no files matching @*.cabal@ then
 -- we want to update the cache despite no changes in our relevant file set.
@@ -398,8 +413,19 @@ probeFileSystem :: FilePath -> MonitorStateFileSet
 probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
   runChangedM $
     MonitorStateFileSet
-      <$> Map.traverseWithKey (probeFileStatus root)     singlePaths
-      <*> traverse            (probeGlobStatus root ".") globPaths
+      <$> traverseWithKey (probeFileStatus root)     singlePaths
+      <*> traverse        (probeGlobStatus root ".") globPaths
+
+traverseWithKey :: (Applicative t, Eq k)
+                => (k -> a -> t b) -> Map k a -> t (Map k b)
+#if MIN_VERSION_containers(0,5,0)
+traverseWithKey = Map.traverseWithKey
+#else
+traverseWithKey f = fmap Map.fromAscList
+                  . traverse (\(k, v) -> (,) k <$> f k v)
+                  . Map.toAscList
+#endif
+
 
 -----------------------------------------------
 -- Monad for checking for file system changes
@@ -737,6 +763,7 @@ instance Text FilePathGlob where
                 return (GlobDir glob globs))
         <++ return (GlobFile glob)
 
+#if MIN_VERSION_directory(1,2,0)
 instance Binary UTCTime where
   put (UTCTime (ModifiedJulianDay day) tod) = do
     put day
@@ -746,6 +773,16 @@ instance Binary UTCTime where
     tod <- get
     return $! UTCTime (ModifiedJulianDay day)
                       (fromRational tod)
+#else
+instance Binary ClockTime where
+  put (TOD sec subsec) = do
+    put sec
+    put subsec
+  get = do
+    !sec    <- get
+    !subsec <- get
+    return (TOD sec subsec)
+#endif
 
 instance Binary MonitorStateFileSet where
   put (MonitorStateFileSet singlePaths globPaths) = do
