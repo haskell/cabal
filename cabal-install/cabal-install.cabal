@@ -110,11 +110,14 @@ executable cabal
         Distribution.Client.Dependency.Modular.Tree
         Distribution.Client.Dependency.Modular.Validate
         Distribution.Client.Dependency.Modular.Version
+        Distribution.Client.DistDirLayout
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
+        Distribution.Client.FileStatusCache
         Distribution.Client.Freeze
         Distribution.Client.Get
+        Distribution.Client.Glob
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
@@ -129,11 +132,17 @@ executable cabal
         Distribution.Client.JobControl
         Distribution.Client.List
         Distribution.Client.Manpage
+        Distribution.Client.MultiPkg
+        Distribution.Client.PackageHash
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
         Distribution.Client.PlanIndex
+        Distribution.Client.ProjectBuilding
+        Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectPlanning
         Distribution.Client.Run
+        Distribution.Client.RebuildMonad
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
