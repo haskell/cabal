@@ -31,6 +31,7 @@ module Distribution.Simple.LocalBuildInfo (
         showComponentName,
         ComponentLocalBuildInfo(..),
         libBuildDir,
+        componentComponentId,
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -227,14 +228,17 @@ data ComponentLocalBuildInfo
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
+    componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | TestComponentLocalBuildInfo {
+    componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | BenchComponentLocalBuildInfo {
+    componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
@@ -246,6 +250,10 @@ libBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 libBuildDir lbi clbi
     | componentUnitId clbi == localUnitId lbi = buildDir lbi
     | otherwise = buildDir lbi </> display (componentUnitId clbi)
+
+componentComponentId :: ComponentLocalBuildInfo -> ComponentId
+componentComponentId clbi = case componentUnitId clbi of
+                                SimpleUnitId cid -> cid
 
 foldComponent :: (Library -> a)
               -> (Executable -> a)
@@ -454,7 +462,7 @@ depLibraryPaths :: Bool -- ^ Building for inplace?
                 -> IO [FilePath]
 depLibraryPaths inplace relative lbi clbi = do
     let pkgDescr    = localPkgDescr lbi
-        installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
+        installDirs = absoluteInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
         executable  = case clbi of
                         ExeComponentLocalBuildInfo {} -> True
                         _                             -> False
@@ -504,12 +512,14 @@ depLibraryPaths inplace relative lbi clbi = do
 -- Wrappers for a couple functions from InstallDirs
 
 -- |See 'InstallDirs.absoluteInstallDirs'
-absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
+absoluteInstallDirs :: PackageDescription -> LocalBuildInfo
+                    -> UnitId
+                    -> CopyDest
                     -> InstallDirs FilePath
-absoluteInstallDirs pkg lbi copydest =
+absoluteInstallDirs pkg lbi uid copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
-    (localUnitId lbi)
+    uid
     (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -517,21 +527,23 @@ absoluteInstallDirs pkg lbi copydest =
 
 -- |See 'InstallDirs.prefixRelativeInstallDirs'
 prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
+                          -> UnitId
                           -> InstallDirs (Maybe FilePath)
-prefixRelativeInstallDirs pkg_descr lbi =
+prefixRelativeInstallDirs pkg_descr lbi uid =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
-    (localUnitId lbi)
+    uid
     (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
 
 substPathTemplate :: PackageId -> LocalBuildInfo
+                  -> UnitId
                   -> PathTemplate -> FilePath
-substPathTemplate pkgid lbi = fromPathTemplate
-                                . ( InstallDirs.substPathTemplate env )
+substPathTemplate pkgid lbi uid = fromPathTemplate
+                                    . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
-                   (localUnitId lbi)
+                   uid
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

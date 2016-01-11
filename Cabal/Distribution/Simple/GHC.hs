@@ -651,7 +651,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         profileLibFilePath = libTargetDir </> mkProfLibName uid
         sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
-        libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
+        libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
 
     stubObjs <- catMaybes <$> sequence

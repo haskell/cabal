@@ -70,7 +70,6 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
-import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
@@ -647,8 +646,10 @@ configure (pkg_descr0', pbi) cfg = do
 
     when reloc (checkRelocatable verbosity pkg_descr lbi)
 
-    let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-        relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
+    -- TODO: This is not entirely correct, because the dirs may vary
+    -- across libraries/executables
+    let dirs = absoluteInstallDirs pkg_descr lbi (localUnitId lbi) NoCopyDest
+        relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi (localUnitId lbi)
 
     unless (isAbsolute (prefix dirs)) $ die $
         "expected an absolute directory name for --prefix: " ++ prefix dirs
@@ -1622,16 +1623,19 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
+          componentUnitId = uid,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
       CTest _ ->
         return TestComponentLocalBuildInfo {
+          componentUnitId = uid,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
       CBench _ ->
         return BenchComponentLocalBuildInfo {
+          componentUnitId = uid,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
@@ -1858,7 +1862,11 @@ checkForeignDeps pkg lbi verbosity = do
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
         commonCppArgs = platformDefines lbi
-                     ++ [ "-I" ++ autogenModulesDir lbi ]
+                     -- TODO: This is a massive hack, to work around the
+                     -- fact that the test performed here should be
+                     -- PER-component (c.f. the "I'm Feeling Lucky"; we
+                     -- should NOT be glomming everything together.)
+                     ++ [ "-I" ++ buildDir lbi </> "autogen" ]
                      ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
                      ++ ["-I."]
                      ++ collectField PD.cppOptions
@@ -2018,7 +2026,10 @@ checkRelocatable verbosity pkg lbi
         $ die $ "Installation directories are not prefix_relative:\n" ++
                 show installDirs
       where
-        installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+        -- NB: should be good enough to check this against the default
+        -- component ID, but if we wanted to be strictly correct we'd
+        -- check for each ComponentId.
+        installDirs = absoluteInstallDirs pkg lbi (localUnitId lbi) NoCopyDest
         p           = prefix installDirs
         relativeInstallDirs (InstallDirs {..}) =
           all isJust
@@ -2039,7 +2050,10 @@ checkRelocatable verbosity pkg lbi
                   (Installed.libraryDirs ipkg)
           | otherwise
           = return ()
-        installDirs   = absoluteInstallDirs pkg lbi NoCopyDest
+        -- NB: should be good enough to check this against the default
+        -- component ID, but if we wanted to be strictly correct we'd
+        -- check for each ComponentId.
+        installDirs   = absoluteInstallDirs pkg lbi (localUnitId lbi) NoCopyDest
         p             = prefix installDirs
         ipkgs         = PackageIndex.allPackages (installedPkgs lbi)
         msg l         = "Library directory of a dependency: " ++ show l ++

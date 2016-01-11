@@ -47,6 +47,9 @@ import Distribution.Text
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
 -- actions.  Move files into place based on the prefix argument.
+--
+-- This does NOT register libraries, you should call 'register'
+-- to do that.
 
 install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
@@ -56,34 +59,35 @@ install pkg_descr lbi flags = do
   let distPref  = fromFlag (copyDistPref flags)
       verbosity = fromFlag (copyVerbosity flags)
       copydest  = fromFlag (copyDest flags)
-      installDirs@(InstallDirs {
-         bindir     = binPref,
-         libdir     = libPref,
---         dynlibdir  = dynlibPref, --see TODO below
+      -- This is a bit of a hack, to handle files which are not
+      -- per-component (data files and Haddock files.)
+      InstallDirs {
          datadir    = dataPref,
+         -- NB: The situation with Haddock is a bit delicate.  On the
+         -- one hand, the easiest to understand Haddock documentation
+         -- path is pkgname-0.1, which means it's per-package (not
+         -- per-component).  But this means that it's impossible to
+         -- install Haddock documentation for internal libraries.  We'll
+         -- keep this constraint for now; this means you can't use
+         -- Cabal to Haddock internal libraries.  This does not seem
+         -- like a big problem.
          docdir     = docPref,
          htmldir    = htmlPref,
-         haddockdir = interfacePref,
-         includedir = incPref})
-             -- Using the library clbi for binPref is a hack;
-             -- binPref should be computed per executable
-             = absoluteInstallDirs pkg_descr lbi copydest
-
-      --TODO: decide if we need the user to be able to control the libdir
-      -- for shared libs independently of the one for static libs. If so
-      -- it should also have a flag in the command line UI
-      -- For the moment use dynlibdir = libdir
-      dynlibPref = libPref
-      progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
-      progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
+         haddockdir = interfacePref}
+             -- Notice use of localComponentId.  This means for
+             -- non-library packages we'll just pick a nondescriptive foo-0.1
+             = absoluteInstallDirs pkg_descr lbi (localUnitId lbi) copydest
 
   unless (hasLibs pkg_descr || hasExes pkg_descr) $
       die "No executables and no library found. Nothing to do."
+
+  -- Install (package-global) data files
+  installDataFiles verbosity pkg_descr dataPref
+
+  -- Install (package-global) Haddock files
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
-
-  installDataFiles verbosity pkg_descr dataPref
 
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
@@ -112,46 +116,63 @@ install pkg_descr lbi flags = do
       [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
       | lfile <- lfiles ]
 
-  let buildPref = buildDir lbi
-  when (hasLibs pkg_descr) $
-    notice verbosity ("Installing library in " ++ libPref)
-  when (hasExes pkg_descr) $ do
-    notice verbosity ("Installing executable(s) in " ++ binPref)
+  withLibLBI pkg_descr lbi $ \lib clbi -> do
+    let InstallDirs{
+            libdir = libPref,
+            includedir = incPref
+            } = absoluteInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+        buildPref = libBuildDir lbi clbi
+    -- TODO: decide if we need the user to be able to control the libdir
+    -- for shared libs independently of the one for static libs. If so
+    -- it should also have a flag in the command line UI
+    -- For the moment use dynlibdir = libdir
+        dynlibPref = libPref
+
+    if componentUnitId clbi == localUnitId lbi
+        then notice verbosity ("Installing library in " ++ libPref)
+        else notice verbosity ("Installing internal library " ++ libName lib ++ " in " ++ libPref)
+
+    -- install include files for all compilers - they may be needed to compile
+    -- haskell files (using the CPP extension)
+    installIncludeFiles verbosity lib incPref
+
+    case compilerFlavor (compiler lbi) of
+      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      HaskellSuite _ -> HaskellSuite.installLib
+                                verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      _ -> die $ "installing with "
+              ++ display (compilerFlavor (compiler lbi))
+              ++ " is not implemented"
+
+  withExeLBI pkg_descr lbi $ \exe clbi -> do
+    let installDirs@InstallDirs {
+            bindir = binPref
+            } = absoluteInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+        -- the installers know how to find the actual location of the
+        -- binaries
+        buildPref = buildDir lbi
+        uid = componentUnitId clbi
+        progPrefixPref = substPathTemplate (packageId pkg_descr) lbi uid (progPrefix lbi)
+        progSuffixPref = substPathTemplate (packageId pkg_descr) lbi uid (progSuffix lbi)
+    notice verbosity ("Installing executable " ++ exeName exe ++ " in " ++ binPref)
     inPath <- isInSearchPath binPref
     when (not inPath) $
       warn verbosity ("The directory " ++ binPref
                       ++ " is not in the system search path.")
-
-  -- install include files for all compilers - they may be needed to compile
-  -- haskell files (using the CPP extension)
-  --
-  when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr incPref
-
-  withLibLBI pkg_descr lbi $
     case compilerFlavor (compiler lbi) of
-      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
-      GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-      LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
-      JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
-      UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
-      HaskellSuite _ -> HaskellSuite.installLib
-                                verbosity lbi libPref dynlibPref buildPref pkg_descr
-      _ -> \_ _ -> die $ "installing with "
-                      ++ display (compilerFlavor (compiler lbi))
-                      ++ " is not implemented"
-
-  withExe pkg_descr $
-    case compilerFlavor (compiler lbi) of
-      GHC   -> GHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-      GHCJS -> GHCJS.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-      LHC   -> LHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-      JHC   -> JHC.installExe   verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
-      UHC   -> \_ -> return ()
-      HaskellSuite {} -> \_ -> return ()
-      _ -> \_ -> die $ "installing with "
-                    ++ display (compilerFlavor (compiler lbi))
-                    ++ " is not implemented"
-  -- register step should be performed by caller.
+      GHC   -> GHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
+      GHCJS -> GHCJS.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
+      LHC   -> LHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
+      JHC   -> JHC.installExe   verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr exe
+      UHC   -> return ()
+      HaskellSuite {} -> return ()
+      _ -> die $ "installing with "
+              ++ display (compilerFlavor (compiler lbi))
+              ++ " is not implemented"
 
 -- | Install the files listed in data-files
 --
@@ -166,11 +187,10 @@ installDataFiles verbosity pkg_descr destDataDir =
                                               (destDataDir </> file')
               | file' <- files ]
 
--- | Install the files listed in install-includes
+-- | Install the files listed in install-includes for a library
 --
-installIncludeFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
-installIncludeFiles verbosity pkg destIncludeDir = do
-  withLib pkg $ \lib -> do
+installIncludeFiles :: Verbosity -> Library -> FilePath -> IO ()
+installIncludeFiles verbosity lib destIncludeDir = do
     let relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
         lbi = libBuildInfo lib
     incs <- mapM (findInc relincdirs) (installIncludes lbi)

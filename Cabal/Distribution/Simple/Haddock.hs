@@ -177,8 +177,6 @@ haddock pkg_descr lbi suffixes flags' = do
 
     -- the tools match the requests, we can proceed
 
-    initialBuildSteps (flag haddockDistPref) pkg_descr lbi verbosity
-
     when (flag haddockHscolour) $
       hscolour' (warn verbosity) pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
@@ -190,9 +188,9 @@ haddock pkg_descr lbi suffixes flags' = do
             , fromPackageDescription forDist pkg_descr ]
         forDist = fromFlagOrDefault False (haddockForHackage flags)
 
-    let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
     withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
-      pre component
+      initialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
+      preprocessComponent pkg_descr component lbi clbi False verbosity suffixes
       let
         doExe com = case (compToExe com) of
           Just exe -> do
@@ -286,7 +284,7 @@ fromLibrary :: Verbosity
             -> Version
             -> IO HaddockArgs
 fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
-    inFiles <- map snd `fmap` getLibSourceFiles lbi lib
+    inFiles <- map snd `fmap` getLibSourceFiles lbi lib clbi
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
     let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
                           -- Noooooooooo!!!!!111
@@ -331,7 +329,7 @@ fromExecutable :: Verbosity
                -> Version
                -> IO HaddockArgs
 fromExecutable verbosity tmp lbi exe clbi htmlTemplate haddockVersion = do
-    inFiles <- map snd `fmap` getExeSourceFiles lbi exe
+    inFiles <- map snd `fmap` getExeSourceFiles lbi exe clbi
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
     let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
                           -- Noooooooooo!!!!!111
@@ -645,13 +643,7 @@ hscolour :: PackageDescription
          -> HscolourFlags
          -> IO ()
 hscolour pkg_descr lbi suffixes flags = do
-  -- we preprocess even if hscolour won't be found on the machine
-  -- will this upset someone?
-  initialBuildSteps distPref pkg_descr lbi verbosity
   hscolour' die pkg_descr lbi suffixes flags
- where
-   verbosity  = fromFlag (hscolourVerbosity flags)
-   distPref = fromFlag $ hscolourDistPref flags
 
 hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
           -> PackageDescription
@@ -670,15 +662,15 @@ hscolour' onNoHsColour pkg_descr lbi suffixes flags =
       createDirectoryIfMissingVerbose verbosity True $
         hscolourPref distPref pkg_descr
 
-      let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-      withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
-        pre comp
+      withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
+        initialBuildSteps distPref pkg_descr lbi clbi verbosity
+        preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
         let
           doExe com = case (compToExe com) of
             Just exe -> do
               let outputDir = hscolourPref distPref pkg_descr
                               </> exeName exe </> "src"
-              runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
+              runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
             Nothing -> do
               warn (fromFlag $ hscolourVerbosity flags)
                 "Unsupported component, skipping..."
@@ -686,7 +678,7 @@ hscolour' onNoHsColour pkg_descr lbi suffixes flags =
         case comp of
           CLib lib -> do
             let outputDir = hscolourPref distPref pkg_descr </> "src"
-            runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib
+            runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib clbi
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
           CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
@@ -728,24 +720,26 @@ haddockToHscolour flags =
 
 getLibSourceFiles :: LocalBuildInfo
                      -> Library
+                     -> ComponentLocalBuildInfo
                      -> IO [(ModuleName.ModuleName, FilePath)]
-getLibSourceFiles lbi lib = getSourceFiles searchpaths modules
+getLibSourceFiles lbi lib clbi = getSourceFiles searchpaths modules
   where
     bi               = libBuildInfo lib
     modules          = PD.exposedModules lib ++ otherModules bi
-    searchpaths      = autogenModulesDir lbi : buildDir lbi : hsSourceDirs bi
+    searchpaths      = autogenModulesDir lbi clbi : buildDir lbi : hsSourceDirs bi
 
 getExeSourceFiles :: LocalBuildInfo
                      -> Executable
+                     -> ComponentLocalBuildInfo
                      -> IO [(ModuleName.ModuleName, FilePath)]
-getExeSourceFiles lbi exe = do
+getExeSourceFiles lbi exe clbi = do
     moduleFiles <- getSourceFiles searchpaths modules
     srcMainPath <- findFile (hsSourceDirs bi) (modulePath exe)
     return ((ModuleName.main, srcMainPath) : moduleFiles)
   where
     bi          = buildInfo exe
     modules     = otherModules bi
-    searchpaths = autogenModulesDir lbi : exeBuildDir lbi exe : hsSourceDirs bi
+    searchpaths = autogenModulesDir lbi clbi : exeBuildDir lbi exe : hsSourceDirs bi
 
 getSourceFiles :: [FilePath]
                   -> [ModuleName.ModuleName]
