@@ -63,7 +63,5 @@ instance Text Version where
     where
       digits = do
         first <- Parse.satisfy Char.isDigit
-        if first == '0'
-          then return 0
-          else do rest <- Parse.munch Char.isDigit
-                  return (read (first : rest))
+        rest <- Parse.munch Char.isDigit
+        return (read (first : rest))
