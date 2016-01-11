@@ -56,8 +56,10 @@ haddockPref distPref pkg_descr
     = distPref </> "doc" </> "html" </> display (packageName pkg_descr)
 
 -- |The directory in which we put auto-generated modules
-autogenModulesDir :: LocalBuildInfo -> String
-autogenModulesDir lbi = buildDir lbi </> "autogen"
+autogenModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
+autogenModulesDir lbi clbi = libBuildDir lbi clbi </> "autogen"
+-- NB: Look at 'checkForeignDeps' for where a simplified version of this
+-- has been copy-pasted.
 
 cppHeaderName :: String
 cppHeaderName = "cabal_macros.h"

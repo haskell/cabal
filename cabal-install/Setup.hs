@@ -10,6 +10,7 @@ import Distribution.Simple.InstallDirs ( mandir
                                        )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..)
                                           , absoluteInstallDirs
+                                          , localComponentId
                                           )
 import Distribution.Simple.Utils ( copyFiles
                                  , notice )
@@ -49,5 +50,7 @@ buildManpage lbi verbosity = do
 
 installManpage :: PackageDescription -> LocalBuildInfo -> Verbosity -> CopyDest -> IO ()
 installManpage pkg lbi verbosity copy = do
-  let destDir = mandir (absoluteInstallDirs pkg lbi copy) </> "man1"
+  -- NB: no library here, let's just use the default component ID
+  -- (it shouldn't make a difference)
+  let destDir = mandir (absoluteInstallDirs pkg lbi (localComponentId lbi) copy) </> "man1"
   copyFiles verbosity destDir [(buildDir lbi </> "cabal", "cabal.1")]

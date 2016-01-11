@@ -377,7 +377,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     adjustRelativeIncludeDirs = map (inplaceDir </>)
     libTargetDir = libBuildDir lbi clbi
     installDirs =
-      (absoluteInstallDirs pkg lbi NoCopyDest) {
+      (absoluteInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,
         datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
@@ -409,7 +409,7 @@ absoluteInstalledPackageInfo pkg abi_hash lib lbi clbi =
       | null (installIncludes bi) = []
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
-    installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+    installDirs = absoluteInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 
 relocatableInstalledPackageInfo :: PackageDescription
@@ -431,7 +431,7 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     bi = libBuildInfo lib
 
     installDirs = fmap (("${pkgroot}" </>) . shortRelativePath pkgroot)
-                $ absoluteInstallDirs pkg lbi NoCopyDest
+                $ absoluteInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration

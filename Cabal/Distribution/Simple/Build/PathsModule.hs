@@ -37,8 +37,8 @@ import Data.Maybe
 -- * Building Paths_<pkg>.hs
 -- ------------------------------------------------------------
 
-generate :: PackageDescription -> LocalBuildInfo -> String
-generate pkg_descr lbi =
+generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
+generate pkg_descr lbi clbi =
    let pragmas = cpp_pragma ++ ffi_pragmas ++ warning_pragmas
 
        cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}\n"
@@ -169,6 +169,8 @@ generate pkg_descr lbi =
    in header++body
 
  where
+        cid = componentUnitId clbi
+
         InstallDirs {
           prefix     = flat_prefix,
           bindir     = flat_bindir,
@@ -176,14 +178,14 @@ generate pkg_descr lbi =
           datadir    = flat_datadir,
           libexecdir = flat_libexecdir,
           sysconfdir = flat_sysconfdir
-        } = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        } = absoluteInstallDirs pkg_descr lbi cid NoCopyDest
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
           datadir    = flat_datadirrel,
           libexecdir = flat_libexecdirrel,
           sysconfdir = flat_sysconfdirrel
-        } = prefixRelativeInstallDirs (packageId pkg_descr) lbi
+        } = prefixRelativeInstallDirs (packageId pkg_descr) lbi cid
 
         flat_bindirreloc = shortRelativePath flat_prefix flat_bindir
         flat_libdirreloc = shortRelativePath flat_prefix flat_libdir
