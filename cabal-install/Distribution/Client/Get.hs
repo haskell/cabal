@@ -21,7 +21,7 @@ module Distribution.Client.Get (
 import Distribution.Package
          ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
-         ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+         ( Flag(..), fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( notice, die, info, writeFileAtomic )
 import Distribution.Verbosity
@@ -30,13 +30,11 @@ import Distribution.Text(display)
 import qualified Distribution.PackageDescription as PD
 
 import Distribution.Client.Setup
-         ( GlobalFlags(..), GetFlags(..) )
+         ( GlobalFlags(..), GetFlags(..), RepoContext(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
-import Distribution.Client.HttpUtils
-        ( configureTransport, HttpTransport(..) )
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
         ( getSourcePackages )
@@ -74,7 +72,7 @@ import System.Process
 
 -- | Entry point for the 'cabal get' command.
 get :: Verbosity
-    -> [Repo]
+    -> RepoContext
     -> GlobalFlags
     -> GetFlags
     -> [UserTarget]
@@ -82,7 +80,7 @@ get :: Verbosity
 get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repos globalFlags getFlags userTargets = do
+get verbosity repoCtxt globalFlags getFlags userTargets = do
   let useFork = case (getSourceRepository getFlags) of
         NoFlag -> False
         _      -> True
@@ -90,11 +88,9 @@ get verbosity repos globalFlags getFlags userTargets = do
   unless useFork $
     mapM_ checkTarget userTargets
 
-  sourcePkgDb <- getSourcePackages verbosity repos
+  sourcePkgDb <- getSourcePackages verbosity repoCtxt
 
-  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
-
-  pkgSpecifiers <- resolveUserTargets verbosity transport
+  pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)
                    (packageIndex sourcePkgDb)
                    userTargets
@@ -108,7 +104,7 @@ get verbosity repos globalFlags getFlags userTargets = do
 
   if useFork
     then fork pkgs
-    else unpack transport pkgs
+    else unpack pkgs
 
   where
     resolverParams sourcePkgDb pkgSpecifiers =
@@ -123,10 +119,10 @@ get verbosity repos globalFlags getFlags userTargets = do
       branchers <- findUsableBranchers
       mapM_ (forkPackage verbosity branchers prefix kind) pkgs
 
-    unpack :: HttpTransport -> [SourcePackage] -> IO ()
-    unpack transport pkgs = do
+    unpack :: [SourcePackage] -> IO ()
+    unpack pkgs = do
       forM_ pkgs $ \pkg -> do
-        location <- fetchPackage transport verbosity (packageSource pkg)
+        location <- fetchPackage verbosity repoCtxt (packageSource pkg)
         let pkgid = packageId pkg
             descOverride | usePristine = Nothing
                          | otherwise   = packageDescrOverride pkg

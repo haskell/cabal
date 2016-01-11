@@ -98,19 +98,21 @@ import Distribution.Client.PackageIndex
 import Distribution.Client.IndexUtils
   ( getSourcePackages )
 import Distribution.Client.Types
-  ( SourcePackageDb(..), Repo )
+  ( SourcePackageDb(..) )
+import Distribution.Client.Setup
+  ( RepoContext(..) )
 
 initCabal :: Verbosity
           -> PackageDBStack
-          -> [Repo]
+          -> RepoContext
           -> Compiler
           -> ProgramConfiguration
           -> InitFlags
           -> IO ()
-initCabal verbosity packageDBs repos comp conf initFlags = do
+initCabal verbosity packageDBs repoCtxt comp conf initFlags = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-  sourcePkgDb <- getSourcePackages verbosity repos
+  sourcePkgDb <- getSourcePackages verbosity repoCtxt
 
   hSetBuffering stdout NoBuffering
 

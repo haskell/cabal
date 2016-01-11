@@ -114,6 +114,7 @@ executable cabal
         Distribution.Client.FetchUtils
         Distribution.Client.Freeze
         Distribution.Client.Get
+        Distribution.Client.GlobalFlags
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils

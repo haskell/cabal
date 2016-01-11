@@ -31,7 +31,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
-import Distribution.Simple.Setup (fromFlag, flagToMaybe)
+import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -43,21 +43,20 @@ import Distribution.Text
          ( Text(disp), display )
 
 import Distribution.Client.Types
-         ( SourcePackage(..), Repo, SourcePackageDb(..) )
+         ( SourcePackage(..), SourcePackageDb(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup
-         ( GlobalFlags(..), ListFlags(..), InfoFlags(..) )
+         ( GlobalFlags(..), ListFlags(..), InfoFlags(..)
+         , RepoContext(..) )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
          ( isFetched )
-import Distribution.Client.HttpUtils
-        ( configureTransport )
 
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
@@ -77,15 +76,15 @@ import System.Directory
 -- | Return a list of packages matching given search strings.
 getPkgList :: Verbosity
            -> PackageDBStack
-           -> [Repo]
+           -> RepoContext
            -> Compiler
            -> ProgramConfiguration
            -> ListFlags
            -> [String]
            -> IO [PackageDisplayInfo]
-getPkgList verbosity packageDBs repos comp conf listFlags pats = do
+getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repos
+    sourcePkgDb       <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
@@ -133,7 +132,7 @@ getPkgList verbosity packageDBs repos comp conf listFlags pats = do
 -- | Show information about packages.
 list :: Verbosity
      -> PackageDBStack
-     -> [Repo]
+     -> RepoContext
      -> Compiler
      -> ProgramConfiguration
      -> ListFlags
@@ -163,7 +162,7 @@ list verbosity packageDBs repos comp conf listFlags pats = do
 
 info :: Verbosity
      -> PackageDBStack
-     -> [Repo]
+     -> RepoContext
      -> Compiler
      -> ProgramConfiguration
      -> GlobalFlags
@@ -173,11 +172,11 @@ info :: Verbosity
 info verbosity _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-info verbosity packageDBs repos comp conf
+info verbosity packageDBs repoCtxt comp conf
      globalFlags _listFlags userTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb   <- getSourcePackages    verbosity repos
+    sourcePkgDb       <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
@@ -190,8 +189,7 @@ info verbosity packageDBs repos comp conf
                       (InstalledPackageIndex.allPackages installedPkgIndex)
                    ++ map packageId
                       (PackageIndex.allPackages sourcePkgIndex)
-    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
-    pkgSpecifiers <- resolveUserTargets verbosity transport
+    pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 

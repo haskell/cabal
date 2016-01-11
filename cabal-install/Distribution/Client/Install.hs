@@ -73,14 +73,14 @@ import Distribution.Client.Dependency.Types
          ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
-         ( configureTransport, HttpTransport (..) )
+         ( HttpTransport (..) )
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
-         ( GlobalFlags(..)
+         ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
@@ -186,7 +186,7 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 install
   :: Verbosity
   -> PackageDBStack
-  -> [Repo]
+  -> RepoContext
   -> Compiler
   -> Platform
   -> ProgramConfiguration
@@ -239,7 +239,7 @@ type InstallContext = ( InstalledPackageIndex, SourcePackageDb
 -- rid of it completely.
 -- | Initial arguments given to 'install' or 'makeInstallContext'.
 type InstallArgs = ( PackageDBStack
-                   , [Repo]
+                   , RepoContext
                    , Compiler
                    , Platform
                    , ProgramConfiguration
@@ -255,15 +255,14 @@ type InstallArgs = ( PackageDBStack
 makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
-  (packageDBs, repos, comp, _, conf,_,_,
+  (packageDBs, repoCtxt, comp, _, conf,_,_,
    globalFlags, _, configExFlags, _, _) mUserTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repos
+    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
     checkConfigExFlags verbosity installedPkgIndex
                        (packageIndex sourcePkgDb) configExFlags
-    transport <- configureTransport verbosity
-                 (flagToMaybe (globalHttpTransport globalFlags))
+    transport <- repoContextGetTransport repoCtxt
 
     (userTargets, pkgSpecifiers) <- case mUserTargets of
       Nothing           ->
@@ -277,7 +276,7 @@ makeInstallContext verbosity
         let userTargets | null userTargets0 = [UserTargetLocalDir "."]
                         | otherwise         = userTargets0
 
-        pkgSpecifiers <- resolveUserTargets verbosity transport
+        pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                          (fromFlag $ globalWorldFile globalFlags)
                          (packageIndex sourcePkgDb)
                          userTargets
@@ -1034,7 +1033,7 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity
-  (packageDBs, _, comp, platform, conf, useSandbox, _,
+  (packageDBs, repoCtxt, comp, platform, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
@@ -1051,13 +1050,10 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  transport <- configureTransport verbosity
-               (flagToMaybe (globalHttpTransport globalFlags))
-
   executeInstallPlan verbosity comp jobControl useLogFile installPlan $ \rpkg ->
     installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
-      fetchSourcePackage transport verbosity fetchLimit src $ \src' ->
+      fetchSourcePackage verbosity repoCtxt fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs
@@ -1265,19 +1261,19 @@ installReadyPackage platform cinfo configFlags
       Right (desc, _) -> desc
 
 fetchSourcePackage
-  :: HttpTransport
-  -> Verbosity
+  :: Verbosity
+  -> RepoContext
   -> JobLimit
   -> PackageLocation (Maybe FilePath)
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
-fetchSourcePackage transport verbosity fetchLimit src installPkg = do
+fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
   fetched <- checkFetched src
   case fetched of
     Just src' -> installPkg src'
     Nothing   -> onFailure DownloadFailed $ do
                    loc <- withJobLimit fetchLimit $
-                            fetchPackage transport verbosity src
+                            fetchPackage verbosity repoCtxt src
                    installPkg loc
 
 
