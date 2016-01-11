@@ -1,10 +1,6 @@
-module Distribution.Client.Dependency.Modular.IndexConversion (
-    convPIs
-    -- * TODO: The following don't actually seem to be used anywhere?
-  , convIPI
-  , convSPI
-  , convPI
-  ) where
+module Distribution.Client.Dependency.Modular.IndexConversion
+    ( convPIs
+    ) where
 
 import Data.List as L
 import Data.Map as M
@@ -59,9 +55,6 @@ convIPI' sip idx =
     shadow (pn, i, PInfo fdeps fds _) | sip = (pn, i, PInfo fdeps fds (Just Shadowed))
     shadow x                                = x
 
-convIPI :: Bool -> SI.InstalledPackageIndex -> Index
-convIPI sip = mkIndex . convIPI' sip
-
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
@@ -95,10 +88,6 @@ convIPId pn' idx ipid =
 convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
             CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
 convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
-
-convSPI :: OS -> Arch -> CompilerInfo -> Bool ->
-           CI.PackageIndex SourcePackage -> Index
-convSPI os arch cinfo strfl = mkIndex . convSPI' os arch cinfo strfl
 
 -- | Convert a single source package into the solver-specific format.
 convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage -> (PN, I, PInfo)
@@ -219,10 +208,6 @@ convBranch os arch cinfo pi@(PI pn _) fds p comp getInfo (c', t', mf') =
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN
 convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
-
--- | Convert a Cabal package identifier to a solver-specific dependency.
-convPI :: PN -> PackageIdentifier -> Dep PN
-convPI pn' (PackageIdentifier pn v) = Dep pn (Constrained [(eqVR v, Goal (P pn') [])])
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN

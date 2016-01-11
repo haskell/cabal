@@ -4,7 +4,6 @@ module Distribution.Client.Dependency.Modular.Assignment
     , SAssignment
     , PreAssignment(..)
     , extend
-    , finalize
     , toCPs
     ) where
 
@@ -27,9 +26,7 @@ import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
-import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.Version
 
 -- | A (partial) package assignment. Qualified package names
 -- are associated with instances.
@@ -146,37 +143,3 @@ toCPs (A pa fa sa) rdm =
                                  (M.findWithDefault [] qpn sapp)
                                  (depp' qpn))
           ps
-
--- | Finalize an assignment and a reverse dependency map.
---
--- This is preliminary, and geared towards output right now.
-finalize :: Index -> Assignment -> RevDepMap -> IO ()
-finalize idx (A pa fa _) rdm =
-  let
-    -- get hold of the graph
-    g  :: Graph Component
-    vm :: Vertex -> ((), QPN, [(Component, QPN)])
-    (g, vm) = graphFromEdges' (L.map (\ (x, xs) -> ((), x, xs)) (M.toList rdm))
-    -- topsort the dependency graph, yielding a list of pkgs in the right order
-    f :: [PI QPN]
-    f = L.filter (not . instPI) (L.map ((\ (_, x, _) -> PI x (pa M.! x)) . vm) (topSort g))
-    fapp :: Map QPN [(QFN, Bool)] -- flags per package
-    fapp = M.fromListWith (++) $
-           L.map (\ (qfn@(FN (PI qpn _) _), b) -> (qpn, [(qfn, b)])) $ M.toList $ fa
-    -- print one instance
-    ppi pi@(PI qpn _) = showPI pi ++ status pi ++ " " ++ pflags (M.findWithDefault [] qpn fapp)
-    -- print install status
-    status :: PI QPN -> String
-    status (PI (Q _ pn) _) =
-      case insts of
-        [] -> " (new)"
-        vs -> " (" ++ intercalate ", " (L.map showVer vs) ++ ")"
-      where insts = L.map (\ (I v _) -> v) $ L.filter isInstalled $
-                    M.keys (M.findWithDefault M.empty pn idx)
-            isInstalled (I _ (Inst _ )) = True
-            isInstalled _               = False
-    -- print flag assignment
-    pflags = unwords . L.map (uncurry showFBool)
-  in
-    -- show packages with associated flag assignments
-    putStr (unlines (L.map ppi f))
