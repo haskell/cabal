@@ -1528,26 +1528,9 @@ computeCompatPackageKey
     -> ComponentName
     -> UnitId
     -> (PackageName, String)
-computeCompatPackageKey comp pid cname uid@(SimpleUnitId (ComponentId str))
-    | not (packageKeySupported comp || unitIdSupported comp) =
-        -- NB: the package ID in the database entry has to follow this
-        let zdashcode s = go s (Nothing :: Maybe Int) []
-                where go [] _ r = reverse r
-                      go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
-                      go ('-':z) _        r = go z (Just 0) ('-':r)
-                      go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
-                      go (c:z)   _        r = go z Nothing (c:r)
-            cname_str = case cname of
-                            CLibName n   -> "-z-lib-"   ++ zdashcode n
-                            CTestName n  -> "-z-test-"  ++ zdashcode n
-                            CBenchName n -> "-z-bench-" ++ zdashcode n
-                            CExeName n   -> "-z-exe-"   ++ zdashcode n
-            package_name
-                | cname == defaultLibName pid = pkgName pid
-                | otherwise = PackageName $ "z-"
-                              ++ zdashcode (display (pkgName pid))
-                              ++ zdashcode cname_str
-            old_style_key
+computeCompatPackageKey comp pid cname (SimpleUnitId (ComponentId str))
+    | not (packageKeySupported comp) =
+        let old_style_key
                 | cname == defaultLibName pid = display pid
                 | otherwise         = display package_name ++ "-"
                                    ++ display (pkgVersion pid)
@@ -1566,22 +1549,32 @@ computeCompatPackageKey comp pid cname uid@(SimpleUnitId (ComponentId str))
                         then Just cand
                         else Nothing
             rehashed_key = hashToBase62 str
-        in (pkgName pid, fromMaybe rehashed_key
+        in (package_name, fromMaybe rehashed_key
                             (mb_verbatim_key `mplus` mb_truncated_key))
-    | otherwise = (pkgName pid, display uid)
-
-{-
-mkComponentIds :: PackageDescription
-               -> [InstalledPackageInfo]
-               -> FlagAssignment
-               -> [(Component, [ComponentName])]
-               -> [(Component, ComponentId, [ComponentName])]
-
-mkComponentIds pkg_descr externalPkgDeps flagAssignment graph0 = go graph0 []
-  where
-    pid = package pkg_descr
-    go ((comp, cdeps):graph) r = go ((comp, mkComponentId comp r, cdeps):r)
--}
+    | otherwise = (package_name, str)
+      where
+        -- We always override the package name.  Why?  This helps out
+        -- tooling by preventing them from attempting to choose a
+        -- "package" for something (via the PackageIndex) when
+        -- it actually represents an internal library.
+        -- NB: the package ID in the database entry has to follow this
+        zdashcode s = go s (Nothing :: Maybe Int) []
+            where go [] _ r = reverse r
+                  go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
+                  go ('-':z) _        r = go z (Just 0) ('-':r)
+                  go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
+                  go (c:z)   _        r = go z Nothing (c:r)
+        cname_str = case cname of
+                        CLibName n   -> "-z-lib-"   ++ zdashcode n
+                        CTestName n  -> "-z-test-"  ++ zdashcode n
+                        CBenchName n -> "-z-bench-" ++ zdashcode n
+                        CExeName n   -> "-z-exe-"   ++ zdashcode n
+        package_name
+            | cname == defaultLibName pid
+            = pkgName pid
+            | otherwise
+            = PackageName $ "z-" ++ zdashcode (display (pkgName pid))
+                                 ++ zdashcode cname_str
 
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> Compiler
