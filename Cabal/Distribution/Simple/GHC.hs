@@ -1121,17 +1121,20 @@ installLib    :: Verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   -- copy .hi files over:
-  whenVanilla $ copyModuleFiles "hi"
-  whenProf    $ copyModuleFiles "p_hi"
-  whenShared  $ copyModuleFiles "dyn_hi"
+  whenRegistered $ do
+    whenVanilla $ copyModuleFiles "hi"
+    whenProf    $ copyModuleFiles "p_hi"
+    whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
-  whenProf    $ installOrdinary builtDir targetDir       profileLibName
-  whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
-  whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
+  whenRegistered $ do
+    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenProf    $ installOrdinary builtDir targetDir       profileLibName
+    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
+  whenRegisteredOrDynExecutable $ do
+    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
     builtDir = libBuildDir lbi clbi
@@ -1168,6 +1171,17 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     whenProf    = when (hasLib && withProfLib    lbi)
     whenGHCi    = when (hasLib && withGHCiLib    lbi)
     whenShared  = when (hasLib && withSharedLib  lbi)
+
+    -- Some files (e.g. interface files) are completely unnecessary when
+    -- we are not actually going to register the library.  A library is
+    -- not registered if there is no "public library", e.g. in the case
+    -- that we have an internal library and executables, but no public
+    -- library.
+    whenRegistered = when (hasPublicLib pkg)
+
+    -- However, we must always install dynamic libraries when linking
+    -- dynamic executables, because we'll try to load them!
+    whenRegisteredOrDynExecutable = when (hasPublicLib pkg || (hasExes pkg && withDynExe lbi))
 
 -- -----------------------------------------------------------------------------
 -- Registering

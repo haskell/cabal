@@ -1105,7 +1105,7 @@ elaborateInstallPlan platform compiler progdb
                                 then BuildInplaceOnly else BuildAndInstall
         pkgBuildPackageDBStack    = buildAndRegisterDbs
         pkgRegisterPackageDBStack = buildAndRegisterDbs
-        pkgRequiresRegistration   = isJust (Cabal.condLibrary gdesc)
+        pkgRequiresRegistration   = PD.hasPublicLib (PD.packageDescription gdesc)
 
         pkgSetupScriptStyle       = packageSetupScriptStylePostSolver
                                       pkgsImplicitSetupDeps pkg pkgDescription

@@ -43,6 +43,7 @@ module Distribution.PackageDescription (
         ModuleReexport(..),
         emptyLibrary,
         withLib,
+        hasPublicLib,
         hasLibs,
         libModules,
 
@@ -124,7 +125,6 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import Data.Data                  (Data)
-import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
 import Data.Maybe                 (fromMaybe, maybeToList)
 import Data.Foldable as Fold      (Foldable(foldMap))
@@ -432,22 +432,21 @@ instance Semigroup Library where
 emptyLibrary :: Library
 emptyLibrary = mempty
 
--- |does this package have any libraries?
+-- | Does this package have a PUBLIC library?
+hasPublicLib :: PackageDescription -> Bool
+hasPublicLib p = any f (libraries p)
+    where f lib = buildable (libBuildInfo lib) &&
+                  libName lib == display (packageName (package p))
+
+-- | Does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
 hasLibs p = any (buildable . libBuildInfo) (libraries p)
-
--- |'Maybe' version of 'hasLibs'
-maybeHasLibs :: PackageDescription -> [Library]
-maybeHasLibs p =
-   libraries p >>= \lib -> if buildable (libBuildInfo lib)
-                           then return lib
-                           else []
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
-   traverse_ f (maybeHasLibs pkg_descr)
+   sequence_ [f lib | lib <- libraries pkg_descr, buildable (libBuildInfo lib)]
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which need to be compiled.  (This does not include reexports, which
