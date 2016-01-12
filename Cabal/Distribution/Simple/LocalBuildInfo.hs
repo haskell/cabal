@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -30,6 +31,7 @@ module Distribution.Simple.LocalBuildInfo (
         defaultLibName,
         showComponentName,
         ComponentLocalBuildInfo(..),
+        getLocalComponent,
         libBuildDir,
         componentComponentId,
         foldComponent,
@@ -112,12 +114,16 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
-        componentsConfigs   :: [(ComponentName, ComponentLocalBuildInfo, [ComponentName])],
-                -- ^ All the components to build, ordered by topological sort, and with their dependencies
-                -- over the intrapackage dependency graph
+        componentsConfigs   :: [(ComponentLocalBuildInfo, [UnitId])],
+                -- ^ All the components to build, ordered by topological
+                -- sort, and with their INTERNAL dependencies over the
+                -- intrapackage dependency graph.
+                -- TODO: this is assumed to be short; otherwise we want
+                -- some sort of ordered map.
         installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
+                -- Does NOT include internal dependencies.
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
         localPkgDescr :: PackageDescription,
@@ -145,7 +151,10 @@ data LocalBuildInfo = LocalBuildInfo {
 
 instance Binary LocalBuildInfo
 
--- | Extract the 'ComponentId' from the library component of a
+-- TODO: Get rid of these functions, as much as possible.  They are
+-- a bit useful in some cases, but you should be very careful!
+
+-- | Extract the 'ComponentId' from the public library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake component ID based
 -- on the package ID.
 localComponentId :: LocalBuildInfo -> ComponentId
@@ -163,9 +172,9 @@ localUnitId lbi
         -- Something fake:
         _ -> mkLegacyUnitId (package (localPkgDescr lbi))
 
--- | Extract the compatibility 'ComponentId' from the library component of a
--- 'LocalBuildInfo' if it exists, or make a fake compatibility package
--- key based on the package ID.
+-- | Extract the compatibility package key from the public library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
+-- on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
     case maybeGetDefaultLibraryLocalBuildInfo lbi of
@@ -179,16 +188,16 @@ externalPackageDeps :: LocalBuildInfo -> [(UnitId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)
-        | (_,clbi,_)      <- componentsConfigs lbi
+        | (clbi,_)      <- componentsConfigs lbi
         , (ipkgid, pkgid) <- componentPackageDeps clbi
-        , not (internal pkgid) ]
+        , not (internal ipkgid) ]
   where
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
-    internal pkgid = pkgid == packageId (localPkgDescr lbi)
+    internal ipkgid = any ((==ipkgid) . componentUnitId . fst) (componentsConfigs lbi)
 
 -- -----------------------------------------------------------------------------
--- Buildable components
+-- Source-representation of buildable components
 
 data Component = CLib   Library
                | CExe   Executable
@@ -213,47 +222,6 @@ showComponentName (CLibName   name) = "library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
-
-data ComponentLocalBuildInfo
-  = LibComponentLocalBuildInfo {
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentUnitId :: UnitId,
-    componentCompatPackageKey :: String,
-    componentCompatPackageName :: PackageName,
-    componentExposedModules :: [Installed.ExposedModule],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
-  }
-  | ExeComponentLocalBuildInfo {
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
-  }
-  | TestComponentLocalBuildInfo {
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
-  }
-  | BenchComponentLocalBuildInfo {
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
-  }
-  deriving (Generic, Read, Show)
-
-instance Binary ComponentLocalBuildInfo
-
-libBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
-libBuildDir lbi clbi
-    | componentUnitId clbi == localUnitId lbi = buildDir lbi
-    | otherwise = buildDir lbi </> display (componentUnitId clbi)
-
-componentComponentId :: ComponentLocalBuildInfo -> ComponentId
-componentComponentId clbi = case componentUnitId clbi of
-                                SimpleUnitId cid -> cid
 
 foldComponent :: (Library -> a)
               -> (Executable -> a)
@@ -333,6 +301,64 @@ getComponent pkg cname =
       error $ "internal error: the package description contains no "
            ++ "component corresponding to " ++ show cname
 
+-- -----------------------------------------------------------------------------
+-- Configuration information of buildable components
+
+data ComponentLocalBuildInfo
+  = LibComponentLocalBuildInfo {
+    -- | It would be very convenient to store the literal Library here,
+    -- but if we do that, it will get serialized (via the Binary)
+    -- instance twice.  So instead we just provide the ComponentName,
+    -- which can be used to find the Component in the
+    -- PackageDescription.  NB: eventually, this will NOT uniquely
+    -- identify the ComponentLocalBuildInfo.
+    componentLocalName :: ComponentName,
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(UnitId, PackageId)],
+    componentUnitId :: UnitId,
+    componentCompatPackageKey :: String,
+    componentCompatPackageName :: PackageName,
+    componentExposedModules :: [Installed.ExposedModule],
+    componentIsPublic :: Bool,
+    componentPackageRenaming :: Map PackageName ModuleRenaming
+  }
+  | ExeComponentLocalBuildInfo {
+    componentLocalName :: ComponentName,
+    componentUnitId :: UnitId,
+    componentPackageDeps :: [(UnitId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
+  }
+  | TestComponentLocalBuildInfo {
+    componentLocalName :: ComponentName,
+    componentUnitId :: UnitId,
+    componentPackageDeps :: [(UnitId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
+  }
+  | BenchComponentLocalBuildInfo {
+    componentLocalName :: ComponentName,
+    componentUnitId :: UnitId,
+    componentPackageDeps :: [(UnitId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
+  }
+  deriving (Generic, Read, Show)
+
+instance Binary ComponentLocalBuildInfo
+
+getLocalComponent :: PackageDescription -> ComponentLocalBuildInfo -> Component
+getLocalComponent pkg_descr clbi = getComponent pkg_descr (componentLocalName clbi)
+
+libBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
+libBuildDir lbi clbi
+    | LibComponentLocalBuildInfo{ componentIsPublic = True } <- clbi
+                            = buildDir lbi
+    | otherwise             = buildDir lbi </> display (componentUnitId clbi)
+
+componentComponentId :: ComponentLocalBuildInfo -> ComponentId
+componentComponentId clbi = case componentUnitId clbi of
+                                SimpleUnitId cid -> cid
 
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName
                            -> ComponentLocalBuildInfo
@@ -347,8 +373,9 @@ maybeGetComponentLocalBuildInfo
     :: LocalBuildInfo -> ComponentName -> Maybe ComponentLocalBuildInfo
 maybeGetComponentLocalBuildInfo lbi cname =
     case [ clbi
-         | (cname', clbi, _) <- componentsConfigs lbi
-         , cname == cname' ] of
+         | (clbi, _) <- componentsConfigs lbi
+         , cid <- componentNameToUnitIds lbi cname
+         , cid == componentUnitId clbi ] of
       [clbi] -> Just clbi
       _      -> Nothing
 
@@ -356,33 +383,48 @@ maybeGetDefaultLibraryLocalBuildInfo
     :: LocalBuildInfo
     -> Maybe ComponentLocalBuildInfo
 maybeGetDefaultLibraryLocalBuildInfo lbi =
-    maybeGetComponentLocalBuildInfo lbi (CLibName pkg_name)
-  where
-    pkg_name = display (pkgName (package (localPkgDescr lbi)))
+    case [ clbi
+         | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
+         , componentIsPublic clbi
+         ] of
+      [clbi] -> Just clbi
+      _ -> Nothing
 
--- |If the package description has a library section, call the given
---  function with the library build info as argument.  Extended version of
--- 'withLib' that also gives corresponding build info.
+componentNameToUnitIds :: LocalBuildInfo -> ComponentName -> [UnitId]
+componentNameToUnitIds lbi cname =
+    [ componentUnitId clbi
+    | (clbi, _) <- componentsConfigs lbi
+    , componentName (getLocalComponent (localPkgDescr lbi) clbi) == cname ]
+
+-- | Perform the action on each buildable 'library' in the package
+-- description.  Extended version of 'withLib' that also gives
+-- corresponding build info.
 withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withLibLBI pkg_descr lbi f =
-    withLib pkg_descr $ \lib ->
-      f lib (getComponentLocalBuildInfo lbi (CLibName (libName lib)))
+withLibLBI pkg lbi f =
+    sequence_
+        [ f lib clbi
+        | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
+        , CLib lib <- [getComponent pkg (componentLocalName clbi)] ]
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
 -- build info.
 withExeLBI :: PackageDescription -> LocalBuildInfo
            -> (Executable -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withExeLBI pkg_descr lbi f =
-    withExe pkg_descr $ \exe ->
-      f exe (getComponentLocalBuildInfo lbi (CExeName (exeName exe)))
+withExeLBI pkg lbi f =
+    sequence_
+        [ f exe clbi
+        | (clbi@ExeComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
+        , CExe exe <- [getComponent pkg (componentLocalName clbi)] ]
 
 withTestLBI :: PackageDescription -> LocalBuildInfo
             -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withTestLBI pkg_descr lbi f =
-    withTest pkg_descr $ \test ->
-      f test (getComponentLocalBuildInfo lbi (CTestName (testName test)))
+withTestLBI pkg lbi f =
+    sequence_
+        [ f test clbi
+        | (clbi@TestComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
+        , CTest test <- [getComponent pkg (componentLocalName clbi)] ]
 
 {-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
 withComponentsLBI :: PackageDescription -> LocalBuildInfo
@@ -398,8 +440,8 @@ withAllComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                               -> IO ()
 withAllComponentsInBuildOrder pkg lbi f =
     sequence_
-      [ f (getComponent pkg cname) clbi
-      | (cname, clbi) <- allComponentsInBuildOrder lbi ]
+      [ f (getLocalComponent pkg clbi) clbi
+      | clbi <- allComponentsInBuildOrder lbi ]
 
 withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                            -> [ComponentName]
@@ -407,28 +449,35 @@ withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                            -> IO ()
 withComponentsInBuildOrder pkg lbi cnames f =
     sequence_
-      [ f (getComponent pkg cname') clbi
-      | (cname', clbi) <- componentsInBuildOrder lbi cnames ]
+      [ f (getLocalComponent pkg clbi) clbi
+      | clbi <- componentsInBuildOrder lbi cnames ]
 
 allComponentsInBuildOrder :: LocalBuildInfo
-                          -> [(ComponentName, ComponentLocalBuildInfo)]
+                          -> [ComponentLocalBuildInfo]
 allComponentsInBuildOrder lbi =
-    componentsInBuildOrder lbi
-      [ cname | (cname, _, _) <- componentsConfigs lbi ]
+    componentsInBuildOrder' lbi
+      [ componentUnitId clbi | (clbi, _) <- componentsConfigs lbi ]
 
 componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]
-                       -> [(ComponentName, ComponentLocalBuildInfo)]
+                       -> [ComponentLocalBuildInfo]
 componentsInBuildOrder lbi cnames =
-      map ((\(clbi,cname,_) -> (cname,clbi)) . vertexToNode)
+    componentsInBuildOrder' lbi
+        (concatMap (componentNameToUnitIds lbi) cnames)
+
+componentsInBuildOrder' :: LocalBuildInfo -> [UnitId]
+                       -> [ComponentLocalBuildInfo]
+componentsInBuildOrder' lbi cids =
+      map ((\(clbi,_,_) -> clbi) . vertexToNode)
     . postOrder graph
-    . map (\cname -> fromMaybe (noSuchComp cname) (keyToVertex cname))
-    $ cnames
+    . map (\cid -> fromMaybe (noSuchComp cid) (keyToVertex cid))
+    $ cids
   where
     (graph, vertexToNode, keyToVertex) =
-      graphFromEdges (map (\(a,b,c) -> (b,a,c)) (componentsConfigs lbi))
+      graphFromEdges (map (\(clbi,internal_deps) ->
+                            (clbi,componentUnitId clbi,internal_deps)) (componentsConfigs lbi))
 
-    noSuchComp cname = error $ "internal error: componentsInBuildOrder: "
-                            ++ "no such component: " ++ show cname
+    noSuchComp cid = error $ "internal error: componentsInBuildOrder: "
+                            ++ "no such component: " ++ show cid
 
     postOrder :: Graph -> [Vertex] -> [Vertex]
     postOrder g vs = postorderF (dfs g vs) []
@@ -469,20 +518,23 @@ depLibraryPaths inplace relative lbi clbi = do
         relDir | executable = bindir installDirs
                | otherwise  = libdir installDirs
 
-    let hasInternalDeps = not $ null
-                        $ [ pkgid
-                          | (_,pkgid) <- componentPackageDeps clbi
-                          , internal pkgid
-                          ]
+    let -- TODO: this is kind of inefficient
+        internalDeps = [ cid
+                       | (cid, _) <- componentPackageDeps clbi
+                       -- Test that it's internal
+                       , (sub_clbi, _) <- componentsConfigs lbi
+                       , componentUnitId sub_clbi == cid ]
+        internalLibs = [ getLibDir sub_clbi
+                       | sub_clbi <- componentsInBuildOrder'
+                                        lbi internalDeps ]
+        getLibDir sub_clbi
+          | inplace    = libBuildDir lbi sub_clbi
+          | otherwise  = libdir (absoluteInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
     let ipkgs          = allPackages (installedPkgs lbi)
         allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
-        internalLib
-          | inplace    = buildDir lbi
-          | otherwise  = libdir installDirs
-        allDepLibDirs' = if hasInternalDeps
-                            then internalLib : allDepLibDirs
-                            else allDepLibDirs
+
+        allDepLibDirs' = internalLibs ++ allDepLibDirs
     allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
 
     let p                = prefix installDirs
@@ -498,7 +550,6 @@ depLibraryPaths inplace relative lbi clbi = do
 
     return libPaths
   where
-    internal pkgid = pkgid == packageId (localPkgDescr lbi)
     -- 'canonicalizePath' fails on UNIX when the directory does not exists.
     -- So just don't canonicalize when it doesn't exist.
     canonicalizePathNoFail p = do
