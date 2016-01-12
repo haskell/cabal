@@ -7,8 +7,14 @@ import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
 
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(localPkgDescr, compiler), absoluteInstallDirs, InstallDirs(libdir), maybeGetComponentLocalBuildInfo, ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName))
+import Distribution.Simple.InstallDirs (CopyDest(NoCopyDest))
+import Distribution.Simple.BuildPaths (mkLibName, mkSharedLibName)
+import Distribution.Simple.Compiler (compilerId)
+
 import Control.Monad
 
+import System.Directory
 import Data.Version
 import Test.Tasty (mkTimeout, localOption)
 import Test.Tasty.HUnit (testCase)
@@ -31,28 +37,17 @@ tests config = do
   ---------------------------------------------------------------------
   -- * Test suite tests
 
-  groupTests "TestSuiteTests" $ do
-
-    -- Test exitcode-stdio-1.0 test suites (and HPC)
-    groupTests "ExeV10"
+  groupTests "TestSuiteTests/ExeV10" $
       (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
 
-    -- Test detailed-0.9 test suites
-    groupTests "LibV09" $
-      let
-        tcs :: FilePath -> TestM a -> TestTreeM ()
-        tcs name m
-            = testTree' $ testCase name (runTestM config
-                                         "TestSuiteTests/LibV09" (Just name) m)
-      in do
-          -- Test if detailed-0.9 builds correctly
-          tcs "Build" $ cabal_build ["--enable-tests"]
+  -- Test if detailed-0.9 builds correctly
+  tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
 
-          -- Tests for #2489, stdio deadlock
-          mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
-            . tcs "Deadlock" $ do
-              cabal_build ["--enable-tests"]
-              shouldFail $ cabal "test" []
+  -- Tests for #2489, stdio deadlock
+  mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
+   . tcs "TestSuiteTests/LibV09" "Deadlock" $ do
+      cabal_build ["--enable-tests"]
+      shouldFail $ cabal "test" []
 
   ---------------------------------------------------------------------
   -- * Inline tests
@@ -207,6 +202,8 @@ tests config = do
         assertFailure $ "cabal has not calculated different Installed " ++
           "package ID when source is changed."
 
+  -- Test that if two components have the same module name, they do not
+  -- clobber each other.
   tc "DuplicateModuleName" $ do
       cabal_build ["--enable-tests"]
       r1 <- shouldFail $ cabal' "test" ["foo"]
@@ -216,6 +213,9 @@ tests config = do
       assertOutputContains "test C" r2
       assertOutputContains "test A" r2
 
+  -- Test that if test suite has a name which conflicts with a package
+  -- which is in the database, we can still use the test case (they
+  -- should NOT shadow).
   tc "TestNameCollision" $ do
         withPackageDb $ do
           withPackage "parent" $ cabal_install []
@@ -267,13 +267,43 @@ tests config = do
       tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
       tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
 
-  tc "MultipleLibraries" $ do
+  -- Basic test for internal libraries (in p); package q is to make
+  -- sure that the internal library correctly is used, not the
+  -- external library.
+  tc "InternalLibraries" $ do
       withPackageDb $ do
           withPackage "q" $ cabal_install []
           withPackage "p" $ do
               cabal_install []
-              r <- runExe' "foo" []
+              cabal "clean" []
+              r <- runInstalledExe' "foo" []
               assertOutputContains "I AM THE ONE" r
+
+  -- Internal libraries used by a statically linked executable:
+  -- no libraries should get installed or registered.
+  tcs "InternalLibraries/Executable" "Static" $ multiple_libraries_executable False
+
+  -- Internal libraries used by a dynamically linked executable:
+  -- ONLY the dynamic library should be installed, no registration
+  tcs "InternalLibraries/Executable" "Dynamic" $ multiple_libraries_executable True
+
+  -- Internal library used by public library; it must be installed and
+  -- registered.
+  tc "InternalLibraries/Library" $ do
+      withPackageDb $ do
+          withPackage "foolib" $ cabal_install []
+          withPackage "fooexe" $ do
+              cabal_build []
+              runExe' "fooexe" []
+                  >>= assertOutputContains "25"
+
+  -- Test to ensure that cabal_macros.h are computed per-component.
+  tc "Macros" $ do
+      cabal_build []
+      runExe' "macros-a" []
+          >>= assertOutputContains "macros-a.exe"
+      runExe' "macros-b" []
+          >>= assertOutputContains "macros-b.exe"
 
   where
     ghc_pkg_guess bin_name = do
@@ -299,5 +329,39 @@ tests config = do
                               in assertBool (msg ++ ",\nactual output:\n" ++ out)
                                  (out =~ regex)
 
+    multiple_libraries_executable is_dynamic =
+        withPackageDb $ do
+            cabal_install $ [ if is_dynamic then "--enable-executable-dynamic"
+                                            else "--disable-executable-dynamic"
+                            , "--enable-shared"]
+            dist_dir <- distDir
+            lbi <- liftIO $ getPersistBuildConfig dist_dir
+            let pkg_descr = localPkgDescr lbi
+                compiler_id = compilerId (compiler lbi)
+                cname = (CLibName "foo-internal")
+                Just clbi = maybeGetComponentLocalBuildInfo lbi cname
+                uid = componentUnitId clbi
+                dir = libdir (absoluteInstallDirs pkg_descr lbi uid NoCopyDest)
+            assertBool "interface files should NOT be installed" . not
+                =<< liftIO (doesFileExist (dir </> "Foo.hi"))
+            assertBool "static library should NOT be installed" . not
+                =<< liftIO (doesFileExist (dir </> mkLibName uid))
+            if is_dynamic
+              then
+                assertBool "dynamic library MUST be installed"
+                    =<< liftIO (doesFileExist (dir </> mkSharedLibName compiler_id uid))
+              else
+                assertBool "dynamic library should NOT be installed" . not
+                    =<< liftIO (doesFileExist (dir </> mkSharedLibName compiler_id uid))
+            shouldFail $ ghcPkg "describe" ["foo"]
+            -- clean away the dist directory so that we catch accidental
+            -- dependence on the inplace files
+            cabal "clean" []
+            runInstalledExe' "foo" [] >>= assertOutputContains "46"
+
     tc :: FilePath -> TestM a -> TestTreeM ()
-    tc name = testTree config name Nothing
+    tc name = testTree config name
+
+    tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
+    tcs name sub_name m
+        = testTreeSub config name sub_name m
