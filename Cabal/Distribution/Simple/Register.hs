@@ -82,7 +82,13 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg lbi regFlags = withLib pkg (registerOne pkg lbi regFlags)
+register pkg lbi regFlags =
+    -- We do NOT register libraries outside of the inplace database
+    -- if there is no public library, since no one else can use it
+    -- usefully (they're not public.)  If we start supporting scoped
+    -- packages, we'll have to relax this.
+    when (hasPublicLib pkg) $
+        withLib pkg (registerOne pkg lbi regFlags)
 
 registerOne :: PackageDescription -> LocalBuildInfo -> RegisterFlags
             -> Library
