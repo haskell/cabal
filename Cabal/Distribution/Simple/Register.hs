@@ -103,6 +103,8 @@ registerOne pkg lbi regFlags lib
                            verbosity pkg lib lbi clbi inplace reloc distPref
                            (registrationPackageDB absPackageDBs)
 
+    info verbosity (IPI.showInstalledPackageInfo installedPkgInfo)
+
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedUnitId installedPkgInfo))
 

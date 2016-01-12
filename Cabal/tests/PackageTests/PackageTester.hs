@@ -276,12 +276,10 @@ cabal' cmd extraArgs0 = do
                 , "--prefix=" ++ prefix_dir
                 ] ++ packageDBParams (packageDBStack suite)
                   ++ extraArgs0
-            -- This gives us MUCH better error messages
-            "build" -> "-v" : extraArgs0
             _ -> extraArgs0
     -- This is a horrible hack to make hpc work correctly
     dist_dir <- relativeDistDir
-    let extraArgs = ["--distdir", dist_dir] ++ extraArgs1
+    let extraArgs = ["-v", "--distdir", dist_dir] ++ extraArgs1
     doCabal (cmd:extraArgs)
 
 -- | This abstracts the common pattern of configuring and then building.
