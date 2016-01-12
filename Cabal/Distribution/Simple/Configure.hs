@@ -1574,7 +1574,7 @@ computeCompatPackageKey comp pid cname (SimpleUnitId (ComponentId str))
             = pkgName pid
             | otherwise
             = PackageName $ "z-" ++ zdashcode (display (pkgName pid))
-                                 ++ zdashcode cname_str
+                                 ++ cname_str
 
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> Compiler
