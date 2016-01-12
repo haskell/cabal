@@ -82,9 +82,9 @@ build pkg_descr lbi flags suffixes = do
 
   targets  <- readBuildTargets pkg_descr (buildArgs flags)
   targets' <- checkBuildTargets verbosity pkg_descr targets
-  let componentsToBuild = map fst (componentsInBuildOrder lbi (map fst targets'))
+  let componentsToBuild = componentsInBuildOrder lbi (map fst targets')
   info verbosity $ "Component build order: "
-                ++ intercalate ", " (map showComponentName componentsToBuild)
+                ++ intercalate ", " (map (showComponentName . componentLocalName) componentsToBuild)
 
   when (null targets) $
     -- Only bother with this message if we're building the whole package
@@ -92,7 +92,8 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  withComponentsInBuildOrder pkg_descr lbi componentsToBuild $ \comp clbi -> do
+  -- TODO: we're computing this twice, do it once!
+  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi -> do
     initialBuildSteps distPref pkg_descr lbi clbi verbosity
     let bi     = componentBuildInfo comp
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
@@ -124,7 +125,7 @@ repl pkg_descr lbi flags suffixes args = do
       componentForRepl  = last componentsToBuild
   debug verbosity $ "Component build order: "
                  ++ intercalate ", "
-                      [ showComponentName c | (c,_) <- componentsToBuild ]
+                      [ showComponentName (componentLocalName clbi) | clbi <- componentsToBuild ]
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
@@ -137,15 +138,17 @@ repl pkg_descr lbi flags suffixes args = do
 
   -- build any dependent components
   sequence_
-    [ do let comp = getComponent pkg_descr cname
+    [ do let cname = componentLocalName clbi
+             comp = getComponent pkg_descr cname
              lbi' = lbiForComponent comp lbi
          initialBuildSteps distPref pkg_descr lbi clbi verbosity
          buildComponent verbosity NoFlag
                         pkg_descr lbi' suffixes comp clbi distPref
-    | (cname, clbi) <- init componentsToBuild ]
+    | clbi <- init componentsToBuild ]
 
   -- REPL for target components
-  let (cname, clbi) = componentForRepl
+  let clbi = componentForRepl
+      cname = componentLocalName clbi
       comp = getComponent pkg_descr cname
       lbi' = lbiForComponent comp lbi
   initialBuildSteps distPref pkg_descr lbi clbi verbosity
@@ -387,6 +390,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
                                 (CTestName (testName test)) (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
+                , componentLocalName = CLibName (testName test)
+                , componentIsPublic = False
                 , componentPackageRenaming = componentPackageRenaming clbi
                 , componentUnitId = componentUnitId clbi
                 , componentCompatPackageName = compat_name
@@ -420,6 +425,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 -- TODO: this is a hack, but as long as this is unique
                 -- (doesn't clobber something) we won't run into trouble
                 componentUnitId = mkUnitId (stubName test),
+                componentLocalName = CExeName (stubName test),
                 componentPackageDeps =
                     (IPI.installedUnitId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
@@ -444,6 +450,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
           }
     exeClbi = ExeComponentLocalBuildInfo {
                 componentUnitId = componentUnitId clbi,
+                componentLocalName = CExeName (benchmarkName bm),
                 componentPackageDeps = componentPackageDeps clbi,
                 componentPackageRenaming = componentPackageRenaming clbi
               }

@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -1329,7 +1330,13 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 -- -----------------------------------------------------------------------------
 -- Making the internal component graph
 
-
+-- | Given the package description and the set of package names which
+-- are considered internal (the current package name and any internal
+-- libraries are considered internal), create a graph of dependencies
+-- between the components.  This is NOT necessarily the build order
+-- (although it is in the absence of Backpack.)
+--
+-- TODO: tighten up the type of 'internalPkgDeps'
 mkComponentsGraph :: PackageDescription
                   -> [PackageId]
                   -> Either [ComponentName]
@@ -1539,16 +1546,19 @@ mkComponentsLocalBuildInfo :: ConfigFlags
                            -> [InstalledPackageInfo] -- external package deps
                            -> [(Component, [ComponentName])]
                            -> FlagAssignment
-                           -> IO [(ComponentName, ComponentLocalBuildInfo,
-                                                  [ComponentName])]
+                           -> IO [(ComponentLocalBuildInfo,
+                                   [UnitId])]
 mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps
                            graph flagAssignment =
     foldM (wrap componentLocalBuildInfo) [] graph
   where
-    wrap f z (component, cdeps) = do
+    wrap f z (component, _) = do
         clbi <- f z component
-        return ((componentName component, clbi, cdeps):z)
+        -- TODO: Maybe just store the internal deps in the clbi?
+        let dep_uids = map fst (filter (\(_,e) -> e `elem` internalPkgDeps)
+                                       (componentPackageDeps clbi))
+        return ((clbi, dep_uids):z)
 
     -- The allPkgDeps contains all the package deps for the whole package
     -- but we need to select the subset for this specific component.
@@ -1571,6 +1581,8 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentUnitId = uid,
+          componentLocalName = componentName component,
+          componentIsPublic = libName lib == display (packageName (package pkg_descr)),
           componentCompatPackageKey = compat_key,
           componentCompatPackageName = compat_name,
           componentPackageRenaming = cprns,
@@ -1579,18 +1591,21 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
       CExe _ ->
         return ExeComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
       CTest _ ->
         return TestComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
       CBench _ ->
         return BenchComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentPackageRenaming = cprns
         }
@@ -1616,8 +1631,9 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         bi = componentBuildInfo component
         dedup = Map.toList . Map.fromList
         lookupInternalPkg pkgid = do
-            let matcher (CLibName str, clbi, _)
-                    | str == display (pkgName pkgid)
+            let matcher (clbi, _)
+                    | CLibName str <- componentLocalName clbi
+                    , str == display (pkgName pkgid)
                     = Just (componentUnitId clbi)
                 matcher _ = Nothing
             case catMaybes (map matcher internalComps) of
