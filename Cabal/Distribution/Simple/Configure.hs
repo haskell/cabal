@@ -37,6 +37,7 @@ module Distribution.Simple.Configure (configure,
                                       findDistPref, findDistPrefOrDefault,
                                       computeComponentId,
                                       computeCompatPackageKey,
+                                      computeCompatPackageName,
                                       localBuildInfoFile,
                                       getInstalledPackages,
                                       getInstalledPackagesMonitorFiles,
@@ -1452,7 +1453,9 @@ computeComponentId mb_explicit pid cname dep_ipids flagAssignment = do
                          -- since the component name format is very flexible
                          CLibName   s
                             | s == display (pkgName pid) -> ""
-                            | otherwise -> "-" ++ s ++ ".lib"
+                            -- NB: libraries are BY FAR the most common,
+                            -- so they are deified without a suffix
+                            | otherwise -> "-" ++ s
                          CExeName   s -> "-" ++ s ++ ".exe"
                          CTestName  s -> "-" ++ s ++ ".test"
                          CBenchName s -> "-" ++ s ++ ".bench")
@@ -1467,6 +1470,54 @@ hashToBase62 s = showFingerprint $ fingerprintString s
         | x < 62 = chr (97 + x - 36)
         | otherwise = '@'
     showFingerprint (Fingerprint a b) = showIntAtBase62 a ++ showIntAtBase62 b
+
+-- | Computes the package name for a library.  If this is the public
+-- library, it will just be the original package name; otherwise,
+-- it will be a munged package name recording the original package
+-- name as well as the name of the internal library.
+--
+-- A lot of tooling in the Haskell ecosystem assumes that if something
+-- is installed to the package database with the package name 'foo',
+-- then it actually is an entry for the (only public) library in package
+-- 'foo'.  With internal packages, this is not necessarily true:
+-- a public library as well as arbitrarily many internal libraries may
+-- come from the same package.  To prevent tools from getting confused
+-- in this case, the package name of these internal libraries is munged
+-- so that they do not conflict the public library proper.
+--
+-- We munge into a reserved namespace, "z-", and encode both the
+-- component name and the package name of an internal library using the
+-- following format:
+--
+--      compat-pkg-name ::= "z-" package-name "-z-" library-name
+--
+-- where package-name and library-name have "-" ( "z" + ) "-"
+-- segments encoded by adding an extra "z".
+--
+-- When we have the public library, the compat-pkg-name is just the
+-- package-name, no surprises there!
+--
+computeCompatPackageName :: PackageName -> ComponentName -> PackageName
+computeCompatPackageName pkg_name cname
+    | cname == CLibName (display pkg_name)
+    = pkg_name
+    | otherwise
+    = PackageName $ "z-" ++ zdashcode (display pkg_name)
+                         ++ cname_str
+      where
+        zdashcode s = go s (Nothing :: Maybe Int) []
+            where go [] _ r = reverse r
+                  go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
+                  go ('-':z) _        r = go z (Just 0) ('-':r)
+                  go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
+                  go (c:z)   _        r = go z Nothing (c:r)
+        cname_str = case cname of
+                        CLibName n   -> "-z-" ++ zdashcode n
+                        -- These are for completeness, but they
+                        -- shouldn't really be used.
+                        CTestName n  -> "-z-" ++ zdashcode n ++ "-z-test"
+                        CBenchName n -> "-z-" ++ zdashcode n ++ "-z-bench"
+                        CExeName n   -> "-z-" ++ zdashcode n ++ "-z-exe"
 
 -- | In GHC 8.0, the string we pass to GHC to use for symbol
 -- names for a package can be an arbitrary, IPID-compatible string.
@@ -1494,17 +1545,10 @@ hashToBase62 s = showFingerprint $ fingerprintString s
 --
 -- The mapping for GHC 7.8 and before:
 --
---      * For CLibName, we unconditionally use the 'PackageIdentifier'.
---
---      * For sub-components, we create a new 'PackageIdentifier' which
---        is encoded in the following way.  The test suite "qux" in package
---        "foobar-0.2" gets this package identifier "z-foobar-z-test-qux-0.2".
---        These package IDs have the form:
---
---          cpid ::= "z-" package-id "-z-" component-type "-" component-name
---          component-type ::= "test" | "bench" | "exe" | "lib"
---          package-id and component-name have "-" ( "z" + ) "-"
---          segments encoded by adding an extra "z".
+--      * We use the *compatibility* package name and version.  For
+--        public libraries this is just the package identifier; for
+--        internal libraries, it's something like "z-pkgname-z-libname-0.1".
+--        See 'computeCompatPackageName' for more details.
 --
 -- The mapping for GHC 7.10:
 --
@@ -1524,17 +1568,13 @@ hashToBase62 s = showFingerprint $ fingerprintString s
 --
 computeCompatPackageKey
     :: Compiler
-    -> PackageIdentifier
-    -> ComponentName
+    -> PackageName
+    -> Version
     -> UnitId
-    -> (PackageName, String)
-computeCompatPackageKey comp pid cname (SimpleUnitId (ComponentId str))
+    -> String
+computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId (ComponentId str))
     | not (packageKeySupported comp) =
-        let old_style_key
-                | cname == defaultLibName pid = display pid
-                | otherwise         = display package_name ++ "-"
-                                   ++ display (pkgVersion pid)
-        in (package_name, old_style_key)
+        display pkg_name ++ "-" ++ display pkg_version
     | not (unifiedIPIDRequired comp) =
         let mb_verbatim_key
                 = case simpleParse str :: Maybe PackageId of
@@ -1549,32 +1589,9 @@ computeCompatPackageKey comp pid cname (SimpleUnitId (ComponentId str))
                         then Just cand
                         else Nothing
             rehashed_key = hashToBase62 str
-        in (package_name, fromMaybe rehashed_key
-                            (mb_verbatim_key `mplus` mb_truncated_key))
-    | otherwise = (package_name, str)
-      where
-        -- We always override the package name.  Why?  This helps out
-        -- tooling by preventing them from attempting to choose a
-        -- "package" for something (via the PackageIndex) when
-        -- it actually represents an internal library.
-        -- NB: the package ID in the database entry has to follow this
-        zdashcode s = go s (Nothing :: Maybe Int) []
-            where go [] _ r = reverse r
-                  go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
-                  go ('-':z) _        r = go z (Just 0) ('-':r)
-                  go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
-                  go (c:z)   _        r = go z Nothing (c:r)
-        cname_str = case cname of
-                        CLibName n   -> "-z-lib-"   ++ zdashcode n
-                        CTestName n  -> "-z-test-"  ++ zdashcode n
-                        CBenchName n -> "-z-bench-" ++ zdashcode n
-                        CExeName n   -> "-z-exe-"   ++ zdashcode n
-        package_name
-            | cname == defaultLibName pid
-            = pkgName pid
-            | otherwise
-            = PackageName $ "z-" ++ zdashcode (display (pkgName pid))
-                                 ++ cname_str
+        in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
+    | otherwise = str
+
 
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> Compiler
@@ -1662,9 +1679,9 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                 (getDeps (componentName component))
                 flagAssignment
         uid = SimpleUnitId cid
-        (compat_name, compat_key)
-            = computeCompatPackageKey comp
-                (package pkg_descr) (componentName component) uid
+        PackageIdentifier pkg_name pkg_ver = package pkg_descr
+        compat_name = computeCompatPackageName pkg_name (componentName component)
+        compat_key = computeCompatPackageKey comp compat_name pkg_ver uid
 
         bi = componentBuildInfo component
         dedup = Map.toList . Map.fromList
