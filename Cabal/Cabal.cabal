@@ -119,18 +119,14 @@ extra-source-files:
   tests/PackageTests/HaddockNewline/A.hs
   tests/PackageTests/HaddockNewline/HaddockNewline.cabal
   tests/PackageTests/HaddockNewline/Setup.hs
-  tests/PackageTests/InternalLibraries/Executable/dist-test.Dynamic/test.sh
-  tests/PackageTests/InternalLibraries/Executable/dist-test.Static/test.sh
   tests/PackageTests/InternalLibraries/Executable/exe/Main.hs
   tests/PackageTests/InternalLibraries/Executable/foo.cabal
   tests/PackageTests/InternalLibraries/Executable/src/Foo.hs
-  tests/PackageTests/InternalLibraries/Library/dist-test/test.sh
   tests/PackageTests/InternalLibraries/Library/fooexe/Main.hs
   tests/PackageTests/InternalLibraries/Library/fooexe/fooexe.cabal
   tests/PackageTests/InternalLibraries/Library/foolib/Foo.hs
   tests/PackageTests/InternalLibraries/Library/foolib/foolib.cabal
   tests/PackageTests/InternalLibraries/Library/foolib/private/Internal.hs
-  tests/PackageTests/InternalLibraries/dist-test/test.sh
   tests/PackageTests/InternalLibraries/p/Foo.hs
   tests/PackageTests/InternalLibraries/p/p.cabal
   tests/PackageTests/InternalLibraries/p/p/P.hs
@@ -140,7 +136,6 @@ extra-source-files:
   tests/PackageTests/Macros/A.hs
   tests/PackageTests/Macros/B.hs
   tests/PackageTests/Macros/Main.hs
-  tests/PackageTests/Macros/dist-test/test.sh
   tests/PackageTests/Macros/macros.cabal
   tests/PackageTests/Macros/src/C.hs
   tests/PackageTests/Options.hs
