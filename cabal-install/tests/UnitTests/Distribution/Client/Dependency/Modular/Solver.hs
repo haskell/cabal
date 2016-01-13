@@ -120,8 +120,8 @@ data SolverTest = SolverTest {
   , testIndepGoals     :: Bool
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
-  , testSupportedExts  :: [Extension]
-  , testSupportedLangs :: [Language]
+  , testSupportedExts  :: Maybe [Extension]
+  , testSupportedLangs :: Maybe [Language]
   }
 
 mkTest :: ExampleDb
@@ -129,7 +129,7 @@ mkTest :: ExampleDb
        -> [String]
        -> Maybe [(String, Int)]
        -> SolverTest
-mkTest = mkTestExtLang [] []
+mkTest = mkTestExtLang Nothing Nothing
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -137,7 +137,7 @@ mkTestExts :: [Extension]
            -> [String]
            -> Maybe [(String, Int)]
            -> SolverTest
-mkTestExts exts = mkTestExtLang exts []
+mkTestExts exts = mkTestExtLang (Just exts) Nothing
 
 mkTestLangs :: [Language]
             -> ExampleDb
@@ -145,10 +145,10 @@ mkTestLangs :: [Language]
             -> [String]
             -> Maybe [(String, Int)]
             -> SolverTest
-mkTestLangs = mkTestExtLang []
+mkTestLangs = mkTestExtLang Nothing . Just
 
-mkTestExtLang :: [Extension]
-              -> [Language]
+mkTestExtLang :: Maybe [Extension]
+              -> Maybe [Language]
               -> ExampleDb
               -> String
               -> [String]

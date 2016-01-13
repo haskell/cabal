@@ -333,10 +333,10 @@ exInstIdx :: [ExampleInstalled] -> C.PackageIndex.InstalledPackageIndex
 exInstIdx = C.PackageIndex.fromList . map exInstInfo
 
 exResolve :: ExampleDb
-          -- List of extensions supported by the compiler.
-          -> [Extension]
-          -- A compiler can support multiple languages.
-          -> [Language]
+          -- List of extensions supported by the compiler, or Nothing if unknown.
+          -> Maybe [Extension]
+          -- List of languages supported by the compiler, or Nothing if unknown.
+          -> Maybe [Language]
           -> [ExamplePkgName]
           -> Bool
           -> [ExPreference]
@@ -348,12 +348,8 @@ exResolve db exts langs targets indepGoals prefs = runProgress $
                         params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
-    compiler = defaultCompiler { C.compilerInfoExtensions = if null exts
-                                                               then Nothing
-                                                               else Just exts
-                               , C.compilerInfoLanguages  = if null langs
-                                                                then Nothing
-                                                                else Just langs
+    compiler = defaultCompiler { C.compilerInfoExtensions = exts
+                               , C.compilerInfoLanguages  = langs
                                }
     (inst, avai) = partitionEithers db
     instIdx      = exInstIdx inst
