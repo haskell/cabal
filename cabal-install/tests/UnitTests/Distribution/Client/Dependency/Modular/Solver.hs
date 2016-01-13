@@ -209,7 +209,7 @@ db3 :: ExampleDb
 db3 = [
      Right $ exAv "A" 1 []
    , Right $ exAv "A" 2 []
-   , Right $ exAv "B" 1 [ExFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
+   , Right $ exAv "B" 1 [exFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
    , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
    , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
    ]
@@ -252,7 +252,7 @@ db4 = [
    , Right $ exAv "Ax" 2 []
    , Right $ exAv "Ay" 1 []
    , Right $ exAv "Ay" 2 []
-   , Right $ exAv "B"  1 [ExFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
+   , Right $ exAv "B"  1 [exFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
    , Right $ exAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
    , Right $ exAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
    ]
