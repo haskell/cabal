@@ -1740,8 +1740,8 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
         , let exportingPackageName = packageName srcpkgid
               definingModuleName   = visibleModuleName
               definingPackageId    = key
-              originalModule = Installed.OriginalModule definingPackageId
-                                                        definingModuleName
+              originalModule = Module definingPackageId
+                                      definingModuleName
               exposedModule  = Installed.ExposedModule visibleModuleName
                                                        (Just originalModule)
         ]
@@ -1758,7 +1758,7 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
         -- In this case the reexport will point to this package.
             Nothing -> return exposedModule {
               Installed.exposedReexport =
-                 Just (Installed.OriginalModule
+                 Just (Module
                        (Installed.installedUnitId pkg)
                        (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself

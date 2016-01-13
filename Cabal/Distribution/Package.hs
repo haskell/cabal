@@ -30,6 +30,9 @@ module Distribution.Package (
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
+        -- * Modules
+        Module(..),
+
         -- * ABI hash
         AbiHash(..),
 
@@ -55,6 +58,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
 import Distribution.Compat.Binary
 import Distribution.Text
+import Distribution.ModuleName
 
 import Control.DeepSeq (NFData(..))
 import qualified Data.Char as Char
@@ -111,9 +115,32 @@ instance Text PackageIdentifier where
 instance NFData PackageIdentifier where
     rnf (PackageIdentifier name version) = rnf name `seq` rnf version
 
--- ------------------------------------------------------------
--- * Component Source Hash
--- ------------------------------------------------------------
+-- | A module identity uniquely identifies a Haskell module by
+-- qualifying a 'ModuleName' with the 'UnitId' which defined
+-- it.  This type distinguishes between two packages
+-- which provide a module with the same name, or a module
+-- from the same package compiled with different dependencies.
+-- There are a few cases where Cabal needs to know about
+-- module identities, e.g., when writing out reexported modules in
+-- the 'InstalledPackageInfo'.
+data Module =
+    Module { moduleUnitId :: UnitId,
+             moduleName :: ModuleName }
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+instance Binary Module
+
+instance Text Module where
+    disp (Module uid mod_name) =
+        disp uid <> Disp.text ":" <> disp mod_name
+    parse = do
+        uid <- parse
+        _ <- Parse.char ':'
+        mod_name <- parse
+        return (Module uid mod_name)
+
+instance NFData Module where
+    rnf (Module uid mod_name) = rnf uid `seq` rnf mod_name
 
 -- | A 'ComponentId' uniquely identifies the transitive source
 -- code closure of a component.  For non-Backpack components, it also
