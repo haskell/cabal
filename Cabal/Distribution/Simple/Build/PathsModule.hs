@@ -178,14 +178,14 @@ generate pkg_descr lbi clbi =
           datadir    = flat_datadir,
           libexecdir = flat_libexecdir,
           sysconfdir = flat_sysconfdir
-        } = absoluteInstallDirs pkg_descr lbi cid NoCopyDest
+        } = absoluteComponentInstallDirs pkg_descr lbi cid NoCopyDest
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
           datadir    = flat_datadirrel,
           libexecdir = flat_libexecdirrel,
           sysconfdir = flat_sysconfdirrel
-        } = prefixRelativeInstallDirs (packageId pkg_descr) lbi cid
+        } = prefixRelativeComponentInstallDirs (packageId pkg_descr) lbi cid
 
         flat_bindirreloc = shortRelativePath flat_prefix flat_bindir
         flat_libdirreloc = shortRelativePath flat_prefix flat_libdir

@@ -74,9 +74,10 @@ install pkg_descr lbi flags = do
          docdir     = docPref,
          htmldir    = htmlPref,
          haddockdir = interfacePref}
-             -- Notice use of localComponentId.  This means for
-             -- non-library packages we'll just pick a nondescriptive foo-0.1
-             = absoluteInstallDirs pkg_descr lbi (localUnitId lbi) copydest
+             -- Notice use of 'absoluteInstallDirs' (not the
+             -- per-component variant).  This means for non-library
+             -- packages we'll just pick a nondescriptive foo-0.1
+             = absoluteInstallDirs pkg_descr lbi copydest
 
   unless (hasLibs pkg_descr || hasExes pkg_descr) $
       die "No executables and no library found. Nothing to do."
@@ -120,7 +121,7 @@ install pkg_descr lbi flags = do
     let InstallDirs{
             libdir = libPref,
             includedir = incPref
-            } = absoluteInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+            } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = libBuildDir lbi clbi
     -- TODO: decide if we need the user to be able to control the libdir
     -- for shared libs independently of the one for static libs. If so
@@ -151,7 +152,7 @@ install pkg_descr lbi flags = do
   withExeLBI pkg_descr lbi $ \exe clbi -> do
     let installDirs@InstallDirs {
             bindir = binPref
-            } = absoluteInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+            } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         -- the installers know how to find the actual location of the
         -- binaries
         buildPref = buildDir lbi
