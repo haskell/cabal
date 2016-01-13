@@ -737,12 +737,12 @@ findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
                -> [String]    -- ^ search suffixes
                -> ModuleName  -- ^ module
                -> IO (FilePath, FilePath)
-findModuleFile searchPath extensions moduleName =
+findModuleFile searchPath extensions mod_name =
       maybe notFound return
   =<< findFileWithExtension' extensions searchPath
-                             (ModuleName.toFilePath moduleName)
+                             (ModuleName.toFilePath mod_name)
   where
-    notFound = die $ "Error: Could not find module: " ++ display moduleName
+    notFound = die $ "Error: Could not find module: " ++ display mod_name
                   ++ " with any suffix: " ++ show extensions
                   ++ " in the search path: " ++ show searchPath
 
