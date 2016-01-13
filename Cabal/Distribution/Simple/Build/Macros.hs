@@ -25,7 +25,6 @@ module Distribution.Simple.Build.Macros (
 import Distribution.Package
 import Distribution.Version
 import Distribution.PackageDescription
-import Distribution.Simple.Compiler
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
@@ -90,21 +89,19 @@ generateMacros macro_prefix name version =
   where
     (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
 
--- | Generate the @CURRENT_PACKAGE_KEY@ definition for the package key
---   of the current package, if supported by the compiler.
---   NB: this only makes sense for definite packages.
+-- | Generate the @CURRENT_COMPONENT_ID@ definition for the component ID
+--   of the current package.
 generateComponentIdMacro :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
-generateComponentIdMacro lbi clbi
-  | packageKeySupported (compiler lbi) =
-      concat
-      -- Has to be the local one, since it's not guaranteed to be
-      -- present for non-libraries (TODO: maybe we should store those?)
-      ["#define CURRENT_PACKAGE_KEY \"" ++ localCompatPackageKey lbi ++ "\"\n"
-      ,"#define CURRENT_COMPONENT_ID \"" ++ display (componentComponentId clbi) ++ "\"\n"
-      -- TODO: maybe just give component IDs for all dependents? Hmm...
+generateComponentIdMacro lbi clbi =
+  concat $
+      (case clbi of
+        LibComponentLocalBuildInfo{} ->
+          ["#define CURRENT_PACKAGE_KEY \"" ++ componentCompatPackageKey clbi ++ "\"\n"]
+        _ -> [])
+      ++
+      ["#define CURRENT_COMPONENT_ID \"" ++ display (componentComponentId clbi) ++ "\"\n"
       ,"#define LOCAL_COMPONENT_ID \"" ++ display (localComponentId lbi) ++ "\"\n"
       ,"\n"]
-  | otherwise = ""
 
 fixchar :: Char -> Char
 fixchar '-' = '_'
