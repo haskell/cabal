@@ -27,6 +27,7 @@ import qualified Distribution.Compat.ReadP as Parse
 
 import qualified Data.Char as Char
          ( isAlphaNum, isUpper )
+import Control.DeepSeq
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import qualified Text.PrettyPrint as Disp
@@ -42,6 +43,9 @@ newtype ModuleName = ModuleName [String]
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary ModuleName
+
+instance NFData ModuleName where
+    rnf (ModuleName ms) = rnf ms
 
 instance Text ModuleName where
   disp (ModuleName ms) =
