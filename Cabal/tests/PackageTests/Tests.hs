@@ -7,7 +7,7 @@ import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(localPkgDescr, compiler), absoluteInstallDirs, InstallDirs(libdir), maybeGetComponentLocalBuildInfo, ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName))
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(localPkgDescr, compiler), absoluteComponentInstallDirs, InstallDirs(libdir), maybeGetComponentLocalBuildInfo, ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName))
 import Distribution.Simple.InstallDirs (CopyDest(NoCopyDest))
 import Distribution.Simple.BuildPaths (mkLibName, mkSharedLibName)
 import Distribution.Simple.Compiler (compilerId)
@@ -340,7 +340,7 @@ tests config = do
                 cname = (CLibName "foo-internal")
                 Just clbi = maybeGetComponentLocalBuildInfo lbi cname
                 uid = componentUnitId clbi
-                dir = libdir (absoluteInstallDirs pkg_descr lbi uid NoCopyDest)
+                dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest)
             assertBool "interface files should NOT be installed" . not
                 =<< liftIO (doesFileExist (dir </> "Foo.hi"))
             assertBool "static library should NOT be installed" . not

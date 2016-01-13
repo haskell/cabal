@@ -649,8 +649,8 @@ configure (pkg_descr0', pbi) cfg = do
 
     -- TODO: This is not entirely correct, because the dirs may vary
     -- across libraries/executables
-    let dirs = absoluteInstallDirs pkg_descr lbi (localUnitId lbi) NoCopyDest
-        relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi (localUnitId lbi)
+    let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
     unless (isAbsolute (prefix dirs)) $ die $
         "expected an absolute directory name for --prefix: " ++ prefix dirs
@@ -2038,7 +2038,7 @@ checkRelocatable verbosity pkg lbi
         -- NB: should be good enough to check this against the default
         -- component ID, but if we wanted to be strictly correct we'd
         -- check for each ComponentId.
-        installDirs = absoluteInstallDirs pkg lbi (localUnitId lbi) NoCopyDest
+        installDirs = absoluteInstallDirs pkg lbi NoCopyDest
         p           = prefix installDirs
         relativeInstallDirs (InstallDirs {..}) =
           all isJust
@@ -2062,7 +2062,7 @@ checkRelocatable verbosity pkg lbi
         -- NB: should be good enough to check this against the default
         -- component ID, but if we wanted to be strictly correct we'd
         -- check for each ComponentId.
-        installDirs   = absoluteInstallDirs pkg lbi (localUnitId lbi) NoCopyDest
+        installDirs   = absoluteInstallDirs pkg lbi NoCopyDest
         p             = prefix installDirs
         ipkgs         = PackageIndex.allPackages (installedPkgs lbi)
         msg l         = "Library directory of a dependency: " ++ show l ++

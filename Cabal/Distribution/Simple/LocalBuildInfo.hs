@@ -62,6 +62,7 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
+        absoluteComponentInstallDirs, prefixRelativeComponentInstallDirs,
         substPathTemplate
   ) where
 
@@ -511,7 +512,7 @@ depLibraryPaths :: Bool -- ^ Building for inplace?
                 -> IO [FilePath]
 depLibraryPaths inplace relative lbi clbi = do
     let pkgDescr    = localPkgDescr lbi
-        installDirs = absoluteInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
+        installDirs = absoluteComponentInstallDirs pkgDescr lbi (componentUnitId clbi) NoCopyDest
         executable  = case clbi of
                         ExeComponentLocalBuildInfo {} -> True
                         _                             -> False
@@ -529,7 +530,7 @@ depLibraryPaths inplace relative lbi clbi = do
                                         lbi internalDeps ]
         getLibDir sub_clbi
           | inplace    = libBuildDir lbi sub_clbi
-          | otherwise  = libdir (absoluteInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
+          | otherwise  = libdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
     let ipkgs          = allPackages (installedPkgs lbi)
         allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
@@ -562,12 +563,22 @@ depLibraryPaths inplace relative lbi clbi = do
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
 
--- |See 'InstallDirs.absoluteInstallDirs'
+-- | Backwards compatibility function which computes the InstallDirs
+-- assuming that @$libname@ points to the public library (or some fake
+-- package identifier if there is no public library.)  IF AT ALL
+-- POSSIBLE, please use 'absoluteComponentInstallDirs' instead.
 absoluteInstallDirs :: PackageDescription -> LocalBuildInfo
-                    -> UnitId
                     -> CopyDest
                     -> InstallDirs FilePath
-absoluteInstallDirs pkg lbi uid copydest =
+absoluteInstallDirs pkg lbi copydest =
+    absoluteComponentInstallDirs pkg lbi (localUnitId lbi) copydest
+
+-- | See 'InstallDirs.absoluteInstallDirs'.
+absoluteComponentInstallDirs :: PackageDescription -> LocalBuildInfo
+                             -> UnitId
+                             -> CopyDest
+                             -> InstallDirs FilePath
+absoluteComponentInstallDirs pkg lbi uid copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
     uid
@@ -576,11 +587,20 @@ absoluteInstallDirs pkg lbi uid copydest =
     (hostPlatform lbi)
     (installDirTemplates lbi)
 
--- |See 'InstallDirs.prefixRelativeInstallDirs'
+-- | Backwards compatibility function which computes the InstallDirs
+-- assuming that @$libname@ points to the public library (or some fake
+-- package identifier if there is no public library.)  IF AT ALL
+-- POSSIBLE, please use 'prefixRelativeComponentInstallDirs' instead.
 prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
-                          -> UnitId
                           -> InstallDirs (Maybe FilePath)
-prefixRelativeInstallDirs pkg_descr lbi uid =
+prefixRelativeInstallDirs pkg_descr lbi =
+    prefixRelativeComponentInstallDirs pkg_descr lbi (localUnitId lbi)
+
+-- |See 'InstallDirs.prefixRelativeInstallDirs'
+prefixRelativeComponentInstallDirs :: PackageId -> LocalBuildInfo
+                                   -> UnitId
+                                   -> InstallDirs (Maybe FilePath)
+prefixRelativeComponentInstallDirs pkg_descr lbi uid =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
     uid
