@@ -359,6 +359,11 @@ checkFields pkg =
         ++ "need to convert package names to file names so using this name "
         ++ "would cause problems."
 
+  , check ((isPrefixOf "z-") . display . packageName $ pkg) $
+      PackageDistInexcusable $
+           "Package names with the prefix 'z-' are reserved by Cabal and "
+        ++ "cannot be used."
+
   , check (isNothing (buildType pkg)) $
       PackageBuildWarning $
            "No 'build-type' specified. If you do not need a custom Setup.hs or "
