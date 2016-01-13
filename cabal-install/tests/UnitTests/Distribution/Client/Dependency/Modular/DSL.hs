@@ -16,6 +16,7 @@ module UnitTests.Distribution.Client.Dependency.Modular.DSL (
 -- base
 import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
+import Data.List (nub)
 import Data.Monoid
 import Data.Version
 import qualified Data.Map as Map
@@ -163,7 +164,7 @@ exAvSrcPkg ex =
                        C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
                      }
                  }
-             , C.genPackageFlags = concatMap extractFlags
+             , C.genPackageFlags = nub $ concatMap extractFlags
                                    (CD.libraryDeps (exAvDeps ex))
              , C.condLibrary     = Just $ mkCondTree (extsLib exts <> langLib mlang) libraryDeps
              , C.condExecutables = []
