@@ -77,6 +77,8 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
+  tests/PackageTests/BuildableField/BuildableField.cabal
+  tests/PackageTests/BuildableField/Main.hs
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal

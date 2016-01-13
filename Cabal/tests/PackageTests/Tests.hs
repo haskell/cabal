@@ -223,6 +223,14 @@ tests config =
             cabal_build ["--enable-tests"]
             cabal "test" []
 
+  -- Test that Cabal can choose flags to disable building a component when that
+  -- component's dependencies are unavailable. The build should succeed without
+  -- requiring the component's dependencies or imports.
+  , tc "BuildableField" $ do
+        r <- cabal' "configure" ["-v"]
+        assertOutputContains "Flags chosen: build-exe=False" r
+        cabal "build" []
+
   ]
   where
     -- Shared test function for BuildDeps/InternalLibrary* tests.
