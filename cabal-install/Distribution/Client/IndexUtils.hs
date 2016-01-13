@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE GADTs #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -92,6 +93,8 @@ import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
 
+import qualified Hackage.Security.Client    as Sec
+import qualified Hackage.Security.Util.Some as Sec
 
 -- | Reduced-verbosity version of 'Configure.getInstalledPackages'
 getInstalledPackages :: Verbosity -> Compiler
@@ -174,10 +177,9 @@ readRepoIndex verbosity repoCtxt repo =
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
         case repo of
-          RepoRemote{..} -> warn verbosity $
-               "The package list for '" ++ remoteRepoName repoRemote
-            ++ "' does not exist. Run 'cabal update' to download it."
-          RepoLocal{..} -> warn verbosity $
+          RepoRemote{..} -> warn verbosity $ errMissingPackageList repoRemote
+          RepoSecure{..} -> warn verbosity $ errMissingPackageList repoRemote
+          RepoLocal{..}  -> warn verbosity $
                "The package list for the local repo '" ++ repoLocalDir
             ++ "' is missing. The repo is invalid."
         return mempty
@@ -186,12 +188,17 @@ readRepoIndex verbosity repoCtxt repo =
     isOldThreshold = 15 --days
     warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repo of
-        RepoRemote{..} -> warn verbosity $
-             "The package list for '" ++ remoteRepoName repoRemote
-          ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
-          ++ "'cabal update' to get the latest list of available packages."
-        RepoLocal{..} -> return ()
+        RepoRemote{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
+        RepoSecure{..} -> warn verbosity $ errOutdatedPackageList repoRemote dt
+        RepoLocal{..}  -> return ()
 
+    errMissingPackageList repoRemote =
+         "The package list for '" ++ remoteRepoName repoRemote
+      ++ "' does not exist. Run 'cabal update' to download it."
+    errOutdatedPackageList repoRemote dt =
+         "The package list for '" ++ remoteRepoName repoRemote
+      ++ "' is " ++ shows (floor dt :: Int) " days old.\nRun "
+      ++ "'cabal update' to get the latest list of available packages."
 
 -- | Return the age of the index file in days (as a Double).
 getIndexFileAge :: Repo -> IO Double
@@ -389,7 +396,37 @@ updatePackageIndexCacheFile verbosity index = do
 -- callback; when the callback is terminated the file handle to the index will
 -- be closed and further attempts to read from the list will result in (pure)
 -- I/O exceptions.
+--
+-- In the construction of the index for a secure repo we take advantage of the
+-- index built by the @hackage-security@ library to avoid reading the @.tar@
+-- file as much as possible (we need to read it only to extract preferred
+-- versions). This helps performance, but is also required for correctness:
+-- the new @01-index.tar.gz@ may have multiple versions of preferred-versions
+-- files, and 'parsePackageIndex' does not correctly deal with that (see #2956);
+-- by reading the already-built cache from the security library we will be sure
+-- to only read the latest versions of all files.
+--
+-- TODO: It would be nicer if we actually incrementally updated @cabal@'s
+-- cache, rather than reconstruct it from zero on each update. However, this
+-- would require a change in the cache format.
 withIndexEntries :: Index -> ([IndexCacheEntry] -> IO a) -> IO a
+withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
+    repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
+      Sec.withIndex repoSecure $ \Sec.IndexCallbacks{..} -> do
+        let mk :: (Sec.DirectoryEntry, fp, Maybe (Sec.Some Sec.IndexFile))
+               -> IO [IndexCacheEntry]
+            mk (_, _fp, Nothing) =
+              return [] -- skip unrecognized file
+            mk (_, _fp, Just (Sec.Some (Sec.IndexPkgMetadata _pkgId))) =
+              return [] -- skip metadata
+            mk (dirEntry, _fp, Just (Sec.Some (Sec.IndexPkgCabal pkgId))) = do
+              let blockNo = fromIntegral (Sec.directoryEntryBlockNo dirEntry)
+              return [CachePackageId pkgId blockNo]
+            mk (dirEntry, _fp, Just (Sec.Some file@(Sec.IndexPkgPrefs _pkgName))) = do
+              content <- Sec.indexEntryContent `fmap` indexLookupFileEntry dirEntry file
+              return $ map CachePreference (parsePreferredVersions content)
+        entriess <- lazySequence $ map mk (Sec.directoryEntries indexDirectory)
+        callback $ concat entriess
 withIndexEntries index callback = do
     withFile (indexFile index) ReadMode $ \h -> do
       bs          <- maybeDecompress `fmap` BS.hGetContents h
