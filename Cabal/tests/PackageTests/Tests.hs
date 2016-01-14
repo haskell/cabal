@@ -269,6 +269,9 @@ tests config =
         runExe' "macros-b" []
             >>= assertOutputContains "macros-b.exe"
 
+  -- Test for 'build-type: Configure' example from the Cabal manual.
+  , tc "Configure" $ cabal_build []
+
   ]
   where
     -- Shared test function for BuildDeps/InternalLibrary* tests.
