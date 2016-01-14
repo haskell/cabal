@@ -5,17 +5,20 @@
 #endif
 
 -- Hack approach to support bootstrapping.
--- Assume binary <0.8 when MIN_VERSION_binary macro is not available.
--- Starting with GHC>=8.0, the compiler will hopefully provide this macros too.
--- https://ghc.haskell.org/trac/ghc/ticket/10970
---
--- Otherwise, one can specify -DMIN_VERSION_binary_0_8_0=1, when bootstrapping
--- with binary >=0.8.0.0.
+-- When MIN_VERSION_binary macro is available, use it. But it's not available
+-- during bootstrapping (or anyone else building Setup.hs directly). If the
+-- builder specifies -DMIN_VERSION_binary_0_8_0=1 or =0 then we respect that.
+-- Otherwise we pick a default based on GHC version: assume binary <0.8 when
+-- GHC < 8.0, and binary >=0.8 when GHC >= 8.0.
 #ifdef MIN_VERSION_binary
 #define MIN_VERSION_binary_0_8_0 MIN_VERSION_binary(0,8,0)
 #else
 #ifndef MIN_VERSION_binary_0_8_0
+#if __GLASGOW_HASKELL__ >= 800
+#define MIN_VERSION_binary_0_8_0 1
+#else
 #define MIN_VERSION_binary_0_8_0 0
+#endif
 #endif
 #endif
 
