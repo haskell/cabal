@@ -84,6 +84,7 @@ import Distribution.Text
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import Control.Applicative      ((<$>))
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
@@ -305,7 +306,7 @@ toPackageIndex verbosity pkgss conf = do
   topDir <- getLibDir' verbosity ghcProg
   let indices = [ PackageIndex.fromList (map (Internal.substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! (mconcat indices)
+  return $! mconcat indices
 
   where
     Just ghcProg = lookupProgram ghcProgram conf
@@ -556,7 +557,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       replOpts    = vanillaOpts {
                       ghcOptExtra        = overNubListR
                                            Internal.filterGhciFlags $
-                                           (ghcOptExtra vanillaOpts),
+                                           ghcOptExtra vanillaOpts,
                       ghcOptNumJobs      = mempty
                     }
                     `mappend` linkerOpts
@@ -583,7 +584,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
           then do
               runGhcProg vanillaSharedOpts
               case (hpcdir Hpc.Dyn, hpcdir Hpc.Vanilla) of
-                (Cabal.Flag dynDir, Cabal.Flag vanillaDir) -> do
+                (Cabal.Flag dynDir, Cabal.Flag vanillaDir) ->
                     -- When the vanilla and shared library builds are done
                     -- in one pass, only one set of HPC module interfaces
                     -- are generated. This set should suffice for both
@@ -650,17 +651,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName cid libName
 
-    stubObjs <- fmap catMaybes $ sequence
+    stubObjs <- catMaybes <$> sequence
       [ findFileWithExtension [objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubProfObjs <- fmap catMaybes $ sequence
+    stubProfObjs <- catMaybes <$> sequence
       [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubSharedObjs <- fmap catMaybes $ sequence
+    stubSharedObjs <- catMaybes <$> sequence
       [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
@@ -669,12 +670,12 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi
                       libTargetDir objExtension True
     hProfObjs <-
-      if (withProfLib lbi)
+      if withProfLib lbi
               then Internal.getHaskellObjects implInfo lib lbi
                       libTargetDir ("p_" ++ objExtension) True
               else return []
     hSharedObjs <-
-      if (withSharedLib lbi)
+      if withSharedLib lbi
               then Internal.getHaskellObjects implInfo lib lbi
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
@@ -710,8 +711,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 -- For dynamic libs, Mac OS/X needs to know the install location
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
-                ghcOptDylibName          = if (hostOS == OSX
-                                               && ghcVersion < Version [7,8] [])
+                ghcOptDylibName          = if hostOS == OSX
+                                              && ghcVersion < Version [7,8] []
                                             then toFlag sharedLibInstallPath
                                             else mempty,
                 ghcOptNoAutoLinkPackages = toFlag True,
@@ -726,10 +727,10 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
-      whenVanillaLib False $ do
+      whenVanillaLib False $
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
 
-      whenProfLib $ do
+      whenProfLib $
         Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
 
       whenGHCiLib $ do
@@ -780,7 +781,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                        then exeExtension
                        else "")
 
-  let targetDir = (buildDir lbi) </> exeName'
+  let targetDir = buildDir lbi </> exeName'
   let exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
@@ -922,7 +923,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
               odir  = fromFlag (ghcOptObjDir opts)
           createDirectoryIfMissingVerbose verbosity True odir
           needsRecomp <- checkNeedsRecompilation filename opts
-          when needsRecomp $ 
+          when needsRecomp $
             runGhcProg opts
      | filename <- cSrcs ]
 
@@ -1043,11 +1044,12 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                      ghcOptObjSuffix     = toFlag "p_o",
                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
                    }
-      ghcArgs = if withVanillaLib lbi then vanillaArgs
-           else if withSharedLib  lbi then sharedArgs
-           else if withProfLib    lbi then profArgs
-           else error "libAbiHash: Can't find an enabled library way"
-  --
+      ghcArgs
+        | withVanillaLib lbi = vanillaArgs
+        | withSharedLib lbi = sharedArgs
+        | withProfLib lbi = profArgs
+        | otherwise = error "libAbiHash: Can't find an enabled library way"
+
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   hash <- getProgramInvocationOutput verbosity
           (ghcInvocation ghcProg comp ghcArgs)
