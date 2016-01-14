@@ -383,7 +383,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
                                 pkg abi_hash lib lbi clbi installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
-    libTargetDir = libBuildDir lbi clbi
+    libTargetDir = componentBuildDir lbi clbi
     installDirs =
       (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,

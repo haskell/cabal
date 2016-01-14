@@ -290,7 +290,7 @@ buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
   let lib_name = componentUnitId clbi
-      pref = libBuildDir lbi clbi
+      pref = componentBuildDir lbi clbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
