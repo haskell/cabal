@@ -1,5 +1,140 @@
 % Cabal User Guide
 
+# Configuration #
+
+## Overview ##
+
+The global configuration file for `cabal-install` is `~/.cabal/config`. If you
+do not have this file, `cabal` will create it for you on the first call to
+`cabal update`. Alternatively, you can explicitly ask `cabal` to create it for
+you using
+
+> `cabal user-config update`
+
+Most of the options in this configuration file are also available as command
+line arguments, and the corresponding documentation can be used to lookup their
+meaning. The created configuration file only specifies values for a handful of
+options. Most options are left at their default value, which it documents;
+for instance,
+
+~~~~~~~~~~~~~~~~
+-- executable-stripping: True
+~~~~~~~~~~~~~~~~
+
+means that the configuration file currently does not specify a value for the
+`executable-stripping` option (the line is commented out), and that the default
+is `True`; if you wanted to disable stripping of executables by default, you
+would change this line to
+
+~~~~~~~~~~~~~~~~
+executable-stripping: False
+~~~~~~~~~~~~~~~~
+
+You can also use `cabal user-config update` to migrate configuration files
+created by older versions of `cabal`.
+
+## Repository specification ##
+
+An important part of the configuration if the specification of the repository.
+When `cabal` creates a default config file, it configures the repository to
+be the central Hackage server:
+
+~~~~~~~~~~~~~~~~
+repository hackage.haskell.org
+  url: http://hackage.haskell.org/
+~~~~~~~~~~~~~~~~
+
+The name of the repository is given on the first line, and can be anything;
+packages downloaded from this repository will be cached under
+`~/.cabal/packages/hackage.haskell.org` (or whatever name you specify; you can
+change the prefix by changing the value of `remote-repo-cache`). If you want,
+you can configure multiple repositories, and `cabal` will combine them and be
+able to download packages from any of them.
+
+### Using secure repositories ###
+
+For repositories that support the TUF security infrastructure (this includes
+Hackage), you can enable secure access to the repository by specifying:
+
+~~~~~~~~~~~~~~~~
+repository hackage.haskell.org
+  url: http://hackage.haskell.org/
+  secure: True
+  root-keys: <root-key-IDs>
+  key-threshold: <key-threshold>
+~~~~~~~~~~~~~~~~
+
+The `<root-key-IDs>` and `<key-threshold>` values are used for bootstrapping. As
+part of the TUF infrastructure the repository will contain a file `root.json`
+(for instance,
+[http://hackage.haskell.org/root.json](http://hackage.haskell.org/root.json))
+which the client needs to do verification. However, how  can `cabal` verify the
+`root.json` file _itself_? This is known as bootstrapping: if you specify a list
+of root key IDs and a corresponding  threshold, `cabal` will verify that the
+downloaded `root.json` file has been  signed with at least `<key-threshold>`
+keys from your set of `<root-key-IDs>`.
+
+You can, but are not recommended to, omit these two fields. In that case `cabal`
+will download the `root.json` field and use it without verification. Although
+this bootstrapping step is then unsafe, all subsequent access is secure
+(provided that the downloaded `root.json` was not tempered with). Of course,
+adding `root-keys` and `key-threshold` to your repository specification only
+shifts the problem, because now you somehow need to make sure that the key IDs
+you received were the right ones. How that is done is however outside the scope
+of `cabal` proper.
+
+More information about the security infrastructure can be found at
+[https://github.com/well-typed/hackage-security](https://github.com/well-typed/hackage-security).
+
+### Legacy repositories ###
+
+Currently `cabal` supports two kinds of &ldquo;legacy&rdquo; repositories. The
+first is specified using
+
+~~~~~~~~~~~~~~~~
+remote-repo: hackage.haskell.org:http://hackage.haskell.org/packages/archive
+~~~~~~~~~~~~~~~~
+
+This is just syntactic sugar for
+
+~~~~~~~~~~~~~~~~
+repository hackage.haskell.org
+  url: hackage.haskell.org:http://hackage.haskell.org/packages/archive
+~~~~~~~~~~~~~~~~
+
+although, in (and only in) the specific case of Hackage, the URL
+`http://hackage.haskell.org/packages/archive` will be silently translated to
+`http://hackage.haskell.org/`.
+
+The second kind of legacy repositories are so-called &ldquo;local&rdquo;
+repositories:
+
+~~~~~~~~~~~~~~~~
+local-repo: my-local-repo:/path/to/local/repo
+~~~~~~~~~~~~~~~~
+
+This can be used to access repositories on the local file system. However, the
+layout of these local repositories is different from the layout of remote
+repositories, and usage of these local repositories is deprecated.
+
+### Secure local repositories ###
+
+If you want to use repositories on your local file system, it is recommended
+instead to use a _secure_ local repository:
+
+~~~~~~~~~~~~~~~~
+repository my-local-repo
+  url: file:/path/to/local/repo
+  secure: True
+  root-keys: <root-key-IDs>
+  key-threshold: <key-threshold>
+~~~~~~~~~~~~~~~~
+
+The layout of these secure local repos matches the layout of remote repositories
+exactly; the
+[hackage-repo-tool](http://hackage.haskell.org/package/hackage-repo-tool) can be
+used to create and manage such repositories.
+
 # Building and installing packages #
 
 After you've unpacked a Cabal package, you can build it by moving into
