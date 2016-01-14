@@ -28,6 +28,7 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
+        installedComponentId,
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -40,7 +41,7 @@ module Distribution.InstalledPackageInfo (
 
 import Distribution.ParseUtils
 import Distribution.License
-import Distribution.Package hiding (installedComponentId)
+import Distribution.Package hiding (installedUnitId)
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
 import Distribution.Version
@@ -60,9 +61,9 @@ import GHC.Generics (Generic)
 data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
-        sourcePackageId    :: PackageId,
-        installedComponentId:: ComponentId,
-        compatPackageKey   :: ComponentId,
+        sourcePackageId   :: PackageId,
+        installedUnitId   :: UnitId,
+        compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
         maintainer        :: String,
@@ -87,7 +88,7 @@ data InstalledPackageInfo
         extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
         includeDirs       :: [FilePath],
         includes          :: [String],
-        depends           :: [ComponentId],
+        depends           :: [UnitId],
         ccOptions         :: [String],
         ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
@@ -98,13 +99,17 @@ data InstalledPackageInfo
     }
     deriving (Eq, Generic, Read, Show)
 
+installedComponentId :: InstalledPackageInfo -> ComponentId
+installedComponentId ipi = case installedUnitId ipi of
+                            SimpleUnitId cid -> cid
+
 instance Binary InstalledPackageInfo
 
 instance Package.Package InstalledPackageInfo where
    packageId = sourcePackageId
 
-instance Package.HasComponentId InstalledPackageInfo where
-   installedComponentId = installedComponentId
+instance Package.HasUnitId InstalledPackageInfo where
+   installedUnitId = installedUnitId
 
 instance Package.PackageInstalled InstalledPackageInfo where
    installedDepends = depends
@@ -112,9 +117,9 @@ instance Package.PackageInstalled InstalledPackageInfo where
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        sourcePackageId    = PackageIdentifier (PackageName "") (Version [] []),
-        installedComponentId         = ComponentId "",
-        compatPackageKey   = ComponentId "",
+        sourcePackageId   = PackageIdentifier (PackageName "") (Version [] []),
+        installedUnitId   = mkUnitId "",
+        compatPackageKey  = "",
         license           = UnspecifiedLicense,
         copyright         = "",
         maintainer        = "",
@@ -153,7 +158,7 @@ emptyInstalledPackageInfo
 
 data OriginalModule
    = OriginalModule {
-       originalPackageId :: ComponentId,
+       originalPackageId  :: UnitId,
        originalModuleName :: ModuleName
      }
   deriving (Generic, Eq, Read, Show)
@@ -246,9 +251,10 @@ basicFieldDescrs =
                            packageVersion         (\ver pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgVersion=ver}})
  , simpleField "id"
                            disp                   parse
-                           installedComponentId             (\pk pkg -> pkg{installedComponentId=pk})
+                           installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
+ -- NB: parse these as component IDs
  , simpleField "key"
-                           disp                   parse
+                           (disp . ComponentId)   (fmap (\(ComponentId s) -> s) parse)
                            compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})
  , simpleField "license"
                            disp                   parseLicenseQ

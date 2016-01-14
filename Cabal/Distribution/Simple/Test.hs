@@ -126,5 +126,5 @@ packageLogPath template pkg_descr lbi =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
-                (PD.package pkg_descr) (LBI.localComponentId lbi)
+                (PD.package pkg_descr) (LBI.localUnitId lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)

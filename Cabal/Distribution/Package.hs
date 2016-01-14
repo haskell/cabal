@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -23,6 +24,8 @@ module Distribution.Package (
 
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId(..),
+        UnitId(..),
+        mkUnitId,
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
@@ -37,7 +40,7 @@ module Distribution.Package (
 
         -- * Package classes
         Package(..), packageName, packageVersion,
-        HasComponentId(..),
+        HasUnitId(..),
         PackageInstalled(..),
   ) where
 
@@ -132,8 +135,17 @@ instance NFData ComponentId where
     rnf (ComponentId pk) = rnf pk
 
 -- | Returns library name prefixed with HS, suitable for filenames
-getHSLibraryName :: ComponentId -> String
-getHSLibraryName (ComponentId s) = "HS" ++ s
+getHSLibraryName :: UnitId -> String
+getHSLibraryName (SimpleUnitId (ComponentId s)) = "HS" ++ s
+
+-- | For now, there is no distinction between component IDs
+-- and unit IDs in Cabal.
+newtype UnitId = SimpleUnitId ComponentId
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, Text, NFData)
+
+-- | Makes a simple-style UnitId from a string.
+mkUnitId :: String -> UnitId
+mkUnitId = SimpleUnitId . ComponentId
 
 -- ------------------------------------------------------------
 -- * Package source dependencies
@@ -194,8 +206,8 @@ instance Package PackageIdentifier where
   packageId = id
 
 -- | Packages that have an installed package ID
-class Package pkg => HasComponentId pkg where
-  installedComponentId :: pkg -> ComponentId
+class Package pkg => HasUnitId pkg where
+  installedUnitId :: pkg -> UnitId
 
 -- | Class of installed packages.
 --
@@ -203,8 +215,8 @@ class Package pkg => HasComponentId pkg where
 -- 'InstalledPackageInfo', but when we are doing install plans in Cabal install
 -- we may have other, installed package-like things which contain more metadata.
 -- Installed packages have exact dependencies 'installedDepends'.
-class (HasComponentId pkg) => PackageInstalled pkg where
-  installedDepends :: pkg -> [ComponentId]
+class (HasUnitId pkg) => PackageInstalled pkg where
+  installedDepends :: pkg -> [UnitId]
 
 -- -----------------------------------------------------------------------------
 -- ABI hash

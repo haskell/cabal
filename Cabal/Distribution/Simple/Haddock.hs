@@ -623,7 +623,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (ComponentId (display pkg_id)) (compilerInfo (compiler lbi))
+  : initialPathTemplateEnv pkg_id (mkUnitId (display pkg_id)) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

@@ -39,7 +39,7 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
-import Distribution.Package hiding (installedComponentId)
+import Distribution.Package hiding (installedUnitId)
 import Distribution.InstalledPackageInfo
 import Distribution.ParseUtils
 import Distribution.Simple.Compiler
@@ -154,7 +154,7 @@ writeRegistrationFileDirectly :: HcPkgInfo
                               -> IO ()
 writeRegistrationFileDirectly hpi (SpecificPackageDB dir) pkgInfo
   | supportsDirDbs hpi
-  = do let pkgfile = dir </> display (installedComponentId pkgInfo) <.> "conf"
+  = do let pkgfile = dir </> display (installedUnitId pkgInfo) <.> "conf"
        writeUTF8File pkgfile (showInstalledPackageInfo pkgInfo)
 
   | otherwise
@@ -240,7 +240,7 @@ parsePackages :: String -> Either [InstalledPackageInfo] [PError]
 parsePackages str =
   let parsed = map parseInstalledPackageInfo' (splitPkgs str)
    in case [ msg | ParseFailed msg <- parsed ] of
-        []   -> Left [   setComponentId
+        []   -> Left [   setUnitId
                        . maybe id mungePackagePaths (pkgRoot pkg)
                        $ pkg
                      | ParseOk _ pkg <- parsed ]
@@ -302,26 +302,26 @@ mungePackagePaths pkgroot pkginfo =
         _                                  -> Nothing
 
 
--- Older installed package info files did not have the installedComponentId
+-- Older installed package info files did not have the installedUnitId
 -- field, so if it is missing then we fill it as the source package ID.
-setComponentId :: InstalledPackageInfo -> InstalledPackageInfo
-setComponentId pkginfo@InstalledPackageInfo {
-                        installedComponentId = ComponentId "",
-                        sourcePackageId    = pkgid
+setUnitId :: InstalledPackageInfo -> InstalledPackageInfo
+setUnitId pkginfo@InstalledPackageInfo {
+                        installedUnitId = SimpleUnitId (ComponentId ""),
+                        sourcePackageId = pkgid
                       }
                     = pkginfo {
                         --TODO use a proper named function for the conversion
                         -- from source package id to installed package id
-                        installedComponentId = ComponentId (display pkgid)
+                        installedUnitId = mkUnitId (display pkgid)
                       }
-setComponentId pkginfo = pkginfo
+setUnitId pkginfo = pkginfo
 
 
 -- | Call @hc-pkg@ to get the source package Id of all the packages in the
 -- given package database.
 --
 -- This is much less information than with 'dump', but also rather quicker.
--- Note in particular that it does not include the 'ComponentId', just
+-- Note in particular that it does not include the 'UnitId', just
 -- the source 'PackageId' which is not necessarily unique in any package db.
 --
 list :: HcPkgInfo -> Verbosity -> PackageDB

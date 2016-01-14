@@ -289,7 +289,7 @@ substTopDir topDir ipo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  let libName = componentId clbi
+  let libName = componentUnitId clbi
       pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
@@ -653,7 +653,7 @@ ghcCcOptions lbi bi clbi odir
            _              -> ["-optc-O2"])
      ++ ["-odir", odir]
 
-mkGHCiLibName :: ComponentId -> String
+mkGHCiLibName :: UnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 -- -----------------------------------------------------------------------------
@@ -728,7 +728,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
   where
     cid = compilerId (compiler lbi)
-    libName = componentId clbi
+    libName = componentUnitId clbi
     vanillaLibName = mkLibName           libName
     profileLibName = mkProfLibName       libName
     ghciLibName    = mkGHCiLibName       libName

@@ -357,7 +357,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptVerbosity       = toFlag verbosity,
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
-      ghcOptComponentId  = case clbi of
+      ghcOptThisUnitId = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> Mon.mempty,
@@ -409,7 +409,7 @@ filterGhciFlags = filter supported
     supported "-unreg"    = False
     supported _           = True
 
-mkGHCiLibName :: ComponentId -> String
+mkGHCiLibName :: UnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
@@ -440,7 +440,7 @@ getHaskellObjects implInfo lib lbi pref wanted_obj_ext allow_split_objs
                | x <- libModules lib ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(ComponentId, PackageId, ModuleRenaming)]
+                 -> [(UnitId, PackageId, ModuleRenaming)]
 mkGhcOptPackages clbi =
   map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
       (componentPackageDeps clbi)

@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Client.Dependency.Modular.Package
-  ( ComponentId
-  , I(..)
+  ( I(..)
   , Loc(..)
   , PackageId
   , PackageIdentifier(..)
@@ -43,7 +42,7 @@ type PV = PackageId
 type QPV = Q PV
 
 -- | Package id. Currently just a black-box string.
-type PId = ComponentId
+type PId = UnitId
 
 -- | Location. Info about whether a package is installed or not, and where
 -- exactly it is located. For installed packages, uniquely identifies the
@@ -60,11 +59,13 @@ data I = I Ver Loc
 -- | String representation of an instance.
 showI :: I -> String
 showI (I v InRepo)   = showVer v
-showI (I v (Inst (ComponentId i))) = showVer v ++ "/installed" ++ shortId i
+showI (I v (Inst uid)) = showVer v ++ "/installed" ++ shortId uid
   where
     -- A hack to extract the beginning of the package ABI hash
-    shortId = snip (splitAt 4) (++ "...") .
-              snip ((\ (x, y) -> (reverse x, y)) . break (=='-') . reverse) ('-':)
+    shortId (SimpleUnitId (ComponentId i))
+            = snip (splitAt 4) (++ "...")
+            . snip ((\ (x, y) -> (reverse x, y)) . break (=='-') . reverse) ('-':)
+            $ i
     snip p f xs = case p xs of
                     (ys, zs) -> (if L.null zs then id else f) ys
 

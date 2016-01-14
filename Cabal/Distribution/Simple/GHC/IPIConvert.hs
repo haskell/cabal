@@ -14,7 +14,7 @@ module Distribution.Simple.GHC.IPIConvert (
     convertModuleName
   ) where
 
-import qualified Distribution.Package as Current hiding (installedComponentId)
+import qualified Distribution.Package as Current hiding (installedUnitId)
 import qualified Distribution.License as Current
 
 import Distribution.Version

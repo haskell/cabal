@@ -21,7 +21,7 @@ module Distribution.Simple.UHC (
 
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
-import Distribution.Package hiding (installedComponentId)
+import Distribution.Package hiding (installedUnitId)
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler as C
@@ -157,7 +157,7 @@ parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 -- | Create a trivial package info from a directory name.
 mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
 mkInstalledPackageInfo p = emptyInstalledPackageInfo
-  { installedComponentId = ComponentId (display p),
+  { installedUnitId = mkUnitId (display p),
     sourcePackageId     = p }
 
 

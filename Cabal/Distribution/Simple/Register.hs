@@ -92,7 +92,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
                            (registrationPackageDB absPackageDBs)
 
     when (fromFlag (regPrintId regFlags)) $ do
-      putStrLn (display (IPI.installedComponentId installedPkgInfo))
+      putStrLn (display (IPI.installedUnitId installedPkgInfo))
 
      -- Three different modes:
     case () of
@@ -152,7 +152,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
-  --TODO: the method of setting the ComponentId is compiler specific
+  --TODO: the method of setting the UnitId is compiler specific
   --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
   abi_hash <-
@@ -303,7 +303,7 @@ generalInstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
   IPI.InstalledPackageInfo {
     IPI.sourcePackageId    = packageId   pkg,
-    IPI.installedComponentId= componentId clbi,
+    IPI.installedUnitId    = componentUnitId clbi,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
@@ -328,7 +328,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                                else                      extraLibDirs bi,
     IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = if hasLibrary
-                               then [getHSLibraryName (componentId clbi)]
+                               then [getHSLibraryName (componentUnitId clbi)]
                                else [],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
@@ -372,8 +372,8 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
     libTargetDir
-        | componentId clbi == localComponentId lbi = buildDir lbi
-        | otherwise = buildDir lbi </> display (componentId clbi)
+        | componentUnitId clbi == localUnitId lbi = buildDir lbi
+        | otherwise = buildDir lbi </> display (componentUnitId clbi)
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,

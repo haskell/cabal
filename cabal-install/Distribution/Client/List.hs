@@ -16,7 +16,7 @@ module Distribution.Client.List (
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
          , Dependency(..), simplifyDependency
-         , ComponentId )
+         , UnitId )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -294,7 +294,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
 -- | Covers source dependencies and installed dependencies in
 -- one type.
 data ExtDependency = SourceDependency Dependency
-                   | InstalledDependency ComponentId
+                   | InstalledDependency UnitId
 
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
