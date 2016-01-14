@@ -1136,7 +1136,12 @@ updatePackageDescription (lib_bi, exe_bi) p
                 -> [a]        -- ^list with name component updated
       updateOne _ _ _                 []         = []
       updateOne name_sel update hooked_bi'@(name,bi) (c:cs)
-        | name_sel c == name = update bi c : cs
+        | name_sel c == name ||
+          -- Special case: an empty name means "please update the BuildInfo for
+          -- the public library, i.e. the one with the same name as the
+          -- package."  See 'parseHookedBuildInfo'.
+          (name == "" && name_sel c == display (pkgName (package p)))
+          = update bi c : cs
         | otherwise          = c : updateOne name_sel update hooked_bi' cs
 
       updateExecutable bi exe = exe{buildInfo    = bi `mappend` buildInfo exe}

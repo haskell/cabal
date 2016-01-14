@@ -421,7 +421,8 @@ sanityCheckHookedBuildInfo pkg_descr (hookLibs, hookExes)
     hookExeNames = nub (map fst hookExes)
     nonExistantExes  = hookExeNames \\ pkgExeNames
 
-    pkgLibNames  = nub (map libName (libraries pkg_descr))
+    -- Blank refers to the default, public library
+    pkgLibNames  = "" : nub (map libName (libraries pkg_descr))
     hookLibNames = nub (map fst hookLibs)
     nonExistantLibs  = hookLibNames \\ pkgLibNames
 

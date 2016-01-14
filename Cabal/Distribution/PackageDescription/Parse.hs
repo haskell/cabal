@@ -1201,8 +1201,21 @@ deprecField _ = cabalBug "'deprecField' called on a non-field"
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   fields <- readFields inp
-  foldM parseStanza ([], []) (stanzas fields)
+  let (mLibFields:rest) = stanzas fields
+  mLib <- parseLib mLibFields
+  foldM parseStanza (mLib, []) rest
   where
+    -- For backwards compatibility, if you have a bare stanza,
+    -- we assume it's part of the public library.  We don't
+    -- know what the name is, so the people using the HookedBuildInfo
+    -- have to handle this carefully.
+    parseLib :: [Field] -> ParseResult [(String, BuildInfo)]
+    parseLib (bi@(F _ inFieldName _:_))
+        | lowercase inFieldName /= "executable" &&
+          lowercase inFieldName /= "library"
+            = liftM (\bis -> [("", bis)]) (parseBI bi)
+    parseLib _ = return []
+
     parseStanza :: HookedBuildInfo -> [Field] -> ParseResult HookedBuildInfo
     parseStanza (lib_bis, exe_bis) (F line inFieldName mName:bi)
         | lowercase inFieldName == "executable"
@@ -1212,7 +1225,9 @@ parseHookedBuildInfo inp = do
             = do bis <- parseBI bi
                  return ((mName, bis):lib_bis, exe_bis)
         | otherwise
-            = syntaxError line "expecting 'executable' or 'library' at top of stanza"
+            = syntaxError line $
+                "expecting 'executable' or 'library' at top of stanza, " ++
+                "but got '" ++ inFieldName ++ "'"
     parseStanza _ (_:_) = cabalBug "`parseStanza' called on a non-field"
     parseStanza _ [] = syntaxError 0 "error in parsing buildinfo file. Expected stanza"
 
