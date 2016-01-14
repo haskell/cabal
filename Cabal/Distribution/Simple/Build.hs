@@ -549,7 +549,7 @@ initialBuildSteps _distPref pkg_descr lbi clbi verbosity = do
     die $ "No libraries, executables, tests, or benchmarks "
        ++ "are enabled for package " ++ name ++ "."
 
-  createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
+  createDirectoryIfMissingVerbose verbosity True (componentBuildDir lbi clbi)
 
   writeAutogenFiles verbosity pkg_descr lbi clbi
 

@@ -1448,17 +1448,9 @@ computeComponentId mb_explicit pid cname dep_ipids flagAssignment = do
                         Flag cid0 -> explicit_base cid0
                         NoFlag -> generated_base
     ComponentId $ actual_base
-                    ++ (case cname of
-                         -- TODO: these could result in non-parseable IPIDs
-                         -- since the component name format is very flexible
-                         CLibName   s
-                            | s == display (pkgName pid) -> ""
-                            -- NB: libraries are BY FAR the most common,
-                            -- so they are deified without a suffix
-                            | otherwise -> "-" ++ s
-                         CExeName   s -> "-" ++ s ++ ".exe"
-                         CTestName  s -> "-" ++ s ++ ".test"
-                         CBenchName s -> "-" ++ s ++ ".bench")
+                    ++ (case componentNameString (pkgName pid) cname of
+                            Nothing -> ""
+                            Just s -> "-" ++ s)
 
 hashToBase62 :: String -> String
 hashToBase62 s = showFingerprint $ fingerprintString s
@@ -1499,25 +1491,17 @@ hashToBase62 s = showFingerprint $ fingerprintString s
 --
 computeCompatPackageName :: PackageName -> ComponentName -> PackageName
 computeCompatPackageName pkg_name cname
-    | cname == CLibName (display pkg_name)
-    = pkg_name
-    | otherwise
-    = PackageName $ "z-" ++ zdashcode (display pkg_name)
-                         ++ cname_str
-      where
-        zdashcode s = go s (Nothing :: Maybe Int) []
+    | Just cname_str <- componentNameString pkg_name cname
+    = let zdashcode s = go s (Nothing :: Maybe Int) []
             where go [] _ r = reverse r
                   go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
                   go ('-':z) _        r = go z (Just 0) ('-':r)
                   go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
                   go (c:z)   _        r = go z Nothing (c:r)
-        cname_str = case cname of
-                        CLibName n   -> "-z-" ++ zdashcode n
-                        -- These are for completeness, but they
-                        -- shouldn't really be used.
-                        CTestName n  -> "-z-" ++ zdashcode n ++ "-z-test"
-                        CBenchName n -> "-z-" ++ zdashcode n ++ "-z-bench"
-                        CExeName n   -> "-z-" ++ zdashcode n ++ "-z-exe"
+      in PackageName $ "z-" ++ zdashcode (display pkg_name)
+                   ++ "-z-" ++ zdashcode cname_str
+    | otherwise
+    = pkg_name
 
 -- | In GHC 8.0, the string we pass to GHC to use for symbol
 -- names for a package can be an arbitrary, IPID-compatible string.

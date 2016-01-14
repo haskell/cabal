@@ -30,10 +30,11 @@ module Distribution.Simple.LocalBuildInfo (
         ComponentName(..),
         defaultLibName,
         showComponentName,
+        componentNameString,
         ComponentLocalBuildInfo(..),
         getLocalComponent,
-        libBuildDir,
         componentComponentId,
+        componentBuildDir,
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -218,6 +219,17 @@ defaultLibName pid = CLibName (display (pkgName pid))
 
 instance Binary ComponentName
 
+-- | This gets the 'String' component name. In fact, it is
+-- guaranteed to uniquely identify a component, returning
+-- @Nothing@ if the 'ComponentName' was for the public
+-- library (which CAN conflict with an executable name.)
+componentNameString :: PackageName -> ComponentName -> Maybe String
+componentNameString (PackageName pkg_name) (CLibName n) | pkg_name == n = Nothing
+componentNameString _ (CLibName   n) = Just n
+componentNameString _ (CExeName   n) = Just n
+componentNameString _ (CTestName  n) = Just n
+componentNameString _ (CBenchName n) = Just n
+
 showComponentName :: ComponentName -> String
 showComponentName (CLibName   name) = "library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
@@ -352,18 +364,24 @@ instance Binary ComponentLocalBuildInfo
 getLocalComponent :: PackageDescription -> ComponentLocalBuildInfo -> Component
 getLocalComponent pkg_descr clbi = getComponent pkg_descr (componentLocalName clbi)
 
-libBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
-libBuildDir lbi clbi
-    | LibComponentLocalBuildInfo{ componentIsPublic = True } <- clbi
-                            = buildDir lbi
-    | otherwise             = buildDir lbi </> display (componentUnitId clbi)
-
 componentComponentId :: ComponentLocalBuildInfo -> ComponentId
 componentComponentId clbi = case componentUnitId clbi of
                                 SimpleUnitId cid -> cid
 
-getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName
-                           -> ComponentLocalBuildInfo
+componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
+componentBuildDir lbi LibComponentLocalBuildInfo{ componentIsPublic = True }
+    = buildDir lbi
+-- For now, we assume that libraries/executables/test-suites/benchmarks
+-- are only ever built once.  With Backpack, we need a special case for
+-- libraries so that we can handle building them multiple times.
+componentBuildDir lbi clbi
+    = buildDir lbi </> case componentLocalName clbi of
+                        CLibName s   -> s
+                        CExeName s   -> s
+                        CTestName s  -> s
+                        CBenchName s -> s
+
+getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
 getComponentLocalBuildInfo lbi cname =
     case maybeGetComponentLocalBuildInfo lbi cname of
       Just clbi -> clbi
@@ -530,7 +548,7 @@ depLibraryPaths inplace relative lbi clbi = do
                        | sub_clbi <- componentsInBuildOrder'
                                         lbi internalDeps ]
         getLibDir sub_clbi
-          | inplace    = libBuildDir lbi sub_clbi
+          | inplace    = componentBuildDir lbi sub_clbi
           | otherwise  = libdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
     let ipkgs          = allPackages (installedPkgs lbi)

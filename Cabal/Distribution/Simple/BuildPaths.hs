@@ -57,7 +57,7 @@ haddockPref distPref pkg_descr
 
 -- |The directory in which we put auto-generated modules
 autogenModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
-autogenModulesDir lbi clbi = libBuildDir lbi clbi </> "autogen"
+autogenModulesDir lbi clbi = componentBuildDir lbi clbi </> "autogen"
 -- NB: Look at 'checkForeignDeps' for where a simplified version of this
 -- has been copy-pasted.
 

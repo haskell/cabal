@@ -475,7 +475,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
-      libTargetDir = libBuildDir lbi clbi
+      libTargetDir = componentBuildDir lbi clbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
@@ -789,8 +789,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                        then exeExtension
                        else "")
 
-  let targetDir = buildDir lbi </> exeName'
-  let exeDir    = targetDir </> (exeName' ++ "-tmp")
+  let targetDir = componentBuildDir lbi clbi
+      exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
@@ -1038,7 +1038,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
       comp        = compiler lbi
       platform    = hostPlatform lbi
       vanillaArgs =
-        (componentGhcOptions verbosity lbi libBi clbi (libBuildDir lbi clbi))
+        (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptInputModules = toNubListR $ exposedModules lib
@@ -1137,7 +1137,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
     whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
-    builtDir = libBuildDir lbi clbi
+    builtDir = componentBuildDir lbi clbi
 
     install isShared srcDir dstDir name = do
       let src = srcDir </> name

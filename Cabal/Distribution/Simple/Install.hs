@@ -122,7 +122,7 @@ install pkg_descr lbi flags = do
             libdir = libPref,
             includedir = incPref
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
-        buildPref = libBuildDir lbi clbi
+        buildPref = componentBuildDir lbi clbi
     -- TODO: decide if we need the user to be able to control the libdir
     -- for shared libs independently of the one for static libs. If so
     -- it should also have a flag in the command line UI
