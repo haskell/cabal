@@ -179,7 +179,7 @@ checkSanity pkg =
 
   , check (not (null duplicateNames)) $
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
-        ++ ". The name of every executable, test suite, and benchmark section in"
+        ++ ". The name of every library, executable, test suite, and benchmark section in"
         ++ " the package must be unique."
   ]
   --TODO: check for name clashes case insensitively: windows file systems cannot
@@ -199,10 +199,15 @@ checkSanity pkg =
         ++ "tool only supports up to version " ++ display cabalVersion ++ "."
   ]
   where
+    -- The public library gets special dispensation, because it
+    -- is common practice to export a library and name the executable
+    -- the same as the package.  We always put the public library
+    -- in the top-level directory in dist, so no conflicts either.
+    libNames = filter (/= unPackageName (packageName pkg)) . map libName $ libraries pkg
     exeNames = map exeName $ executables pkg
     testNames = map testName $ testSuites pkg
     bmNames = map benchmarkName $ benchmarks pkg
-    duplicateNames = dups $ exeNames ++ testNames ++ bmNames
+    duplicateNames = dups $ libNames ++ exeNames ++ testNames ++ bmNames
 
 checkLibrary :: PackageDescription -> Library -> [PackageCheck]
 checkLibrary pkg lib =
