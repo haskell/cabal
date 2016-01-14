@@ -300,9 +300,9 @@ tests config = do
   tc "Macros" $ do
       cabal_build []
       runExe' "macros-a" []
-          >>= assertOutputContains "macros-a.exe"
+          >>= assertOutputContains "macros-a"
       runExe' "macros-b" []
-          >>= assertOutputContains "macros-b.exe"
+          >>= assertOutputContains "macros-b"
 
   -- Test for 'build-type: Configure' example from the Cabal manual.
   -- Disabled on Windows since MingW doesn't ship with autoreconf by
