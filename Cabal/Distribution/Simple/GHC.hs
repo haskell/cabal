@@ -53,11 +53,8 @@ module Distribution.Simple.GHC (
         pkgRoot
  ) where
 
-import Control.Applicative -- needed in 7.8, and not a warning in 7.10
-                           -- because it comes before the Prelude import,
-                           -- though it actually is redundant in 7.10
-import Prelude             -- has the effect of canceling the implicit
-                           -- import of Prelude
+import Control.Applicative -- 7.10 -Werror workaround
+import Prelude             -- https://ghc.haskell.org/trac/ghc/wiki/Migration/7.10#GHCsaysTheimportof...isredundant
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
