@@ -106,7 +106,7 @@ convGPD os arch comp strfl pi
         (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
-    conv = convCondTree os arch comp pi fds (const True)
+    conv = convBuildableCondTree os arch comp pi fds
   in
     PInfo
       (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
@@ -128,18 +128,68 @@ prefix f fds = [f (concat fds)]
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
+-- | Extract buildable condition from a cond tree.
+--
+-- Background: If the conditions in a cond tree lead to Buildable being set to False,
+-- then none of the dependencies for this cond tree should actually be taken into
+-- account. On the other hand, some of the flags may only be decided in the solver,
+-- so we cannot necessarily make the decision whether a component is Buildable or not
+-- prior to solving.
+--
+-- What we are doing here is to partially evaluate a condition tree in order to extract
+-- the condition under which Buildable is True.
+extractCondition :: Eq v => (a -> Bool) -> CondTree v [c] a -> Condition v
+extractCondition p = go
+  where
+    go (CondNode x _ cs) | not (p x) = Lit False
+                         | otherwise = goList cs
+
+    goList []               = Lit True
+    goList ((c, t, e) : cs) =
+      let
+        ct = go t
+        ce = maybe (Lit True) go e
+      in
+        ((c `cand` ct) `cor` (CNot c `cand` ce)) `cand` goList cs
+
+    cand (Lit False) _           = Lit False
+    cand _           (Lit False) = Lit False
+    cand (Lit True)  x           = x
+    cand x           (Lit True)  = x
+    cand x           y           = CAnd x y
+
+    cor  (Lit True)  _           = Lit True
+    cor  _           (Lit True)  = Lit True
+    cor  (Lit False) x           = x
+    cor  x           (Lit False) = x
+    cor  c           (CNot d)
+      | c == d                   = Lit True
+    cor  x           y           = COr x y
+
+-- | Convert a condition tree to flagged dependencies.
+--
+-- In addition, tries to determine under which condition the condition tree
+-- is buildable, and will add an additional condition on top accordingly.
+convBuildableCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
+                         Component ->
+                         (a -> BuildInfo) ->
+                         CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
+convBuildableCondTree os arch cinfo pi fds comp getInfo t =
+  case extractCondition (buildable . getInfo) t of
+    Lit True  -> convCondTree os arch cinfo pi fds comp getInfo t
+    Lit False -> []
+    c         -> convBranch os arch cinfo pi fds comp getInfo (c, t, Nothing)
+
 -- | Convert condition trees to flagged dependencies.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
-                (a -> Bool) -> -- how to detect if a branch is active
                 Component ->
                 (a -> BuildInfo) ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds p comp getInfo (CondNode info ds branches)
-  | p info    =  L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
+convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branches) =
+                 L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds p comp getInfo) branches
-  | otherwise = []
+              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo) branches
   where
     bi = getInfo info
 
@@ -153,15 +203,14 @@ convCondTree os arch cinfo pi@(PI pn _) fds p comp getInfo (CondNode info ds bra
 -- simple flag choices.
 convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
-              (a -> Bool) -> -- how to detect if a branch is active
               Component ->
               (a -> BuildInfo) ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds p comp getInfo (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds p comp getInfo   t')
-        (maybe [] (convCondTree os arch cinfo pi fds p comp getInfo) mf')
+convBranch os arch cinfo pi@(PI pn _) fds comp getInfo (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds comp getInfo   t')
+        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN

@@ -2,12 +2,14 @@
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Client.Dependency.Modular.DSL (
     ExampleDependency(..)
+  , Dependencies(..)
   , ExPreference(..)
   , ExampleDb
   , ExampleVersionRange
   , ExamplePkgVersion
   , exAv
   , exInst
+  , exFlag
   , exResolve
   , extractInstallPlan
   , withSetupDeps
@@ -16,6 +18,7 @@ module UnitTests.Distribution.Client.Dependency.Modular.DSL (
 -- base
 import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes)
+import Data.List (nub)
 import Data.Monoid
 import Data.Version
 import qualified Data.Map as Map
@@ -88,6 +91,7 @@ type ExamplePkgHash    = String  -- for example "installed" packages
 type ExampleFlagName   = String
 type ExampleTestName   = String
 type ExampleVersionRange = C.VersionRange
+data Dependencies = NotBuildable | Buildable [ExampleDependency]
 
 data ExampleDependency =
     -- | Simple dependency on any version
@@ -97,7 +101,7 @@ data ExampleDependency =
   | ExFix ExamplePkgName ExamplePkgVersion
 
     -- | Dependencies indexed by a flag
-  | ExFlag ExampleFlagName [ExampleDependency] [ExampleDependency]
+  | ExFlag ExampleFlagName Dependencies Dependencies
 
     -- | Dependency if tests are enabled
   | ExTest ExampleTestName [ExampleDependency]
@@ -107,6 +111,10 @@ data ExampleDependency =
 
     -- | Dependency on a language version
   | ExLang Language
+
+exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
+       -> ExampleDependency
+exFlag n t e = ExFlag n (Buildable t) (Buildable e)
 
 data ExPreference = ExPref String ExampleVersionRange
 
@@ -163,12 +171,15 @@ exAvSrcPkg ex =
                        C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
                      }
                  }
-             , C.genPackageFlags = concatMap extractFlags
+             , C.genPackageFlags = nub $ concatMap extractFlags
                                    (CD.libraryDeps (exAvDeps ex))
-             , C.condLibrary     = Just $ mkCondTree (extsLib exts <> langLib mlang) libraryDeps
+             , C.condLibrary     = Just $ mkCondTree (extsLib exts <> langLib mlang)
+                                                     disableLib
+                                                     (Buildable libraryDeps)
              , C.condExecutables = []
-             , C.condTestSuites  = map (\(t, deps) -> (t, mkCondTree mempty deps))
-                                   testSuites
+             , C.condTestSuites  =
+                 let mkTree = mkCondTree mempty disableTest . Buildable
+                 in map (\(t, deps) -> (t, mkTree deps)) testSuites
              , C.condBenchmarks  = []
              }
          }
@@ -207,18 +218,28 @@ exAvSrcPkg ex =
                                     , C.flagDefault     = False
                                     , C.flagManual      = False
                                     }
-                                : concatMap extractFlags (a ++ b)
+                                : concatMap extractFlags (deps a ++ deps b)
+      where
+        deps :: Dependencies -> [ExampleDependency]
+        deps NotBuildable = []
+        deps (Buildable ds) = ds
     extractFlags (ExTest _ a)   = concatMap extractFlags a
     extractFlags (ExExt _)      = []
     extractFlags (ExLang _)     = []
 
-    mkCondTree :: Monoid a => a -> [ExampleDependency] -> DependencyTree a
-    mkCondTree x deps =
+    mkCondTree :: Monoid a => a -> (a -> a) -> Dependencies -> DependencyTree a
+    mkCondTree x dontBuild NotBuildable =
+      C.CondNode {
+             C.condTreeData        = dontBuild x
+           , C.condTreeConstraints = []
+           , C.condTreeComponents  = []
+           }
+    mkCondTree x dontBuild (Buildable deps) =
       let (directDeps, flaggedDeps) = splitDeps deps
       in C.CondNode {
              C.condTreeData        = x -- Necessary for language extensions
            , C.condTreeConstraints = map mkDirect directDeps
-           , C.condTreeComponents  = map mkFlagged flaggedDeps
+           , C.condTreeComponents  = map (mkFlagged dontBuild) flaggedDeps
            }
 
     mkDirect :: (ExamplePkgName, Maybe ExamplePkgVersion) -> C.Dependency
@@ -228,13 +249,14 @@ exAvSrcPkg ex =
         v = Version [n, 0, 0] []
 
     mkFlagged :: Monoid a
-              => (ExampleFlagName, [ExampleDependency], [ExampleDependency])
+              => (a -> a)
+              -> (ExampleFlagName, Dependencies, Dependencies)
               -> (C.Condition C.ConfVar
                  , DependencyTree a, Maybe (DependencyTree a))
-    mkFlagged (f, a, b) = ( C.Var (C.Flag (C.FlagName f))
-                          , mkCondTree mempty a
-                          , Just (mkCondTree mempty b)
-                          )
+    mkFlagged dontBuild (f, a, b) = ( C.Var (C.Flag (C.FlagName f))
+                                    , mkCondTree mempty dontBuild a
+                                    , Just (mkCondTree mempty dontBuild b)
+                                    )
 
     -- Split a set of dependencies into direct dependencies and flagged
     -- dependencies. A direct dependency is a tuple of the name of package and
@@ -245,7 +267,7 @@ exAvSrcPkg ex =
     -- TODO: Take care of flagged language extensions and language flavours.
     splitDeps :: [ExampleDependency]
               -> ( [(ExamplePkgName, Maybe Int)]
-                 , [(ExampleFlagName, [ExampleDependency], [ExampleDependency])]
+                 , [(ExampleFlagName, Dependencies, Dependencies)]
                  )
     splitDeps [] =
       ([], [])
@@ -276,6 +298,14 @@ exAvSrcPkg ex =
     langLib (Just lang) = mempty { C.libBuildInfo = mempty { C.defaultLanguage = Just lang } }
     langLib _ = mempty
 
+    disableLib :: C.Library -> C.Library
+    disableLib lib =
+        lib { C.libBuildInfo = (C.libBuildInfo lib) { C.buildable = False }}
+
+    disableTest :: C.TestSuite -> C.TestSuite
+    disableTest test =
+        test { C.testBuildInfo = (C.testBuildInfo test) { C.buildable = False }}
+
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
       pkgName    = C.PackageName (exAvName ex)
@@ -303,10 +333,10 @@ exInstIdx :: [ExampleInstalled] -> C.PackageIndex.InstalledPackageIndex
 exInstIdx = C.PackageIndex.fromList . map exInstInfo
 
 exResolve :: ExampleDb
-          -- List of extensions supported by the compiler.
-          -> [Extension]
-          -- A compiler can support multiple languages.
-          -> [Language]
+          -- List of extensions supported by the compiler, or Nothing if unknown.
+          -> Maybe [Extension]
+          -- List of languages supported by the compiler, or Nothing if unknown.
+          -> Maybe [Language]
           -> [ExamplePkgName]
           -> Bool
           -> [ExPreference]
@@ -318,12 +348,8 @@ exResolve db exts langs targets indepGoals prefs = runProgress $
                         params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
-    compiler = defaultCompiler { C.compilerInfoExtensions = if null exts
-                                                               then Nothing
-                                                               else Just exts
-                               , C.compilerInfoLanguages  = if null langs
-                                                                then Nothing
-                                                                else Just langs
+    compiler = defaultCompiler { C.compilerInfoExtensions = exts
+                               , C.compilerInfoLanguages  = langs
                                }
     (inst, avai) = partitionEithers db
     instIdx      = exInstIdx inst
