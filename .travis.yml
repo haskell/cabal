@@ -25,7 +25,7 @@ script:
  - cd Cabal
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
+ - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -threaded  # the command cabal-install would use to build setup
  - cabal install --only-dependencies --enable-tests --enable-benchmarks
  - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
