@@ -53,6 +53,12 @@ module Distribution.Simple.GHC (
         pkgRoot
  ) where
 
+import Control.Applicative -- needed in 7.8, and not a warning in 7.10
+                           -- because it comes before the Prelude import,
+                           -- though it actually is redundant in 7.10
+import Prelude             -- has the effect of canceling the implicit
+                           -- import of Prelude
+
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -84,7 +90,6 @@ import Distribution.Text
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import Control.Applicative      ((<$>))
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
