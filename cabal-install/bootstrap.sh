@@ -209,6 +209,16 @@ OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
                        # >=1.0.0.0 && <1.2
 OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
+BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
+                       # 0.1.1
+CRYPTOHASH_VER="0.11.6"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
+                       # 0.11.*
+ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
+                       # 0.0.*
+HACKAGE_SECURITY_VER="0.5.0.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.?"
+                       # >= 0.5 && < 0.6
+TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
+                       # >= 0.5.0.1  && < 0.6
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -378,6 +388,11 @@ info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+info_pkg "byteable"         ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+info_pkg "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+info_pkg "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
+info_pkg "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
+info_pkg "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
@@ -398,6 +413,12 @@ do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+do_pkg   "byteable"         ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+do_pkg   "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+do_pkg   "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
+do_pkg   "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
+do_pkg   "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
+
 
 install_pkg "cabal-install"
 
