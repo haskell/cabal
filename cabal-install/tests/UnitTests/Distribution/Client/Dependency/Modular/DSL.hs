@@ -215,7 +215,7 @@ exAvSrcPkg ex =
     extractFlags (ExFlag f a b) = C.MkFlag {
                                       C.flagName        = C.FlagName f
                                     , C.flagDescription = ""
-                                    , C.flagDefault     = False
+                                    , C.flagDefault     = True
                                     , C.flagManual      = False
                                     }
                                 : concatMap extractFlags (deps a ++ deps b)
