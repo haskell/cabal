@@ -357,7 +357,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptVerbosity       = toFlag verbosity,
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
-      ghcOptThisUnitId = case clbi of
+      ghcOptThisUnitId      = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> Mon.mempty,
