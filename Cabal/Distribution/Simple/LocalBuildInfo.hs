@@ -152,7 +152,7 @@ localComponentId lbi
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
 localUnitId lbi =
-    foldr go (mkUnitId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+    foldr go (mkLegacyUnitId (package (localPkgDescr lbi))) (componentsConfigs lbi)
   where go (_, clbi, _) old_uid = case clbi of
             LibComponentLocalBuildInfo { componentUnitId = uid } -> uid
             _ -> old_uid

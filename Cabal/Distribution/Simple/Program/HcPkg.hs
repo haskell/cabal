@@ -310,9 +310,7 @@ setUnitId pkginfo@InstalledPackageInfo {
                         sourcePackageId = pkgid
                       }
                     = pkginfo {
-                        --TODO use a proper named function for the conversion
-                        -- from source package id to installed package id
-                        installedUnitId = mkUnitId (display pkgid)
+                        installedUnitId = mkLegacyUnitId pkgid
                       }
 setUnitId pkginfo = pkginfo
 

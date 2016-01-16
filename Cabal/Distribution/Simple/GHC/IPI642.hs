@@ -61,16 +61,13 @@ data InstalledPackageInfo = InstalledPackageInfo {
   }
   deriving Read
 
-mkUnitId :: Current.PackageIdentifier -> Current.UnitId
-mkUnitId = Current.mkUnitId . display
-
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
-    Current.installedUnitId    = mkUnitId pid,
+    Current.installedUnitId    = Current.mkLegacyUnitId pid,
     Current.compatPackageKey   = "",
     Current.abiHash            = Current.AbiHash "", -- bogus but old GHCs don't care.
     Current.license            = convertLicense (license ipi),
@@ -95,7 +92,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (mkUnitId.convertPackageId) (depends ipi),
+    Current.depends            = map (Current.mkLegacyUnitId . convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

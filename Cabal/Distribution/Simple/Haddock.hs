@@ -623,7 +623,9 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (mkUnitId (display pkg_id)) (compilerInfo (compiler lbi))
+  -- We want the legacy unit ID here, because it gives us nice paths
+  -- (Haddock people don't care about the dependencies)
+  : initialPathTemplateEnv pkg_id (mkLegacyUnitId pkg_id) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

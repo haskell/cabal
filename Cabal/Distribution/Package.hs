@@ -26,6 +26,7 @@ module Distribution.Package (
         ComponentId(..),
         UnitId(..),
         mkUnitId,
+        mkLegacyUnitId,
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
@@ -146,6 +147,10 @@ newtype UnitId = SimpleUnitId ComponentId
 -- | Makes a simple-style UnitId from a string.
 mkUnitId :: String -> UnitId
 mkUnitId = SimpleUnitId . ComponentId
+
+-- | Make an old-style UnitId from a package identifier
+mkLegacyUnitId :: PackageId -> UnitId
+mkLegacyUnitId = SimpleUnitId . ComponentId . display
 
 -- ------------------------------------------------------------
 -- * Package source dependencies

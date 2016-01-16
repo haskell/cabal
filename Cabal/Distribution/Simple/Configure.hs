@@ -434,7 +434,7 @@ configure (pkg_descr0, pbi) cfg = do
 
     let pseudoTopPkg = emptyInstalledPackageInfo {
             Installed.installedUnitId =
-               mkUnitId (display (packageId pkg_descr)),
+               mkLegacyUnitId (packageId pkg_descr),
             Installed.sourcePackageId = packageId pkg_descr,
             Installed.depends =
               map Installed.installedUnitId installDeps
@@ -737,10 +737,9 @@ getInternalPackages pkg_descr0 =
         internalPackage = emptyInstalledPackageInfo {
             --TODO: should use a per-compiler method to map the source
             --      package ID into an installed package id we can use
-            --      for the internal package set. The open-codes use of
-            --      mkUnitId here is a hack.
-            Installed.installedUnitId =
-               mkUnitId $ display $ pid,
+            --      for the internal package set. The use of
+            --      mkLegacyUnitId here is a hack.
+            Installed.installedUnitId = mkLegacyUnitId pid,
             Installed.sourcePackageId = pid
           }
     in PackageIndex.fromList [internalPackage]
