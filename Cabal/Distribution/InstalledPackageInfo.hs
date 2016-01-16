@@ -77,7 +77,6 @@ data InstalledPackageInfo
         abiHash           :: AbiHash,
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
-        installedInstantiatedWith  :: [(ModuleName, OriginalModule)],
         hiddenModules     :: [ModuleName],
         trusted           :: Bool,
         importDirs        :: [FilePath],
@@ -130,7 +129,6 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
-        installedInstantiatedWith  = [],
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
@@ -229,14 +227,6 @@ parseInstalledPackageInfo =
     parseFieldsFlat (fieldsInstalledPackageInfo ++ deprecatedFieldDescrs)
     emptyInstalledPackageInfo
 
-parseInstantiatedWith :: Parse.ReadP r (ModuleName, OriginalModule)
-parseInstantiatedWith = do k <- parse
-                           _ <- Parse.char '='
-                           n <- parse
-                           _ <- Parse.char '@'
-                           p <- parse
-                           return (k, OriginalModule p n)
-
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
@@ -248,9 +238,6 @@ showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
-
-showInstantiatedWith :: (ModuleName, OriginalModule) -> Doc
-showInstantiatedWith (k, OriginalModule p m) = disp k <> text "=" <> disp m <> text "@" <> disp p
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -317,9 +304,6 @@ installedFieldDescrs = [
  , simpleField "abi"
         disp               parse
         abiHash            (\abi    pkg -> pkg{abiHash=abi})
- , listField   "instantiated-with"
-        showInstantiatedWith parseInstantiatedWith
-        installedInstantiatedWith   (\xs    pkg -> pkg{installedInstantiatedWith=xs})
  , boolField   "trusted"
         trusted            (\val pkg -> pkg{trusted=val})
  , listField   "import-dirs"

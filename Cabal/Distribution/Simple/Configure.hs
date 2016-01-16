@@ -391,11 +391,6 @@ configure (pkg_descr0, pbi) cfg = do
     checkPackageProblems verbosity pkg_descr0
         (updatePackageDescription pbi pkg_descr)
 
-    -- Handle hole instantiation
-    -- TODO: Totally unclear if this belongs here
-    (holeDeps, hole_insts)
-        <- configureInstantiateWith pkg_descr cfg installedPackageSet
-
     -- The list of 'InstalledPackageInfo' recording the selected
     -- dependencies...
     -- internalPkgDeps: ...on internal packages (these are fake!)
@@ -421,7 +416,7 @@ configure (pkg_descr0, pbi) cfg = do
     let installDeps = Map.elems -- deduplicate
                     . Map.fromList
                     . map (\v -> (Installed.installedComponentId v, v))
-                    $ externalPkgDeps ++ holeDeps
+                    $ externalPkgDeps
 
     packageDependsIndex <-
       case PackageIndex.dependencyClosure installedPackageSet
@@ -507,8 +502,7 @@ configure (pkg_descr0, pbi) cfg = do
         Left  componentCycle -> reportComponentCycle componentCycle
         Right comps          ->
           mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
-                                     internalPkgDeps externalPkgDeps holeDeps
-                                     (Map.fromList hole_insts)
+                                     internalPkgDeps externalPkgDeps
                                      comps (configConfigurationsFlags cfg)
 
     split_objs <-
@@ -611,7 +605,6 @@ configure (pkg_descr0, pbi) cfg = do
                 installedPkgs       = packageDependsIndex,
                 pkgDescrFile        = Nothing,
                 localPkgDescr       = pkg_descr',
-                instantiatedWith    = hole_insts,
                 withPrograms        = programsConfig'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
                 withProfLib         = profEnabledLib,
@@ -1154,58 +1147,6 @@ combinedConstraints constraints dependencies installedPackages = do
            | (pkgname, ipkgid) <- deps ]
 
 -- -----------------------------------------------------------------------------
--- Configuring hole instantiation
-
-configureInstantiateWith :: PackageDescription
-                         -> ConfigFlags
-                         -> InstalledPackageIndex -- ^ installed packages
-                         -> IO ([InstalledPackageInfo],
-                                [(ModuleName, (InstalledPackageInfo, ModuleName))])
-configureInstantiateWith pkg_descr cfg installedPackageSet = do
-        -- Holes: First, check and make sure the provided instantiation covers
-        -- all the holes we know about.  Indefinite package installation is
-        -- not handled at all at this point.
-        -- NB: We union together /all/ of the requirements when calculating
-        -- the package key.
-        -- NB: For now, we assume that dependencies don't contribute signatures.
-        -- This will be handled by cabal-install; as far as ./Setup is
-        -- concerned, the most important thing is to be provided correctly
-        -- built dependencies.
-        let signatures =
-              maybe [] (\lib -> requiredSignatures lib ++ exposedSignatures lib)
-                (PD.library pkg_descr)
-            signatureSet = Set.fromList signatures
-            instantiateMap = Map.fromList (configInstantiateWith cfg)
-            missing_impls = filter (not . flip Map.member instantiateMap) signatures
-            hole_insts0 = filter (\(k,_) -> Set.member k signatureSet) (configInstantiateWith cfg)
-
-        when (not (null missing_impls)) $
-          die $ "Missing signature implementations for these modules: "
-            ++ intercalate ", " (map display missing_impls)
-
-        -- Holes: Next, we need to make sure we have packages to actually
-        -- provide the implementations we're talking about.  This is on top
-        -- of the normal dependency resolution process.
-        -- TODO: internal dependencies (e.g. the test package depending on the
-        -- main library) is not currently supported
-        let selectHoleDependency (k,(i,m)) =
-              case PackageIndex.lookupComponentId installedPackageSet i of
-                Just pkginst -> Right (k,(pkginst, m))
-                Nothing -> Left i
-            (failed_hmap, hole_insts) = partitionEithers (map selectHoleDependency hole_insts0)
-            holeDeps = map (fst.snd) hole_insts -- could have dups
-
-        -- Holes: Finally, any dependencies selected this way have to be
-        -- included in the allPkgs index, as well as the buildComponents.
-        -- But don't report these as potential inconsistencies!
-
-        when (not (null failed_hmap)) $
-          die $ "Could not resolve these package IDs (from signature implementations): "
-            ++ intercalate ", " (map display failed_hmap)
-
-        return (holeDeps, hole_insts)
-
--- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
 configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration
@@ -1563,14 +1504,12 @@ mkComponentsLocalBuildInfo :: ConfigFlags
                            -> PackageDescription
                            -> [PackageId] -- internal package deps
                            -> [InstalledPackageInfo] -- external package deps
-                           -> [InstalledPackageInfo] -- hole package deps
-                           -> Map ModuleName (InstalledPackageInfo, ModuleName)
                            -> [(Component, [ComponentName])]
                            -> FlagAssignment
                            -> IO [(ComponentName, ComponentLocalBuildInfo,
                                                   [ComponentName])]
 mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
-                           internalPkgDeps externalPkgDeps holePkgDeps hole_insts
+                           internalPkgDeps externalPkgDeps
                            graph flagAssignment = do
     -- Pre-compute library hash so we can setup internal deps
     -- TODO configIPID should have name changed
@@ -1607,11 +1546,6 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
       CLib lib -> do
         let exports = map (\n -> Installed.ExposedModule n Nothing Nothing)
                           (PD.exposedModules lib)
-            esigs = map (\n -> Installed.ExposedModule n Nothing
-                                (fmap (\(pkg,m) -> Installed.OriginalModule
-                                                      (Installed.installedComponentId pkg) m)
-                                      (Map.lookup n hole_insts)))
-                        (PD.exposedSignatures lib)
         let mb_reexports = resolveModuleReexports installedPackages
                                                   (packageId pkg_descr)
                                                   cid
@@ -1625,7 +1559,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
           componentId = cid,
           componentCompatPackageKey = compat_key,
           componentPackageRenaming = cprns,
-          componentExposedModules = exports ++ reexports ++ esigs
+          componentExposedModules = exports ++ reexports
         }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
@@ -1654,13 +1588,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                else [ (Installed.installedComponentId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
         cprns = if newPackageDepsBehaviour pkg_descr
-                then Map.unionWith mappend
-                        -- We need hole dependencies passed to GHC, so add them here
-                        -- (but note that they're fully thinned out.  If they
-                        -- appeared legitimately the monoid instance will
-                        -- fill them out.
-                        (Map.fromList [(packageName pkg, mempty) | pkg <- holePkgDeps])
-                        (targetBuildRenaming bi)
+                then targetBuildRenaming bi
                 -- Hack: if we have old package-deps behavior, it's impossible
                 -- for non-default renamings to be used, because the Cabal
                 -- version is too early.  This is a good, because while all the

@@ -90,9 +90,6 @@ data GhcOptions = GhcOptions {
   -- -no-auto-link-packages@ flag.
   ghcOptNoAutoLinkPackages :: Flag Bool,
 
-  -- | What packages are implementing the signatures
-  ghcOptSigOf :: [(ModuleName, (ComponentId, ModuleName))],
-
   -----------------
   -- Linker stuff
 
@@ -382,15 +379,6 @@ renderGhcOptions comp opts
 
   , packageDbArgs implInfo (ghcOptPackageDBs opts)
 
-  , if null (ghcOptSigOf opts)
-        then []
-        else "-sig-of"
-             : intercalate "," (map (\(n,(p,m)) -> display n ++ " is "
-                                                ++ display p ++ ":"
-                                                ++ display m)
-                                    (ghcOptSigOf opts))
-             : []
-
   , concat $ if flagPackageId implInfo
       then let space "" = ""
                space xs = ' ' : xs
@@ -504,7 +492,6 @@ instance Monoid GhcOptions where
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
     ghcOptNoAutoLinkPackages = mempty,
-    ghcOptSigOf              = mempty,
     ghcOptLinkLibs           = mempty,
     ghcOptLinkLibPath        = mempty,
     ghcOptLinkOptions        = mempty,
@@ -561,7 +548,6 @@ instance Semigroup GhcOptions where
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,
     ghcOptNoAutoLinkPackages = combine ghcOptNoAutoLinkPackages,
-    ghcOptSigOf              = combine ghcOptSigOf,
     ghcOptLinkLibs           = combine ghcOptLinkLibs,
     ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
     ghcOptLinkOptions        = combine ghcOptLinkOptions,
