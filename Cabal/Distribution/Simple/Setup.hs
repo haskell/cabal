@@ -71,7 +71,6 @@ import Distribution.ReadE
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')

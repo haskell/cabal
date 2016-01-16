@@ -67,7 +67,7 @@ mkComponentId = Current.ComponentId . display
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
-      mkExposedModule m = Current.ExposedModule m Nothing Nothing
+      mkExposedModule m = Current.ExposedModule m Nothing
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
     Current.installedComponentId         = mkComponentId pid,

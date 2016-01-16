@@ -595,7 +595,7 @@ moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [IPI.InstalledPackage
 moduleNameIndex index =
   Map.fromListWith (++) $ do
     pkg <- allPackages index
-    IPI.ExposedModule m reexport _ <- IPI.exposedModules pkg
+    IPI.ExposedModule m reexport <- IPI.exposedModules pkg
     case reexport of
         Nothing -> return (m, [pkg])
         Just (IPI.OriginalModule _ m') | m == m'   -> []

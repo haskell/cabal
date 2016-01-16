@@ -63,13 +63,11 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program
-import Distribution.InstalledPackageInfo
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
-import Distribution.ModuleName
 import Distribution.Simple.Setup
 import Distribution.Simple.Utils
 import Distribution.Text

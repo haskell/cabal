@@ -161,8 +161,7 @@ data OriginalModule
 data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
-       exposedReexport  :: Maybe OriginalModule,
-       exposedSignature :: Maybe OriginalModule -- This field is unused for now.
+       exposedReexport  :: Maybe OriginalModule
      }
   deriving (Eq, Generic, Read, Show)
 
@@ -176,13 +175,10 @@ instance Text OriginalModule where
         return (OriginalModule ipi m)
 
 instance Text ExposedModule where
-    disp (ExposedModule m reexport signature) =
+    disp (ExposedModule m reexport) =
         Disp.sep [ disp m
                  , case reexport of
                     Just m' -> Disp.sep [Disp.text "from", disp m']
-                    Nothing -> Disp.empty
-                 , case signature of
-                    Just m' -> Disp.sep [Disp.text "is", disp m']
                     Nothing -> Disp.empty
                  ]
     parse = do
@@ -192,12 +188,7 @@ instance Text ExposedModule where
             _ <- Parse.string "from"
             Parse.skipSpaces
             fmap Just parse
-        Parse.skipSpaces
-        signature <- Parse.option Nothing $ do
-            _ <- Parse.string "is"
-            Parse.skipSpaces
-            fmap Just parse
-        return (ExposedModule m reexport signature)
+        return (ExposedModule m reexport)
 
 
 instance Binary OriginalModule
@@ -213,7 +204,7 @@ showExposedModules :: [ExposedModule] -> Disp.Doc
 showExposedModules xs
     | all isExposedModule xs = fsep (map disp xs)
     | otherwise = fsep (Disp.punctuate comma (map disp xs))
-    where isExposedModule (ExposedModule _ Nothing Nothing) = True
+    where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 
 parseExposedModules :: Parse.ReadP r [ExposedModule]

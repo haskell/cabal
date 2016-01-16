@@ -1544,7 +1544,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
     componentLocalBuildInfo cid compat_key component =
       case component of
       CLib lib -> do
-        let exports = map (\n -> Installed.ExposedModule n Nothing Nothing)
+        let exports = map (\n -> Installed.ExposedModule n Nothing)
                           (PD.exposedModules lib)
         let mb_reexports = resolveModuleReexports installedPackages
                                                   (packageId pkg_descr)
@@ -1649,7 +1649,6 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
                                                         definingModuleName
               exposedModule  = Installed.ExposedModule visibleModuleName
                                                        (Just originalModule)
-                                                             Nothing
         ]
 
     -- All the modules exported from this package and their defining name and

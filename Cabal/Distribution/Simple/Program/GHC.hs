@@ -27,7 +27,6 @@ import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
 import qualified Data.Map as M
-import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
 --
