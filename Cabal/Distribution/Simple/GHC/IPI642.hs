@@ -17,8 +17,6 @@ import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Package as Current hiding (installedUnitId)
 import Distribution.Simple.GHC.IPIConvert
 
-import Distribution.Text
-
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
 -- It's here purely for the 'Read' instance so that we can read the package
