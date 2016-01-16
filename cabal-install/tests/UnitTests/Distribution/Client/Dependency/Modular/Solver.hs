@@ -105,7 +105,7 @@ tests = [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-true", 1), ("flag2-false", 1), ("pkg", 1)])
+        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (Just [("A", 1), ("B", 2)])
         ]
     ]
@@ -440,19 +440,19 @@ dbLangs1 = [
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
 
--- | cabal must choose +disable-lib for "pkg" in order to avoid the unavailable
--- dependency. False is the default. The flag choice causes "pkg" to depend on
--- "true-dep".
+-- | cabal must set enable-lib to false in order to avoid the unavailable
+-- dependency. Flags are true by default. The flag choice causes "pkg" to
+-- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
     runTest $ mkTestExtLang (Just []) (Just []) db testName ["pkg"] expected
   where
-    expected = (Just [("pkg", 1), ("true-dep", 1)])
+    expected = Just [("false-dep", 1), ("pkg", 1)]
     db = [
         Right $ exAv "pkg" 1 [
                    unavailableDep
-                 , ExFlag "disable-lib" NotBuildable (Buildable [])
-                 , ExTest "test" [exFlag "disable-lib"
+                 , ExFlag "enable-lib" (Buildable []) NotBuildable
+                 , ExTest "test" [exFlag "enable-lib"
                                       [ExAny "true-dep"]
                                       [ExAny "false-dep"]]
                  ]
@@ -460,19 +460,19 @@ testBuildable testName unavailableDep =
       , Right $ exAv "false-dep" 1 []
       ]
 
--- | cabal must choose +flag1 -flag2 for "pkg", which requires packages
--- "flag1-true" and "flag2-false".
+-- | cabal must choose -flag1 +flag2 for "pkg", which requires packages
+-- "flag1-false" and "flag2-true".
 dbBuildable1 :: ExampleDb
 dbBuildable1 = [
     Right $ exAv "pkg" 1
         [ ExAny "unknown"
-        , ExFlag "flag1" NotBuildable (Buildable [])
-        , ExFlag "flag2" NotBuildable (Buildable [])
+        , ExFlag "flag1" (Buildable []) NotBuildable
+        , ExFlag "flag2" (Buildable []) NotBuildable
         , ExTest "optional-test"
               [ ExAny "unknown"
               , ExFlag "flag1"
-                    (Buildable [ExFlag "flag2" (Buildable []) NotBuildable])
-                    (Buildable [])]
+                    (Buildable [])
+                    (Buildable [ExFlag "flag2" NotBuildable (Buildable [])])]
         , ExTest "test" [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
                         , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
         ]
