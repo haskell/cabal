@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -1476,22 +1475,14 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         _ ->
           computeComponentId pkg_descr CLibName (getDeps CLibName) flagAssignment
     let extractCandidateCompatKey s
-            = case mb_pid of
+            = case simpleParse s :: Maybe PackageId of
                 -- Something like 'foo-0.1', use it verbatim.
                 -- (NB: hash tags look like tags, so they are parsed,
                 -- so the extra equality check tests if a tag was dropped.)
                 Just pid | display pid == s -> s
                 -- Something like 'foo-0.1-XXX', take the stuff at the end.
                 -- TODO this won't work with component stuff
-                _ ->
-                    case reverse (takeWhile isAlphaNum (reverse s)) of
-                        -- But special case inplace!
-                        "inplace"
-                            | Just pid <- mb_pid -> display pid
-                            -- Hope for the best...
-                            | otherwise -> s
-                        r -> r
-          where mb_pid = simpleParse s :: Maybe PackageId
+                _ -> reverse (takeWhile isAlphaNum (reverse s))
         cand_compat_key = ComponentId (extractCandidateCompatKey str)
         old_style_key = ComponentId (display (package pkg_descr))
         best_key = ComponentId str
