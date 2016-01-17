@@ -28,8 +28,7 @@ setup() {
     ./Setup configure --enable-tests --package-db="$PACKAGEDB" || die "$NAME: 'configure' failed"
     ./Setup build || die "$NAME: 'build' failed"
     # Run tests
-    # Disabled for now: There are some test failures
-    #./Setup test || die "$1 'test' failed"
+    ./Setup test || die "$1 'test' failed"
 }
 
 # Build
