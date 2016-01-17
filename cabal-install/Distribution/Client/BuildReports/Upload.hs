@@ -27,22 +27,24 @@ import Distribution.Text (display)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die)
 import Distribution.Client.HttpUtils
+import Distribution.Client.Setup
+         ( RepoContext(..) )
 
 type BuildReportId = URI
 type BuildLog = String
 
-uploadReports :: Verbosity -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
-uploadReports verbosity auth uri reports = do
+uploadReports :: Verbosity -> RepoContext -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
+uploadReports verbosity repoCtxt auth uri reports = do
   forM_ reports $ \(report, mbBuildLog) -> do
-     buildId <- postBuildReport verbosity auth uri report
+     buildId <- postBuildReport verbosity repoCtxt auth uri report
      case mbBuildLog of
-       Just buildLog -> putBuildLog verbosity auth buildId buildLog
+       Just buildLog -> putBuildLog verbosity repoCtxt auth buildId buildLog
        Nothing       -> return ()
 
-postBuildReport :: Verbosity -> (String, String) -> URI -> BuildReport -> IO BuildReportId
-postBuildReport verbosity auth uri buildReport = do
+postBuildReport :: Verbosity -> RepoContext -> (String, String) -> URI -> BuildReport -> IO BuildReportId
+postBuildReport verbosity repoCtxt auth uri buildReport = do
   let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
-  transport <- configureTransport verbosity Nothing
+  transport <- repoContextGetTransport repoCtxt
   res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
@@ -78,12 +80,12 @@ postBuildReport verbosity auth uri buildReport = do
 
 -- TODO force this to be a PUT?
 
-putBuildLog :: Verbosity -> (String, String)
+putBuildLog :: Verbosity -> RepoContext -> (String, String)
             -> BuildReportId -> BuildLog
             -> IO ()
-putBuildLog verbosity auth reportId buildLog = do
+putBuildLog verbosity repoCtxt auth reportId buildLog = do
   let fullURI = reportId {uriPath = uriPath reportId </> "log"}
-  transport <- configureTransport verbosity Nothing
+  transport <- repoContextGetTransport repoCtxt
   res <- postHttp transport verbosity fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()

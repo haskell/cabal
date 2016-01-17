@@ -4,9 +4,11 @@
 module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
-                                 , Repo(..), RemoteRepo(..), maybeRepoRemote )
+                                 , RemoteRepo(..), maybeRepoRemote )
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
+import Distribution.Client.Setup
+         ( RepoContext(..) )
 
 import Distribution.Simple.Utils (notice, warn, info, die)
 import Distribution.Verbosity (Verbosity)
@@ -33,10 +35,12 @@ checkURI :: URI
 Just checkURI = parseURI $ "http://hackage.haskell.org/cgi-bin/"
                            ++ "hackage-scripts/check-pkg"
 
-upload :: HttpTransport -> Verbosity -> [Repo]
+upload :: Verbosity -> RepoContext
        -> Maybe Username -> Maybe Password -> [FilePath]
        -> IO ()
-upload transport verbosity repos mUsername mPassword paths = do
+upload verbosity repoCtxt mUsername mPassword paths = do
+    let repos = repoContextRepos repoCtxt
+    transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die "Cannot upload. No remote repositories are configured."
@@ -54,10 +58,12 @@ upload transport verbosity repos mUsername mPassword paths = do
       notice verbosity $ "Uploading " ++ path ++ "... "
       handlePackage transport verbosity uploadURI auth path
 
-uploadDoc :: HttpTransport -> Verbosity -> [Repo]
+uploadDoc :: Verbosity -> RepoContext
           -> Maybe Username -> Maybe Password -> FilePath
           -> IO ()
-uploadDoc transport verbosity repos mUsername mPassword path = do
+uploadDoc verbosity repoCtxt mUsername mPassword path = do
+    let repos = repoContextRepos repoCtxt
+    transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
       case [ remoteRepo | Just remoteRepo <- map maybeRepoRemote repos ] of
         [] -> die $ "Cannot upload. No remote repositories are configured."
@@ -108,12 +114,13 @@ promptPassword = do
   putStrLn ""
   return passwd
 
-report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
-report verbosity repos mUsername mPassword = do
+report :: Verbosity -> RepoContext -> Maybe Username -> Maybe Password -> IO ()
+report verbosity repoCtxt mUsername mPassword = do
   Username username <- maybe promptUsername return mUsername
   Password password <- maybe promptPassword return mPassword
-  let auth = (username,password)
-  let remoteRepos = catMaybes (map maybeRepoRemote repos)
+  let auth        = (username, password)
+      repos       = repoContextRepos repoCtxt
+      remoteRepos = catMaybes (map maybeRepoRemote repos)
   forM_ remoteRepos $ \remoteRepo ->
       do dotCabal <- defaultCabalDir
          let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
@@ -130,15 +137,16 @@ report verbosity repos mUsername mPassword = do
                   Right report' ->
                     do info verbosity $ "Uploading report for "
                          ++ display (BuildReport.package report')
-                       BuildReport.uploadReports verbosity auth
+                       BuildReport.uploadReports verbosity repoCtxt auth
                          (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                        return ()
 
-check :: HttpTransport -> Verbosity -> [FilePath] -> IO ()
-check transport verbosity paths =
-          forM_ paths $ \path -> do
-            notice verbosity $ "Checking " ++ path ++ "... "
-            handlePackage transport verbosity checkURI Nothing path
+check :: Verbosity -> RepoContext -> [FilePath] -> IO ()
+check verbosity repoCtxt paths = do
+    transport <- repoContextGetTransport repoCtxt
+    forM_ paths $ \path -> do
+      notice verbosity $ "Checking " ++ path ++ "... "
+      handlePackage transport verbosity checkURI Nothing path
 
 handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
               -> FilePath -> IO ()

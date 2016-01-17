@@ -26,6 +26,8 @@ tests config =
     -- TODO: hierarchy and subnaming is a little unfortunate
     [ tc "Test" "Default" $ do
         cabal_build ["--enable-tests"]
+        -- This one runs both tests, including the very LONG Foo
+        -- test which prints a lot of output
         cabal "test" ["--show-details=direct"]
     , testGroup "WithHpc" $ hpcTestMatrix config
     , testGroup "WithoutHpc"
@@ -37,23 +39,23 @@ tests config =
               , "--ghc-option=-fhpc"
               , "--ghc-option=-hpcdir"
               , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
-            cabal "test" ["--show-details=direct"]
+            cabal "test" ["test-Short", "--show-details=direct"]
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let way = guessWay lbi
-            shouldNotExist $ tixFilePath dist_dir way "test-Foo"
+            shouldNotExist $ tixFilePath dist_dir way "test-Short"
       -- Ensures that even if a .tix file happens to be left around
       -- markup isn't generated.
       , tc "NoMarkup" "NoHpcNoMarkup" $ do
             dist_dir <- distDir
-            let tixFile = tixFilePath dist_dir Vanilla "test-Foo"
+            let tixFile = tixFilePath dist_dir Vanilla "test-Short"
             withEnv [("HPCTIXFILE", Just tixFile)] $ do
                 cabal_build
                   [ "--enable-tests"
                   , "--ghc-option=-fhpc"
                   , "--ghc-option=-hpcdir"
                   , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
-                cabal "test" ["--show-details=direct"]
-            shouldNotExist $ htmlDir dist_dir Vanilla "test-Foo" </> "hpc_index.html"
+                cabal "test" ["test-Short", "--show-details=direct"]
+            shouldNotExist $ htmlDir dist_dir Vanilla "test-Short" </> "hpc_index.html"
       ]
     ]
   where
@@ -94,7 +96,7 @@ hpcTestMatrix config = do
         when isCorrectVersion $ do
             dist_dir <- distDir
             cabal_build ("--enable-tests" : "--enable-coverage" : opts)
-            cabal "test" ["--show-details=direct"]
+            cabal "test" ["test-Short", "--show-details=direct"]
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let way = guessWay lbi
                 CompilerId comp version = compilerId (compiler lbi)
@@ -104,9 +106,9 @@ hpcTestMatrix config = do
                   | otherwise = display (package $ localPkgDescr lbi)
             mapM_ shouldExist
                 [ mixDir dist_dir way "my-0.1" </> subdir </> "Foo.mix"
-                , mixDir dist_dir way "test-Foo" </> "Main.mix"
-                , tixFilePath dist_dir way "test-Foo"
-                , htmlDir dist_dir way "test-Foo" </> "hpc_index.html"
+                , mixDir dist_dir way "test-Short" </> "Main.mix"
+                , tixFilePath dist_dir way "test-Short"
+                , htmlDir dist_dir way "test-Short" </> "hpc_index.html"
                 ]
   where
     tc :: String -> String -> TestM a -> TestTree

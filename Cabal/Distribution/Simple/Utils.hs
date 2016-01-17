@@ -146,7 +146,17 @@ import Distribution.Compat.Internal.TempFile
 import Distribution.Compat.Exception
 import Distribution.Verbosity
 
+#if __GLASGOW_HASKELL__ < 711
 #ifdef VERSION_base
+#define BOOTSTRAPPED_CABAL 1
+#endif
+#else
+#ifdef THIS_PACKAGE_KEY
+#define BOOTSTRAPPED_CABAL 1
+#endif
+#endif
+
+#ifdef BOOTSTRAPPED_CABAL
 import qualified Paths_Cabal (version)
 #endif
 
@@ -208,7 +218,7 @@ import System.Process
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
-#if defined(VERSION_base)
+#if defined(BOOTSTRAPPED_CABAL)
 cabalVersion = Paths_Cabal.version
 #elif defined(CABAL_VERSION)
 cabalVersion = Version [CABAL_VERSION] []

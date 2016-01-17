@@ -92,6 +92,8 @@ data LocalBuildInfo = LocalBuildInfo {
         configFlags   :: ConfigFlags,
         -- ^ Options passed to the configuration step.
         -- Needed to re-run configuration when .cabal is out of date
+        flagAssignment :: FlagAssignment,
+        -- ^ The final set of flags which were picked for this package
         extraConfigArgs     :: [String],
         -- ^ Extra args on the command line for the configuration step.
         -- Needed to re-run configuration when .cabal is out of date

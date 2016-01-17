@@ -39,6 +39,8 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+import Distribution.Client.GlobalFlags
+         ( RepoContext(..) )
 
 import Data.Maybe
 import System.Directory
@@ -90,11 +92,11 @@ checkFetched loc = case loc of
 
 -- | Fetch a package if we don't have it already.
 --
-fetchPackage :: HttpTransport
-             -> Verbosity
+fetchPackage :: Verbosity
+             -> RepoContext
              -> PackageLocation (Maybe FilePath)
              -> IO (PackageLocation FilePath)
-fetchPackage transport verbosity loc = case loc of
+fetchPackage verbosity repoCtxt loc = case loc of
     LocalUnpackedPackage dir  ->
       return (LocalUnpackedPackage dir)
     LocalTarballPackage  file ->
@@ -108,10 +110,11 @@ fetchPackage transport verbosity loc = case loc of
       path <- downloadTarballPackage uri
       return (RemoteTarballPackage uri path)
     RepoTarballPackage repo pkgid Nothing -> do
-      local <- fetchRepoTarball transport verbosity repo pkgid
+      local <- fetchRepoTarball verbosity repoCtxt repo pkgid
       return (RepoTarballPackage repo pkgid local)
   where
     downloadTarballPackage uri = do
+      transport <- repoContextGetTransport repoCtxt
       transportCheckHttps transport uri
       notice verbosity ("Downloading " ++ show uri)
       tmpdir <- getTemporaryDirectory
@@ -123,8 +126,8 @@ fetchPackage transport verbosity loc = case loc of
 
 -- | Fetch a repo package if we don't have it already.
 --
-fetchRepoTarball :: HttpTransport -> Verbosity -> Repo -> PackageId -> IO FilePath
-fetchRepoTarball transport verbosity repo pkgid = do
+fetchRepoTarball :: Verbosity -> RepoContext -> Repo -> PackageId -> IO FilePath
+fetchRepoTarball verbosity repoCtxt repo pkgid = do
   fetched <- doesFileExist (packageFile repo pkgid)
   if fetched
     then do info verbosity $ display pkgid ++ " has already been downloaded."
@@ -136,6 +139,7 @@ fetchRepoTarball transport verbosity repo pkgid = do
       RepoLocal{..} -> return (packageFile repo pkgid)
 
       RepoRemote{..} -> do
+        transport <- repoContextGetTransport repoCtxt
         remoteRepoCheckHttps transport repoRemote
         let uri  = packageURI  repoRemote pkgid
             dir  = packageDir  repo       pkgid

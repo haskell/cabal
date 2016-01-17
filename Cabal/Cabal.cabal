@@ -82,6 +82,10 @@ extra-source-files:
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/DeterministicAr/Lib.hs
   tests/PackageTests/DeterministicAr/my.cabal
+  tests/PackageTests/DuplicateModuleName/DuplicateModuleName.cabal
+  tests/PackageTests/DuplicateModuleName/src/Foo.hs
+  tests/PackageTests/DuplicateModuleName/tests/Foo.hs
+  tests/PackageTests/DuplicateModuleName/tests2/Foo.hs
   tests/PackageTests/EmptyLib/empty/empty.cabal
   tests/PackageTests/Haddock/CPP.hs
   tests/PackageTests/Haddock/Literate.lhs
@@ -115,6 +119,11 @@ extra-source-files:
   tests/PackageTests/TemplateHaskell/vanilla/Lib.hs
   tests/PackageTests/TemplateHaskell/vanilla/TH.hs
   tests/PackageTests/TemplateHaskell/vanilla/my.cabal
+  tests/PackageTests/TestNameCollision/child/Child.hs
+  tests/PackageTests/TestNameCollision/child/child.cabal
+  tests/PackageTests/TestNameCollision/child/tests/Test.hs
+  tests/PackageTests/TestNameCollision/parent/Parent.hs
+  tests/PackageTests/TestNameCollision/parent/parent.cabal
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
