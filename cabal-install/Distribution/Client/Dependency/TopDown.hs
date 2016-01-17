@@ -21,7 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
-         , enableStanzas, ConfiguredId(..), fakeComponentId )
+         , enableStanzas, ConfiguredId(..), fakeUnitId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), unlabelPackageConstraint
@@ -39,7 +39,7 @@ import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
-         , ComponentId(..)
+         , UnitId(..), ComponentId(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
@@ -569,9 +569,9 @@ convertInstalledPackageIndex index' = PackageIndex.fromList
     | (_,ipkg:_) <- InstalledPackageIndex.allPackagesBySourcePackageId index' ]
   where
     -- The InstalledPackageInfo only lists dependencies by the
-    -- ComponentId, which means we do not directly know the corresponding
+    -- UnitId, which means we do not directly know the corresponding
     -- source dependency. The only way to find out is to lookup the
-    -- ComponentId to get the InstalledPackageInfo and look at its
+    -- UnitId to get the InstalledPackageInfo and look at its
     -- source PackageId. But if the package is broken because it depends on
     -- other packages that do not exist then we have a problem we cannot find
     -- the original source package id. Instead we make up a bogus package id.
@@ -580,10 +580,10 @@ convertInstalledPackageIndex index' = PackageIndex.fromList
     sourceDepsOf index ipkg =
       [ maybe (brokenPackageId depid) packageId mdep
       | let depids = InstalledPackageInfo.depends ipkg
-            getpkg = InstalledPackageIndex.lookupComponentId index
+            getpkg = InstalledPackageIndex.lookupUnitId index
       , (depid, mdep) <- zip depids (map getpkg depids) ]
 
-    brokenPackageId (ComponentId str) =
+    brokenPackageId (SimpleUnitId (ComponentId str)) =
       PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 -- ------------------------------------------------------------
@@ -646,7 +646,7 @@ finaliseSelectedPackages pref selected constraints =
     confId :: InstalledOrSource InstalledPackageEx UnconfiguredPackage -> ConfiguredId
     confId pkg = ConfiguredId {
         confSrcId  = packageId pkg
-      , confInstId = fakeComponentId (packageId pkg)
+      , confInstId = fakeUnitId (packageId pkg)
       }
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =

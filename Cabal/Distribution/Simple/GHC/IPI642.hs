@@ -14,10 +14,8 @@ module Distribution.Simple.GHC.IPI642 (
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (installedComponentId)
+import qualified Distribution.Package as Current hiding (installedUnitId)
 import Distribution.Simple.GHC.IPIConvert
-
-import Distribution.Text
 
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
@@ -61,17 +59,14 @@ data InstalledPackageInfo = InstalledPackageInfo {
   }
   deriving Read
 
-mkComponentId :: Current.PackageIdentifier -> Current.ComponentId
-mkComponentId = Current.ComponentId . display
-
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
-      mkExposedModule m = Current.ExposedModule m Nothing Nothing
+      mkExposedModule m = Current.ExposedModule m Nothing
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
-    Current.installedComponentId         = mkComponentId pid,
-    Current.compatPackageKey   = mkComponentId pid,
+    Current.installedUnitId    = Current.mkLegacyUnitId pid,
+    Current.compatPackageKey   = "",
     Current.abiHash            = Current.AbiHash "", -- bogus but old GHCs don't care.
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
@@ -86,7 +81,6 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
-    Current.installedInstantiatedWith   = [],
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
@@ -96,7 +90,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (mkComponentId.convertPackageId) (depends ipi),
+    Current.depends            = map (Current.mkLegacyUnitId . convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

@@ -7,15 +7,14 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Helper functions for 'Distribution.Simple.GHC.IPI642' and
--- 'Distribution.Simple.GHC.IPI641'
+-- Helper functions for 'Distribution.Simple.GHC.IPI642'.
 module Distribution.Simple.GHC.IPIConvert (
     PackageIdentifier, convertPackageId,
     License, convertLicense,
     convertModuleName
   ) where
 
-import qualified Distribution.Package as Current hiding (installedComponentId)
+import qualified Distribution.Package as Current hiding (installedUnitId)
 import qualified Distribution.License as Current
 
 import Distribution.Version

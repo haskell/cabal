@@ -40,14 +40,14 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 import Distribution.Client.Types
          ( SourcePackage(..)
          , GenericReadyPackage(..), ReadyPackage, enableStanzas
-         , ConfiguredPackage(..) , fakeComponentId)
+         , ConfiguredPackage(..) , fakeUnitId)
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), ComponentId(..) )
+         ( PackageIdentifier, Package(packageId), UnitId(..) )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -126,7 +126,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
         | (ReadyPackage (ConfiguredPackage _ _flags _ _) _, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               -- This is a bit dodgy; probably won't work for Backpack packages
-              ipid = fakeComponentId pkgid
+              ipid = fakeUnitId pkgid
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
               prefix = substTemplate pkgid ipid prefixTemplate
@@ -152,7 +152,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
 
     -- This is sadly rather complicated. We're kind of re-doing part of the
     -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> ComponentId -> IO FilePath
+    pkgBinDir :: PackageDescription -> UnitId -> IO FilePath
     pkgBinDir pkg ipid = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor

@@ -381,19 +381,22 @@ testSuiteLibV09AsLibAndExe pkg_descr
             libExposed     = True,
             libBuildInfo   = bi
           }
+    -- NB: temporary hack; I have a refactor which solves this
     cid = computeComponentId (package pkg_descr)
                              (CTestName (testName test))
-                             (map fst (componentPackageDeps clbi))
+                             (map ((\(SimpleUnitId cid0) -> cid0) . fst)
+                                  (componentPackageDeps clbi))
                              (flagAssignment lbi)
+    uid = SimpleUnitId cid
     (pkg_name, compat_key) = computeCompatPackageKey
                                 (compiler lbi) (package pkg_descr)
-                                (CTestName (testName test)) cid
+                                (CTestName (testName test)) uid
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentId = cid
+                , componentUnitId = uid
                 , componentCompatPackageKey = compat_key
-                , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
+                , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) { pkgName = pkg_name }
@@ -420,7 +423,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- that exposes the relevant test suite library.
     exeClbi = ExeComponentLocalBuildInfo {
                 componentPackageDeps =
-                    (IPI.installedComponentId ipi, packageId ipi)
+                    (IPI.installedUnitId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi)),

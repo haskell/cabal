@@ -58,7 +58,7 @@ convIPI' sip idx =
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  let ipid = IPI.installedComponentId ipi
+  let ipid = IPI.installedUnitId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
@@ -75,9 +75,9 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> SI.InstalledPackageIndex -> ComponentId -> Maybe (FlaggedDep () PN)
+convIPId :: PN -> SI.InstalledPackageIndex -> UnitId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
-  case SI.lookupComponentId idx ipid of
+  case SI.lookupUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)

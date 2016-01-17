@@ -198,7 +198,7 @@ pruneInstallPlan :: InstallPlan
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    InstallPlan.dependencyClosure installPlan (map fakeComponentId pkgIds)
+    InstallPlan.dependencyClosure installPlan (map fakeUnitId pkgIds)
   where
     pkgIds = [ packageId pkg
              | SpecificSourcePackage pkg <- pkgSpecifiers ]

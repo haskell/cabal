@@ -14,7 +14,7 @@ import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (getHSLibraryName)
 import Distribution.Version               (Version(..))
 import Distribution.Simple.Compiler       (compilerId)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localComponentId)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localUnitId)
 
 suite :: TestM ()
 suite = do
@@ -28,7 +28,7 @@ checkMetadata :: LocalBuildInfo -> FilePath -> IO ()
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
-    path = dir </> "lib" ++ getHSLibraryName (localComponentId lbi) ++ ".a"
+    path = dir </> "lib" ++ getHSLibraryName (localUnitId lbi) ++ ".a"
 
     _ghc_7_10 = case compilerId (compiler lbi) of
       CompilerId GHC version | version >= Version [7, 10] [] -> True

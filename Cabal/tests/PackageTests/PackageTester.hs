@@ -66,7 +66,7 @@ import Distribution.Simple.Configure
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.BuildPaths (exeExtension)
 
-#ifndef CURRENT_PACKAGE_KEY
+#ifndef CURRENT_COMPONENT_ID
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 #endif
@@ -342,10 +342,10 @@ rawCompileSetup verbosity suite e path = do
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
         [ "-hide-all-packages"
         , "-package base"
-#ifdef CURRENT_PACKAGE_KEY
+#ifdef CURRENT_COMPONENT_ID
         -- This is best, but we don't necessarily have it
         -- if we're bootstrapping with old Cabal.
-        , "-package-id " ++ CURRENT_PACKAGE_KEY
+        , "-package-id " ++ CURRENT_COMPONENT_ID
 #else
         -- This mostly works, UNLESS you've installed a
         -- version of Cabal with the SAME version number.

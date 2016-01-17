@@ -18,7 +18,6 @@ import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Package
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -275,7 +274,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  let libName@(ComponentId cname) = componentId clbi
+  let libName = componentUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -286,8 +285,6 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp
-      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.installedComponentId p,n)))
-                       (instantiatedWith lbi)
       nativeToo = ghcjsNativeToo comp
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
@@ -303,6 +300,9 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+      -- Component name. Not 'libName' because that has the "HS" prefix
+      -- that GHC gives Haskell libraries.
+      cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
@@ -323,7 +323,6 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       vanillaOptsNoJsLib = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
-                      ghcOptSigOf        = hole_insts,
                       ghcOptInputModules = toNubListR $ libModules lib,
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
@@ -730,7 +729,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentId clbi
+    libName = componentUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

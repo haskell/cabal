@@ -53,7 +53,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     addSourcePackages,
-    hideInstalledPackagesSpecificByComponentId,
+    hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds
@@ -88,7 +88,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
-         , ComponentId, Dependency(Dependency))
+         , UnitId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), Library(..), Executable(..)
          , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
@@ -302,14 +302,14 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecificByComponentId :: [ComponentId]
+hideInstalledPackagesSpecificByUnitId :: [UnitId]
                                                      -> DepResolverParams
                                                      -> DepResolverParams
-hideInstalledPackagesSpecificByComponentId pkgids params =
+hideInstalledPackagesSpecificByUnitId pkgids params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteComponentId)
+        foldl' (flip InstalledPackageIndex.deleteUnitId)
                (depResolverInstalledPkgIndex params) pkgids
     }
 
@@ -337,12 +337,12 @@ hideInstalledPackagesAllVersions pkgnames params =
 
 hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
 hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByComponentId pkgids params
+    hideInstalledPackagesSpecificByUnitId pkgids params
   where
-    pkgids = map Installed.installedComponentId
+    pkgids = map Installed.installedUnitId
            . InstalledPackageIndex.reverseDependencyClosure
                             (depResolverInstalledPkgIndex params)
-           . map (Installed.installedComponentId . fst)
+           . map (Installed.installedUnitId . fst)
            . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 

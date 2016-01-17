@@ -56,7 +56,6 @@ module Distribution.Simple.GHC (
 import Control.Applicative -- 7.10 -Werror workaround
 import Prelude             -- https://ghc.haskell.org/trac/ghc/wiki/Migration/7.10#GHCsaysTheimportof...isredundant
 
-import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.Simple.GHC.ImplInfo
@@ -426,10 +425,9 @@ getInstalledPackages' verbosity packagedbs conf = do
       = \file content -> case reads content of
           [(pkgs, _)] -> return (map IPI642.toCurrent pkgs)
           _           -> failToRead file
+      -- We dropped support for 6.4.2 and earlier.
       | otherwise
-      = \file content -> case reads content of
-          [(pkgs, _)] -> return (map IPI641.toCurrent pkgs)
-          _           -> failToRead file
+      = \file _ -> failToRead file
     Just ghcProg = lookupProgram ghcProgram conf
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
@@ -477,9 +475,9 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentId clbi
+  let libName = componentUnitId clbi
       libTargetDir
-        | componentId clbi == localComponentId lbi = buildDir lbi
+        | componentUnitId clbi == localUnitId lbi = buildDir lbi
         | otherwise = buildDir lbi </> display libName
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
@@ -1142,7 +1140,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentId clbi
+    libName = componentUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

@@ -275,7 +275,6 @@ library
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
-    Distribution.Simple.GHC.IPI641
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.IPIConvert
     Distribution.Simple.GHC.ImplInfo

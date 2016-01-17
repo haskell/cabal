@@ -76,16 +76,16 @@ haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
-mkLibName :: ComponentId -> String
+mkLibName :: UnitId -> String
 mkLibName lib = "lib" ++ getHSLibraryName lib <.> "a"
 
-mkProfLibName :: ComponentId -> String
+mkProfLibName :: UnitId -> String
 mkProfLibName lib =  "lib" ++ getHSLibraryName lib ++ "_p" <.> "a"
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
 -- e.g. libHSbase-2.1-ghc6.6.1.so
-mkSharedLibName :: CompilerId -> ComponentId -> String
+mkSharedLibName :: CompilerId -> UnitId -> String
 mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
   = "lib" ++ getHSLibraryName lib ++ "-" ++ comp <.> dllExtension
   where comp = display compilerFlavor ++ display compilerVersion

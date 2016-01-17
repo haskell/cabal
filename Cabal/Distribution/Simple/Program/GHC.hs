@@ -27,7 +27,6 @@ import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
 import qualified Data.Map as M
-import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
 --
@@ -70,9 +69,12 @@ data GhcOptions = GhcOptions {
   -------------
   -- Packages
 
-  -- | The package key the modules will belong to; the @ghc -this-package-key@
-  -- flag.
-  ghcOptComponentId   :: Flag ComponentId,
+  -- | The unit ID the modules will belong to; the @ghc -this-unit-id@
+  -- flag (or @-this-package-key@ or @-package-name@ on older
+  -- versions of GHC).  This is a 'String' because we assume you've
+  -- already figured out what the correct format for this string is
+  -- (we need to handle backwards compatibility.)
+  ghcOptThisUnitId   :: Flag String,
 
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
@@ -81,7 +83,7 @@ data GhcOptions = GhcOptions {
   -- requires both the short and long form of the package id;
   -- the @ghc -package@ or @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (ComponentId, PackageId, ModuleRenaming),
+    NubListR (UnitId, PackageId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -89,9 +91,6 @@ data GhcOptions = GhcOptions {
   -- | Don't automatically link in Haskell98 etc; the @ghc
   -- -no-auto-link-packages@ flag.
   ghcOptNoAutoLinkPackages :: Flag Bool,
-
-  -- | What packages are implementing the signatures
-  ghcOptSigOf :: [(ModuleName, (ComponentId, ModuleName))],
 
   -----------------
   -- Linker stuff
@@ -372,24 +371,17 @@ renderGhcOptions comp opts
   -------------
   -- Packages
 
-  , concat [ [if packageKeySupported comp
-                then "-this-package-key"
-                else "-package-name", display pkgid]
-             | pkgid <- flag ghcOptComponentId ]
+  , concat [ [ case () of
+                _ | unitIdSupported comp     -> "-this-unit-id"
+                  | packageKeySupported comp -> "-this-package-key"
+                  | otherwise                -> "-package-name"
+             , this_arg ]
+             | this_arg <- flag ghcOptThisUnitId ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
 
   , packageDbArgs implInfo (ghcOptPackageDBs opts)
-
-  , if null (ghcOptSigOf opts)
-        then []
-        else "-sig-of"
-             : intercalate "," (map (\(n,(p,m)) -> display n ++ " is "
-                                                ++ display p ++ ":"
-                                                ++ display m)
-                                    (ghcOptSigOf opts))
-             : []
 
   , concat $ if flagPackageId implInfo
       then let space "" = ""
@@ -499,12 +491,11 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = mempty,
     ghcOptSourcePathClear    = mempty,
     ghcOptSourcePath         = mempty,
-    ghcOptComponentId        = mempty,
+    ghcOptThisUnitId         = mempty,
     ghcOptPackageDBs         = mempty,
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
     ghcOptNoAutoLinkPackages = mempty,
-    ghcOptSigOf              = mempty,
     ghcOptLinkLibs           = mempty,
     ghcOptLinkLibPath        = mempty,
     ghcOptLinkOptions        = mempty,
@@ -556,12 +547,11 @@ instance Semigroup GhcOptions where
     ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
     ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
     ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptComponentId         = combine ghcOptComponentId,
+    ghcOptThisUnitId         = combine ghcOptThisUnitId,
     ghcOptPackageDBs         = combine ghcOptPackageDBs,
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,
     ghcOptNoAutoLinkPackages = combine ghcOptNoAutoLinkPackages,
-    ghcOptSigOf              = combine ghcOptSigOf,
     ghcOptLinkLibs           = combine ghcOptLinkLibs,
     ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
     ghcOptLinkOptions        = combine ghcOptLinkOptions,
