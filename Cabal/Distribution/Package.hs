@@ -122,7 +122,7 @@ data ComponentId
     = ComponentId String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
-type InstalledPackageId = ComponentId
+type InstalledPackageId = UnitId
 
 instance Binary ComponentId
 
