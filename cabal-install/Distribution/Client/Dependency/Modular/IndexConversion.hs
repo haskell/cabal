@@ -96,19 +96,25 @@ convSPI' os arch cinfo strfl sdeps = L.map (convSP os arch cinfo strfl sdeps) . 
 convSP :: OS -> Arch -> CompilerInfo -> Bool ->
           (SourcePackage -> [Dependency]) ->
           SourcePackage -> (PN, I, PInfo)
-convSP os arch comp strfl sdeps
-       pkg@(SourcePackage (PackageIdentifier pn pv) gpkg _ _) =
-  let
-    i     = I pv InRepo
-    pi    = PI pn i
+convSP os arch cinfo strfl sdeps
+       pkg@(SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+  let i = I pv InRepo
+  in  (pn, i, convGPD os arch cinfo strfl (sdeps pkg) (PI pn i) gpd)
 
-    -- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
-    -- from 'Distribution.PackageDescription.Configuration' here, because we
-    -- want to keep the condition tree, but simplify much of the test.
-    GenericPackageDescription _pkg flags libs exes tests benchs = gpkg
-    fds   = flagInfo strfl flags
-    conv  = convBuildableCondTree os arch comp pi fds
-    pinfo = PInfo
+-- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
+-- from 'Distribution.PackageDescription.Configuration' here, because we
+-- want to keep the condition tree, but simplify much of the test.
+
+-- | Convert a generic package description to a solver-specific 'PInfo'.
+convGPD :: OS -> Arch -> CompilerInfo -> Bool -> [Dependency] ->
+           PI PN -> GenericPackageDescription -> PInfo
+convGPD os arch comp strfl sdeps pi
+        (GenericPackageDescription pkg flags libs exes tests benchs) =
+  let
+    fds  = flagInfo strfl flags
+    conv = convBuildableCondTree os arch comp pi fds
+  in
+    PInfo
       (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
                     convSetup sdeps pi                                           pkg     ++
        concatMap   (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes    ++
@@ -118,8 +124,6 @@ convSP os arch comp strfl sdeps
         (L.map     (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo ds) benchs))
       fds
       Nothing
-
-  in  (pn, i, pinfo)
 
 prefix :: (FlaggedDeps comp qpn -> FlaggedDep comp' qpn) -> [FlaggedDeps comp qpn] -> FlaggedDeps comp' qpn
 prefix _ []  = []
@@ -261,14 +265,11 @@ convDep :: PN -> Dependency -> Dep PN
 convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
 
 -- | Convert setup dependencies
-convSetup :: (SourcePackage -> [Dependency]) ->
-             PI PN -> SourcePackage ->
+convSetup :: [Dependency] -> PI PN -> PackageDescription ->
              FlaggedDeps Component PN
-convSetup legacySetupDeps (PI pn _i) pkg@(SourcePackage _ gpd _ _pl) =
+convSetup sdeps (PI pn _i) pd =
     L.map (\d -> D.Simple (convDep pn d) ComponentSetup)
-          (maybe (legacySetupDeps pkg) PD.setupDepends (PD.setupBuildInfo pd))
+          (maybe sdeps PD.setupDepends (PD.setupBuildInfo pd))
           -- If there are explicit setup deps then use them, otherwise use
           -- any given defaults.
-  where
-    pd = PD.packageDescription gpd
 
