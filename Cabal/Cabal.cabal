@@ -1,5 +1,5 @@
 name: Cabal
-version: 1.23.0.0
+version: 1.23.1.0
 copyright: 2003-2006, Isaac Jones
            2005-2011, Duncan Coutts
 license: BSD3
@@ -77,6 +77,8 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
+  tests/PackageTests/BuildableField/BuildableField.cabal
+  tests/PackageTests/BuildableField/Main.hs
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
@@ -273,7 +275,6 @@ library
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
-    Distribution.Simple.GHC.IPI641
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.IPIConvert
     Distribution.Simple.GHC.ImplInfo

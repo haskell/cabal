@@ -101,6 +101,13 @@ tests = [
         , runTest $ soft [ ExPref "A" $ mkvrThis 1
                          , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (Just [("A", 1)])
         ]
+     , testGroup "Buildable Field" [
+          testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
+        , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
+        , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
+        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-true", 1), ("flag2-false", 1), ("pkg", 1)])
+        , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (Just [("A", 1), ("B", 2)])
+        ]
     ]
   where
     indep test      = test { testIndepGoals = True }
@@ -120,8 +127,8 @@ data SolverTest = SolverTest {
   , testIndepGoals     :: Bool
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
-  , testSupportedExts  :: [Extension]
-  , testSupportedLangs :: [Language]
+  , testSupportedExts  :: Maybe [Extension]
+  , testSupportedLangs :: Maybe [Language]
   }
 
 mkTest :: ExampleDb
@@ -129,7 +136,7 @@ mkTest :: ExampleDb
        -> [String]
        -> Maybe [(String, Int)]
        -> SolverTest
-mkTest = mkTestExtLang [] []
+mkTest = mkTestExtLang Nothing Nothing
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -137,7 +144,7 @@ mkTestExts :: [Extension]
            -> [String]
            -> Maybe [(String, Int)]
            -> SolverTest
-mkTestExts exts = mkTestExtLang exts []
+mkTestExts exts = mkTestExtLang (Just exts) Nothing
 
 mkTestLangs :: [Language]
             -> ExampleDb
@@ -145,10 +152,10 @@ mkTestLangs :: [Language]
             -> [String]
             -> Maybe [(String, Int)]
             -> SolverTest
-mkTestLangs = mkTestExtLang []
+mkTestLangs = mkTestExtLang Nothing . Just
 
-mkTestExtLang :: [Extension]
-              -> [Language]
+mkTestExtLang :: Maybe [Extension]
+              -> Maybe [Language]
               -> ExampleDb
               -> String
               -> [String]
@@ -209,7 +216,7 @@ db3 :: ExampleDb
 db3 = [
      Right $ exAv "A" 1 []
    , Right $ exAv "A" 2 []
-   , Right $ exAv "B" 1 [ExFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
+   , Right $ exAv "B" 1 [exFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
    , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
    , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
    ]
@@ -252,7 +259,7 @@ db4 = [
    , Right $ exAv "Ax" 2 []
    , Right $ exAv "Ay" 1 []
    , Right $ exAv "Ay" 2 []
-   , Right $ exAv "B"  1 [ExFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
+   , Right $ exAv "B"  1 [exFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
    , Right $ exAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
    , Right $ exAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
    ]
@@ -431,6 +438,60 @@ dbLangs1 = [
     Right $ exAv "A" 1 [ExLang Haskell2010]
   , Right $ exAv "B" 1 [ExLang Haskell98, ExAny "A"]
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
+  ]
+
+-- | cabal must choose +disable-lib for "pkg" in order to avoid the unavailable
+-- dependency. False is the default. The flag choice causes "pkg" to depend on
+-- "true-dep".
+testBuildable :: String -> ExampleDependency -> TestTree
+testBuildable testName unavailableDep =
+    runTest $ mkTestExtLang (Just []) (Just []) db testName ["pkg"] expected
+  where
+    expected = (Just [("pkg", 1), ("true-dep", 1)])
+    db = [
+        Right $ exAv "pkg" 1 [
+                   unavailableDep
+                 , ExFlag "disable-lib" NotBuildable (Buildable [])
+                 , ExTest "test" [exFlag "disable-lib"
+                                      [ExAny "true-dep"]
+                                      [ExAny "false-dep"]]
+                 ]
+      , Right $ exAv "true-dep" 1 []
+      , Right $ exAv "false-dep" 1 []
+      ]
+
+-- | cabal must choose +flag1 -flag2 for "pkg", which requires packages
+-- "flag1-true" and "flag2-false".
+dbBuildable1 :: ExampleDb
+dbBuildable1 = [
+    Right $ exAv "pkg" 1
+        [ ExAny "unknown"
+        , ExFlag "flag1" NotBuildable (Buildable [])
+        , ExFlag "flag2" NotBuildable (Buildable [])
+        , ExTest "optional-test"
+              [ ExAny "unknown"
+              , ExFlag "flag1"
+                    (Buildable [ExFlag "flag2" (Buildable []) NotBuildable])
+                    (Buildable [])]
+        , ExTest "test" [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
+                        , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
+        ]
+  , Right $ exAv "flag1-true" 1 []
+  , Right $ exAv "flag1-false" 1 []
+  , Right $ exAv "flag2-true" 1 []
+  , Right $ exAv "flag2-false" 1 []
+  ]
+
+-- | cabal must pick B-2 to avoid the unknown dependency.
+dbBuildable2 :: ExampleDb
+dbBuildable2 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "unknown"]
+  , Right $ exAv "B" 2
+        [ ExAny "unknown"
+        , ExFlag "disable-lib" NotBuildable (Buildable [])
+        ]
+  , Right $ exAv "B" 3 [ExAny "unknown"]
   ]
 
 {-------------------------------------------------------------------------------

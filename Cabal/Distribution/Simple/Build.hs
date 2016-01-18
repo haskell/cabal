@@ -393,7 +393,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentPackageRenaming = componentPackageRenaming clbi
                 , componentId = cid
                 , componentCompatPackageKey = compat_key
-                , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
+                , componentExposedModules = [IPI.ExposedModule m Nothing]
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) { pkgName = pkg_name }

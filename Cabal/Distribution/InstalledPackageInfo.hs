@@ -77,7 +77,6 @@ data InstalledPackageInfo
         abiHash           :: AbiHash,
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
-        installedInstantiatedWith  :: [(ModuleName, OriginalModule)],
         hiddenModules     :: [ModuleName],
         trusted           :: Bool,
         importDirs        :: [FilePath],
@@ -130,7 +129,6 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
-        installedInstantiatedWith  = [],
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
@@ -163,8 +161,7 @@ data OriginalModule
 data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
-       exposedReexport  :: Maybe OriginalModule,
-       exposedSignature :: Maybe OriginalModule -- This field is unused for now.
+       exposedReexport  :: Maybe OriginalModule
      }
   deriving (Eq, Generic, Read, Show)
 
@@ -178,13 +175,10 @@ instance Text OriginalModule where
         return (OriginalModule ipi m)
 
 instance Text ExposedModule where
-    disp (ExposedModule m reexport signature) =
+    disp (ExposedModule m reexport) =
         Disp.sep [ disp m
                  , case reexport of
                     Just m' -> Disp.sep [Disp.text "from", disp m']
-                    Nothing -> Disp.empty
-                 , case signature of
-                    Just m' -> Disp.sep [Disp.text "is", disp m']
                     Nothing -> Disp.empty
                  ]
     parse = do
@@ -194,12 +188,7 @@ instance Text ExposedModule where
             _ <- Parse.string "from"
             Parse.skipSpaces
             fmap Just parse
-        Parse.skipSpaces
-        signature <- Parse.option Nothing $ do
-            _ <- Parse.string "is"
-            Parse.skipSpaces
-            fmap Just parse
-        return (ExposedModule m reexport signature)
+        return (ExposedModule m reexport)
 
 
 instance Binary OriginalModule
@@ -215,7 +204,7 @@ showExposedModules :: [ExposedModule] -> Disp.Doc
 showExposedModules xs
     | all isExposedModule xs = fsep (map disp xs)
     | otherwise = fsep (Disp.punctuate comma (map disp xs))
-    where isExposedModule (ExposedModule _ Nothing Nothing) = True
+    where isExposedModule (ExposedModule _ Nothing) = True
           isExposedModule _ = False
 
 parseExposedModules :: Parse.ReadP r [ExposedModule]
@@ -229,14 +218,6 @@ parseInstalledPackageInfo =
     parseFieldsFlat (fieldsInstalledPackageInfo ++ deprecatedFieldDescrs)
     emptyInstalledPackageInfo
 
-parseInstantiatedWith :: Parse.ReadP r (ModuleName, OriginalModule)
-parseInstantiatedWith = do k <- parse
-                           _ <- Parse.char '='
-                           n <- parse
-                           _ <- Parse.char '@'
-                           p <- parse
-                           return (k, OriginalModule p n)
-
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
@@ -248,9 +229,6 @@ showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
-
-showInstantiatedWith :: (ModuleName, OriginalModule) -> Doc
-showInstantiatedWith (k, OriginalModule p m) = disp k <> text "=" <> disp m <> text "@" <> disp p
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -317,9 +295,6 @@ installedFieldDescrs = [
  , simpleField "abi"
         disp               parse
         abiHash            (\abi    pkg -> pkg{abiHash=abi})
- , listField   "instantiated-with"
-        showInstantiatedWith parseInstantiatedWith
-        installedInstantiatedWith   (\xs    pkg -> pkg{installedInstantiatedWith=xs})
  , boolField   "trusted"
         trusted            (\val pkg -> pkg{trusted=val})
  , listField   "import-dirs"

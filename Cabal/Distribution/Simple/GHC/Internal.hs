@@ -361,7 +361,6 @@ componentGhcOptions verbosity lbi bi clbi odir =
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> Mon.mempty,
-      ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
@@ -396,10 +395,6 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo MinimalDebugInfo = toFlag True
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
-
-    hole_insts = map (\(k,(p,n))
-                      -> (k, (InstalledPackageInfo.installedComponentId p,n)))
-                 (instantiatedWith lbi)
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]
