@@ -130,6 +130,7 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
   tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
   tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
+  tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Short.hs
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
   tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
