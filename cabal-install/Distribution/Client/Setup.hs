@@ -1,4 +1,8 @@
-{-# LANGUAGE CPP, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -2260,7 +2264,7 @@ parseRepo = do
   return RemoteRepo {
     remoteRepoName           = name,
     remoteRepoURI            = uri,
-    remoteRepoSecure         = False,
+    remoteRepoSecure         = Nothing,
     remoteRepoRootKeys       = [],
     remoteRepoKeyThreshold   = 0,
     remoteRepoShouldTryHttps = False

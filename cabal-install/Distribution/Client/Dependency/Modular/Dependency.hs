@@ -4,20 +4,16 @@ module Distribution.Client.Dependency.Modular.Dependency (
     -- * Variables
     Var(..)
   , simplifyVar
-  , showVar
   , varPI
     -- * Conflict sets
   , ConflictSet
   , showCS
     -- * Constrained instances
   , CI(..)
-  , showCI
   , merge
     -- * Flagged dependencies
   , FlaggedDeps
   , FlaggedDep(..)
-  , TrueFlaggedDeps
-  , FalseFlaggedDeps
   , Dep(..)
   , showDep
   , flattenFlaggedDeps
@@ -26,35 +22,23 @@ module Distribution.Client.Dependency.Modular.Dependency (
     -- ** Setting/forgetting components
   , forgetCompOpenGoal
   , setCompFlaggedDeps
-    -- ** Selecting subsets
-  , nonSetupDeps
-  , setupDeps
-  , select
     -- * Reverse dependency map
   , RevDepMap
     -- * Goals
   , Goal(..)
   , GoalReason(..)
-  , GoalReasonChain
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
-  , goalReasonToVars
-  , goalReasonChainToVars
-  , goalReasonChainsToVars
     -- * Open goals
   , OpenGoal(..)
   , close
-    -- * Version ranges pairsed with origins (goals)
-  , VROrigin
-  , collapse
   ) where
 
 import Prelude hiding (pi)
 
 import Data.List (intercalate)
 import Data.Map (Map)
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import qualified Data.List as L
 import qualified Data.Set  as S
@@ -298,60 +282,6 @@ mapCompFlaggedDep _ (Stanza  sn     t  ) = Stanza  sn       t
 mapCompFlaggedDep g (Simple  pn a      ) = Simple  pn (g a)
 
 {-------------------------------------------------------------------------------
-  Selecting FlaggedDeps subsets
-
-  (Correspond to the functions with the same names in ComponentDeps).
--------------------------------------------------------------------------------}
-
-nonSetupDeps :: FlaggedDeps Component a -> FlaggedDeps Component a
-nonSetupDeps = select (/= ComponentSetup)
-
-setupDeps :: FlaggedDeps Component a -> FlaggedDeps Component a
-setupDeps = select (== ComponentSetup)
-
--- | Select the dependencies of a given component
---
--- The modular solver kind of flattens the dependency trees from the .cabal
--- file, putting the component of each dependency at the leaves, rather than
--- indexing per component. For instance, package C might have flagged deps that
--- look something like
---
--- > Flagged <flagName> ..
--- >   [Simple <package A> ComponentLib]
--- >   [Simple <package B> ComponentLib]
---
--- indicating that the library component of C relies on either A or B, depending
--- on the flag. This makes it somewhat awkward however to extract certain kinds
--- of dependencies. In particular, extracting, say, the setup dependencies from
--- the above set of dependencies could either return the empty list, or else
---
--- > Flagged <flagName> ..
--- >   []
--- >   []
---
--- Both answers are reasonable; we opt to return the empty list in this
--- case, as it results in simpler search trees in the builder.
---
--- (Note that the builder already introduces separate goals for all flags of a
--- package, independently of whether or not they are used in any component, so
--- we don't have to worry about preserving flags here.)
-select :: (Component -> Bool) -> FlaggedDeps Component a -> FlaggedDeps Component a
-select p = mapMaybe go
-  where
-    go :: FlaggedDep Component a -> Maybe (FlaggedDep Component a)
-    go (Flagged fn nfo  t f) = let t' = mapMaybe go t
-                                   f' = mapMaybe go f
-                               in if null t' && null f'
-                                     then Nothing
-                                     else Just $ Flagged fn nfo t' f'
-    go (Stanza  sn      t  ) = let t' = mapMaybe go t
-                               in if null t'
-                                     then Nothing
-                                     else Just $ Stanza  sn     t'
-    go (Simple  pn comp    ) = if p comp then Just $ Simple pn comp
-                                         else Nothing
-
-{-------------------------------------------------------------------------------
   Reverse dependency map
 -------------------------------------------------------------------------------}
 
@@ -410,9 +340,6 @@ goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
 
 goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
 goalReasonChainToVars = S.unions . L.map goalReasonToVars
-
-goalReasonChainsToVars :: Ord qpn => [GoalReasonChain qpn] -> ConflictSet qpn
-goalReasonChainsToVars = S.unions . L.map goalReasonChainToVars
 
 {-------------------------------------------------------------------------------
   Open goals

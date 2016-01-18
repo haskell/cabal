@@ -4,7 +4,6 @@ module Distribution.Client.Dependency.Modular.Version
     , anyVR
     , checkVR
     , eqVR
-    , mkV
     , showVer
     , showVR
     , simplifyVR
@@ -52,7 +51,3 @@ simplifyVR = CV.simplifyVersionRange
 -- | Checking a version against a version range.
 checkVR :: VR -> Ver -> Bool
 checkVR = flip CV.withinRange
-
--- | Make a version number.
-mkV :: [Int] -> Ver
-mkV xs = CV.Version xs []

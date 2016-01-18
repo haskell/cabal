@@ -3,8 +3,6 @@ module Distribution.Client.Dependency.Modular.Log
     , continueWith
     , failWith
     , logToProgress
-    , logToProgress'
-    , runLogIO
     , succeedWith
     , tryWith
     ) where
@@ -100,25 +98,6 @@ logToProgress mbj l = let
                                                                currlimit Nothing  = ""
     go _  _        []       _         (Just s) _   = Done s
     go _  _        []       _         _        _   = Fail ("Could not resolve dependencies; something strange happened.") -- should not happen
-
-logToProgress' :: Log Message a -> Progress String String a
-logToProgress' l = let
-                    (ms, r) = runLog l
-                    xs      = showMessages (const True) True ms
-                  in go xs r
-  where
-    go [x]    Nothing  = Fail x
-    go []     Nothing  = Fail ""
-    go []     (Just r) = Done r
-    go (x:xs) r        = Step x (go xs r)
-
-
-runLogIO :: Log Message a -> IO (Maybe a)
-runLogIO x =
-  do
-    let (ms, r) = runLog x
-    putStr (unlines $ showMessages (const True) True ms)
-    return r
 
 failWith :: m -> Log m a
 failWith m = Step m (Fail ())

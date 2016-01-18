@@ -151,7 +151,7 @@ import Distribution.Verbosity
 #define BOOTSTRAPPED_CABAL 1
 #endif
 #else
-#ifdef THIS_PACKAGE_KEY
+#ifdef CURRENT_PACKAGE_KEY
 #define BOOTSTRAPPED_CABAL 1
 #endif
 #endif

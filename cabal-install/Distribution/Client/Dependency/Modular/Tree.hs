@@ -5,9 +5,7 @@ module Distribution.Client.Dependency.Modular.Tree
     , Tree(..)
     , TreeF(..)
     , ana
-    , anaM
     , cata
-    , cataM
     , choices
     , inn
     , innM
@@ -156,12 +154,6 @@ trav psi x = cata (inn . psi) x
 para :: (TreeF a (b, Tree a) -> b) -> Tree a -> b
 para phi = phi . fmap (\ x -> (para phi x, x)) . out
 
-cataM :: Monad m => (TreeF a b -> m b) -> Tree a -> m b
-cataM phi = phi <=< mapM (cataM phi) <=< return . out
-
 -- | Anamorphism on trees.
 ana :: (b -> TreeF a b) -> b -> Tree a
 ana psi = inn . fmap (ana psi) . psi
-
-anaM :: Monad m => (b -> m (TreeF a b)) -> b -> m (Tree a)
-anaM psi = return . inn <=< mapM (anaM psi) <=< psi
