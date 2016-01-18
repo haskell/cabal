@@ -274,7 +274,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  let libName@(ComponentId cname) = componentId clbi
+  let libName = componentUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -300,6 +300,9 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+      -- Component name. Not 'libName' because that has the "HS" prefix
+      -- that GHC gives Haskell libraries.
+      cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
@@ -726,7 +729,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentId clbi
+    libName = componentUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

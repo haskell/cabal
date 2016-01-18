@@ -102,7 +102,7 @@ hpcTestMatrix config = do
                 CompilerId comp version = compilerId (compiler lbi)
                 subdir
                   | comp == GHC && version >= Version [7, 10] [] =
-                      display (localCompatPackageKey lbi)
+                      localCompatPackageKey lbi
                   | otherwise = display (package $ localPkgDescr lbi)
             mapM_ shouldExist
                 [ mixDir dist_dir way "my-0.1" </> subdir </> "Foo.mix"

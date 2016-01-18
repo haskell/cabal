@@ -21,8 +21,8 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..), Dependency
-         , ComponentId(..), InstalledPackageId
-         , HasComponentId(..), PackageInstalled(..) )
+         , UnitId(..), InstalledPackageId, mkUnitId
+         , HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -65,8 +65,8 @@ instance Binary SourcePackageDb
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
 
-installedPackageId :: HasComponentId pkg => pkg -> InstalledPackageId
-installedPackageId = installedComponentId
+installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
+installedPackageId = installedUnitId
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
@@ -76,23 +76,23 @@ installedPackageId = installedComponentId
 --  dependency graphs) only make sense on this subclass of package types.
 --
 class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [ComponentId]
+  depends :: pkg -> ComponentDeps [UnitId]
 
 instance PackageFixedDeps InstalledPackageInfo where
   depends = CD.fromInstalled . installedDepends
 
 
 -- | In order to reuse the implementation of PackageIndex which relies on
--- 'ComponentId', we need to be able to synthesize these IDs prior
+-- 'UnitId', we need to be able to synthesize these IDs prior
 -- to installation.  Eventually, we'll move to a representation of
--- 'ComponentId' which can be properly computed before compilation
+-- 'UnitId' which can be properly computed before compilation
 -- (of course, it's a bit of a misnomer since the packages are not actually
 -- installed yet.)  In any case, we'll synthesize temporary installed package
 -- IDs to use as keys during install planning.  These should never be written
 -- out!  Additionally, they need to be guaranteed unique within the install
 -- plan.
-fakeComponentId :: PackageId -> ComponentId
-fakeComponentId = ComponentId . (".fake."++) . display
+fakeUnitId :: PackageId -> UnitId
+fakeUnitId = mkUnitId . (".fake."++) . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -115,7 +115,7 @@ instance Binary ConfiguredPackage
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
--- Once we configure a source package we know it's ComponentId
+-- Once we configure a source package we know it's UnitId
 -- (at least, in principle, even if we have to fake it currently). It is still
 -- however useful in lots of places to also know the source ID for the package.
 -- We therefore bundle the two.
@@ -124,10 +124,10 @@ instance Binary ConfiguredPackage
 -- configuration parameters and dependencies have been specified).
 --
 -- TODO: I wonder if it would make sense to promote this datatype to Cabal
--- and use it consistently instead of ComponentIds?
+-- and use it consistently instead of UnitIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: ComponentId
+  , confInstId :: UnitId
   }
   deriving (Eq, Generic)
 
@@ -139,8 +139,8 @@ instance Show ConfiguredId where
 instance Package ConfiguredId where
   packageId = confSrcId
 
-instance HasComponentId ConfiguredId where
-  installedComponentId = confInstId 
+instance HasUnitId ConfiguredId where
+  installedUnitId = confInstId
 
 instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _ _) = packageId pkg
@@ -148,8 +148,8 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps _) = fmap (map confInstId) deps
 
-instance HasComponentId ConfiguredPackage where
-  installedComponentId = fakeComponentId . packageId
+instance HasUnitId ConfiguredPackage where
+  installedUnitId = fakeUnitId . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -164,13 +164,13 @@ type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
 instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
-instance (Package srcpkg, HasComponentId ipkg) =>
+instance (Package srcpkg, HasUnitId ipkg) =>
          PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
-  depends (ReadyPackage _ deps) = fmap (map installedComponentId) deps
+  depends (ReadyPackage _ deps) = fmap (map installedUnitId) deps
 
-instance HasComponentId srcpkg =>
-         HasComponentId (GenericReadyPackage srcpkg ipkg) where
-  installedComponentId (ReadyPackage pkg _) = installedComponentId pkg
+instance HasUnitId srcpkg =>
+         HasUnitId (GenericReadyPackage srcpkg ipkg) where
+  installedUnitId (ReadyPackage pkg _) = installedUnitId pkg
 
 instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg)
 

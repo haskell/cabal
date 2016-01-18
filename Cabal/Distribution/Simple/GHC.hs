@@ -475,9 +475,9 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentId clbi
+  let libName = componentUnitId clbi
       libTargetDir
-        | componentId clbi == localComponentId lbi = buildDir lbi
+        | componentUnitId clbi == localUnitId lbi = buildDir lbi
         | otherwise = buildDir lbi </> display libName
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
@@ -1140,7 +1140,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentId clbi
+    libName = componentUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

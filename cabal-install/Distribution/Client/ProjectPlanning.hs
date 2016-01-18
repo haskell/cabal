@@ -296,7 +296,7 @@ instance Binary ElaboratedConfiguredPackage
 instance Package ElaboratedConfiguredPackage where
   packageId = pkgSourceId
 
-instance HasComponentId ElaboratedConfiguredPackage where
+instance HasUnitId ElaboratedConfiguredPackage where
   installedComponentId = pkgInstalledId
 
 instance PackageFixedDeps ElaboratedConfiguredPackage where
@@ -1191,7 +1191,7 @@ elaborateInstallPlan platform compiler progdb
     -- dir (as opposed to a tarball), or depends on such a package, will be
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
-    shouldBuildInplaceOnly :: HasComponentId pkg => pkg -> Bool
+    shouldBuildInplaceOnly :: HasUnitId pkg => pkg -> Bool
     shouldBuildInplaceOnly pkg = Set.member (installedPackageId pkg)
                                             pkgsToBuildInplaceOnly
 

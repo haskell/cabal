@@ -228,8 +228,8 @@ waitAsyncPackageDownload verbosity downloadMap pkg = do
 
 executeInstallPlan
   :: forall ipkg srcpkg iresult.
-     (HasComponentId ipkg,   PackageFixedDeps ipkg,
-      HasComponentId srcpkg, PackageFixedDeps srcpkg)
+     (HasUnitId ipkg,   PackageFixedDeps ipkg,
+      HasUnitId srcpkg, PackageFixedDeps srcpkg)
   => Verbosity
   -> JobControl IO ( GenericReadyPackage srcpkg ipkg
                    , GenericBuildResult ipkg iresult BuildFailure )

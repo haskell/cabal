@@ -284,7 +284,7 @@ substituteInstallDirTemplates env dirs = dirs'
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
 absoluteInstallDirs :: PackageIdentifier
-                    -> ComponentId
+                    -> UnitId
                     -> CompilerInfo
                     -> CopyDest
                     -> Platform
@@ -314,7 +314,7 @@ data CopyDest
 -- independent\" package).
 --
 prefixRelativeInstallDirs :: PackageIdentifier
-                          -> ComponentId
+                          -> UnitId
                           -> CompilerInfo
                           -> Platform
                           -> InstallDirTemplates
@@ -413,7 +413,7 @@ substPathTemplate environment (PathTemplate template) =
 
 -- | The initial environment has all the static stuff but no paths
 initialPathTemplateEnv :: PackageIdentifier
-                       -> ComponentId
+                       -> UnitId
                        -> CompilerInfo
                        -> Platform
                        -> PathTemplateEnv
@@ -423,7 +423,7 @@ initialPathTemplateEnv pkgId libname compiler platform =
   ++ platformTemplateEnv platform
   ++ abiTemplateEnv compiler platform
 
-packageTemplateEnv :: PackageIdentifier -> ComponentId -> PathTemplateEnv
+packageTemplateEnv :: PackageIdentifier -> UnitId -> PathTemplateEnv
 packageTemplateEnv pkgId libname =
   [(PkgNameVar,  PathTemplate [Ordinary $ display (packageName pkgId)])
   ,(PkgVerVar,   PathTemplate [Ordinary $ display (packageVersion pkgId)])

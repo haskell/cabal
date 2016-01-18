@@ -27,7 +27,7 @@ import qualified Data.Map as Map
 import qualified Distribution.Compiler             as C
 import qualified Distribution.InstalledPackageInfo as C
 import qualified Distribution.Package              as C
-  hiding (HasComponentId(..))
+  hiding (HasUnitId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
 import qualified Distribution.System               as C
@@ -215,7 +215,7 @@ exAvSrcPkg ex =
     extractFlags (ExFlag f a b) = C.MkFlag {
                                       C.flagName        = C.FlagName f
                                     , C.flagDescription = ""
-                                    , C.flagDefault     = False
+                                    , C.flagDefault     = True
                                     , C.flagManual      = False
                                     }
                                 : concatMap extractFlags (deps a ++ deps b)
@@ -314,9 +314,9 @@ exAvPkgId ex = C.PackageIdentifier {
 
 exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
 exInstInfo ex = C.emptyInstalledPackageInfo {
-      C.installedComponentId = C.ComponentId (exInstHash ex)
+      C.installedUnitId    = C.mkUnitId (exInstHash ex)
     , C.sourcePackageId    = exInstPkgId ex
-    , C.depends            = map (C.ComponentId . exInstHash)
+    , C.depends            = map (C.mkUnitId . exInstHash)
                                  (exInstBuildAgainst ex)
     }
 

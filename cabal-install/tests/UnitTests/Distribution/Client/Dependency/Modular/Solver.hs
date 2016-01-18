@@ -105,7 +105,7 @@ tests = [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-true", 1), ("flag2-false", 1), ("pkg", 1)])
+        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (Just [("A", 1), ("B", 2)])
         ]
     ]
@@ -221,22 +221,22 @@ db3 = [
    , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
    ]
 
--- | Like exampleDb2, but the flag picks a different package rather than a
+-- | Like db3, but the flag picks a different package rather than a
 -- different package version
 --
--- In exampleDb2 we cannot install C and D as independent goals because:
+-- In db3 we cannot install C and D as independent goals because:
 --
 -- * The multiple instance restriction says C and D _must_ share B
--- * Since C relies on A.1, C needs B to be compiled with flagB on
--- * Since D relies on A.2, D needs B to be compiled with flagsB off
+-- * Since C relies on A-1, C needs B to be compiled with flagB on
+-- * Since D relies on A-2, D needs B to be compiled with flagB off
 -- * Hence C and D have incompatible requirements on B's flags.
 --
 -- However, _even_ if we don't check explicitly that we pick the same flag
 -- assignment for 0.B and 1.B, we will still detect the problem because
 -- 0.B depends on 0.A-1, 1.B depends on 1.A-2, hence we cannot link 0.A to
--- 1.B and therefore we cannot link 0.B to 1.B.
+-- 1.A and therefore we cannot link 0.B to 1.B.
 --
--- In exampleDb3 the situation however is trickier. We again cannot install
+-- In db4 the situation however is trickier. We again cannot install
 -- packages C and D as independent goals because:
 --
 -- * As above, the multiple instance restriction says that C and D _must_ share B
@@ -248,10 +248,10 @@ db3 = [
 -- we don't see the problem:
 --
 -- * We link 0.B to 1.B
--- * 0.B relies on Ay.1
--- * 1.B relies on Ax.1
+-- * 0.B relies on Ay-1
+-- * 1.B relies on Ax-1
 --
--- We will insist that 0.Ay will be linked to 1.Ay, and 0.Ax to 1.A, but since
+-- We will insist that 0.Ay will be linked to 1.Ay, and 0.Ax to 1.Ax, but since
 -- we only ever assign to one of these, these constraints are never broken.
 db4 :: ExampleDb
 db4 = [
@@ -440,19 +440,19 @@ dbLangs1 = [
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
 
--- | cabal must choose +disable-lib for "pkg" in order to avoid the unavailable
--- dependency. False is the default. The flag choice causes "pkg" to depend on
--- "true-dep".
+-- | cabal must set enable-lib to false in order to avoid the unavailable
+-- dependency. Flags are true by default. The flag choice causes "pkg" to
+-- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
     runTest $ mkTestExtLang (Just []) (Just []) db testName ["pkg"] expected
   where
-    expected = (Just [("pkg", 1), ("true-dep", 1)])
+    expected = Just [("false-dep", 1), ("pkg", 1)]
     db = [
         Right $ exAv "pkg" 1 [
                    unavailableDep
-                 , ExFlag "disable-lib" NotBuildable (Buildable [])
-                 , ExTest "test" [exFlag "disable-lib"
+                 , ExFlag "enable-lib" (Buildable []) NotBuildable
+                 , ExTest "test" [exFlag "enable-lib"
                                       [ExAny "true-dep"]
                                       [ExAny "false-dep"]]
                  ]
@@ -460,19 +460,19 @@ testBuildable testName unavailableDep =
       , Right $ exAv "false-dep" 1 []
       ]
 
--- | cabal must choose +flag1 -flag2 for "pkg", which requires packages
--- "flag1-true" and "flag2-false".
+-- | cabal must choose -flag1 +flag2 for "pkg", which requires packages
+-- "flag1-false" and "flag2-true".
 dbBuildable1 :: ExampleDb
 dbBuildable1 = [
     Right $ exAv "pkg" 1
         [ ExAny "unknown"
-        , ExFlag "flag1" NotBuildable (Buildable [])
-        , ExFlag "flag2" NotBuildable (Buildable [])
+        , ExFlag "flag1" (Buildable []) NotBuildable
+        , ExFlag "flag2" (Buildable []) NotBuildable
         , ExTest "optional-test"
               [ ExAny "unknown"
               , ExFlag "flag1"
-                    (Buildable [ExFlag "flag2" (Buildable []) NotBuildable])
-                    (Buildable [])]
+                    (Buildable [])
+                    (Buildable [ExFlag "flag2" NotBuildable (Buildable [])])]
         , ExTest "test" [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
                         , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
         ]
