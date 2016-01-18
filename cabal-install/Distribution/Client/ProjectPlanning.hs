@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns,
              DeriveGeneric, DeriveDataTypeable, 
-             ScopedTypeVariables #-}
+             RankNTypes, ScopedTypeVariables #-}
 
 -- | Planning how to build everything in a project.
 --
@@ -60,7 +60,6 @@ import           Distribution.Client.Targets
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
-import           Distribution.Client.HttpUtils
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList (toNubList)
@@ -530,7 +529,10 @@ rebuildInstallPlan verbosity
                    -> (Compiler, Platform, ProgramDb)
                    -> [SourcePackage]
                    -> Rebuild SolverInstallPlan
-    phaseRunSolver projectConfig@ProjectConfig{projectConfigSolver}
+    phaseRunSolver projectConfig@ProjectConfig {
+                     projectConfigSolver,
+                     projectConfigBuildOnly
+                   }
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
@@ -541,7 +543,7 @@ rebuildInstallPlan verbosity
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
-          sourcePkgDb       <- getSourcePackages    verbosity repos
+          sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
 
           liftIO $ do
             solver <- chooseSolver verbosity solverpref (compilerInfo compiler)
@@ -553,8 +555,13 @@ rebuildInstallPlan verbosity
                            localPackages localPackagesEnabledStanzas
       where
         corePackageDbs = [GlobalPackageDB]
-        repos          = projectConfigRepos cabalPackageCacheDirectory
-                                            projectConfigSolver
+        withRepoCtx    = projectConfigWithSolverRepoContext verbosity
+                           cabalPackageCacheDirectory
+                           projectConfigSolver
+                           projectConfigBuildOnly
+        --TODO: [required eventually] the projectConfigBuildOnly we have here
+        -- comes only from the config file, not from the command line, so
+        -- cannot select the http transport etc.
         solverpref     = fromFlag projectConfigSolverSolver
         logMsg message rest = debugNoWrap verbosity message >> rest
 
@@ -592,6 +599,7 @@ rebuildInstallPlan verbosity
                          projectConfigAllPackages,
                          projectConfigLocalPackages,
                          projectConfigSpecificPackage,
+                         projectConfigSolver,
                          projectConfigBuildOnly
                        }
                        (compiler, platform, progdb)
@@ -602,7 +610,7 @@ rebuildInstallPlan verbosity
         sourcePackageHashes <-
           rerunIfChanged verbosity projectRootDir fileMonitorSourceHashes
                          (map packageId $ InstallPlan.toList solverPlan) $
-            getPackageSourceHashes verbosity mkTransport solverPlan
+            getPackageSourceHashes verbosity withRepoCtx solverPlan
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
         return $
@@ -618,9 +626,10 @@ rebuildInstallPlan verbosity
             projectConfigLocalPackages
             projectConfigSpecificPackage
       where
-        mkTransport        = configureTransport verbosity preferredTransport
-        preferredTransport = flagToMaybe (projectConfigHttpTransport
-                                              projectConfigBuildOnly)
+        withRepoCtx = projectConfigWithSolverRepoContext verbosity 
+                        cabalPackageCacheDirectory
+                        projectConfigSolver
+                        projectConfigBuildOnly
 
 
     -- Improve the elaborated install plan. The elaborated plan consists
@@ -726,12 +735,19 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
       Cabal.getPackageDBContents verbosity compiler
                                  packagedb progdb
 
-getSourcePackages :: Verbosity -> [Repo] -> Rebuild SourcePackageDb
-getSourcePackages verbosity repos = do
-    monitorFiles . map MonitorFile
-                 $ IndexUtils.getSourcePackagesMonitorFiles repos
-    liftIO $ IndexUtils.getSourcePackages verbosity repos
+getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
+                  -> Rebuild SourcePackageDb
+getSourcePackages verbosity withRepoCtx = do
+    (sourcePkgDb, repos) <-
+      liftIO $ 
+        withRepoCtx $ \repoctx -> do
+          sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
+          return (sourcePkgDb, repoContextRepos repoctx)
 
+    monitorFiles . map MonitorFile
+                 . IndexUtils.getSourcePackagesMonitorFiles
+                 $ repos
+    return sourcePkgDb
 
 createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
                          -> PackageDBStack -> IO ()
@@ -757,10 +773,10 @@ recreateDirectory verbosity createParents dir = do
 -- Note that we don't get hashes for local unpacked packages.
 --
 getPackageSourceHashes :: Verbosity
-                       -> IO HttpTransport
+                       -> (forall a. (RepoContext -> IO a) -> IO a)
                        -> SolverInstallPlan
                        -> Rebuild (Map PackageId PackageSourceHash)
-getPackageSourceHashes verbosity mkTransport installPlan = do
+getPackageSourceHashes verbosity withRepoCtx installPlan = do
 
     -- Determine which packages need fetching, and which are present already
     --
@@ -779,10 +795,10 @@ getPackageSourceHashes verbosity mkTransport installPlan = do
     newlyDownloaded <-
       if null requireDownloading
         then return []
-        else liftIO $ do
-                transport <- mkTransport
+        else liftIO $
+              withRepoCtx $ \repoctx ->
                 sequence
-                  [ do loc <- fetchPackage transport verbosity locm
+                  [ do loc <- fetchPackage verbosity repoctx locm
                        return (pkg, loc)
                   | (pkg, locm) <- requireDownloading ]
 

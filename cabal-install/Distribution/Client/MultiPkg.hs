@@ -140,6 +140,7 @@ build verbosity
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
+                          (projectConfigSolver    projectConfig)
                           (projectConfigBuildOnly projectConfig)
                           cliBuildSettings
 

@@ -11,7 +11,7 @@ module Distribution.Client.ProjectBuilding (
 
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
 import           Distribution.Client.RebuildMonad
-import           Distribution.Client.ProjectConfig (BuildTimeSettings(..))
+import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
@@ -28,8 +28,8 @@ import           Distribution.Client.FileStatusCache
                    , checkFileMonitorChanged, updateFileMonitor )
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
-import           Distribution.Client.HttpUtils
 import           Distribution.Client.FetchUtils
+import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
 
@@ -84,10 +84,7 @@ rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
                sharedPackageConfig
-               buildSettings@BuildTimeSettings{
-                 buildSettingNumJobs,
-                 buildSettingHttpTransport
-               } = do
+               buildSettings@BuildTimeSettings{buildSettingNumJobs} = do
 
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
@@ -108,7 +105,7 @@ rebuildTargets verbosity
                         installPlan
 
     _residualPlan <- 
-      asyncDownloadPackages verbosity mkTransport
+      asyncDownloadPackages verbosity withRepoCtx
                             pkgsToDownload $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
@@ -152,7 +149,8 @@ rebuildTargets verbosity
 
   where
     isParallelBuild = buildSettingNumJobs >= 2
-    mkTransport     = configureTransport verbosity buildSettingHttpTransport
+    withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
+                        buildSettings
 
 
 --TODO: [nice to have] do we need to use a with-style for the temp files for downloading http
@@ -182,22 +180,23 @@ type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
 -- location and use 'waitAsyncPackageDownload' to get the result.
 --
 asyncDownloadPackages :: Verbosity
-                      -> IO HttpTransport
+                      -> ((RepoContext -> IO ()) -> IO ())
                       -> [PackageLocation (Maybe FilePath)]
                       -> (AsyncDownloadMap -> IO a)
                       -> IO a
 asyncDownloadPackages _ _ [] body = body Map.empty
-asyncDownloadPackages verbosity mkTransport pkglocs0 body = do
+asyncDownloadPackages verbosity withRepoCtx pkglocs0 body = do
     --TODO: [research required] use parallel downloads? if so, use the fetchLimit
 
     asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkglocs0
-    transport         <- mkTransport
 
-    let downloadAction = 
-          mapM $ \(pkgloc, var) ->
-            fetchPackage transport verbosity pkgloc >>= putMVar var
+    let downloadAction :: IO ()
+        downloadAction =
+          withRepoCtx $ \repoctx ->
+            forM_ asyncDownloadVars $ \(pkgloc, var) ->
+              fetchPackage verbosity repoctx pkgloc >>= putMVar var
 
-    withAsync (downloadAction asyncDownloadVars) $ \_ ->
+    withAsync downloadAction $ \_ ->
       let !asyncDownloadMap = Map.fromList asyncDownloadVars
       in body asyncDownloadMap
 

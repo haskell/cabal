@@ -11,7 +11,8 @@ module Distribution.Client.ProjectConfig (
     ProjectConfigSolver(..),
     PackageConfigShared(..),
     PackageConfig(..),
-    projectConfigRepos,
+    projectConfigWithBuilderRepoContext,
+    projectConfigWithSolverRepoContext,
     lookupLocalPackageConfig,
     lookupNonLocalPackageConfig,
 
@@ -36,6 +37,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.Targets
 import Distribution.Client.DistDirLayout
 import Distribution.Client.Glob
+import Distribution.Client.GlobalFlags (RepoContext(..), withRepoContext')
 import Distribution.Client.BuildReports.Types (ReportLevel(..))
 import Distribution.Client.Config (SavedConfig(..), loadConfig, defaultConfigFile)
 
@@ -272,6 +274,7 @@ data ProjectConfigBuildOnly
        projectConfigOfflineMode           :: Flag Bool,
        projectConfigKeepTempFiles         :: Flag Bool,
        projectConfigHttpTransport         :: Flag String,
+       projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
        projectConfigLogsDir               :: Flag FilePath,
        projectConfigWorldFile             :: Flag FilePath,
@@ -389,6 +392,7 @@ instance Monoid ProjectConfigBuildOnly where
       projectConfigOfflineMode           = mempty,
       projectConfigKeepTempFiles         = mempty,
       projectConfigHttpTransport         = mempty,
+      projectConfigIgnoreExpiry          = mempty,
       projectConfigCacheDir              = mempty,
       projectConfigLogsDir               = mempty,
       projectConfigWorldFile             = mempty,
@@ -409,6 +413,7 @@ instance Monoid ProjectConfigBuildOnly where
       projectConfigOfflineMode           = combine projectConfigOfflineMode,
       projectConfigKeepTempFiles         = combine projectConfigKeepTempFiles,
       projectConfigHttpTransport         = combine projectConfigHttpTransport,
+      projectConfigIgnoreExpiry          = combine projectConfigIgnoreExpiry,
       projectConfigCacheDir              = combine projectConfigCacheDir,
       projectConfigLogsDir               = combine projectConfigLogsDir,
       projectConfigWorldFile             = combine projectConfigWorldFile,
@@ -794,7 +799,8 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
       globalWorldFile         = projectConfigWorldFile,
-      globalHttpTransport     = projectConfigHttpTransport
+      globalHttpTransport     = projectConfigHttpTransport,
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
 
     ConfigFlags {
@@ -821,22 +827,41 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     } = haddockFlags
 
 
+-- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
+--
+projectConfigWithBuilderRepoContext :: Verbosity
+                                    -> BuildTimeSettings
+                                    -> (RepoContext -> IO a) -> IO a
+projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
+    withRepoContext'
+      verbosity
+      buildSettingRemoteRepos
+      buildSettingLocalRepos
+      buildSettingCacheDir
+      buildSettingHttpTransport
+      (Just buildSettingIgnoreExpiry)
 
 
-projectConfigRepos :: FilePath -> ProjectConfigSolver -> [Repo]
-projectConfigRepos downloadCacheRootDir
-                   ProjectConfigSolver { projectConfigRemoteRepos
-                                       , projectConfigLocalRepos } =
-    remoteRepos ++ localRepos
-  where
-    remoteRepos =
-      [ RepoRemote remote cacheDir
-      | remote <- fromNubList projectConfigRemoteRepos
-      , let cacheDir = downloadCacheRootDir
-                   </> remoteRepoName remote ]
-    localRepos =
-      [ RepoLocal local
-      | local <- fromNubList projectConfigLocalRepos ]
+-- | Use a 'RepoContext', but only for the solver. The solver does not use the
+-- full facilities of the 'RepoContext' so we can get away with making one
+-- that doesn't have an http transport. And that avoids having to have access
+-- to the 'BuildTimeSettings'
+--
+projectConfigWithSolverRepoContext :: Verbosity
+                                   -> FilePath
+                                   -> ProjectConfigSolver
+                                   -> ProjectConfigBuildOnly
+                                   -> (RepoContext -> IO a) -> IO a
+projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
+                                   ProjectConfigSolver{..}
+                                   ProjectConfigBuildOnly{..} =
+    withRepoContext'
+      verbosity
+      (fromNubList projectConfigRemoteRepos)
+      (fromNubList projectConfigLocalRepos)
+      downloadCacheRootDir
+      (flagToMaybe projectConfigHttpTransport)
+      (flagToMaybe projectConfigIgnoreExpiry)
 
 
 data BuildTimeSettings
@@ -855,17 +880,30 @@ data BuildTimeSettings
        buildSettingNumJobs               :: Int,
        buildSettingOfflineMode           :: Bool,
        buildSettingKeepTempFiles         :: Bool,
+       buildSettingRemoteRepos           :: [RemoteRepo],
+       buildSettingLocalRepos            :: [FilePath],
+       buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
+       buildSettingIgnoreExpiry          :: Bool,
        buildSettingRootCmd               :: Maybe String
      }
 
 
 resolveBuildTimeSettings :: Verbosity
                          -> CabalDirLayout
+                         -> ProjectConfigSolver
                          -> ProjectConfigBuildOnly
                          -> ProjectConfigBuildOnly
                          -> BuildTimeSettings
-resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
+resolveBuildTimeSettings verbosity
+                         CabalDirLayout {
+                           cabalLogsDirectory,
+                           cabalPackageCacheDirectory
+                         }
+                         ProjectConfigSolver {
+                           projectConfigRemoteRepos,
+                           projectConfigLocalRepos
+                         }
                          fromProjectFile
                          fromCommandLine =
     BuildTimeSettings {..}
@@ -881,7 +919,11 @@ resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
     buildSettingNumJobs       = determineNumJobs projectConfigNumJobs
     buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
     buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
+    buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
+    buildSettingLocalRepos    = fromNubList projectConfigLocalRepos
+    buildSettingCacheDir      = cabalPackageCacheDirectory
     buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
+    buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry
     buildSettingReportPlanningFailure
                               = fromFlag projectConfigReportPlanningFailure
     buildSettingRootCmd       = flagToMaybe projectConfigRootCmd
@@ -897,7 +939,8 @@ resolveBuildTimeSettings verbosity CabalDirLayout{cabalLogsDirectory}
       projectConfigReportPlanningFailure = toFlag False,
       projectConfigOneShot               = toFlag False,
       projectConfigOfflineMode           = toFlag False,
-      projectConfigKeepTempFiles         = toFlag False
+      projectConfigKeepTempFiles         = toFlag False,
+      projectConfigIgnoreExpiry          = toFlag False
     }
 
     -- The logging logic: what log file to use and what verbosity.
