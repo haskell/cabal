@@ -196,16 +196,15 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planGraph      :: Graph,
     planGraphRev   :: Graph,
     planPkgIdOf    :: Graph.Vertex -> UnitId,
-    planVertexOf   :: UnitId -> Graph.Vertex,
-    planIndepGoals :: Bool
+    planVertexOf   :: UnitId -> Graph.Vertex
   }
 
 planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
           -> Graph.Vertex
           -> GenericPlanPackage ipkg srcpkg iresult ifailure
 planPkgOf plan v =
-    case PackageIndex.lookupComponentId (planIndex plan)
-                                        (planPkgIdOf plan v) of
+    case PackageIndex.lookupUnitId (planIndex plan)
+                                   (planPkgIdOf plan v) of
       Just pkg -> pkg
       Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
 
@@ -530,7 +529,7 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
       planIndex   = PackageIndex.insert (PreExisting ipkg)
                     -- ...but be sure to use the *old* IPID for the lookup for
                     -- the preexisting record
-                  . PackageIndex.deleteComponentId pkgid
+                  . PackageIndex.deleteUnitId pkgid
                   $ planIndex plan
     }
 

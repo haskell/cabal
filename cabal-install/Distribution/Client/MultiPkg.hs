@@ -397,7 +397,7 @@ linearizeInstallPlan =
           ipkgid = installedPackageId pkg
           ipkg   = Installed.emptyInstalledPackageInfo {
                      Installed.sourcePackageId    = packageId pkg,
-                     Installed.installedComponentId = ipkgid
+                     Installed.installedUnitId = ipkgid
                    }
           plan'  = InstallPlan.completed ipkgid (Just ipkg)
                      (BuildOk True DocsNotTried TestsNotTried)
@@ -473,7 +473,7 @@ encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
     toJ (InstallPlan.PreExisting ipi) =
       J.object
         [ "type"      J..= J.String "pre-existing"
-        , "compentId" J..= unCId (installedComponentId ipi)
+        , "compentId" J..= unCId (installedUnitId ipi)
         , "lib"       J..= J.object
                              [ "depends" J..= map unCId (installedDepends ipi)
                              ]
@@ -482,7 +482,7 @@ encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
     toJ (InstallPlan.Configured ecp) =
       J.object
         [ "type"      J..= J.String "configured"
-        , "compentId" J..= (unCId . installedComponentId) ecp
+        , "compentId" J..= (unCId . installedUnitId) ecp
         , "lib"       J..= J.object
                              [ "depends" J..= map unCId
                                                 (ComponentDeps.libraryDeps
@@ -492,5 +492,5 @@ encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
 
     toJ _ = error "encodePlanToJson: only expecting PreExisting and Configured"
 
-    unCId (ComponentId s) = J.String s
+    unCId uid = J.String (display uid)
 

@@ -870,7 +870,7 @@ data BuildTimeSettings
        buildSettingOnlyDeps              :: Bool,
        buildSettingSummaryFile           :: [PathTemplate],
        buildSettingLogFile               :: Maybe (Compiler  -> Platform
-                                                -> PackageId -> ComponentId
+                                                -> PackageId -> UnitId
                                                              -> FilePath),
        buildSettingLogVerbosity          :: Verbosity,
        buildSettingBuildReports          :: ReportLevel,
@@ -951,7 +951,7 @@ resolveBuildTimeSettings verbosity
     -- parallel (in which case the default location is used).
     --
     buildSettingLogFile :: Maybe (Compiler -> Platform
-                               -> PackageId -> ComponentId -> FilePath)
+                               -> PackageId -> UnitId -> FilePath)
     buildSettingLogFile
       | useDefaultTemplate = Just (substLogFileName defaultTemplate)
       | otherwise          = fmap  substLogFileName givenTemplate
@@ -970,12 +970,12 @@ resolveBuildTimeSettings verbosity
 
     substLogFileName :: PathTemplate
                      -> Compiler -> Platform
-                     -> PackageId -> ComponentId -> FilePath
-    substLogFileName template compiler platform pkgid compid =
+                     -> PackageId -> UnitId -> FilePath
+    substLogFileName template compiler platform pkgid uid =
         fromPathTemplate (substPathTemplate env template)
       where
         env = initialPathTemplateEnv
-                pkgid compid (compilerInfo compiler) platform
+                pkgid uid (compilerInfo compiler) platform
 
     -- If the user has specified --remote-build-reporting=detailed or
     -- --build-log, use more verbose logging.

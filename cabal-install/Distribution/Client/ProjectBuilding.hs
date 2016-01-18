@@ -485,7 +485,7 @@ buildAndInstallUnpackedPackage verbosity
           -- We register ourselves rather than via Setup.hs. We need to
           -- grab and modify the InstalledPackageInfo. We decide what
           -- the installed package id is, not the build system.
-          let ipkg' = ipkg { Installed.installedComponentId = ipkgid }
+          let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
           Cabal.registerPackage verbosity compiler progdb
                                 True -- multi-instance, nix style
                                 (pkgRegisterPackageDBStack pkg) ipkg'
@@ -627,7 +627,7 @@ buildInplaceUnpackedPackage verbosity
                 -- We register ourselves rather than via Setup.hs. We need to
                 -- grab and modify the InstalledPackageInfo. We decide what
                 -- the installed package id is, not the build system.
-                let ipkg' = ipkg { Installed.installedComponentId = ipkgid }
+                let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
                 Cabal.registerPackage verbosity compiler progdb False
                                       (pkgRegisterPackageDBStack pkg)
                                       ipkg'

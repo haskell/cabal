@@ -21,7 +21,7 @@ import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
-import Data.Maybe (isNothing, fromJust)
+import Data.Maybe (isNothing)
 import Data.Either (rights)
 
 #if !MIN_VERSION_base(4,8,0)

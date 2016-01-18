@@ -297,7 +297,7 @@ instance Package ElaboratedConfiguredPackage where
   packageId = pkgSourceId
 
 instance HasUnitId ElaboratedConfiguredPackage where
-  installedComponentId = pkgInstalledId
+  installedUnitId = pkgInstalledId
 
 instance PackageFixedDeps ElaboratedConfiguredPackage where
   depends = fmap (map installedPackageId) . pkgDependencies
@@ -1042,7 +1042,7 @@ elaborateInstallPlan platform compiler progdb
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
-          = ComponentId (display pkgid ++ "-inplace")
+          = mkUnitId (display pkgid ++ "-inplace")
           
           | otherwise
           = assert (isJust pkgSourceHash) $
@@ -1127,7 +1127,7 @@ elaborateInstallPlan platform compiler progdb
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               (installedComponentId pkg)
+               (installedUnitId pkg)
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1201,7 +1201,7 @@ elaborateInstallPlan platform compiler progdb
       $ map installedPackageId
       $ InstallPlan.reverseDependencyClosure
           solverPlan
-          [ fakeComponentId (packageId pkg)
+          [ fakeUnitId (packageId pkg)
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
@@ -1803,7 +1803,7 @@ setupHsConfigureFlags (ReadyPackage
     configDistPref            = toFlag builddir
     configVerbosity           = toFlag verbosity
 
-    configIPID                = toFlag (display (installedComponentId pkg))
+    configIPID                = toFlag (display (installedUnitId pkg))
 
     configProgramPaths        = programDbProgramPaths pkgConfigProgramDb
     configProgramArgs         = programDbProgramArgs  pkgConfigProgramDb
@@ -1847,7 +1847,7 @@ setupHsConfigureFlags (ReadyPackage
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
     configDependencies        = [ (packageName (Installed.sourcePackageId deppkg),
-                                  Installed.installedComponentId deppkg)
+                                  Installed.installedUnitId deppkg)
                                 | deppkg <- CD.nonSetupDeps pkgdeps ]
     configConstraints         = [ thisPackageVersion (packageId deppkg)
                                 | deppkg <- CD.nonSetupDeps pkgdeps ]
@@ -2098,7 +2098,7 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     -- since overwriting is never safe.
 
     canPackageBeImproved pkg =
-      PackageIndex.lookupComponentId
+      PackageIndex.lookupUnitId
         installedPkgIndex (installedPackageId pkg)
 
     replaceWithPreExisting =

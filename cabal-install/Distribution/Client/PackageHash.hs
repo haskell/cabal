@@ -25,7 +25,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, ComponentId(..), InstalledPackageId )
+         ( PackageId, InstalledPackageId, mkUnitId )
 import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
@@ -62,7 +62,7 @@ import System.IO         (withBinaryFile, IOMode(..))
 --
 hashedInstalledPackageId :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageId pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    ComponentId $
+    mkUnitId $
          display pkgHashPkgId   -- to be a bit user friendly
       ++ "-"
       ++ showHashValue (hashPackageHashInputs pkghashinputs)
