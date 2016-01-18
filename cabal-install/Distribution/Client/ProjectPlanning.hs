@@ -1856,7 +1856,6 @@ setupHsConfigureFlags (ReadyPackage
     -- TODO: [required eventually] have to do this differently for older Cabal versions
     configPackageDBs          = Nothing : map Just pkgBuildPackageDBStack
 
-    configInstantiateWith     = mempty --TODO: [research required] unused within cabal-install
     configTests               = toFlag (TestStanzas  `Set.member` pkgStanzasEnabled)
     configBenchmarks          = toFlag (BenchStanzas `Set.member` pkgStanzasEnabled)
 
