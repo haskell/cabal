@@ -649,7 +649,8 @@ configFieldDescriptions src =
         -- fails on that. Instead of a hand-written hackaged parser
         -- and printer, we should handle this case properly in the
         -- library.
-       ,liftField configOptimization (\v flags -> flags { configOptimization = v }) $
+       ,liftField configOptimization (\v flags ->
+                                       flags { configOptimization = v }) $
         let name = "optimization" in
         FieldDescr name
           (\f -> case f of
@@ -669,7 +670,8 @@ configFieldDescriptions src =
              where
                lstr = lowercase str
                caseWarning = PWarning $
-                 "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+                 "The '" ++ name
+                 ++ "' field is case sensitive, use 'True' or 'False'.")
        ,liftField configDebugInfo (\v flags -> flags { configDebugInfo = v }) $
         let name = "debug-info" in
         FieldDescr name
@@ -862,7 +864,8 @@ parseConfig src initial = \str -> do
       when (remoteRepoKeyThreshold r' > length (remoteRepoRootKeys r')) $
         warning $ "'key-threshold' for repository " ++ show (remoteRepoName r')
                ++ " higher than number of keys"
-      when (not (null (remoteRepoRootKeys r')) && remoteRepoSecure r' /= Just True) $
+      when (not (null (remoteRepoRootKeys r'))
+            && remoteRepoSecure r' /= Just True) $
         warning $ "'root-keys' for repository " ++ show (remoteRepoName r')
                ++ " non-empty, but 'secure' not set to True."
       return (r':rs, h, u, g, p, a)
@@ -913,7 +916,8 @@ showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
-      case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos . savedGlobalFlags $ vals of
+      case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos
+           . savedGlobalFlags $ vals of
         [] -> Disp.text ""
         (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
   $+$ Disp.text ""
@@ -1037,12 +1041,14 @@ userConfigDiff globalFlags = do
 
     combine (Nothing, Just b) (Just a, Nothing) = (Just a, Just b)
     combine (Just a, Nothing) (Nothing, Just b) = (Just a, Just b)
-    combine x y = error $ "Can't happen : userConfigDiff " ++ show x ++ " " ++ show y
+    combine x y = error $ "Can't happen : userConfigDiff "
+                  ++ show x ++ " " ++ show y
 
     createDiff :: [String] -> (String, (Maybe String, Maybe String)) -> [String]
     createDiff acc (key, (Just a, Just b))
         | a == b = acc
-        | otherwise = ("+ " ++ key ++ ": " ++ b) : ("- " ++ key ++ ": " ++ a) : acc
+        | otherwise = ("+ " ++ key ++ ": " ++ b)
+                      : ("- " ++ key ++ ": " ++ a) : acc
     createDiff acc (key, (Nothing, Just b)) = ("+ " ++ key ++ ": " ++ b) : acc
     createDiff acc (key, (Just a, Nothing)) = ("- " ++ key ++ ": " ++ a) : acc
     createDiff acc (_, (Nothing, Nothing)) = acc
