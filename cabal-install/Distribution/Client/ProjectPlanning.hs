@@ -2135,6 +2135,7 @@ setupHsCopyFlags _ _ verbosity builddir =
       --TODO: [nice to have] we currently just rely on Setup.hs copy to always do the right
       -- thing, but perhaps we ought really to copy into an image dir and do
       -- some sanity checks and move into the final location ourselves
+      copyArgs      = [], -- TODO: could use this to only copy what we enabled
       copyDest      = toFlag InstallDirs.NoCopyDest,
       copyDistPref  = toFlag builddir,
       copyVerbosity = toFlag verbosity

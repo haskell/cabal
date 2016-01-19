@@ -86,6 +86,15 @@ extra-source-files:
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
+  tests/PackageTests/Configure/A.hs
+  tests/PackageTests/Configure/Setup.hs
+  tests/PackageTests/Configure/X11.cabal
+  tests/PackageTests/CopyComponent/Exe/Main.hs
+  tests/PackageTests/CopyComponent/Exe/Main2.hs
+  tests/PackageTests/CopyComponent/Exe/myprog.cabal
+  tests/PackageTests/CopyComponent/Lib/Main.hs
+  tests/PackageTests/CopyComponent/Lib/p.cabal
+  tests/PackageTests/CopyComponent/Lib/src/P.hs
   tests/PackageTests/DeterministicAr/Lib.hs
   tests/PackageTests/DeterministicAr/my.cabal
   tests/PackageTests/DuplicateModuleName/DuplicateModuleName.cabal

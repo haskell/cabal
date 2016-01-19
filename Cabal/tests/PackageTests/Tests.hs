@@ -312,6 +312,20 @@ tests config = do
           _ <- shell "autoreconf" ["-i"]
           cabal_build []
 
+  -- Test that per-component copy works, when only building library
+  tc "CopyComponent/Lib" $
+      withPackageDb $ do
+          cabal "configure" []
+          cabal "build" ["lib:p"]
+          cabal "copy" ["lib:p"]
+
+  -- Test that per-component copy works, when only building one executable
+  tc "CopyComponent/Exe" $
+      withPackageDb $ do
+          cabal "configure" []
+          cabal "build" ["myprog"]
+          cabal "copy" ["myprog"]
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir

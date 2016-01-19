@@ -27,6 +27,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup (CopyFlags(..), fromFlag)
+import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -82,10 +83,14 @@ install pkg_descr lbi flags = do
   unless (hasLibs pkg_descr || hasExes pkg_descr) $
       die "No executables and no library found. Nothing to do."
 
+  targets <- readBuildTargets pkg_descr (copyArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+
   -- Install (package-global) data files
   installDataFiles verbosity pkg_descr dataPref
 
   -- Install (package-global) Haddock files
+  -- TODO: these should be done per-library
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
@@ -117,7 +122,15 @@ install pkg_descr lbi flags = do
       [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
       | lfile <- lfiles ]
 
-  withLibLBI pkg_descr lbi $ \lib clbi -> do
+  -- It's not necessary to do these in build-order, but it's harmless
+  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
+    copyComponent verbosity pkg_descr lbi comp clbi copydest
+
+copyComponent :: Verbosity -> PackageDescription
+              -> LocalBuildInfo -> Component -> ComponentLocalBuildInfo
+              -> CopyDest
+              -> IO ()
+copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     let InstallDirs{
             libdir = libPref,
             includedir = incPref
@@ -149,7 +162,7 @@ install pkg_descr lbi flags = do
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
-  withExeLBI pkg_descr lbi $ \exe clbi -> do
+copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     let installDirs@InstallDirs {
             bindir = binPref
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
@@ -174,6 +187,9 @@ install pkg_descr lbi flags = do
       _ -> die $ "installing with "
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
+
+-- Nothing to do for benchmark/testsuite
+copyComponent _ _ _ _ _ _ = return ()
 
 -- | Install the files listed in data-files
 --

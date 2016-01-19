@@ -305,7 +305,7 @@ copyAction hooks flags args = do
         flags' = flags { copyDistPref = toFlag distPref }
     hookedAction preCopy copyHook postCopy
                  (getBuildConfig hooks verbosity distPref)
-                 hooks flags' args
+                 hooks flags' { copyArgs = args } args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
 installAction hooks flags args = do
@@ -575,12 +575,9 @@ autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = \_ flags ->
-                       -- not using 'readHook' here because 'build' takes
-                       -- extra args
-                       getHookedBuildInfo $ fromFlag $ buildVerbosity flags,
+       preBuild    = readHookWithArgs buildVerbosity,
+       preCopy     = readHookWithArgs copyVerbosity,
        preClean    = readHook cleanVerbosity,
-       preCopy     = readHook copyVerbosity,
        preInst     = readHook installVerbosity,
        preHscolour = readHook hscolourVerbosity,
        preHaddock  = readHook haddockVerbosity,
@@ -603,6 +600,12 @@ autoconfUserHooks
                    postConf simpleUserHooks args flags pkg_descr' lbi
 
           backwardsCompatHack = False
+
+          readHookWithArgs :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
+          readHookWithArgs get_verbosity _ flags = do
+              getHookedBuildInfo verbosity
+            where
+              verbosity = fromFlag (get_verbosity flags)
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do

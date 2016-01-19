@@ -38,7 +38,6 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.PackageDescription hiding (Flag)
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
-import Distribution.ModuleName (ModuleName)
 
 import Distribution.Simple.Setup
 import Distribution.Simple.BuildTarget
@@ -58,12 +57,10 @@ import Distribution.Verbosity
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Either
-         ( partitionEithers )
 import Data.List
          ( intersect )
 import Control.Monad
-         ( when, unless, forM_ )
+         ( when, unless )
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
@@ -569,48 +566,3 @@ writeAutogenFiles verbosity pkg lbi clbi = do
 
   let cppHeaderPath = autogenModulesDir lbi clbi </> cppHeaderName
   rewriteFile cppHeaderPath (Build.Macros.generate pkg lbi clbi)
-
--- | Check that the given build targets are valid in the current context.
---
--- Also swizzle into a more convenient form.
---
-checkBuildTargets :: Verbosity -> PackageDescription -> [BuildTarget]
-                  -> IO [(ComponentName, Maybe (Either ModuleName FilePath))]
-checkBuildTargets _ pkg []      =
-    return [ (componentName c, Nothing) | c <- pkgEnabledComponents pkg ]
-
-checkBuildTargets verbosity pkg targets = do
-
-    let (enabled, disabled) =
-          partitionEithers
-            [ case componentDisabledReason (getComponent pkg cname) of
-                Nothing     -> Left  target'
-                Just reason -> Right (cname, reason)
-            | target <- targets
-            , let target'@(cname,_) = swizzleTarget target ]
-
-    case disabled of
-      []                 -> return ()
-      ((cname,reason):_) -> die $ formatReason (showComponentName cname) reason
-
-    forM_ [ (c, t) | (c, Just t) <- enabled ] $ \(c, t) ->
-      warn verbosity $ "Ignoring '" ++ either display id t ++ ". The whole "
-                    ++ showComponentName c ++ " will be built. (Support for "
-                    ++ "module and file targets has not been implemented yet.)"
-
-    return enabled
-
-  where
-    swizzleTarget (BuildTargetComponent c)   = (c, Nothing)
-    swizzleTarget (BuildTargetModule    c m) = (c, Just (Left  m))
-    swizzleTarget (BuildTargetFile      c f) = (c, Just (Right f))
-
-    formatReason cn DisabledComponent =
-        "Cannot build the " ++ cn ++ " because the component is marked "
-     ++ "as disabled in the .cabal file."
-    formatReason cn DisabledAllTests =
-        "Cannot build the " ++ cn ++ " because test suites are not "
-     ++ "enabled. Run configure with the flag --enable-tests"
-    formatReason cn DisabledAllBenchmarks =
-        "Cannot build the " ++ cn ++ " because benchmarks are not "
-     ++ "enabled. Re-run configure with the flag --enable-benchmarks"
