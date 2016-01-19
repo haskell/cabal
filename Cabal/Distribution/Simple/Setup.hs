@@ -829,7 +829,10 @@ instance Semigroup ConfigFlags where
 data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
-    copyVerbosity :: Flag Verbosity
+    copyVerbosity :: Flag Verbosity,
+    -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
+    -- think it's a hack, it's the right way to make hooks more robust
+    copyArgs :: [String]
   }
   deriving Show
 
@@ -837,19 +840,28 @@ defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
-    copyVerbosity = Flag normal
+    copyVerbosity = Flag normal,
+    copyArgs      = []
   }
 
 copyCommand :: CommandUI CopyFlags
 copyCommand = CommandUI
   { commandName         = "copy"
-  , commandSynopsis     = "Copy the files into the install locations."
+  , commandSynopsis     = "Copy the files of all/specific components to install locations."
   , commandDescription  = Just $ \_ -> wrapText $
-          "Does not call register, and allows a prefix at install time. "
+          "Components encompass executables and libraries."
+       ++ "Does not call register, and allows a prefix at install time. "
        ++ "Without the --destdir flag, configure determines location.\n"
-  , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " copy [FLAGS]\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " build           "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " build foo       "
+        ++ "    A component (i.e. lib, exe, test suite)"
+  , commandUsage        = usageAlternatives "copy" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultCopyFlags
   , commandOptions      = \showOrParseArgs ->
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
@@ -873,7 +885,8 @@ instance Monoid CopyFlags where
   mempty = CopyFlags {
     copyDest      = mempty,
     copyDistPref  = mempty,
-    copyVerbosity = mempty
+    copyVerbosity = mempty,
+    copyArgs      = mempty
   }
   mappend = (Semi.<>)
 
@@ -881,7 +894,8 @@ instance Semigroup CopyFlags where
   a <> b = CopyFlags {
     copyDest      = combine copyDest,
     copyDistPref  = combine copyDistPref,
-    copyVerbosity = combine copyVerbosity
+    copyVerbosity = combine copyVerbosity,
+    copyArgs      = combine copyArgs
   }
     where combine field = field a `mappend` field b
 

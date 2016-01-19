@@ -272,6 +272,20 @@ tests config =
   -- Test for 'build-type: Configure' example from the Cabal manual.
   , tc "Configure" $ cabal_build []
 
+  -- Test that per-component copy works, when only building library
+  , tc "CopyComponent/Lib" $
+        withPackageDb $ do
+            cabal "configure" []
+            cabal "build" ["lib:p"]
+            cabal "copy" ["lib:p"]
+
+  -- Test that per-component copy works, when only building one executable
+  , tc "CopyComponent/Exe" $
+        withPackageDb $ do
+            cabal "configure" []
+            cabal "build" ["myprog"]
+            cabal "copy" ["myprog"]
+
   ]
   where
     -- Shared test function for BuildDeps/InternalLibrary* tests.

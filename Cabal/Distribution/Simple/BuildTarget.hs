@@ -29,6 +29,9 @@ module Distribution.Simple.BuildTarget (
     resolveBuildTargets,
     BuildTargetProblem(..),
     reportBuildTargetProblems,
+
+    -- * Checking build targets
+    checkBuildTargets
   ) where
 
 import Distribution.PackageDescription
@@ -36,6 +39,7 @@ import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Text
 import Distribution.Simple.Utils
+import Distribution.Verbosity
 
 import Distribution.Compat.Binary (Binary)
 import qualified Distribution.Compat.ReadP as Parse
@@ -937,3 +941,49 @@ matchInexactly cannonicalise xs =
 
 caseFold :: String -> String
 caseFold = lowercase
+
+
+-- | Check that the given build targets are valid in the current context.
+--
+-- Also swizzle into a more convenient form.
+--
+checkBuildTargets :: Verbosity -> PackageDescription -> [BuildTarget]
+                  -> IO [(ComponentName, Maybe (Either ModuleName FilePath))]
+checkBuildTargets _ pkg []      =
+    return [ (componentName c, Nothing) | c <- pkgEnabledComponents pkg ]
+
+checkBuildTargets verbosity pkg targets = do
+
+    let (enabled, disabled) =
+          partitionEithers
+            [ case componentDisabledReason (getComponent pkg cname) of
+                Nothing     -> Left  target'
+                Just reason -> Right (cname, reason)
+            | target <- targets
+            , let target'@(cname,_) = swizzleTarget target ]
+
+    case disabled of
+      []                 -> return ()
+      ((cname,reason):_) -> die $ formatReason (showComponentName cname) reason
+
+    forM_ [ (c, t) | (c, Just t) <- enabled ] $ \(c, t) ->
+      warn verbosity $ "Ignoring '" ++ either display id t ++ ". The whole "
+                    ++ showComponentName c ++ " will be processed. (Support for "
+                    ++ "module and file targets has not been implemented yet.)"
+
+    return enabled
+
+  where
+    swizzleTarget (BuildTargetComponent c)   = (c, Nothing)
+    swizzleTarget (BuildTargetModule    c m) = (c, Just (Left  m))
+    swizzleTarget (BuildTargetFile      c f) = (c, Just (Right f))
+
+    formatReason cn DisabledComponent =
+        "Cannot process the " ++ cn ++ " because the component is marked "
+     ++ "as disabled in the .cabal file."
+    formatReason cn DisabledAllTests =
+        "Cannot process the " ++ cn ++ " because test suites are not "
+     ++ "enabled. Run configure with the flag --enable-tests"
+    formatReason cn DisabledAllBenchmarks =
+        "Cannot process the " ++ cn ++ " because benchmarks are not "
+     ++ "enabled. Re-run configure with the flag --enable-benchmarks"

@@ -173,7 +173,7 @@ emptyUserHooks
       preClean  = rn,
       cleanHook = ru,
       postClean = ru,
-      preCopy   = rn,
+      preCopy   = rn',
       copyHook  = ru,
       postCopy  = ru,
       preInst   = rn,
