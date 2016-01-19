@@ -294,7 +294,7 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
-    configIPID          :: Flag String, -- ^ explicit IPID to be used
+    configIPID          :: Flag UnitId, -- ^ explicit IPID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configVerbosity :: Flag Verbosity, -- ^verbosity level
@@ -561,7 +561,9 @@ configureOptions showOrParseArgs =
       ,option "" ["ipid"]
          "Installed package ID to compile this package as"
          configIPID (\v flags -> flags {configIPID = v})
-         (reqArgFlag "IPID")
+         (reqArg "IPID"
+                 (readP_to_E (const "ipid expected") (fmap Flag parse))
+                 (map display . flagToList))
 
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"

@@ -1510,20 +1510,24 @@ mkComponentsLocalBuildInfo :: ConfigFlags
 mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps
                            graph flagAssignment = do
+    -- The logic here is pretty interesting: the input
+    -- InstalledPackageId is intended
+
     -- Pre-compute library hash so we can setup internal deps
     -- TODO configIPID should have name changed
-    let cid = case configIPID cfg of
-                Flag cid0 ->
+    let uid = case configIPID cfg of
+                Flag (SimpleUnitId (ComponentId cid0)) ->
                     -- Hack to reuse install dirs machinery
                     -- NB: no real IPID available at this point
                     let env = packageTemplateEnv (package pkg_descr)
                                                  (mkUnitId "")
                         str = fromPathTemplate
                                 (InstallDirs.substPathTemplate env (toPathTemplate cid0))
-                    in ComponentId str
+                    in SimpleUnitId (ComponentId str)
                 _ ->
-                  computeComponentId (package pkg_descr) CLibName (getDeps CLibName) flagAssignment
-        uid = SimpleUnitId cid
+                  SimpleUnitId $ computeComponentId
+                                    (package pkg_descr) CLibName
+                                    (getDeps CLibName) flagAssignment
         (_, compat_key) = computeCompatPackageKey comp (package pkg_descr) CLibName uid
     sequence
       [ do clbi <- componentLocalBuildInfo uid compat_key c
