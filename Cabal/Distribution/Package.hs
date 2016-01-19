@@ -125,8 +125,6 @@ data ComponentId
 
 type InstalledPackageId = UnitId
 
-pattern InstalledPackageId = UnitId
-
 instance Binary ComponentId
 
 instance Text ComponentId where
@@ -150,6 +148,8 @@ newtype UnitId = SimpleUnitId ComponentId
 -- | Makes a simple-style UnitId from a string.
 mkUnitId :: String -> UnitId
 mkUnitId = SimpleUnitId . ComponentId
+
+pattern InstalledPackageId id = SimpleUnitId id
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
