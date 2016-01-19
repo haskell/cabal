@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -28,7 +29,7 @@ module Distribution.Package (
         mkUnitId,
         mkLegacyUnitId,
         getHSLibraryName,
-        InstalledPackageId, -- backwards compat
+        InstalledPackageId(..), -- backwards compat
 
         -- * ABI hash
         AbiHash(..),
@@ -123,6 +124,8 @@ data ComponentId
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 type InstalledPackageId = UnitId
+
+pattern InstalledPackageId = UnitId
 
 instance Binary ComponentId
 
