@@ -705,7 +705,7 @@ configFieldDescriptions src =
 
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
-       ["verbose", "check"] []
+       ["verbose", "check", "documentation"] []
 
   ++ toSavedConfig liftReportFlag
        (commandOptions reportCommand ParseArgs)
