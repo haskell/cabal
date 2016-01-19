@@ -635,7 +635,7 @@ configFieldDescriptions src =
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
-       (["builddir", "constraint", "dependency"]
+       (["builddir", "constraint", "dependency", "ipid"]
         ++ map fieldName installDirsFields)
 
         -- This is only here because viewAsFieldDescr gives us a parser
@@ -692,7 +692,8 @@ configFieldDescriptions src =
              where
                lstr = lowercase str
                caseWarning = PWarning $
-                 "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
+                 "The '" ++ name
+                 ++ "' field is case sensitive, use 'True' or 'False'.")
        ]
 
   ++ toSavedConfig liftConfigExFlag
@@ -720,8 +721,10 @@ configFieldDescriptions src =
        (configDistPref . savedConfigureFlags)
        (\distPref config ->
           config
-          { savedConfigureFlags = (savedConfigureFlags config) { configDistPref = distPref }
-          , savedHaddockFlags = (savedHaddockFlags config) { haddockDistPref = distPref }
+          { savedConfigureFlags = (savedConfigureFlags config) {
+               configDistPref = distPref }
+          , savedHaddockFlags = (savedHaddockFlags config) {
+               haddockDistPref = distPref }
           }
        )
        ParseArgs
