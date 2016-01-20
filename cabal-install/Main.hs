@@ -131,8 +131,9 @@ import qualified Distribution.Make as Make
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
-         ( CommandParse(..), CommandUI(..), Command, CommandSpec(..), CommandType(..)
-         , commandsRun, commandAddAction, hiddenCommand, commandFromSpec)
+         ( CommandParse(..), CommandUI(..), Command, CommandSpec(..)
+         , CommandType(..), commandsRun, commandAddAction, hiddenCommand
+         , commandFromSpec)
 import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
@@ -271,12 +272,21 @@ mainWorker args = topHandler $
 
 type Action = GlobalFlags -> IO ()
 
-regularCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
-regularCmd ui action = CommandSpec ui ((flip commandAddAction) action) NormalCommand
-hiddenCmd :: CommandUI flags -> (flags -> [String] -> action) -> CommandSpec action
-hiddenCmd ui action = CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action)) HiddenCommand
-wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity) -> (flags -> Flag String) -> CommandSpec Action
-wrapperCmd ui verbosity distPref = CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
+regularCmd :: CommandUI flags -> (flags -> [String] -> action)
+           -> CommandSpec action
+regularCmd ui action =
+  CommandSpec ui ((flip commandAddAction) action) NormalCommand
+
+hiddenCmd :: CommandUI flags -> (flags -> [String] -> action)
+          -> CommandSpec action
+hiddenCmd ui action =
+  CommandSpec ui (\ui' -> hiddenCommand (commandAddAction ui' action))
+  HiddenCommand
+
+wrapperCmd :: Monoid flags => CommandUI flags -> (flags -> Flag Verbosity)
+           -> (flags -> Flag String) -> CommandSpec Action
+wrapperCmd ui verbosity distPref =
+  CommandSpec ui (\ui' -> wrapperAction ui' verbosity distPref) NormalCommand
 
 wrapperAction :: Monoid flags
               => CommandUI flags
@@ -708,7 +718,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         haddockFlags { haddockDistPref = toFlag distPref }
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
-  -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the future.
+  -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the
+  -- future.
   conf' <- configureAllKnownPrograms verbosity conf
 
   -- If we're working inside a sandbox and the user has set the -w option, we
@@ -716,7 +727,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- timestamp record for this compiler to the timestamp file.
   configFlags'' <- case useSandbox of
     NoSandbox               -> configAbsolutePaths $ configFlags'
-    (UseSandbox sandboxDir) -> return $ setPackageDB sandboxDir comp platform configFlags'
+    (UseSandbox sandboxDir) -> return $ setPackageDB sandboxDir comp platform
+                                                     configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf'
@@ -998,7 +1010,8 @@ uploadAction uploadFlags extraArgs globalFlags = do
       tarfiles     = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     die "the 'upload' command expects at least one .tar.gz archive."
-  when (fromFlag (uploadCheck uploadFlags') && fromFlag (uploadDoc uploadFlags')) $
+  when (fromFlag (uploadCheck uploadFlags')
+        && fromFlag (uploadDoc uploadFlags')) $
     die "--check and --doc cannot be used together."
   checkTarFiles extraArgs
   maybe_password <-
@@ -1014,7 +1027,8 @@ uploadAction uploadFlags extraArgs globalFlags = do
     else if fromFlag (uploadDoc uploadFlags')
     then do
       when (length tarfiles > 1) $
-       die "the 'upload' command can only upload documentation for one package at a time."
+       die $ "the 'upload' command can only upload documentation "
+             ++ "for one package at a time."
       tarfile <- maybe (generateDocTarball config) return $ listToMaybe tarfiles
       Upload.uploadDoc verbosity
                        repoContext
@@ -1043,8 +1057,10 @@ uploadAction uploadFlags extraArgs globalFlags = do
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
     generateDocTarball config = do
-      notice verbosity  "No documentation tarball specified. Building documentation tarball..."
-      haddockAction (defaultHaddockFlags { haddockForHackage = Flag True }) [] globalFlags
+      notice verbosity
+        "No documentation tarball specified. Building documentation tarball..."
+      haddockAction (defaultHaddockFlags { haddockForHackage = Flag True })
+                    [] globalFlags
       distPref <- findSavedDistPref config NoFlag
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
       return $ distPref </> display (packageId pkg) ++ "-docs" <.> "tar.gz"
@@ -1072,10 +1088,11 @@ uninstallAction _verbosityFlag extraArgs _globalFlags = do
   let package = case extraArgs of
         p:_ -> p
         _   -> "PACKAGE_NAME"
-  die $ "This version of 'cabal-install' does not support the 'uninstall' operation. "
-        ++ "It will likely be implemented at some point in the future; in the meantime "
-        ++ "you're advised to use either 'ghc-pkg unregister " ++ package ++ "' or "
-        ++ "'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
+  die $ "This version of 'cabal-install' does not support the 'uninstall' "
+    ++ "operation. "
+    ++ "It will likely be implemented at some point in the future; "
+    ++ "in the meantime you're advised to use either 'ghc-pkg unregister "
+    ++ package ++ "' or 'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
 
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> Action
