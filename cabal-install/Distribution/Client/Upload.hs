@@ -1,6 +1,3 @@
--- This is a quick hack for uploading packages to Hackage.
--- See http://hackage.haskell.org/trac/hackage/wiki/CabalUpload
-
 module Distribution.Client.Upload (check, upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
