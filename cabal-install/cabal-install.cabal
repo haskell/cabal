@@ -132,7 +132,7 @@ executable cabal
         Cabal      >= 1.22.2   && < 1.23,
         containers >= 0.1      && < 0.6,
         filepath   >= 1.0      && < 1.5,
-        HTTP       >= 4000.2.5 && < 4000.3,
+        HTTP       >= 4000.2.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
         pretty     >= 1        && < 1.2,
         random     >= 1        && < 1.2,
