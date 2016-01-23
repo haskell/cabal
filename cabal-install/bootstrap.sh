@@ -178,33 +178,33 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-PARSEC_VER="3.1.7";    PARSEC_VER_REGEXP="[3]\.[01]\."
+PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
-DEEPSEQ_VER="1.4.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
+DEEPSEQ_VER="1.4.1.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-BINARY_VER="0.7.2.3";  BINARY_VER_REGEXP="[0]\.[7]\."
-                       # == 0.7.*
-TEXT_VER="1.2.0.3";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
+BINARY_VER="0.8.0.1";  BINARY_VER_REGEXP="[0]\.[78]\."
+                       # >= 0.7 && < 0.9
+TEXT_VER="1.2.2.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
-NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
+NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
-NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_VER_REGEXP="2\.6\."
+NETWORK_URI_VER="2.6.0.3"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
 CABAL_VER="1.22.6.0";  CABAL_VER_REGEXP="1\.22"
                        # >= 1.22 && < 1.23
-TRANS_VER="0.4.2.0";   TRANS_VER_REGEXP="0\.[4]\."
-                       # >= 0.2.* && < 0.5
+TRANS_VER="0.5.1.0";   TRANS_VER_REGEXP="0\.[45]\."
+                       # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
-HTTP_VER="4000.2.19";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
-                       # >= 4000.2.5 < 4000.3
-ZLIB_VER="0.5.4.2";    ZLIB_VER_REGEXP="0\.[45]\."
-                       # == 0.4.* || == 0.5.*
-TIME_VER="1.5"         TIME_VER_REGEXP="1\.[12345]\.?"
-                       # >= 1.1 && < 1.6
+HTTP_VER="4000.3.2";   HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
+                       # >= 4000.2.5 < 4000.4
+ZLIB_VER="0.6.1.1";    ZLIB_VER_REGEXP="0\.((5\.([3-9]|1[0-9]))|6\.?)"
+                       # >= 0.5.3 && < 0.7
+TIME_VER="1.6"         TIME_VER_REGEXP="1\.[123456]\.?"
+                       # >= 1.1 && < 1.7
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
-STM_VER="2.4.4";       STM_VER_REGEXP="2\."
+STM_VER="2.4.4.1";     STM_VER_REGEXP="2\."
                        # == 2.*
 OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
                        # >=1.0.0.0 && <1.2
