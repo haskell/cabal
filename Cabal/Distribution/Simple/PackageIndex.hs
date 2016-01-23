@@ -59,6 +59,10 @@ module Distribution.Simple.PackageIndex (
   dependencyCycles,
   dependencyGraph,
   moduleNameIndex,
+
+  -- * Backwards compatibility
+  deleteInstalledPackageId,
+  lookupInstalledPackageId,
   ) where
 
 import Distribution.Compat.Binary
@@ -236,8 +240,8 @@ insert pkg (PackageIndex pids pnames) =
 -- | Removes a single installed package from the index.
 --
 deleteUnitId :: HasUnitId a
-                         => UnitId -> PackageIndex a
-                         -> PackageIndex a
+             => UnitId -> PackageIndex a
+             -> PackageIndex a
 deleteUnitId ipkgid original@(PackageIndex pids pnames) =
   case Map.updateLookupWithKey (\_ _ -> Nothing) ipkgid pids of
     (Nothing,     _)     -> original
@@ -256,6 +260,12 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
         (\xs -> if List.null xs then Nothing else Just xs)
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
+-- | Backwards compatibility wrapper for pre-Cabal 1.23.
+{-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead" #-}
+deleteInstalledPackageId :: HasUnitId a
+                         => UnitId -> PackageIndex a
+                         -> PackageIndex a
+deleteInstalledPackageId = deleteUnitId
 
 -- | Removes all packages with this source 'PackageId' from the index.
 --
@@ -337,8 +347,14 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- then we get back at most one package.
 --
 lookupUnitId :: PackageIndex a -> UnitId
-                         -> Maybe a
+             -> Maybe a
 lookupUnitId (PackageIndex pids _) pid = Map.lookup pid pids
+
+-- | Backwards compatibility for pre Cabal-1.23.
+{-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}
+lookupInstalledPackageId :: PackageIndex a -> UnitId
+                         -> Maybe a
+lookupInstalledPackageId = lookupUnitId
 
 
 -- | Does a lookup by source package id (name & version).

@@ -29,6 +29,7 @@
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
         installedComponentId,
+        installedPackageId,
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -41,7 +42,7 @@ module Distribution.InstalledPackageInfo (
 
 import Distribution.ParseUtils
 import Distribution.License
-import Distribution.Package hiding (installedUnitId)
+import Distribution.Package hiding (installedUnitId, installedPackageId)
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
 import Distribution.Version
@@ -102,6 +103,11 @@ data InstalledPackageInfo
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi = case installedUnitId ipi of
                             SimpleUnitId cid -> cid
+
+{-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
+-- | Backwards compatibility with pre-Cabal 1.23.
+installedPackageId :: InstalledPackageInfo -> UnitId
+installedPackageId = installedUnitId
 
 instance Binary InstalledPackageInfo
 
