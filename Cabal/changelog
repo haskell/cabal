@@ -1,3 +1,9 @@
+1.22.7.0 Ryan Thomas <ryan@ryant.org> January 2016
+	* Backport #3012 to the 1.22 branch
+	* Cabal.cabal: change build-type to Simple
+	* Add foldl' import
+	* The Cabal part for fully gcc-like response files
+
 1.22.6.0
 	* Relax upper bound to allow upcoming binary-0.8
 
