@@ -1,5 +1,5 @@
 
-VERSION=1.20.0.3
+VERSION=1.20.0.4
 
 #KIND=devel
 KIND=rc
