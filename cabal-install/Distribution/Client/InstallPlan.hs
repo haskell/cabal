@@ -30,6 +30,7 @@ module Distribution.Client.InstallPlan (
   remove,
   reverted,
   preexisting,
+  preinstalled,
 
   showPlanIndex,
   showInstallPlan,
@@ -77,7 +78,7 @@ import Distribution.Text
 import Data.List
          ( foldl', intercalate )
 import Data.Maybe
-         ( fromMaybe, maybeToList )
+         ( fromMaybe, catMaybes )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import qualified Data.Tree as Tree
@@ -85,7 +86,6 @@ import Data.Binary
 import GHC.Generics
 import Control.Exception
          ( assert )
-import Data.Maybe (catMaybes)
 import qualified Data.Map as Map
 import qualified Data.Traversable as T
 
@@ -349,24 +349,22 @@ ready plan = assert check readyPackages
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
     readyPackages :: [(GenericReadyPackage srcpkg ipkg, ComponentDeps [iresult])]
-    readyPackages =
-      [ (ReadyPackage srcpkg ipkgDeps, iresultDeps)
-      | srcpkg <- configuredPackages
-        -- select only the package that have all of their deps installed:
-      , (ipkgDeps, iresultDeps) <- maybeToList (hasAllInstalledDeps srcpkg)
-      ]
+    readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
-    hasAllInstalledDeps :: srcpkg
-                        -> Maybe ( ComponentDeps [ipkg]
-                                 , ComponentDeps [iresult] )
-    hasAllInstalledDeps pkg = do
-      combinedDeps <- T.mapM (mapM isInstalledDep) (depends pkg)
-      let ipkgDeps    :: ComponentDeps [ipkg]
-          iresultDeps :: ComponentDeps [iresult]
-          ipkgDeps    = fmap (            map fst) combinedDeps
-          iresultDeps = fmap (catMaybes . map snd) combinedDeps
-      return (ipkgDeps, iresultDeps)
-
+lookupReadyPackage :: forall ipkg srcpkg iresult ifailure. 
+                      PackageFixedDeps srcpkg
+                   => GenericInstallPlan ipkg srcpkg iresult ifailure
+                   -> srcpkg
+                   -> Maybe ( GenericReadyPackage srcpkg ipkg
+                            , ComponentDeps [iresult] )
+lookupReadyPackage plan pkg = do
+    combinedDeps <- T.mapM (mapM isInstalledDep) (depends pkg)
+    let ipkgDeps    :: ComponentDeps [ipkg]
+        iresultDeps :: ComponentDeps [iresult]
+        ipkgDeps    = fmap (            map fst) combinedDeps
+        iresultDeps = fmap (catMaybes . map snd) combinedDeps
+    return (ReadyPackage pkg ipkgDeps, iresultDeps)
+  where
     isInstalledDep :: UnitId -> Maybe (ipkg, Maybe iresult)
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which
@@ -532,6 +530,25 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                   . PackageIndex.deleteUnitId pkgid
                   $ planIndex plan
     }
+
+
+-- | Replace a ready package with an installed one. The installed one
+-- must have exactly the same dependencies as the source one was configured
+-- with.
+--
+preinstalled :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                 HasUnitId srcpkg, PackageFixedDeps srcpkg)
+             => InstalledPackageId
+             -> Maybe ipkg -> iresult
+             -> GenericInstallPlan ipkg srcpkg iresult ifailure
+             -> GenericInstallPlan ipkg srcpkg iresult ifailure
+preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
+  where
+    plan' = plan { planIndex = PackageIndex.insert installed (planIndex plan) }
+    Just installed = do
+      Configured pkg <- PackageIndex.lookupUnitId (planIndex plan) pkgid
+      (rpkg, _) <- lookupReadyPackage plan pkg
+      return (Installed rpkg mipkg buildResult)
 
 
 mapPreservingGraph :: (HasUnitId ipkg,    PackageFixedDeps ipkg,

@@ -150,22 +150,34 @@ build verbosity
     -- which bits of the plan we will want to execute.
     --
     elaboratedInstallPlan' <-
-      selectTargets verbosity
-                    elaboratedInstallPlan
-                    buildSettings
+      selectTargets elaboratedInstallPlan
                     userTargets
+
+    -- 1.c) Check if any packages don't need rebuilding, and improve the plan.
+    -- This also gives us more accurate reasons for the --dry-run output.
+    --
+    (elaboratedInstallPlan'', pkgsBuildStatus) <-
+      rebuildTargetsDryRun distDirLayout
+                           elaboratedInstallPlan'
+
+    -- Tell the user what we're going to do
+    checkPrintPlan verbosity
+                   elaboratedInstallPlan''
+                   buildSettings
 
     -- Phase 2: now do it.
     --
     -- Execute all or parts of the description of what to do to build or
     -- rebuild the various packages needed.
     --
-    unless (buildSettingDryRun buildSettings) $
-      rebuildTargets verbosity
-                     distDirLayout
-                     elaboratedInstallPlan'
-                     sharedPackageConfig
-                     buildSettings
+    unless (buildSettingDryRun buildSettings) $ do
+      _ <- rebuildTargets verbosity
+                          distDirLayout
+                          elaboratedInstallPlan''
+                          sharedPackageConfig
+                          pkgsBuildStatus
+                          buildSettings
+      return ()
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -230,15 +242,10 @@ configure verbosity
 ------------------------------------------------------------------------------
 
 
-selectTargets :: Verbosity
-              -> ElaboratedInstallPlan
-              -> BuildTimeSettings
+selectTargets :: ElaboratedInstallPlan
               -> [UserBuildTarget]
               -> IO ElaboratedInstallPlan
-selectTargets verbosity
-              installPlan
-              buildSettings
-              userBuildTargets = do
+selectTargets installPlan userBuildTargets = do
 
     -- Match the user targets against the available targets. If no targets are
     -- given this uses the package in the current directory, if any.
@@ -264,15 +271,7 @@ selectTargets verbosity
     -- Finally, prune the install plan to cover just those target packages
     -- and their deps.
     --
-    let installPlan' :: ElaboratedInstallPlan
-        installPlan' = pruneInstallPlanToTargets buildTargets' installPlan
-
-    -- Tell the user what we're going to do
-    checkPrintPlan verbosity
-                   installPlan'
-                   buildSettings
-
-    return installPlan'
+    return (pruneInstallPlanToTargets buildTargets' installPlan)
   where
     localPackages =
       [ (pkgDescription pkg, pkgSourceLocation pkg)

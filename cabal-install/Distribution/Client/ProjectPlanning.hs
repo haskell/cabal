@@ -8,6 +8,7 @@ module Distribution.Client.ProjectPlanning (
     -- * elaborated install plan types
     ElaboratedInstallPlan,
     ElaboratedConfiguredPackage(..),
+    ElaboratedPlanPackage,
     ElaboratedSharedConfig(..),
     ElaboratedReadyPackage,
     BuildStyle(..),

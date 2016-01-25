@@ -1,7 +1,7 @@
 -- | A cache which tracks a value whose validity depends upon
 -- the state of various files in the filesystem.
 
-{-# LANGUAGE CPP, DeriveGeneric, GeneralizedNewtypeDeriving,
+{-# LANGUAGE CPP, DeriveGeneric, DeriveFunctor, GeneralizedNewtypeDeriving,
              NamedFieldPuns, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -319,7 +319,7 @@ data MonitorChangedReason a =
      -- that we cannot decode the values. This is completely benign as we can
      -- treat is just as if there were no cache file and re-run.
    | MonitorCorruptCache
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Test if the input value or files monitored by the 'FileMonitor' have
 -- changed. If not, return the cached value.

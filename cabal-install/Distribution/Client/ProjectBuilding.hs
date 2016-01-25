@@ -5,7 +5,9 @@
 -- | 
 --
 module Distribution.Client.ProjectBuilding (
-
+    BuildStatus(..),
+    BuildStatusRebuild(..),
+    rebuildTargetsDryRun,
     rebuildTargets
   ) where
 
@@ -16,9 +18,9 @@ import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
                    ( PackageLocation(..), GenericReadyPackage(..)
-                   , PackageFixedDeps, installedPackageId )
+                   , PackageFixedDeps(..), installedPackageId )
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan )
+                   ( GenericInstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.ComponentDeps (ComponentDeps)
@@ -70,20 +72,417 @@ import           System.Exit (ExitCode)
 
 
 ------------------------------------------------------------------------------
+-- * Overall building strategy.
+------------------------------------------------------------------------------
+--
+-- We start with an 'ElaboratedInstallPlan' that has already been improved by
+-- reusing packages from the store. So the remaining packages in the
+-- 'InstallPlan.Configured' state are ones we either need to build or rebuild.
+--
+-- First, we do a preliminary dry run phase where we work out which packages
+-- we really need to (re)build, and for the ones we do need to build which
+-- build phase to start at.
+
+
+------------------------------------------------------------------------------
+-- * Dry run: what bits of the 'ElaboratedInstallPlan' will we execute?
+------------------------------------------------------------------------------
+
+-- We split things like this for a couple reasons. Firstly we need to be able
+-- to do dry runs, and these need to be reasonably accurate in terms of
+-- letting users know what (and why) things are going to be (re)built.
+--
+-- Given that we need to be able to do dry runs, it would not be great if
+-- we had to repeat all the same work when we do it for real. Not only is
+-- it duplicate work, but it's duplicate code which is likely to get out of
+-- sync. So we do things only once. We preserve info we discover in the dry
+-- run phase and rely on it later when we build things for real. This also
+-- somewhat simplifies the build phase. So this way the dry run can't so
+-- easily drift out of sync with the real thing since we're relying on the
+-- info it produces.
+--
+-- An additional advantage is that it makes it easier to debug rebuild
+-- errors (ie rebuilding too much or too little), since all the rebuild
+-- decisions are made without making any state changes at the same time
+-- (that would make it harder to reproduce the problem sitation).
+
+
+-- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'
+--
+type BuildStatusMap = Map InstalledPackageId BuildStatus
+
+-- | The build status for an individual package. That is, the state that the
+-- package is in prior to initiating a (re)build.
+--
+-- It serves two purposes:
+--
+--  * For dry-run output, it lets us explain to the user if and why a package
+--    is going to be (re)built.
+--
+--  * It tell us what step to start or resume building from, and carries
+--    enough information for us to be able to do so.
+--
+data BuildStatus =
+
+     -- | The package is in the 'InstallPlan.PreExisting' state, so does not
+     --   need building.
+     BuildStatusPreExisting
+
+     -- | The package has not been downloaded yet, so it will have to be
+     --   downloaded, unpacked and built.
+   | BuildStatusDownload
+
+     -- | The package has not been unpacked yet, so it will have to be
+     --   unpacked and built.
+   | BuildStatusUnpack FilePath
+
+     -- | The package exists in a local dir already, and just needs building
+     --   or rebuilding. So this can only happen for 'BuildInplaceOnly' style
+     --   packages.
+   | BuildStatusRebuild FilePath BuildStatusRebuild
+
+     -- | The package exists in a local dir already, and is fully up to date.
+     --   So this package can be put into the 'InstallPlan.Installed' state
+     --   and it does not need to be built.
+   | BuildStatusUpToDate (Maybe InstalledPackageInfo) BuildSuccess
+
+-- | For a package that is going to be built or rebuilt, the state it's in now.
+--
+-- So again, this tells us why a package needs to be rebuilt and what build
+-- phases need to be run. The 'MonitorChangedReason' gives us details like
+-- which file changed, which is mainly for high verbosity debug output.
+--
+data BuildStatusRebuild =
+
+     -- | The package configuration changed, so the configure and build phases
+     --   needs to be (re)run.
+     BuildStatusConfigure (MonitorChangedReason ())
+
+     -- | The depencencies of this package have been (re)built but the
+     --   configuration has not changed. So the build phase needs to be rerun.
+   | BuildStatusDepsRebuilt (Maybe InstalledPackageInfo)
+
+     -- | The package changed but the configuration and deps have not changed.
+     --   So the build phase needs to be rerun. Typically this is due to
+     --   changes in files within the package.
+     --
+     --   An important special case here is that no files have changed but the
+     --   set of components the /user asked to build/ has changed. We track the
+     --   set of components /we have built/, which of course only grows (until
+     --   some other change resets it).
+     --
+     --   So the 'Set' 'ComponentName' here is the union of the components we
+     --   have built previously plus the ones the user has asked for this time.
+     --   So that means it's also the new set we will have built, and we will
+     --   save this for next time.
+     --
+   | BuildStatusBuild (MonitorChangedReason (Set ComponentName))
+                      (Maybe InstalledPackageInfo)
+
+-- | Which 'BuildStatus' values indicate we'll have to do some build work of
+-- some sort. In particular we use this as part of checking if any a package's
+-- deps have changed.
+--
+buildStatusRequiresBuild :: BuildStatus -> Bool
+buildStatusRequiresBuild BuildStatusPreExisting = False
+buildStatusRequiresBuild BuildStatusUpToDate {} = False
+buildStatusRequiresBuild _                      = True
+
+-- | Do the dry run pass. This is a prerequisite of 'rebuildTargets'.
+--
+-- It gives us the 'BuildStatusMap' and also gives us an improved version of
+-- the 'ElaboratedInstallPlan' with packages switched to the
+-- 'InstallPlan.Installed' state when we find that they're already up to date.
+--
+rebuildTargetsDryRun :: DistDirLayout
+                     -> ElaboratedInstallPlan
+                     -> IO (ElaboratedInstallPlan, BuildStatusMap)
+rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
+
+    -- Do the various checks to work out the 'BuildStatus' of each package
+    pkgsBuildStatus <- traverseInstallPlan installPlan dryRunPkg
+
+    -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
+    -- 'InstallPlan.Installed'.
+    let installPlan' = improveInstallPlanWithUpToDatePackages
+                         installPlan pkgsBuildStatus
+
+    return (installPlan', pkgsBuildStatus)
+  where
+    dryRunPkg :: ElaboratedPlanPackage
+              -> ComponentDeps [BuildStatus]
+              -> IO BuildStatus
+    dryRunPkg (InstallPlan.PreExisting _pkg) _depsBuildStatus =
+      return BuildStatusPreExisting
+
+    dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
+      mloc <- checkFetched (pkgSourceLocation pkg)
+      case mloc of
+        Nothing -> return BuildStatusDownload
+
+        Just (LocalUnpackedPackage srcdir) ->
+          -- For the case of a user-managed local dir, irrespective of the
+          -- build style, we build from that directory and put build
+          -- artifacts under the shared dist directory.
+          dryRunLocalPkg pkg depsBuildStatus srcdir
+
+        -- The three tarball cases are handled the same as each other,
+        -- though depending on the build style.
+        Just (LocalTarballPackage    tarball) ->
+          dryRunTarballPkg pkg depsBuildStatus tarball
+
+        Just (RemoteTarballPackage _ tarball) ->
+          dryRunTarballPkg pkg depsBuildStatus tarball
+
+        Just (RepoTarballPackage _ _ tarball) ->
+          dryRunTarballPkg pkg depsBuildStatus tarball
+
+    dryRunPkg (InstallPlan.Processing {}) _ = unexpectedState
+    dryRunPkg (InstallPlan.Installed  {}) _ = unexpectedState
+    dryRunPkg (InstallPlan.Failed     {}) _ = unexpectedState
+
+    unexpectedState = error "rebuildTargetsDryRun: unexpected package state"
+
+    dryRunTarballPkg :: ElaboratedConfiguredPackage
+                     -> ComponentDeps [BuildStatus]
+                     -> FilePath
+                     -> IO BuildStatus
+    dryRunTarballPkg pkg depsBuildStatus tarball =
+      case pkgBuildStyle pkg of
+        BuildAndInstall  -> return (BuildStatusUnpack tarball)
+        BuildInplaceOnly -> do
+          -- TODO: [nice to have] use a proper file monitor rather than this dir exists test
+          exists <- doesDirectoryExist srcdir
+          if exists
+            then dryRunLocalPkg pkg depsBuildStatus srcdir
+            else return (BuildStatusUnpack tarball)
+      where
+        srcdir = distUnpackedSrcDirectory (packageId pkg)
+
+    dryRunLocalPkg :: ElaboratedConfiguredPackage
+                   -> ComponentDeps [BuildStatus]
+                   -> FilePath
+                   -> IO BuildStatus
+    dryRunLocalPkg pkg depsBuildStatus srcdir = do
+        -- Go and do lots of I/O, reading caches and probing files to work out
+        -- if anything has changed
+        change <- checkPackageFileMonitorChanged
+                    packageFileMonitor pkg srcdir depsBuildStatus
+        case change of
+          -- It did change, giving us 'BuildStatusRebuild' info on why
+          Left rebuild ->
+            return (BuildStatusRebuild srcdir rebuild)
+
+          -- No changes, the package is up to date. Use the saved build results.
+          Right (mipkg, buildSuccess) ->
+            return (BuildStatusUpToDate mipkg buildSuccess)
+      where
+        packageFileMonitor =
+          newPackageFileMonitor distDirLayout (packageId pkg)
+
+
+traverseInstallPlan :: forall m ipkg srcpkg iresult ifailure b.
+                       (Monad m,
+                        HasUnitId ipkg,   PackageFixedDeps ipkg,
+                        HasUnitId srcpkg, PackageFixedDeps srcpkg)
+                    => GenericInstallPlan ipkg srcpkg iresult ifailure
+                    -> (GenericPlanPackage ipkg srcpkg iresult ifailure ->
+                        ComponentDeps [b] -> m b)
+                    -> m (Map InstalledPackageId b)
+traverseInstallPlan plan0 visit =
+    go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
+  where
+    go :: Map InstalledPackageId b
+       -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+       -> m (Map InstalledPackageId b)
+    go !results [] = return results
+
+    go !results (pkg : pkgs) = do
+      -- we go in the right order so the results map has entries for all deps
+      let depresults :: ComponentDeps [b]
+          depresults = fmap (map (results Map.!)) (depends pkg)
+      result <- visit pkg depresults
+      let results' = Map.insert (installedPackageId pkg) result results
+      go results' pkgs
+
+improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
+                                       -> BuildStatusMap
+                                       -> ElaboratedInstallPlan
+improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
+    replaceWithPreInstalled installPlan
+      [ (installedPackageId pkg, mipkg, buildSuccess)
+      | InstallPlan.Configured pkg
+          <- InstallPlan.reverseTopologicalOrder installPlan
+      , let ipkgid = installedPackageId pkg
+      , BuildStatusUpToDate mipkg buildSuccess <- [pkgsBuildStatus Map.! ipkgid]
+      ]
+  where
+    replaceWithPreInstalled =
+      foldl' (\plan (ipkgid, mipkg, buildSuccess) ->
+                InstallPlan.preinstalled ipkgid mipkg buildSuccess plan)
+
+
+-----------------------------
+-- Package change detection
+--
+
+-- | As part of the dry run for local unpacked packages we have to check if the
+-- package config or files have changed. That is the purpose of
+-- 'PackageFileMonitor' and 'checkPackageFileMonitorChanged'.
+--
+-- When a package is (re)built, the monitor must be updated to reflect the new
+-- state of the package. Because we sometimes build without reconfiguring the
+-- state updates are split into two, one for package config changes and one
+-- for other changes. This is the purpose of 'updatePackageConfigFileMonitor'
+-- and 'updatePackageBuildFileMonitor'.
+--
+data PackageFileMonitor = PackageFileMonitor {
+       pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage
+                                           (Maybe InstalledPackageInfo),
+
+       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccess
+     }
+
+newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
+newPackageFileMonitor DistDirLayout{distPackageCacheFile} pkgid =
+    PackageFileMonitor {
+      pkgFileMonitorConfig =
+        newFileMonitor (distPackageCacheFile pkgid "config"),
+
+      pkgFileMonitorBuild =
+        FileMonitor {
+          fileMonitorCacheFile = distPackageCacheFile pkgid "build",
+          fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
+            componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt,
+          fileMonitorCheckIfOnlyValueChanged = True
+        }
+    }
+
+-- | Helper function for 'checkPackageFileMonitorChanged',
+-- 'updatePackageConfigFileMonitor' and 'updatePackageBuildFileMonitor'.
+--
+-- It selects the info from a 'ElaboratedConfiguredPackage' that are used by
+-- the 'FileMonitor's (in the 'PackageFileMonitor') to detect value changes.
+--
+packageFileMonitorKeyValues :: ElaboratedConfiguredPackage
+                            -> (ElaboratedConfiguredPackage, Set ComponentName)
+packageFileMonitorKeyValues pkg =
+    (pkgconfig, buildComponents)
+  where
+    pkgconfig = pkg { pkgBuildTargets = [] }
+
+    buildComponents = Set.fromList (map buildTargetComponentName
+                                        (pkgBuildTargets pkg))
+
+-- | Do all the checks on whether a package has changed and thus needs either
+-- rebuilding or reconfiguring and rebuilding.
+--
+checkPackageFileMonitorChanged :: PackageFileMonitor
+                               -> ElaboratedConfiguredPackage
+                               -> FilePath
+                               -> ComponentDeps [BuildStatus]
+                               -> IO (Either BuildStatusRebuild
+                                            (Maybe InstalledPackageInfo,
+                                             BuildSuccess))
+checkPackageFileMonitorChanged PackageFileMonitor{..}
+                               pkg srcdir depsBuildStatus = do
+    --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
+    configChanged <- checkFileMonitorChanged
+                       pkgFileMonitorConfig srcdir pkgconfig
+    case configChanged of
+      MonitorChanged reason ->
+        return (Left (BuildStatusConfigure (fmap (const ()) reason)))
+
+      MonitorUnchanged mipkg _
+          -- The configChanged here includes the identity of the dependencies,
+          -- so depsBuildStatus is just needed for the changes in the content
+          -- of depencencies.
+        | any buildStatusRequiresBuild (CD.flatDeps depsBuildStatus) ->
+            return (Left (BuildStatusDepsRebuilt mipkg))
+
+        | otherwise -> do
+            buildChanged  <- checkFileMonitorChanged
+                               pkgFileMonitorBuild srcdir buildComponents
+            case buildChanged of
+              MonitorChanged reason ->
+                return (Left (BuildStatusBuild reason mipkg))
+
+              MonitorUnchanged buildSuccess _ ->
+                return (Right (mipkg, markUnchanged buildSuccess))
+                where
+                  --TODO: [code cleanup] make this cleaner
+                  --      remove the Bool from BuildOk, rely on the BuildStatus
+                  markUnchanged :: BuildSuccess -> BuildSuccess
+                  markUnchanged (BuildOk _ b c) = BuildOk False b c
+
+  where
+    (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+
+
+updatePackageConfigFileMonitor :: PackageFileMonitor
+                               -> FilePath
+                               -> ElaboratedConfiguredPackage
+                               -> Maybe InstalledPackageInfo
+                               -> IO ()
+updatePackageConfigFileMonitor PackageFileMonitor{pkgFileMonitorConfig}
+                               srcdir pkg mipkg =
+    updateFileMonitor pkgFileMonitorConfig srcdir
+                      []
+                      pkgconfig mipkg
+  where
+    (pkgconfig, _buildComponents) = packageFileMonitorKeyValues pkg
+
+updatePackageBuildFileMonitor :: PackageFileMonitor
+                              -> FilePath
+                              -> ElaboratedConfiguredPackage
+                              -> BuildStatusRebuild
+                              -> [FilePath]
+                              -> BuildSuccess
+                              -> IO ()
+updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
+                              srcdir pkg pkgBuildStatus
+                              allSrcFiles buildSuccess =
+    updateFileMonitor pkgFileMonitorBuild srcdir
+                      (map MonitorFileHashed allSrcFiles)
+                      buildComponents' buildSuccess
+  where
+    (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+
+    -- If the only thing that's changed is that we're now building extra
+    -- components, then we can avoid later unnecessary rebuilds by saving the
+    -- total set of components that have been built, namely the union of the
+    -- existing ones plus the new ones. If files also changed this would be
+    -- the wrong thing to do. Note that we rely on the
+    -- fileMonitorCheckIfOnlyValueChanged = True mode to get this guarantee
+    -- that it's /only/ the value that changed not any files that changed.
+    buildComponents' =
+      case pkgBuildStatus of
+        BuildStatusBuild (MonitoredValueChanged prevBuildComponents) _
+          -> buildComponents `Set.union` prevBuildComponents
+        _ -> buildComponents
+
+
+------------------------------------------------------------------------------
 -- * Doing it: executing an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
 
+-- | Build things for real.
+--
+-- It requires the 'BuildStatusMap' gatthered by 'rebuildTargetsDryRun'.
+--
 rebuildTargets :: Verbosity
                -> DistDirLayout
                -> ElaboratedInstallPlan
                -> ElaboratedSharedConfig
+               -> BuildStatusMap
                -> BuildTimeSettings
-               -> IO ()
+               -> IO ElaboratedInstallPlan
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
                sharedPackageConfig
+               pkgsBuildStatus
                buildSettings@BuildTimeSettings{buildSettingNumJobs} = do
 
     -- Concurrency control: create the job controller and concurrency limits
@@ -100,105 +499,169 @@ rebuildTargets verbosity
 
     -- Before traversing the install plan, pre-emptively find all packages that
     -- will need to be downloaded and start downloading them.
-    pkgsToDownload <- packagesRequiringDownload
-                        pkgSourceLocation
-                        installPlan
-
-    _residualPlan <- 
-      asyncDownloadPackages verbosity withRepoCtx
-                            pkgsToDownload $ \downloadMap ->
+    asyncDownloadPackages verbosity withRepoCtx
+                          installPlan pkgsBuildStatus $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      executeInstallPlan verbosity jobControl installPlan $
-        \rpkg@(ReadyPackage cpkg _) depResults ->
-        handle (return . BuildFailure) $ do
+      executeInstallPlan verbosity jobControl installPlan $ \pkg _depResults ->
+        handle (return . BuildFailure) $ --TODO: review exception handling
 
-        -- If necessary, wait for the download of the remote package to finish.
-        srcloc <- waitAsyncPackageDownload verbosity downloadMap cpkg
+        let ipkgid         = installedPackageId pkg
+            pkgBuildStatus = pkgsBuildStatus Map.! ipkgid in
 
-        -- We're not typing up buildLimit-limited resources while downloading,
-        -- but we are once we start unpacking and building.
-        withJobLimit buildLimit $
-          withPackageInLocalDirectory
-            verbosity distDirLayout srcloc
-            (packageId rpkg) (pkgBuildStyle cpkg)
-            (pkgDescriptionOverride cpkg)$ \srcdir builddir ->
-
-            case pkgBuildStyle cpkg of
-              BuildAndInstall ->
-                buildAndInstallUnpackedPackage
-                  verbosity distDirLayout
-                  buildSettings installLock cacheLock
-                  sharedPackageConfig
-                  rpkg
-                  srcdir builddir'
-                where
-                  builddir' = makeRelative srcdir builddir
-                  --TODO: [nice to have] ^^ do this relative stuff better
-
-              BuildInplaceOnly ->
-                --TODO: [nice to have] use a relative build dir rather than absolute
-                buildInplaceUnpackedPackage
-                  verbosity distDirLayout
-                  buildSettings cacheLock
-                  sharedPackageConfig
-                  rpkg depResults
-                  srcdir builddir
-
-    return ()
-
+        rebuildTarget
+          verbosity
+          distDirLayout
+          buildSettings downloadMap
+          buildLimit installLock cacheLock 
+          sharedPackageConfig
+          pkg
+          pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
     withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
                         buildSettings
 
+-- | Given all the context and resources, (re)build an individual package.
+--
+rebuildTarget :: Verbosity
+              -> DistDirLayout
+              -> BuildTimeSettings
+              -> AsyncDownloadMap
+              -> JobLimit -> Lock -> Lock
+              -> ElaboratedSharedConfig
+              -> ElaboratedReadyPackage
+              -> BuildStatus
+              -> IO BuildResult
+rebuildTarget verbosity
+              distDirLayout@DistDirLayout{distBuildDirectory}
+              buildSettings downloadMap
+              buildLimit installLock cacheLock
+              sharedPackageConfig
+              rpkg@(ReadyPackage pkg _)
+              pkgBuildStatus =
+
+    -- We rely on the 'BuildStatus' to decide which phase to start from:
+    case pkgBuildStatus of
+      BuildStatusDownload              -> downloadPhase
+      BuildStatusUnpack tarball        -> unpackTarballPhase tarball
+      BuildStatusRebuild srcdir status -> rebuildPhase status srcdir
+
+      -- TODO: perhaps re-nest the types to make these impossible
+      BuildStatusPreExisting {} -> unexpectedState
+      BuildStatusUpToDate    {} -> unexpectedState
+  where
+    unexpectedState = error "rebuildTarget: unexpected package status"
+
+    downloadPhase = do
+        downsrcloc <- waitAsyncPackageDownload verbosity downloadMap pkg
+        case downsrcloc of
+          DownloadedTarball tarball -> unpackTarballPhase tarball
+          --TODO: [nice to have] git/darcs repos etc
+
+
+    unpackTarballPhase tarball =
+      withJobLimit buildLimit $
+        withTarballLocalDirectory
+          verbosity distDirLayout tarball
+          (packageId pkg) (pkgBuildStyle pkg)
+          (pkgDescriptionOverride pkg) $
+
+          case pkgBuildStyle pkg of
+            BuildAndInstall  -> buildAndInstall
+            BuildInplaceOnly -> buildInplace buildStatus
+              where
+                buildStatus = BuildStatusConfigure MonitorFirstRun
+
+    -- Note that this really is rebuild, not build. It can only happen for
+    -- 'BuildInplaceOnly' style packages. 'BuildAndInstall' style packages
+    -- would only start from download or unpack phases.
+    --
+    rebuildPhase buildStatus srcdir =
+        assert (pkgBuildStyle pkg == BuildInplaceOnly) $
+
+        withJobLimit buildLimit $
+          buildInplace buildStatus srcdir builddir
+      where
+        builddir = distBuildDirectory (packageId pkg)
+
+    buildAndInstall srcdir builddir =
+        buildAndInstallUnpackedPackage
+          verbosity distDirLayout
+          buildSettings installLock cacheLock
+          sharedPackageConfig
+          rpkg
+          srcdir builddir'
+      where
+        builddir' = makeRelative srcdir builddir
+        --TODO: [nice to have] ^^ do this relative stuff better
+
+    buildInplace buildStatus srcdir builddir =
+        --TODO: [nice to have] use a relative build dir rather than absolute
+        buildInplaceUnpackedPackage
+          verbosity distDirLayout
+          buildSettings cacheLock
+          sharedPackageConfig
+          rpkg
+          buildStatus
+          srcdir builddir
 
 --TODO: [nice to have] do we need to use a with-style for the temp files for downloading http
 -- packages, or are we going to cache them persistently?
 
--- | Given the current 'InstallPlan', work out which packages will require
--- a download step of some form, and return the locations of those packages,
--- in the dependency order (so that the one's we'll need first are the ones
--- we will start downloading first).
---
-packagesRequiringDownload :: (srcpkg -> PackageLocation (Maybe FilePath))
-                          -> GenericInstallPlan ipkg srcpkg iresult ifailure
-                          -> IO [PackageLocation (Maybe FilePath)]
-packagesRequiringDownload packageSourceLocation installPlan =
-    filterM (fmap not . isFetched)
-      [ packageSourceLocation pkg
-      | InstallPlan.Configured pkg
-         <- InstallPlan.reverseTopologicalOrder installPlan
-      ]
-
 type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
-                            (MVar (PackageLocation FilePath))
+                            (MVar DownloadedSourceLocation)
 
--- | Fork off an async action to download all the given packages. The body
--- action is passed a map from those packages (identified by their location)
--- to a completion var for that package. So the body action should lookup the
--- location and use 'waitAsyncPackageDownload' to get the result.
+data DownloadedSourceLocation = DownloadedTarball FilePath
+                              --TODO: [nice to have] git/darcs repos etc
+
+downloadedSourceLocation :: PackageLocation FilePath
+                         -> Maybe DownloadedSourceLocation
+downloadedSourceLocation pkgloc =
+    case pkgloc of
+      RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
+      RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
+      _                              -> Nothing
+
+-- | Given the current 'InstallPlan' and 'BuildStatusMap', select all the
+-- packages we have to download and fork off an async action to download them.
+-- We download them in dependency order so that the one's we'll need
+-- first are the ones we will start downloading first.
+--
+-- The body action is passed a map from those packages (identified by their
+-- location) to a completion var for that package. So the body action should
+-- lookup the location and use 'waitAsyncPackageDownload' to get the result.
 --
 asyncDownloadPackages :: Verbosity
                       -> ((RepoContext -> IO ()) -> IO ())
-                      -> [PackageLocation (Maybe FilePath)]
+                      -> ElaboratedInstallPlan
+                      -> BuildStatusMap
                       -> (AsyncDownloadMap -> IO a)
                       -> IO a
-asyncDownloadPackages _ _ [] body = body Map.empty
-asyncDownloadPackages verbosity withRepoCtx pkglocs0 body = do
+asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
+  | null pkgsToDownload = body Map.empty
+  | otherwise = do
     --TODO: [research required] use parallel downloads? if so, use the fetchLimit
 
-    asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkglocs0
+    asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkgsToDownload
 
     let downloadAction :: IO ()
         downloadAction =
           withRepoCtx $ \repoctx ->
-            forM_ asyncDownloadVars $ \(pkgloc, var) ->
-              fetchPackage verbosity repoctx pkgloc >>= putMVar var
+            forM_ asyncDownloadVars $ \(pkgloc, var) -> do
+              Just scrloc <- downloadedSourceLocation <$>
+                             fetchPackage verbosity repoctx pkgloc
+              putMVar var scrloc
 
     withAsync downloadAction $ \_ ->
-      let !asyncDownloadMap = Map.fromList asyncDownloadVars
-      in body asyncDownloadMap
+      body (Map.fromList asyncDownloadVars)
+  where
+    pkgsToDownload = 
+      [ pkgSourceLocation pkg
+      | InstallPlan.Configured pkg
+         <- InstallPlan.reverseTopologicalOrder installPlan
+      , BuildStatusDownload <- [pkgsBuildStatus Map.! installedPackageId pkg]
+      ]
 
 
 -- | Check if a package needs downloading, and if so expect to find a download
@@ -207,23 +670,16 @@ asyncDownloadPackages verbosity withRepoCtx pkglocs0 body = do
 waitAsyncPackageDownload :: Verbosity
                          -> AsyncDownloadMap
                          -> ElaboratedConfiguredPackage
-                         -> IO (PackageLocation FilePath)
-waitAsyncPackageDownload verbosity downloadMap pkg = do
-    mloc <- checkFetched (pkgSourceLocation pkg)
-    case mloc of
-      Nothing  -> do let Just hnd = Map.lookup (pkgSourceLocation pkg) downloadMap
-                     debug verbosity $ "Waiting for download of "
-                                    ++ display (packageId pkg)
-                                    ++ " to finish"
-                     takeMVar hnd
-      Just loc -> return loc
---TODO: [required eventually] do the exception handling on download stuff
-
-
--- for the build cache we use one of two methods:
---  for build type Simple we assume we do actually know the files in the package
---  for other build types we look at all files, only excluding known boring
-
+                         -> IO DownloadedSourceLocation
+waitAsyncPackageDownload verbosity downloadMap pkg =
+    case Map.lookup (pkgSourceLocation pkg) downloadMap of
+      Just hnd -> do
+        debug verbosity $
+          "Waiting for download of " ++ display (packageId pkg) ++ " to finish"
+        --TODO: [required eventually] do the exception handling on download stuff
+        takeMVar hnd
+      Nothing ->
+        fail "waitAsyncPackageDownload: package not being download"
 
 
 executeInstallPlan
@@ -286,35 +742,18 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
 -- | Ensure that the package is unpacked in an appropriate directory, either
 -- a temporary one or a persistent one under the shared dist directory. 
 --
-withPackageInLocalDirectory
+withTarballLocalDirectory
   :: Verbosity
   -> DistDirLayout
-  -> PackageLocation FilePath
+  -> FilePath
   -> PackageId
   -> BuildStyle
   -> Maybe CabalFileText
   -> (FilePath -> FilePath -> IO a)
   -> IO a
-withPackageInLocalDirectory verbosity distDirLayout@DistDirLayout{..}
-                            location pkgid buildstyle pkgTextOverride
-                            buildPkg =
-
-    case location of
-
-      -- For the case of a user-managed local dir, irrespective of the build
-      -- style, we build from that directory and put build artifacts under the
-      -- shared dist directory.
-      LocalUnpackedPackage srcdir ->
-        buildPkg srcdir (distBuildDirectory pkgid)
-
-      -- The three tarball cases are handled the same as each other,
-      -- though depending on the build style.
-      LocalTarballPackage    tarball -> withTarballLocalDirectory tarball
-      RemoteTarballPackage _ tarball -> withTarballLocalDirectory tarball
-      RepoTarballPackage _ _ tarball -> withTarballLocalDirectory tarball
-
-  where
-    withTarballLocalDirectory tarball =
+withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
+                          tarball pkgid buildstyle pkgTextOverride
+                          buildPkg  =
       case buildstyle of
         -- In this case we make a temp dir, unpack the tarball to there and
         -- build and install it from that temp dir.
@@ -561,15 +1000,13 @@ buildInplaceUnpackedPackage :: Verbosity
                             -> DistDirLayout
                             -> BuildTimeSettings -> Lock
                             -> ElaboratedSharedConfig
-                            -> GenericReadyPackage ElaboratedConfiguredPackage
-                                                   InstalledPackageInfo
-                            -> ComponentDeps [BuildSuccess]
+                            -> ElaboratedReadyPackage
+                            -> BuildStatusRebuild
                             -> FilePath -> FilePath
                             -> IO BuildResult
 buildInplaceUnpackedPackage verbosity
-                            DistDirLayout {
+                            distDirLayout@DistDirLayout {
                               distTempDirectory,
-                              distPackageCacheFile,
                               distPackageCacheDirectory
                             }
                             BuildTimeSettings{buildSettingNumJobs}
@@ -579,29 +1016,9 @@ buildInplaceUnpackedPackage verbosity
                               pkgConfigProgramDb = progdb
                             }
                             rpkg@(ReadyPackage pkg _deps)
-                            depResults
+                            buildStatus
                             srcdir builddir = do
 
-    -- The configChanged here includes the identity of the dependencies, so
-    -- depsChanged below is just needed for the changes in the content of deps.
-    --
-    let buildComponents = Set.fromList (map buildTargetComponentName
-                                            (pkgBuildTargets pkg))
-    configChanged <- checkFileMonitorChanged configFileMonitor srcdir pkgconfig
-    buildChanged  <- checkFileMonitorChanged buildFileMonitor  srcdir buildComponents
-    let depsChanged = not $ null [ () | BuildOk True _ _ <- CD.flatDeps depResults ]
-    --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
-
-    case (configChanged, buildChanged, depsChanged) of
-      (MonitorUnchanged mipkg _,
-       MonitorUnchanged buildSuccess _,
-       False) ->
-          return (BuildSuccess mipkg (markUnchanged buildSuccess)) --TODO: [code cleanup] make this cleaner
-        where
-          markUnchanged :: BuildSuccess -> BuildSuccess
-          markUnchanged (BuildOk _ b c) = BuildOk False b c
-
-      _ -> do
         --TODO: [code cleanup] there is duplication between the distdirlayout and the builddir here
         --      builddir is not enough, we also need the per-package cachedir
         createDirectoryIfMissingVerbose verbosity False builddir
@@ -609,7 +1026,7 @@ buildInplaceUnpackedPackage verbosity
         createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
-        whenChanged_ configChanged $ do
+        whenChanged_ buildStatus $ do
           when isParallelBuild $
             notice verbosity $ "Configuring " ++ display pkgid ++ "..."
           setup configureCommand' configureFlags []
@@ -620,7 +1037,7 @@ buildInplaceUnpackedPackage verbosity
         setup buildCommand' buildFlags buildArgs
 
         -- Register locally
-        mipkg <- whenChanged configChanged $
+        mipkg <- whenChanged buildStatus $
           if pkgRequiresRegistration pkg
             then do
                 ipkg <- generateInstalledPackageInfo
@@ -641,36 +1058,18 @@ buildInplaceUnpackedPackage verbosity
             buildSuccess :: BuildSuccess
             buildSuccess = BuildOk True docsResult testsResult
 
-        whenChanged_ configChanged $
-          updateFileMonitor configFileMonitor srcdir
-                            []
-                            pkgconfig mipkg
+        whenChanged_ buildStatus $
+          updatePackageConfigFileMonitor packageFileMonitor srcdir pkg mipkg
+          --TODO: move the mipkg to the build config, and move the config
+          -- update to after a successful configure step
 
         --TODO: [required eventually] temporary hack. We need to look at the package description
         -- and work out the exact file monitors to use
         allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
                    <$> getDirectoryContentsRecursive srcdir
 
-        -- If the only thing that's changed is that we're now building extra
-        -- components, then we can avoid later unnecessary rebuilds by saving
-        -- the total set of components that have been built, namely the union
-        -- of the existing ones plus the new ones. If files also changed this
-        -- would be the wrong thing to do. Note that we rely on the
-        -- fileMonitorCheckIfOnlyValueChanged = True mode to get this guarantee
-        -- that it's /only/ the value that changed not any files that changed.
-        -- 
-        let buildComponents' =
-              case (configChanged, buildChanged) of
-                (MonitorUnchanged _ _,
-                 MonitorChanged (MonitoredValueChanged curBuildComponents))
-                  | not depsChanged -> curBuildComponents
-                           `Set.union` buildComponents
-
-                _otherwise          -> buildComponents
-
-        updateFileMonitor buildFileMonitor srcdir
-                          (map MonitorFileHashed allSrcFiles)
-                          buildComponents' buildSuccess
+        updatePackageBuildFileMonitor packageFileMonitor srcdir pkg buildStatus
+                                      allSrcFiles buildSuccess
 
         return (BuildSuccess mipkg buildSuccess)
 
@@ -678,33 +1077,16 @@ buildInplaceUnpackedPackage verbosity
     pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
-    pkgconfig = ignoreBuildTargets rpkg
-      where
-        ignoreBuildTargets (ReadyPackage p d) =
-          ReadyPackage (p { pkgBuildTargets = [] }) d
-
     isParallelBuild = buildSettingNumJobs >= 2
 
-    configFileMonitor :: FileMonitor
-                           (GenericReadyPackage ElaboratedConfiguredPackage
-                                                InstalledPackageInfo)
-                           (Maybe InstalledPackageInfo)
-    configFileMonitor = newFileMonitor (distPackageCacheFile pkgid "config")
+    packageFileMonitor = newPackageFileMonitor distDirLayout pkgid
 
-    buildFileMonitor :: FileMonitor (Set ComponentName) BuildSuccess
-    buildFileMonitor =
-      FileMonitor {
-        fileMonitorCacheFile = distPackageCacheFile pkgid "build",
-        fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
-          componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt,
-        fileMonitorCheckIfOnlyValueChanged = True
-      }
+    whenChanged_ (BuildStatusConfigure _) action = action
+    whenChanged_ _                        _      = return ()
 
-    whenChanged_ (MonitorChanged   _)   action = action
-    whenChanged_ (MonitorUnchanged _ _) _      = return ()
-
-    whenChanged (MonitorChanged   _)   action = action
-    whenChanged (MonitorUnchanged x _) _      = return x
+    whenChanged (BuildStatusConfigure _) action  = action
+    whenChanged (BuildStatusDepsRebuilt mipkg) _ = return mipkg
+    whenChanged (BuildStatusBuild _     mipkg) _ = return mipkg
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
