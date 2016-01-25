@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.18.1.7 Ryan Thomas <ryan@ryant.org> January 2016
+	* Cabal.cabal: change build-type to Simple.
+
 1.11.x (current development version)
 
 1.10.0.x (next stable release version)
