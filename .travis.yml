@@ -33,7 +33,7 @@ script:
  - export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
-      cabal-1.18 install "$SRC_TGZ";
+      cabal-1.18 -v3 install "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
