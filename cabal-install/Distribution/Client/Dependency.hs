@@ -58,6 +58,7 @@ module Distribution.Client.Dependency (
     setGoalOrder,
     setSolverVerbosity,
     setMaxScore,
+    setFindBestSolution,
     removeLowerBounds,
     removeUpperBounds,
     addDefaultSetupDependencies,
@@ -178,7 +179,8 @@ data DepResolverParams = DepResolverParams {
        -- | Function to override the solver's goal-ordering heuristics.
        depResolverGoalOrder         :: Maybe (Variable QPN -> Variable QPN -> Ordering),
        depResolverVerbosity         :: Verbosity,
-       depResolverMaxScore          :: Maybe InstallPlanScore
+       depResolverMaxScore          :: Maybe InstallPlanScore,
+       depResolverFindBestSolution  :: FindBestSolution
      }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -258,7 +260,8 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverSolveExecutables  = SolveExecutables True,
        depResolverGoalOrder         = Nothing,
        depResolverVerbosity         = normal,
-       depResolverMaxScore          = Nothing
+       depResolverMaxScore          = Nothing,
+       depResolverFindBestSolution  = FindBestSolution False
      }
 
 addTargets :: [PackageName]
@@ -369,6 +372,12 @@ setMaxScore :: Maybe InstallPlanScore -> DepResolverParams -> DepResolverParams
 setMaxScore n params =
     params {
       depResolverMaxScore = n
+    }
+
+setFindBestSolution :: FindBestSolution -> DepResolverParams -> DepResolverParams
+setFindBestSolution findBest params =
+    params {
+      depResolverFindBestSolution = findBest
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -680,7 +689,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
                       shadowing strFlags allowBootLibs maxBkjumps enableBj
-                      solveExes order verbosity mScore)
+                      solveExes order verbosity mScore findBest)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -702,7 +711,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
       solveExes
       order
       verbosity
-      mScore) =
+      mScore
+      findBest) =
         if asBool (depResolverAllowBootLibInstalls params)
         then params
         else dontUpgradeNonUpgradeablePackages params
@@ -940,7 +950,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj
                               _solveExes _allowBootLibInstalls _order _verbosity
-                              _maxScore) =
+                              _maxScore _findBest) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

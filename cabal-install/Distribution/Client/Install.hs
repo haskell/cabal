@@ -382,6 +382,8 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
 
       . setMaxScore maxScore
 
+      . setFindBestSolution findBest
+
       . setIndependentGoals independentGoals
 
       . setReorderGoals reorderGoals
@@ -459,6 +461,7 @@ planPackages verbosity comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     allowBootLibInstalls = fromFlag (installAllowBootLibInstalls installFlags)
     maxScore         = flagToMaybe (installMaxScore       installFlags)
+    findBest         = fromFlag (installFindBestSolution  installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
     allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)

@@ -28,29 +28,44 @@ messages = foldProgress (:) (const []) (const [])
 
 data Exhaustiveness = Exhaustive | BackjumpLimitReached
 
+data Solution = FirstSolution | BeforeBackjumpLimit | BestSolution
+
+showSolution :: Solution -> String
+showSolution FirstSolution       = "first solution"
+showSolution BeforeBackjumpLimit = "best solution before backjump limit"
+showSolution BestSolution        = "best solution"
+
 -- | Postprocesses a log file. Takes as an argument a limit on allowed backjumps.
 -- If the limit is 'Nothing', then infinitely many backjumps are allowed. If the
 -- limit is 'Just 0', backtracking is completely disabled.
-logToProgress :: Verbosity -> Maybe Int -> Log Message a -> Progress String String a
+logToProgress :: Verbosity -> Maybe Int -> Log Message Plan -> Progress String String Plan
 logToProgress verbosity mbj l =
     let es = proc (Just 0) l -- catch first error (always)
         ms = proc mbj l
     in go es es -- trace for first error
           (showMessages (const True) True ms) -- run with backjump limit applied
+        >>= \(plan, s) -> Step ("Using " ++ showSolution s) (Done plan)
   where
     -- Proc takes the allowed number of backjumps and a 'Progress' and explores the
     -- messages until the maximum number of backjumps has been reached. It filters out
     -- and ignores repeated backjumps. If proc reaches the backjump limit, it truncates
     -- the 'Progress' and ends it with the last conflict set. Otherwise, it leaves the
     -- original result.
-    proc :: Maybe Int -> Log Message b -> Progress Message (Exhaustiveness, ConflictSet, ConflictMap) b
-    proc _        (Done x)                          = Done x
+    proc :: Maybe Int -> Log Message Plan -> Progress Message (Exhaustiveness, ConflictSet, ConflictMap) (Plan, Solution)
+    proc _        (Done x)                          = Done (x, FirstSolution)
+
+    -- TODO: This pattern tries to match on the best solution found after an
+    -- exhaustive search, but it is a hack. It relies on the exhaustive search
+    -- ending with a 'Failure' message and then a 'Fail'.
+    proc _        (Step   (Failure _  _ (Just x)) (Fail _)) = Done (x, BestSolution)
+
     proc _        (Fail (cs, cm))                   = Fail (Exhaustive, cs, cm)
-    proc mbj'     (Step x@(Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
+    proc mbj'     (Step x@(Failure cs Backjump _) xs@(Step Leave (Step (Failure cs' Backjump _) _)))
       | cs == cs'                                   = Step x (proc mbj'           xs) -- repeated backjumps count as one
-    proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (BackjumpLimitReached, cs, mempty) -- No final conflict map available
-    proc (Just n) (Step x@(Failure _  Backjump) xs) = Step x (proc (Just (n - 1)) xs)
-    proc mbj'     (Step x                       xs) = Step x (proc mbj'           xs)
+    proc (Just 0) (Step   (Failure cs Backjump Nothing)  _) = Fail (BackjumpLimitReached, cs, mempty) -- No final conflict map available
+    proc (Just 0) (Step   (Failure _  Backjump (Just x)) _) = Done (x, BeforeBackjumpLimit)
+    proc (Just n) (Step x@(Failure _  Backjump _) xs) = Step x (proc (Just (n - 1)) xs)
+    proc mbj'     (Step x                         xs) = Step x (proc mbj'           xs)
 
     -- The first two arguments are both supposed to be the log up to the first error.
     -- That's the error that will always be printed in case we do not find a solution.

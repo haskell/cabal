@@ -67,7 +67,8 @@ data SolverConfig = SolverConfig {
   solveExecutables      :: SolveExecutables,
   goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering),
   solverVerbosity       :: Verbosity,
-  maxInstallPlanScore   :: Maybe InstallPlanScore
+  maxInstallPlanScore   :: Maybe InstallPlanScore,
+  findBestSolution      :: FindBestSolution
 }
 
 -- | Run all solver phases.
@@ -90,7 +91,7 @@ solve :: SolverConfig                         -- ^ solver parameters
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
   detectCycles     $
-  maxScorePhase    $
+  scorePhase       $
   heuristicsPhase  $
   preferencesPhase $
   validationPhase  $
@@ -98,8 +99,10 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   buildPhase
   where
     explorePhase     = backjumpAndExplore (enableBackjumping sc) (countConflicts sc)
+                                          (maxInstallPlanScore sc)
+                                          (findBestSolution sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
-    maxScorePhase    = P.pruneWithMaxScore (maxInstallPlanScore sc) -- must come after all preferences
+    scorePhase       = P.scoreTree -- must come after all preferences
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
       in case goalOrder sc of

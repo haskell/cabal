@@ -180,8 +180,9 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let progress = exResolve testDb testSupportedExts
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
-                     testAllowBootLibInstalls testEnableBackjumping testGoalOrder
-                     testConstraints testSoftConstraints testEnableAllTests
+                     testAllowBootLibInstalls (FindBestSolution False)
+                     testEnableBackjumping testGoalOrder testConstraints
+                     testSoftConstraints testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg
                          else return ()
@@ -192,7 +193,8 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err)
                                  (checkErrorMsg testResult err)
-        Right plan -> assertEqual "" (toMaybe testResult) (Just (extractInstallPlan plan))
+        Right plan -> assertEqual "" (toMaybe testResult)
+                                     (Just $ fst (extractInstallPlan plan))
   where
     toMaybe :: SolverResult -> Maybe [(String, Int)]
     toMaybe = either (const Nothing) Just . resultErrorMsgPredicateOrPlan
