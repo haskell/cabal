@@ -9,9 +9,9 @@ env:
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - sudo add-apt-repository -y ppa:hvr/ghc
- - sudo apt-get update
- - sudo apt-get install cabal-install-1.18 ghc-$GHCVER happy
+ - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
+ - travis_retry sudo apt-get update
+ - travis_retry sudo apt-get install cabal-install-1.18 ghc-$GHCVER happy
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
  - export CABAL_TEST_RUNNING_ON_TRAVIS=1
 
