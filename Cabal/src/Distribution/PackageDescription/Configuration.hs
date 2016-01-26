@@ -176,8 +176,6 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
     x     <> DepOk = x
     (MissingDeps d) <> (MissingDeps d') = MissingDeps (d <> d')
 
-data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
-
 
 -- | Try to find a flag assignment that satisfies the constraints of all trees.
 --
@@ -211,10 +209,7 @@ resolveWithFlags ::
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
-resolveWithFlags dom os arch impl constrs trees checkDeps =
-    case try dom [] of
-      Right r -> Right r
-      Left dbt -> Left $ findShortest dbt
+resolveWithFlags dom os arch impl constrs trees checkDeps = try dom []
   where
     extraConstrs = toDepMap constrs
 
@@ -226,12 +221,10 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
                           trees
 
     -- @try@ recursively tries all possible flag assignments in the domain and
-    -- either succeeds or returns a binary tree with the missing dependencies
-    -- encountered in each run.  Since the tree is constructed lazily, we
-    -- avoid some computation overhead in the successful case.
+    -- either succeeds or returns the shortest list of missing dependencies.
     try :: [(FlagName, [Bool])]
         -> [(FlagName, Bool)]
-        -> Either (BT [Dependency]) (TargetSet PDTagged, FlagAssignment)
+        -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
     try [] flags =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
@@ -240,37 +233,37 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
             deps = overallDependencies targetSet
         in case checkDeps (fromDepMap deps) of
              DepOk           -> Right (targetSet, flags)
-             MissingDeps mds -> Left (BTN mds)
+             MissingDeps mds -> Left mds
 
     try ((n, vals):rest) flags =
         tryAll $ map (\v -> try rest ((n, v):flags)) vals
 
+    tryAll :: [Either [a] b] -> Either [a] b
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp (Left xs)   (Left ys)   = (Left (BTB xs ys))
+    mp :: Either [a] b -> Either [a] b -> Either [a] b
+    mp (Left xs)   (Left ys)   = xs `seq` ys `seq` Left (findShortest xs ys)
     mp (Left _)    m@(Right _) = m
     mp m@(Right _) _           = m
 
     -- `mzero'
-    mz = Left (BTN [])
+    mz :: Either [a] b
+    mz = Left []
 
+    env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
-    -- for the error case we inspect our lazy tree of missing dependencies and
-    -- pick the shortest list of missing dependencies
-    findShortest (BTN x) = x
-    findShortest (BTB lt rt) =
-        let l = findShortest lt
-            r = findShortest rt
-        in case (l,r) of
-             ([], xs) -> xs  -- [] is too short
-             (xs, []) -> xs
-             ([x], _) -> [x] -- single elem is optimum
-             (_, [x]) -> [x]
-             (xs, ys) -> if lazyLengthCmp xs ys
+    -- we pick the shortest list of missing dependencies
+    findShortest :: [a] -> [a] -> [a]
+    findShortest [] xs = xs  -- [] is too short
+    findShortest xs [] = xs
+    findShortest [x] _ = [x] -- single elem is optimum
+    findShortest _ [x] = [x]
+    findShortest xs ys = if lazyLengthCmp xs ys
                          then xs else ys
     -- lazy variant of @\xs ys -> length xs <= length ys@
+    lazyLengthCmp :: [a] -> [a] -> Bool
     lazyLengthCmp [] _ = True
     lazyLengthCmp _ [] = False
     lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
