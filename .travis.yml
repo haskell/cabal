@@ -46,7 +46,7 @@ script:
  - function install_from_tarball {
    export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install "dist/$SRC_TGZ" -v2;
+      cabal install "dist/$SRC_TGZ" -j1 -v2;
    else
       echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;
