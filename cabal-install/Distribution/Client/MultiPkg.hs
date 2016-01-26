@@ -163,6 +163,7 @@ build verbosity
     -- Tell the user what we're going to do
     checkPrintPlan verbosity
                    elaboratedInstallPlan''
+                   pkgsBuildStatus
                    buildSettings
 
     -- Phase 2: now do it.
@@ -376,13 +377,14 @@ reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
 
 checkPrintPlan :: Verbosity
                -> ElaboratedInstallPlan
+               -> BuildStatusMap
                -> BuildTimeSettings
                -> IO ()
-checkPrintPlan verbosity installPlan buildSettings =
-    printPlan verbosity dryRun (linearizeInstallPlan installPlan)
+checkPrintPlan verbosity installPlan pkgsBuildStatus
+               BuildTimeSettings{buildSettingDryRun} =
+    printPlan verbosity buildSettingDryRun pkgsBuildStatus
+              (linearizeInstallPlan installPlan)
     --TODO: [required eventually] see Install.hs for other things checkPrintPlan ought to do too
-  where
-    dryRun = buildSettingDryRun buildSettings
 
 
 linearizeInstallPlan :: ElaboratedInstallPlan -> [ElaboratedReadyPackage]
@@ -406,10 +408,11 @@ linearizeInstallPlan =
 
 printPlan :: Verbosity
           -> Bool -- is dry run
+          -> BuildStatusMap
           -> [ElaboratedReadyPackage]
           -> IO ()
-printPlan _         _      []   = return ()
-printPlan verbosity dryRun pkgs
+printPlan verbosity _ _ [] = notice verbosity "Up to date"
+printPlan verbosity dryRun pkgsBuildStatus pkgs
   | verbosity >= verbose
   = notice verbosity $ unlines $
       ("In order, the following " ++ wouldWill ++ " be built:")
@@ -431,7 +434,9 @@ printPlan verbosity dryRun pkgs
       display (packageId pkg) ++
       showTargets pkg ++
       showFlagAssignment (nonDefaultFlags pkg) ++
-      showStanzas pkg
+      showStanzas pkg ++
+      let buildStatus = pkgsBuildStatus Map.! installedPackageId pkg in
+      " (" ++ showBuildStatus buildStatus ++ ")"
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
     nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
@@ -456,6 +461,27 @@ printPlan verbosity dryRun pkgs
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
     showFlagName (PD.FlagName f) = f
+
+    showBuildStatus status = case status of
+      BuildStatusPreExisting -> "already installed"
+      BuildStatusDownload {} -> "requires download & build"
+      BuildStatusUnpack   {} -> "requires build"
+      BuildStatusRebuild _ rebuild -> case rebuild of
+        BuildStatusConfigure
+          (MonitoredValueChanged _) -> "configuration changed"
+        BuildStatusConfigure reason -> showMonitorChangedReason reason
+        BuildStatusDepsRebuilt    _ -> "dependency rebuilt"
+        BuildStatusBuild
+          (MonitoredValueChanged _) _ -> "additional components to build"
+        BuildStatusBuild
+          (MonitoredFileChanged  _) _ -> "package files changed"
+        BuildStatusBuild reason _     -> showMonitorChangedReason reason
+      BuildStatusUpToDate {} -> "up to date" -- doesn't happen
+
+    showMonitorChangedReason (MonitoredFileChanged file) = "file " ++ file
+    showMonitorChangedReason (MonitoredValueChanged _)   = "value changed"
+    showMonitorChangedReason  MonitorFirstRun     = "first run"
+    showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 -- | For the benefit of debugging and some external tools, write out a
 -- representation of the install plan.

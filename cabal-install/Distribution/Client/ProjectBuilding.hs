@@ -6,7 +6,9 @@
 --
 module Distribution.Client.ProjectBuilding (
     BuildStatus(..),
+    BuildStatusMap,
     BuildStatusRebuild(..),
+    MonitorChangedReason(..),
     rebuildTargetsDryRun,
     rebuildTargets
   ) where
