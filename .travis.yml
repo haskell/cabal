@@ -55,7 +55,7 @@ script:
    export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export CABAL_LIB_VERSION=$(ghc-pkg latest Cabal | gawk 'match($0, /^Cabal-(.*)$/, a) {print a[1]}') ;
    if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install --cabal-lib-version=$CABAL_LIB_VERSION "dist/$SRC_TGZ" -v2;
+      cabal install -j1 --cabal-lib-version=$CABAL_LIB_VERSION "dist/$SRC_TGZ" -v2;
    else
       echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;
