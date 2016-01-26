@@ -416,8 +416,16 @@ rebuildInstallPlan :: Verbosity
                          , ProjectConfig )
 rebuildInstallPlan verbosity
                    projectRootDir
-                   distDirLayout@DistDirLayout{..}
-                   cabalDirLayout@CabalDirLayout{..} = \cliConfig ->
+                   distDirLayout@DistDirLayout {
+                     distDirectory,
+                     distProjectCacheFile,
+                     distProjectCacheDirectory
+                   }
+                   cabalDirLayout@CabalDirLayout {
+                     cabalPackageCacheDirectory,
+                     cabalStoreDirectory,
+                     cabalStorePackageDB
+                   } = \cliConfig ->
     runRebuild $ do
     progsearchpath <- liftIO $ getSystemSearchPath
 
