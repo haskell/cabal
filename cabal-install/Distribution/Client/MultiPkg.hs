@@ -390,8 +390,8 @@ linearizeInstallPlan =
     unfoldr next
   where
     next plan = case InstallPlan.ready plan of
-      []          -> Nothing
-      ((pkg,_):_) -> Just (pkg, plan')
+      []      -> Nothing
+      (pkg:_) -> Just (pkg, plan')
         where
           ipkgid = installedPackageId pkg
           ipkg   = Installed.emptyInstalledPackageInfo {

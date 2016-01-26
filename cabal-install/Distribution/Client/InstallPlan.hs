@@ -28,7 +28,6 @@ module Distribution.Client.InstallPlan (
   completed,
   failed,
   remove,
-  reverted,
   preexisting,
   preinstalled,
 
@@ -64,7 +63,6 @@ import Distribution.Client.Types
          , GenericReadyPackage(..), fakeUnitId, installedPackageId )
 import Distribution.Version
          ( Version )
-import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
@@ -339,7 +337,7 @@ remove shouldRemove plan =
 --
 ready :: forall ipkg srcpkg iresult ifailure. PackageFixedDeps srcpkg
       => GenericInstallPlan ipkg srcpkg iresult ifailure
-      -> [(GenericReadyPackage srcpkg ipkg, ComponentDeps [iresult])]
+      -> [GenericReadyPackage srcpkg ipkg]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -348,37 +346,32 @@ ready plan = assert check readyPackages
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
-    readyPackages :: [(GenericReadyPackage srcpkg ipkg, ComponentDeps [iresult])]
+    readyPackages :: [GenericReadyPackage srcpkg ipkg]
     readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
 lookupReadyPackage :: forall ipkg srcpkg iresult ifailure. 
                       PackageFixedDeps srcpkg
                    => GenericInstallPlan ipkg srcpkg iresult ifailure
                    -> srcpkg
-                   -> Maybe ( GenericReadyPackage srcpkg ipkg
-                            , ComponentDeps [iresult] )
+                   -> Maybe (GenericReadyPackage srcpkg ipkg)
 lookupReadyPackage plan pkg = do
-    combinedDeps <- T.mapM (mapM isInstalledDep) (depends pkg)
-    let ipkgDeps    :: ComponentDeps [ipkg]
-        iresultDeps :: ComponentDeps [iresult]
-        ipkgDeps    = fmap (            map fst) combinedDeps
-        iresultDeps = fmap (catMaybes . map snd) combinedDeps
-    return (ReadyPackage pkg ipkgDeps, iresultDeps)
+    deps <- T.mapM (mapM isInstalledDep) (depends pkg)
+    return (ReadyPackage pkg deps)
   where
-    isInstalledDep :: UnitId -> Maybe (ipkg, Maybe iresult)
+    isInstalledDep :: UnitId -> Maybe ipkg
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which
       -- case we might be dealing with an old pointer
       case PlanIndex.fakeLookupUnitId
            (planFakeMap plan) (planIndex plan) pkgid
       of
-        Just (PreExisting ipkg)              -> Just (ipkg, Nothing)
-        Just (Configured  _)                 -> Nothing
-        Just (Processing  _)                 -> Nothing
-        Just (Installed   _ (Just ipkg) res) -> Just (ipkg, Just res)
-        Just (Installed   _ Nothing       _) -> internalError depOnNonLib
-        Just (Failed      _               _) -> internalError depOnFailed
-        Nothing                              -> internalError incomplete
+        Just (PreExisting ipkg)            -> Just ipkg
+        Just (Configured  _)               -> Nothing
+        Just (Processing  _)               -> Nothing
+        Just (Installed   _ (Just ipkg) _) -> Just ipkg
+        Just (Installed   _ Nothing     _) -> internalError depOnNonLib
+        Just (Failed      _             _) -> internalError depOnFailed
+        Nothing                            -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
     depOnNonLib = "configured package depends on a non-library package"
@@ -488,24 +481,6 @@ checkConfiguredPackage (Failed     _ _) = Nothing
 checkConfiguredPackage pkg                =
   internalError $ "not configured or no such pkg " ++ display (packageId pkg)
 
--- | Reverts packages back to the configured state. This can be used to re-use
--- a completed (or failed) install plan, to rebuild certain packages later.
---
--- * The package must exist in the graph and be in the processing, installed
--- or failed state.
---
-reverted :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-             HasUnitId srcpkg, PackageFixedDeps srcpkg)
-         => [srcpkg]
-         -> GenericInstallPlan ipkg srcpkg iresult ifailure
-         -> GenericInstallPlan ipkg srcpkg iresult ifailure
-reverted pkgs plan = assert (invariant plan') plan'
-  where
-    plan' = plan {
-              planIndex = PackageIndex.merge (planIndex plan) configuredPkgs
-            }
-    configuredPkgs = PackageIndex.fromList [Configured pkg | pkg <- pkgs]
-
 -- | Replace a ready package with a pre-existing one. The pre-existing one
 -- must have exactly the same dependencies as the source one was configured
 -- with.
@@ -547,7 +522,7 @@ preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
     plan' = plan { planIndex = PackageIndex.insert installed (planIndex plan) }
     Just installed = do
       Configured pkg <- PackageIndex.lookupUnitId (planIndex plan) pkgid
-      (rpkg, _) <- lookupReadyPackage plan pkg
+      rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
 

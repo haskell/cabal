@@ -503,7 +503,7 @@ rebuildTargets verbosity
                           installPlan pkgsBuildStatus $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      executeInstallPlan verbosity jobControl installPlan $ \pkg _depResults ->
+      executeInstallPlan verbosity jobControl installPlan $ \pkg ->
         handle (return . BuildFailure) $ --TODO: review exception handling
 
         let ipkgid         = installedPackageId pkg
@@ -691,7 +691,6 @@ executeInstallPlan
                    , GenericBuildResult ipkg iresult BuildFailure )
   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
   -> (    GenericReadyPackage srcpkg ipkg
-       -> ComponentDeps [iresult]
        -> IO (GenericBuildResult ipkg iresult BuildFailure))
   -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
 executeInstallPlan verbosity jobCtl plan0 installPkg =
@@ -705,14 +704,14 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
           sequence_
             [ do debug verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg depResults
+                   buildResult <- installPkg pkg
                    return (pkg, buildResult)
-            | (pkg, depResults) <- pkgs
+            | pkg <- pkgs
             , let pkgid = packageId pkg
             ]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing (map fst pkgs) plan
+              plan'      = InstallPlan.processing pkgs plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do

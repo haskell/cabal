@@ -557,7 +557,7 @@ linearizeInstallPlan installedPkgIndex plan =
   where
     next plan' = case InstallPlan.ready plan' of
       []          -> Nothing
-      ((pkg,_):_) -> Just ((pkg, status), plan'')
+      (pkg:_) -> Just ((pkg, status), plan'')
         where
           pkgid  = installedUnitId pkg
           status = packageStatus installedPkgIndex pkg
@@ -1180,11 +1180,11 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
                                      Installed.installedUnitId ipi
                                 _ -> mkUnitId (display (packageId pkg))
                    return (packageId pkg, ipid, buildResult)
-            | (pkg,_) <- pkgs
+            | pkg <- pkgs
             , let pkgid = packageId pkg ]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing (map fst pkgs) plan
+              plan'      = InstallPlan.processing pkgs plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
