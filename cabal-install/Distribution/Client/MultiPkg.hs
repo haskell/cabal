@@ -24,7 +24,7 @@ import qualified Distribution.Client.Utils.Json as J
 
 import qualified Distribution.Client.ComponentDeps as ComponentDeps
 
-import           Distribution.Package
+import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed

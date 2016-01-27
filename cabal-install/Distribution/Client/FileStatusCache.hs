@@ -33,8 +33,8 @@ import           Data.Map        (Map)
 import qualified Data.Map        as Map
 #endif
 import qualified Data.ByteString.Lazy as BS
-import           Data.Binary
-import qualified Data.Binary as Binary
+import           Distribution.Compat.Binary
+import qualified Distribution.Compat.Binary as Binary
 import           Data.Traversable (traverse)
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)

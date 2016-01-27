@@ -98,7 +98,7 @@ import Data.Monoid
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import GHC.Generics (Generic)
 import System.FilePath hiding (combine)
 import System.Directory

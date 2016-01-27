@@ -20,7 +20,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..), Dependency
-         , UnitId(..), InstalledPackageId, mkUnitId
+         , UnitId(..), mkUnitId
          , HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -44,7 +44,7 @@ import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
 import GHC.Generics (Generic)
-import Data.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary(..))
 
 
 newtype Username = Username { unUsername :: String }
@@ -63,6 +63,8 @@ instance Binary SourcePackageDb
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
+
+type InstalledPackageId = UnitId
 
 installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
 installedPackageId = installedUnitId

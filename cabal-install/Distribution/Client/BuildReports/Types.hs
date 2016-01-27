@@ -26,7 +26,7 @@ import qualified Text.PrettyPrint as Disp
 import Data.Char as Char
          ( isAlpha, toLower )
 import GHC.Generics (Generic)
-import Data.Binary  (Binary)
+import Distribution.Compat.Binary  (Binary)
 
 
 data ReportLevel = NoReports | AnonymousReports | DetailedReports

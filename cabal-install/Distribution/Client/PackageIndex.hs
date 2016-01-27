@@ -56,7 +56,7 @@ import Data.Monoid (Monoid(..))
 #endif
 import Data.Maybe (isJust, fromMaybe)
 import GHC.Generics (Generic)
-import Data.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)

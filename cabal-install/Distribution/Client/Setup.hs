@@ -115,7 +115,7 @@ import Data.Monoid
          ( Monoid(..) )
 #endif
 import GHC.Generics (Generic)
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Control.Monad
          ( liftM )
 import System.FilePath
@@ -397,8 +397,8 @@ filterConfigureFlags flags cabalLibVersion
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
     flags_1_14_0 = flags_1_18_0 { configBenchmarks  = NoFlag }
-    -- Cabal < 1.12.0 doesn't know about '--disable-executable-dynamic'
-    -- and '--disable-library-coverage'.
+    -- Cabal < 1.12.0 doesn't know about '--enable/disable-executable-dynamic'
+    -- and '--enable/disable-library-coverage'.
     flags_1_12_0 = flags_1_14_0 { configLibCoverage = NoFlag
                                 , configDynExe      = NoFlag }
     -- Cabal < 1.10.0 doesn't know about '--disable-tests'.

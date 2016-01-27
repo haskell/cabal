@@ -65,7 +65,7 @@ import           Distribution.Client.FetchUtils
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList (toNubList)
 
-import           Distribution.Package
+import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
@@ -112,7 +112,7 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Function
 
-import           Data.Binary
+import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
 import           Data.Typeable (Typeable)
 

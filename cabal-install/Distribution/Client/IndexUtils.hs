@@ -15,11 +15,11 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
+  getIndexFileAge,
   getInstalledPackages,
   Configure.getInstalledPackagesMonitorFiles,
   getSourcePackages,
   getSourcePackagesMonitorFiles,
-  getIndexFileAge,
 
   Index(..),
   PackageEntry(..),

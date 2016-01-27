@@ -36,7 +36,7 @@ module Distribution.Client.ComponentDeps (
 
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Binary
+import Distribution.Compat.Binary (Binary)
 import GHC.Generics
 import Data.Foldable (fold)
 

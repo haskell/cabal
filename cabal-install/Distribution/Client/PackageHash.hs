@@ -48,7 +48,7 @@ import           Data.Set (Set)
 import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
 import Data.Function     (on)
-import Data.Binary       (Binary(..))
+import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
 

@@ -8,7 +8,7 @@ module Distribution.Client.Glob
 
 import Data.List (stripPrefix)
 import Control.Monad (liftM2)
-import Data.Binary
+import Distribution.Compat.Binary
 import GHC.Generics (Generic)
 
 import Distribution.Text

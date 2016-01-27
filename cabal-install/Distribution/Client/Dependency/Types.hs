@@ -77,7 +77,7 @@ import Distribution.Text
 import Text.PrettyPrint
          ( text )
 import GHC.Generics (Generic)
-import Data.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary(..))
 
 import Prelude hiding (fail)
 

@@ -112,7 +112,7 @@ import System.Directory
 import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI )
 import GHC.Generics (Generic)
-import Data.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary)
 
 -- ------------------------------------------------------------
 -- * User targets

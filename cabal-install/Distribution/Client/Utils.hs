@@ -22,7 +22,9 @@ import Distribution.Client.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Monad
          ( when )
 import Data.Bits
@@ -83,7 +85,6 @@ mergeBy cmp = merge
         LT -> OnlyInLeft  x   : merge xs  (y:ys)
 
 data MergeResult a b = OnlyInLeft a | InBoth a b | OnlyInRight b
-                     deriving (Show)
 
 duplicates :: Ord a => [a] -> [[a]]
 duplicates = duplicatesBy compare
@@ -179,7 +180,6 @@ makeRelativeCanonical path dir
     go (p:ps) (d:ds) | p == d = go ps ds
     go    []     []           = "./"
     go    ps     ds           = joinPath (replicate (length ds) ".." ++ ps)
-
 
 -- | Convert a 'FilePath' to a lazy 'ByteString'. Each 'Char' is
 -- encoded as a little-endian 'Word32'.

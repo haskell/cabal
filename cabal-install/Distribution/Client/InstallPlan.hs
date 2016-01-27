@@ -1,6 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.InstallPlan
@@ -58,13 +57,14 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
-         , HasUnitId(..), UnitId(..), InstalledPackageId )
+         , HasUnitId(..), UnitId(..) )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
          , PackageFixedDeps(..), ConfiguredPackage
-         , GenericReadyPackage(..), fakeUnitId, installedPackageId )
+         , GenericReadyPackage(..), fakeUnitId )
 import Distribution.Version
          ( Version )
+import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
@@ -82,7 +82,7 @@ import Data.Maybe
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import qualified Data.Tree as Tree
-import Data.Binary
+import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Exception
          ( assert )
@@ -247,7 +247,6 @@ mkInstallPlan index fakeMap indepGoals =
       PlanIndex.dependencyGraph fakeMap index
     noSuchPkgId = internalError "package is not in the graph"
 
-
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
@@ -260,7 +259,7 @@ instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
               planFakeMap    = fakeMap,
               planIndepGoals = indepGoals
         } = put (index, fakeMap, indepGoals)
-    
+
     get = do
       (index, fakeMap, indepGoals) <- get
       return $! mkInstallPlan index fakeMap indepGoals
@@ -357,9 +356,13 @@ lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
                    -> srcpkg
                    -> Maybe (GenericReadyPackage srcpkg ipkg)
 lookupReadyPackage plan pkg = do
-    deps <- T.mapM (mapM isInstalledDep) (depends pkg)
+    deps <- hasAllInstalledDeps pkg
     return (ReadyPackage pkg deps)
   where
+
+    hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
+    hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
+
     isInstalledDep :: UnitId -> Maybe ipkg
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which
@@ -489,7 +492,7 @@ checkConfiguredPackage pkg                =
 --
 preexisting :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                 HasUnitId srcpkg, PackageFixedDeps srcpkg)
-            => InstalledPackageId
+            => UnitId
             -> ipkg
             -> GenericInstallPlan ipkg srcpkg iresult ifailure
             -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -499,7 +502,7 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                     -- NB: installation can change the IPID, so better
                     -- record it in the fake mapping...
       planFakeMap = Map.insert pkgid
-                               (installedPackageId ipkg)
+                               (installedUnitId ipkg)
                                (planFakeMap plan),
       planIndex   = PackageIndex.insert (PreExisting ipkg)
                     -- ...but be sure to use the *old* IPID for the lookup for
@@ -508,14 +511,13 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                   $ planIndex plan
     }
 
-
 -- | Replace a ready package with an installed one. The installed one
 -- must have exactly the same dependencies as the source one was configured
 -- with.
 --
 preinstalled :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                  HasUnitId srcpkg, PackageFixedDeps srcpkg)
-             => InstalledPackageId
+             => UnitId
              -> Maybe ipkg -> iresult
              -> GenericInstallPlan ipkg srcpkg iresult ifailure
              -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -527,12 +529,11 @@ preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
       rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
-
 mapPreservingGraph :: (HasUnitId ipkg,    PackageFixedDeps ipkg,
                        HasUnitId srcpkg,  PackageFixedDeps srcpkg,
                        HasUnitId ipkg',   PackageFixedDeps ipkg',
                        HasUnitId srcpkg', PackageFixedDeps srcpkg')
-                   => (  (InstalledPackageId -> InstalledPackageId)
+                   => (  (UnitId -> UnitId)
                       -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
                       -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
                    -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
@@ -542,7 +543,7 @@ mapPreservingGraph f plan =
                   Map.empty -- empty fakeMap
                   (planIndepGoals plan)
   where
-    -- The package mapping function may change the InstalledPackageId. So we
+    -- The package mapping function may change the UnitId. So we
     -- walk over the packages in dependency order keeping track of these
     -- package id changes and use it to supply the correct set of package
     -- dependencies as an extra input to the package mapping function.
@@ -560,8 +561,8 @@ mapPreservingGraph f plan =
          | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
          | otherwise         =                           ipkgidMap
          where
-           ipkgid  = installedPackageId pkg
-           ipkgid' = installedPackageId pkg'
+           ipkgid  = installedUnitId pkg
+           ipkgid' = installedUnitId pkg'
    
     mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
  

@@ -40,7 +40,7 @@ import Distribution.Verbosity    (Verbosity)
 
 import Control.Applicative
 import Control.Monad.State as State
-import Data.Binary     (Binary)
+import Distribution.Compat.Binary     (Binary)
 import System.FilePath (takeFileName)
 
 

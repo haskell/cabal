@@ -20,7 +20,8 @@ import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
                    ( PackageLocation(..), GenericReadyPackage(..)
-                   , PackageFixedDeps(..), installedPackageId )
+                   , PackageFixedDeps(..)
+                   , InstalledPackageId, installedPackageId )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -37,7 +38,7 @@ import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
 
-import           Distribution.Package
+import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.Program
