@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildReports.Types
@@ -24,9 +25,14 @@ import qualified Text.PrettyPrint as Disp
 
 import Data.Char as Char
          ( isAlpha, toLower )
+import GHC.Generics (Generic)
+import Distribution.Compat.Binary (Binary)
+
 
 data ReportLevel = NoReports | AnonymousReports | DetailedReports
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Enum, Show, Generic)
+
+instance Binary ReportLevel
 
 instance Text.Text ReportLevel where
   disp NoReports        = Disp.text "none"
