@@ -352,6 +352,7 @@ filterConfigureFlags flags cabalLibVersion
   -- ^ NB: we expect the latest version to be the most common case.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
+  | cabalLibVersion <  Version [1,12,0] [] = flags_1_12_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
   | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
@@ -396,8 +397,12 @@ filterConfigureFlags flags cabalLibVersion
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
     flags_1_14_0 = flags_1_18_0 { configBenchmarks  = NoFlag }
+    -- Cabal < 1.12.0 doesn't know about '--enable/disable-executable-dynamic'
+    -- and '--enable/disable-library-coverage'.
+    flags_1_12_0 = flags_1_14_0 { configLibCoverage = NoFlag
+                                , configDynExe      = NoFlag }
     -- Cabal < 1.10.0 doesn't know about '--disable-tests'.
-    flags_1_10_0 = flags_1_14_0 { configTests       = NoFlag }
+    flags_1_10_0 = flags_1_12_0 { configTests       = NoFlag }
     -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
 
