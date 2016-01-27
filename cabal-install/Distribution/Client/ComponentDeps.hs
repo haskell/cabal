@@ -9,7 +9,8 @@
 -- >   )
 -- > import qualified Distribution.Client.ComponentDeps as CD
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor, DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Client.ComponentDeps (
     -- * Fine-grained package dependencies
     Component(..)

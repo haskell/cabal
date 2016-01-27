@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, DeriveFunctor, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -183,7 +185,7 @@ data PackagePreferences
 -- version.
 --
 data InstalledPreference = PreferInstalled | PreferLatest
-  deriving (Eq, Show)
+  deriving Show
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.

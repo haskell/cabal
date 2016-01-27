@@ -1,9 +1,8 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -252,11 +251,6 @@ instance Binary URI where
 instance Binary URIAuth where
   put (URIAuth a b c) = do put a; put b; put c
   get = do !a <- get; !b <- get; !c <- get; return (URIAuth a b c)
-
-data LocalRepo = LocalRepo
-  deriving (Show, Eq, Ord, Generic)
-
-instance Binary LocalRepo
 
 data RemoteRepo =
     RemoteRepo {

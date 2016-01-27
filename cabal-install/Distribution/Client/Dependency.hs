@@ -182,7 +182,6 @@ data PackagePreference =
    | PackageInstalledPreference PackageName InstalledPreference
 
    | PackageStanzasPreference   PackageName [OptionalStanza]
-  deriving (Eq, Show)
 
 
 -- | Provide a textual representation of a package preference
@@ -195,7 +194,6 @@ showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
 showPackagePreference (PackageStanzasPreference pn st) =
   display pn ++ " " ++ show st
-
 
 basicDepResolverParams :: InstalledPackageIndex
                        -> PackageIndex.PackageIndex SourcePackage

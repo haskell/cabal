@@ -556,7 +556,7 @@ linearizeInstallPlan installedPkgIndex plan =
     unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
-      []          -> Nothing
+      []      -> Nothing
       (pkg:_) -> Just ((pkg, status), plan'')
         where
           pkgid  = installedUnitId pkg

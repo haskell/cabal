@@ -204,7 +204,7 @@ readRepoIndex verbosity repoCtxt repo =
 
 -- | Return the age of the index file in days (as a Double).
 getIndexFileAge :: Repo -> IO Double
-getIndexFileAge repo = getFileAge (repoLocalDir repo </> "00-index.tar")
+getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =

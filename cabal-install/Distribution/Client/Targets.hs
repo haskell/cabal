@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, BangPatterns, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets

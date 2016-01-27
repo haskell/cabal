@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables, NamedFieldPuns, DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.InstallPlan

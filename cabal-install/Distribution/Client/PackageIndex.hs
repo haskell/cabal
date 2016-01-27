@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, DeriveFunctor, DeriveGeneric #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.PackageIndex
