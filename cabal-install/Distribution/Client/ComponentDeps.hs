@@ -21,6 +21,7 @@ module Distribution.Client.ComponentDeps (
   , fromList
   , singleton
   , insert
+  , filterDeps
   , fromLibraryDeps
   , fromSetupDeps
   , fromInstalled
@@ -99,6 +100,9 @@ insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
   where
     aux Nothing   = Just a
     aux (Just a') = Just $ a `mappend` a'
+
+filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
+filterDeps p = ComponentDeps . Map.filterWithKey p . unComponentDeps
 
 -- | ComponentDeps containing library dependencies only
 fromLibraryDeps :: a -> ComponentDeps a
