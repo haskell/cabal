@@ -51,9 +51,9 @@ solve sc cinfo idx userPrefs userConstraints userGoals =
                        P.deferSetupChoices .
                        P.deferWeakFlagChoices .
                        P.preferBaseGoalChoice .
-                       if preferEasyGoalChoices sc
+                       (if preferEasyGoalChoices sc
                          then P.lpreferEasyGoalChoices
-                         else id .
+                         else id) .
                        P.preferLinked
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints

@@ -42,6 +42,7 @@ module Distribution.Package (
         -- * Package classes
         Package(..), packageName, packageVersion,
         HasUnitId(..),
+        installedPackageId,
         PackageInstalled(..),
   ) where
 
@@ -122,6 +123,7 @@ data ComponentId
     = ComponentId String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
+{-# DEPRECATED InstalledPackageId "Use UnitId instead" #-}
 type InstalledPackageId = UnitId
 
 instance Binary ComponentId
@@ -213,6 +215,11 @@ instance Package PackageIdentifier where
 -- | Packages that have an installed package ID
 class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
+
+{-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
+-- | Compatibility wrapper for pre-Cabal 1.23.
+installedPackageId :: HasUnitId pkg => pkg -> UnitId
+installedPackageId = installedUnitId
 
 -- | Class of installed packages.
 --

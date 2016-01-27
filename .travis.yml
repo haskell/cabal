@@ -43,7 +43,7 @@ script:
  - ./misc/travis-diff-files.sh
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
+ - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -isrc ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
  - ./dist/setup/setup configure --user --ghc-option=-Werror $CABFLAGS -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
@@ -57,7 +57,7 @@ script:
  - function install_from_tarball {
    export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install "dist/$SRC_TGZ" -v2;
+      cabal install -j1 "dist/$SRC_TGZ" -v2;
    else
       echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;

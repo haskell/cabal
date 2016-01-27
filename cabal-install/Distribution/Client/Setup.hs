@@ -1555,7 +1555,7 @@ uploadCommand = CommandUI {
         uploadCheck (\v flags -> flags { uploadCheck = v })
         trueArg
 
-      ,option ['d'] ["doc"]
+      ,option ['d'] ["documentation"]
         "Upload documentation instead of a source package. Cannot be used together with --check."
         uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg

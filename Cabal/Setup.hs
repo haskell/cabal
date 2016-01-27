@@ -8,3 +8,6 @@ main = defaultMain
 -- on any previous installation. This also means we can use any new features
 -- immediately because we never have to worry about building Cabal with an
 -- older version of itself.
+--
+-- NOTE 25/01/2015: Bootstrapping is disabled for now, see
+-- https://github.com/haskell/cabal/issues/3003.

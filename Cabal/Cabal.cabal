@@ -192,6 +192,7 @@ library
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
+  hs-source-dirs: src
   exposed-modules:
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
