@@ -14,6 +14,7 @@ import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
+import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
 
@@ -128,44 +129,6 @@ prefix f fds = [f (concat fds)]
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
--- | Extract buildable condition from a cond tree.
---
--- Background: If the conditions in a cond tree lead to Buildable being set to False,
--- then none of the dependencies for this cond tree should actually be taken into
--- account. On the other hand, some of the flags may only be decided in the solver,
--- so we cannot necessarily make the decision whether a component is Buildable or not
--- prior to solving.
---
--- What we are doing here is to partially evaluate a condition tree in order to extract
--- the condition under which Buildable is True.
-extractCondition :: Eq v => (a -> Bool) -> CondTree v [c] a -> Condition v
-extractCondition p = go
-  where
-    go (CondNode x _ cs) | not (p x) = Lit False
-                         | otherwise = goList cs
-
-    goList []               = Lit True
-    goList ((c, t, e) : cs) =
-      let
-        ct = go t
-        ce = maybe (Lit True) go e
-      in
-        ((c `cand` ct) `cor` (CNot c `cand` ce)) `cand` goList cs
-
-    cand (Lit False) _           = Lit False
-    cand _           (Lit False) = Lit False
-    cand (Lit True)  x           = x
-    cand x           (Lit True)  = x
-    cand x           y           = CAnd x y
-
-    cor  (Lit True)  _           = Lit True
-    cor  _           (Lit True)  = Lit True
-    cor  (Lit False) x           = x
-    cor  x           (Lit False) = x
-    cor  c           (CNot d)
-      | c == d                   = Lit True
-    cor  x           y           = COr x y
-
 -- | Convert a condition tree to flagged dependencies.
 --
 -- In addition, tries to determine under which condition the condition tree
@@ -175,7 +138,7 @@ convBuildableCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                          (a -> BuildInfo) ->
                          CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
 convBuildableCondTree os arch cinfo pi fds comp getInfo t =
-  case extractCondition (buildable . getInfo) t of
+  case PDC.extractCondition (buildable . getInfo) t of
     Lit True  -> convCondTree os arch cinfo pi fds comp getInfo t
     Lit False -> []
     c         -> convBranch os arch cinfo pi fds comp getInfo (c, t, Nothing)
