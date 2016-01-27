@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -74,17 +75,22 @@ import Distribution.Text
 
 import Text.PrettyPrint
          ( text )
+import GHC.Generics (Generic)
+import Distribution.Compat.Binary (Binary(..))
 
 import Prelude hiding (fail)
 
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysTopDown | AlwaysModular | Choose
-  deriving (Eq, Ord, Show, Bounded, Enum)
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 -- | All the solvers that can be used.
 data Solver = TopDown | Modular
-  deriving (Eq, Ord, Show, Bounded, Enum)
+  deriving (Eq, Ord, Show, Bounded, Enum, Generic)
+
+instance Binary PreSolver
+instance Binary Solver
 
 instance Text PreSolver where
   disp AlwaysTopDown = text "topdown"
@@ -134,7 +140,9 @@ data PackageConstraint
    | PackageConstraintSource    PackageName
    | PackageConstraintFlags     PackageName FlagAssignment
    | PackageConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Show,Eq)
+  deriving (Eq,Show,Generic)
+
+instance Binary PackageConstraint
 
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.
@@ -216,6 +224,9 @@ data AllowNewer =
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary AllowNewer
 
 -- | Convert 'AllowNewer' to a boolean.
 isAllowNewer :: AllowNewer -> Bool
@@ -300,7 +311,9 @@ data ConstraintSource =
 
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance Binary ConstraintSource
 
 -- | Description of a 'ConstraintSource'.
 showConstraintSource :: ConstraintSource -> String

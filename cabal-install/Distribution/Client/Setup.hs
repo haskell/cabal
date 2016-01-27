@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -113,6 +114,8 @@ import Data.Maybe
 import Data.Monoid
          ( Monoid(..) )
 #endif
+import GHC.Generics (Generic)
+import Distribution.Compat.Binary (Binary)
 import Control.Monad
          ( liftM )
 import System.FilePath
@@ -411,6 +414,7 @@ data ConfigExFlags = ConfigExFlags {
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Flag AllowNewer
   }
+  deriving (Eq, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
 defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver
@@ -1178,6 +1182,9 @@ data InstallFlags = InstallFlags {
     installRunTests         :: Flag Bool,
     installOfflineMode      :: Flag Bool
   }
+  deriving (Eq, Generic)
+
+instance Binary InstallFlags
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {

@@ -268,9 +268,9 @@ library
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension
+    Distribution.Compat.Binary
 
   other-modules:
-    Distribution.Compat.Binary
     Distribution.Compat.CopyFile
     Distribution.Compat.Semigroup
     Distribution.GetOpt

@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.InstallPlan
@@ -76,6 +77,8 @@ import Data.Maybe
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import qualified Data.Tree as Tree
+import Distribution.Compat.Binary (Binary)
+import GHC.Generics
 import Control.Exception
          ( assert )
 import Data.Maybe (catMaybes)
@@ -142,6 +145,10 @@ data GenericPlanPackage ipkg srcpkg iresult ifailure
    | Processing  (GenericReadyPackage srcpkg ipkg)
    | Installed   (GenericReadyPackage srcpkg ipkg) (Maybe ipkg) iresult
    | Failed      srcpkg ifailure
+  deriving (Eq, Show, Generic)
+
+instance (Binary ipkg, Binary srcpkg, Binary  iresult, Binary  ifailure)
+      => Binary (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
 type PlanPackage = GenericPlanPackage
                    InstalledPackageInfo ConfiguredPackage

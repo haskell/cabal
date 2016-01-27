@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -109,6 +111,8 @@ import System.Directory
          ( doesFileExist, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI )
+import GHC.Generics (Generic)
+import Distribution.Compat.Binary (Binary)
 
 -- ------------------------------------------------------------
 -- * User targets
@@ -185,7 +189,9 @@ data PackageSpecifier pkg =
      -- | A fully specified source package.
      --
    | SpecificSourcePackage pkg
-  deriving Show
+  deriving (Eq, Show, Generic)
+
+instance Binary pkg => Binary (PackageSpecifier pkg)
 
 pkgSpecifierTarget :: Package pkg => PackageSpecifier pkg -> PackageName
 pkgSpecifierTarget (NamedPackage name _)       = name
@@ -698,7 +704,9 @@ data UserConstraint =
    | UserConstraintSource    PackageName
    | UserConstraintFlags     PackageName FlagAssignment
    | UserConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Show,Eq)
+  deriving (Eq, Show, Generic)
+
+instance Binary UserConstraint
 
 userConstraintPackageName :: UserConstraint -> PackageName
 userConstraintPackageName uc = case uc of
