@@ -77,7 +77,7 @@ import Data.Maybe
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import qualified Data.Tree as Tree
-import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Exception
          ( assert )
@@ -236,6 +236,20 @@ mkInstallPlan index fakeMap indepGoals =
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
+
+instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
+          HasUnitId srcpkg, PackageFixedDeps srcpkg,
+          Binary ipkg, Binary srcpkg, Binary iresult, Binary ifailure)
+       => Binary (GenericInstallPlan ipkg srcpkg iresult ifailure) where
+    put GenericInstallPlan {
+              planIndex      = index,
+              planFakeMap    = fakeMap,
+              planIndepGoals = indepGoals
+        } = put (index, fakeMap, indepGoals)
+
+    get = do
+      (index, fakeMap, indepGoals) <- get
+      return $! mkInstallPlan index fakeMap indepGoals
 
 showPlanIndex :: (HasUnitId ipkg, HasUnitId srcpkg)
               => PlanIndex ipkg srcpkg iresult ifailure -> String
