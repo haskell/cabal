@@ -184,14 +184,16 @@ instance (HasUnitId ipkg, HasUnitId srcpkg) =>
 
 
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
-    planIndex      :: (PlanIndex ipkg srcpkg iresult ifailure),
-    planFakeMap    :: FakeMap,
+    planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
+    planFakeMap    :: !FakeMap,
+    planIndepGoals :: !Bool,
+
+    -- cached (lazily) graph
     planGraph      :: Graph,
     planGraphRev   :: Graph,
     planPkgOf      :: Graph.Vertex
                       -> GenericPlanPackage ipkg srcpkg iresult ifailure,
-    planVertexOf   :: UnitId -> Graph.Vertex,
-    planIndepGoals :: Bool
+    planVertexOf   :: UnitId -> Graph.Vertex
   }
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
@@ -209,6 +211,28 @@ invariant plan =
     valid (planFakeMap plan)
           (planIndepGoals plan)
           (planIndex plan)
+
+mkInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                  HasUnitId srcpkg, PackageFixedDeps srcpkg)
+              => PlanIndex ipkg srcpkg iresult ifailure
+              -> FakeMap
+              -> Bool
+              -> GenericInstallPlan ipkg srcpkg iresult ifailure
+mkInstallPlan index fakeMap indepGoals =
+    GenericInstallPlan {
+      planIndex      = index,
+      planFakeMap    = fakeMap,
+      planIndepGoals = indepGoals,
+
+      planGraph      = graph,
+      planGraphRev   = Graph.transposeG graph,
+      planPkgOf      = vertexToPkgId,
+      planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex
+    }
+  where
+    (graph, vertexToPkgId, pkgIdToVertex) =
+      PlanIndex.dependencyGraph fakeMap index
+    noSuchPkgId = internalError "package is not in the graph"
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
@@ -256,18 +280,7 @@ new indepGoals index =
               . filter isPreExisting
               $ PackageIndex.allPackages index in
   case problems fakeMap indepGoals index of
-    [] -> Right GenericInstallPlan {
-            planIndex      = index,
-            planFakeMap    = fakeMap,
-            planGraph      = graph,
-            planGraphRev   = Graph.transposeG graph,
-            planPkgOf      = vertexToPkgId,
-            planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex,
-            planIndepGoals = indepGoals
-          }
-      where (graph, vertexToPkgId, pkgIdToVertex) =
-              PlanIndex.dependencyGraph fakeMap index
-            noSuchPkgId = internalError "package is not in the graph"
+    []    -> Right (mkInstallPlan index fakeMap indepGoals)
     probs -> Left probs
 
 toList :: GenericInstallPlan ipkg srcpkg iresult ifailure
