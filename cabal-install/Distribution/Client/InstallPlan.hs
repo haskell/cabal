@@ -191,10 +191,19 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     -- cached (lazily) graph
     planGraph      :: Graph,
     planGraphRev   :: Graph,
-    planPkgOf      :: Graph.Vertex
-                      -> GenericPlanPackage ipkg srcpkg iresult ifailure,
+    planPkgIdOf    :: Graph.Vertex -> UnitId,
     planVertexOf   :: UnitId -> Graph.Vertex
   }
+
+planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
+          -> Graph.Vertex
+          -> GenericPlanPackage ipkg srcpkg iresult ifailure
+planPkgOf plan v =
+    case PackageIndex.lookupUnitId (planIndex plan)
+                                   (planPkgIdOf plan v) of
+      Just pkg -> pkg
+      Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
+
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
@@ -226,7 +235,7 @@ mkInstallPlan index fakeMap indepGoals =
 
       planGraph      = graph,
       planGraphRev   = Graph.transposeG graph,
-      planPkgOf      = vertexToPkgId,
+      planPkgIdOf    = vertexToPkgId,
       planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex
     }
   where
