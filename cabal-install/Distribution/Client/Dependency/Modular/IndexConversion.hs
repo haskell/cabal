@@ -5,6 +5,7 @@ module Distribution.Client.Dependency.Modular.IndexConversion
 import Data.List as L
 import Data.Map as M
 import Data.Maybe
+import Data.Monoid as Mon
 import Prelude hiding (pi)
 
 import qualified Distribution.Client.PackageIndex as CI
@@ -103,11 +104,15 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- | Convert a generic package description to a solver-specific 'PInfo'.
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch comp strfl pi
+convGPD os arch cinfo strfl pi
         (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
-    conv = convBuildableCondTree os arch comp pi fds
+
+    conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
+            CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
+    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo .
+                        PDC.addBuildableCondition getInfo
   in
     PInfo
       (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
@@ -128,20 +133,6 @@ prefix f fds = [f (concat fds)]
 -- unless strong flags have been selected explicitly.
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
-
--- | Convert a condition tree to flagged dependencies.
---
--- In addition, tries to determine under which condition the condition tree
--- is buildable, and will add an additional condition on top accordingly.
-convBuildableCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
-                         Component ->
-                         (a -> BuildInfo) ->
-                         CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convBuildableCondTree os arch cinfo pi fds comp getInfo t =
-  case PDC.extractCondition (buildable . getInfo) t of
-    Lit True  -> convCondTree os arch cinfo pi fds comp getInfo t
-    Lit False -> []
-    c         -> convBranch os arch cinfo pi fds comp getInfo (c, t, Nothing)
 
 -- | Convert condition trees to flagged dependencies.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->

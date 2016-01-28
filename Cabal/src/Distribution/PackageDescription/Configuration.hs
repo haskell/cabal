@@ -23,6 +23,7 @@ module Distribution.PackageDescription.Configuration (
     parseCondition,
     freeVars,
     extractCondition,
+    addBuildableCondition,
     mapCondTree,
     mapTreeData,
     mapTreeConds,
@@ -277,8 +278,10 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     pdTaggedBuildInfo (Bench _ b) = benchmarkBuildInfo b
     pdTaggedBuildInfo PDNull = mempty
 
--- | Tries to determine under which condition the condition tree
--- is buildable, and will add an additional condition on top accordingly.
+-- | Transforms a 'CondTree' by putting the input under the "then" branch of a
+-- conditional that is True when Buildable is True. If 'addBuildableCondition'
+-- can determine that Buildable is always True, it returns the input unchanged.
+-- If Buildable is always False, it returns the empty 'CondTree'.
 addBuildableCondition :: (Eq v, Monoid a, Monoid c) => (a -> BuildInfo)
                       -> CondTree v c a
                       -> CondTree v c a
@@ -297,7 +300,8 @@ addBuildableCondition getInfo t =
 -- prior to solving.
 --
 -- What we are doing here is to partially evaluate a condition tree in order to extract
--- the condition under which Buildable is True.
+-- the condition under which Buildable is True. The predicate determines whether data
+-- under a 'CondTree' is buildable.
 extractCondition :: Eq v => (a -> Bool) -> CondTree v c a -> Condition v
 extractCondition p = go
   where
