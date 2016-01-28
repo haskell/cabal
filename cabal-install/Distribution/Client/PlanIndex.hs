@@ -21,7 +21,7 @@ import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
-import Data.Maybe (isNothing, fromJust)
+import Data.Maybe (isNothing)
 import Data.Either (rights)
 
 #if !MIN_VERSION_base(4,8,0)
@@ -146,7 +146,7 @@ rootSets fakeMap indepGoals index =
 libraryRoots :: (PackageFixedDeps pkg, HasUnitId pkg)
              => FakeMap -> PackageIndex pkg -> [UnitId]
 libraryRoots fakeMap index =
-    map (installedUnitId . toPkgId) roots
+    map toPkgId roots
   where
     (graph, toPkgId, _) = dependencyGraph fakeMap index
     indegree = Graph.indegree graph
@@ -271,14 +271,13 @@ dependencyGraph :: (PackageFixedDeps pkg, HasUnitId pkg)
                 => FakeMap
                 -> PackageIndex pkg
                 -> (Graph.Graph,
-                    Graph.Vertex -> pkg,
+                    Graph.Vertex -> UnitId,
                     UnitId -> Maybe Graph.Vertex)
 dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
   where
     (graph, vertexToPkg', idToVertex) = Graph.graphFromEdges edges
-    vertexToPkg = fromJust
-                . (\((), key, _targets) -> lookupUnitId index key)
-                . vertexToPkg'
+    vertexToPkg v = case vertexToPkg' v of
+                      ((), pkgid, _targets) -> pkgid
 
     pkgs  = allPackages index
     edges = map edgesFrom pkgs

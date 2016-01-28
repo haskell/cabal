@@ -21,6 +21,7 @@ module Distribution.Client.ComponentDeps (
   , fromList
   , singleton
   , insert
+  , filterDeps
   , fromLibraryDeps
   , fromSetupDeps
   , fromInstalled
@@ -64,6 +65,10 @@ instance Binary Component
 type ComponentDep a = (Component, a)
 
 -- | Fine-grained dependencies for a package
+--
+-- Typically used as @ComponentDeps [Dependency]@, to represent the list of
+-- dependencies for each named component within a package.
+--
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
   deriving (Show, Functor, Eq, Ord, Generic)
 
@@ -99,6 +104,10 @@ insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
   where
     aux Nothing   = Just a
     aux (Just a') = Just $ a `mappend` a'
+
+-- | Keep only selected components (and their associated deps info).
+filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
+filterDeps p = ComponentDeps . Map.filterWithKey p . unComponentDeps
 
 -- | ComponentDeps containing library dependencies only
 fromLibraryDeps :: a -> ComponentDeps a
