@@ -8,23 +8,27 @@ listed, is [PackageTests.hs]. There are utilities for calling the stages
 of Cabal's build process in [PackageTests/PackageTester.hs]; have a look
 at an existing test case to see how they are used.
 
-It is important that package tests use the in-place version of Cabal
-rather than the system version. Several long-standing bugs in the test
-suite were caused by testing the system (rather than the newly compiled)
-version of Cabal. There are two places where the system Cabal can
-accidentally be invoked:
+In order to run the tests, `PackageTests` needs to know where the inplace
+copy of Cabal being tested is, as well as some information which was
+used to configure it.  By default, `PackageTests` tries to look at the
+`LocalBuildInfo`, but if the format of `LocalBuildInfo` has changed
+between the version of Cabal which ran the configure step, and the
+version of Cabal we are testing against, this may fail.  In that
+case, you can manually specify the information we need using
+the following environment variables:
 
-1. Compiling `Setup.hs`. `runghc` needs to be told about the in-place
-   package database. This issue should be solved for all future package
-   tests; see `compileSetup` in [PackageTests/PackageTester.hs].
+* `CABAL_PACKAGETESTS_GHC` is the path to the GHC you compiled Cabal with
+* `CABAL_PACKAGETESTS_GHC_PKG` is the path to the ghc-pkg associated with this GHC
+* `CABAL_PACKAGETESTS_HADDOCK` is the path to the haddock associated with this GHC
+* `CABAL_PACKAGETESTS_GHC_VERSION` is the version of your GHC
+* `CABAL_PACKAGETESTS_DB_STACK` is a PATH-style list of package database paths,
+  `clear`, `global` and `user`.  Each component of the list is
+  interpreted the same way as Cabal's `-package-db` flag.  This list
+  must contain the copy of Cabal you are planning to test against
+  (as well as its transitive dependencies).
 
-2. Compiling a package which depends on Cabal. In particular, packages
-   with the [detailed]-type test suites depend on the Cabal library
-   directly, so it is important that they are configured to use the
-   in-place package database. The test suite already creates a stub
-   `PackageSpec` for this case; see
-   [PackageTests/BuildTestSuiteDetailedV09/Check.hs] to see how it is
-   used.
+If you can successfully run the test suite, we'll print out examples
+of all of these values for you under "Environment".
 
 [PackageTests]: PackageTests
 [HUnit]: http://hackage.haskell.org/package/HUnit
