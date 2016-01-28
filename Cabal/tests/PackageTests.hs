@@ -65,21 +65,7 @@ main = do
     dist_dir <- guessDistDir
     lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
 
-    -- Put ourselves in the right directory.  We do this by looking
-    -- at the location of Cabal.cabal.  For the remainder of the
-    -- execution of this program, this will be our CWD; however,
-    -- subprocess calls may have different CWDs.
-    case pkgDescrFile lbi of
-        Nothing -> error "Can't find Cabal.cabal"
-        -- Double check!
-        Just f
-          -- Sufficiently new version of Cabal will have this working
-          | isAbsolute f -> do
-            test_dir <- canonicalizePath (dropFileName f)
-            setCurrentDirectory test_dir
-          -- Otherwise, just require package-tests to be run from
-          -- the correct directory
-          | otherwise -> return ()
+    -- You need to run the test suite in the right directory, sorry.
     test_dir <- getCurrentDirectory
 
     -- Pull out the information we need from the LBI
