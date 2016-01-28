@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- | Groups black-box tests of cabal-install and configures them to test
 -- the correct binary.
 --
@@ -34,7 +35,7 @@ import System.Directory
         , doesDirectoryExist
         , removeDirectoryRecursive
         , doesFileExist )
-import System.FilePath ((</>), replaceExtension)
+import System.FilePath
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (testCase, Assertion, assertFailure)
 import Control.Monad ( filterM, forM, when )
@@ -46,6 +47,10 @@ import System.Process (runProcess, waitForProcess)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
 import           Data.ByteString (ByteString)
+
+#if MIN_VERSION_base(4,6,0)
+import System.Environment ( getExecutablePath )
+#endif
 
 -- | Test case.
 data TestCase = TestCase
@@ -255,7 +260,7 @@ discoverCategoryTests baseDirectory category = do
 main :: IO ()
 main = do
   -- Find executables and build directories, etc.
-  distPref <- findDistPrefOrDefault NoFlag
+  distPref <- guessDistDir
   buildDir <- canonicalizePath (distPref </> "build/cabal")
   let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
   (cabal, _) <- requireProgram normal cabalProgram (setProgramSearchPath programSearchPath defaultProgramDb)
@@ -277,3 +282,22 @@ main = do
   let testTree = map (\(category, categoryTests) -> testGroup category categoryTests) tests
   -- Run the tests
   defaultMain $ testGroup "Integration Tests" $ testTree
+
+-- See this function in Cabal's PackageTests. If you update this,
+-- update its copy in cabal-install.  (Why a copy here? I wanted
+-- to try moving this into the Cabal library, but to do this properly
+-- I'd have to BC'ify getExecutablePath, and then it got hairy, so
+-- I aborted and did something simple.)
+guessDistDir :: IO FilePath
+guessDistDir = do
+#if MIN_VERSION_base(4,6,0)
+    exe_path <- canonicalizePath =<< getExecutablePath
+    let dist0 = dropFileName exe_path </> ".." </> ".."
+    b <- doesFileExist (dist0 </> "setup-config")
+#else
+    let dist0 = error "no path"
+        b = False
+#endif
+    -- Method (2)
+    if b then canonicalizePath dist0
+         else findDistPrefOrDefault NoFlag >>= canonicalizePath

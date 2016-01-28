@@ -161,6 +161,8 @@ main = do
 --     2. We can use the normal input methods (as per Cabal),
 --        checking for the CABAL_BUILDDIR environment variable as
 --        well as the default location in the current working directory.
+--
+-- NB: If you update this, also update its copy in cabal-install's IntegrationTests
 guessDistDir :: IO FilePath
 guessDistDir = do
 #if MIN_VERSION_base(4,6,0)
