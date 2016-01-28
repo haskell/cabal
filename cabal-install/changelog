@@ -34,6 +34,7 @@
 	hackage (#2890).
 	* Improved error handling for 'sandbox delete-source' (#2943).
 	* Solver support for extension and language flavours (#2873).
+	* Support for secure repos using hackage-security (#2983).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
