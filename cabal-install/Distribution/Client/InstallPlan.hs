@@ -188,13 +188,19 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planFakeMap    :: !FakeMap,
     planIndepGoals :: !Bool,
 
-    -- cached (lazily) graph
+    -- | Cached (lazily) graph
+    --
+    -- The 'Graph' representaion works in terms of integer node ids, so we
+    -- have to keep mapping to and from our meaningful nodes, which of course
+    -- are package ids.
+    --
     planGraph      :: Graph,
-    planGraphRev   :: Graph,
-    planPkgIdOf    :: Graph.Vertex -> UnitId,
-    planVertexOf   :: UnitId -> Graph.Vertex
+    planGraphRev   :: Graph,  -- ^ Reverse deps, transposed
+    planPkgIdOf    :: Graph.Vertex -> UnitId, -- ^ mapping back to package ids
+    planVertexOf   :: UnitId -> Graph.Vertex  -- ^ mapping into node ids
   }
 
+-- | Much like 'planPkgIdOf', but mapping back to full packages.
 planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
           -> Graph.Vertex
           -> GenericPlanPackage ipkg srcpkg iresult ifailure
@@ -221,6 +227,8 @@ invariant plan =
           (planIndepGoals plan)
           (planIndex plan)
 
+-- | Smart constructor that deals with caching the 'Graph' representation.
+--
 mkInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                   HasUnitId srcpkg, PackageFixedDeps srcpkg)
               => PlanIndex ipkg srcpkg iresult ifailure
@@ -233,6 +241,7 @@ mkInstallPlan index fakeMap indepGoals =
       planFakeMap    = fakeMap,
       planIndepGoals = indepGoals,
 
+      -- lazily cache the graph stuff:
       planGraph      = graph,
       planGraphRev   = Graph.transposeG graph,
       planPkgIdOf    = vertexToPkgId,
