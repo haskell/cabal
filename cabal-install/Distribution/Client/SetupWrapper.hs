@@ -574,13 +574,19 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
                               maybeCabalLibInstalledPkgId
 
-          -- We do a few things differently once packages opt-in and declare
-          -- a custom-settup stanza. In particular we then enforce the deps
-          -- specified, but also let the Setup.hs use the version macros.
-          newPedanticDeps     = useDependenciesExclusive options'
-          selectedDeps
-            | newPedanticDeps = useDependencies options'
-            | otherwise       = useDependencies options' ++ cabalDep
+          -- With 'useDependenciesExclusive' we enforce the deps specified,
+          -- so only the given ones can be used. Otherwise we allow the use
+          -- of packages in the ambient environment, and add on a dep on the
+          -- Cabal library.
+          --
+          -- With 'useVersionMacros' we use a version CPP macros .h file.
+          --
+          -- Both of these options should be enabled for packages that have
+          -- opted-in and declared a custom-settup stanza.
+          --
+          selectedDeps | useDependenciesExclusive options'
+                                   = useDependencies options'
+                       | otherwise = useDependencies options' ++ cabalDep
           addRenaming (ipid, pid) = (ipid, pid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
@@ -593,8 +599,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePathClear = Flag True
             , ghcOptSourcePath      = toNubListR [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
-            , ghcOptHideAllPackages = Flag newPedanticDeps
-            , ghcOptCabal           = Flag newPedanticDeps
+            , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
+            , ghcOptCabal           = Flag (useDependenciesExclusive options')
             , ghcOptPackages        = toNubListR $ map addRenaming selectedDeps
             , ghcOptCppIncludes     = toNubListR [ cppMacrosFile
                                                  | useVersionMacros options' ]
