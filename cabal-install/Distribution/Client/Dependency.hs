@@ -737,7 +737,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerInfo
                           -> ConfiguredPackage -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps' setupDeps) =
+  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -792,7 +792,7 @@ configuredPackageProblems platform cinfo
          (enableStanzas stanzas $ packageDescription pkg) of
         Right (resolvedPkg, _) ->
              externalBuildDepends resolvedPkg
-          ++ maybe setupDeps PD.setupDepends (PD.setupBuildInfo resolvedPkg)
+          ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)
         Left  _ ->
           error "configuredPackageInvalidDeps internal error"
 

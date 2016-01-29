@@ -611,7 +611,7 @@ finaliseSelectedPackages pref selected constraints =
 
     finaliseInstalled (InstalledPackageEx pkg _ _) = SelectedInstalled pkg
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
-        SelectedSource (ConfiguredPackage pkg flags stanzas deps' [])
+        SelectedSource (ConfiguredPackage pkg flags stanzas deps')
       where
         -- We cheat in the cabal solver, and classify all dependencies as
         -- library dependencies.

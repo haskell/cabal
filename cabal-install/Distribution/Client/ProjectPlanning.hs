@@ -794,7 +794,7 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
            mloc <- checkFetched locm
            return (pkg, locm, mloc)
       | InstallPlan.Configured
-          (ConfiguredPackage pkg _ _ _ _) <- InstallPlan.toList installPlan ]
+          (ConfiguredPackage pkg _ _ _) <- InstallPlan.toList installPlan ]
 
     let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
         alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
@@ -1031,8 +1031,8 @@ elaborateInstallPlan platform compiler progdb
     -- changing the installed package ids of all the packages to use the
     -- final nix-style hashed ids.
     fixupDependencies mapDep
-       (ConfiguredPackage pkg flags stanzas deps  setup) =
-        ConfiguredPackage pkg flags stanzas deps' setup
+       (ConfiguredPackage pkg flags stanzas deps) =
+        ConfiguredPackage pkg flags stanzas deps'
       where
         deps' = fmap (map (\d -> d { confInstId = mapDep (confInstId d) })) deps
 
@@ -1040,7 +1040,7 @@ elaborateInstallPlan platform compiler progdb
                                -> ElaboratedConfiguredPackage
     elaborateConfiguredPackage
         pkg@(ConfiguredPackage (SourcePackage pkgid gdesc srcloc descOverride)
-                               flags stanzas deps _) =
+                               flags stanzas deps) =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the

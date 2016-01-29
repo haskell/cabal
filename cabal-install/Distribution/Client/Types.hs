@@ -19,7 +19,7 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..), Dependency
+         ( PackageName, PackageId, Package(..)
          , UnitId(..), mkUnitId
          , HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
@@ -109,7 +109,6 @@ data ConfiguredPackage = ConfiguredPackage
                            -- These must be consistent with the 'buildDepends'
                            -- in the 'PackageDescription' that you'd get by
                            -- applying the flag assignment and optional stanzas.
-       [Dependency]        -- legacy Setup.hs deps
   deriving (Eq, Show, Generic)
 
 instance Binary ConfiguredPackage
@@ -144,10 +143,10 @@ instance HasUnitId ConfiguredId where
   installedUnitId = confInstId
 
 instance Package ConfiguredPackage where
-  packageId (ConfiguredPackage pkg _ _ _ _) = packageId pkg
+  packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps _) = fmap (map confInstId) deps
+  depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
 instance HasUnitId ConfiguredPackage where
   installedUnitId = fakeUnitId . packageId
@@ -281,8 +280,6 @@ data RemoteRepo =
       -- in automagically for known repos.
       remoteRepoShouldTryHttps :: Bool
     }
-
-  -- FIXME: discuss this type some more.
 
   deriving (Show, Eq, Ord, Generic)
 

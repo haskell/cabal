@@ -128,7 +128,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
              (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
-                                 _ _ _ _)
+                                 _ _ _)
              _)] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
@@ -222,7 +222,7 @@ configureSetupScript packageDBs
 
     explicitSetupDeps :: Maybe [(UnitId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _ _) deps
+      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
                  <- mpkg
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
@@ -343,7 +343,7 @@ configurePackage :: Verbosity
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
                  (ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _)
-                                                  flags stanzas _ _)
+                                                  flags stanzas _)
                                deps)
                  extraArgs =
 
