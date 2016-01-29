@@ -79,12 +79,13 @@ preferredVersionsOrdering vrs v1 v2 = compare (check v1) (check v2)
                Prelude.map (flip checkVR v) $ vrs
 
 -- | Traversal that tries to establish package preferences (not constraints).
--- Works by reordering choice nodes.
+-- Works by reordering choice nodes. Also applies stanza preferences.
 preferPackagePreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
-preferPackagePreferences pcs = packageOrderFor (const True) preference
+preferPackagePreferences pcs = preferPackageStanzaPreferences pcs
+                             . packageOrderFor (const True) preference
   where
     preference pn i1@(I v1 _) i2@(I v2 _) =
-      let PackagePreferences vrs ipref = pcs pn
+      let PackagePreferences vrs ipref _ = pcs pn
       in  preferredVersionsOrdering vrs v1 v2 `mappend` -- combines lexically
           locationsOrdering ipref i1 i2
 
@@ -106,6 +107,20 @@ preferInstalledOrdering _              _              = EQ
 -- | Compare instances by their version numbers.
 preferLatestOrdering :: I -> I -> Ordering
 preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
+
+-- | Traversal that tries to establish package stanza enable\/disable
+-- preferences. Works by reordering the branches of stanza choices.
+preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
+preferPackageStanzaPreferences pcs = trav go
+  where
+    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts) | primaryPP pp =
+        let PackagePreferences _ _ spref = pcs pn
+            enableStanzaPref = s `elem` spref
+                  -- move True case first to try enabling the stanza
+            ts' | enableStanzaPref = P.sortByKeys (flip compare) ts
+                | otherwise        = ts
+         in SChoiceF qsn gr True ts'   -- True: now weak choice
+    go x = x
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given instance for a P-node. Translates the constraint into a

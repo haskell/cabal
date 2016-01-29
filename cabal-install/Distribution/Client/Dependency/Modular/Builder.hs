@@ -142,6 +142,11 @@ build = ana go
         reorder False = reverse
         trivial = L.null t && L.null f
 
+    -- For a stanza, we also create only two subtrees. The order is initially
+    -- False, True. This can be changed later by constraints (force enabling
+    -- the stanza by replacing the False branch with failure) or preferences
+    -- (try enabling the stanza if possible by moving the True branch first).
+
     go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
       SChoiceF qsn gr trivial (P.fromList
         [(False,                                                                  bs  { next = Goals }),

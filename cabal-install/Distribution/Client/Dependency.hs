@@ -70,7 +70,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
+         , ConfiguredPackage(..), ConfiguredId(..)
+         , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), showPackageConstraint
@@ -116,7 +117,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Data.List
-         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate )
+         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
 import Data.Function (on)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
@@ -178,6 +179,11 @@ data PackagePreference =
      -- | If we prefer versions of packages that are already installed.
    | PackageInstalledPreference PackageName InstalledPreference
 
+     -- | If we would prefer to enable these optional stanzas
+     -- (i.e. test suites and/or benchmarks)
+   | PackageStanzasPreference   PackageName [OptionalStanza]
+
+
 -- | Provide a textual representation of a package preference
 -- for debugging purposes.
 --
@@ -186,6 +192,8 @@ showPackagePreference (PackageVersionPreference   pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
 showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
+showPackagePreference (PackageStanzasPreference pn st) =
+  display pn ++ " " ++ show st
 
 basicDepResolverParams :: InstalledPackageIndex
                        -> PackageIndex.PackageIndex SourcePackage
@@ -586,7 +594,9 @@ interpretPackagesPreference :: Set PackageName
                             -> [PackagePreference]
                             -> (PackageName -> PackagePreferences)
 interpretPackagesPreference selected defaultPref prefs =
-  \pkgname -> PackagePreferences (versionPref pkgname) (installPref pkgname)
+  \pkgname -> PackagePreferences (versionPref pkgname)
+                                 (installPref pkgname)
+                                 (stanzasPref pkgname)
   where
     versionPref pkgname =
       fromMaybe [anyVersion] (Map.lookup pkgname versionPrefs)
@@ -607,6 +617,13 @@ interpretPackagesPreference selected defaultPref prefs =
         -- latest version of foo, but the installed version of everything else
         if pkgname `Set.member` selected then PreferLatest
                                          else PreferInstalled
+
+    stanzasPref pkgname =
+      fromMaybe [] (Map.lookup pkgname stanzasPrefs)
+    stanzasPrefs = Map.fromListWith (\a b -> nub (a ++ b))
+      [ (pkgname, pref)
+      | PackageStanzasPreference pkgname pref <- prefs ]
+
 
 -- ------------------------------------------------------------
 -- * Checking the result of the solver
@@ -806,7 +823,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                                                          pkgDependency
 
         -- Preferences
-        PackagePreferences preferredVersions preferInstalled
+        PackagePreferences preferredVersions preferInstalled _
           = packagePreferences pkgname
 
         bestByPrefs   = comparing $ \pkg ->

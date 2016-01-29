@@ -176,7 +176,9 @@ showPackageConstraint (PackageConstraintStanzas pn ss) =
 -- It is not specified if preferences on some packages are more important than
 -- others.
 --
-data PackagePreferences = PackagePreferences [VersionRange] InstalledPreference
+data PackagePreferences = PackagePreferences [VersionRange]
+                                             InstalledPreference
+                                             [OptionalStanza]
 
 -- | Whether we prefer an installed version of a package or simply the latest
 -- version.

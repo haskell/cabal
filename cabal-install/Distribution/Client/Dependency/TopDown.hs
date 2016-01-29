@@ -130,7 +130,7 @@ explore pref (ChoiceNode _ choices)  =
         isPreferred p = length . filter (packageVersion p `withinRange`) $
                         preferredVersions
 
-        (PackagePreferences preferredVersions packageInstalledPreference)
+        (PackagePreferences preferredVersions packageInstalledPreference _)
           = pref pkgname
 
     logInfo node = Select selected discarded
@@ -674,7 +674,7 @@ finaliseSelectedPackages pref selected constraints =
           | bounded   = boundedRank -- this is a dummy constant
           | otherwise = length . filter (packageVersion p `withinRange`) $
                         preferredVersions
-          where (PackagePreferences preferredVersions _) = pref (packageName p)
+          where (PackagePreferences preferredVersions _ _) = pref (packageName p)
         boundedRank = 0 -- any value will do
 
         boundedAbove :: VersionRange -> Bool
