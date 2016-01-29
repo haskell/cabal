@@ -402,11 +402,9 @@ planPackages comp platform mSandboxPkgInfo solver
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    stanzas = concat
-        [ if testsEnabled then [TestStanzas] else []
-        , if benchmarksEnabled then [BenchStanzas] else []
-        ]
-    testsEnabled = fromFlagOrDefault False $ configTests configFlags
+    stanzas           = [ TestStanzas | testsEnabled ]
+                     ++ [ BenchStanzas | benchmarksEnabled ]
+    testsEnabled      = fromFlagOrDefault False $ configTests configFlags
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
 
     reinstall        = fromFlag (installOverrideReinstall installFlags) ||
