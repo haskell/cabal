@@ -201,6 +201,7 @@ configureSetupScript packageDBs
       -- Therefore, for now, we just leave this blank.
     , useDependencies          = fromMaybe [] explicitSetupDeps
     , useDependenciesExclusive = isJust explicitSetupDeps
+    , useVersionMacros         = isJust explicitSetupDeps
     }
   where
     -- When we are compiling a legacy setup script without an explicit
