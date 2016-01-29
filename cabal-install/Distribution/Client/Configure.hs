@@ -182,6 +182,7 @@ configureSetupScript packageDBs
                      mpkg
   = SetupScriptOptions {
       useCabalVersion   = cabalVersion
+    , useCabalSpecVersion = Nothing
     , useCompiler       = Just comp
     , usePlatform       = Just platform
     , usePackageDB      = packageDBs'
