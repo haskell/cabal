@@ -37,11 +37,9 @@ import Distribution.Client.Dependency.Modular.Version
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
 convPIs :: OS -> Arch -> CompilerInfo -> Bool -> Bool ->
-           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
-           (SourcePackage -> [Dependency]) ->
-           Index
-convPIs os arch comp sip strfl iidx sidx sdeps =
-  mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sdeps sidx)
+           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage -> Index
+convPIs os arch comp sip strfl iidx sidx =
+  mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -89,27 +87,23 @@ convIPId pn' idx ipid =
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
 convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
-            (SourcePackage -> [Dependency]) ->
             CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
-convSPI' os arch cinfo strfl sdeps = L.map (convSP os arch cinfo strfl sdeps) . CI.allPackages
+convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Bool ->
-          (SourcePackage -> [Dependency]) ->
-          SourcePackage -> (PN, I, PInfo)
-convSP os arch cinfo strfl sdeps
-       pkg@(SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage -> (PN, I, PInfo)
+convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
-  in  (pn, i, convGPD os arch cinfo strfl (sdeps pkg) (PI pn i) gpd)
+  in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> Bool -> [Dependency] ->
+convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch comp strfl sdeps pi
+convGPD os arch comp strfl pi
         (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
@@ -117,7 +111,7 @@ convGPD os arch comp strfl sdeps pi
   in
     PInfo
       (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
-                    convSetup sdeps pi                                           pkg     ++
+       maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
        concatMap   (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
         (L.map     (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)  ++
@@ -228,11 +222,6 @@ convDep :: PN -> Dependency -> Dep PN
 convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
 
 -- | Convert setup dependencies
-convSetup :: [Dependency] -> PI PN -> PackageDescription ->
-             FlaggedDeps Component PN
-convSetup sdeps (PI pn _i) pd =
-    L.map (\d -> D.Simple (convDep pn d) ComponentSetup)
-          (maybe sdeps PD.setupDepends (PD.setupBuildInfo pd))
-          -- If there are explicit setup deps then use them, otherwise use
-          -- any given defaults.
-
+convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN
+convSetupBuildInfo (PI pn _i) nfo =
+    L.map (\d -> D.Simple (convDep pn d) ComponentSetup) (PD.setupDepends nfo)

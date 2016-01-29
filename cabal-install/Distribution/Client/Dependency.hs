@@ -57,7 +57,7 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds,
-    addDefaultSetupDepends,
+    addDefaultSetupDependencies,
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -143,7 +143,6 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
-       depResolverSetupDepsDefaults :: SourcePackage -> [Dependency],
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
@@ -181,6 +180,8 @@ data PackagePreference =
      -- | If we prefer versions of packages that are already installed.
    | PackageInstalledPreference PackageName InstalledPreference
 
+     -- | If we would prefer to enable these optional stanzas
+     -- (i.e. test suites and/or benchmarks)
    | PackageStanzasPreference   PackageName [OptionalStanza]
 
 
@@ -206,7 +207,6 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
-       depResolverSetupDepsDefaults = const [],
        depResolverReorderGoals      = False,
        depResolverIndependentGoals  = False,
        depResolverAvoidReinstalls   = False,
@@ -357,13 +357,14 @@ hideBrokenInstalledPackages params =
 
 -- | Remove upper bounds in dependencies using the policy specified by the
 -- 'AllowNewer' argument (all/some/none).
+--
+-- Note: It's important to apply 'removeUpperBounds' after
+-- 'addSourcePackages'. Otherwise, the packages inserted by
+-- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
+--
 removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
 removeUpperBounds allowNewer params =
     params {
-      -- NB: It's important to apply 'removeUpperBounds' after
-      -- 'addSourcePackages'. Otherwise, the packages inserted by
-      -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
-
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
   where
@@ -440,12 +441,36 @@ removeUpperBounds allowNewer params =
 
 
 -- | Supply defaults for packages without explicit Setup dependencies
-addDefaultSetupDepends :: (SourcePackage -> [Dependency])
-                      -> DepResolverParams -> DepResolverParams
-addDefaultSetupDepends defaultSetupDeps params =
+--
+-- Note: It's important to apply 'addDefaultSetupDepends' after
+-- 'addSourcePackages'. Otherwise, the packages inserted by
+-- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
+--
+addDefaultSetupDependencies :: (SourcePackage -> [Dependency])
+                            -> DepResolverParams -> DepResolverParams
+addDefaultSetupDependencies defaultSetupDeps params =
     params {
-      depResolverSetupDepsDefaults = defaultSetupDeps
+      depResolverSourcePkgIndex =
+        fmap applyDefaultSetupDeps (depResolverSourcePkgIndex params)
     }
+  where
+    applyDefaultSetupDeps :: SourcePackage -> SourcePackage
+    applyDefaultSetupDeps srcpkg =
+        srcpkg {
+          packageDescription = gpkgdesc {
+            PD.packageDescription = pkgdesc {
+              PD.setupBuildInfo =
+                case PD.setupBuildInfo pkgdesc of
+                  Just sbi -> Just sbi
+                  Nothing  -> Just PD.SetupBuildInfo {
+                                PD.setupDepends = defaultSetupDeps srcpkg
+                              }
+            }
+          }
+        }
+      where
+        gpkgdesc = packageDescription srcpkg
+        pkgdesc  = PD.packageDescription gpkgdesc
 
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams
@@ -569,8 +594,7 @@ resolveDependencies platform comp  solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
-                     platform comp
-                     installedPkgIndex sourcePkgIndex defaultSetupDeps
+                     platform comp installedPkgIndex sourcePkgIndex
                      preferences constraints targets
   where
 
@@ -579,7 +603,6 @@ resolveDependencies platform comp  solver params =
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
-      defaultSetupDeps
       reorderGoals
       indGoals
       noReinstalls
@@ -818,7 +841,7 @@ configuredPackageProblems platform cinfo
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
-                              prefs defpref installedPkgIndex sourcePkgIndex _
+                              prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
     collectEithers (map selectPackage targets)

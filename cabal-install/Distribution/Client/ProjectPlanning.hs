@@ -878,8 +878,9 @@ planPackages comp platform solver solverconfig
 
       . removeUpperBounds allowNewer
 
-      . addDefaultSetupDepends (defaultSetupDeps platform
-                              . PD.packageDescription . packageDescription)
+      . addDefaultSetupDependencies (defaultSetupDeps platform
+                                   . PD.packageDescription
+                                   . packageDescription)
 
       . addPreferences
           -- preferences from the config file or command line
