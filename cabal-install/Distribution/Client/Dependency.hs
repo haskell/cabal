@@ -56,7 +56,8 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
-    removeUpperBounds
+    removeUpperBounds,
+    addDefaultSetupDependencies,
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -356,13 +357,14 @@ hideBrokenInstalledPackages params =
 
 -- | Remove upper bounds in dependencies using the policy specified by the
 -- 'AllowNewer' argument (all/some/none).
+--
+-- Note: It's important to apply 'removeUpperBounds' after
+-- 'addSourcePackages'. Otherwise, the packages inserted by
+-- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
+--
 removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
 removeUpperBounds allowNewer params =
     params {
-      -- NB: It's important to apply 'removeUpperBounds' after
-      -- 'addSourcePackages'. Otherwise, the packages inserted by
-      -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
-
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
   where
@@ -435,6 +437,39 @@ removeUpperBounds allowNewer params =
         onCondTree :: (a -> b) -> PD.CondTree v [Dependency] a
                    -> PD.CondTree v [Dependency] b
         onCondTree g = mapCondTree g (map f) id
+
+
+-- | Supply defaults for packages without explicit Setup dependencies
+--
+-- Note: It's important to apply 'addDefaultSetupDepends' after
+-- 'addSourcePackages'. Otherwise, the packages inserted by
+-- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
+--
+addDefaultSetupDependencies :: (SourcePackage -> [Dependency])
+                            -> DepResolverParams -> DepResolverParams
+addDefaultSetupDependencies defaultSetupDeps params =
+    params {
+      depResolverSourcePkgIndex =
+        fmap applyDefaultSetupDeps (depResolverSourcePkgIndex params)
+    }
+  where
+    applyDefaultSetupDeps :: SourcePackage -> SourcePackage
+    applyDefaultSetupDeps srcpkg =
+        srcpkg {
+          packageDescription = gpkgdesc {
+            PD.packageDescription = pkgdesc {
+              PD.setupBuildInfo =
+                case PD.setupBuildInfo pkgdesc of
+                  Just sbi -> Just sbi
+                  Nothing  -> Just PD.SetupBuildInfo {
+                                PD.setupDepends = defaultSetupDeps srcpkg
+                              }
+            }
+          }
+        }
+      where
+        gpkgdesc = packageDescription srcpkg
+        pkgdesc  = PD.packageDescription gpkgdesc
 
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams
