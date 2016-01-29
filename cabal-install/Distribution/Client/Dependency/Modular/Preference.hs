@@ -324,9 +324,12 @@ deferWeakFlagChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x
 
+    -- weak flags go very last, weak stanzas second last
     defer :: Tree a -> Tree a -> Ordering
     defer (FChoice _ _ True _ _) _ = GT
     defer _ (FChoice _ _ True _ _) = LT
+    defer (SChoice _ _ True _) _   = GT
+    defer _ (SChoice _ _ True _)   = LT
     defer _ _                      = EQ
 
 -- Transformation that sorts choice nodes so that
