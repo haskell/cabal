@@ -20,17 +20,20 @@ import Distribution.Client.ComponentDeps (ComponentDeps)
 -- | Converts from the solver specific result @CP QPN@ into
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
-convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
+convCP :: SI.InstalledPackageIndex ->
+          CI.PackageIndex SourcePackage ->
           CP QPN -> ResolverPackage
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting
                   (fromJust $ SI.lookupUnitId iidx pi)
     Right pi -> Configured $ ConfiguredPackage
-                  (fromJust $ CI.lookupPackageId sidx pi)
+                  srcpkg
                   fa
                   es
                   ds'
+      where
+        Just srcpkg = CI.lookupPackageId sidx pi
   where
     ds' :: ComponentDeps [ConfiguredId]
     ds' = fmap (map convConfId) ds
