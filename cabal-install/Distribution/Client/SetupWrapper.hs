@@ -122,6 +122,11 @@ import qualified System.Win32 as Win32
 
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion          :: VersionRange,
+
+    -- | This is the version of the Cabal specification that we believe that
+    -- this package uses. This affects the semantics and in particular the
+    -- Setup command line interface.
+    useCabalSpecVersion      :: Maybe Version,
     useCompiler              :: Maybe Compiler,
     usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
@@ -144,6 +149,12 @@ data SetupScriptOptions = SetupScriptOptions {
     -- that the setup script gets linked against (this was the only "dependency
     -- constraint" that we had previously for Setup scripts).
     useDependenciesExclusive :: Bool,
+
+    -- | Should we build the Setup.hs with CPP version macros available?
+    -- We turn this on when we have a setup stanza in .cabal that declares
+    -- explicit setup dependencies.
+    --
+    useVersionMacros         :: Bool,
 
     -- Used only by 'cabal clean' on Windows.
     --
@@ -174,12 +185,14 @@ data SetupScriptOptions = SetupScriptOptions {
 defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion          = anyVersion,
+    useCabalSpecVersion      = Nothing,
     useCompiler              = Nothing,
     usePlatform              = Nothing,
     usePackageDB             = [GlobalPackageDB, UserPackageDB],
     usePackageIndex          = Nothing,
     useDependencies          = [],
     useDependenciesExclusive = False,
+    useVersionMacros         = False,
     useProgramConfig         = emptyProgramConfiguration,
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
@@ -235,7 +248,9 @@ determineSetupMethod options buildType'
     -- between the self and internal setup methods, which are
     -- consistent with each other.
   | buildType' == Custom             = externalSetupMethod
-  | not (cabalVersion `withinRange`
+  | maybe False (cabalVersion /=)
+        (useCabalSpecVersion options)
+ || not (cabalVersion `withinRange`
          useCabalVersion options)    = externalSetupMethod
   | isJust (useLoggingHandle options)
     -- Forcing is done to use an external process e.g. due to parallel
@@ -338,18 +353,24 @@ externalSetupMethod verbosity options pkg bt mkargs = do
 
   cabalLibVersionToUse :: IO (Version, (Maybe UnitId)
                              ,SetupScriptOptions)
-  cabalLibVersionToUse = do
-    savedVer <- savedVersion
-    case savedVer of
-      Just version | version `withinRange` useCabalVersion options
-        -> do updateSetupScript version bt
-              -- Does the previously compiled setup executable still exist and
-              -- is it up-to date?
-              useExisting <- canUseExistingSetup version
-              if useExisting
-                then return (version, Nothing, options)
-                else installedVersion
-      _ -> installedVersion
+  cabalLibVersionToUse = 
+    case useCabalSpecVersion options of
+      Just version -> do
+        updateSetupScript version bt
+        writeFile setupVersionFile (show version ++ "\n")
+        return (version, Nothing, options)
+      Nothing  -> do
+        savedVer <- savedVersion
+        case savedVer of
+          Just version | version `withinRange` useCabalVersion options
+            -> do updateSetupScript version bt
+                  -- Does the previously compiled setup executable still exist
+                  -- and is it up-to date?
+                  useExisting <- canUseExistingSetup version
+                  if useExisting
+                    then return (version, Nothing, options)
+                    else installedVersion
+          _ -> installedVersion
     where
       -- This check duplicates the checks in 'getCachedSetupExecutable' /
       -- 'compileSetupExecutable'. Unfortunately, we have to perform it twice
@@ -495,6 +516,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                 (fmap compilerId . useCompiler $ options')
         platformString        = display platform
 
+  --TODO: eliminate cached setup
+
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions
@@ -574,11 +597,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptCabal           = Flag newPedanticDeps
             , ghcOptPackages        = toNubListR $ map addRenaming selectedDeps
             , ghcOptCppIncludes     = toNubListR [ cppMacrosFile
-                                                 | newPedanticDeps ]
+                                                 | useVersionMacros options' ]
             , ghcOptExtra           = toNubListR extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
-      when newPedanticDeps $
+      when (useVersionMacros options') $
         rewriteFile cppMacrosFile (generatePackageVersionMacros
                                      [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of

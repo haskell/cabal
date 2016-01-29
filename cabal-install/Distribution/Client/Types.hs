@@ -64,6 +64,11 @@ instance Binary SourcePackageDb
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
 
+type InstalledPackageId = UnitId
+
+installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
+installedPackageId = installedUnitId
+
 -- | Subclass of packages that have specific versioned dependencies.
 --
 -- So for example a not-yet-configured package has dependencies on version
@@ -130,6 +135,12 @@ instance Binary ConfiguredId
 
 instance Show ConfiguredId where
   show = show . confSrcId
+
+instance Package ConfiguredId where
+  packageId = confSrcId
+
+instance HasUnitId ConfiguredId where
+  installedUnitId = confInstId
 
 instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg

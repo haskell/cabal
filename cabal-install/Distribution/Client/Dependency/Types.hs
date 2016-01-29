@@ -16,6 +16,7 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
+    Dependency,
     DependencyResolver,
     ResolverPackage(..),
 
@@ -63,7 +64,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
-         ( PackageName )
+         ( PackageName, Dependency )
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -115,7 +116,8 @@ instance Text PreSolver where
 type DependencyResolver = Platform
                        -> CompilerInfo
                        -> InstalledPackageIndex
-                       ->          PackageIndex.PackageIndex SourcePackage
+                       -> PackageIndex.PackageIndex SourcePackage
+                       -> (SourcePackage -> [Dependency]) --TOO: a bit hacky
                        -> (PackageName -> PackagePreferences)
                        -> [LabeledPackageConstraint]
                        -> [PackageName]
@@ -176,7 +178,9 @@ showPackageConstraint (PackageConstraintStanzas pn ss) =
 -- It is not specified if preferences on some packages are more important than
 -- others.
 --
-data PackagePreferences = PackagePreferences [VersionRange] InstalledPreference
+data PackagePreferences = PackagePreferences [VersionRange]
+                                             InstalledPreference
+                                             [OptionalStanza]
 
 -- | Whether we prefer an installed version of a package or simply the latest
 -- version.
@@ -282,6 +286,9 @@ data ConstraintSource =
   -- | Main config file, which is ~/.cabal/config by default.
   ConstraintSourceMainConfig FilePath
 
+  -- | Local cabal.project file
+  | ConstraintSourceProjectConfig FilePath
+
   -- | Sandbox config file, which is ./cabal.sandbox.config by default.
   | ConstraintSourceSandboxConfig FilePath
 
@@ -319,6 +326,8 @@ instance Binary ConstraintSource
 showConstraintSource :: ConstraintSource -> String
 showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
+showConstraintSource (ConstraintSourceProjectConfig path) =
+    "project config " ++ path
 showConstraintSource (ConstraintSourceSandboxConfig path) =
     "sandbox config " ++ path
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path

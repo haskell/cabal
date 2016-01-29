@@ -9,7 +9,7 @@ env:
  - GHCVER=7.8.4
  - GHCVER=7.10.3
  # TODO add PARSEC_BUNDLED=YES when it's so
- - GHCVER=head
+ - GHCVER=head NOTEST=1
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -17,6 +17,7 @@ before_install:
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
  - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
+ - if [ "x$NOTEST" = "x" ]; then export CABFLAGS="--enable-tests"; else export CABFLAGS=""; fi
 
 install:
  - cabal update
@@ -28,8 +29,12 @@ install:
 # ./dist/setup/setup here instead of cabal-install to avoid breakage when the
 # build config format changed.
 script:
- # We depend on parsec nowadays, which isn't distributed with GHC <8.0
- - if [ "$PARSEC_BUNDLED" != "YES" ]; then cabal install parsec; fi
+
+# hack in the nix-local-branch: we install all deps up front so we guarantee
+# consistent deps, otherwise we pick inconsistent versions of transformers
+# which just so happens not to break the master branch, but does break things
+# in our branch:
+ - cabal install ./Cabal ./cabal-install --only-dependencies $CABFLAGS
 
 # Cabal
  - cd Cabal
@@ -40,12 +45,10 @@ script:
  - cp Setup.hs ./dist/setup/setup.hs
  - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -isrc ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
-# Install test dependencies only after setup is built
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
- - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
+ - ./dist/setup/setup configure --user --ghc-option=-Werror $CABFLAGS -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - if [ "x$NOTEST" = "x" ]; then ./dist/setup/setup test --show-details=streaming; fi
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
 
@@ -69,11 +72,10 @@ script:
  - cp Setup.hs ./dist/setup/setup.hs
  - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
- - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
+ - ./dist/setup/setup configure --user $CABFLAGS -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - if [ "x$NOTEST" = "x" ]; then ./dist/setup/setup test --show-details=streaming; fi
  - cabal check
  - cabal sdist
  - install_from_tarball
@@ -83,4 +85,4 @@ script:
 
 matrix:
   allow_failures:
-   - env: GHCVER=head
+   - env: GHCVER=head NOTEST=1

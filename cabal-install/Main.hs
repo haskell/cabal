@@ -66,6 +66,8 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
+import qualified Distribution.Client.MultiPkg as MultiPkg (configure, build)
+
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
@@ -268,6 +270,9 @@ mainWorker args = topHandler $
       , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
+
+      , hiddenCmd  installCommand { commandName = "new-configure" } newConfigureAction
+      , hiddenCmd  installCommand { commandName = "new-build" } newBuildAction
       ]
 
 type Action = GlobalFlags -> IO ()
@@ -1260,3 +1265,32 @@ manpageAction commands _ extraArgs _ = do
     die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
   putStrLn (manpage pname commands)
+
+
+------------------------------------------------------------------------------
+-- New nix style local build ui
+--
+
+newConfigureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+                   -> [String] -> GlobalFlags -> IO ()
+newConfigureAction (configFlags, configExFlags, installFlags, haddockFlags)
+                   extraArgs globalFlags =
+    MultiPkg.configure verbosity
+      globalFlags configFlags configExFlags
+      installFlags haddockFlags
+      extraArgs
+  where
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+
+newBuildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+               -> [String] -> GlobalFlags -> IO ()
+newBuildAction (configFlags, configExFlags, installFlags, haddockFlags)
+               extraArgs globalFlags =
+    MultiPkg.build verbosity
+      globalFlags configFlags configExFlags
+      installFlags haddockFlags
+      extraArgs
+  where
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+

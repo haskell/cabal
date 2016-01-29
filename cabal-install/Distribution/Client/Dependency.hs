@@ -56,7 +56,8 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
-    removeUpperBounds
+    removeUpperBounds,
+    addDefaultSetupDepends,
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -70,7 +71,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
+         , ConfiguredPackage(..), ConfiguredId(..)
+         , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), showPackageConstraint
@@ -116,7 +118,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Data.List
-         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate )
+         ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
 import Data.Function (on)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
@@ -141,6 +143,7 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverSetupDepsDefaults :: SourcePackage -> [Dependency],
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
@@ -178,6 +181,9 @@ data PackagePreference =
      -- | If we prefer versions of packages that are already installed.
    | PackageInstalledPreference PackageName InstalledPreference
 
+   | PackageStanzasPreference   PackageName [OptionalStanza]
+
+
 -- | Provide a textual representation of a package preference
 -- for debugging purposes.
 --
@@ -186,6 +192,8 @@ showPackagePreference (PackageVersionPreference   pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
 showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
+showPackagePreference (PackageStanzasPreference pn st) =
+  display pn ++ " " ++ show st
 
 basicDepResolverParams :: InstalledPackageIndex
                        -> PackageIndex.PackageIndex SourcePackage
@@ -198,6 +206,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
+       depResolverSetupDepsDefaults = const [],
        depResolverReorderGoals      = False,
        depResolverIndependentGoals  = False,
        depResolverAvoidReinstalls   = False,
@@ -401,6 +410,7 @@ removeUpperBounds allowNewer params =
         onBenchmark  bmk  = bmk { PD.benchmarkBuildInfo =
                                      f' $ PD.benchmarkBuildInfo bmk }
 
+        --TODO: also apply to setupDepends
         srcPkg' = srcPkg { packageDescription = gpd' }
         gpd'    = gpd {
           PD.packageDescription = pd',
@@ -427,6 +437,15 @@ removeUpperBounds allowNewer params =
         onCondTree :: (a -> b) -> PD.CondTree v [Dependency] a
                    -> PD.CondTree v [Dependency] b
         onCondTree g = mapCondTree g (map f) id
+
+
+-- | Supply defaults for packages without explicit Setup dependencies
+addDefaultSetupDepends :: (SourcePackage -> [Dependency])
+                      -> DepResolverParams -> DepResolverParams
+addDefaultSetupDepends defaultSetupDeps params =
+    params {
+      depResolverSetupDepsDefaults = defaultSetupDeps
+    }
 
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams
@@ -550,7 +569,8 @@ resolveDependencies platform comp  solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
-                     platform comp installedPkgIndex sourcePkgIndex
+                     platform comp
+                     installedPkgIndex sourcePkgIndex defaultSetupDeps
                      preferences constraints targets
   where
 
@@ -559,6 +579,7 @@ resolveDependencies platform comp  solver params =
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
+      defaultSetupDeps
       reorderGoals
       indGoals
       noReinstalls
@@ -586,7 +607,9 @@ interpretPackagesPreference :: Set PackageName
                             -> [PackagePreference]
                             -> (PackageName -> PackagePreferences)
 interpretPackagesPreference selected defaultPref prefs =
-  \pkgname -> PackagePreferences (versionPref pkgname) (installPref pkgname)
+  \pkgname -> PackagePreferences (versionPref pkgname)
+                                 (installPref pkgname)
+                                 (stanzasPref pkgname)
   where
     versionPref pkgname =
       fromMaybe [anyVersion] (Map.lookup pkgname versionPrefs)
@@ -607,6 +630,13 @@ interpretPackagesPreference selected defaultPref prefs =
         -- latest version of foo, but the installed version of everything else
         if pkgname `Set.member` selected then PreferLatest
                                          else PreferInstalled
+
+    stanzasPref pkgname =
+      fromMaybe [] (Map.lookup pkgname stanzasPrefs)
+    stanzasPrefs = Map.fromListWith (\a b -> nub (a ++ b))
+      [ (pkgname, pref)
+      | PackageStanzasPreference pkgname pref <- prefs ]
+
 
 -- ------------------------------------------------------------
 -- * Checking the result of the solver
@@ -788,7 +818,7 @@ configuredPackageProblems platform cinfo
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
-                              prefs defpref installedPkgIndex sourcePkgIndex
+                              prefs defpref installedPkgIndex sourcePkgIndex _
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
     collectEithers (map selectPackage targets)
@@ -806,7 +836,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                                                          pkgDependency
 
         -- Preferences
-        PackagePreferences preferredVersions preferInstalled
+        PackagePreferences preferredVersions preferInstalled _
           = packagePreferences pkgname
 
         bestByPrefs   = comparing $ \pkg ->
