@@ -18,6 +18,7 @@
 	  reliable with a non-threaded runtime (#2911, and serves as a
 	  work-around for #2398)
 	* Library support for multi-instance package DBs (#2948).
+	* Improved the './Setup configure' solver (#3082, #3076).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.

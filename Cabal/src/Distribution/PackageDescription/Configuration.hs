@@ -22,6 +22,7 @@ module Distribution.PackageDescription.Configuration (
     -- Utils
     parseCondition,
     freeVars,
+    extractCondition,
     mapCondTree,
     mapTreeData,
     mapTreeConds,
@@ -45,6 +46,7 @@ import Data.Char ( isAlphaNum )
 import Data.Maybe ( mapMaybe, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
+import Data.Tree ( Tree(Node) )
 
 ------------------------------------------------------------------------------
 
@@ -183,8 +185,9 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
 -- resulting data, the associated dependencies, and the chosen flag
 -- assignments.
 --
--- In case of failure, the _smallest_ number of of missing dependencies is
--- returned. [TODO: Could also be specified with a function argument.]
+-- In case of failure, the union of the dependencies that led to backtracking
+-- on all branches is returned.
+-- [TODO: Could also be specified with a function argument.]
 --
 -- TODO: The current algorithm is rather naive.  A better approach would be to:
 --
@@ -209,7 +212,8 @@ resolveWithFlags ::
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
-resolveWithFlags dom os arch impl constrs trees checkDeps = try dom []
+resolveWithFlags dom os arch impl constrs trees checkDeps =
+    either (Left . fromDepMapUnion) Right $ explore (build [] dom)
   where
     extraConstrs = toDepMap constrs
 
@@ -217,56 +221,120 @@ resolveWithFlags dom os arch impl constrs trees checkDeps = try dom []
     -- dependencies to dependency maps.
     simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
     simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
+                          . addBuildableCondition pdTaggedBuildInfo
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
 
-    -- @try@ recursively tries all possible flag assignments in the domain and
-    -- either succeeds or returns the shortest list of missing dependencies.
-    try :: [(FlagName, [Bool])]
-        -> [(FlagName, Bool)]
-        -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
-    try [] flags =
+    -- @explore@ searches a tree of assignments, backtracking whenever a flag
+    -- introduces a dependency that cannot be satisfied.  If there is no
+    -- solution, @explore@ returns the union of all dependencies that caused
+    -- it to backtrack.  Since the tree is constructed lazily, we avoid some
+    -- computation overhead in the successful case.
+    explore :: Tree FlagAssignment
+            -> Either DepMapUnion (TargetSet PDTagged, FlagAssignment)
+    explore (Node flags ts) =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` extraConstrs) .
                 simplifyCondTree (env flags)
             deps = overallDependencies targetSet
         in case checkDeps (fromDepMap deps) of
-             DepOk           -> Right (targetSet, flags)
-             MissingDeps mds -> Left mds
+             DepOk | null ts   -> Right (targetSet, flags)
+                   | otherwise -> tryAll $ map explore ts
+             MissingDeps mds   -> Left (toDepMapUnion mds)
 
-    try ((n, vals):rest) flags =
-        tryAll $ map (\v -> try rest ((n, v):flags)) vals
+    -- Builds a tree of all possible flag assignments.  Internal nodes
+    -- have only partial assignments.
+    build :: FlagAssignment -> [(FlagName, [Bool])] -> Tree FlagAssignment
+    build assigned [] = Node assigned []
+    build assigned ((fn, vals) : unassigned) =
+        Node assigned $ map (\v -> build ((fn, v) : assigned) unassigned) vals
 
-    tryAll :: [Either [a] b] -> Either [a] b
+    tryAll :: [Either DepMapUnion a] -> Either DepMapUnion a
     tryAll = foldr mp mz
 
     -- special version of `mplus' for our local purposes
-    mp :: Either [a] b -> Either [a] b -> Either [a] b
-    mp (Left xs)   (Left ys)   = xs `seq` ys `seq` Left (findShortest xs ys)
-    mp (Left _)    m@(Right _) = m
+    mp :: Either DepMapUnion a -> Either DepMapUnion a -> Either DepMapUnion a
     mp m@(Right _) _           = m
+    mp _           m@(Right _) = m
+    mp (Left xs)   (Left ys)   =
+        let union = Map.foldrWithKey (Map.insertWith' combine)
+                    (unDepMapUnion xs) (unDepMapUnion ys)
+            combine x y = simplifyVersionRange $ unionVersionRanges x y
+        in union `seq` Left (DepMapUnion union)
 
     -- `mzero'
-    mz :: Either [a] b
-    mz = Left []
+    mz :: Either DepMapUnion a
+    mz = Left (DepMapUnion Map.empty)
 
     env :: FlagAssignment -> FlagName -> Either FlagName Bool
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
-    -- we pick the shortest list of missing dependencies
-    findShortest :: [a] -> [a] -> [a]
-    findShortest [] xs = xs  -- [] is too short
-    findShortest xs [] = xs
-    findShortest [x] _ = [x] -- single elem is optimum
-    findShortest _ [x] = [x]
-    findShortest xs ys = if lazyLengthCmp xs ys
-                         then xs else ys
-    -- lazy variant of @\xs ys -> length xs <= length ys@
-    lazyLengthCmp :: [a] -> [a] -> Bool
-    lazyLengthCmp [] _ = True
-    lazyLengthCmp _ [] = False
-    lazyLengthCmp (_:xs) (_:ys) = lazyLengthCmp xs ys
+    pdTaggedBuildInfo :: PDTagged -> BuildInfo
+    pdTaggedBuildInfo (Lib l) = libBuildInfo l
+    pdTaggedBuildInfo (Exe _ e) = buildInfo e
+    pdTaggedBuildInfo (Test _ t) = testBuildInfo t
+    pdTaggedBuildInfo (Bench _ b) = benchmarkBuildInfo b
+    pdTaggedBuildInfo PDNull = mempty
+
+-- | Tries to determine under which condition the condition tree
+-- is buildable, and will add an additional condition on top accordingly.
+addBuildableCondition :: (Eq v, Monoid a, Monoid c) => (a -> BuildInfo)
+                      -> CondTree v c a
+                      -> CondTree v c a
+addBuildableCondition getInfo t =
+  case extractCondition (buildable . getInfo) t of
+    Lit True  -> t
+    Lit False -> CondNode mempty mempty []
+    c         -> CondNode mempty mempty [(c, t, Nothing)]
+
+-- | Extract buildable condition from a cond tree.
+--
+-- Background: If the conditions in a cond tree lead to Buildable being set to False,
+-- then none of the dependencies for this cond tree should actually be taken into
+-- account. On the other hand, some of the flags may only be decided in the solver,
+-- so we cannot necessarily make the decision whether a component is Buildable or not
+-- prior to solving.
+--
+-- What we are doing here is to partially evaluate a condition tree in order to extract
+-- the condition under which Buildable is True.
+extractCondition :: Eq v => (a -> Bool) -> CondTree v c a -> Condition v
+extractCondition p = go
+  where
+    go (CondNode x _ cs) | not (p x) = Lit False
+                         | otherwise = goList cs
+
+    goList []               = Lit True
+    goList ((c, t, e) : cs) =
+      let
+        ct = go t
+        ce = maybe (Lit True) go e
+      in
+        ((c `cand` ct) `cor` (CNot c `cand` ce)) `cand` goList cs
+
+    cand (Lit False) _           = Lit False
+    cand _           (Lit False) = Lit False
+    cand (Lit True)  x           = x
+    cand x           (Lit True)  = x
+    cand x           y           = CAnd x y
+
+    cor  (Lit True)  _           = Lit True
+    cor  _           (Lit True)  = Lit True
+    cor  (Lit False) x           = x
+    cor  x           (Lit False) = x
+    cor  c           (CNot d)
+      | c == d                   = Lit True
+    cor  x           y           = COr x y
+
+-- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
+newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
+
+toDepMapUnion :: [Dependency] -> DepMapUnion
+toDepMapUnion ds =
+  DepMapUnion $ fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+
+fromDepMapUnion :: DepMapUnion -> [Dependency]
+fromDepMapUnion m = [ Dependency p vr | (p,vr) <- toList (unDepMapUnion m) ]
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
@@ -288,6 +356,8 @@ toDepMap ds =
 fromDepMap :: DependencyMap -> [Dependency]
 fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]
 
+-- | Flattens a CondTree using a partial flag assignment.  When a condition
+-- cannot be evaluated, both branches are ignored.
 simplifyCondTree :: (Monoid a, Monoid d) =>
                     (v -> Either v Bool)
                  -> CondTree v d a
@@ -299,7 +369,7 @@ simplifyCondTree env (CondNode a d ifs) =
         case simplifyCondition cnd env of
           (Lit True, _) -> Just $ simplifyCondTree env t
           (Lit False, _) -> fmap (simplifyCondTree env) me
-          _ -> error $ "Environment not defined for all free vars"
+          _ -> Nothing
 
 -- | Flatten a CondTree.  This will resolve the CondTree by taking all
 --  possible paths into account.  Note that since branches represent exclusive
@@ -452,9 +522,10 @@ instance Semigroup PDTagged where
 --
 -- This function will fail if it cannot find a flag assignment that leads to
 -- satisfiable dependencies.  (It will not try alternative assignments for
--- explicitly specified flags.)  In case of failure it will return a /minimum/
--- number of dependencies that could not be satisfied.  On success, it will
--- return the package description and the full flag assignment chosen.
+-- explicitly specified flags.)  In case of failure it will return the missing
+-- dependencies that it encountered when trying different flag assignments.
+-- On success, it will return the package description and the full flag
+-- assignment chosen.
 --
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments

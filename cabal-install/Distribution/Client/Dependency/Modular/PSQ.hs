@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveFoldable, DeriveTraversable #-}
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Client.Dependency.Modular.PSQ
     ( PSQ(..)  -- Unit test needs constructor access
     , casePSQ
@@ -31,6 +31,8 @@ module Distribution.Client.Dependency.Modular.PSQ
 -- (inefficiently implemented) lookup, because I think that queue-based
 -- operations and sorting turn out to be more efficiency-critical in practice.
 
+import Control.Arrow (first, second)
+
 import qualified Data.Foldable as F
 import Data.Function
 import qualified Data.List as S
@@ -47,10 +49,10 @@ lookup :: Eq k => k -> PSQ k v -> Maybe v
 lookup k (PSQ xs) = S.lookup k xs
 
 map :: (v1 -> v2) -> PSQ k v1 -> PSQ k v2
-map f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f v)) xs)
+map f (PSQ xs) = PSQ (fmap (second f) xs)
 
 mapKeys :: (k1 -> k2) -> PSQ k1 v -> PSQ k2 v
-mapKeys f (PSQ xs) = PSQ (fmap (\ (k, v) -> (f k, v)) xs)
+mapKeys f (PSQ xs) = PSQ (fmap (first f) xs)
 
 mapWithKey :: (k -> a -> b) -> PSQ k a -> PSQ k b
 mapWithKey f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f k v)) xs)
@@ -105,10 +107,10 @@ length (PSQ xs) = S.length xs
 --
 -- Only approximates the length, but doesn't force the list.
 llength :: PSQ k a -> Int
-llength (PSQ [])       = 0
-llength (PSQ (_:[]))   = 1
-llength (PSQ (_:_:[])) = 2
-llength (PSQ _)        = 3
+llength (PSQ [])      = 0
+llength (PSQ [_])     = 1
+llength (PSQ [_, _])  = 2
+llength (PSQ _)       = 3
 
 null :: PSQ k a -> Bool
 null (PSQ xs) = S.null xs

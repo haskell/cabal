@@ -3,7 +3,7 @@
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , readMaybe
-                                 , inDir, determineNumJobs, numberOfProcessors
+                                 , inDir, logDirChange, determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
                                  , makeAbsoluteToCwd
@@ -134,6 +134,14 @@ inDir (Just d) m = do
   old <- getCurrentDirectory
   setCurrentDirectory d
   m `Exception.finally` setCurrentDirectory old
+
+-- | Log directory change in 'make' compatible syntax
+logDirChange :: (String -> IO ()) -> Maybe FilePath -> IO a -> IO a
+logDirChange _ Nothing m = m
+logDirChange l (Just d) m = do
+  l $ "cabal: Entering directory '" ++ d ++ "'\n"
+  m `Exception.finally`
+    (l $ "cabal: Leaving directory '" ++ d ++ "'\n")
 
 foreign import ccall "getNumberOfProcessors" c_getNumberOfProcessors :: IO CInt
 
