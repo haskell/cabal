@@ -456,7 +456,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptObjDir          = Flag setupDir
             , ghcOptHiDir           = Flag setupDir
             , ghcOptSourcePathClear = Flag True
-            , ghcOptSourcePath      = [workingDir]
+            , ghcOptSourcePath      = case bt of
+                                      Custom -> [workingDir]
+                                      _      -> []
             , ghcOptPackageDBs      = usePackageDB options''
             , ghcOptPackages        = maybe []
                                       (\ipkgid -> [(ipkgid, cabalPkgid)])
