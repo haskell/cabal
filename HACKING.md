@@ -72,7 +72,7 @@ To build and test the `Cabal` library, do:
     So, compile Setup.hs:
     
     ~~~~
-    ghc --make -threaded -i -isrc Setup.hs
+    ghc --make -threaded Setup.hs
     ~~~~
 
 4. However, we _do_ want to use the sandbox package database that was created

@@ -21,7 +21,7 @@ setup() {
     # Install dependencies
     cabal install --only-dependencies --enable-tests || die "$NAME: Could not install needed dependencies"
     # Build the 'Setup' executable
-    ghc --make -threaded -i -isrc Setup.hs || die "$NAME: Could not create 'Setup' executable"
+    ghc --make -threaded -i -i. Setup.hs || die "$NAME: Could not create 'Setup' executable"
     # Build the package
     local PACKAGEDB=`cabal exec -- sh -c 'echo $GHC_PACKAGE_PATH' | sed 's/:.*//'`
     echo "Cabal package DB location: $PACKAGEDB"

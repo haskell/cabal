@@ -38,7 +38,7 @@ script:
  - ./misc/travis-diff-files.sh
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -isrc ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
+ - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
 # Install test dependencies only after setup is built
  - cabal install --only-dependencies --enable-tests --enable-benchmarks
