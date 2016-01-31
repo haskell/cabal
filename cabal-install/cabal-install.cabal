@@ -26,17 +26,23 @@ Cabal-Version:      >= 1.10
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
 
-  -- Generated with '../Cabal/misc/gen-extra-source-files.sh | sort'
+  -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
+  -- Do NOT edit this section manually; instead, run the script.
+  -- BEGIN gen-extra-source-files
   tests/IntegrationTests/exec/common.sh
+  tests/IntegrationTests/exec/should_run/Foo.hs
+  tests/IntegrationTests/exec/should_run/My.hs
+  tests/IntegrationTests/exec/should_run/adds_sandbox_bin_directory_to_path.out
   tests/IntegrationTests/exec/should_run/adds_sandbox_bin_directory_to_path.sh
+  tests/IntegrationTests/exec/should_run/auto_configures_on_exec.out
   tests/IntegrationTests/exec/should_run/auto_configures_on_exec.sh
+  tests/IntegrationTests/exec/should_run/can_run_executables_installed_in_sandbox.out
   tests/IntegrationTests/exec/should_run/can_run_executables_installed_in_sandbox.sh
   tests/IntegrationTests/exec/should_run/configures_cabal_to_use_sandbox.sh
   tests/IntegrationTests/exec/should_run/configures_ghc_to_use_sandbox.sh
   tests/IntegrationTests/exec/should_run/exit_with_failure_without_args.sh
-  tests/IntegrationTests/exec/should_run/Foo.hs
   tests/IntegrationTests/exec/should_run/my.cabal
-  tests/IntegrationTests/exec/should_run/My.hs
+  tests/IntegrationTests/exec/should_run/runs_given_command.out
   tests/IntegrationTests/exec/should_run/runs_given_command.sh
   tests/IntegrationTests/freeze/common.sh
   tests/IntegrationTests/freeze/should_run/disable_benchmarks_freezes_bench_deps.sh
@@ -54,20 +60,35 @@ Extra-Source-Files:
   tests/IntegrationTests/manpage/should_run/outputs_manpage.sh
   tests/IntegrationTests/multiple-source/common.sh
   tests/IntegrationTests/multiple-source/should_run/finds_second_source_of_multiple_source.sh
-  tests/IntegrationTests/multiple-source/should_run/p/p.cabal
   tests/IntegrationTests/multiple-source/should_run/p/Setup.hs
-  tests/IntegrationTests/multiple-source/should_run/q/q.cabal
+  tests/IntegrationTests/multiple-source/should_run/p/p.cabal
   tests/IntegrationTests/multiple-source/should_run/q/Setup.hs
+  tests/IntegrationTests/multiple-source/should_run/q/q.cabal
+  tests/IntegrationTests/sandbox-sources/common.sh
+  tests/IntegrationTests/sandbox-sources/should_fail/fail_on_nonexistent_source.err
+  tests/IntegrationTests/sandbox-sources/should_fail/fail_on_nonexistent_source.sh
+  tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.err
+  tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.sh
+  tests/IntegrationTests/sandbox-sources/should_fail/p/Setup.hs
+  tests/IntegrationTests/sandbox-sources/should_fail/p/p.cabal
+  tests/IntegrationTests/sandbox-sources/should_fail/q/Setup.hs
+  tests/IntegrationTests/sandbox-sources/should_fail/q/q.cabal
+  tests/IntegrationTests/sandbox-sources/should_run/p/Setup.hs
+  tests/IntegrationTests/sandbox-sources/should_run/p/p.cabal
+  tests/IntegrationTests/sandbox-sources/should_run/q/Setup.hs
+  tests/IntegrationTests/sandbox-sources/should_run/q/q.cabal
+  tests/IntegrationTests/sandbox-sources/should_run/report_success_removing_source.out
+  tests/IntegrationTests/sandbox-sources/should_run/report_success_removing_source.sh
   tests/IntegrationTests/user-config/common.sh
   tests/IntegrationTests/user-config/should_fail/doesnt_overwrite_without_f.err
   tests/IntegrationTests/user-config/should_fail/doesnt_overwrite_without_f.sh
-  tests/IntegrationTests/user-config/should_run/cabal-config
   tests/IntegrationTests/user-config/should_run/overwrites_with_f.out
   tests/IntegrationTests/user-config/should_run/overwrites_with_f.sh
   tests/IntegrationTests/user-config/should_run/runs_without_error.out
   tests/IntegrationTests/user-config/should_run/runs_without_error.sh
   tests/IntegrationTests/user-config/should_run/uses_CABAL_CONFIG.out
   tests/IntegrationTests/user-config/should_run/uses_CABAL_CONFIG.sh
+  -- END gen-extra-source-files
 
 source-repository head
   type:     git
