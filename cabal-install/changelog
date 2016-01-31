@@ -1,4 +1,8 @@
 -*-change-log-*-
+1.18.2.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+
 1.18.1.0 Ryan Thomas <ryan@ryant.org> May 2015
 	* Force cabal upload to always use digest auth and never basic auth.
 	* Merge pull request #2367 from juhp/patch-2
