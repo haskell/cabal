@@ -10,7 +10,7 @@ set -ex
 
 find tests -type f \( -name '*.hs' -or -name '*.lhs' -or -name '*.c' -or -name '*.sh' \
     -or -name '*.cabal' -or -name '*.hsc' -or -name '*.err' -or -name '*.out' \) -and -not -regex ".*/dist/.*" \
-    | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs|IntegrationTests.hs|CreatePipe/ { next } { print }' \
+    | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs|IntegrationTests.hs|CreatePipe|^tests\/Test/ { next } { print }' \
     | LC_ALL=C sort \
     | sed -e 's/^/  /' \
     > source-file-list

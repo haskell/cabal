@@ -2,7 +2,7 @@
                 -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
                 -fno-warn-unused-binds #-} --FIXME
-module Test.Distribution.Version (versionTests, parseTests) where
+module UnitTests.Distribution.Version (versionTests, parseTests) where
 
 import Distribution.Version
 import Distribution.Text
