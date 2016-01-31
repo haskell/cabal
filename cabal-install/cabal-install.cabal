@@ -66,6 +66,8 @@ Extra-Source-Files:
   tests/IntegrationTests/user-config/should_run/overwrites_with_f.sh
   tests/IntegrationTests/user-config/should_run/runs_without_error.out
   tests/IntegrationTests/user-config/should_run/runs_without_error.sh
+  tests/IntegrationTests/user-config/should_run/uses_CABAL_CONFIG.out
+  tests/IntegrationTests/user-config/should_run/uses_CABAL_CONFIG.sh
 
 source-repository head
   type:     git
