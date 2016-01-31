@@ -126,6 +126,8 @@ import qualified System.Win32 as Win32
 -- policies (like if we should add the Cabal lib as a dep, and if so which
 -- version). This could be structured as an action that returns a fully
 -- elaborated 'SetupScriptOptions' containing no remaining policy choices.
+--
+-- See also the discussion at https://github.com/haskell/cabal/pull/3094
 
 data SetupScriptOptions = SetupScriptOptions {
     -- | The version of the Cabal library to use (if 'useDependenciesExclusive'
