@@ -15,10 +15,11 @@ dist-*
 /Cabal/dist/
 /Cabal/tests/Setup
 /Cabal/Setup
-/Cabal/misc/source-file-list
+/Cabal/source-file-list
 
 /cabal-install/dist/
 /cabal-install/Setup
+/cabal-install/source-file-list
 
 
 # editor temp files
