@@ -34,7 +34,7 @@ Building Cabal from git cloned sources and running the tests
 _The steps below will make use of sandboxes for building. The process might be
 somewhat different when you do not want to use sandboxes._
 
-Building Cabal from from source requires the following:
+Building Cabal from source requires the following:
 
 * Glorious/Glasgow Haskell Compiler (ghc).
 * An existing (relatively recent) `cabal` binary (e.g. obtained as part of the
