@@ -60,7 +60,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile, userConfigDiff
-         , userConfigUpdate, createDefaultConfigFile )
+         , userConfigUpdate, createDefaultConfigFile, getConfigFilePath )
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -1237,9 +1237,7 @@ userConfigAction ucflags extraArgs globalFlags = do
     -- Error handling.
     [] -> die $ "Please specify a subcommand (see 'help user-config')"
     _  -> die $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
-  where configFile = do
-          defaultFile <- defaultConfigFile
-          return $ fromFlagOrDefault defaultFile (globalConfigFile globalFlags)
+  where configFile = getConfigFilePath (globalConfigFile globalFlags)
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
