@@ -120,12 +120,34 @@ import System.Directory    ( doesDirectoryExist )
 import qualified System.Win32 as Win32
 #endif
 
+--TODO: The 'setupWrapper' and 'SetupScriptOptions' should be split into two
+-- parts: one that has no policy and just does as it's told with all the
+-- explicit options, and an optional initial part that applies certain
+-- policies (like if we should add the Cabal lib as a dep, and if so which
+-- version). This could be structured as an action that returns a fully
+-- elaborated 'SetupScriptOptions' containing no remaining policy choices.
+
 data SetupScriptOptions = SetupScriptOptions {
+    -- | The version of the Cabal library to use (if 'useDependenciesExclusive'
+    -- is not set). A suitable version of the Cabal library must be installed
+    -- (or for some build-types be the one cabal-install was built with).
+    --
+    -- The version found also determines the version of the Cabal specification
+    -- that we us for talking to the Setup.hs, unless overridden by
+    -- 'useCabalSpecVersion'.
+    --
     useCabalVersion          :: VersionRange,
 
     -- | This is the version of the Cabal specification that we believe that
     -- this package uses. This affects the semantics and in particular the
     -- Setup command line interface.
+    --
+    -- This is similar to 'useCabalVersion' but instead of probing the system
+    -- for a version of the /Cabal library/ you just say exactly which version
+    -- of the /spec/ we will use. Using this also avoid adding the Cabal
+    -- library as an additional dependency, so add it to 'useDependencies'
+    -- if needed.
+    --
     useCabalSpecVersion      :: Maybe Version,
     useCompiler              :: Maybe Compiler,
     usePlatform              :: Maybe Platform,
@@ -142,12 +164,17 @@ data SetupScriptOptions = SetupScriptOptions {
 
     -- | Is the list of setup dependencies exclusive?
     --
-    -- This is here for legacy reasons. Before the introduction of the explicit
-    -- setup stanza in .cabal files we compiled Setup.hs scripts with all
-    -- packages in the environment visible, but we will needed to restrict
-    -- _some_ packages; in particular, we need to restrict the version of Cabal
-    -- that the setup script gets linked against (this was the only "dependency
-    -- constraint" that we had previously for Setup scripts).
+    -- When this is @False@, if we compile the Setup.hs script we do so with
+    -- the list in 'useDependencies' but all other packages in the environment
+    -- are also visible. Additionally, a suitable version of @Cabal@ library
+    -- is added to the list of dependencies (see 'useCabalVersion').
+    --
+    -- When @True@, only the 'useDependencies' packages are used, with other
+    -- packages in the environment hidden.
+    --
+    -- This feature is here to support the setup stanza in .cabal files that
+    -- specifies explicit (and exclusive) dependencies, as well as the old
+    -- style with no dependencies.
     useDependenciesExclusive :: Bool,
 
     -- | Should we build the Setup.hs with CPP version macros available?
