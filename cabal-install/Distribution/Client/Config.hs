@@ -16,6 +16,7 @@
 module Distribution.Client.Config (
     SavedConfig(..),
     loadConfig,
+    getConfigFilePath,
 
     showConfig,
     showConfigWithComments,
@@ -521,7 +522,7 @@ addInfoForKnownRepos other = other
 
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = addBaseConf $ do
-  (source, configFile) <- lookupConfigFile configFileFlag
+  (source, configFile) <- getConfigFilePathAndSource configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
@@ -553,8 +554,13 @@ data ConfigFileSource = CommandlineOption
                       | EnvironmentVariable
                       | Default
 
-lookupConfigFile :: Flag FilePath -> IO (ConfigFileSource, FilePath)
-lookupConfigFile configFileFlag =
+-- | Returns the config file path, without checking that the file exists.
+-- The order of precedence is: input flag, CABAL_CONFIG, default location.
+getConfigFilePath :: Flag FilePath -> IO FilePath
+getConfigFilePath = fmap snd . getConfigFilePathAndSource
+
+getConfigFilePathAndSource :: Flag FilePath -> IO (ConfigFileSource, FilePath)
+getConfigFilePathAndSource configFileFlag =
     getSource sources
   where
     sources =
@@ -1082,7 +1088,7 @@ userConfigUpdate verbosity globalFlags = do
   userConfig <- loadConfig normal (globalConfigFile globalFlags)
   newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   commentConf <- commentSavedConfig
-  (_, cabalFile) <- lookupConfigFile $ globalConfigFile globalFlags
+  cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
