@@ -60,7 +60,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile, userConfigDiff
-         , userConfigUpdate )
+         , userConfigUpdate, createDefaultConfigFile )
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -1224,13 +1224,22 @@ execAction execFlags extraArgs globalFlags = do
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do
   let verbosity = fromFlag (userConfigVerbosity ucflags)
+      force     = fromFlag (userConfigForce ucflags)
   case extraArgs of
+    ("init":_) -> do
+      path       <- configFile
+      fileExists <- doesFileExist path
+      if (not fileExists || (fileExists && force))
+      then createDefaultConfigFile verbosity path
+      else die $ path ++ " already exists."
     ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
     ("update":_) -> userConfigUpdate verbosity globalFlags
     -- Error handling.
     [] -> die $ "Please specify a subcommand (see 'help user-config')"
     _  -> die $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
-
+  where configFile = do
+          defaultFile <- defaultConfigFile
+          return $ fromFlagOrDefault defaultFile (globalConfigFile globalFlags)
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
