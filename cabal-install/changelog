@@ -1,4 +1,9 @@
 -*-change-log-*-
+1.22.8.0 Ryan Thomas <ryan@ryant.org> February 2016
+	* Only Custom setup scripts should be compiled with '-i -i.'.
+	* installedCabalVersion: Don't special-case Cabal anymore.
+	* Bump the HTTP upper bound. See #3069.
+
 1.22.7.0
 	* Remove GZipUtils tests
 	* maybeDecompress: bail on all errors at the beginning of the stream with zlib < 0.6
