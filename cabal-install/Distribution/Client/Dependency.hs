@@ -410,8 +410,9 @@ removeUpperBounds allowNewer params =
         onTestSuite  tst  = tst { PD.testBuildInfo = f' $ PD.testBuildInfo tst }
         onBenchmark  bmk  = bmk { PD.benchmarkBuildInfo =
                                      f' $ PD.benchmarkBuildInfo bmk }
+        onSetup      stp  = stp { PD.setupDepends  =
+                                     map f $ PD.setupDepends stp }
 
-        --TODO: also apply to setupDepends
         srcPkg' = srcPkg { packageDescription = gpd' }
         gpd'    = gpd {
           PD.packageDescription = pd',
@@ -425,7 +426,8 @@ removeUpperBounds allowNewer params =
           PD.library      = fmap onLibrary    (PD.library pd),
           PD.executables  = map  onExecutable (PD.executables pd),
           PD.testSuites   = map  onTestSuite  (PD.testSuites pd),
-          PD.benchmarks   = map  onBenchmark  (PD.benchmarks pd)
+          PD.benchmarks   = map  onBenchmark  (PD.benchmarks pd),
+          PD.setupBuildInfo = fmap onSetup    (PD.setupBuildInfo pd)
           }
         condLib'    = fmap (onCondTree onLibrary)             condLib
         condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
