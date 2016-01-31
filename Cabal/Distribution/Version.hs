@@ -148,13 +148,20 @@ instance Binary Version where
     put (Version br tags) = put br >> put tags
 #endif
 
-{-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED LaterVersion "use 'laterVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED EarlierVersion "use 'earlierVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED WildcardVersion "use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED UnionVersionRanges "use 'unionVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
-{-# DEPRECATED IntersectVersionRanges "use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DeprecateD AnyVersion
+    "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED ThisVersion
+    "Use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED LaterVersion
+    "Use 'laterVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED EarlierVersion
+    "Use 'earlierVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED WildcardVersion
+    "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED UnionVersionRanges
+    "Use 'unionVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
+{-# DEPRECATED IntersectVersionRanges
+    "Use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
 
 -- | The version range @-any@. That is, a version range containing all
 -- versions.
@@ -240,7 +247,8 @@ intersectVersionRanges = IntersectVersionRanges
 --
 invertVersionRange :: VersionRange -> VersionRange
 invertVersionRange =
-    fromVersionIntervals . invertVersionIntervals . VersionIntervals . asVersionIntervals
+    fromVersionIntervals . invertVersionIntervals
+    . VersionIntervals . asVersionIntervals
 
 -- | The version range @== v.*@.
 --
@@ -722,10 +730,12 @@ invertVersionIntervals (VersionIntervals xs) =
       -- Empty interval set
       [] -> VersionIntervals [(noLowerBound, NoUpperBound)]
       -- Interval with no lower bound
-      ((lb, ub) : more) | lb == noLowerBound -> VersionIntervals $ invertVersionIntervals' ub more
+      ((lb, ub) : more) | lb == noLowerBound ->
+        VersionIntervals $ invertVersionIntervals' ub more
       -- Interval with a lower bound
       ((lb, ub) : more) ->
-          VersionIntervals $ (noLowerBound, invertLowerBound lb) : invertVersionIntervals' ub more
+          VersionIntervals $ (noLowerBound, invertLowerBound lb)
+          : invertVersionIntervals' ub more
     where
       -- Invert subsequent version intervals given the upper bound of
       -- the intervals already inverted.
@@ -768,8 +778,10 @@ instance Text VersionRange where
            (\v   -> (Disp.text ">=" <> disp v                   , 0))
            (\v   -> (Disp.text "<=" <> disp v                   , 0))
            (\v _ -> (Disp.text "==" <> dispWild v               , 0))
-           (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
-           (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+           (\(r1, p1) (r2, p2) ->
+             (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+           (\(r1, p1) (r2, p2) ->
+             (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
            (\(r, _)   -> (Disp.parens r, 0))
 
     where dispWild (Version b _) =
