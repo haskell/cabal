@@ -170,10 +170,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
     logMsg message rest = debug verbosity message >> rest
 
-    stanzas = concat
-        [ if testsEnabled      then [TestStanzas]  else []
-        , if benchmarksEnabled then [BenchStanzas] else []
-        ]
+    stanzas = [ TestStanzas | testsEnabled ]
+           ++ [ BenchStanzas | benchmarksEnabled ]
     testsEnabled      = fromFlagOrDefault False $ freezeTests freezeFlags
     benchmarksEnabled = fromFlagOrDefault False $ freezeBenchmarks freezeFlags
 
