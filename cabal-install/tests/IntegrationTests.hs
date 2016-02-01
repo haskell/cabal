@@ -264,7 +264,9 @@ main = do
   -- Set up environment variables for test scripts
   setEnv "GHC_PKG" $ programPath ghcPkg
   setEnv "CABAL" $ programPath cabal
+  -- Define default arguments
   setEnv "CABAL_ARGS" $ "--config-file=config-file"
+  setEnv "CABAL_ARGS_NO_CONFIG_FILE" " "
   -- Discover all the test caregories
   categories <- discoverTestCategories baseDirectory
   -- Discover tests in each category

@@ -16,6 +16,7 @@
 module Distribution.Client.Config (
     SavedConfig(..),
     loadConfig,
+    getConfigFilePath,
 
     showConfig,
     showConfigWithComments,
@@ -37,7 +38,8 @@ module Distribution.Client.Config (
     withProgramsFields,
     withProgramOptionsFields,
     userConfigDiff,
-    userConfigUpdate
+    userConfigUpdate,
+    createDefaultConfigFile
   ) where
 
 import Distribution.Client.Types
@@ -520,17 +522,14 @@ addInfoForKnownRepos other = other
 
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
 loadConfig verbosity configFileFlag = addBaseConf $ do
-  (source, configFile) <- lookupConfigFile configFileFlag
+  (source, configFile) <- getConfigFilePathAndSource configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
       notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
-      notice verbosity $ "Writing default configuration to " ++ configFile
-      commentConf <- commentSavedConfig
-      initialConf <- initialSavedConfig
-      writeConfigFile configFile commentConf initialConf
-      return initialConf
+      createDefaultConfigFile verbosity configFile
+      loadConfig verbosity configFileFlag
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -555,8 +554,13 @@ data ConfigFileSource = CommandlineOption
                       | EnvironmentVariable
                       | Default
 
-lookupConfigFile :: Flag FilePath -> IO (ConfigFileSource, FilePath)
-lookupConfigFile configFileFlag =
+-- | Returns the config file path, without checking that the file exists.
+-- The order of precedence is: input flag, CABAL_CONFIG, default location.
+getConfigFilePath :: Flag FilePath -> IO FilePath
+getConfigFilePath = fmap snd . getConfigFilePathAndSource
+
+getConfigFilePathAndSource :: Flag FilePath -> IO (ConfigFileSource, FilePath)
+getConfigFilePathAndSource configFileFlag =
     getSource sources
   where
     sources =
@@ -578,6 +582,13 @@ readConfigFile initial file = handleNotExists $
       if isDoesNotExistError ioe
         then return Nothing
         else ioError ioe
+
+createDefaultConfigFile :: Verbosity -> FilePath -> IO ()
+createDefaultConfigFile verbosity filePath = do
+  commentConf <- commentSavedConfig
+  initialConf <- initialSavedConfig
+  notice verbosity $ "Writing default configuration to " ++ filePath
+  writeConfigFile filePath commentConf initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
@@ -1077,7 +1088,7 @@ userConfigUpdate verbosity globalFlags = do
   userConfig <- loadConfig normal (globalConfigFile globalFlags)
   newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   commentConf <- commentSavedConfig
-  (_, cabalFile) <- lookupConfigFile $ globalConfigFile globalFlags
+  cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
   notice verbosity $ "Renaming " ++ cabalFile ++ " to " ++ backup ++ "."
   renameFile cabalFile backup
