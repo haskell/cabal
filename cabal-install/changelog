@@ -40,6 +40,8 @@
 	* Added new subcommand 'init' to 'cabal user-config'. This
 	subcommand creates a cabal configuration file in either the
 	default location or as specified by --config-file (#2553).
+	* The man page for 'cabal-install' is now automatically generated
+	(#2877).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
