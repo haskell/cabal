@@ -129,6 +129,15 @@ identical; only the first two steps are different:
 because we have to use the `cabal-install` sandbox, not the Cabal one. If you
 use the relative path, you are set.)
 
+Coding Conventions
+------------------
+
+If you modify a file, please follow the style conventions used in
+that file. When you add a new top-level definition, please also
+add a Haddock comment. Use of GHC extensions is allowed (except
+Template Haskell), provided that the dependencies policy is
+respected.
+
 Dependencies policy
 -------------------
 
