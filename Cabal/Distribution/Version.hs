@@ -161,7 +161,7 @@ instance Binary Version where
 {-# DEPRECATED UnionVersionRanges
     "Use 'unionVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED IntersectVersionRanges
-    "Use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'" #-}
+    "Use 'intersectVersionRanges', 'foldVersionRange' or 'asVersionIntervals'"#-}
 
 -- | The version range @-any@. That is, a version range containing all
 -- versions.

@@ -2,12 +2,13 @@
                 -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
                 -fno-warn-unused-binds #-} --FIXME
-module UnitTests.Distribution.Version (versionTests, parseTests) where
+module UnitTests.Distribution.Version (versionTests) where
 
 import Distribution.Version
 import Distribution.Text
 
-import Text.PrettyPrint as Disp (text, render, parens, hcat, punctuate, int, char, (<>), (<+>))
+import Text.PrettyPrint as Disp (text, render, parens, hcat
+                                ,punctuate, int, char, (<>), (<+>))
 
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.QuickCheck
@@ -84,15 +85,21 @@ versionTests =
   , property prop_invertVersionIntervalsTwice
   ]
 
-parseTests :: TestTree
-parseTests =
-  testGroup "Distribution.Version" $
-  zipWith (\n p -> testProperty ("Parse Property " ++ show n) p) [1::Int ..]
-   -- parsing and pretty printing
-  [ -- property prop_parse_disp1  --FIXME: actually wrong
-    property prop_parse_disp2
-  , property prop_parse_disp3
-  ]
+-- parseTests :: TestTree
+-- parseTests =
+--   testGroup "Distribution.Version" $
+--   zipWith (\n p -> testProperty ("Parse Property " ++ show n) p) [1::Int ..]
+--    -- parsing and pretty printing
+--   [ -- property prop_parse_disp1  --FIXME: actually wrong
+
+--     --  These are also wrong, see
+--     --  https://github.com/haskell/cabal/issues/3037#issuecomment-177671011
+
+--     --   property prop_parse_disp2
+--     -- , property prop_parse_disp3
+--     -- , property prop_parse_disp4
+--     -- , property prop_parse_disp5
+--   ]
 
 instance Arbitrary Version where
   arbitrary = do
@@ -648,14 +655,41 @@ prop_parse_disp1 vr =
       IntersectVersionRanges (stripParens v1) (stripParens v2)
     stripParens v = v
 
-prop_parse_disp2 :: VersionRange -> Bool
+prop_parse_disp2 :: VersionRange -> Property
 prop_parse_disp2 vr =
-     fmap (display :: VersionRange -> String) (simpleParse (display vr))
-  == Just (display vr)
+  let b = fmap (display :: VersionRange -> String) (simpleParse (display vr))
+      a = Just (display vr)
+  in
+   counterexample ("Expected: " ++ show a) $
+   counterexample ("But got: " ++ show b) $
+   b == a
 
-prop_parse_disp3 :: VersionRange -> Bool
+prop_parse_disp3 :: VersionRange -> Property
 prop_parse_disp3 vr =
-  fmap displayRaw (simpleParse (display vr)) == Just (display vr)
+  let a = Just (display vr)
+      b = fmap displayRaw (simpleParse (display vr))
+  in
+   counterexample ("Expected: " ++ show a) $
+   counterexample ("But got: " ++ show b) $
+   b == a
+
+prop_parse_disp4 :: VersionRange -> Property
+prop_parse_disp4 vr =
+  let a = Just vr
+      b = (simpleParse (display vr))
+  in
+   counterexample ("Expected: " ++ show a) $
+   counterexample ("But got: " ++ show b) $
+   b == a
+
+prop_parse_disp5 :: VersionRange -> Property
+prop_parse_disp5 vr =
+  let a = Just vr
+      b = simpleParse (displayRaw vr)
+  in
+   counterexample ("Expected: " ++ show a) $
+   counterexample ("But got: " ++ show b) $
+   b == a
 
 displayRaw :: VersionRange -> String
 displayRaw =

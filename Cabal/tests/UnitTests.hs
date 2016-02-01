@@ -9,7 +9,7 @@ import qualified UnitTests.Distribution.Compat.ReadP
 import qualified UnitTests.Distribution.Simple.Program.Internal
 import qualified UnitTests.Distribution.Utils.NubList
 import qualified UnitTests.Distribution.System
-import qualified UnitTests.Distribution.Version (versionTests, parseTests)
+import qualified UnitTests.Distribution.Version (versionTests)
 
 tests :: TestTree
 tests = testGroup "Unit Tests" $
@@ -24,7 +24,7 @@ tests = testGroup "Unit Tests" $
     , testGroup "Distribution.System"
         UnitTests.Distribution.System.tests
     , UnitTests.Distribution.Version.versionTests
-    , UnitTests.Distribution.Version.parseTests
+--    , UnitTests.Distribution.Version.parseTests
     ]
 
 main :: IO ()
