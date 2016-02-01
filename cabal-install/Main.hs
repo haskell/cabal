@@ -160,7 +160,8 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
-import System.FilePath          (splitExtension, takeExtension, (</>), (<.>))
+import System.FilePath          ( splitExtension, takeBaseName
+                                , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #ifdef mingw32_HOST_OS
                                 , stderr
@@ -1266,4 +1267,4 @@ manpageAction commands _ extraArgs _ = do
   unless (null extraArgs) $
     die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
-  putStrLn (manpage pname commands)
+  putStrLn $ manpage (takeBaseName pname) commands
