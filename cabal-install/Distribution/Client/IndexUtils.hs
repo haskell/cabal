@@ -17,7 +17,9 @@
 module Distribution.Client.IndexUtils (
   getIndexFileAge,
   getInstalledPackages,
+  Configure.getInstalledPackagesMonitorFiles,
   getSourcePackages,
+  getSourcePackagesMonitorFiles,
 
   Index(..),
   PackageEntry(..),
@@ -52,7 +54,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import qualified Distribution.Simple.Configure as Configure
-         ( getInstalledPackages )
+         ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
@@ -204,6 +206,13 @@ readRepoIndex verbosity repoCtxt repo =
 getIndexFileAge :: Repo -> IO Double
 getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 
+-- | A set of files (or directories) that can be monitored to detect when
+-- there might have been a change in the source packages.
+--
+getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
+getSourcePackagesMonitorFiles repos =
+    [ repoLocalDir repo </> "00-index.cache"
+    | repo <- repos ]
 
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.
