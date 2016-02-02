@@ -10,16 +10,17 @@ import PackageTests.PackageTester
 import PackageTests.Tests
 
 import Distribution.Simple.Configure
-    ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile )
-import Distribution.Simple.Compiler (PackageDB(..))
+    ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
+    , interpretPackageDbFlags )
+import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath, programVersion)
 import Distribution.Simple.Program.Builtin
     ( ghcProgram, ghcPkgProgram, haddockProgram )
 import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Setup (Flag(..))
+import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Text (display)
+import Distribution.Text (display, simpleParse)
 import Distribution.Verbosity (normal, flagToVerbosity)
 import Distribution.ReadE (readEOrFail)
 
@@ -63,46 +64,59 @@ main = do
     -- the build directory for Cabal.
 
     dist_dir <- guessDistDir
+    -- Might be bottom, if we can't figure it out.  If you override
+    -- all the relevant parameters you might still succeed.
     lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
 
-    -- Put ourselves in the right directory.  We do this by looking
-    -- at the location of Cabal.cabal.  For the remainder of the
-    -- execution of this program, this will be our CWD; however,
-    -- subprocess calls may have different CWDs.
-    case pkgDescrFile lbi of
-        Nothing -> error "Can't find Cabal.cabal"
-        -- Double check!
-        Just f
-          -- Sufficiently new version of Cabal will have this working
-          | isAbsolute f -> do
-            test_dir <- canonicalizePath (dropFileName f)
-            setCurrentDirectory test_dir
-          -- Otherwise, just require package-tests to be run from
-          -- the correct directory
-          | otherwise -> return ()
+    -- You need to run the test suite in the right directory, sorry.
     test_dir <- getCurrentDirectory
 
     -- Pull out the information we need from the LBI
-    -- TODO: The paths to GHC should be configurable by command line,
-    -- but it's tricky: some tests might depend on the Cabal library, in
-    -- which case you REALLY need to have built and installed Cabal for
-    -- the version that the test suite is being built against.  The
+    -- TODO: The paths to GHC are configurable by command line, but you
+    -- have to be careful: some tests might depend on the Cabal library,
+    -- in which case you REALLY need to have built and installed Cabal
+    -- for the version that the test suite is being built against.  The
     -- easiest thing to do is make sure you built Cabal the same way as
     -- you will run the tests.
-    (ghcConf, _) <- requireProgram normal ghcProgram (withPrograms lbi)
-    (ghcPkgConf, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
-    (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
+    let getExePathFromEnvOrLBI env_name prog = do
+            r <- lookupEnv env_name
+            case r of
+                Nothing -> do
+                    (conf, _) <- requireProgram normal prog (withPrograms lbi)
+                    return (programPath conf)
+                Just x -> return x
+    -- It is too much damn work to actually properly configure it
+    -- (Cabal will go off and probe GHC and we really aren't keen
+    -- on doing this every time we run the test suite.)
+    ghc_path     <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC" ghcProgram
+    ghc_pkg_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC_PKG" ghcPkgProgram
+    haddock_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_HADDOCK" haddockProgram
+
+    ghc_version_env <- lookupEnv "CABAL_PACKAGETESTS_GHC_VERSION"
+    ghc_version <- case ghc_version_env of
+        Nothing -> do
+            (ghcConf, _) <- requireProgram normal ghcProgram (withPrograms lbi)
+            return (fromJust (programVersion ghcConf))
+        Just str ->
+            return (fromJust (simpleParse str))
+
     -- Package DBs are not guaranteed to be absolute, so make them so in
     -- case a subprocess using the package DB needs a different CWD.
-    packageDBStack0 <- mapM canonicalizePackageDB (withPackageDB lbi)
+    db_stack_env <- lookupEnv "CABAL_PACKAGETESTS_DB_STACK"
+    let packageDBStack0 = case db_stack_env of
+            Nothing -> withPackageDB lbi
+            Just str -> interpretPackageDbFlags True -- user install? why not.
+                            (concatMap readPackageDbList
+                                (splitSearchPath str))
+    packageDBStack1 <- mapM canonicalizePackageDB packageDBStack0
 
     -- The packageDBStack is worth some commentary.  The database
     -- stack we extract from the LBI will contain enough package
     -- databases to make the Cabal package well-formed.  However,
     -- it does not *contain* the inplace installed Cabal package.
     -- So we need to add that to the stack.
-    let packageDBStack1
-            = packageDBStack0 ++
+    let packageDBStack2
+            = packageDBStack1 ++
               [SpecificPackageDB
                 (dist_dir </> "package.conf.inplace")]
 
@@ -127,10 +141,10 @@ main = do
         -- set of flags to make sure we make it visible.
     let suite = SuiteConfig
                  { cabalDistPref = dist_dir
-                 , ghcPath = programPath ghcConf
-                 , ghcVersion = fromJust (programVersion ghcConf)
-                 , ghcPkgPath = programPath ghcPkgConf
-                 , packageDBStack = packageDBStack1
+                 , ghcPath = ghc_path
+                 , ghcVersion = ghc_version
+                 , ghcPkgPath = ghc_pkg_path
+                 , packageDBStack = packageDBStack2
                  , suiteVerbosity = verbosity
                  , absoluteCWD = test_dir
                  }
@@ -138,15 +152,30 @@ main = do
     putStrLn $ "Cabal test suite - testing cabal version " ++ display cabalVersion
     putStrLn $ "Cabal build directory: " ++ dist_dir
     putStrLn $ "Test directory: " ++ test_dir
-    putStrLn $ "Using ghc: " ++ ghcPath suite
-    putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath suite
-    putStrLn $ "Using haddock: " ++ programPath haddock
+    -- TODO: it might be useful to factor this out so that ./Setup
+    -- configure dumps this file, so we can read it without in a version
+    -- stable way.
+    putStrLn $ "Environment:"
+    putStrLn $ "CABAL_PACKAGETESTS_GHC=" ++ show ghc_path ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_GHC_VERSION=" ++ show (display ghc_version) ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_GHC_PKG=" ++ show ghc_pkg_path ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_HADDOCK=" ++ show haddock_path ++ " \\"
+    -- For brevity, do pre-canonicalization
+    putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++
+                show (intercalate [searchPathSeparator]
+                    (showPackageDbList (uninterpretPackageDBFlags packageDBStack0)))
 
     -- Create a shared Setup executable to speed up Simple tests
     putStrLn $ "Building shared ./Setup executable"
     rawCompileSetup verbosity suite [] "tests"
 
     defaultMain $ testGroup "Package Tests" (tests suite)
+
+-- Reverse of 'interpretPackageDbFlags'.
+-- prop_idem stk b
+--      = interpretPackageDbFlags b (uninterpretPackageDBFlags stk) == stk
+uninterpretPackageDBFlags :: PackageDBStack -> [Maybe PackageDB]
+uninterpretPackageDBFlags stk = Nothing : map (\x -> Just x) stk
 
 -- | Guess what the 'dist' directory Cabal was installed in is.  There's
 -- no 100% reliable way to find this, but there are a few good shots:
@@ -161,6 +190,8 @@ main = do
 --     2. We can use the normal input methods (as per Cabal),
 --        checking for the CABAL_BUILDDIR environment variable as
 --        well as the default location in the current working directory.
+--
+-- NB: If you update this, also update its copy in cabal-install's IntegrationTests
 guessDistDir :: IO FilePath
 guessDistDir = do
 #if MIN_VERSION_base(4,6,0)
@@ -210,10 +241,13 @@ getPersistBuildConfig_ filename = do
     eLBI <- try $ getConfigStateFile filename
     case eLBI of
       Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
+      -- These errors are lazy!  We might not need these parameters.
       Left (ConfigStateFileBadVersion _ _ (Left err))
-        -> error $ "We couldn't understand the build configuration.  Try " ++
-                   "editing Cabal.cabal to have 'build-type: Custom' " ++
-                   "and then rebuilding.\n\nOriginal error: " ++
-                   show err
-      Left err -> throw err
+        -> return . error $ "We couldn't understand the build configuration.  Try " ++
+                       "editing Cabal.cabal to have 'build-type: Custom' " ++
+                       "and then rebuilding, or manually specifying CABAL_PACKAGETESTS_* " ++
+                       "environment variables (see README.md for more details)." ++
+                       "\n\nOriginal error: " ++
+                       show err
+      Left err -> return (throw err)
       Right lbi -> return lbi

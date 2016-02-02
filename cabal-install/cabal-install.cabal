@@ -29,6 +29,12 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/IntegrationTests/custom/common.sh
+  tests/IntegrationTests/custom/should_run/plain.err
+  tests/IntegrationTests/custom/should_run/plain.sh
+  tests/IntegrationTests/custom/should_run/plain/A.hs
+  tests/IntegrationTests/custom/should_run/plain/Setup.hs
+  tests/IntegrationTests/custom/should_run/plain/plain.cabal
   tests/IntegrationTests/exec/common.sh
   tests/IntegrationTests/exec/should_run/Foo.hs
   tests/IntegrationTests/exec/should_run/My.hs
