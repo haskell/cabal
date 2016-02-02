@@ -8,7 +8,7 @@
 
 #ifndef HAS_GET_NUMBER_OF_PROCESSORS
 
-#ifdef _WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #include <windows.h>
 #elif MACOS
 #include <sys/param.h>
@@ -18,7 +18,7 @@
 #endif
 
 int getNumberOfProcessors() {
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return sysinfo.dwNumberOfProcessors;
