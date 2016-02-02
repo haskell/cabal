@@ -1,2 +1,4 @@
 #!/bin/sh
-! git diff-files -p --exit-code
+set -ev
+
+git diff-files -p --exit-code
