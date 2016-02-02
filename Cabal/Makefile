@@ -1,5 +1,5 @@
 
-VERSION=1.23.0.0
+VERSION=1.23.1.0
 
 #KIND=devel
 KIND=rc
@@ -14,7 +14,10 @@ all: build
 
 # build the library itself
 
-SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs Distribution/Simple/Build/*.hs Distribution/Compat/*.hs Distribution/Simple/Program/*.hs
+SOURCES=Distribution/*.hs Distribution/Simple/*.hs \
+	Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs \
+	Distribution/Simple/Build/*.hs Distribution/Compat/*.hs \
+	Distribution/Simple/Program/*.hs
 CONFIG_STAMP=dist/setup-config
 BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
 HADDOCK_STAMP=dist/doc/html/Cabal/index.html
@@ -27,7 +30,8 @@ COMMA=,
 
 setup: $(SOURCES) Setup.hs
 	-mkdir -p dist/setup
-	$(HC) $(GHCFLAGS) --make -i. -odir dist/setup -hidir dist/setup Setup.hs -o setup
+	$(HC) $(GHCFLAGS) --make -i. -odir dist/setup -hidir dist/setup Setup.hs \
+		-o setup
 
 $(CONFIG_STAMP): setup Cabal.cabal
 	./setup configure --with-compiler=$(HC) --prefix=$(PREFIX)
@@ -58,7 +62,9 @@ $(USERGUIDE_STAMP): doc/*.markdown
 	mkdir -p $(PANDOC_HTML_OUTDIR)
 	for file in $^; do \
 		[ $${file} != doc/index.markdown ] && TOC=--table-of-contents || TOC=; \
-		$(PANDOC) $(PANDOC_OPTIONS) $${TOC} --from=markdown --to=html --output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html $${file}; \
+		$(PANDOC) $(PANDOC_OPTIONS) $${TOC} --from=markdown --to=html \
+			--output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html \
+			$${file}; \
 	done
 	cp doc/$(PANDOC_HTML_CSS) $(PANDOC_HTML_OUTDIR)
 
