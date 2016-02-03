@@ -593,6 +593,11 @@ dependencyInconsistencies index =
           , Just dep <- [lookupUnitId index ipid]
           ]
 
+        -- Added in 991e52a474e2b8280432257c1771dc474a320a30,
+        -- this is a special case to handle the base 3 compatibility
+        -- package which shipped with GHC 6.10 and GHC 6.12
+        -- (it was removed in GHC 7.0).  Remove this when GHC 6.12
+        -- goes out of our support window.
         reallyIsInconsistent :: PackageInstalled a => [a] -> Bool
         reallyIsInconsistent []       = False
         reallyIsInconsistent [_p]     = False

@@ -337,7 +337,8 @@ configure (pkg_descr0', pbi) cfg = do
     createDirectoryIfMissingVerbose (lessVerbose verbosity) True buildDir
 
     -- What package database(s) to use
-    let packageDbs
+    let packageDbs :: PackageDBStack
+        packageDbs
          = interpretPackageDbFlags
             (fromFlag (configUserInstall cfg))
             (configPackageDBs cfg)
@@ -346,7 +347,9 @@ configure (pkg_descr0', pbi) cfg = do
     -- compPlatform:    the platform we're building for
     -- programsConfig:  location and args of all programs we're
     --                  building with
-    (comp, compPlatform, programsConfig)
+    (comp           :: Compiler,
+     compPlatform   :: Platform,
+     programsConfig :: ProgramConfiguration)
         <- configCompilerEx
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
@@ -355,11 +358,15 @@ configure (pkg_descr0', pbi) cfg = do
             (lessVerbose verbosity)
 
     -- The InstalledPackageIndex of all installed packages
-    installedPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
+    installedPackageSet :: InstalledPackageIndex
+        <- getInstalledPackages (lessVerbose verbosity) comp
                                   packageDbs programsConfig
 
-    -- The InstalledPackageIndex of all (possible) internal packages
-    let internalPackageSet = getInternalPackages pkg_descr0
+    -- An approximate InstalledPackageIndex of all (possible) internal libraries.
+    -- This database is used to bootstrap the process before we know precisely
+    -- what these libraries are supposed to be.
+    let internalPackageSet :: InstalledPackageIndex
+        internalPackageSet = getInternalPackages pkg_descr0
 
     -- allConstraints:  The set of all 'Dependency's we have.  Used ONLY
     --                  to 'configureFinalizedPackage'.
@@ -374,10 +381,12 @@ configure (pkg_descr0', pbi) cfg = do
     -- NB: The fact that we bundle all the constraints together means
     -- that is not possible to configure a test-suite to use one
     -- version of a dependency, and the executable to use another.
-    (allConstraints, requiredDepsMap) <- either die return $
-      combinedConstraints (configConstraints cfg)
-                          (configDependencies cfg)
-                          installedPackageSet
+    (allConstraints  :: [Dependency],
+     requiredDepsMap :: Map PackageName InstalledPackageInfo)
+        <- either die return $
+              combinedConstraints (configConstraints cfg)
+                                  (configDependencies cfg)
+                                  installedPackageSet
 
     -- pkg_descr:   The resolved package description, that does not contain any
     --              conditionals, because we have have an assignment for
@@ -394,7 +403,8 @@ configure (pkg_descr0', pbi) cfg = do
     -- if the flags are all chosen for us, this step is a simple
     -- matter of flattening according to that assignment.  It's
     -- cleaner to then configure the dependencies afterwards.
-    (pkg_descr, flags)
+    (pkg_descr :: PackageDescription,
+     flags     :: FlagAssignment)
         <- configureFinalizedPackage verbosity cfg
                 allConstraints
                 (dependencySatisfiable
@@ -424,7 +434,8 @@ configure (pkg_descr0', pbi) cfg = do
     -- if *any* component (post-flag resolution) has an unsatisfiable
     -- dependency, we will fail.  This can sometimes be undesirable
     -- for users, see #1786 (benchmark conflicts with executable),
-    (internalPkgDeps, externalPkgDeps)
+    (internalPkgDeps :: [PackageId],
+     externalPkgDeps :: [InstalledPackageInfo])
         <- configureDependencies
                 verbosity
                 internalPackageSet
@@ -432,7 +443,22 @@ configure (pkg_descr0', pbi) cfg = do
                 requiredDepsMap
                 pkg_descr
 
-    packageDependsIndex <-
+    -- The database of transitively reachable installed packages that the
+    -- external components the package (as a whole) depends on.  This will be
+    -- used in several ways:
+    --
+    --      * We'll use it to do a consistency check so we're not depending
+    --        on multiple versions of the same package (ToDo: someday relax
+    --        this for private dependencies.)  See right below.
+    --
+    --      * We feed it in when configuring the components to resolve
+    --        module reexports.  (ToDo: axe this.)
+    --
+    --      * We'll pass it on in the LocalBuildInfo, where preprocessors
+    --        and other things will incorrectly use it to determine what
+    --        the include paths and everything should be.
+    --
+    packageDependsIndex :: InstalledPackageIndex <-
       case PackageIndex.dependencyClosure installedPackageSet
               (map Installed.installedUnitId externalPkgDeps) of
         Left packageDependsIndex -> return packageDependsIndex
@@ -446,7 +472,20 @@ configure (pkg_descr0', pbi) cfg = do
                        ++ intercalate ", " (map display deps)
                         | (pkg, deps) <- broken ]
 
-    let pseudoTopPkg = emptyInstalledPackageInfo {
+    -- In this section, we'd like to look at the 'packageDependsIndex'
+    -- and see if we've picked multiple versions of the same
+    -- installed package (this is bad, because it means you might
+    -- get an error could not match foo-0.1:Type with foo-0.2:Type).
+    --
+    -- What is pseudoTopPkg for? I have no idea.  It was used
+    -- in the very original commit which introduced checking for
+    -- inconsistencies 5115bb2be4e13841ea07dc9166b9d9afa5f0d012,
+    -- and then moved out of PackageIndex and put here later.
+    -- ToDo: Try this code without it...
+    --
+    -- ToDo: Move this into a helper function
+    let pseudoTopPkg :: InstalledPackageInfo
+        pseudoTopPkg = emptyInstalledPackageInfo {
             Installed.installedUnitId =
                mkLegacyUnitId (packageId pkg_descr),
             Installed.sourcePackageId = packageId pkg_descr,
@@ -466,13 +505,20 @@ configure (pkg_descr0', pbi) cfg = do
                      | (name, uses) <- inconsistencies
                      , (pkg, ver) <- uses ]
 
-    -- installation directories
-    defaultDirs <- defaultInstallDirs (compilerFlavor comp)
-                   (fromFlag (configUserInstall cfg)) (hasLibs pkg_descr)
-    let installDirs = combineInstallDirs fromFlagOrDefault
+    -- Compute installation directory templates, based on user
+    -- configuration.
+    --
+    -- ToDo: Move this into a helper function.
+    defaultDirs :: InstallDirTemplates
+        <- defaultInstallDirs (compilerFlavor comp)
+                              (fromFlag (configUserInstall cfg))
+                              (hasLibs pkg_descr)
+    let installDirs :: InstallDirTemplates
+        installDirs = combineInstallDirs fromFlagOrDefault
                         defaultDirs (configInstallDirs cfg)
 
-    -- check languages and extensions
+    -- Check languages and extensions
+    -- ToDo: Move this into a helper function.
     let langlist = nub $ catMaybes $ map defaultLanguage
                    (allBuildInfo pkg_descr)
     let langs = unsupportedLanguages comp langlist
@@ -489,8 +535,10 @@ configure (pkg_descr0', pbi) cfg = do
          ++ "supported by " ++ display (compilerId comp) ++ ": "
          ++ intercalate ", " (map display exts)
 
-    -- configured known/required programs & external build tools
-    -- exclude build-tool deps on "internal" exes in the same package
+    -- Configure known/required programs & external build tools.
+    -- Exclude build-tool deps on "internal" exes in the same package
+    --
+    -- ToDo: Factor this into a helper package.
     let requiredBuildTools =
           [ buildTool
           | let exeNames = map exeName (executables pkg_descr)
@@ -511,7 +559,12 @@ configure (pkg_descr0', pbi) cfg = do
     (pkg_descr', programsConfig'') <-
       configurePkgconfigPackages verbosity pkg_descr programsConfig'
 
-    -- internal component graph
+    -- Compute internal component graph
+    --
+    -- The general idea is that we take a look at all the source level
+    -- components (which may build-depends on each other) and form a graph.
+    -- From there, we build a ComponentLocalBuildInfo for each of the
+    -- components, which lets us actually build each component.
     buildComponents <-
       case mkComponentsGraph pkg_descr internalPkgDeps of
         Left  componentCycle -> reportComponentCycle componentCycle
@@ -520,7 +573,8 @@ configure (pkg_descr0', pbi) cfg = do
                                      internalPkgDeps externalPkgDeps
                                      comps (configConfigurationsFlags cfg)
 
-    split_objs <-
+    -- Decide if we're going to compile with split objects.
+    split_objs :: Bool <-
        if not (fromFlag $ configSplitObjs cfg)
             then return False
             else case compilerFlavor comp of
@@ -741,12 +795,6 @@ checkExactConfiguration pkg_descr0 cfg = do
 -- file, and we haven't resolved them yet.  finalizePackageDescription
 -- does the resolution of conditionals, and it takes internalPackageSet
 -- as part of its input.
---
--- Currently a package can define no more than one library (which has
--- the same name as the package) but we could extend this later.
--- If we later allowed private internal libraries, then here we would
--- need to pre-scan the conditional data to make a list of all private
--- libraries that could possibly be defined by the .cabal file.
 getInternalPackages :: GenericPackageDescription
                     -> InstalledPackageIndex
 getInternalPackages pkg_descr0 =
