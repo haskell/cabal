@@ -1633,10 +1633,13 @@ mkComponentsLocalBuildInfo :: ConfigFlags
 mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps
                            graph flagAssignment =
-    foldM (wrap componentLocalBuildInfo) [] graph
+    foldM go [] graph
   where
-    wrap f z (component, _) = do
-        clbi <- f z component
+    go :: [(ComponentLocalBuildInfo, [UnitId])]
+       -> (Component, [ComponentName])
+       -> IO [(ComponentLocalBuildInfo, [UnitId])]
+    go z (component, _) = do
+        clbi <- componentLocalBuildInfo z component
         -- TODO: Maybe just store the internal deps in the clbi?
         let dep_uids = map fst (filter (\(_,e) -> e `elem` internalPkgDeps)
                                        (componentPackageDeps clbi))
@@ -1647,6 +1650,8 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
     -- we just take the subset for the package names this component
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
+    componentLocalBuildInfo :: [(ComponentLocalBuildInfo, [UnitId])]
+                            -> Component -> IO ComponentLocalBuildInfo
     componentLocalBuildInfo internalComps component =
       case component of
       CLib lib -> do
@@ -1693,6 +1698,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         }
       where
         -- TODO: this should include internal deps too
+        getDeps :: ComponentName -> [ComponentId]
         getDeps cname =
           let externalPkgs
                 = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
@@ -1711,7 +1717,10 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         compat_key = computeCompatPackageKey comp compat_name pkg_ver uid
 
         bi = componentBuildInfo component
+
         dedup = Map.toList . Map.fromList
+
+        lookupInternalPkg :: PackageId -> UnitId
         lookupInternalPkg pkgid = do
             let matcher (clbi, _)
                     | CLibName str <- componentLocalName clbi
@@ -1721,6 +1730,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
             case catMaybes (map matcher internalComps) of
                 [x] -> x
                 _ -> error "lookupInternalPkg"
+
         cpds = if newPackageDepsBehaviour pkg_descr
                then dedup $
                     [ (Installed.installedUnitId pkg, packageId pkg)
@@ -1737,6 +1747,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
     selectSubset bi pkgs =
         [ pkg | pkg <- pkgs, packageName pkg `elem` names bi ]
 
+    names :: BuildInfo -> [PackageName]
     names bi = [ name | Dependency name _ <- targetBuildDepends bi ]
 
 -- | Given the author-specified re-export declarations from the .cabal file,
