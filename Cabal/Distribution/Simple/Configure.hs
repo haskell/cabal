@@ -1697,14 +1697,6 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
           componentPackageRenaming = cprns
         }
       where
-        -- TODO: this should include internal deps too
-        getDeps :: ComponentName -> [ComponentId]
-        getDeps cname =
-          let externalPkgs
-                = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
-                                                 externalPkgDeps)
-                           (lookupComponent pkg_descr cname)
-          in map Installed.installedComponentId externalPkgs
 
         -- TODO configIPID should have name changed
         cid = computeComponentId (configIPID cfg) (package pkg_descr)
@@ -1717,8 +1709,6 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         compat_key = computeCompatPackageKey comp compat_name pkg_ver uid
 
         bi = componentBuildInfo component
-
-        dedup = Map.toList . Map.fromList
 
         lookupInternalPkg :: PackageId -> UnitId
         lookupInternalPkg pkgid = do
@@ -1742,6 +1732,17 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         cprns = if newPackageDepsBehaviour pkg_descr
                 then targetBuildRenaming bi
                 else Map.empty
+
+    dedup = Map.toList . Map.fromList
+
+    -- TODO: this should include internal deps too
+    getDeps :: ComponentName -> [ComponentId]
+    getDeps cname =
+      let externalPkgs
+            = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
+                                             externalPkgDeps)
+                       (lookupComponent pkg_descr cname)
+      in map Installed.installedComponentId externalPkgs
 
     selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
     selectSubset bi pkgs =
