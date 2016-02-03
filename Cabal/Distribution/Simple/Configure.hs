@@ -432,14 +432,9 @@ configure (pkg_descr0', pbi) cfg = do
                 requiredDepsMap
                 pkg_descr
 
-    let installDeps = Map.elems -- deduplicate
-                    . Map.fromList
-                    . map (\v -> (Installed.installedUnitId v, v))
-                    $ externalPkgDeps
-
     packageDependsIndex <-
       case PackageIndex.dependencyClosure installedPackageSet
-              (map Installed.installedUnitId installDeps) of
+              (map Installed.installedUnitId externalPkgDeps) of
         Left packageDependsIndex -> return packageDependsIndex
         Right broken ->
           die $ "The following installed packages are broken because other"
@@ -456,7 +451,7 @@ configure (pkg_descr0', pbi) cfg = do
                mkLegacyUnitId (packageId pkg_descr),
             Installed.sourcePackageId = packageId pkg_descr,
             Installed.depends =
-              map Installed.installedUnitId installDeps
+              map Installed.installedUnitId externalPkgDeps
           }
     case PackageIndex.dependencyInconsistencies
        . PackageIndex.insert pseudoTopPkg
