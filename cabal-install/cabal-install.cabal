@@ -237,7 +237,6 @@ executable cabal
 
     if os(windows)
       build-depends: Win32 >= 2 && < 3
-      cpp-options: -DWIN32
     else
       build-depends: unix >= 2.5 && < 2.8
 
@@ -303,7 +302,6 @@ Test-Suite unit-tests
 
   if os(windows)
     build-depends: Win32
-    cpp-options: -DWIN32
   else
     build-depends: unix
 
@@ -330,7 +328,6 @@ test-suite integration-tests
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3
-    cpp-options: -DWIN32
   else
     build-depends: unix >= 2.5 && < 2.8
 
