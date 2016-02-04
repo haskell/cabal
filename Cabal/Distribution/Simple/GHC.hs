@@ -136,8 +136,12 @@ configure verbosity hcPath hcPkgPath conf0 = do
       haddockProgram' = haddockProgram {
                            programFindLocation = guessHaddockFromGhcPath ghcProg
                        }
+      hpcProgram' = hpcProgram {
+                        programFindLocation = guessHpcFromGhcPath ghcProg
+                    }
       conf3 = addKnownProgram haddockProgram' $
-              addKnownProgram hsc2hsProgram' conf2
+              addKnownProgram hsc2hsProgram' $
+              addKnownProgram hpcProgram' conf2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
@@ -259,6 +263,12 @@ guessHaddockFromGhcPath :: ConfiguredProgram
                        -> Verbosity -> ProgramSearchPath
                        -> IO (Maybe (FilePath, [FilePath]))
 guessHaddockFromGhcPath = guessToolFromGhcPath haddockProgram
+
+guessHpcFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath
+                       -> IO (Maybe (FilePath, [FilePath]))
+guessHpcFromGhcPath = guessToolFromGhcPath hpcProgram
+
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg

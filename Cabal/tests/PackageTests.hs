@@ -1,8 +1,8 @@
--- The intention is that this will be the new unit test framework.
--- Please add any working tests here.  This file should do nothing
--- but import tests from other modules.
---
--- Stephen Blackheath, 2009
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PatternGuards #-}
+
+-- This is the runner for the package-tests suite.  The actual
+-- tests are in in PackageTests.Tests
 
 module Main where
 
@@ -12,17 +12,14 @@ import PackageTests.Tests
 
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
-    , interpretPackageDbFlags )
-import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack)
+    , interpretPackageDbFlags, configCompilerEx )
+import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack, CompilerFlavor(GHC))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program.Types (Program(..), programPath, programVersion)
-import Distribution.Simple.Program.Builtin
-    ( ghcProgram, ghcPkgProgram, haddockProgram )
-import Distribution.Simple.Program.Db (requireProgram)
+import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)
 import Distribution.Simple.Utils (cabalVersion)
-import Distribution.Text (display, simpleParse)
-import Distribution.Verbosity (normal, flagToVerbosity)
+import Distribution.Text (display)
+import Distribution.Verbosity (normal, flagToVerbosity, lessVerbose)
 import Distribution.ReadE (readEOrFail)
 
 import Control.Exception
@@ -32,7 +29,6 @@ import System.Directory
 import Test.Tasty
 import Test.Tasty.Options
 import Test.Tasty.Ingredients
-import Data.Maybe
 
 #if MIN_VERSION_base(4,6,0)
 import System.Environment ( getExecutablePath )
@@ -60,80 +56,132 @@ main = do
     --      all of the necessary dependencies to make our Cabal package
     --      well-formed.
     --
-    -- We could have the user pass these all in as arguments (TODO: this
-    -- should be an option),  but there's a more convenient way to get
-    -- this information: the *build configuration* that was used to
-    -- build the Cabal library (and this test suite) in the first place.
-    -- To do this, we need to find the 'dist' directory that was set as
-    -- the build directory for Cabal.
+    -- We could have the user pass these all in as arguments,  but
+    -- there's a more convenient way to get this information: the *build
+    -- configuration* that was used to build the Cabal library (and this
+    -- test suite) in the first place.  To do this, we need to find the
+    -- 'dist' directory that was set as the build directory for Cabal.
 
-    dist_dir <- guessDistDir
-    -- Might be bottom, if we can't figure it out.  If you override
-    -- all the relevant parameters you might still succeed.
-    lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
+    -- First, figure out the dist directory associated with this Cabal.
+    dist_dir :: FilePath <- guessDistDir
+
+    -- Next, attempt to read out the LBI.  This may not work, in which
+    -- case we'll try to guess the correct parameters.  This is ignored
+    -- if values are explicitly passed into the test suite.
+    mb_lbi <- getPersistBuildConfig_ (dist_dir </> "setup-config")
 
     -- You need to run the test suite in the right directory, sorry.
-    test_dir <- getCurrentDirectory
+    -- This variable is modestly misnamed: this refers to the base
+    -- directory of Cabal (so, CHECKOUT_DIR/Cabal, not
+    -- CHECKOUT_DIR/Cabal/test).
+    cabal_dir <- getCurrentDirectory
 
-    -- Pull out the information we need from the LBI
-    -- TODO: The paths to GHC are configurable by command line, but you
-    -- have to be careful: some tests might depend on the Cabal library,
-    -- in which case you REALLY need to have built and installed Cabal
-    -- for the version that the test suite is being built against.  The
-    -- easiest thing to do is make sure you built Cabal the same way as
-    -- you will run the tests.
-    let getExePathFromEnvOrLBI env_name prog = do
-            r <- lookupEnv env_name
-            case r of
-                Nothing -> do
-                    (conf, _) <- requireProgram normal prog (withPrograms lbi)
-                    return (programPath conf)
-                Just x -> return x
-    -- It is too much damn work to actually properly configure it
-    -- (Cabal will go off and probe GHC and we really aren't keen
-    -- on doing this every time we run the test suite.)
-    ghc_path     <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC" ghcProgram
-    ghc_pkg_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC_PKG"
-                    ghcPkgProgram
-    haddock_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_HADDOCK"
-                    haddockProgram
+    -- TODO: make this controllable by a flag.  We do have a flag
+    -- parser but it's not called early enough for this verbosity...
+    verbosity <- maybe normal (readEOrFail flagToVerbosity)
+                 `fmap` lookupEnv "VERBOSE"
 
-    with_ghc_path     <- fromMaybe ghc_path
-                         `fmap` lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
+    -------------------------------------------------------------------
+    -- SETTING UP GHC AND GHC-PKG
+    -------------------------------------------------------------------
 
-    ghc_version_env <- lookupEnv "CABAL_PACKAGETESTS_GHC_VERSION"
-    ghc_version <- case ghc_version_env of
-        Nothing -> do
-            (ghcConf, _) <- requireProgram normal ghcProgram (withPrograms lbi)
-            return (fromJust (programVersion ghcConf))
-        Just str ->
-            return (fromJust (simpleParse str))
+    -- NOTE: There are TWO configurations of GHC we have to manage
+    -- when running the test suite.
+    --
+    --  1. The primary GHC is the one that was used to build the
+    --  copy of Cabal that we are testing.  This configuration
+    --  can be pulled out of the LBI.
+    --
+    --  2. The "with" GHC is the version of GHC we ask the Cabal
+    --  we are testing to use (i.e., using --with-compiler).  Notice
+    --  that this does NOT have to match the version we compiled
+    --  the library with!  (Not all tests will work in this situation,
+    --  however, since some need to link against the Cabal library.)
+    --  By default we use the same configuration as the one from the
+    --  LBI, but a user can override it to test against a different
+    --  version of GHC.
+    mb_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_GHC"
+    mb_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_GHC_PKG"
+    boot_programs <-
+        case (mb_ghc_path, mb_ghc_pkg_path) of
+            (Nothing, Nothing) | Just lbi <- mb_lbi -> do
+                putStrLn "Using configuration from LBI"
+                return (withPrograms lbi)
+            _ -> do
+                putStrLn "(Re)configuring test suite (ignoring LBI)"
+                (_comp, _compPlatform, programsConfig)
+                    <- configCompilerEx
+                        (Just GHC) mb_ghc_path mb_ghc_pkg_path
+                        -- NB: if we accept full ConfigFlags parser then
+                        -- should use (mkProgramsConfig cfg (configPrograms cfg))
+                        -- instead.
+                        defaultProgramConfiguration
+                        (lessVerbose verbosity)
+                return programsConfig
 
-    with_ghc_version <- do
-         version <- programFindVersion ghcProgram normal with_ghc_path
-         case version of
-           Nothing -> error "Cannot determine version of GHC used for --with-ghc"
-           Just v -> return v
+    mb_with_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
+    mb_with_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_PKG"
+    with_programs <-
+        case (mb_with_ghc_path, mb_with_ghc_path) of
+            (Nothing, Nothing) -> return boot_programs
+            _ -> do
+                putStrLn "Configuring test suite for --with-compiler"
+                (_comp, _compPlatform, with_programs)
+                    <- configCompilerEx
+                        (Just GHC) mb_with_ghc_path mb_with_ghc_pkg_path
+                        defaultProgramConfiguration
+                        (lessVerbose verbosity)
+                return with_programs
 
-    -- Package DBs are not guaranteed to be absolute, so make them so in
-    -- case a subprocess using the package DB needs a different CWD.
+    -------------------------------------------------------------------
+    -- SETTING UP THE DATABASE STACK
+    -------------------------------------------------------------------
+
+    -- Figure out what database stack to use. (This is the tricky bit,
+    -- because we need to have enough databases to make the just-built
+    -- Cabal package well-formed).
     db_stack_env <- lookupEnv "CABAL_PACKAGETESTS_DB_STACK"
     let packageDBStack0 = case db_stack_env of
-            Nothing -> withPackageDB lbi
             Just str -> interpretPackageDbFlags True -- user install? why not.
                             (concatMap readPackageDbList
                                 (splitSearchPath str))
+            Nothing ->
+                case mb_lbi of
+                    Just lbi -> withPackageDB lbi
+                    -- A wild guess!
+                    Nothing -> interpretPackageDbFlags True []
+
+    -- Package DBs are not guaranteed to be absolute, so make them so in
+    -- case a subprocess using the package DB needs a different CWD.
     packageDBStack1 <- mapM canonicalizePackageDB packageDBStack0
 
-    -- The packageDBStack is worth some commentary.  The database
-    -- stack we extract from the LBI will contain enough package
-    -- databases to make the Cabal package well-formed.  However,
-    -- it does not *contain* the inplace installed Cabal package.
-    -- So we need to add that to the stack.
-    let packageDBStack2
+    -- The LBI's database stack does *not* contain the inplace installed
+    -- Cabal package.  So we need to add that to the stack.
+    let package_db_stack
             = packageDBStack1 ++
               [SpecificPackageDB
                 (dist_dir </> "package.conf.inplace")]
+
+    -- NB: It's possible that our database stack is broken (e.g.,
+    -- it's got a database for the wrong version of GHC, or it
+    -- doesn't have enough to let us build Cabal.)  We'll notice
+    -- when we attempt to compile setup.
+
+    -- There is also is a parameter for the stack for --with-compiler,
+    -- since if GHC is a different version we need a different set of
+    -- databases.  The default should actually be quite reasonable
+    -- as, unlike in the case of the GHC used to build Cabal, we don't
+    -- expect htere to be a Cabal available.
+    with_ghc_db_stack_env :: Maybe String
+        <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_DB_STACK"
+    let withGhcDBStack0 :: PackageDBStack
+        withGhcDBStack0 =
+              interpretPackageDbFlags True
+            $ case with_ghc_db_stack_env of
+                Nothing -> []
+                Just str -> concatMap readPackageDbList (splitSearchPath str)
+    with_ghc_db_stack :: PackageDBStack
+        <- mapM canonicalizePackageDB withGhcDBStack0
 
     -- THIS ISN'T EVEN MY FINAL FORM.  The package database stack
     -- controls where we install a package; specifically, the package is
@@ -149,43 +197,35 @@ main = do
     -- the install directories, so we don't clobber anything in the
     -- default install paths.  VERY IMPORTANT.
 
-    -- TODO: make this controllable by a flag
-    verbosity <- maybe normal (readEOrFail flagToVerbosity)
-                 `fmap` lookupEnv "VERBOSE"
-        -- The inplaceDB is where the Cabal library was registered
-        -- in place (and is usable.)  inplaceConfig is a convenient
-        -- set of flags to make sure we make it visible.
     let suite = SuiteConfig
                  { cabalDistPref = dist_dir
-                 , ghcPath = ghc_path
-                 , ghcVersion = ghc_version
-                 , ghcPkgPath = ghc_pkg_path
-                 , withGhcPath = with_ghc_path
-                 , withGhcVersion = with_ghc_version
-                 , packageDBStack = packageDBStack2
+                 , bootProgramsConfig = boot_programs
+                 , withProgramsConfig = with_programs
+                 , packageDBStack = package_db_stack
+                 , withGhcDBStack = with_ghc_db_stack
                  , suiteVerbosity = verbosity
-                 , absoluteCWD = test_dir
+                 , absoluteCWD = cabal_dir
                  }
 
     putStrLn $ "Cabal test suite - testing cabal version "
       ++ display cabalVersion
     putStrLn $ "Cabal build directory: " ++ dist_dir
-    putStrLn $ "Test directory: " ++ test_dir
+    putStrLn $ "Cabal source directory: " ++ cabal_dir
     -- TODO: it might be useful to factor this out so that ./Setup
     -- configure dumps this file, so we can read it without in a version
     -- stable way.
     putStrLn $ "Environment:"
-    putStrLn $ "CABAL_PACKAGETESTS_GHC=" ++ show ghc_path ++ " \\"
-    putStrLn $ "CABAL_PACKAGETESTS_GHC_VERSION="
-      ++ show (display ghc_version) ++ " \\"
-    putStrLn $ "CABAL_PACKAGETESTS_GHC_PKG=" ++ show ghc_pkg_path ++ " \\"
-    putStrLn $ "CABAL_PACKAGETESTS_WITH_GHC=" ++ show with_ghc_path ++ " \\"
-    putStrLn $ "CABAL_PACKAGETESTS_HADDOCK=" ++ show haddock_path ++ " \\"
-    -- For brevity, do pre-canonicalization
-    putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++
-                show (intercalate [searchPathSeparator]
-                    (showPackageDbList (uninterpretPackageDBFlags
-                                        packageDBStack0)))
+    putStrLn $ "CABAL_PACKAGETESTS_GHC=" ++ show (ghcPath suite) ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_GHC_PKG=" ++ show (ghcPkgPath suite) ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_WITH_GHC=" ++ show (withGhcPath suite) ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_WITH_GHC_PKG=" ++ show (withGhcPkgPath suite) ++ " \\"
+    -- For brevity, we use the pre-canonicalized values
+    let showDBStack = show
+                    . intercalate [searchPathSeparator]
+                    . showPackageDbList
+                    . uninterpretPackageDBFlags
+    putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++ showDBStack packageDBStack0
+    putStrLn $ "CABAL_PACKAGETESTS_WITH_DB_STACK=" ++ showDBStack withGhcDBStack0
 
     -- Create a shared Setup executable to speed up Simple tests
     putStrLn $ "Building shared ./Setup executable"
@@ -260,22 +300,15 @@ canonicalizePackageDB x = return x
 -- take a different approach (either setting "build-type: Custom"
 -- so we bootstrap with the most recent Cabal, or by writing the
 -- information we need in another format.)
-getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
+getPersistBuildConfig_ :: FilePath -> IO (Maybe LocalBuildInfo)
 getPersistBuildConfig_ filename = do
     eLBI <- try $ getConfigStateFile filename
     case eLBI of
-      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
-      -- These errors are lazy!  We might not need these parameters.
-      Left (ConfigStateFileBadVersion _ _ (Left err))
-        -> return . error $
-           "We couldn't understand the build configuration.  Try " ++
-           "editing Cabal.cabal to have 'build-type: Custom' " ++
-           "and then rebuilding, or manually specifying CABAL_PACKAGETESTS_* " ++
-           "environment variables (see README.md for more details)." ++
-           "\n\nOriginal error: " ++
-           show err
-      Left err -> return (throw err)
-      Right lbi -> return lbi
+      -- If the version doesn't match but we still got a successful
+      -- parse, don't complain and just use it!
+      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return (Just lbi)
+      Left _ -> return Nothing
+      Right lbi -> return (Just lbi)
 
 options :: [Ingredient]
 options = includingOptions

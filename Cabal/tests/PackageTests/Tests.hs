@@ -36,14 +36,20 @@ tests config = do
   ---------------------------------------------------------------------
   -- * Test suite tests
 
-  groupTests "TestSuiteTests/ExeV10" $
+  -- TODO: This shouldn't be necessary, but there seems to be some
+  -- bug in the way the test is written.  Not going to lose sleep
+  -- over this... but would be nice to fix.
+  testWhen (hasCabalForGhc config)
+   . groupTests "TestSuiteTests/ExeV10" $
       (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
 
   -- Test if detailed-0.9 builds correctly
-  tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
+  testWhen (hasCabalForGhc config)
+   . tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
 
   -- Tests for #2489, stdio deadlock
-  mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
+  testWhen (hasCabalForGhc config)
+   . mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
    . tcs "TestSuiteTests/LibV09" "Deadlock" $ do
       cabal_build ["--enable-tests"]
       shouldFail $ cabal "test" []
@@ -203,7 +209,8 @@ tests config = do
 
   -- Test that if two components have the same module name, they do not
   -- clobber each other.
-  tc "DuplicateModuleName" $ do
+  testWhen (hasCabalForGhc config) $ -- uses library test suite
+    tc "DuplicateModuleName" $ do
       cabal_build ["--enable-tests"]
       r1 <- shouldFail $ cabal' "test" ["foo"]
       assertOutputContains "test B" r1
@@ -215,7 +222,8 @@ tests config = do
   -- Test that if test suite has a name which conflicts with a package
   -- which is in the database, we can still use the test case (they
   -- should NOT shadow).
-  tc "TestNameCollision" $ do
+  testWhen (hasCabalForGhc config)
+   . tc "TestNameCollision" $ do
         withPackageDb $ do
           withPackage "parent" $ cabal_install []
           withPackage "child" $ do

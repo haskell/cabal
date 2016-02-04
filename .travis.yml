@@ -17,6 +17,7 @@ before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install cabal-install-1.24 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
+ - travis_retry sudo apt-get install ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn
  - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.24/bin:$PATH
  - git version
 
@@ -48,6 +49,9 @@ script:
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
  - ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
+# Redo the package tests with different versions of GHC
+ - CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc ./dist/setup/setup test package-tests --show-details=streaming
+ - CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc ./dist/setup/setup test package-tests --show-details=streaming
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
 

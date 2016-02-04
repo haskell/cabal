@@ -11,6 +11,11 @@ module PackageTests.PackageTester
     , runTestM
 
     -- * Paths
+    , ghcPath
+    , withGhcPath
+    , ghcPkgPath
+    , withGhcPkgPath
+
     , packageDir
     , distDir
     , relativeDistDir
@@ -64,6 +69,7 @@ module PackageTests.PackageTester
     , testUnless
     , unlessWindows
     , hasSharedLibraries
+    , hasCabalForGhc
 
     , getPersistBuildConfig
 
@@ -79,6 +85,9 @@ import PackageTests.Options
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
+import Distribution.Simple.Program.Types
+import Distribution.Simple.Program.Db
+import Distribution.Simple.Program
 import Distribution.System (OS(Windows), buildOS)
 import Distribution.Simple.Utils
     ( printRawCommandAndArgsAndEnv, withFileContents )
@@ -154,29 +163,93 @@ onlyIfExists m = liftIO $
 
 -- | Global configuration for the entire test suite.
 data SuiteConfig = SuiteConfig
-    -- | Path to GHC that was used to compile Cabal library under test.
-    { ghcPath :: FilePath
-    -- | Version of GHC that compiled Cabal.
-    , ghcVersion :: Version
-    -- | Path to ghc-pkg corresponding to 'ghcPath'.
-    , ghcPkgPath :: FilePath
-    -- | Path to GHC that we should use to "./Setup --with-ghc"
-    , withGhcPath :: FilePath
-    -- | Version of GHC at 'withGhcPath'.
-    , withGhcVersion :: Version
+    -- | The programs used to build the Cabal under test.
+    -- Invariant: ghc and ghc-pkg are configured.
+    { bootProgramsConfig :: ProgramDb
+    -- | The programs that are requested using @--with-compiler@
+    -- and @--with-hc-pkg@ to Cabal the under-test.
+    -- Invariant: ghc and ghc-pkg are configured.
+    , withProgramsConfig :: ProgramDb
     -- | The build directory that was used to build Cabal (used
     -- to compile Setup scripts.)
     , cabalDistPref :: FilePath
-    -- | Configuration options you can use to make the Cabal
-    -- being tested visible (e.g. if you're using the test runner).
+    -- | The package database stack which makes the *built*
+    -- Cabal well-formed.  In general, this is going to be
+    -- the package DB stack from the LBI you used to build
+    -- Cabal, PLUS the inplace database (since you also want Cabal).
+    -- TODO: I forgot what this comment means:
     -- We don't add these by default because then you have to
     -- link against Cabal which makes the build go longer.
     , packageDBStack :: PackageDBStack
+    -- | The package database stack for 'withGhcPath'.  This
+    -- is ignored if @'withGhcPath' suite == 'ghcPath' suite@.
+    -- We don't assume this includes the inplace database (since
+    -- Cabal would have been built with the wrong version of GHC,
+    -- so the databases aren't compatible anyway.)
+    , withGhcDBStack :: PackageDBStack
     -- | How verbose should we be
     , suiteVerbosity :: Verbosity
     -- | The absolute current working directory
     , absoluteCWD :: FilePath
     }
+
+getProgram :: ProgramDb -> Program -> ConfiguredProgram
+getProgram conf program = prog
+    where Just prog = lookupProgram program conf -- invariant!
+
+getBootProgram :: SuiteConfig -> Program -> ConfiguredProgram
+getBootProgram suite = getProgram (bootProgramsConfig suite)
+
+getWithProgram :: SuiteConfig -> Program -> ConfiguredProgram
+getWithProgram suite = getProgram (withProgramsConfig suite)
+
+ghcProg :: SuiteConfig -> ConfiguredProgram
+ghcProg suite = getBootProgram suite ghcProgram
+
+withGhcProg :: SuiteConfig -> ConfiguredProgram
+withGhcProg suite = getWithProgram suite ghcProgram
+
+withGhcPkgProg :: SuiteConfig -> ConfiguredProgram
+withGhcPkgProg suite = getWithProgram suite ghcPkgProgram
+
+programVersion' :: ConfiguredProgram -> Version
+programVersion' prog = version
+    where Just version = programVersion prog -- invariant!
+
+ghcPath :: SuiteConfig -> FilePath
+ghcPath = programPath . ghcProg
+
+-- Basically you should never use these two...
+
+ghcPkgProg :: SuiteConfig -> ConfiguredProgram
+ghcPkgProg suite = getBootProgram suite ghcPkgProgram
+
+ghcPkgPath :: SuiteConfig -> FilePath
+ghcPkgPath = programPath . ghcPkgProg
+
+ghcVersion :: SuiteConfig -> Version
+ghcVersion = programVersion' . ghcProg
+
+withGhcPath :: SuiteConfig -> FilePath
+withGhcPath = programPath . withGhcProg
+
+withGhcVersion :: SuiteConfig -> Version
+withGhcVersion = programVersion' . withGhcProg
+
+-- Ditto...
+withGhcPkgPath :: SuiteConfig -> FilePath
+withGhcPkgPath = programPath . withGhcPkgProg
+
+-- Selects the correct database stack to pass to the Cabal under
+-- test as the "database stack" to use for testing.  This may be
+-- something different if the GHC we want Cabal to use is different
+-- from the GHC Cabal was built with.
+testDBStack :: SuiteConfig -> PackageDBStack
+testDBStack suite
+    | withGhcPath suite == ghcPath suite
+    = packageDBStack suite
+    | otherwise
+    = withGhcDBStack suite
 
 data TestConfig = TestConfig
     -- | Test name, MUST be the directory the test packages live in
@@ -313,9 +386,7 @@ cabal' cmd extraArgs0 = do
                 , "--prefix=" ++ prefix_dir
                 ] -- Only add the LBI package stack if the GHC version
                   -- matches.
-                  ++ (if withGhcPath suite == ghcPath suite
-                        then packageDBParams (packageDBStack suite)
-                        else [])
+                  ++ packageDBParams (testDBStack suite)
                   ++ extraArgs0
             _ -> extraArgs0
     -- This is a horrible hack to make hpc work correctly
@@ -378,6 +449,7 @@ rawCompileSetup :: Verbosity -> SuiteConfig -> [(String, Maybe String)] -> FileP
 rawCompileSetup verbosity suite e path = do
     -- NB: Use 'ghcPath', not 'withGhcPath', since we need to be able to
     -- link against the Cabal library which was built with 'ghcPath'.
+    -- Ditto with packageDBStack.
     r <- rawRun verbosity (Just path) (ghcPath suite) e $
         [ "--make"] ++
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
@@ -429,13 +501,13 @@ ghcPkg cmd args = void (ghcPkg' cmd args)
 
 ghcPkg' :: String -> [String] -> TestM Result
 ghcPkg' cmd args = do
-    db_path <- sharedDBPath
     (config, test) <- ask
     unless (testPackageDb test) $
         error "Must initialize package database using withPackageDb"
-    let db_stack = packageDBStack config ++ [SpecificPackageDB db_path]
-        extraArgs = ghcPkgPackageDBParams (ghcVersion config) db_stack
-    run Nothing (ghcPkgPath config) (cmd : extraArgs ++ args)
+    -- NB: testDBStack already has the local database
+    let db_stack = testDBStack config
+        extraArgs = ghcPkgPackageDBParams (withGhcVersion config) db_stack
+    run Nothing (withGhcPkgPath config) (cmd : extraArgs ++ args)
 
 ghcPkgPackageDBParams :: Version -> PackageDBStack -> [String]
 ghcPkgPackageDBParams version dbs = concatMap convert dbs where
@@ -589,7 +661,7 @@ shouldFail = withReaderT (\(suite, test) -> (suite, test { testShouldFail = not 
 whenGhcVersion :: (Version -> Bool) -> TestM () -> TestM ()
 whenGhcVersion p m = do
     (suite, _) <- ask
-    when (p (ghcVersion suite)) m
+    when (p (withGhcVersion suite)) m
 
 withPackage :: FilePath -> TestM a -> TestM a
 withPackage f = withReaderT (\(suite, test) -> (suite, test { testCurrentPackage = f }))
@@ -612,7 +684,10 @@ withPackageDb m = do
         else withReaderT (\(suite, test) ->
                             (suite { packageDBStack
                                         = packageDBStack suite
-                                       ++ [SpecificPackageDB db_path] },
+                                       ++ [SpecificPackageDB db_path]
+                                   , withGhcDBStack
+                                        = withGhcDBStack suite
+                                       ++ [SpecificPackageDB db_path]},
                              test { testPackageDb = True }))
                $ do ghcPkg "init" [db_path]
                     m
@@ -689,6 +764,10 @@ unlessWindows = testUnless (buildOS == Windows)
 hasSharedLibraries :: SuiteConfig -> Bool
 hasSharedLibraries config =
     buildOS /= Windows || withGhcVersion config < Version [7,8] []
+
+hasCabalForGhc :: SuiteConfig -> Bool
+hasCabalForGhc config =
+    withGhcPath config == ghcPath config
 
 ------------------------------------------------------------------------
 -- Verbosity
