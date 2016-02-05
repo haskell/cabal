@@ -37,6 +37,7 @@ import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
+import           Distribution.Client.Utils (removeExistingFile)
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
@@ -163,7 +164,11 @@ data BuildStatusRebuild =
 
      -- | The depencencies of this package have been (re)built but the
      --   configuration has not changed. So the build phase needs to be rerun.
-   | BuildStatusDepsRebuilt (Maybe InstalledPackageInfo)
+     --
+     -- The optional registration info here tells us if we've registered the
+     -- package already, or if we stil need to do that after building.
+     --
+   | BuildStatusDepsRebuilt (Maybe (Maybe InstalledPackageInfo))
 
      -- | The package changed but the configuration and deps have not changed.
      --   So the build phase needs to be rerun. Typically this is due to
@@ -179,8 +184,11 @@ data BuildStatusRebuild =
      --   So that means it's also the new set we will have built, and we will
      --   save this for next time.
      --
+     -- The optional registration info here tells us if we've registered the
+     -- package already, or if we stil need to do that after building.
+     --
    | BuildStatusBuild (MonitorChangedReason (Set ComponentName))
-                      (Maybe InstalledPackageInfo)
+                      (Maybe (Maybe InstalledPackageInfo))
 
 -- | Which 'BuildStatus' values indicate we'll have to do some build work of
 -- some sort. In particular we use this as part of checking if any a package's
@@ -340,10 +348,9 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
 -- and 'updatePackageBuildFileMonitor'.
 --
 data PackageFileMonitor = PackageFileMonitor {
-       pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage
-                                           (Maybe InstalledPackageInfo),
-
-       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccess
+       pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage (),
+       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccess,
+       pkgFileMonitorReg    :: FileMonitor () (Maybe InstalledPackageInfo)
      }
 
 newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
@@ -358,7 +365,10 @@ newPackageFileMonitor DistDirLayout{distPackageCacheFile} pkgid =
           fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
             componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt,
           fileMonitorCheckIfOnlyValueChanged = True
-        }
+        },
+
+      pkgFileMonitorReg =
+        newFileMonitor (distPackageCacheFile pkgid "registration")
     }
 
 -- | Helper function for 'checkPackageFileMonitorChanged',
@@ -396,21 +406,33 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
       MonitorChanged reason ->
         return (Left (BuildStatusConfigure (fmap (const ()) reason)))
 
-      MonitorUnchanged mipkg _
+      MonitorUnchanged () _
           -- The configChanged here includes the identity of the dependencies,
           -- so depsBuildStatus is just needed for the changes in the content
           -- of depencencies.
-        | any buildStatusRequiresBuild (CD.flatDeps depsBuildStatus) ->
-            return (Left (BuildStatusDepsRebuilt mipkg))
+        | any buildStatusRequiresBuild (CD.flatDeps depsBuildStatus) -> do
+            regChanged <- checkFileMonitorChanged pkgFileMonitorReg srcdir ()
+            let mreg = changedToMaybe regChanged
+            return (Left (BuildStatusDepsRebuilt mreg))
 
         | otherwise -> do
             buildChanged  <- checkFileMonitorChanged
                                pkgFileMonitorBuild srcdir buildComponents
-            case buildChanged of
-              MonitorChanged reason ->
-                return (Left (BuildStatusBuild reason mipkg))
+            regChanged    <- checkFileMonitorChanged
+                               pkgFileMonitorReg srcdir ()
+            case (buildChanged, regChanged) of
+              (MonitorChanged reason, _) -> do
+                let mreg = changedToMaybe regChanged
+                return (Left (BuildStatusBuild reason mreg))
 
-              MonitorUnchanged buildSuccess _ ->
+              (MonitorUnchanged _ _, MonitorChanged reason) -> do
+                -- this should only happen if the file is corrput or been
+                -- manually deleted. We don't want to bother with another
+                -- phase just for this, so we'll reregister by doing a build.
+                let reason' = fmap (const Set.empty) reason
+                return (Left (BuildStatusBuild reason' Nothing))
+
+              (MonitorUnchanged buildSuccess _, MonitorUnchanged mipkg _) ->
                 return (Right (mipkg, markUnchanged buildSuccess))
                 where
                   --TODO: [code cleanup] make this cleaner
@@ -420,18 +442,18 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
 
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
+    changedToMaybe (MonitorChanged     _) = Nothing
+    changedToMaybe (MonitorUnchanged x _) = Just x
 
 
 updatePackageConfigFileMonitor :: PackageFileMonitor
                                -> FilePath
                                -> ElaboratedConfiguredPackage
-                               -> Maybe InstalledPackageInfo
                                -> IO ()
 updatePackageConfigFileMonitor PackageFileMonitor{pkgFileMonitorConfig}
-                               srcdir pkg mipkg =
+                               srcdir pkg =
     updateFileMonitor pkgFileMonitorConfig srcdir
-                      []
-                      pkgconfig mipkg
+                      [] pkgconfig ()
   where
     (pkgconfig, _buildComponents) = packageFileMonitorKeyValues pkg
 
@@ -463,6 +485,19 @@ updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
         BuildStatusBuild (MonitoredValueChanged prevBuildComponents) _
           -> buildComponents `Set.union` prevBuildComponents
         _ -> buildComponents
+
+updatePackageRegFileMonitor :: PackageFileMonitor
+                            -> FilePath
+                            -> Maybe InstalledPackageInfo
+                            -> IO ()
+updatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg}
+                            srcdir mipkg =
+    updateFileMonitor pkgFileMonitorReg srcdir
+                      [] () mipkg
+
+invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
+invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
+    removeExistingFile (fileMonitorCacheFile pkgFileMonitorReg)
 
 
 ------------------------------------------------------------------------------
@@ -1028,19 +1063,33 @@ buildInplaceUnpackedPackage verbosity
         createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
-        whenChanged_ buildStatus $ do
-          when isParallelBuild $
-            notice verbosity $ "Configuring " ++ display pkgid ++ "..."
+        --
+        whenReConfigure $ do
           setup configureCommand' configureFlags []
+          invalidatePackageRegFileMonitor packageFileMonitor
+          updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
 
         -- Build phase
-        when isParallelBuild $
-          notice verbosity $ "Building " ++ display pkgid ++ "..."
+        --
         setup buildCommand' buildFlags buildArgs
 
-        -- Register locally
-        mipkg <- whenChanged buildStatus $
-          if pkgRequiresRegistration pkg
+        let docsResult  = DocsNotTried
+            testsResult = TestsNotTried
+
+            buildSuccess :: BuildSuccess
+            buildSuccess = BuildOk True docsResult testsResult
+
+        --TODO: [required eventually] temporary hack. We need to look at the package description
+        -- and work out the exact file monitors to use
+        allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
+                   <$> getDirectoryContentsRecursive srcdir
+
+        updatePackageBuildFileMonitor packageFileMonitor srcdir pkg buildStatus
+                                      allSrcFiles buildSuccess
+
+        mipkg <- whenReRegister $ do
+          -- Register locally
+          mipkg <- if pkgRequiresRegistration pkg
             then do
                 ipkg <- generateInstalledPackageInfo
                 -- We register ourselves rather than via Setup.hs. We need to
@@ -1054,24 +1103,8 @@ buildInplaceUnpackedPackage verbosity
 
            else return Nothing
 
-        let docsResult  = DocsNotTried
-            testsResult = TestsNotTried
-
-            buildSuccess :: BuildSuccess
-            buildSuccess = BuildOk True docsResult testsResult
-
-        whenChanged_ buildStatus $
-          updatePackageConfigFileMonitor packageFileMonitor srcdir pkg mipkg
-          --TODO: move the mipkg to the build config, and move the config
-          -- update to after a successful configure step
-
-        --TODO: [required eventually] temporary hack. We need to look at the package description
-        -- and work out the exact file monitors to use
-        allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
-                   <$> getDirectoryContentsRecursive srcdir
-
-        updatePackageBuildFileMonitor packageFileMonitor srcdir pkg buildStatus
-                                      allSrcFiles buildSuccess
+          updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
+          return mipkg
 
         return (BuildSuccess mipkg buildSuccess)
 
@@ -1083,12 +1116,16 @@ buildInplaceUnpackedPackage verbosity
 
     packageFileMonitor = newPackageFileMonitor distDirLayout pkgid
 
-    whenChanged_ (BuildStatusConfigure _) action = action
-    whenChanged_ _                        _      = return ()
+    whenReConfigure action = case buildStatus of
+      BuildStatusConfigure _ -> action
+      _                      -> return ()
 
-    whenChanged (BuildStatusConfigure _) action  = action
-    whenChanged (BuildStatusDepsRebuilt mipkg) _ = return mipkg
-    whenChanged (BuildStatusBuild _     mipkg) _ = return mipkg
+    whenReRegister  action = case buildStatus of
+      BuildStatusConfigure _              -> action
+      BuildStatusDepsRebuilt Nothing      -> action
+      BuildStatusBuild _     Nothing      -> action
+      BuildStatusDepsRebuilt (Just mipkg) -> return mipkg
+      BuildStatusBuild _     (Just mipkg) -> return mipkg
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
