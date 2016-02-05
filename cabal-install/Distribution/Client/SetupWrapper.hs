@@ -545,8 +545,6 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                 (fmap compilerId . useCompiler $ options')
         platformString        = display platform
 
-  --TODO: eliminate cached setup
-
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions

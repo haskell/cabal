@@ -35,7 +35,9 @@ import qualified Data.Map        as Map
 import qualified Data.ByteString.Lazy as BS
 import           Distribution.Compat.Binary
 import qualified Distribution.Compat.Binary as Binary
+#if !MIN_VERSION_base(4,8,0)
 import           Data.Traversable (traverse)
+#endif
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)
 #if MIN_VERSION_directory(1,2,0)
@@ -44,13 +46,14 @@ import           Data.Time (UTCTime(..), Day(..))
 import           System.Time (ClockTime(..))
 #endif
 
-import           Control.Monad
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans.State (StateT)
-import qualified Control.Monad.Trans.State as State
-import           Control.Monad.Trans.Maybe (MaybeT(MaybeT), runMaybeT)
-import           Control.Monad.Except
+#endif
+import           Control.Monad
+import           Control.Monad.Trans (MonadIO, liftIO)
+import           Control.Monad.State (StateT)
+import qualified Control.Monad.State as State
+import           Control.Monad.Except (ExceptT, runExceptT, throwError)
 import           Control.Exception
 
 import           Distribution.Text
@@ -59,6 +62,7 @@ import qualified Distribution.Compat.ReadP as ReadP
 import qualified Text.PrettyPrint as Disp
 
 import           Distribution.Client.Glob
+import           Distribution.Simple.Utils (writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import           System.FilePath
@@ -145,11 +149,6 @@ data MonitorStateFileSet
    = MonitorStateFileSet !(Map FilePath MonitorStateFile)
                          ![FileGlobMonitorState]
   deriving Show
-
---instance Monoid MonitorStateFileSet where
---  mempty = MonitorStateFileSet Map.empty []
---  MonitorStateFileSet a b `mappend` MonitorStateFileSet x y =
---    MonitorStateFileSet (a<>x) (b<>y)
 
 type Hash = Int
 #if MIN_VERSION_directory(1,2,0)
@@ -333,8 +332,8 @@ checkFileMonitorChanged
   -> a                          -- ^ guard or key value
   -> IO (MonitorChanged a b)    -- ^ did the key or any paths change?
 checkFileMonitorChanged
-    FileMonitor { fileMonitorCacheFile, fileMonitorKeyValid,
-                  fileMonitorCheckIfOnlyValueChanged }
+    monitor@FileMonitor { fileMonitorKeyValid,
+                          fileMonitorCheckIfOnlyValueChanged }
     root currentKey =
 
     -- Consider it a change if the cache file does not exist,
@@ -343,7 +342,7 @@ checkFileMonitorChanged
 
     handleDoesNotExist (MonitorChanged MonitorFirstRun) $
     handleErrorCall    (MonitorChanged MonitorCorruptCache) $
-          Binary.decodeFileOrFail fileMonitorCacheFile
+          readCacheFile monitor
       >>= either (\_ -> return (MonitorChanged MonitorCorruptCache))
                  checkStatusCache
 
@@ -359,11 +358,23 @@ checkFileMonitorChanged
         -- if we return MonitoredValueChanged that only the value changed.
         -- We do that by checkin for file changes first. Otherwise it makes
         -- more sense to do the cheaper test first.
-        checkForChanges =
-          runMaybeT $ msum $
-          (if fileMonitorCheckIfOnlyValueChanged then reverse else id)
-          [ MaybeT $ checkValueChange cachedKey
-          , MaybeT $ checkFileChange  cachedFileStatus cachedKey cachedResult ]
+        checkForChanges
+          | fileMonitorCheckIfOnlyValueChanged
+          = checkFileChange cachedFileStatus cachedKey cachedResult
+              `mplusMaybeT`
+            checkValueChange cachedKey
+
+          | otherwise
+          = checkValueChange cachedKey
+              `mplusMaybeT`
+            checkFileChange cachedFileStatus cachedKey cachedResult
+
+    mplusMaybeT :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+    mplusMaybeT ma mb = do
+      mx <- ma
+      case mx of
+        Nothing -> mb
+        Just x  -> return (Just x)
 
     -- Check if the guard value has changed
     checkValueChange cachedKey
@@ -385,13 +396,31 @@ checkFileMonitorChanged
 
           -- But we might still want to update the cache
           whenCacheChanged cacheStatus $
-            rewriteCache cachedFileStatus' cachedKey cachedResult
+            rewriteCacheFile monitor cachedFileStatus' cachedKey cachedResult
 
           return Nothing
 
-    rewriteCache cachedFileStatus' cachedKey cachedResult = 
-      Binary.encodeFile fileMonitorCacheFile
-                        (cachedFileStatus', cachedKey, cachedResult)
+-- | Helper for reading the cache file.
+--
+-- This determines the type and format of the binary cache file.
+--
+readCacheFile :: (Binary a, Binary b)
+              => FileMonitor a b
+              -> IO (Either String (MonitorStateFileSet, a, b))
+readCacheFile FileMonitor {fileMonitorCacheFile} =
+    withBinaryFile fileMonitorCacheFile ReadMode $ \hnd ->
+      Binary.decodeOrFailIO =<< BS.hGetContents hnd
+
+-- | Helper for writing the cache file.
+--
+-- This determines the type and format of the binary cache file.
+--
+rewriteCacheFile :: (Binary a, Binary b)
+                 => FileMonitor a b
+                 -> MonitorStateFileSet -> a -> b -> IO ()
+rewriteCacheFile FileMonitor {fileMonitorCacheFile} fileset key result =
+    writeFileAtomic fileMonitorCacheFile $
+      Binary.encode (fileset, key, result)
 
 -- | Probe the file system to see if any of the monitored files have changed.
 --
@@ -508,7 +537,6 @@ probeGlobStatus root dirName (MonitorStateGlobDirs glob globPath mtime children)
         -- all we're saving is scanning the directory. But we do rebuild the
         -- cache with the new mtime', so that if the cache is rewritten for
         -- some other reason, we'll take advantage of that.
-    
 
   where
     probeMergeResult :: MergeResult (FilePath, FileGlobMonitorState) FilePath
@@ -583,10 +611,9 @@ updateFileMonitor
   -> a                        -- ^ the current key value
   -> b                        -- ^ the current result value
   -> IO ()
-updateFileMonitor FileMonitor {fileMonitorCacheFile}
-                  root monitorFiles cachedKey cachedResult = do
+updateFileMonitor monitor root monitorFiles cachedKey cachedResult = do
     fsc <- buildMonitorStateFileSet root monitorFiles
-    Binary.encodeFile fileMonitorCacheFile (fsc, cachedKey, cachedResult)
+    rewriteCacheFile monitor fsc cachedKey cachedResult
 
 buildMonitorStateFileSet :: FilePath          -- ^ root directory
                          -> [MonitorFilePath] -- ^ patterns of interest relative to root

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
@@ -38,7 +39,9 @@ import Distribution.Client.FileStatusCache
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Monad.State as State
 import Distribution.Compat.Binary     (Binary)
 import System.FilePath (takeFileName)

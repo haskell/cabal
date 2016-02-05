@@ -206,6 +206,9 @@ readRepoIndex verbosity repoCtxt repo =
 getIndexFileAge :: Repo -> IO Double
 getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 
+-- | A set of files (or directories) that can be monitored to detect when
+-- there might have been a change in the source packages.
+--
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =
     [ repoLocalDir repo </> "00-index.cache"
