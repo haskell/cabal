@@ -83,11 +83,9 @@ data GhcOptions = GhcOptions {
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
 
-  -- | The GHC packages to use. For compatability with old and new ghc, this
-  -- requires both the short and long form of the package id;
-  -- the @ghc -package@ or @ghc -package-id@ flags.
+  -- | The GHC packages to use, the @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (UnitId, PackageId, ModuleRenaming),
+    NubListR (UnitId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -279,8 +277,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
   , maybe [] verbosityOpts (flagToMaybe (ghcOptVerbosity opts))
 
-  , [ "-fbuilding-cabal-package" | flagBool ghcOptCabal
-                                 , flagBuildingCabalPkg implInfo ]
+  , [ "-fbuilding-cabal-package" | flagBool ghcOptCabal ]
 
   ----------------
   -- Compilation
@@ -342,12 +339,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ ["-hisuf",   suf] | suf <- flag ghcOptHiSuffix  ]
   , concat [ ["-dynosuf", suf] | suf <- flag ghcOptDynObjSuffix ]
   , concat [ ["-dynhisuf",suf] | suf <- flag ghcOptDynHiSuffix  ]
-  , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir
-                                 , flagOutputDir implInfo ]
+  , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir ]
   , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
   , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
-  , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir
-                               , flagStubdir implInfo ]
+  , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir ]
 
   -----------------------
   -- Source search path
@@ -362,8 +357,6 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
-  , [ "-#include \"" ++ inc ++ "\""
-    | inc <- flags ghcOptFfiIncludes, flagFfiIncludes implInfo ]
   , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
 
   -----------------
@@ -400,13 +393,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
   , packageDbArgs implInfo (ghcOptPackageDBs opts)
 
-  , concat $ if flagPackageId implInfo
-      then let space "" = ""
-               space xs = ' ' : xs
-           in [ ["-package-id", display ipkgid ++ space (display rns)]
-              | (ipkgid,_,rns) <- flags ghcOptPackages ]
-      else [ ["-package",    display  pkgid]
-           | (_,pkgid,_)  <- flags ghcOptPackages ]
+  , concat $ let space "" = ""
+                 space xs = ' ' : xs
+             in [ ["-package-id", display ipkgid ++ space (display rns)]
+                | (ipkgid,rns) <- flags ghcOptPackages ]
 
   ----------------------------
   -- Language and extensions
