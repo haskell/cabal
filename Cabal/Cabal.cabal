@@ -307,7 +307,7 @@ test-suite unit-tests
     tasty-hunit,
     tasty-quickcheck,
     pretty,
-    QuickCheck < 2.9,
+    QuickCheck >= 2.7 && < 2.9,
     Cabal
   ghc-options: -Wall
   default-language: Haskell98
@@ -327,9 +327,7 @@ test-suite package-tests
     base,
     containers,
     tasty,
-    tasty-quickcheck,
     tasty-hunit,
-    QuickCheck >= 2.1.0.1 && < 2.9,
     transformers,
     Cabal,
     process,
