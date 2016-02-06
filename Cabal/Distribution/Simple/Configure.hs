@@ -1672,7 +1672,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
           componentIsPublic = libName lib == display (packageName (package pkg_descr)),
           componentCompatPackageKey = compat_key,
           componentCompatPackageName = compat_name,
-          componentPackageRenaming = cprns,
+          componentIncludes = includes,
           componentExposedModules = exports ++ reexports
         }
       CExe _ ->
@@ -1680,21 +1680,21 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
           componentUnitId = uid,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
-          componentPackageRenaming = cprns
+          componentIncludes = includes
         }
       CTest _ ->
         return TestComponentLocalBuildInfo {
           componentUnitId = uid,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
-          componentPackageRenaming = cprns
+          componentIncludes = includes
         }
       CBench _ ->
         return BenchComponentLocalBuildInfo {
           componentUnitId = uid,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
-          componentPackageRenaming = cprns
+          componentIncludes = includes
         }
       where
 
@@ -1729,6 +1729,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                     | pkgid <- selectSubset bi internalPkgDeps ]
                else [ (Installed.installedUnitId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
+        includes = map (\(i,p) -> (i,lookupRenaming p cprns)) cpds
         cprns = if newPackageDepsBehaviour pkg_descr
                 then targetBuildRenaming bi
                 else Map.empty

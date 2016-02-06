@@ -394,7 +394,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentLocalName = CLibName (testName test)
                 , componentIsPublic = False
-                , componentPackageRenaming = componentPackageRenaming clbi
+                , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi
                 , componentCompatPackageName = compat_name
                 , componentCompatPackageKey = compat_key
@@ -423,17 +423,17 @@ testSuiteLibV09AsLibAndExe pkg_descr
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
     -- that exposes the relevant test suite library.
+    deps = (IPI.installedUnitId ipi, packageId ipi)
+         : (filter (\(_, x) -> let PackageName name = pkgName x
+                               in name == "Cabal" || name == "base")
+                   (componentPackageDeps clbi))
     exeClbi = ExeComponentLocalBuildInfo {
                 -- TODO: this is a hack, but as long as this is unique
                 -- (doesn't clobber something) we won't run into trouble
                 componentUnitId = mkUnitId (stubName test),
                 componentLocalName = CExeName (stubName test),
-                componentPackageDeps =
-                    (IPI.installedUnitId ipi, packageId ipi)
-                  : (filter (\(_, x) -> let PackageName name = pkgName x
-                                        in name == "Cabal" || name == "base")
-                            (componentPackageDeps clbi)),
-                componentPackageRenaming = Map.empty
+                componentPackageDeps = deps,
+                componentIncludes = zip (map fst deps) (repeat defaultRenaming)
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
@@ -454,7 +454,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
                 componentUnitId = componentUnitId clbi,
                 componentLocalName = CExeName (benchmarkName bm),
                 componentPackageDeps = componentPackageDeps clbi,
-                componentPackageRenaming = componentPackageRenaming clbi
+                componentIncludes = componentIncludes clbi
               }
 benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 

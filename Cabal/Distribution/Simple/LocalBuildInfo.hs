@@ -325,25 +325,25 @@ data ComponentLocalBuildInfo
     componentCompatPackageName :: PackageName,
     componentExposedModules :: [Installed.ExposedModule],
     componentIsPublic :: Bool,
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | ExeComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | TestComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | BenchComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   deriving (Generic, Read, Show)
 
