@@ -66,6 +66,10 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
+--TODO: temporary import, just to force these modules to be built.
+-- It will be replaced by import of new build command once merged.
+import Distribution.Client.RebuildMonad ()
+
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)

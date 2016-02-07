@@ -149,8 +149,10 @@ executable cabal
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
+        Distribution.Client.FileMonitor
         Distribution.Client.Freeze
         Distribution.Client.Get
+        Distribution.Client.Glob
         Distribution.Client.GlobalFlags
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
@@ -171,6 +173,7 @@ executable cabal
         Distribution.Client.ParseUtils
         Distribution.Client.PlanIndex
         Distribution.Client.Run
+        Distribution.Client.RebuildMonad
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
@@ -206,6 +209,7 @@ executable cabal
         Cabal      >= 1.23.1   && < 1.24,
         containers >= 0.4      && < 0.6,
         filepath   >= 1.3      && < 1.5,
+        hashable   >= 1.0      && < 2,
         HTTP       >= 4000.1.5 && < 4000.4,
         mtl        >= 2.0      && < 3,
         pretty     >= 1.1      && < 1.2,
@@ -260,6 +264,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
+    UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Tar
@@ -275,6 +280,7 @@ Test-Suite unit-tests
         process,
         directory,
         filepath,
+        hashable,
         stm,
         tar,
         time,
