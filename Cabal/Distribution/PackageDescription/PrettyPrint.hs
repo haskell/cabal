@@ -46,7 +46,8 @@ ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
         ppPackageDescription (packageDescription gpd)
         $+$ ppGenPackageFlags (genPackageFlags gpd)
-        $+$ ppLibrary (condLibrary gpd)
+        $+$ ppLibraries (unPackageName (packageName (packageDescription gpd)))
+                        (condLibraries gpd)
         $+$ ppExecutables (condExecutables gpd)
         $+$ ppTestSuites (condTestSuites gpd)
         $+$ ppBenchmarks (condBenchmarks gpd)
@@ -106,10 +107,10 @@ ppFlag flag@(MkFlag name _ _ _)    =
   where
     fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
-ppLibrary :: (Maybe (CondTree ConfVar [Dependency] Library)) -> Doc
-ppLibrary Nothing                        = empty
-ppLibrary (Just condTree)                =
-    emptyLine $ text "library" $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
+ppLibraries :: String -> [(String, CondTree ConfVar [Dependency] Library)] -> Doc
+ppLibraries pn libs                           =
+    vcat [emptyLine $ text (if n == pn then "library" else "library " ++ n)
+              $+$ nest indentWith (ppCondTree condTree Nothing ppLib)| (n,condTree) <- libs]
   where
     ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
                             $$  ppCustomFields (customFieldsBI (libBuildInfo lib))

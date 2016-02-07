@@ -475,10 +475,8 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentUnitId clbi
-      libTargetDir
-        | componentUnitId clbi == localUnitId lbi = buildDir lbi
-        | otherwise = buildDir lbi </> display libName
+  let uid = componentUnitId clbi
+      libTargetDir = componentBuildDir lbi clbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
@@ -507,13 +505,15 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-      -- Component name. Not 'libName' because that has the "HS" prefix
-      -- that GHC gives Haskell libraries.
-      cname = display $ PD.package $ localPkgDescr lbi
+      -- TODO: Historically HPC files have been put into a directory which
+      -- has the package name.  I'm going to avoid changing this for
+      -- now, but it would probably be better for this to be the
+      -- component ID instead...
+      pkg_name = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = Mon.mempty  -- HPC is not supported in ghci
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
+        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
         | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -643,13 +643,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       (cSources libBi)
         cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
                       (cSources libBi)
-        cid = compilerId (compiler lbi)
-        vanillaLibFilePath = libTargetDir </> mkLibName           libName
-        profileLibFilePath = libTargetDir </> mkProfLibName       libName
-        sharedLibFilePath  = libTargetDir </> mkSharedLibName cid libName
-        ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName libName
-        libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
-        sharedLibInstallPath = libInstallPath </> mkSharedLibName cid libName
+        compiler_id = compilerId (compiler lbi)
+        vanillaLibFilePath = libTargetDir </> mkLibName uid
+        profileLibFilePath = libTargetDir </> mkProfLibName uid
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
+        ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
+        libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
+        sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
 
     stubObjs <- catMaybes <$> sequence
       [ findFileWithExtension [objExtension] [libTargetDir]
@@ -781,8 +781,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                        then exeExtension
                        else "")
 
-  let targetDir = buildDir lbi </> exeName'
-  let exeDir    = targetDir </> (exeName' ++ "-tmp")
+  let targetDir = componentBuildDir lbi clbi
+      exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
@@ -1024,7 +1024,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   let
       comp        = compiler lbi
       vanillaArgs =
-        (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
+        (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptInputModules = toNubListR $ exposedModules lib
@@ -1107,19 +1107,24 @@ installLib    :: Verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir _builtDir pkg lib clbi = do
   -- copy .hi files over:
-  whenVanilla $ copyModuleFiles "hi"
-  whenProf    $ copyModuleFiles "p_hi"
-  whenShared  $ copyModuleFiles "dyn_hi"
+  whenRegistered $ do
+    whenVanilla $ copyModuleFiles "hi"
+    whenProf    $ copyModuleFiles "p_hi"
+    whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
-  whenProf    $ installOrdinary builtDir targetDir       profileLibName
-  whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
-  whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
+  whenRegistered $ do
+    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenProf    $ installOrdinary builtDir targetDir       profileLibName
+    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
+  whenRegisteredOrDynExecutable $ do
+    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
+    builtDir = componentBuildDir lbi clbi
+
     install isShared srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
@@ -1139,12 +1144,12 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       findModuleFiles [builtDir] [ext] (libModules lib)
       >>= installOrdinaryFiles verbosity targetDir
 
-    cid = compilerId (compiler lbi)
-    libName = componentUnitId clbi
-    vanillaLibName = mkLibName              libName
-    profileLibName = mkProfLibName          libName
-    ghciLibName    = Internal.mkGHCiLibName libName
-    sharedLibName  = (mkSharedLibName cid)  libName
+    compiler_id = compilerId (compiler lbi)
+    uid = componentUnitId clbi
+    vanillaLibName = mkLibName              uid
+    profileLibName = mkProfLibName          uid
+    ghciLibName    = Internal.mkGHCiLibName uid
+    sharedLibName  = (mkSharedLibName compiler_id) uid
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
@@ -1152,6 +1157,17 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     whenProf    = when (hasLib && withProfLib    lbi)
     whenGHCi    = when (hasLib && withGHCiLib    lbi)
     whenShared  = when (hasLib && withSharedLib  lbi)
+
+    -- Some files (e.g. interface files) are completely unnecessary when
+    -- we are not actually going to register the library.  A library is
+    -- not registered if there is no "public library", e.g. in the case
+    -- that we have an internal library and executables, but no public
+    -- library.
+    whenRegistered = when (hasPublicLib pkg)
+
+    -- However, we must always install dynamic libraries when linking
+    -- dynamic executables, because we'll try to load them!
+    whenRegisteredOrDynExecutable = when (hasPublicLib pkg || (hasExes pkg && withDynExe lbi))
 
 -- -----------------------------------------------------------------------------
 -- Registering

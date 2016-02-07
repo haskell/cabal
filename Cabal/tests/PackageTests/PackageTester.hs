@@ -27,6 +27,8 @@ module PackageTests.PackageTester
     , run
     , runExe
     , runExe'
+    , runInstalledExe
+    , runInstalledExe'
     , rawRun
     , rawCompileSetup
     , withPackage
@@ -66,7 +68,7 @@ import Distribution.Simple.Configure
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.BuildPaths (exeExtension)
 
-#ifndef CURRENT_COMPONENT_ID
+#ifndef LOCAL_COMPONENT_ID
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 #endif
@@ -267,7 +269,7 @@ cabal' cmd extraArgs0 = do
                 -- Would really like to do this, but we're not always
                 -- going to be building against sufficiently recent
                 -- Cabal which provides this macro.
-                -- , "--dependency=Cabal=" ++ THIS_PACKAGE_KEY
+                -- , "--dependency=Cabal=" ++ LOCAL_COMPONENT_ID
                 -- These flags make the test suite run faster
                 -- Can't do this unless we LD_LIBRARY_PATH correctly
                 -- , "--enable-executable-dynamic"
@@ -276,12 +278,10 @@ cabal' cmd extraArgs0 = do
                 , "--prefix=" ++ prefix_dir
                 ] ++ packageDBParams (packageDBStack suite)
                   ++ extraArgs0
-            -- This gives us MUCH better error messages
-            "build" -> "-v" : extraArgs0
             _ -> extraArgs0
     -- This is a horrible hack to make hpc work correctly
     dist_dir <- relativeDistDir
-    let extraArgs = ["--distdir", dist_dir] ++ extraArgs1
+    let extraArgs = ["-v", "--distdir", dist_dir] ++ extraArgs1
     doCabal (cmd:extraArgs)
 
 -- | This abstracts the common pattern of configuring and then building.
@@ -342,10 +342,10 @@ rawCompileSetup verbosity suite e path = do
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
         [ "-hide-all-packages"
         , "-package base"
-#ifdef CURRENT_COMPONENT_ID
+#ifdef LOCAL_COMPONENT_ID
         -- This is best, but we don't necessarily have it
         -- if we're bootstrapping with old Cabal.
-        , "-package-id " ++ CURRENT_COMPONENT_ID
+        , "-package-id " ++ LOCAL_COMPONENT_ID
 #else
         -- This mostly works, UNLESS you've installed a
         -- version of Cabal with the SAME version number.
@@ -423,6 +423,17 @@ runExe' exe_name args = do
     let exe = dist_dir </> "build" </> exe_name </> exe_name
     run Nothing exe args
 
+-- | Run an executable that was installed by cabal.  The @exe_name@
+-- is precisely the name of the executable.
+runInstalledExe :: String -> [String] -> TestM ()
+runInstalledExe exe_name args = void (runInstalledExe' exe_name args)
+
+runInstalledExe' :: String -> [String] -> TestM Result
+runInstalledExe' exe_name args = do
+    usr <- prefixDir
+    let exe = usr </> "bin" </> exe_name
+    run Nothing exe args
+
 run :: Maybe FilePath -> String -> [String] -> TestM Result
 run mb_cwd path args = do
     verbosity <- getVerbosity
@@ -482,13 +493,13 @@ requireSuccess r@Result { resultCommand = cmd
 
 record :: Result -> TestM ()
 record res = do
-    build_dir <- distDir
+    log_dir <- topDir
     (suite, _) <- ask
-    liftIO $ createDirectoryIfMissing True build_dir
-    liftIO $ C.appendFile (build_dir </> "test.log")
+    liftIO $ createDirectoryIfMissing True log_dir
+    liftIO $ C.appendFile (log_dir </> "test.log")
                          (C.pack $ "+ " ++ resultCommand res ++ "\n"
                             ++ resultOutput res ++ "\n\n")
-    let test_sh = build_dir </> "test.sh"
+    let test_sh = log_dir </> "test.sh"
     b <- liftIO $ doesFileExist test_sh
     when (not b) . liftIO $ do
         -- This is hella racey but this is not that security important

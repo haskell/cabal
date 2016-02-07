@@ -82,14 +82,28 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg@PackageDescription { library       = Just lib  } lbi regFlags
+register pkg lbi regFlags =
+    -- We do NOT register libraries outside of the inplace database
+    -- if there is no public library, since no one else can use it
+    -- usefully (they're not public.)  If we start supporting scoped
+    -- packages, we'll have to relax this.
+    when (hasPublicLib pkg) $
+        withLib pkg (registerOne pkg lbi regFlags)
+
+registerOne :: PackageDescription -> LocalBuildInfo -> RegisterFlags
+            -> Library
+            -> IO ()
+registerOne pkg lbi regFlags lib
   = do
-    let clbi = getComponentLocalBuildInfo lbi CLibName
+    let clbi = getComponentLocalBuildInfo lbi (CLibName (libName lib))
 
     absPackageDBs    <- absolutePackageDBPaths packageDbs
+    -- TODO: registration info named base on LIBNAME!!!
     installedPkgInfo <- generateRegistrationInfo
                            verbosity pkg lib lbi clbi inplace reloc distPref
                            (registrationPackageDB absPackageDBs)
+
+    info verbosity (IPI.showInstalledPackageInfo installedPkgInfo)
 
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedUnitId installedPkgInfo))
@@ -132,10 +146,6 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
                "Registration scripts are not implemented for this compiler"
                (compiler lbi) (withPrograms lbi)
                (writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs)
-
-register _ _ regFlags = notice verbosity "No package to register"
-  where
-    verbosity = fromFlag (regVerbosity regFlags)
 
 
 generateRegistrationInfo :: Verbosity
@@ -302,7 +312,9 @@ generalInstalledPackageInfo
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
   IPI.InstalledPackageInfo {
-    IPI.sourcePackageId    = packageId   pkg,
+    IPI.sourcePackageId    = (packageId   pkg) {
+                                pkgName = componentCompatPackageName clbi
+                             },
     IPI.installedUnitId    = componentUnitId clbi,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
@@ -371,11 +383,9 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
                                 pkg abi_hash lib lbi clbi installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
-    libTargetDir
-        | componentUnitId clbi == localUnitId lbi = buildDir lbi
-        | otherwise = buildDir lbi </> display (componentUnitId clbi)
+    libTargetDir = componentBuildDir lbi clbi
     installDirs =
-      (absoluteInstallDirs pkg lbi NoCopyDest) {
+      (absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,
         datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
@@ -407,7 +417,7 @@ absoluteInstalledPackageInfo pkg abi_hash lib lbi clbi =
       | null (installIncludes bi) = []
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
-    installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+    installDirs = absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 
 relocatableInstalledPackageInfo :: PackageDescription
@@ -429,7 +439,7 @@ relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
     bi = libBuildInfo lib
 
     installDirs = fmap (("${pkgroot}" </>) . shortRelativePath pkgroot)
-                $ absoluteInstallDirs pkg lbi NoCopyDest
+                $ absoluteComponentInstallDirs pkg lbi (componentUnitId clbi) NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration

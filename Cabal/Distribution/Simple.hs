@@ -305,7 +305,7 @@ copyAction hooks flags args = do
         flags' = flags { copyDistPref = toFlag distPref }
     hookedAction preCopy copyHook postCopy
                  (getBuildConfig hooks verbosity distPref)
-                 hooks flags' args
+                 hooks flags' { copyArgs = args } args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
 installAction hooks flags args = do
@@ -407,19 +407,24 @@ hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags ar
    post_hook hooks args flags pkg_descr localbuildinfo
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
-sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
-    = die $ "The buildinfo contains info for a library, "
-         ++ "but the package does not have a library."
-
-sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
-    | not (null nonExistant)
+sanityCheckHookedBuildInfo pkg_descr (hookLibs, hookExes)
+    | not (null nonExistantLibs)
+    = die $ "The buildinfo contains info for an library called '"
+         ++ head nonExistantLibs ++ "' but the package does not have a "
+         ++ "library with that name."
+    | not (null nonExistantExes)
     = die $ "The buildinfo contains info for an executable called '"
-         ++ head nonExistant ++ "' but the package does not have a "
+         ++ head nonExistantExes ++ "' but the package does not have a "
          ++ "executable with that name."
   where
     pkgExeNames  = nub (map exeName (executables pkg_descr))
     hookExeNames = nub (map fst hookExes)
-    nonExistant  = hookExeNames \\ pkgExeNames
+    nonExistantExes  = hookExeNames \\ pkgExeNames
+
+    -- Blank refers to the default, public library
+    pkgLibNames  = "" : nub (map libName (libraries pkg_descr))
+    hookLibNames = nub (map fst hookLibs)
+    nonExistantLibs  = hookLibNames \\ pkgLibNames
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
@@ -570,12 +575,9 @@ autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = \_ flags ->
-                       -- not using 'readHook' here because 'build' takes
-                       -- extra args
-                       getHookedBuildInfo $ fromFlag $ buildVerbosity flags,
+       preBuild    = readHookWithArgs buildVerbosity,
+       preCopy     = readHookWithArgs copyVerbosity,
        preClean    = readHook cleanVerbosity,
-       preCopy     = readHook copyVerbosity,
        preInst     = readHook installVerbosity,
        preHscolour = readHook hscolourVerbosity,
        preHaddock  = readHook haddockVerbosity,
@@ -598,6 +600,12 @@ autoconfUserHooks
                    postConf simpleUserHooks args flags pkg_descr' lbi
 
           backwardsCompatHack = False
+
+          readHookWithArgs :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
+          readHookWithArgs get_verbosity _ flags = do
+              getHookedBuildInfo verbosity
+            where
+              verbosity = fromFlag (get_verbosity flags)
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do

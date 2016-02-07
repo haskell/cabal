@@ -78,7 +78,7 @@ script:
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
  - ./dist/setup/setup test --show-details=streaming
  - cabal check
- - cabal sdist
+ - ./dist/setup/setup sdist
  - install_from_tarball
 
 # Check what we got

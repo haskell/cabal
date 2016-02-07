@@ -223,7 +223,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
      -- search paths
   ++ ["-i" ++ odir]
   ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
-  ++ ["-i" ++ autogenModulesDir lbi]
+  ++ ["-i" ++ autogenModulesDir lbi clbi]
      -- cpp options
   ++ ["--optP=" ++ opt | opt <- cppOptions bi]
      -- output path

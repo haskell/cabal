@@ -43,6 +43,7 @@ module Distribution.PackageDescription (
         ModuleReexport(..),
         emptyLibrary,
         withLib,
+        hasPublicLib,
         hasLibs,
         libModules,
 
@@ -124,7 +125,6 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import Data.Data                  (Data)
-import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
 import Data.Maybe                 (fromMaybe, maybeToList)
 import Data.Foldable as Fold      (Foldable(foldMap))
@@ -189,7 +189,7 @@ data PackageDescription
         buildType      :: Maybe BuildType,
         setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
-        library        :: Maybe Library,
+        libraries      :: [Library],
         executables    :: [Executable],
         testSuites     :: [TestSuite],
         benchmarks     :: [Benchmark],
@@ -256,7 +256,7 @@ emptyPackageDescription
                       category     = "",
                       customFieldsPD = [],
                       setupBuildInfo = Nothing,
-                      library      = Nothing,
+                      libraries    = [],
                       executables  = [],
                       testSuites   = [],
                       benchmarks   = [],
@@ -390,6 +390,7 @@ instance Text ModuleRenaming where
 -- The Library type
 
 data Library = Library {
+        libName :: String,
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
         requiredSignatures:: [ModuleName], -- ^ What sigs need implementations?
@@ -403,6 +404,7 @@ instance Binary Library
 
 instance Monoid Library where
   mempty = Library {
+    libName = mempty,
     exposedModules = mempty,
     reexportedModules = mempty,
     requiredSignatures = mempty,
@@ -414,6 +416,7 @@ instance Monoid Library where
 
 instance Semigroup Library where
   a <> b = Library {
+    libName = combine' libName,
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
     requiredSignatures = combine requiredSignatures,
@@ -422,26 +425,31 @@ instance Semigroup Library where
     libBuildInfo   = combine libBuildInfo
   }
     where combine field = field a `mappend` field b
+          combine' field = case (field a, field b) of
+                      ("","") -> ""
+                      ("", x) -> x
+                      (x, "") -> x
+                      (x, y) -> error $ "Ambiguous values for library field: '"
+                                  ++ x ++ "' and '" ++ y ++ "'"
 
 emptyLibrary :: Library
 emptyLibrary = mempty
 
--- |does this package have any libraries?
-hasLibs :: PackageDescription -> Bool
-hasLibs p = maybe False (buildable . libBuildInfo) (library p)
+-- | Does this package have a PUBLIC library?
+hasPublicLib :: PackageDescription -> Bool
+hasPublicLib p = any f (libraries p)
+    where f lib = buildable (libBuildInfo lib) &&
+                  libName lib == display (packageName (package p))
 
--- |'Maybe' version of 'hasLibs'
-maybeHasLibs :: PackageDescription -> Maybe Library
-maybeHasLibs p =
-   library p >>= \lib -> if buildable (libBuildInfo lib)
-                           then Just lib
-                           else Nothing
+-- | Does this package have any libraries?
+hasLibs :: PackageDescription -> Bool
+hasLibs p = any (buildable . libBuildInfo) (libraries p)
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
-   traverse_ f (maybeHasLibs pkg_descr)
+   sequence_ [f lib | lib <- libraries pkg_descr, buildable (libBuildInfo lib)]
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which need to be compiled.  (This does not include reexports, which
@@ -919,7 +927,7 @@ emptyBuildInfo = mempty
 -- all buildable executables, test suites and benchmarks.  Useful for gathering
 -- dependencies.
 allBuildInfo :: PackageDescription -> [BuildInfo]
-allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
+allBuildInfo pkg_descr = [ bi | lib <- libraries pkg_descr
                               , let bi = libBuildInfo lib
                               , buildable bi ]
                       ++ [ bi | exe <- executables pkg_descr
@@ -954,10 +962,10 @@ usedExtensions :: BuildInfo -> [Extension]
 usedExtensions bi = oldExtensions bi
                  ++ defaultExtensions bi
 
-type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
+type HookedBuildInfo = ([(String, BuildInfo)], [(String, BuildInfo)])
 
 emptyHookedBuildInfo :: HookedBuildInfo
-emptyHookedBuildInfo = (Nothing, [])
+emptyHookedBuildInfo = ([], [])
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
@@ -1113,28 +1121,35 @@ lowercase = map Char.toLower
 -- ------------------------------------------------------------
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
-updatePackageDescription (mb_lib_bi, exe_bi) p
-    = p{ executables = updateExecutables exe_bi    (executables p)
-       , library     = updateLibrary     mb_lib_bi (library     p)
+updatePackageDescription (lib_bi, exe_bi) p
+    = p{ executables = updateMany exeName updateExecutable exe_bi (executables p)
+       , libraries   = updateMany libName updateLibrary    lib_bi (libraries   p)
        }
     where
-      updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
-      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
-      updateLibrary Nothing   mb_lib     = mb_lib
-      updateLibrary (Just _)  Nothing    = Nothing
+      updateMany :: (a -> String) -- ^ @exeName@ or @libName@
+                 -> (BuildInfo -> a -> a) -- ^ @updateExecutable@ or @updateLibrary@
+                 -> [(String, BuildInfo)] -- ^[(name, new buildinfo)]
+                 -> [a]          -- ^list of components to update
+                 -> [a]          -- ^list with updated components
+      updateMany name update hooked_bi' cs' = foldr (updateOne name update) cs' hooked_bi'
 
-      updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
-                        -> [Executable]          -- ^list of executables to update
-                        -> [Executable]          -- ^list with exeNames updated
-      updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
+      updateOne :: (a -> String) -- ^ @exeName@ or @libName@
+                -> (BuildInfo -> a -> a) -- ^ @updateExecutable@ or @updateLibrary@
+                -> (String, BuildInfo) -- ^(name, new buildinfo)
+                -> [a]        -- ^list of compnoents to update
+                -> [a]        -- ^list with name component updated
+      updateOne _ _ _                 []         = []
+      updateOne name_sel update hooked_bi'@(name,bi) (c:cs)
+        | name_sel c == name ||
+          -- Special case: an empty name means "please update the BuildInfo for
+          -- the public library, i.e. the one with the same name as the
+          -- package."  See 'parseHookedBuildInfo'.
+          (name == "" && name_sel c == display (pkgName (package p)))
+          = update bi c : cs
+        | otherwise          = c : updateOne name_sel update hooked_bi' cs
 
-      updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
-                       -> [Executable]        -- ^list of executables to update
-                       -> [Executable]        -- ^list with exeName updated
-      updateExecutable _                 []         = []
-      updateExecutable exe_bi'@(name,bi) (exe:exes)
-        | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
-        | otherwise           = exe : updateExecutable exe_bi' exes
+      updateExecutable bi exe = exe{buildInfo    = bi `mappend` buildInfo exe}
+      updateLibrary    bi lib = lib{libBuildInfo = bi `mappend` libBuildInfo lib}
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
@@ -1143,7 +1158,7 @@ data GenericPackageDescription =
     GenericPackageDescription {
         packageDescription :: PackageDescription,
         genPackageFlags       :: [Flag],
-        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condLibraries      :: [(String, CondTree ConfVar [Dependency] Library)],
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
