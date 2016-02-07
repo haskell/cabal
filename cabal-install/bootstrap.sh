@@ -221,6 +221,9 @@ TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
                        # >= 0.5.0.1  && < 0.6
 BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
                                     # >=1.0
+                                    1.2.4.0
+HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
+                       # 1.*
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -395,6 +398,7 @@ info_pkg "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 info_pkg "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
 info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
+info_pkg "hashable"          ${HASHABLE_VER}          ${HASHABLE_VER_REGEXP}
 info_pkg "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -421,6 +425,7 @@ do_pkg   "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 do_pkg   "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
+do_pkg   "hashable"         ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 do_pkg   "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
 
 
