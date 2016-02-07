@@ -1,6 +1,6 @@
-import System.Time
+import Text.PrettyPrint
 import MyLibrary
 
 main = do
-    getClockTime
+    putStrLn (render (text "foo"))
     myLibFunc
