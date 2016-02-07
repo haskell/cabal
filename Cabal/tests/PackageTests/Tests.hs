@@ -118,8 +118,8 @@ tests config =
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in MyLibrary.hs" $
           resultOutput r =~ "^MyLibrary.hs:"
-      assertBool "error should be \"Could not find module `System.Time\"" $
-          resultOutput r =~ "Could not find module.*System.Time"
+      assertBool "error should be \"Could not find module `Text\\.PrettyPrint\"" $
+          resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
 
   -- This is a control on TargetSpecificDeps1; it should
   -- succeed.
@@ -133,8 +133,8 @@ tests config =
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in lemon.hs" $
           resultOutput r =~ "^lemon.hs:"
-      assertBool "error should be \"Could not find module `System.Time\"" $
-          resultOutput r =~ "Could not find module.*System.Time"
+      assertBool "error should be \"Could not find module `Text\\.PrettyPrint\"" $
+          resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
 
   -- Test that Paths module is generated and available for executables.
   , tc "PathsModule/Executable" $ cabal_build []
@@ -240,7 +240,7 @@ tests config =
         r <- runExe' "lemon" []
         assertEqual
             ("executable should have linked with the " ++ expect ++ " library")
-            ("myLibFunc " ++ expect)
+            ("foofoomyLibFunc " ++ expect)
             (concat $ lines (resultOutput r))
 
     tc :: FilePath -> TestM a -> TestTree

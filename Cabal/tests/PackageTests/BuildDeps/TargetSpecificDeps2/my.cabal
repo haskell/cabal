@@ -17,7 +17,7 @@ description:
 
 Library
     exposed-modules: MyLibrary
-    build-depends: base, bytestring, old-time
+    build-depends: base, bytestring, pretty
 
 Executable lemon
     main-is: lemon.hs
