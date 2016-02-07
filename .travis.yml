@@ -18,6 +18,7 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
  - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
  - if [ "x$NOTEST" = "x" ]; then export CABFLAGS="--enable-tests"; else export CABFLAGS=""; fi
+ - git version
 
 install:
  - cabal update

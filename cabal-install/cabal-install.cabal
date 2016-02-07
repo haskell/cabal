@@ -29,6 +29,12 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/IntegrationTests/custom/common.sh
+  tests/IntegrationTests/custom/should_run/plain.err
+  tests/IntegrationTests/custom/should_run/plain.sh
+  tests/IntegrationTests/custom/should_run/plain/A.hs
+  tests/IntegrationTests/custom/should_run/plain/Setup.hs
+  tests/IntegrationTests/custom/should_run/plain/plain.cabal
   tests/IntegrationTests/exec/common.sh
   tests/IntegrationTests/exec/should_run/Foo.hs
   tests/IntegrationTests/exec/should_run/My.hs
@@ -246,7 +252,6 @@ executable cabal
 
     if os(windows)
       build-depends: Win32 >= 2 && < 3
-      cpp-options: -DWIN32
     else
       build-depends: unix >= 2.5 && < 2.8
 
@@ -299,7 +304,7 @@ Test-Suite unit-tests
         tasty-hunit,
         tasty-quickcheck,
         tagged,
-        QuickCheck >= 2.5
+        QuickCheck >= 2.7
 
   if flag(old-directory)
     build-depends: old-time
@@ -314,7 +319,6 @@ Test-Suite unit-tests
 
   if os(windows)
     build-depends: Win32
-    cpp-options: -DWIN32
   else
     build-depends: unix
 
@@ -341,7 +345,6 @@ test-suite integration-tests
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3
-    cpp-options: -DWIN32
   else
     build-depends: unix >= 2.5 && < 2.8
 
