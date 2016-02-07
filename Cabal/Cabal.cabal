@@ -188,6 +188,8 @@ library
       Win32 >= 2.2 && < 2.4
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
 
   exposed-modules:
     Distribution.Compat.CreatePipe
@@ -268,6 +270,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.MonadFail
     Distribution.Compat.Semigroup
     Distribution.GetOpt
     Distribution.Lex

@@ -44,6 +44,7 @@ import Distribution.License
 import Distribution.Version
 import Distribution.Package
 import Distribution.ModuleName
+import qualified Distribution.Compat.MonadFail as Fail
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
@@ -100,6 +101,9 @@ instance Monad ParseResult where
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
+        fail = Fail.fail
+
+instance Fail.MonadFail ParseResult where
         fail s = ParseFailed (FromString s Nothing)
 
 catchParseError :: ParseResult a -> (PError -> ParseResult a)
