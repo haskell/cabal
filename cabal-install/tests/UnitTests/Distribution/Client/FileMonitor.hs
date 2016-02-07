@@ -495,6 +495,10 @@ write (RootPath root) fname contents = do
 touch :: RootPath -> FilePath -> IO ()
 touch root fname = write root fname "hello"
 
+#ifndef MIN_VERSION_unix
+#define MIN_VERSION_unix(a,b,c) 0
+#endif
+
 -- Wait a moment to ensure a file mtime change
 threadDelayMTimeChange :: IO ()
 #if defined(mingw32_HOST_OS) || (MIN_VERSION_directory(1,2,1) && MIN_VERSION_unix(2,6,0))
