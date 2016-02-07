@@ -111,7 +111,7 @@ data MonitorFilePath =
      -- equivalent of MonitorFileHashed above. If we need globed files with
      -- only mtime then it's perfectly ok to add it.
 
-  deriving (Show, Generic)
+  deriving (Eq, Show, Generic)
 
 instance Binary MonitorFilePath
 
@@ -334,7 +334,7 @@ data MonitorChangedReason a =
      -- that we cannot decode the values. This is completely benign as we can
      -- treat is just as if there were no cache file and re-run.
    | MonitorCorruptCache
-  deriving (Show, Functor)
+  deriving (Eq, Show, Functor)
 
 -- | Test if the input value or files monitored by the 'FileMonitor' have
 -- changed. If not, return the cached value.

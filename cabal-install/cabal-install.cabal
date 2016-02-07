@@ -259,6 +259,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
+    UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Tar
@@ -274,6 +275,7 @@ Test-Suite unit-tests
         process,
         directory,
         filepath,
+        hashable,
         stm,
         tar,
         time,
