@@ -11,6 +11,7 @@ import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
+import qualified UnitTests.Distribution.Client.FileMonitor
 
 tests :: TestTree
 tests = testGroup "Unit Tests" [
@@ -28,6 +29,8 @@ tests = testGroup "Unit Tests" [
         UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
         UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
+  ,testGroup "UnitTests.Distribution.Client.FileMonitor"
+        UnitTests.Distribution.Client.FileMonitor.tests
   ]
 
 -- Extra options for running the test suite

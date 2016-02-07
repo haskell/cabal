@@ -145,7 +145,7 @@ executable cabal
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
-        Distribution.Client.FileStatusCache
+        Distribution.Client.FileMonitor
         Distribution.Client.Freeze
         Distribution.Client.Get
         Distribution.Client.Glob
@@ -270,6 +270,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
+    UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Tar
@@ -285,6 +286,7 @@ Test-Suite unit-tests
         process,
         directory,
         filepath,
+        hashable,
         stm,
         tar,
         time,

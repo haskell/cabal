@@ -28,7 +28,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 import           Distribution.Client.DistDirLayout
-import           Distribution.Client.FileStatusCache
+import           Distribution.Client.FileMonitor
                    ( MonitorChanged(..), MonitorChangedReason(..)
                    , checkFileMonitorChanged, updateFileMonitor )
 import           Distribution.Client.SetupWrapper

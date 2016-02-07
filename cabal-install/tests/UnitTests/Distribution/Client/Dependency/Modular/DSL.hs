@@ -378,7 +378,7 @@ extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
     confPkg _                               = Nothing
 
     srcPkg :: ConfiguredPackage -> (String, Int)
-    srcPkg (ConfiguredPackage pkg _flags _stanzas _deps _) =
+    srcPkg (ConfiguredPackage pkg _flags _stanzas _deps) =
       let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) =
             packageInfoId pkg
       in (p, n)
