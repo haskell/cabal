@@ -70,6 +70,7 @@ module Distribution.Compat.ReadP
  where
 
 import Control.Monad( MonadPlus(..), liftM, liftM2, replicateM, ap, (>=>) )
+import qualified Control.Monad.Fail as Fail
 import Data.Char (isSpace)
 import Control.Applicative as AP (Applicative(..), Alternative(empty, (<|>)))
 
@@ -104,6 +105,9 @@ instance Monad (P s) where
   (Result x p) >>= k = k x `mplus` (p >>= k)
   (Final r)    >>= k = final [ys' | (x,s) <- r, ys' <- run (k x) s]
 
+  fail = Fail.fail
+
+instance Fail.MonadFail (P s) where
   fail _ = Fail
 
 instance Alternative (P s) where
@@ -156,8 +160,11 @@ instance Applicative (Parser r s) where
 
 instance Monad (Parser r s) where
   return = AP.pure
-  fail _    = R (const Fail)
+  fail = Fail.fail
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
+
+instance Fail.MonadFail (Parser r s) where
+  fail _    = R (const Fail)
 
 --instance MonadPlus (Parser r s) where
 --  mzero = pfail

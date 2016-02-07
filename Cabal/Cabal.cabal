@@ -179,6 +179,10 @@ library
   if impl(ghc < 7.6)
     build-depends: ghc-prim >= 0.2 && < 0.3
 
+  if !impl(ghc >= 8.0)
+    -- provides compat Control.Monad.Fail module
+    build-depends: fail == 4.9.*
+
   if !os(windows)
     build-depends:
       unix >= 2.5 && < 2.8
