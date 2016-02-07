@@ -348,7 +348,7 @@ instance (Binary ipkg, Binary iresult, Binary ifailure) =>
 type BuildResult  = GenericBuildResult InstalledPackageInfo 
                                        BuildSuccess BuildFailure
 
-data BuildSuccess = BuildOk Bool DocsResult TestsResult
+data BuildSuccess = BuildOk DocsResult TestsResult
   deriving (Eq, Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk

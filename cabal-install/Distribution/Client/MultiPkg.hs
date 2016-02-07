@@ -401,7 +401,7 @@ linearizeInstallPlan =
                      Installed.installedUnitId = ipkgid
                    }
           plan'  = InstallPlan.completed ipkgid (Just ipkg)
-                     (BuildOk True DocsNotTried TestsNotTried)
+                     (BuildOk DocsNotTried TestsNotTried)
                      (InstallPlan.processing [pkg] plan)
     --TODO: [code cleanup] This is a bit of a hack, pretending that each package is installed
     -- could we use InstallPlan.topologicalOrder?

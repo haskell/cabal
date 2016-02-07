@@ -433,13 +433,7 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                 return (Left (BuildStatusBuild reason' Nothing))
 
               (MonitorUnchanged buildSuccess _, MonitorUnchanged mipkg _) ->
-                return (Right (mipkg, markUnchanged buildSuccess))
-                where
-                  --TODO: [code cleanup] make this cleaner
-                  --      remove the Bool from BuildOk, rely on the BuildStatus
-                  markUnchanged :: BuildSuccess -> BuildSuccess
-                  markUnchanged (BuildOk _ b c) = BuildOk False b c
-
+                return (Right (mipkg, buildSuccess))
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
     changedToMaybe (MonitorChanged     _) = Nothing
@@ -972,7 +966,7 @@ buildAndInstallUnpackedPackage verbosity
     let docsResult  = DocsNotTried
         testsResult = TestsNotTried
 
-    return (BuildSuccess mipkg (BuildOk True docsResult testsResult))
+    return (BuildSuccess mipkg (BuildOk docsResult testsResult))
 
   where
     pkgid  = packageId rpkg
@@ -1077,7 +1071,7 @@ buildInplaceUnpackedPackage verbosity
             testsResult = TestsNotTried
 
             buildSuccess :: BuildSuccess
-            buildSuccess = BuildOk True docsResult testsResult
+            buildSuccess = BuildOk docsResult testsResult
 
         --TODO: [required eventually] temporary hack. We need to look at the package description
         -- and work out the exact file monitors to use
