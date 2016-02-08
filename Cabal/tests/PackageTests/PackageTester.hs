@@ -266,7 +266,7 @@ cabal' cmd extraArgs0 = do
                 [ "--global"
                 , "--with-ghc", withGhcPath suite
                 -- This improves precision but it increases the number
-                -- of flag ones has to specify and I don't like that;
+                -- of flags one has to specify and I don't like that;
                 -- Cabal is going to configure it and usually figure
                 -- out the right location in any case.
                 -- , "--with-ghc-pkg", withGhcPkgPath suite
