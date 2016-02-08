@@ -56,6 +56,7 @@ import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
 import Control.Monad (foldM, ap)
+import qualified Control.Monad.Fail as Fail
 import Control.Applicative as AP (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
@@ -100,6 +101,9 @@ instance Monad ParseResult where
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
                                ParseOk ws' x' -> ParseOk (ws'++ws) x'
+        fail = Fail.fail
+
+instance Fail.MonadFail ParseResult where
         fail s = ParseFailed (FromString s Nothing)
 
 catchParseError :: ParseResult a -> (PError -> ParseResult a)
