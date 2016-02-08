@@ -282,9 +282,9 @@ cabal' cmd extraArgs0 = do
                 , "--prefix=" ++ prefix_dir
                 ] -- Only add the LBI package stack if the GHC version
                   -- matches.
-                  ++ if withGhcPath suite == ghcPath suite
+                  ++ (if withGhcPath suite == ghcPath suite
                         then packageDBParams (packageDBStack suite)
-                        else []
+                        else [])
                   ++ extraArgs0
             -- This gives us MUCH better error messages
             "build" -> "-v" : extraArgs0
