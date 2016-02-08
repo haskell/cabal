@@ -221,7 +221,6 @@ TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
                        # >= 0.5.0.1  && < 0.6
 BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
                                     # >=1.0
-                                    1.2.4.0
 HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
                        # 1.*
 
