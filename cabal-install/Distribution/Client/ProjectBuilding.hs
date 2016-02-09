@@ -29,8 +29,6 @@ import qualified Distribution.Client.ComponentDeps as CD
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileMonitor
-                   ( MonitorChanged(..), MonitorChangedReason(..)
-                   , checkFileMonitorChanged, updateFileMonitor )
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
@@ -446,22 +444,23 @@ updatePackageConfigFileMonitor :: PackageFileMonitor
                                -> IO ()
 updatePackageConfigFileMonitor PackageFileMonitor{pkgFileMonitorConfig}
                                srcdir pkg =
-    updateFileMonitor pkgFileMonitorConfig srcdir
+    updateFileMonitor pkgFileMonitorConfig srcdir Nothing
                       [] pkgconfig ()
   where
     (pkgconfig, _buildComponents) = packageFileMonitorKeyValues pkg
 
 updatePackageBuildFileMonitor :: PackageFileMonitor
                               -> FilePath
+                              -> MonitorTimestamp
                               -> ElaboratedConfiguredPackage
                               -> BuildStatusRebuild
                               -> [FilePath]
                               -> BuildSuccess
                               -> IO ()
 updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
-                              srcdir pkg pkgBuildStatus
+                              srcdir timestamp pkg pkgBuildStatus
                               allSrcFiles buildSuccess =
-    updateFileMonitor pkgFileMonitorBuild srcdir
+    updateFileMonitor pkgFileMonitorBuild srcdir (Just timestamp)
                       (map MonitorFileHashed allSrcFiles)
                       buildComponents' buildSuccess
   where
@@ -486,7 +485,7 @@ updatePackageRegFileMonitor :: PackageFileMonitor
                             -> IO ()
 updatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg}
                             srcdir mipkg =
-    updateFileMonitor pkgFileMonitorReg srcdir
+    updateFileMonitor pkgFileMonitorReg srcdir Nothing
                       [] () mipkg
 
 invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
@@ -1065,6 +1064,7 @@ buildInplaceUnpackedPackage verbosity
 
         -- Build phase
         --
+        timestamp <- beginUpdateFileMonitor
         setup buildCommand' buildFlags buildArgs
 
         let docsResult  = DocsNotTried
@@ -1078,7 +1078,8 @@ buildInplaceUnpackedPackage verbosity
         allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
                    <$> getDirectoryContentsRecursive srcdir
 
-        updatePackageBuildFileMonitor packageFileMonitor srcdir pkg buildStatus
+        updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
+                                      pkg buildStatus
                                       allSrcFiles buildSuccess
 
         mipkg <- whenReRegister $ do
