@@ -30,11 +30,6 @@ module Distribution.Client.RebuildMonad (
   ) where
 
 import Distribution.Client.FileMonitor
-         ( MonitorFilePath(..), monitorFileSearchPath
-         , FilePathGlob(..), matchFileGlob
-         , FileMonitor(..), newFileMonitor
-         , MonitorChanged(..), MonitorChangedReason(..)
-         , checkFileMonitorChanged, updateFileMonitor )
 
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
@@ -98,8 +93,10 @@ rerunIfChanged verbosity rootDir monitor key action = do
       MonitorChanged reason -> do
         liftIO $ debug verbosity $ "File monitor '" ++ monitorName
                                 ++ "' changed: " ++ showReason reason
+        startTime <- liftIO $ beginUpdateFileMonitor
         (result, files) <- liftIO $ unRebuild action
-        liftIO $ updateFileMonitor monitor rootDir files key result
+        liftIO $ updateFileMonitor monitor rootDir
+                                   (Just startTime) files key result
         monitorFiles files
         return result
   where
