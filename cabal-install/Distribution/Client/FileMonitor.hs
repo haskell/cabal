@@ -565,7 +565,7 @@ probeGlobStatus root dirName
 
     -- Only in current filesystem state (directory added)
     probeMergeResult (OnlyInRight path) = do
-      fstate <- liftIO $ buildMonitorStateGlob Nothing
+      fstate <- liftIO $ buildMonitorStateGlob Nothing Map.empty
                            root (dirName </> path) globPath
       case allMatchingFiles (dirName </> path) fstate of
         (file:_) -> somethingChanged file
@@ -665,7 +665,8 @@ updateFileMonitor
   -> IO ()
 updateFileMonitor monitor root startTime monitorFiles
                   cachedKey cachedResult = do
-    msfs <- buildMonitorStateFileSet startTime root monitorFiles
+    hashcache <- readCacheFileHashes monitor
+    msfs <- buildMonitorStateFileSet startTime hashcache root monitorFiles
     rewriteCacheFile monitor msfs cachedKey cachedResult
 
 -- | A timestamp to help with the problem of file changes during actions.
@@ -687,11 +688,12 @@ beginUpdateFileMonitor = MonitorTimestamp <$> getCurTime
 --
 buildMonitorStateFileSet :: Maybe MonitorTimestamp -- ^ optional: timestamp
                                               -- of the start of the action
+                         -> FileHashCache     -- ^ existing file hashes
                          -> FilePath          -- ^ root directory
                          -> [MonitorFilePath] -- ^ patterns of interest
                                               --   relative to root
                          -> IO MonitorStateFileSet
-buildMonitorStateFileSet mstartTime root =
+buildMonitorStateFileSet mstartTime hashcache root =
     go Map.empty []
   where
     go :: Map FilePath MonitorStateFile -> [MonitorStateGlob]
@@ -715,7 +717,7 @@ buildMonitorStateFileSet mstartTime root =
         mtime <- getModTime file
         if changedDuringUpdate mstartTime mtime
           then return (MonitorStateFileHashed Nothing 0)
-          else do hash <- readFileHash file
+          else do hash <- getFileHash hashcache path file mtime
                   return (MonitorStateFileHashed (Just mtime) hash)
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
@@ -725,7 +727,7 @@ buildMonitorStateFileSet mstartTime root =
       go singlePaths' globPaths monitors
 
     go !singlePaths !globPaths (MonitorFileGlob globPath : monitors) = do
-      monitorState <- buildMonitorStateGlob mstartTime
+      monitorState <- buildMonitorStateGlob mstartTime hashcache
                                             root "." globPath
       go singlePaths (monitorState : globPaths) monitors
 
@@ -746,12 +748,13 @@ changedDuringUpdate _ _ = False
 -- the monitored (globed) files for changes when we find a whole new subtree.
 --
 buildMonitorStateGlob :: Maybe MonitorTimestamp -- ^ start time of update
+                      -> FileHashCache     -- ^ existing file hashes
                       -> FilePath     -- ^ the root directory
                       -> FilePath     -- ^ directory we are examining
                                       --   relative to the root
                       -> FilePathGlob -- ^ the matching glob
                       -> IO MonitorStateGlob
-buildMonitorStateGlob mstartTime root dir globPath = do
+buildMonitorStateGlob mstartTime hashcache root dir globPath = do
     dirEntries <- getDirectoryContents (root </> dir)
     dirMTime   <- getModTime (root </> dir)
     case globPath of
@@ -761,7 +764,7 @@ buildMonitorStateGlob mstartTime root dir globPath = do
                  $ filter (globMatches glob) dirEntries
         subdirStates <-
           forM (sort subdirs) $ \subdir -> do
-            fstate <- buildMonitorStateGlob mstartTime root
+            fstate <- buildMonitorStateGlob mstartTime hashcache root
                                             (dir </> subdir) globPath'
             return (subdir, fstate)
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
@@ -776,7 +779,7 @@ buildMonitorStateGlob mstartTime root dir globPath = do
             let mtime' | changedDuringUpdate mstartTime mtime
                                    = Nothing
                        | otherwise = Just mtime
-            hash <- readFileHash path
+            hash <- getFileHash hashcache (dir </> file) path mtime
             return (file, mtime', hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
 
@@ -799,6 +802,68 @@ matchFileGlob root glob0 = go glob0 ""
       concat <$> mapM (\subdir -> go globPath (dir </> subdir)) subdirs
 --TODO: [code cleanup] plausibly FilePathGlob and matchFileGlob should be
 -- moved into D.C.Glob and/or merged with similar functionality in Cabal.
+
+-- | We really want to avoid re-hashing files all the time. We already make
+-- the assumption that if a file mtime has not changed then we don't need to
+-- bother checking if the content hash has changed. We can apply the same
+-- assumption when updating the file monitor state. In the typical case of
+-- updating a file monitor the set of files is the same or largely the same so
+-- we can grab the previously known content hashes with their corresponding
+-- mtimes.
+--
+type FileHashCache = Map FilePath (ModTime, Hash)
+
+-- | We declare it a cache hit if the mtime of a file is the same as before.
+--
+lookupFileHashCache :: FileHashCache -> FilePath -> ModTime -> Maybe Hash
+lookupFileHashCache hashcache file mtime = do
+    (mtime', hash) <- Map.lookup file hashcache
+    guard (mtime' == mtime)
+    return hash
+
+-- | Either get it from the cache or go read the file
+getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO Hash
+getFileHash hashcache relfile absfile mtime =
+    case lookupFileHashCache hashcache relfile mtime of
+      Just hash -> return hash
+      Nothing   -> readFileHash absfile
+
+-- | Build a 'FileHashCache' from the previous 'MonitorStateFileSet'. While
+-- in principle we could preserve the structure of the previous state, given
+-- that the set of files to monitor can change then it's simpler just to throw
+-- away the structure and use a finite map.
+--
+readCacheFileHashes :: (Binary a, Binary b)
+                    => FileMonitor a b -> IO FileHashCache
+readCacheFileHashes monitor =
+    handleDoesNotExist Map.empty $
+    handleErrorCall    Map.empty $ do
+      res <- readCacheFile monitor
+      case res of
+        Left _             -> return Map.empty
+        Right (msfs, _, _) -> return (mkFileHashCache msfs)
+  where
+    mkFileHashCache :: MonitorStateFileSet -> FileHashCache
+    mkFileHashCache (MonitorStateFileSet singlePaths globPaths) =
+                    collectAllFileHashes singlePaths
+        `Map.union` collectAllGlobHashes globPaths
+
+    collectAllFileHashes =
+      Map.mapMaybe $ \fstate -> case fstate of
+        MonitorStateFileHashed (Just mtime) hash -> Just (mtime, hash)
+        _                                        -> Nothing
+
+    collectAllGlobHashes = Map.fromList . concatMap (collectGlobHashes "")
+
+    collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
+      [ res
+      | (subdir, fstate) <- entries
+      , res <- collectGlobHashes (dir </> subdir) fstate ]
+
+    collectGlobHashes dir (MonitorStateGlobFiles  _ _ entries) =
+      [ (dir </> fname, (mtime, hash))
+      | (fname, Just mtime, hash) <- entries ]
+
 
 ------------------------------------------------------------------------------
 -- Utils
