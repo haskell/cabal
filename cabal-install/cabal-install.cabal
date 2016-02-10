@@ -329,6 +329,7 @@ test-suite integration-tests
     directory,
     filepath,
     process,
+    regex-posix,
     tasty,
     tasty-hunit
 
