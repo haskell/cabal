@@ -614,7 +614,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           selectedDeps | useDependenciesExclusive options'
                                    = useDependencies options'
                        | otherwise = useDependencies options' ++ cabalDep
-          addRenaming (ipid, pid) = (ipid, pid, defaultRenaming)
+          addRenaming (ipid, _) = (ipid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
