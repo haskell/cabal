@@ -108,6 +108,8 @@ import Control.Monad
          ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
+import Distribution.Compat.Semigroup
+         ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Text.PrettyPrint
@@ -166,7 +168,10 @@ instance Monoid SavedConfig where
     savedReportFlags       = mempty,
     savedHaddockFlags      = mempty
   }
-  mappend a b = SavedConfig {
+  mappend = (<>)
+
+instance Semigroup SavedConfig where
+  a <> b = SavedConfig {
     savedGlobalFlags       = combinedSavedGlobalFlags,
     savedInstallFlags      = combinedSavedInstallFlags,
     savedConfigureFlags    = combinedSavedConfigureFlags,

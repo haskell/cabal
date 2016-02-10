@@ -37,6 +37,7 @@ module Distribution.Client.ComponentDeps (
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup (Semigroup((<>)))
 import GHC.Generics
 import Data.Foldable (fold)
 
@@ -72,11 +73,13 @@ type ComponentDep a = (Component, a)
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
   deriving (Show, Functor, Eq, Ord, Generic)
 
-instance Monoid a => Monoid (ComponentDeps a) where
-  mempty =
-    ComponentDeps Map.empty
-  (ComponentDeps d) `mappend` (ComponentDeps d') =
-    ComponentDeps (Map.unionWith mappend d d')
+instance (Semigroup a, Monoid a) => Monoid (ComponentDeps a) where
+  mempty = ComponentDeps Map.empty
+  mappend = (<>)
+
+instance Semigroup a => Semigroup (ComponentDeps a) where
+  ComponentDeps d <> ComponentDeps d' =
+      ComponentDeps (Map.unionWith (<>) d d')
 
 instance Foldable ComponentDeps where
   foldMap f = foldMap f . unComponentDeps
