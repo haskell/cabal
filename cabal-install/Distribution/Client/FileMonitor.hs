@@ -20,6 +20,8 @@ module Distribution.Client.FileMonitor (
   MonitorChangedReason(..),
   checkFileMonitorChanged,
   updateFileMonitor,
+  MonitorTimestamp,
+  beginUpdateFileMonitor,
 
   matchFileGlob,
   ) where
@@ -155,16 +157,16 @@ type Hash = Int
 -- This covers all the cases of 'MonitorFilePath' except for globs which is
 -- covered separately by 'MonitorStateGlob'.
 --
+-- The @Maybe ModTime@ is to cover the case where we already consider the
+-- file to have changed, either because it had already changed by the time we
+-- did the snapshot (i.e. too new, changed since start of update process) or it
+-- no longer exists at all.
+--
 data MonitorStateFile
-   = MonitorStateFile       !ModTime         -- ^ cached file mtime
-   | MonitorStateFileHashed !ModTime !Hash   -- ^ cached mtime and content hash
+   = MonitorStateFile       !(Maybe ModTime) -- ^ cached file mtime
+   | MonitorStateFileHashed !(Maybe ModTime)
+                            !Hash            -- ^ cached mtime and content hash
    | MonitorStateFileNonExistent
-
-     -- | These two are to deal with the situation where we've been asked
-     -- to monitor a file that's expected to exist, but when we come to
-     -- check it's status, it no longer exists.
-   | MonitorStateFileGone
-   | MonitorStateFileHashGone
   deriving (Show, Generic)
 
 instance Binary MonitorStateFile
@@ -181,7 +183,7 @@ data MonitorStateGlob
    | MonitorStateGlobFiles
        !Glob
        !ModTime
-       ![(FilePath, ModTime, Hash)] -- invariant: sorted
+       ![(FilePath, Maybe ModTime, Hash)] -- invariant: sorted
   deriving (Show, Generic)
 
 instance Binary MonitorStateGlob
@@ -201,8 +203,6 @@ reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
         MonitorStateFile{}          -> MonitorFile            filepath
         MonitorStateFileHashed{}    -> MonitorFileHashed      filepath
         MonitorStateFileNonExistent -> MonitorNonExistentFile filepath
-        MonitorStateFileGone        -> MonitorFile            filepath
-        MonitorStateFileHashGone    -> MonitorFileHashed      filepath
 
     getGlobPath (MonitorStateGlobDirs  glob globs _ _) =
       MonitorFileGlob (GlobDir  glob globs)
@@ -498,13 +498,15 @@ probeFileStatus :: FilePath -> FilePath -> MonitorStateFile
                 -> ChangedM MonitorStateFile
 probeFileStatus root file cached = do
     case cached of
-      MonitorStateFile       mtime      -> probeFileModificationTime
-                                             root file mtime
-      MonitorStateFileHashed mtime hash -> probeFileModificationTimeAndHash
-                                             root file mtime hash
-      MonitorStateFileNonExistent       -> probeFileNonExistence root file
-      MonitorStateFileGone              -> somethingChanged file
-      MonitorStateFileHashGone          -> somethingChanged file
+      MonitorStateFile Nothing      -> somethingChanged file
+      MonitorStateFile (Just mtime) ->
+        probeFileModificationTime root file mtime
+
+      MonitorStateFileHashed Nothing      _    -> somethingChanged file
+      MonitorStateFileHashed (Just mtime) hash ->
+        probeFileModificationTimeAndHash root file mtime hash
+
+      MonitorStateFileNonExistent -> probeFileNonExistence root file
 
     return cached
 
@@ -563,7 +565,7 @@ probeGlobStatus root dirName
 
     -- Only in current filesystem state (directory added)
     probeMergeResult (OnlyInRight path) = do
-      fstate <- liftIO $ buildMonitorStateGlob
+      fstate <- liftIO $ buildMonitorStateGlob Nothing
                            root (dirName </> path) globPath
       case allMatchingFiles (dirName </> path) fstate of
         (file:_) -> somethingChanged file
@@ -606,14 +608,17 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
         return mtime'
 
     -- Check that none of the children have changed
-    forM_ children $ \(file, fmtime, fhash) ->
-        probeFileModificationTimeAndHash root (dirName </> file) fmtime fhash
+    forM_ children $ \(file, mfmtime, fhash) ->
+        case mfmtime of
+          Nothing     -> somethingChanged file
+          Just fmtime -> probeFileModificationTimeAndHash
+                           root (dirName </> file) fmtime fhash
 
     return (MonitorStateGlobFiles glob mtime' children)
     -- Again, we don't force a cache rewite with 'cacheChanged', but we do use
     -- the new mtime' if any.
   where
-    probeMergeResult :: MergeResult (FilePath, ModTime, Hash) FilePath
+    probeMergeResult :: MergeResult (FilePath, Maybe ModTime, Hash) FilePath
                      -> ChangedM ()
     probeMergeResult mr = case mr of
       InBoth _ _               -> return ()
@@ -628,35 +633,65 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
 --
 -- This takes a snapshot of the state of the monitored files right now, so
 -- 'checkFileMonitorChanged' will look for file system changes relative to
--- this snapshot. So consider carefully when is the appropriate point to take
--- the snapshot.
+-- this snapshot.
 --
 -- This is typically done once the action has been completed successfully and
 -- we have the action's result and we know what files it looked at. See
 -- 'FileMonitor' for a full explanation.
 --
+-- If we do take the snapshot after the action has completed then we have a
+-- problem. The problem is that files might have changed /while/ the action was
+-- running but /after/ the action read them. If we take the snapshot after the
+-- action completes then we will miss these changes. The solution is to record
+-- a timestamp before beginning execution of the action and then we make the
+-- conservative assumption that any file that has changed since then has
+-- already changed, ie the file monitor state for these files will be such that
+-- 'checkFileMonitorChanged' will report that they have changed.
+--
+-- So if you do use 'updateFileMonitor' after the action (so you can discover
+-- the files used rather than predicting them in advance) then use
+-- 'beginUpdateFileMonitor' to get a timestamp and pass that. Alternatively,
+-- if you take the snapshot in advance of the action, or you're not monitoring
+-- any files then you can use @Nothing@ for the timestamp parameter.
+--
 updateFileMonitor
   :: (Binary a, Binary b)
   => FileMonitor a b          -- ^ cache file path
   -> FilePath                 -- ^ root directory
+  -> Maybe MonitorTimestamp   -- ^ timestamp when the update action started
   -> [MonitorFilePath]        -- ^ files of interest relative to root
   -> a                        -- ^ the current key value
   -> b                        -- ^ the current result value
   -> IO ()
-updateFileMonitor monitor root monitorFiles cachedKey cachedResult = do
-    fsc <- buildMonitorStateFileSet root monitorFiles
-    rewriteCacheFile monitor fsc cachedKey cachedResult
+updateFileMonitor monitor root startTime monitorFiles
+                  cachedKey cachedResult = do
+    msfs <- buildMonitorStateFileSet startTime root monitorFiles
+    rewriteCacheFile monitor msfs cachedKey cachedResult
+
+-- | A timestamp to help with the problem of file changes during actions.
+-- See 'updateFileMonitor' for details.
+--
+newtype MonitorTimestamp = MonitorTimestamp ModTime
+
+-- | Record a timestamp at the beginning of an action, and when the action
+-- completes call 'updateFileMonitor' passing it the timestamp.
+-- See 'updateFileMonitor' for details.
+--
+beginUpdateFileMonitor :: IO MonitorTimestamp
+beginUpdateFileMonitor = MonitorTimestamp <$> getCurTime
 
 -- | Take the snapshot of the monitored files. That is, given the
 -- specification of the set of files we need to monitor, inspect the state
 -- of the file system now and collect the information we'll need later to
 -- determine if anything has changed.
 --
-buildMonitorStateFileSet :: FilePath          -- ^ root directory
+buildMonitorStateFileSet :: Maybe MonitorTimestamp -- ^ optional: timestamp
+                                              -- of the start of the action
+                         -> FilePath          -- ^ root directory
                          -> [MonitorFilePath] -- ^ patterns of interest
                                               --   relative to root
                          -> IO MonitorStateFileSet
-buildMonitorStateFileSet root =
+buildMonitorStateFileSet mstartTime root =
     go Map.empty []
   where
     go :: Map FilePath MonitorStateFile -> [MonitorStateGlob]
@@ -666,17 +701,22 @@ buildMonitorStateFileSet root =
 
     go !singlePaths !globPaths (MonitorFile path : monitors) = do
       let file = root </> path
-      monitorState <- handleDoesNotExist MonitorStateFileGone $
-                        MonitorStateFile <$> getModTime file
+      monitorState <- handleDoesNotExist (MonitorStateFile Nothing) $ do
+        mtime <- getModTime file
+        if changedDuringUpdate mstartTime mtime
+          then return (MonitorStateFile Nothing)
+          else return (MonitorStateFile (Just mtime))
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
 
     go !singlePaths !globPaths (MonitorFileHashed path : monitors) = do
       let file = root </> path
-      monitorState <- handleDoesNotExist MonitorStateFileHashGone $
-                        MonitorStateFileHashed
-                          <$> getModTime file
-                          <*> readFileHash file
+      monitorState <- handleDoesNotExist (MonitorStateFileHashed Nothing 0) $ do
+        mtime <- getModTime file
+        if changedDuringUpdate mstartTime mtime
+          then return (MonitorStateFileHashed Nothing 0)
+          else do hash <- readFileHash file
+                  return (MonitorStateFileHashed (Just mtime) hash)
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
 
@@ -685,9 +725,18 @@ buildMonitorStateFileSet root =
       go singlePaths' globPaths monitors
 
     go !singlePaths !globPaths (MonitorFileGlob globPath : monitors) = do
-      monitorState <- buildMonitorStateGlob root "." globPath
+      monitorState <- buildMonitorStateGlob mstartTime
+                                            root "." globPath
       go singlePaths (monitorState : globPaths) monitors
 
+-- | If we have a timestamp for the beginning of the update, then any file
+-- mtime later than this means that it changed during the update and we ought
+-- to consider the file as already changed.
+--
+changedDuringUpdate :: Maybe MonitorTimestamp -> ModTime -> Bool
+changedDuringUpdate (Just (MonitorTimestamp startTime)) mtime
+                        = mtime > startTime
+changedDuringUpdate _ _ = False
 
 -- | Much like 'buildMonitorStateFileSet' but for the somewhat complicated case
 -- of a file glob.
@@ -696,12 +745,13 @@ buildMonitorStateFileSet root =
 -- file system snapshot, but also by 'probeGlobStatus' as part of checking
 -- the monitored (globed) files for changes when we find a whole new subtree.
 --
-buildMonitorStateGlob :: FilePath     -- ^ the root directory
+buildMonitorStateGlob :: Maybe MonitorTimestamp -- ^ start time of update
+                      -> FilePath     -- ^ the root directory
                       -> FilePath     -- ^ directory we are examining
                                       --   relative to the root
                       -> FilePathGlob -- ^ the matching glob
                       -> IO MonitorStateGlob
-buildMonitorStateGlob root dir globPath = do
+buildMonitorStateGlob mstartTime root dir globPath = do
     dirEntries <- getDirectoryContents (root </> dir)
     dirMTime   <- getModTime (root </> dir)
     case globPath of
@@ -711,7 +761,8 @@ buildMonitorStateGlob root dir globPath = do
                  $ filter (globMatches glob) dirEntries
         subdirStates <-
           forM (sort subdirs) $ \subdir -> do
-            fstate <- buildMonitorStateGlob root (dir </> subdir) globPath'
+            fstate <- buildMonitorStateGlob mstartTime root
+                                            (dir </> subdir) globPath'
             return (subdir, fstate)
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
 
@@ -722,8 +773,11 @@ buildMonitorStateGlob root dir globPath = do
           forM (sort files) $ \file -> do
             let path = root </> dir </> file
             mtime <- getModTime path
-            hash  <- readFileHash path
-            return (file, mtime, hash)
+            let mtime' | changedDuringUpdate mstartTime mtime
+                                   = Nothing
+                       | otherwise = Just mtime
+            hash <- readFileHash path
+            return (file, mtime', hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
 
 -- | Utility to match a file glob against the file system, starting from a
