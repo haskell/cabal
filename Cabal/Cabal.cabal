@@ -197,6 +197,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
+    Distribution.Compat.Semigroup
     Distribution.Compiler
     Distribution.InstalledPackageInfo
     Distribution.License
@@ -271,7 +272,6 @@ library
   other-modules:
     Distribution.Compat.CopyFile
     Distribution.Compat.MonadFail
-    Distribution.Compat.Semigroup
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal

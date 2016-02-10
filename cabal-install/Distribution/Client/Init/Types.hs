@@ -17,6 +17,7 @@ module Distribution.Client.Init.Types where
 import Distribution.Simple.Setup
   ( Flag(..) )
 
+import Distribution.Compat.Semigroup (Semigroup((<>)))
 import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Package as P
@@ -29,7 +30,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 
 #if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
+import Data.Monoid (Monoid(..))
 #endif
 
 -- | InitFlags is really just a simple type to represent certain
@@ -113,7 +114,10 @@ instance Monoid InitFlags where
     , initVerbosity  = mempty
     , overwrite      = mempty
     }
-  mappend  a b = InitFlags
+  mappend = (<>)
+
+instance Semigroup InitFlags where
+  a <> b = InitFlags
     { nonInteractive = combine nonInteractive
     , quiet          = combine quiet
     , packageDir     = combine packageDir
@@ -141,7 +145,7 @@ instance Monoid InitFlags where
     , initVerbosity  = combine initVerbosity
     , overwrite      = combine overwrite
     }
-    where combine field = field a `mappend` field b
+    where combine field = field a <> field b
 
 -- | Some common package categories.
 data Category

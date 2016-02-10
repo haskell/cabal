@@ -57,6 +57,7 @@ import Data.Monoid (Monoid(..))
 import Data.Maybe (isJust, fromMaybe)
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup (Semigroup((<>)))
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
@@ -84,9 +85,12 @@ newtype PackageIndex pkg = PackageIndex
   deriving (Eq, Show, Read, Functor, Generic)
 --FIXME: the Functor instance here relies on no package id changes
 
+instance Package pkg => Semigroup (PackageIndex pkg) where
+  (<>) = merge
+
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex Map.empty
-  mappend = merge
+  mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs

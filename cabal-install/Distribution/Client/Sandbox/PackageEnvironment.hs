@@ -65,6 +65,7 @@ import Data.Maybe                      ( isJust )
 import Data.Monoid                     ( Monoid(..) )
 #endif
 import Distribution.Compat.Exception   ( catchIO )
+import Distribution.Compat.Semigroup   ( Semigroup((<>)) )
 import System.Directory                ( doesDirectoryExist, doesFileExist
                                        , renameFile )
 import System.FilePath                 ( (<.>), (</>), takeDirectory )
@@ -95,8 +96,10 @@ instance Monoid PackageEnvironment where
     pkgEnvInherit       = mempty,
     pkgEnvSavedConfig   = mempty
     }
+  mappend = (<>)
 
-  mappend a b = PackageEnvironment {
+instance Semigroup PackageEnvironment where
+  a <> b = PackageEnvironment {
     pkgEnvInherit       = combine pkgEnvInherit,
     pkgEnvSavedConfig   = combine pkgEnvSavedConfig
     }
