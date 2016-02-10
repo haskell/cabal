@@ -36,6 +36,8 @@ Extra-Source-Files:
   tests/IntegrationTests/custom/should_run/plain/Setup.hs
   tests/IntegrationTests/custom/should_run/plain/plain.cabal
   tests/IntegrationTests/exec/common.sh
+  tests/IntegrationTests/exec/should_fail/exit_with_failure_without_args.err
+  tests/IntegrationTests/exec/should_fail/exit_with_failure_without_args.sh
   tests/IntegrationTests/exec/should_run/Foo.hs
   tests/IntegrationTests/exec/should_run/My.hs
   tests/IntegrationTests/exec/should_run/adds_sandbox_bin_directory_to_path.out
@@ -46,7 +48,6 @@ Extra-Source-Files:
   tests/IntegrationTests/exec/should_run/can_run_executables_installed_in_sandbox.sh
   tests/IntegrationTests/exec/should_run/configures_cabal_to_use_sandbox.sh
   tests/IntegrationTests/exec/should_run/configures_ghc_to_use_sandbox.sh
-  tests/IntegrationTests/exec/should_run/exit_with_failure_without_args.sh
   tests/IntegrationTests/exec/should_run/my.cabal
   tests/IntegrationTests/exec/should_run/runs_given_command.out
   tests/IntegrationTests/exec/should_run/runs_given_command.sh
@@ -332,6 +333,7 @@ test-suite integration-tests
     directory,
     filepath,
     process,
+    regex-posix,
     tasty,
     tasty-hunit
 

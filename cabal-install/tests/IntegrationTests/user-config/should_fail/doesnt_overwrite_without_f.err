@@ -1,1 +1,1 @@
-cabal: ./cabal-config already exists.
+RE:^cabal(\.exe)?: \./cabal-config already exists\.$
