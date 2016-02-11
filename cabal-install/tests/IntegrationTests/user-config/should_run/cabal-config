@@ -7,9 +7,6 @@
 -- Be careful with spaces and indentation because they are
 -- used to indicate layout for nested sections.
 
--- Cabal library version: 1.23.1.0
--- cabal-install version: 1.23.0.0
-
 
 repository hackage.haskell.org
   url: http://hackage.haskell.org/
@@ -27,8 +24,8 @@ world-file: /home/gman/.cabal/world
 -- compiler: ghc
 -- with-compiler:
 -- with-hc-pkg:
--- program-prefix: 
--- program-suffix: 
+-- program-prefix:
+-- program-suffix:
 -- library-vanilla: True
 -- library-profiling:
 -- shared:
