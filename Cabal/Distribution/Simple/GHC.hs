@@ -620,12 +620,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                }
                odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
            createDirectoryIfMissingVerbose verbosity True odir
-           needsRecomp <- checkNeedsRecompilation filename vanillaCcOpts
-           when needsRecomp $ do
-               runGhcProg vanillaCcOpts
-               unless forRepl $
-                 whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
-               unless forRepl $ whenProfLib (runGhcProg profCcOpts)
+           let runGhcProgIfNeeded ccOpts = do
+                 needsRecomp <- checkNeedsRecompilation filename ccOpts
+                 when needsRecomp $ runGhcProg ccOpts
+           runGhcProgIfNeeded vanillaCcOpts
+           unless forRepl $
+             whenSharedLib forceSharedLib (runGhcProgIfNeeded sharedCcOpts)
+           unless forRepl $ whenProfLib (runGhcProgIfNeeded profCcOpts)
       | filename <- cSources libBi]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
