@@ -44,7 +44,7 @@ module Distribution.Simple (
         defaultMain, defaultMainNoRead, defaultMainArgs,
         -- * Customization
         UserHooks(..), Args,
-        defaultMainWithHooks, defaultMainWithHooksArgs,
+        defaultMainWithHooks, defaultMainWithHooksArgs, defaultMainWithHooksNoRead,
         -- ** Standard sets of hooks
         simpleUserHooks,
         autoconfUserHooks,
@@ -122,9 +122,13 @@ defaultMainWithHooksArgs = defaultMainHelper
 -- | Like 'defaultMain', but accepts the package description as input
 -- rather than using IO to read it.
 defaultMainNoRead :: GenericPackageDescription -> IO ()
-defaultMainNoRead pkg_descr =
+defaultMainNoRead = defaultMainWithHooksNoRead simpleUserHooks
+
+-- | A customizable version of 'defaultMainNoRead'.
+defaultMainWithHooksNoRead :: UserHooks -> GenericPackageDescription -> IO ()
+defaultMainWithHooksNoRead hooks pkg_descr =
   getArgs >>=
-  defaultMainHelper simpleUserHooks { readDesc = return (Just pkg_descr) }
+  defaultMainHelper hooks { readDesc = return (Just pkg_descr) }
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $
@@ -185,7 +189,7 @@ configureAction hooks flags args = do
     let flags' = flags { configDistPref = toFlag distPref }
     pbi <- preConf hooks args flags'
 
-    (mb_pd_file, pkg_descr0) <- confPkgDescr
+    (mb_pd_file, pkg_descr0) <- confPkgDescr hooks verbosity
 
     --get_pkg_descr (configVerbosity flags')
     --let pkg_descr = updatePackageDescription pbi pkg_descr0
@@ -209,15 +213,16 @@ configureAction hooks flags args = do
     return localbuildinfo
   where
     verbosity = fromFlag (configVerbosity flags)
-    confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
-    confPkgDescr = do
-        mdescr <- readDesc hooks
-        case mdescr of
-          Just descr -> return (Nothing, descr)
-          Nothing -> do
-              pdfile <- defaultPackageDesc verbosity
-              descr  <- readPackageDescription verbosity pdfile
-              return (Just pdfile, descr)
+
+confPkgDescr :: UserHooks -> Verbosity -> IO (Maybe FilePath, GenericPackageDescription)
+confPkgDescr hooks verbosity = do
+  mdescr <- readDesc hooks
+  case mdescr of
+    Just descr -> return (Nothing, descr)
+    Nothing -> do
+        pdfile <- defaultPackageDesc verbosity
+        descr  <- readPackageDescription verbosity pdfile
+        return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
@@ -286,8 +291,7 @@ cleanAction hooks flags args = do
 
     pbi <- preClean hooks args flags'
 
-    pdfile <- defaultPackageDesc verbosity
-    ppd <- readPackageDescription verbosity pdfile
+    (_, ppd) <- confPkgDescr hooks verbosity
     let pkg_descr0 = flattenPackageDescription ppd
     -- We don't sanity check for clean as an error
     -- here would prevent cleaning:
@@ -324,8 +328,8 @@ sdistAction hooks flags args = do
     pbi <- preSDist hooks args flags'
 
     mlbi <- maybeGetPersistBuildConfig distPref
-    pdfile <- defaultPackageDesc verbosity
-    ppd <- readPackageDescription verbosity pdfile
+
+    (_, ppd) <- confPkgDescr hooks verbosity
     let pkg_descr0 = flattenPackageDescription ppd
     sanityCheckHookedBuildInfo pkg_descr0 pbi
     let pkg_descr = updatePackageDescription pbi pkg_descr0
