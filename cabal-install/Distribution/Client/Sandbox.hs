@@ -707,9 +707,9 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
       die' message = die (message ++ installFailedInSandbox)
       -- TODO: use a better error message, remove duplication.
       installFailedInSandbox =
-        "Note: when using a sandbox, all packages are required to have consistent "
-        ++ "dependencies. Try reinstalling/unregistering the offending packages "
-        ++ "or recreating the sandbox."
+        "Note: when using a sandbox, all packages are required to have "
+        ++ "consistent dependencies. Try reinstalling/unregistering the "
+        ++ "offending packages or recreating the sandbox."
       logMsg message rest = debugNoWrap verbosity message >> rest
 
       topHandler' = topHandlerWith $ \_ -> do
