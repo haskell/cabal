@@ -1,6 +1,6 @@
 # Helper to run Cabal
 cabal() {
-    $CABAL $CABAL_ARGS "$@"
+    "$CABAL" $CABAL_ARGS "$@"
 }
 
 die() {

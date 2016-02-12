@@ -1,5 +1,5 @@
 cabal() {
-    $CABAL $CABAL_ARGS "$@"
+    "$CABAL" $CABAL_ARGS "$@"
 }
 
 die() {
