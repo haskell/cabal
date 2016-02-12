@@ -236,7 +236,7 @@ currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
--- | Parse the @setup-config@ file header, returning the package identifiers 
+-- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
 parseHeader :: ByteString -- ^ The file contents.
             -> (PackageIdentifier, PackageIdentifier)
