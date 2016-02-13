@@ -269,24 +269,32 @@ fetch_pkg () {
   PKG=$1
   VER=$2
 
-  URL=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
+  URL_PKG=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
+  URL_PKGDESC=${HACKAGE_URL}/${PKG}-${VER}/${PKG}.cabal
   if which ${CURL} > /dev/null
   then
     # TODO: switch back to resuming curl command once
     #       https://github.com/haskell/hackage-server/issues/111 is resolved
-    #${CURL} -L --fail -C - -O ${URL} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL} || die "Failed to download ${PKG}."
+    #${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -O ${URL_PKGDESC} \
+        || die "Failed to download '${PKG}.cabal'."
   elif which ${WGET} > /dev/null
   then
-    ${WGET} -c ${URL} || die "Failed to download ${PKG}."
+    ${WGET} -c ${URL_PKG} || die "Failed to download ${PKG}."
+    ${WGET} -c ${URL_PKGDESC} || die "Failed to download '${PKG}.cabal'."
   elif which ${FETCH} > /dev/null
     then
-      ${FETCH} ${URL} || die "Failed to download ${PKG}."
+      ${FETCH} ${URL_PKG} || die "Failed to download ${PKG}."
+      ${FETCH} ${URL_PKGDESC} || die "Failed to download '${PKG}.cabal'."
   else
     die "Failed to find a downloader. 'curl', 'wget' or 'fetch' is required."
   fi
   [ -f "${PKG}-${VER}.tar.gz" ] ||
-     die "Downloading ${URL} did not create ${PKG}-${VER}.tar.gz"
+     die "Downloading ${URL_PKG} did not create ${PKG}-${VER}.tar.gz"
+  [ -f "${PKG}.cabal" ] ||
+     die "Downloading ${URL_PKGDESC} did not create ${PKG}.cabal"
+  mv "${PKG}.cabal" "${PKG}.cabal.hackage"
 }
 
 unpack_pkg () {
@@ -296,6 +304,7 @@ unpack_pkg () {
   rm -rf "${PKG}-${VER}.tar" "${PKG}-${VER}"
   ${GZIP_PROGRAM} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -xf -
   [ -d "${PKG}-${VER}" ] || die "Failed to unpack ${PKG}-${VER}.tar.gz"
+  cp "${PKG}.cabal.hackage" "${PKG}-${VER}/${PKG}.cabal"
 }
 
 install_pkg () {
