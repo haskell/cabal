@@ -98,11 +98,9 @@ mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: String
 exeExtension = case buildOS of
-                   -- TODO: This should be determined via autoconf (AC_EXEEXT)
                    Windows -> "exe"
                    _       -> ""
 
--- TODO: This should be determined via autoconf (AC_OBJEXT)
 -- | Extension for object files. For GHC the extension is @\"o\"@.
 objExtension :: String
 objExtension = "o"
