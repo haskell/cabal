@@ -40,6 +40,7 @@ import qualified Data.Map as Map
 import           Data.Map (Map)
 
 import           Control.Monad
+import           Data.Monoid
 import           Data.List
 import           Data.Either
 
@@ -217,23 +218,31 @@ configure verbosity
           configFlags configExFlags
           installFlags haddockFlags
           _extraArgs = do
+    --TODO: deal with _extraArgs, since flags with wrong syntax end up there
 
     -- In this prototype version we don't yet support extra local temporary
     -- config, so it's really just the first phase of build.
 
-    projectRootDir <- findProjectRoot
-    cabalDir       <- defaultCabalDir
-    let distDirLayout  = defaultDistDirLayout projectRootDir
-        cabalDirLayout = defaultCabalDirLayout cabalDir
-        (cliConfig,
-         _cliBuildSettings) = convertLegacyCommandLineFlags
-                                globalFlags
-                                configFlags configExFlags
-                                installFlags haddockFlags
+    cabalDir <- defaultCabalDir
+    let cabalDirLayout = defaultCabalDirLayout cabalDir
 
-    _ <- rebuildInstallPlan verbosity
-                            projectRootDir distDirLayout cabalDirLayout
-                            cliConfig
+    projectRootDir <- findProjectRoot
+    let distDirLayout = defaultDistDirLayout projectRootDir
+
+    let legacyconfig = commandLineFlagsToLegacyProjectConfig
+                         globalFlags
+                         configFlags configExFlags
+                         installFlags haddockFlags
+    writeProjectLocalExtraConfig projectRootDir legacyconfig
+
+    (_elaboratedInstallPlan, _sharedPackageConfig, _projectConfig) <-
+      rebuildInstallPlan verbosity
+                         projectRootDir distDirLayout cabalDirLayout
+                         (mempty, mempty, mempty)
+
+    --TODO: print what we would build.
+    -- Hmm, but we don't have any targets. Could pick implicit target like "."
+    -- Or should we say what's in the project (+deps) as a whole?
 
     return ()
 

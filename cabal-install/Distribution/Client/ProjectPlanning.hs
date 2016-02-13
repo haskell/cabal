@@ -482,11 +482,11 @@ rebuildInstallPlan verbosity
         createDirectoryIfMissingVerbose verbosity False distProjectCacheDirectory
 
       projectConfig <- readProjectConfig verbosity projectRootDir
-      return (projectConfigMergeCommandLineFlags
+      return (projectConfig
+           <> commandLineFlagsToProjectConfig
                 cliConfigSolver
                 cliConfigAllPackages
-                cliConfigLocalPackages
-                projectConfig)
+                cliConfigLocalPackages)
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc

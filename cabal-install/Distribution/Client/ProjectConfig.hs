@@ -19,11 +19,13 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     findProjectRoot,
     readProjectConfig,
-    projectConfigMergeCommandLineFlags,
+    writeProjectLocalExtraConfig,
+    commandLineFlagsToProjectConfig,
     convertLegacyPerPackageFlags,
     convertLegacyAllPackageFlags,
     convertLegacyBuildOnlyFlags,
     convertLegacyCommandLineFlags,
+    commandLineFlagsToLegacyProjectConfig,
 
     -- * build time settings
     BuildTimeSettings(..),
@@ -135,9 +137,10 @@ findProjectRoot = do
 readProjectConfig :: Verbosity -> FilePath
                   -> Rebuild ProjectConfig
 readProjectConfig verbosity projectRootDir = do
-    local  <- readProjectLocalConfig verbosity projectRootDir
     global <- readGlobalConfig verbosity
-    return (projectConfigMergeGlobalSavedConfig global local)
+    local  <- readProjectLocalConfig      verbosity projectRootDir
+    extra  <- readProjectLocalExtraConfig verbosity projectRootDir
+    return (global <> local <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
@@ -149,15 +152,17 @@ readProjectLocalConfig verbosity projectRootDir = do
   if usesExplicitProjectRoot
     then do
       monitorFiles [MonitorFileHashed projectFile]
-      liftIO $ reportParseResult verbosity "project file" projectFile
-             . parseProjectConfig
-           =<< readFile projectFile
+      liftIO readProjectFile
     else do
       monitorFiles [MonitorNonExistentFile projectFile]
       return defaultImplicitProjectConfig
 
   where
     projectFile = projectRootDir </> "cabal.project"
+    readProjectFile =
+          reportParseResult verbosity "project file" projectFile
+        . parseProjectConfig
+      =<< readFile projectFile
 
     defaultImplicitProjectConfig :: ProjectConfig
     defaultImplicitProjectConfig =
@@ -169,20 +174,48 @@ readProjectLocalConfig verbosity projectRootDir = do
         mempty mempty mempty mempty mempty
 
 
-readGlobalConfig :: Verbosity -> Rebuild SavedConfig
+-- | Reads a @cabal.project.extra@ file in the given project root dir,
+-- or returns empty. This file gets written by @cabal configure@, or in
+-- principle can be edited manually or by other tools.
+--
+readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
+readProjectLocalExtraConfig verbosity projectRootDir = do
+    hasExtraConfig <- liftIO $ doesFileExist projectExtraConfigFile
+    if hasExtraConfig
+      then do monitorFiles [MonitorFileHashed projectExtraConfigFile]
+              liftIO readProjectExtraConfigFile
+      else do monitorFiles [MonitorNonExistentFile projectExtraConfigFile]
+              return mempty
+  where
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+
+    readProjectExtraConfigFile =
+          reportParseResult verbosity "project extra configuration file"
+                            projectExtraConfigFile
+        . parseProjectConfig
+      =<< readFile projectExtraConfigFile
+
+writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
+writeProjectLocalExtraConfig projectRootDir config =
+    writeFile projectExtraConfigFile
+              (showLegacyProjectConfig config)
+  where
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+
+
+readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
 readGlobalConfig verbosity = do
     config     <- liftIO (loadConfig verbosity mempty)
     configFile <- liftIO defaultConfigFile
     monitorFiles [MonitorFileHashed configFile]
-    return config
+    return (globalConfigToProjectConfig config)
     --TODO: do this properly, there's several possible locations
     -- and env vars, and flags for selecting the global config
 
 
-projectConfigMergeGlobalSavedConfig :: SavedConfig
-                                    -> ProjectConfig
-                                    -> ProjectConfig
-projectConfigMergeGlobalSavedConfig
+globalConfigToProjectConfig :: SavedConfig
+                            -> ProjectConfig
+globalConfigToProjectConfig
     SavedConfig {
       savedGlobalFlags       = globalFlags,
       savedInstallFlags      = installFlags,
@@ -193,17 +226,12 @@ projectConfigMergeGlobalSavedConfig
       savedUploadFlags       = _,
       savedReportFlags       = _,
       savedHaddockFlags      = haddockFlags
-    }
-    projectConfig =
-    projectConfig {
-      projectConfigSolver        = configSolver
-                                <> projectConfigSolver projectConfig,
-      projectConfigAllPackages   = configAllPackages
-                                <> projectConfigAllPackages projectConfig,
-      projectConfigLocalPackages = configLocalPackages
-                                <> projectConfigLocalPackages projectConfig,
+    } =
+    mempty {
+      projectConfigSolver        = configSolver,
+      projectConfigAllPackages   = configAllPackages,
+      projectConfigLocalPackages = configLocalPackages,
       projectConfigBuildOnly     = configBuildOnly
-                                <> projectConfigBuildOnly projectConfig
     }
   where
     configExFlags' = defaultConfigExFlags <> configExFlags
@@ -221,22 +249,17 @@ projectConfigMergeGlobalSavedConfig
                             installFlags' haddockFlags'
 
 
-projectConfigMergeCommandLineFlags :: ProjectConfigSolver
-                                   -> PackageConfigShared
-                                   -> PackageConfig
-                                   -> ProjectConfig
-                                   -> ProjectConfig
-projectConfigMergeCommandLineFlags  cliConfigSolver
-                                    cliConfigAllPackages
-                                    cliConfigLocalPackages
-                                    projectConfig =
-    projectConfig {
-      projectConfigSolver        = projectConfigSolver projectConfig
-                                    <> cliConfigSolver,
-      projectConfigAllPackages   = projectConfigAllPackages projectConfig
-                                    <> cliConfigAllPackages,
-      projectConfigLocalPackages = projectConfigLocalPackages projectConfig
-                                    <> cliConfigLocalPackages
+commandLineFlagsToProjectConfig :: ProjectConfigSolver
+                                -> PackageConfigShared
+                                -> PackageConfig
+                                -> ProjectConfig
+commandLineFlagsToProjectConfig cliConfigSolver
+                                cliConfigAllPackages
+                                cliConfigLocalPackages =
+    mempty {
+      projectConfigSolver        = cliConfigSolver,
+      projectConfigAllPackages   = cliConfigAllPackages,
+      projectConfigLocalPackages = cliConfigLocalPackages
     }
 
 
@@ -372,6 +395,28 @@ instance Binary ProjectConfigSolver
 instance Binary ProjectConfigBuildOnly
 instance Binary PackageConfigShared
 instance Binary PackageConfig
+
+
+instance Monoid ProjectConfig where
+  mempty =
+    ProjectConfig {
+      projectConfigPackageGlobs    = mempty,
+      projectConfigBuildOnly       = mempty,
+      projectConfigSolver          = mempty,
+      projectConfigAllPackages     = mempty,
+      projectConfigLocalPackages   = mempty,
+      projectConfigSpecificPackage = mempty
+    }
+  mappend a b =
+    ProjectConfig {
+      projectConfigPackageGlobs    = combine projectConfigPackageGlobs,
+      projectConfigBuildOnly       = combine projectConfigBuildOnly,
+      projectConfigSolver          = combine projectConfigSolver,
+      projectConfigAllPackages     = combine projectConfigAllPackages,
+      projectConfigLocalPackages   = combine projectConfigLocalPackages,
+      projectConfigSpecificPackage = combine projectConfigSpecificPackage
+    }
+    where combine field = field a `mappend` field b
 
 
 instance Monoid ProjectConfigBuildOnly where
@@ -647,6 +692,28 @@ convertFromLegacyProjectConfig
       where
         perPkgInstallFlags = mempty --TODO
 
+
+commandLineFlagsToLegacyProjectConfig :: GlobalFlags
+                                      -> ConfigFlags  -> ConfigExFlags
+                                      -> InstallFlags -> HaddockFlags
+                                      -> LegacyProjectConfig
+commandLineFlagsToLegacyProjectConfig globalFlags
+                                      configFlags configExFlags
+                                      installFlags haddockFlags =
+    LegacyProjectConfig {
+      legacyLocalPackgeGlobs   = [],
+      legacyRepoPackges        = [],
+      legacySharedConfig = LegacySharedConfig {
+        legacyGlobalFlags      = globalFlags,
+        legacyConfigureExFlags = configExFlags,
+        legacyInstallFlags     = installFlags
+      },
+      legacyLocalConfig = LegacyPackageConfig {
+        legacyConfigureFlags   = configFlags,
+        legacyHaddockFlags     = haddockFlags
+      },
+      legacySpecificConfig = Map.empty
+    }
 
 convertLegacyCommandLineFlags :: GlobalFlags
                               -> ConfigFlags  -> ConfigExFlags
@@ -1056,10 +1123,13 @@ parseLegacyProjectConfig =
                 legacyPackageConfigSectionDescrs
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
-showLegacyProjectConfig =
-    Disp.render .
+showLegacyProjectConfig config =
+    Disp.render $
     showConfig  legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                config
+  $+$
+    Disp.text ""
 
 
 legacyProjectConfigFieldDescrs :: [FieldDescr LegacyProjectConfig]
@@ -1376,7 +1446,7 @@ data SectionDescr a = forall b. Monoid b => SectionDescr {
 liftSection :: (b -> a)
             -> (a -> b -> b)
             -> SectionDescr a
-            -> SectionDescr b            
+            -> SectionDescr b
 liftSection get' set' (SectionDescr name fields sections get set) =
     let sectionGet' = get . get'
         sectionSet' lineno param x y = do x' <- set lineno param x (get' y)
