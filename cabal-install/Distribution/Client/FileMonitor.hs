@@ -6,7 +6,7 @@
 -- input values they depend on have changed.
 --
 module Distribution.Client.FileMonitor (
-  
+
   -- * Declaring files to monitor
   MonitorFilePath(..),
   FilePathGlob(..),
@@ -62,13 +62,12 @@ import qualified Distribution.Compat.ReadP as ReadP
 import qualified Text.PrettyPrint as Disp
 
 import           Distribution.Client.Glob
-import           Distribution.Simple.Utils (writeFileAtomic)
+import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import           System.FilePath
 import           System.Directory
 import           System.IO
-import           System.IO.Error
 import           GHC.Generics (Generic)
 
 
@@ -758,7 +757,7 @@ matchFileGlob root glob0 = go glob0 ""
 
 ------------------------------------------------------------------------------
 -- Utils
--- 
+--
 
 -- | Within the @root@ directory, check if @file@ has its 'ModTime' is
 -- the same as @mtime@, short-circuiting if it is different.
@@ -822,14 +821,6 @@ checkDirectoryModificationTime dir mtime =
       then return Nothing
       else return (Just mtime')
 
--- | Run an IO computation, returning @e@ if it raises a "file
--- does not exist" error.
-handleDoesNotExist :: a -> IO a -> IO a
-handleDoesNotExist e =
-    handleJust
-      (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
-      (\_ -> return e)
-
 -- | Run an IO computation, returning @e@ if there is an 'error'
 -- call. ('ErrorCall')
 handleErrorCall :: a -> IO a -> IO a
@@ -838,7 +829,7 @@ handleErrorCall e =
 
 ------------------------------------------------------------------------------
 -- Instances
--- 
+--
 
 instance Text FilePathGlob where
   disp (GlobDir  glob pathglob) = disp glob Disp.<> Disp.char '/'
@@ -885,4 +876,3 @@ instance Binary MonitorStateFileSet where
               globPaths   <- get
               return $! MonitorStateFileSet singlePaths globPaths
       else fail "MonitorStateFileSet: wrong version"
-

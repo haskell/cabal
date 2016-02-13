@@ -10,7 +10,7 @@ import Distribution.Text
 import Text.PrettyPrint as Disp (text, render, parens, hcat
                                 ,punctuate, int, char, (<>), (<+>))
 
-import Test.Tasty (TestTree, testGroup)
+import Test.Tasty
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Utils
 import qualified Test.Laws as Laws
@@ -20,9 +20,8 @@ import Data.Maybe (isJust, fromJust)
 import Data.List (sort, sortBy, nub)
 import Data.Ord  (comparing)
 
-versionTests :: TestTree
+versionTests :: [TestTree]
 versionTests =
-  testGroup "Distribution.Version" $
   zipWith (\n p -> testProperty ("Range Property " ++ show n) p) [1::Int ..]
     -- properties to validate the test framework
   [ property prop_nonNull
@@ -85,9 +84,8 @@ versionTests =
   , property prop_invertVersionIntervalsTwice
   ]
 
--- parseTests :: TestTree
+-- parseTests :: [TestTree]
 -- parseTests =
---   testGroup "Distribution.Version" $
 --   zipWith (\n p -> testProperty ("Parse Property " ++ show n) p) [1::Int ..]
 --    -- parsing and pretty printing
 --   [ -- property prop_parse_disp1  --FIXME: actually wrong
