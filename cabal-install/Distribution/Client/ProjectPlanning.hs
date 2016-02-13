@@ -495,7 +495,7 @@ rebuildInstallPlan verbosity
                            -> Rebuild [SourcePackage]
     phaseReadLocalPackages projectConfig = do
 
-      localCabalFiles <- findProjectCabalFiles projectConfig
+      localCabalFiles <- findProjectCabalFiles projectRootDir projectConfig
       mapM (readSourcePackage verbosity) localCabalFiles
 
 
@@ -676,11 +676,11 @@ rebuildInstallPlan verbosity
 
 
 
-findProjectCabalFiles :: ProjectConfig -> Rebuild [FilePath]
-findProjectCabalFiles ProjectConfig{..} = do
+findProjectCabalFiles :: FilePath -> ProjectConfig -> Rebuild [FilePath]
+findProjectCabalFiles projectRootDir ProjectConfig{..} = do
     monitorFiles (map MonitorFileGlob projectConfigPackageGlobs)
-    liftIO $ map (projectConfigRootDir </>) . concat
-         <$> mapM (matchFileGlob projectConfigRootDir) projectConfigPackageGlobs
+    liftIO $ map (projectRootDir </>) . concat
+         <$> mapM (matchFileGlob projectRootDir) projectConfigPackageGlobs
     --TODO: certain package things must match. Globs perhaps can match nothing,
     -- but specific files really must match or fail noisily.
     -- silently matching nothing is not ok.

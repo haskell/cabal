@@ -150,7 +150,7 @@ readProjectLocalConfig verbosity projectRootDir = do
     then do
       monitorFiles [MonitorFileHashed projectFile]
       liftIO $ reportParseResult verbosity "project file" projectFile
-             . parseProjectConfig projectRootDir
+             . parseProjectConfig
            =<< readFile projectFile
     else do
       monitorFiles [MonitorNonExistentFile projectFile]
@@ -162,7 +162,6 @@ readProjectLocalConfig verbosity projectRootDir = do
     defaultImplicitProjectConfig :: ProjectConfig
     defaultImplicitProjectConfig =
       ProjectConfig
-        projectRootDir
         [ GlobFile (Glob [WildCard, Literal ".cabal"])
         , GlobDir  (Glob [WildCard]) $
           GlobFile (Glob [WildCard, Literal ".cabal"])
@@ -248,7 +247,6 @@ projectConfigMergeCommandLineFlags  cliConfigSolver
 
 data ProjectConfig
    = ProjectConfig {
-       projectConfigRootDir      :: FilePath,
        projectConfigPackageGlobs :: [FilePathGlob],
 
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
@@ -609,14 +607,14 @@ reportParseResult _verbosity filetype filename (ParseFailed err) =
            ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
 
-parseProjectConfig :: FilePath -> String -> ParseResult ProjectConfig
-parseProjectConfig projectRootDir content =
-    convertLegacyProjectConfig projectRootDir <$> parseLegacyProjectConfig content
+parseProjectConfig :: String -> ParseResult ProjectConfig
+parseProjectConfig content =
+    convertFromLegacyProjectConfig <$>
+      parseLegacyProjectConfig content
 
 
-convertLegacyProjectConfig :: FilePath -> LegacyProjectConfig -> ProjectConfig
-convertLegacyProjectConfig
-  projectRootDir
+convertFromLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
+convertFromLegacyProjectConfig
   (LegacyProjectConfig
     localPackageGlobs _repoPackages
     (LegacySharedConfig globalFlags configExFlags installFlags)
@@ -624,7 +622,6 @@ convertLegacyProjectConfig
     specificConfig) =
 
     ProjectConfig {
-      projectConfigRootDir      = projectRootDir,
       projectConfigPackageGlobs = localPackageGlobs,
 
       projectConfigBuildOnly       = configBuildOnly,
