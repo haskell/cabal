@@ -118,7 +118,8 @@ findProjectRoot = do
     curdir  <- getCurrentDirectory
     homedir <- getHomeDirectory
 
-    -- search upwards if we get to the users home dir or the filesystem root, then use the current dir
+    -- Search upwards. If we get to the users home dir or the filesystem root,
+    -- then use the current dir
     let probe dir | isDrive dir || dir == homedir
                   = return curdir -- implicit project root
         probe dir = do
@@ -195,6 +196,8 @@ readProjectLocalExtraConfig verbosity projectRootDir = do
         . parseProjectConfig
       =<< readFile projectExtraConfigFile
 
+-- | Write a @cabal.project.extra@ file in the given project root dir.
+--
 writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir config =
     writeFile projectExtraConfigFile
@@ -203,6 +206,8 @@ writeProjectLocalExtraConfig projectRootDir config =
     projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
 
 
+-- | Read the user's @~/.cabal/config@ file.
+--
 readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
 readGlobalConfig verbosity = do
     config     <- liftIO (loadConfig verbosity mempty)
@@ -249,6 +254,10 @@ globalConfigToProjectConfig
                             installFlags' haddockFlags'
 
 
+-- | Convert configuration from the @cabal configure@ or @cabal build@ command
+-- line into a 'ProjectConfig' value that can combined with configuration from
+-- other sources.
+--
 commandLineFlagsToProjectConfig :: ProjectConfigSolver
                                 -> PackageConfigShared
                                 -> PackageConfig
