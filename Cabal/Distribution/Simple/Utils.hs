@@ -477,18 +477,18 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
 
-createProcessWithEnv :: Verbosity
-                     -> FilePath
-                     -> [String]
-                     -> Maybe FilePath           -- ^ New working dir or inherit
-                     -> Maybe [(String, String)] -- ^ New environment or inherit
-                     -> Process.StdStream  -- ^ stdin
-                     -> Process.StdStream  -- ^ stdout
-                     -> Process.StdStream  -- ^ stderr
-                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle
-                           ,ProcessHandle)
-                        -- ^ Any handles created for stdin, stdout, or stderr
-                        -- with 'CreateProcess', and a handle to the process.
+createProcessWithEnv ::
+  Verbosity
+  -> FilePath
+  -> [String]
+  -> Maybe FilePath           -- ^ New working dir or inherit
+  -> Maybe [(String, String)] -- ^ New environment or inherit
+  -> Process.StdStream  -- ^ stdin
+  -> Process.StdStream  -- ^ stdout
+  -> Process.StdStream  -- ^ stderr
+  -> IO (Maybe Handle, Maybe Handle, Maybe Handle,ProcessHandle)
+  -- ^ Any handles created for stdin, stdout, or stderr
+  -- with 'CreateProcess', and a handle to the process.
 createProcessWithEnv verbosity path args mcwd menv inp out err = do
     printRawCommandAndArgsAndEnv verbosity path args menv
     hFlush stdout
