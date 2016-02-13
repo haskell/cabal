@@ -25,6 +25,7 @@ Build-type:         Custom
 Cabal-Version:      >= 1.10
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
+  tests/README.md
 
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
