@@ -132,11 +132,13 @@ use the relative path, you are set.)
 Coding Conventions
 ------------------
 
-If you modify a file, please follow the style conventions used in
-that file. When you add a new top-level definition, please also
-add a Haddock comment. Use of GHC extensions is allowed (except
-Template Haskell), provided that the dependencies policy is
-respected.
+Use spaces, not tabs. Use lines no longer than 80 characters. If you modify a
+file, please follow the style conventions used in that file. When you add a new
+top-level definition, please also add a Haddock comment. Use of GHC extensions
+is allowed (except Template Haskell), provided that the dependencies policy is
+respected. In general, try to adhere to [this style guide][guide].
+
+[guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
 
 Dependencies policy
 -------------------
