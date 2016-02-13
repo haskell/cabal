@@ -151,7 +151,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
       -- filter out `TemplateHaskell`
       extensions | ghcVersion < Version [8] []
                  , Just "NO" <- M.lookup "Have interpreter" ghcInfoMap
-                   = filter ((/= EnableExtension TemplateHaskell) . fst) extensions0
+                   = filter ((/= EnableExtension TemplateHaskell) . fst)
+                     extensions0
                  | otherwise = extensions0
 
   let comp = Compiler {
@@ -186,7 +187,8 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
        let real_dir           = takeDirectory real_path
            versionSuffix path = takeVersionSuffix (dropExeExtension path)
            guessNormal       dir = dir </> toolname <.> exeExtension
-           guessGhcVersioned dir = dir </> (toolname ++ "-ghc" ++ versionSuffix dir)
+           guessGhcVersioned dir = dir </> (toolname ++ "-ghc"
+                                            ++ versionSuffix dir)
                                        <.> exeExtension
            guessVersioned    dir = dir </> (toolname ++ versionSuffix dir)
                                        <.> exeExtension
@@ -276,7 +278,8 @@ getPackageDBContents verbosity packagedb conf = do
   toPackageIndex verbosity pkgss conf
 
 -- | Given a package DB stack, return all installed packages.
-getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
+                     -> ProgramConfiguration
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs conf = do
   checkPackageDbEnvVar
@@ -822,10 +825,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptProfilingAuto  = Internal.profDetailLevelFlag False
-                                               (withProfExeDetail lbi),
+                                             (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR (hcProfOptions GHC exeBi),
+                      ghcOptExtra          = toNubListR
+                                             (hcProfOptions GHC exeBi),
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -895,10 +899,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
         | isGhcDynamic = doingTH && (withProfExe lbi || withStaticExe)
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
-      linkOpts = commonOpts `mappend`
-                 linkerOpts `mappend`
-                 mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
-                 (if withDynExe lbi then dynLinkerOpts else mempty)
+      linkOpts =
+        commonOpts `mappend`
+        linkerOpts `mappend`
+        mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
+        (if withDynExe lbi then dynLinkerOpts else mempty)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $

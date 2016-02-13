@@ -472,7 +472,8 @@ createProcessWithEnv :: Verbosity
                      -> Process.StdStream  -- ^ stdin
                      -> Process.StdStream  -- ^ stdout
                      -> Process.StdStream  -- ^ stderr
-                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
+                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle
+                           ,ProcessHandle)
                         -- ^ Any handles created for stdin, stdout, or stderr
                         -- with 'CreateProcess', and a handle to the process.
 createProcessWithEnv verbosity path args mcwd menv inp out err = do
@@ -1021,7 +1022,8 @@ copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursive verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
-  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f)
+                                                   | f <- srcFiles ]
 
 -------------------
 -- File permissions
