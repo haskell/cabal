@@ -145,7 +145,7 @@ build verbosity
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
-                          (projectConfigSolver    projectConfig)
+                          (projectConfigShared    projectConfig)
                           (projectConfigBuildOnly projectConfig)
                           cliBuildSettings
 
@@ -242,7 +242,7 @@ configure verbosity
     (_elaboratedInstallPlan, _sharedPackageConfig, _projectConfig) <-
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
-                         (mempty, mempty, mempty)
+                         (mempty, mempty)
 
     --TODO: print what we would build.
     -- Hmm, but we don't have any targets. Could pick implicit target like "."

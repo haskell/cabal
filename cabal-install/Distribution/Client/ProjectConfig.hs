@@ -8,8 +8,7 @@ module Distribution.Client.ProjectConfig (
     -- * Types for project config
     ProjectConfig(..),
     ProjectConfigBuildOnly(..),
-    ProjectConfigSolver(..),
-    PackageConfigShared(..),
+    ProjectConfigShared(..),
     PackageConfig(..),
     projectConfigWithBuilderRepoContext,
     projectConfigWithSolverRepoContext,
@@ -26,6 +25,10 @@ module Distribution.Client.ProjectConfig (
     convertLegacyBuildOnlyFlags,
     convertLegacyCommandLineFlags,
     commandLineFlagsToLegacyProjectConfig,
+
+    -- * solver settings
+    SolverSettings(..),
+    resolveSolverSettings,
 
     -- * build time settings
     BuildTimeSettings(..),
@@ -59,7 +62,8 @@ import Distribution.Simple.Setup
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
-         , InstallFlags(..), installOptions, defaultInstallFlags )
+         , InstallFlags(..), installOptions, defaultInstallFlags
+         , defaultSolver, defaultMaxBackjumps )
 import Distribution.Simple.InstallDirs
          ( InstallDirs, PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
@@ -172,7 +176,7 @@ readProjectLocalConfig verbosity projectRootDir = do
         , GlobDir  (Glob [WildCard]) $
           GlobFile (Glob [WildCard, Literal ".cabal"])
         ]
-        mempty mempty mempty mempty mempty
+        mempty mempty mempty mempty
 
 
 -- | Reads a @cabal.project.extra@ file in the given project root dir,
@@ -233,20 +237,20 @@ globalConfigToProjectConfig
       savedHaddockFlags      = haddockFlags
     } =
     mempty {
-      projectConfigSolver        = configSolver,
-      projectConfigAllPackages   = configAllPackages,
+      projectConfigShared        = configAllPackages,
       projectConfigLocalPackages = configLocalPackages,
       projectConfigBuildOnly     = configBuildOnly
     }
   where
+    --TODO: [code cleanup] eliminate use of default*Flags here and specify the
+    -- defaults in the various resolve functions in terms of the new types.
     configExFlags' = defaultConfigExFlags <> configExFlags
     installFlags'  = defaultInstallFlags  <> installFlags
     haddockFlags'  = defaultHaddockFlags  <> haddockFlags
 
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installFlags' haddockFlags'
-    (configSolver,
-     configAllPackages) = convertLegacyAllPackageFlags
+    configAllPackages   = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags' installFlags'
     configBuildOnly     = convertLegacyBuildOnlyFlags
@@ -258,16 +262,13 @@ globalConfigToProjectConfig
 -- line into a 'ProjectConfig' value that can combined with configuration from
 -- other sources.
 --
-commandLineFlagsToProjectConfig :: ProjectConfigSolver
-                                -> PackageConfigShared
+commandLineFlagsToProjectConfig :: ProjectConfigShared
                                 -> PackageConfig
                                 -> ProjectConfig
-commandLineFlagsToProjectConfig cliConfigSolver
-                                cliConfigAllPackages
+commandLineFlagsToProjectConfig cliConfigAllPackages
                                 cliConfigLocalPackages =
     mempty {
-      projectConfigSolver        = cliConfigSolver,
-      projectConfigAllPackages   = cliConfigAllPackages,
+      projectConfigShared        = cliConfigAllPackages,
       projectConfigLocalPackages = cliConfigLocalPackages
     }
 
@@ -282,8 +283,7 @@ data ProjectConfig
        projectConfigPackageGlobs :: [FilePathGlob],
 
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
-       projectConfigSolver          :: ProjectConfigSolver,
-       projectConfigAllPackages     :: PackageConfigShared,
+       projectConfigShared          :: ProjectConfigShared,
        projectConfigLocalPackages   :: PackageConfig,
        projectConfigSpecificPackage :: Map PackageName PackageConfig
      }
@@ -312,51 +312,49 @@ data ProjectConfigBuildOnly
      }
   deriving (Eq, Show, Generic)
 
-data ProjectConfigSolver
-   = ProjectConfigSolver {
-       projectConfigSolverConstraints       :: [(UserConstraint, ConstraintSource)],
-       projectConfigSolverPreferences       :: [Dependency],
-       projectConfigConfigurationsFlags     :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
-       projectConfigSolverCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
-       projectConfigSolverSolver            :: Flag PreSolver,
-       projectConfigSolverAllowNewer        :: Flag AllowNewer,
-       projectConfigRemoteRepos             :: NubList RemoteRepo,     -- ^ Available Hackage servers.
-       projectConfigLocalRepos              :: NubList FilePath,
 
-       projectConfigSolverMaxBackjumps      :: Flag Int,
-       projectConfigSolverReorderGoals      :: Flag Bool,
-       projectConfigSolverStrongFlags       :: Flag Bool,
+data ProjectConfigShared
+   = ProjectConfigShared {
+       projectConfigProgramPaths      :: [(String, FilePath)],
+       projectConfigProgramArgs       :: [(String, [String])],
+       projectConfigProgramPathExtra  :: NubList FilePath,
+       projectConfigHcFlavor          :: Flag CompilerFlavor,
+       projectConfigHcPath            :: Flag FilePath,
+       projectConfigHcPkg             :: Flag FilePath,
+       projectConfigVanillaLib        :: Flag Bool,
+       projectConfigSharedLib         :: Flag Bool,
+       projectConfigHaddockIndex      :: Flag PathTemplate,
 
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
-       projectConfigSolverIndependentGoals  :: Flag Bool,
-       projectConfigSolverShadowPkgs        :: Flag Bool,
-       projectConfigSolverReinstall         :: Flag Bool,
-       projectConfigSolverAvoidReinstalls   :: Flag Bool,
-       projectConfigSolverOverrideReinstall :: Flag Bool,
-       projectConfigSolverUpgradeDeps       :: Flag Bool
-     }
-  deriving (Eq, Show, Generic)
+       projectConfigUserInstall       :: Flag Bool,
+       projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
+       projectConfigPackageDBs        :: [Maybe PackageDB],
+       projectConfigRelocatable       :: Flag Bool,
 
+       -- configuration used both by the solver and other phases
+       projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
+       projectConfigLocalRepos        :: NubList FilePath,
 
-data PackageConfigShared
-   = PackageConfigShared {
-       packageConfigProgramPaths     :: [(String, FilePath)],
-       packageConfigProgramArgs      :: [(String, [String])],
-       packageConfigProgramPathExtra :: NubList FilePath,
-       packageConfigHcFlavor         :: Flag CompilerFlavor,
-       packageConfigHcPath           :: Flag FilePath,
-       packageConfigHcPkg            :: Flag FilePath,
-       packageConfigVanillaLib       :: Flag Bool,
-       packageConfigSharedLib        :: Flag Bool,
-       packageConfigHaddockIndex     :: Flag PathTemplate,
+       -- solver configuration
+       projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
+       projectConfigPreferences       :: [Dependency],
+       projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
+       projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
+       projectConfigSolver            :: Flag PreSolver,
+       projectConfigAllowNewer        :: Flag AllowNewer,
+       projectConfigMaxBackjumps      :: Flag Int,
+       projectConfigReorderGoals      :: Flag Bool,
+       projectConfigStrongFlags       :: Flag Bool,
 
-       -- Things that only make sense for manual mode, not --local mode
+       -- More things that only make sense for manual mode, not --local mode
        -- too much control!
-       packageConfigUserInstall      :: Flag Bool,
-       packageConfigInstallDirs      :: InstallDirs (Flag PathTemplate),
-       packageConfigPackageDBs       :: [Maybe PackageDB],
-       packageConfigRelocatable      :: Flag Bool
+       projectConfigIndependentGoals  :: Flag Bool,
+       projectConfigShadowPkgs        :: Flag Bool,
+       projectConfigReinstall         :: Flag Bool,
+       projectConfigAvoidReinstalls   :: Flag Bool,
+       projectConfigOverrideReinstall :: Flag Bool,
+       projectConfigUpgradeDeps       :: Flag Bool
      }
   deriving (Eq, Show, Generic)
 
@@ -400,9 +398,8 @@ data PackageConfig
   deriving (Eq, Show, Generic)
 
 instance Binary ProjectConfig
-instance Binary ProjectConfigSolver
 instance Binary ProjectConfigBuildOnly
-instance Binary PackageConfigShared
+instance Binary ProjectConfigShared
 instance Binary PackageConfig
 
 
@@ -411,8 +408,7 @@ instance Monoid ProjectConfig where
     ProjectConfig {
       projectConfigPackageGlobs    = mempty,
       projectConfigBuildOnly       = mempty,
-      projectConfigSolver          = mempty,
-      projectConfigAllPackages     = mempty,
+      projectConfigShared          = mempty,
       projectConfigLocalPackages   = mempty,
       projectConfigSpecificPackage = mempty
     }
@@ -423,8 +419,7 @@ instance Semigroup ProjectConfig where
     ProjectConfig {
       projectConfigPackageGlobs    = combine projectConfigPackageGlobs,
       projectConfigBuildOnly       = combine projectConfigBuildOnly,
-      projectConfigSolver          = combine projectConfigSolver,
-      projectConfigAllPackages     = combine projectConfigAllPackages,
+      projectConfigShared          = combine projectConfigShared,
       projectConfigLocalPackages   = combine projectConfigLocalPackages,
       projectConfigSpecificPackage = combine projectConfigSpecificPackage
     }
@@ -480,87 +475,76 @@ instance Semigroup ProjectConfigBuildOnly where
     where combine field = field a `mappend` field b
 
 
-instance Monoid ProjectConfigSolver where
+instance Monoid ProjectConfigShared where
   mempty =
-    ProjectConfigSolver {
-      projectConfigSolverConstraints       = mempty,
-      projectConfigSolverPreferences       = mempty,
-      projectConfigConfigurationsFlags     = mempty,
-      projectConfigSolverCabalVersion      = mempty,
-      projectConfigSolverSolver            = mempty,
-      projectConfigSolverAllowNewer        = mempty,
-      projectConfigRemoteRepos             = mempty,
-      projectConfigLocalRepos              = mempty,
-      projectConfigSolverMaxBackjumps      = mempty,
-      projectConfigSolverReorderGoals      = mempty,
-      projectConfigSolverStrongFlags       = mempty,
-      projectConfigSolverIndependentGoals  = mempty,
-      projectConfigSolverShadowPkgs        = mempty,
-      projectConfigSolverReinstall         = mempty,
-      projectConfigSolverAvoidReinstalls   = mempty,
-      projectConfigSolverOverrideReinstall = mempty,
-      projectConfigSolverUpgradeDeps       = mempty
+    ProjectConfigShared {
+      projectConfigProgramPaths     = mempty,
+      projectConfigProgramArgs      = mempty,
+      projectConfigProgramPathExtra = mempty,
+      projectConfigHcFlavor         = mempty,
+      projectConfigHcPath           = mempty,
+      projectConfigHcPkg            = mempty,
+      projectConfigVanillaLib       = mempty,
+      projectConfigSharedLib        = mempty,
+      projectConfigHaddockIndex     = mempty,
+      projectConfigUserInstall      = mempty,
+      projectConfigInstallDirs      = mempty,
+      projectConfigPackageDBs       = mempty,
+      projectConfigRelocatable      = mempty,
+
+      projectConfigConstraints       = mempty,
+      projectConfigPreferences       = mempty,
+      projectConfigFlagAssignment    = mempty,
+      projectConfigCabalVersion      = mempty,
+      projectConfigSolver            = mempty,
+      projectConfigAllowNewer        = mempty,
+      projectConfigRemoteRepos       = mempty,
+      projectConfigLocalRepos        = mempty,
+      projectConfigMaxBackjumps      = mempty,
+      projectConfigReorderGoals      = mempty,
+      projectConfigStrongFlags       = mempty,
+      projectConfigIndependentGoals  = mempty,
+      projectConfigShadowPkgs        = mempty,
+      projectConfigReinstall         = mempty,
+      projectConfigAvoidReinstalls   = mempty,
+      projectConfigOverrideReinstall = mempty,
+      projectConfigUpgradeDeps       = mempty
     }
   mappend = (<>)
 
-instance Semigroup ProjectConfigSolver where
-  a <> b =
-    ProjectConfigSolver {
-      projectConfigSolverConstraints       = combine projectConfigSolverConstraints,
-      projectConfigSolverPreferences       = combine projectConfigSolverPreferences,
-      projectConfigConfigurationsFlags     = combine projectConfigConfigurationsFlags,
-      projectConfigSolverCabalVersion      = combine projectConfigSolverCabalVersion,
-      projectConfigSolverSolver            = combine projectConfigSolverSolver,
-      projectConfigSolverAllowNewer        = combine projectConfigSolverAllowNewer,
-      projectConfigRemoteRepos             = combine projectConfigRemoteRepos,
-      projectConfigLocalRepos              = combine projectConfigLocalRepos,
-      projectConfigSolverMaxBackjumps      = combine projectConfigSolverMaxBackjumps,
-      projectConfigSolverReorderGoals      = combine projectConfigSolverReorderGoals,
-      projectConfigSolverStrongFlags       = combine projectConfigSolverStrongFlags,
-      projectConfigSolverIndependentGoals  = combine projectConfigSolverIndependentGoals,
-      projectConfigSolverShadowPkgs        = combine projectConfigSolverShadowPkgs,
-      projectConfigSolverReinstall         = combine projectConfigSolverReinstall,
-      projectConfigSolverAvoidReinstalls   = combine projectConfigSolverAvoidReinstalls,
-      projectConfigSolverOverrideReinstall = combine projectConfigSolverOverrideReinstall,
-      projectConfigSolverUpgradeDeps       = combine projectConfigSolverUpgradeDeps
-    }
-    where combine field = field a `mappend` field b
+instance Semigroup ProjectConfigShared where
+  a <> b = ProjectConfigShared {
+      projectConfigProgramPaths     = combine projectConfigProgramPaths,
+      projectConfigProgramArgs      = combine projectConfigProgramArgs,
+      projectConfigProgramPathExtra = combine projectConfigProgramPathExtra,
+      projectConfigHcFlavor         = combine projectConfigHcFlavor,
+      projectConfigHcPath           = combine projectConfigHcPath,
+      projectConfigHcPkg            = combine projectConfigHcPkg,
+      projectConfigVanillaLib       = combine projectConfigVanillaLib,
+      projectConfigSharedLib        = combine projectConfigSharedLib,
+      projectConfigHaddockIndex     = combine projectConfigHaddockIndex,
+      projectConfigUserInstall      = combine projectConfigUserInstall,
+      projectConfigInstallDirs      = combine projectConfigInstallDirs,
+      projectConfigPackageDBs       = combine projectConfigPackageDBs,
+      projectConfigRelocatable      = combine projectConfigRelocatable,
 
-
-instance Monoid PackageConfigShared where
-  mempty =
-    PackageConfigShared {
-      packageConfigProgramPaths     = mempty,
-      packageConfigProgramArgs      = mempty,
-      packageConfigProgramPathExtra = mempty,
-      packageConfigHcFlavor         = mempty,
-      packageConfigHcPath           = mempty,
-      packageConfigHcPkg            = mempty,
-      packageConfigVanillaLib       = mempty,
-      packageConfigSharedLib        = mempty,
-      packageConfigHaddockIndex     = mempty,
-      packageConfigUserInstall      = mempty,
-      packageConfigInstallDirs      = mempty,
-      packageConfigPackageDBs       = mempty,
-      packageConfigRelocatable      = mempty
-    }
-  mappend = (<>)
-
-instance Semigroup PackageConfigShared where
-  a <> b = PackageConfigShared {
-      packageConfigProgramPaths     = combine packageConfigProgramPaths,
-      packageConfigProgramArgs      = combine packageConfigProgramArgs,
-      packageConfigProgramPathExtra = combine packageConfigProgramPathExtra,
-      packageConfigHcFlavor         = combine packageConfigHcFlavor,
-      packageConfigHcPath           = combine packageConfigHcPath,
-      packageConfigHcPkg            = combine packageConfigHcPkg,
-      packageConfigVanillaLib       = combine packageConfigVanillaLib,
-      packageConfigSharedLib        = combine packageConfigSharedLib,
-      packageConfigHaddockIndex     = combine packageConfigHaddockIndex,
-      packageConfigUserInstall      = combine packageConfigUserInstall,
-      packageConfigInstallDirs      = combine packageConfigInstallDirs,
-      packageConfigPackageDBs       = combine packageConfigPackageDBs,
-      packageConfigRelocatable      = combine packageConfigRelocatable
+      projectConfigConstraints       = combine projectConfigConstraints,
+      projectConfigPreferences       = combine projectConfigPreferences,
+      projectConfigFlagAssignment    = combine projectConfigFlagAssignment,
+      projectConfigCabalVersion      = combine projectConfigCabalVersion,
+      projectConfigSolver            = combine projectConfigSolver,
+      projectConfigAllowNewer        = combine projectConfigAllowNewer,
+      projectConfigRemoteRepos       = combine projectConfigRemoteRepos,
+      projectConfigLocalRepos        = combine projectConfigLocalRepos,
+      projectConfigMaxBackjumps      = combine projectConfigMaxBackjumps,
+      projectConfigReorderGoals      = combine projectConfigReorderGoals,
+      projectConfigStrongFlags       = combine projectConfigStrongFlags,
+      projectConfigIndependentGoals  = combine projectConfigIndependentGoals,
+      projectConfigShadowPkgs        = combine projectConfigShadowPkgs,
+      projectConfigReinstall         = combine projectConfigReinstall,
+      projectConfigAvoidReinstalls   = combine projectConfigAvoidReinstalls,
+      projectConfigOverrideReinstall = combine projectConfigOverrideReinstall,
+      projectConfigUpgradeDeps       = combine projectConfigUpgradeDeps
     }
     where combine field = field a `mappend` field b
 
@@ -694,16 +678,14 @@ convertFromLegacyProjectConfig
       projectConfigPackageGlobs = localPackageGlobs,
 
       projectConfigBuildOnly       = configBuildOnly,
-      projectConfigSolver          = configSolver,
-      projectConfigAllPackages     = configAllPackages,
+      projectConfigShared          = configAllPackages,
       projectConfigLocalPackages   = configLocalPackages,
       projectConfigSpecificPackage = fmap perPackage specificConfig
     }
   where
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installFlags haddockFlags
-    (configSolver,
-     configAllPackages) = convertLegacyAllPackageFlags
+    configAllPackages   = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags installFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
@@ -742,16 +724,14 @@ commandLineFlagsToLegacyProjectConfig globalFlags
 convertLegacyCommandLineFlags :: GlobalFlags
                               -> ConfigFlags  -> ConfigExFlags
                               -> InstallFlags -> HaddockFlags
-                              -> ( ( ProjectConfigSolver
-                                   , PackageConfigShared
+                              -> ( ( ProjectConfigShared
                                    , PackageConfig
                                    )
                                  , ProjectConfigBuildOnly
                                  )
 convertLegacyCommandLineFlags globalFlags configFlags configExFlags
                               installFlags haddockFlags =
-    ( ( configSolver
-      , configAllPackages
+    ( ( configAllPackages
       , configLocalPackages
       )
     , configBuildOnly
@@ -759,8 +739,7 @@ convertLegacyCommandLineFlags globalFlags configFlags configExFlags
   where
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installFlags haddockFlags
-    (configSolver,
-     configAllPackages) = convertLegacyAllPackageFlags
+    configAllPackages   = convertLegacyAllPackageFlags
                             globalFlags configFlags
                             configExFlags installFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
@@ -770,11 +749,9 @@ convertLegacyCommandLineFlags globalFlags configFlags configExFlags
 
 convertLegacyAllPackageFlags :: GlobalFlags -> ConfigFlags
                              -> ConfigExFlags -> InstallFlags
-                             -> (ProjectConfigSolver, PackageConfigShared)
+                             -> ProjectConfigShared
 convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags =
-    ( ProjectConfigSolver{..}
-    , PackageConfigShared{..}
-    )
+    ProjectConfigShared{..}
   where
     GlobalFlags {
       globalConfigFile        = _, -- TODO: [required feature]
@@ -784,40 +761,40 @@ convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags 
     } = globalFlags
 
     ConfigFlags {
-      configProgramPaths        = packageConfigProgramPaths,
-      configProgramArgs         = packageConfigProgramArgs,
-      configProgramPathExtra    = packageConfigProgramPathExtra,
-      configHcFlavor            = packageConfigHcFlavor,
-      configHcPath              = packageConfigHcPath,
-      configHcPkg               = packageConfigHcPkg,
-      configVanillaLib          = packageConfigVanillaLib,
-      configSharedLib           = packageConfigSharedLib,
-      configInstallDirs         = packageConfigInstallDirs,
-      configUserInstall         = packageConfigUserInstall,
-      configPackageDBs          = packageConfigPackageDBs,
-      configConfigurationsFlags = projectConfigConfigurationsFlags,
-      configRelocatable         = packageConfigRelocatable
+      configProgramPaths        = projectConfigProgramPaths,
+      configProgramArgs         = projectConfigProgramArgs,
+      configProgramPathExtra    = projectConfigProgramPathExtra,
+      configHcFlavor            = projectConfigHcFlavor,
+      configHcPath              = projectConfigHcPath,
+      configHcPkg               = projectConfigHcPkg,
+      configVanillaLib          = projectConfigVanillaLib,
+      configSharedLib           = projectConfigSharedLib,
+      configInstallDirs         = projectConfigInstallDirs,
+      configUserInstall         = projectConfigUserInstall,
+      configPackageDBs          = projectConfigPackageDBs,
+      configConfigurationsFlags = projectConfigFlagAssignment,
+      configRelocatable         = projectConfigRelocatable
     } = configFlags
 
     ConfigExFlags {
-      configCabalVersion        = projectConfigSolverCabalVersion,
-      configExConstraints       = projectConfigSolverConstraints,
-      configPreferences         = projectConfigSolverPreferences,
-      configSolver              = projectConfigSolverSolver,
-      configAllowNewer          = projectConfigSolverAllowNewer
+      configCabalVersion        = projectConfigCabalVersion,
+      configExConstraints       = projectConfigConstraints,
+      configPreferences         = projectConfigPreferences,
+      configSolver              = projectConfigSolver,
+      configAllowNewer          = projectConfigAllowNewer
     } = configExFlags
 
     InstallFlags {
-      installHaddockIndex       = packageConfigHaddockIndex,
-      installReinstall          = projectConfigSolverReinstall,
-      installAvoidReinstalls    = projectConfigSolverAvoidReinstalls,
-      installOverrideReinstall  = projectConfigSolverOverrideReinstall,
-      installMaxBackjumps       = projectConfigSolverMaxBackjumps,
-      installUpgradeDeps        = projectConfigSolverUpgradeDeps,
-      installReorderGoals       = projectConfigSolverReorderGoals,
-      installIndependentGoals   = projectConfigSolverIndependentGoals,
-      installShadowPkgs         = projectConfigSolverShadowPkgs,
-      installStrongFlags        = projectConfigSolverStrongFlags
+      installHaddockIndex       = projectConfigHaddockIndex,
+      installReinstall          = projectConfigReinstall,
+      installAvoidReinstalls    = projectConfigAvoidReinstalls,
+      installOverrideReinstall  = projectConfigOverrideReinstall,
+      installMaxBackjumps       = projectConfigMaxBackjumps,
+      installUpgradeDeps        = projectConfigUpgradeDeps,
+      installReorderGoals       = projectConfigReorderGoals,
+      installIndependentGoals   = projectConfigIndependentGoals,
+      installShadowPkgs         = projectConfigShadowPkgs,
+      installStrongFlags        = projectConfigStrongFlags
     } = installFlags
 
 
@@ -846,7 +823,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
-      configConfigurationsFlags = _projectConfigConfigurationsFlags, --TODO: should be per pkg
+      configConfigurationsFlags = _projectConfigFlagAssignment, --TODO: should be per pkg
       configTests               = packageConfigTests,
       configBenchmarks          = packageConfigBenchmarks,
       configCoverage            = coverage,
@@ -937,11 +914,11 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
 --
 projectConfigWithSolverRepoContext :: Verbosity
                                    -> FilePath
-                                   -> ProjectConfigSolver
+                                   -> ProjectConfigShared
                                    -> ProjectConfigBuildOnly
                                    -> (RepoContext -> IO a) -> IO a
 projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
-                                   ProjectConfigSolver{..}
+                                   ProjectConfigShared{..}
                                    ProjectConfigBuildOnly{..} =
     withRepoContext'
       verbosity
@@ -950,6 +927,73 @@ projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
       downloadCacheRootDir
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
+
+data SolverSettings
+   = SolverSettings {
+       solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
+       solverSettingLocalRepos        :: [FilePath],
+       solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
+       solverSettingPreferences       :: [Dependency],
+       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
+       solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
+       solverSettingSolver            :: PreSolver,
+       solverSettingAllowNewer        :: AllowNewer,
+       solverSettingMaxBackjumps      :: Maybe Int,
+       solverSettingReorderGoals      :: Bool,
+       solverSettingStrongFlags       :: Bool,
+       -- Things that only make sense for manual mode, not --local mode
+       -- too much control!
+       solverSettingIndependentGoals  :: Bool,
+       solverSettingShadowPkgs        :: Bool,
+       solverSettingReinstall         :: Bool,
+       solverSettingAvoidReinstalls   :: Bool,
+       solverSettingOverrideReinstall :: Bool,
+       solverSettingUpgradeDeps       :: Bool
+     }
+  deriving (Eq, Show, Generic)
+
+instance Binary SolverSettings
+
+
+resolveSolverSettings :: ProjectConfigShared -> SolverSettings
+resolveSolverSettings projectConfig =
+    SolverSettings {..}
+  where
+    solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
+    solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
+    solverSettingConstraints       = projectConfigConstraints
+    solverSettingPreferences       = projectConfigPreferences
+    solverSettingFlagAssignment    = projectConfigFlagAssignment
+    solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
+    solverSettingSolver            = fromFlag projectConfigSolver
+    solverSettingAllowNewer        = fromFlag projectConfigAllowNewer
+    solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
+                                       n | n < 0     -> Nothing
+                                         | otherwise -> Just n
+    solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
+    solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
+    solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
+    solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
+    solverSettingReinstall         = fromFlag projectConfigReinstall
+    solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
+    solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
+    solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
+
+    ProjectConfigShared {..} = defaults <> projectConfig
+
+    defaults = mempty {
+       projectConfigSolver            = Flag defaultSolver,
+       projectConfigAllowNewer        = Flag AllowNewerNone,
+       projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
+       projectConfigReorderGoals      = Flag False,
+       projectConfigStrongFlags       = Flag False,
+       projectConfigIndependentGoals  = Flag False,
+       projectConfigShadowPkgs        = Flag False,
+       projectConfigReinstall         = Flag False,
+       projectConfigAvoidReinstalls   = Flag False,
+       projectConfigOverrideReinstall = Flag False,
+       projectConfigUpgradeDeps       = Flag False
+    }
 
 
 data BuildTimeSettings
@@ -979,7 +1023,7 @@ data BuildTimeSettings
 
 resolveBuildTimeSettings :: Verbosity
                          -> CabalDirLayout
-                         -> ProjectConfigSolver
+                         -> ProjectConfigShared
                          -> ProjectConfigBuildOnly
                          -> ProjectConfigBuildOnly
                          -> BuildTimeSettings
@@ -988,7 +1032,7 @@ resolveBuildTimeSettings verbosity
                            cabalLogsDirectory,
                            cabalPackageCacheDirectory
                          }
-                         ProjectConfigSolver {
+                         ProjectConfigShared {
                            projectConfigRemoteRepos,
                            projectConfigLocalRepos
                          }
@@ -1017,8 +1061,8 @@ resolveBuildTimeSettings verbosity
     buildSettingRootCmd       = flagToMaybe projectConfigRootCmd
 
     ProjectConfigBuildOnly{..} = defaults
-                       `mappend` fromProjectFile
-                       `mappend` fromCommandLine
+                              <> fromProjectFile
+                              <> fromCommandLine
 
     defaults = mempty {
       projectConfigDryRun                = toFlag False,

@@ -82,7 +82,7 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlag, fromFlagOrDefault)
+import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import qualified Distribution.Simple.Register as Cabal
@@ -403,8 +403,7 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
-type CliConfig = ( ProjectConfigSolver
-                 , PackageConfigShared
+type CliConfig = ( ProjectConfigShared
                  , PackageConfig
                  )
 
@@ -472,8 +471,7 @@ rebuildInstallPlan verbosity
     -- arguments from the command line
     --
     phaseReadProjectConfig :: CliConfig -> Rebuild ProjectConfig
-    phaseReadProjectConfig ( cliConfigSolver
-                           , cliConfigAllPackages
+    phaseReadProjectConfig ( cliConfigAllPackages
                            , cliConfigLocalPackages
                            ) = do
       liftIO $ do
@@ -484,7 +482,6 @@ rebuildInstallPlan verbosity
       projectConfig <- readProjectConfig verbosity projectRootDir
       return (projectConfig
            <> commandLineFlagsToProjectConfig
-                cliConfigSolver
                 cliConfigAllPackages
                 cliConfigLocalPackages)
 
@@ -506,7 +503,7 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler ProjectConfig{projectConfigAllPackages} = do
+    phaseConfigureCompiler ProjectConfig{projectConfigShared} = do
         progsearchpath <- liftIO $ getSystemSearchPath
         rerunIfChanged verbosity projectRootDir fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg, progsearchpath) $ do
@@ -521,14 +518,14 @@ rebuildInstallPlan verbosity
 
           return result
       where
-        hcFlavor = flagToMaybe packageConfigHcFlavor
-        hcPath   = flagToMaybe packageConfigHcPath
-        hcPkg    = flagToMaybe packageConfigHcPkg
-        PackageConfigShared {
-          packageConfigHcFlavor,
-          packageConfigHcPath,
-          packageConfigHcPkg
-        }        = projectConfigAllPackages
+        hcFlavor = flagToMaybe projectConfigHcFlavor
+        hcPath   = flagToMaybe projectConfigHcPath
+        hcPkg    = flagToMaybe projectConfigHcPkg
+        ProjectConfigShared {
+          projectConfigHcFlavor,
+          projectConfigHcPath,
+          projectConfigHcPkg
+        }        = projectConfigShared
 
 
     -- Run the solver to get the initial install plan.
@@ -539,13 +536,13 @@ rebuildInstallPlan verbosity
                    -> [SourcePackage]
                    -> Rebuild SolverInstallPlan
     phaseRunSolver projectConfig@ProjectConfig {
-                     projectConfigSolver,
+                     projectConfigShared,
                      projectConfigBuildOnly
                    }
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
-                       (projectConfigSolver, cabalPackageCacheDirectory,
+                       (solverSettings, cabalPackageCacheDirectory,
                         localPackages, localPackagesEnabledStanzas,
                         compiler, platform, programsDbSignature progdb) $ do
 
@@ -555,26 +552,26 @@ rebuildInstallPlan verbosity
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
 
           liftIO $ do
-            solver <- chooseSolver verbosity solverpref (compilerInfo compiler)
+            solver <- chooseSolver verbosity
+                                   (solverSettingSolver solverSettings)
+                                   (compilerInfo compiler)
 
             notice verbosity "Resolving dependencies..."
             foldProgress logMsg die return $
-              planPackages compiler platform solver projectConfigSolver
+              planPackages compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb
                            localPackages localPackagesEnabledStanzas
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
                            cabalPackageCacheDirectory
-                           projectConfigSolver
+                           projectConfigShared
                            projectConfigBuildOnly
         --TODO: [required eventually] the projectConfigBuildOnly we have here
         -- comes only from the config file, not from the command line, so
         -- cannot select the http transport etc.
-        solverpref     = fromFlag projectConfigSolverSolver
+        solverSettings = resolveSolverSettings projectConfigShared
         logMsg message rest = debugNoWrap verbosity message >> rest
-
-        ProjectConfigSolver {projectConfigSolverSolver} = projectConfigSolver
 
         localPackagesEnabledStanzas =
           Map.fromList
@@ -605,10 +602,9 @@ rebuildInstallPlan verbosity
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
-                         projectConfigAllPackages,
+                         projectConfigShared,
                          projectConfigLocalPackages,
                          projectConfigSpecificPackage,
-                         projectConfigSolver,
                          projectConfigBuildOnly
                        }
                        (compiler, platform, progdb)
@@ -631,13 +627,13 @@ rebuildInstallPlan verbosity
             localPackages
             sourcePackageHashes
             defaultInstallDirs
-            projectConfigAllPackages
+            projectConfigShared
             projectConfigLocalPackages
             projectConfigSpecificPackage
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity 
                         cabalPackageCacheDirectory
-                        projectConfigSolver
+                        projectConfigShared
                         projectConfigBuildOnly
 
 
@@ -838,13 +834,13 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
 
 planPackages :: Compiler
              -> Platform
-             -> Solver -> ProjectConfigSolver
+             -> Solver -> SolverSettings
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [SourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String InstallPlan
-planPackages comp platform solver solverconfig
+planPackages comp platform solver SolverSettings{..}
              installedPkgIndex sourcePkgDb
              localPackages pkgStanzasEnable =
 
@@ -859,24 +855,26 @@ planPackages comp platform solver solverconfig
     -- make sure we can cope with that in the output.
     resolverParams =
 
-        setMaxBackjumps (if maxBackjumps < 0 then Nothing
-                                             else Just maxBackjumps)
+        setMaxBackjumps solverSettingMaxBackjumps
 
-      . setIndependentGoals independentGoals
+      . setIndependentGoals solverSettingIndependentGoals
 
-      . setReorderGoals reorderGoals
+      . setReorderGoals solverSettingReorderGoals
 
-      . setAvoidReinstalls avoidReinstalls --TODO: [required eventually] should only be configurable for custom installs
+        --TODO: [required eventually] should only be configurable for custom installs
+      . setAvoidReinstalls solverSettingAvoidReinstalls
 
-      . setShadowPkgs shadowPkgs --TODO: [required eventually] should only be configurable for custom installs
+        --TODO: [required eventually] should only be configurable for custom installs
+      . setShadowPkgs solverSettingShadowPkgs
 
-      . setStrongFlags strongFlags
+      . setStrongFlags solverSettingStrongFlags
 
-      . setPreferenceDefault (if upgradeDeps then PreferAllLatest
-                                             else PreferLatestForSelected)
-                             --TODO: [required eventually] decide if we need to prefer installed for global packages?
+        --TODO: [required eventually] decide if we need to prefer installed for global packages?
+      . setPreferenceDefault (if solverSettingUpgradeDeps
+                                then PreferAllLatest
+                                else PreferLatestForSelected)
 
-      . removeUpperBounds allowNewer
+      . removeUpperBounds solverSettingAllowNewer
 
       . addDefaultSetupDependencies (defaultSetupDeps platform
                                    . PD.packageDescription
@@ -885,12 +883,12 @@ planPackages comp platform solver solverconfig
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
-          | Dependency name ver <- projectConfigSolverPreferences ]
+          | Dependency name ver <- solverSettingPreferences ]
 
       . addConstraints
           -- version constraints from the config file or command line
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
-            | (pc, src) <- projectConfigSolverConstraints ]
+            | (pc, src) <- solverSettingConstraints ]
 
       . addPreferences
           -- enable stanza preference where the user did not specify
@@ -922,7 +920,7 @@ planPackages comp platform solver solverconfig
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget
-          | let flags = projectConfigConfigurationsFlags
+          | let flags = solverSettingFlagAssignment
           , not (null flags)
           , pkg <- localPackages
           , let pkgname = packageName pkg ]
@@ -931,30 +929,6 @@ planPackages comp platform solver solverconfig
         installedPkgIndex sourcePkgDb
         (map SpecificSourcePackage localPackages)
 
-    reorderGoals     = fromFlag projectConfigSolverReorderGoals
-    independentGoals = fromFlag projectConfigSolverIndependentGoals
-    avoidReinstalls  = fromFlag projectConfigSolverAvoidReinstalls
-    shadowPkgs       = fromFlag projectConfigSolverShadowPkgs
-    strongFlags      = fromFlag projectConfigSolverStrongFlags
-    maxBackjumps     = fromFlag projectConfigSolverMaxBackjumps
-    upgradeDeps      = fromFlag projectConfigSolverUpgradeDeps
-    allowNewer       = fromFlag projectConfigSolverAllowNewer
-
-    ProjectConfigSolver{
-      projectConfigSolverConstraints,
-      projectConfigSolverPreferences,
-      projectConfigConfigurationsFlags,
-
---      projectConfigSolverReinstall,  --TODO: [required eventually] check not configurable for local mode?
-      projectConfigSolverReorderGoals,
-      projectConfigSolverIndependentGoals,
-      projectConfigSolverAvoidReinstalls,
-      projectConfigSolverShadowPkgs,
-      projectConfigSolverStrongFlags,
-      projectConfigSolverMaxBackjumps,
-      projectConfigSolverUpgradeDeps,
-      projectConfigSolverAllowNewer
-    } = solverconfig
 
 ------------------------------------------------------------------------------
 -- * Install plan post-processing
@@ -994,7 +968,7 @@ elaborateInstallPlan
   -> [SourcePackage]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
-  -> PackageConfigShared
+  -> ProjectConfigShared
   -> PackageConfig
   -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
@@ -1106,7 +1080,7 @@ elaborateInstallPlan platform compiler progdb
 
         pkgDescriptionOverride    = descOverride
 
-        pkgVanillaLib    = sharedOptionFlag True  packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
+        pkgVanillaLib    = sharedOptionFlag True  projectConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
         pkgSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
         pkgDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         pkgGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
@@ -1158,7 +1132,7 @@ elaborateInstallPlan platform compiler progdb
           | shouldBuildInplaceOnly pkg = inplacePackageDbs
           | otherwise                  = storePackageDbs
 
-    sharedOptionFlag  :: a         -> (PackageConfigShared -> Flag a) -> a
+    sharedOptionFlag  :: a         -> (ProjectConfigShared -> Flag a) -> a
     perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
     perPkgOptionMaybe :: PackageId ->       (PackageConfig -> Flag a) -> Maybe a
     perPkgOptionList  :: PackageId ->       (PackageConfig -> [a])    -> [a]
@@ -1230,7 +1204,7 @@ elaborateInstallPlan platform compiler progdb
                       (liftM2 (||) pkgSharedLib pkgDynExe)
           where
             pkgid        = packageId pkg
-            pkgSharedLib = flagToMaybe (packageConfigSharedLib sharedPackageConfig)
+            pkgSharedLib = flagToMaybe (projectConfigSharedLib sharedPackageConfig)
             pkgDynExe    = perPkgOptionMaybe pkgid packageConfigDynExe
 
     --TODO: [code cleanup] move this into the Cabal lib. It's currently open
