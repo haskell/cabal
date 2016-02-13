@@ -68,7 +68,6 @@ import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 import           System.FilePath
 import           System.Directory
 import           System.IO
-import           System.IO.Error
 import           GHC.Generics (Generic)
 
 

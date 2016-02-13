@@ -68,6 +68,8 @@ module Distribution.Simple.Utils (
         -- * file names
         currentDir,
         shortRelativePath,
+        dropExeExtension,
+        exeExtensions,
 
         -- * finding files
         findFile,
@@ -1190,6 +1192,24 @@ shortRelativePath from to =
     dropCommonPrefix (x:xs) (y:ys)
         | x == y    = dropCommonPrefix xs ys
     dropCommonPrefix xs ys = (xs,ys)
+
+-- | Drop the extension if it's one of 'exeExtensions', or return the path
+-- unchanged.
+dropExeExtension :: FilePath -> FilePath
+dropExeExtension filepath =
+  case splitExtension filepath of
+    (filepath', extension) | extension `elem` exeExtensions -> filepath'
+                           | otherwise                      -> filepath
+
+-- | List of possible executable file extensions on the current platform.
+exeExtensions :: [String]
+exeExtensions = case buildOS of
+  -- Possible improvement: on Windows, read the list of extensions from the
+  -- PATHEXT environment variable. By default PATHEXT is ".com; .exe; .bat;
+  -- .cmd".
+  Windows -> ["", "exe"]
+  Ghcjs   -> ["", "exe"]
+  _       -> [""]
 
 -- ------------------------------------------------------------
 -- * Finding the description file

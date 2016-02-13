@@ -96,9 +96,9 @@ import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
          , canonicalizePath )
-import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension,
-                                  splitExtension, isRelative )
+import System.FilePath          ( (</>), (<.>), takeExtension
+                                , takeDirectory, replaceExtension
+                                , isRelative )
 import qualified System.Info
 
 -- -----------------------------------------------------------------------------
@@ -218,12 +218,6 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
 
         isSuffixChar :: Char -> Bool
         isSuffixChar c = isDigit c || c == '.' || c == '-'
-
-        dropExeExtension :: FilePath -> FilePath
-        dropExeExtension filepath =
-          case splitExtension filepath of
-            (filepath', extension) | extension == exeExtension -> filepath'
-                                   | otherwise                 -> filepath
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding ghc-pkg, we try looking for both a versioned and unversioned
