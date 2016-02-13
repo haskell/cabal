@@ -3,7 +3,8 @@
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , readMaybe
-                                 , inDir, logDirChange, determineNumJobs, numberOfProcessors
+                                 , inDir, logDirChange
+                                 , determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
                                  , makeAbsoluteToCwd
