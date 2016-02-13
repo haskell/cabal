@@ -680,17 +680,9 @@ updateFileMonitor
   -> IO ()
 updateFileMonitor monitor root startTime monitorFiles
                   cachedKey cachedResult = do
-    hashcache <- getPreviousFileHashCache
+    hashcache <- readCacheFileHashes monitor
     msfs <- buildMonitorStateFileSet startTime hashcache root monitorFiles
     rewriteCacheFile monitor msfs cachedKey cachedResult
-  where
-    getPreviousFileHashCache =
-      handleDoesNotExist Map.empty $
-      handleErrorCall    Map.empty $ do
-        res <- readCacheFile monitor
-        case res of
-          Left _             -> return Map.empty
-          Right (msfs, _, _) -> return (mkFileHashCache msfs)
 
 -- | A timestamp to help with the problem of file changes during actions.
 -- See 'updateFileMonitor' for details.
@@ -763,7 +755,7 @@ buildMonitorStateFileSet mstartTime hashcache root =
 changedDuringUpdate :: Maybe MonitorTimestamp -> ModTime -> Bool
 changedDuringUpdate (Just (MonitorTimestamp startTime)) mtime
                         = mtime > startTime
-changedDuringUpdate _ _ = False 
+changedDuringUpdate _ _ = False
 
 -- | Much like 'buildMonitorStateFileSet' but for the somewhat complicated case
 -- of a file glob.
@@ -804,7 +796,6 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
             let mtime' | changedDuringUpdate mstartTime mtime
                                    = Nothing
                        | otherwise = Just mtime
---             hash  <- readFileHash path
             hash <- case lookupFileHashCache hashcache (dir </> file) mtime of
                       Just hash -> return hash
                       Nothing   -> readFileHash path
@@ -854,11 +845,21 @@ lookupFileHashCache hashcache file mtime = do
 -- that the set of files to monitor can change then it's simpler just to throw
 -- away the structure and use a finite map.
 --
-mkFileHashCache :: MonitorStateFileSet -> FileHashCache
-mkFileHashCache (MonitorStateFileSet singlePaths globPaths) =
-                collectAllFileHashes singlePaths
-    `Map.union` collectAllGlobHashes globPaths
+readCacheFileHashes :: (Binary a, Binary b)
+                    => FileMonitor a b -> IO FileHashCache
+readCacheFileHashes monitor =
+    handleDoesNotExist Map.empty $
+    handleErrorCall    Map.empty $ do
+      res <- readCacheFile monitor
+      case res of
+        Left _             -> return Map.empty
+        Right (msfs, _, _) -> return (mkFileHashCache msfs)
   where
+    mkFileHashCache :: MonitorStateFileSet -> FileHashCache
+    mkFileHashCache (MonitorStateFileSet singlePaths globPaths) =
+                    collectAllFileHashes singlePaths
+        `Map.union` collectAllGlobHashes globPaths
+
     collectAllFileHashes =
       Map.mapMaybe $ \fstate -> case fstate of
         MonitorStateFileHashed (Just mtime) hash -> Just (mtime, hash)
