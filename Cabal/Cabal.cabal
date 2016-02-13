@@ -189,7 +189,8 @@ library
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
   if impl(ghc >= 8.0)
-    ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+                 -Wnoncanonical-monadfail-instances
 
   exposed-modules:
     Distribution.Compat.CreatePipe
@@ -295,17 +296,19 @@ test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   other-modules:
+    Test.Laws
+    Test.QuickCheck.Utils
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Simple.Program.Internal
-    UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
+    UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Version
-    Test.Laws
-    Test.QuickCheck.Utils
   main-is: UnitTests.hs
   build-depends:
     base,
+    directory,
     tasty,
     tasty-hunit,
     tasty-quickcheck,

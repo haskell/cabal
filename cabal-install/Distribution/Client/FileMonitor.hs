@@ -62,7 +62,7 @@ import qualified Distribution.Compat.ReadP as ReadP
 import qualified Text.PrettyPrint as Disp
 
 import           Distribution.Client.Glob
-import           Distribution.Simple.Utils (writeFileAtomic)
+import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import           System.FilePath
@@ -821,14 +821,6 @@ checkDirectoryModificationTime dir mtime =
     if mtime == mtime'
       then return Nothing
       else return (Just mtime')
-
--- | Run an IO computation, returning @e@ if it raises a "file
--- does not exist" error.
-handleDoesNotExist :: a -> IO a -> IO a
-handleDoesNotExist e =
-    handleJust
-      (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
-      (\_ -> return e)
 
 -- | Run an IO computation, returning @e@ if there is an 'error'
 -- call. ('ErrorCall')

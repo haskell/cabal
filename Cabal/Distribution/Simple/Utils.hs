@@ -26,6 +26,9 @@ module Distribution.Simple.Utils (
         debugNoWrap, chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
+        -- * exceptions
+        handleDoesNotExist,
+
         -- * running programs
         rawSystemExit,
         rawSystemExitCode,
@@ -348,6 +351,14 @@ chattyTry :: String  -- ^ a description of the action we were attempting
 chattyTry desc action =
   catchIO action $ \exception ->
     putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
+
+-- | Run an IO computation, returning @e@ if it raises a "file
+-- does not exist" error.
+handleDoesNotExist :: a -> IO a -> IO a
+handleDoesNotExist e =
+    Exception.handleJust
+      (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
+      (\_ -> return e)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions
@@ -1085,7 +1096,8 @@ withTempFileEx opts tmpDir template action =
   Exception.bracket
     (openTempFile tmpDir template)
     (\(name, handle) -> do hClose handle
-                           unless (optKeepTempFiles opts) $ removeFile name)
+                           unless (optKeepTempFiles opts) $
+                             handleDoesNotExist () . removeFile $ name)
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -1111,7 +1123,8 @@ withTempDirectoryEx :: Verbosity
 withTempDirectoryEx _verbosity opts targetDir template =
   Exception.bracket
     (createTempDirectory targetDir template)
-    (unless (optKeepTempFiles opts) . removeDirectoryRecursive)
+    (unless (optKeepTempFiles opts)
+     . handleDoesNotExist () . removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files
