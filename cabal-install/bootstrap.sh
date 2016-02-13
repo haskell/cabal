@@ -213,7 +213,7 @@ BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
                        # 0.1.1
 CRYPTOHASH_VER="0.11.6"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
                        # 0.11.*
-ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
+ED25519_VER="0.0.2.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.0.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.?"
                        # >= 0.5 && < 0.6
