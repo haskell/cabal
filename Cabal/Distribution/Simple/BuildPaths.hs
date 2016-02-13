@@ -94,11 +94,11 @@ mkSharedLibName (CompilerId compilerFlavor compilerVersion) lib
 -- * Platform file extensions
 -- ------------------------------------------------------------
 
--- ToDo: This should be determined via autoconf (AC_EXEEXT)
--- | Extension for executable files
+-- | Default extension for executable files on the current platform.
 -- (typically @\"\"@ on Unix and @\"exe\"@ on Windows or OS\/2)
 exeExtension :: String
 exeExtension = case buildOS of
+                   -- TODO: This should be determined via autoconf (AC_EXEEXT)
                    Windows -> "exe"
                    _       -> ""
 
