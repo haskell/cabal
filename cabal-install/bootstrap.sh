@@ -321,7 +321,8 @@ install_pkg () {
 
   if [ ! ${NO_DOCUMENTATION} ]
   then
-    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} > /dev/null 2>&1
+    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} \
+        > /dev/null 2>&1
     then
       echo "Skipping documentation for the ${PKG} package."
     else
@@ -370,8 +371,10 @@ do_network_uri_pkg () {
     do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
   else
     # Use network < 2.6 && network-uri < 2.6
-    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} \
+        ${NETWORK_URI_DUMMY_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} \
+        ${NETWORK_URI_DUMMY_VER_REGEXP}
   fi
 }
 
