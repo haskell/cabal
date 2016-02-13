@@ -530,7 +530,7 @@ expectMonitorChanged root monitor key = do
     MonitorChanged reason -> return reason
     MonitorUnchanged _ _  -> throwIO $ HUnitFailure "expected change"
 
-expectMonitorUnchanged :: (Binary a, Binary b) 
+expectMonitorUnchanged :: (Binary a, Binary b)
                         => RootPath -> FileMonitor a b -> a
                         -> IO (b, [MonitorFilePath])
 expectMonitorUnchanged root monitor key = do
@@ -559,4 +559,3 @@ withFileMonitor action = do
     finally (action (RootPath root) monitor) $ do
       exists <- doesFileExist monitorFile
       when exists $ removeFile monitorFile
-
