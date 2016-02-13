@@ -61,7 +61,7 @@ tests =
 
 -- we rely on file mtimes having a reasonable resolution
 testFileMTimeSanity :: Assertion
-testFileMTimeSanity = do
+testFileMTimeSanity =
   withTempDirectory silent "." "file-status-" $ \dir -> do
     replicateM_ 10 $ do
       writeFile (dir </> "a") "content"
