@@ -6,7 +6,7 @@
 -- input values they depend on have changed.
 --
 module Distribution.Client.FileMonitor (
-  
+
   -- * Declaring files to monitor
   MonitorFilePath(..),
   FilePathGlob(..),
@@ -758,7 +758,7 @@ matchFileGlob root glob0 = go glob0 ""
 
 ------------------------------------------------------------------------------
 -- Utils
--- 
+--
 
 -- | Within the @root@ directory, check if @file@ has its 'ModTime' is
 -- the same as @mtime@, short-circuiting if it is different.
@@ -830,7 +830,7 @@ handleErrorCall e =
 
 ------------------------------------------------------------------------------
 -- Instances
--- 
+--
 
 instance Text FilePathGlob where
   disp (GlobDir  glob pathglob) = disp glob Disp.<> Disp.char '/'
@@ -877,4 +877,3 @@ instance Binary MonitorStateFileSet where
               globPaths   <- get
               return $! MonitorStateFileSet singlePaths globPaths
       else fail "MonitorStateFileSet: wrong version"
-
