@@ -46,6 +46,7 @@ module PackageTests.PackageTester
     , assertOutputContains
     , assertOutputDoesNotContain
     , assertFindInFile
+    , concatOutput
 
     , getPersistBuildConfig
 

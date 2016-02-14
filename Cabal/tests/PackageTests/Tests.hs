@@ -238,8 +238,8 @@ nonSharedLibTests config =
         r <- runExe' "lemon" []
         assertEqual
             ("executable should have linked with the " ++ expect ++ " library")
-            ("foofoomyLibFunc " ++ expect)
-            (concat $ lines (resultOutput r))
+            ("foo foo myLibFunc " ++ expect)
+            (concatOutput (resultOutput r))
 
     tc :: FilePath -> TestM a -> TestTree
     tc = testCase config
