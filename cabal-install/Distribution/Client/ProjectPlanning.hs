@@ -1648,7 +1648,12 @@ defaultSetupDeps platform pkg =
           cabalConstraint   = orLaterVersion (PD.specVersion pkg)
                                 `intersectVersionRanges`
                               earlierVersion cabalCompatMaxVer
-          cabalCompatMaxVer = Version [1,23] []
+        -- TODO/FIXME: turns out that constraining to less than 1.23 causes
+        --             problems with GHC8 as there's too many important packages
+        --             with Custom build-type, for which there wouldn't be any
+        --             install-plan (as GHC8 requires Cabal-1.24+). So let's
+        --             set an implicit upper bound `Cabal < 2` instead.
+          cabalCompatMaxVer = Version [2] []
  
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
