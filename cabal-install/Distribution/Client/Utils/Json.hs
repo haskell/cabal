@@ -126,7 +126,7 @@ encodeObject jvs = ('{':) . go jvs . ('}':)
     go ((l,x):lxs) = encodeString l . (':':) . encodeToShowS x . (',':) . go lxs
 
 encodeString :: String -> ShowS
-encodeString s = ('"':) . showString (escape0 s) . ('"':)
+encodeString str = ('"':) . showString (escape0 str) . ('"':)
   where
     escape0 s
       | not (any needsEscape s) = s
