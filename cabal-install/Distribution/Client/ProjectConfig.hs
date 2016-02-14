@@ -10,27 +10,21 @@ module Distribution.Client.ProjectConfig (
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
     PackageConfig(..),
-    projectConfigWithBuilderRepoContext,
-    projectConfigWithSolverRepoContext,
-    lookupLocalPackageConfig,
-    lookupNonLocalPackageConfig,
 
     -- * Project config files
     findProjectRoot,
     readProjectConfig,
     writeProjectLocalExtraConfig,
     commandLineFlagsToProjectConfig,
-    convertLegacyPerPackageFlags,
-    convertLegacyAllPackageFlags,
-    convertLegacyBuildOnlyFlags,
     convertLegacyCommandLineFlags,
     commandLineFlagsToLegacyProjectConfig,
 
-    -- * solver settings
+    -- * Resolving configuration
+    lookupLocalPackageConfig,
+    projectConfigWithBuilderRepoContext,
+    projectConfigWithSolverRepoContext,
     SolverSettings(..),
     resolveSolverSettings,
-
-    -- * build time settings
     BuildTimeSettings(..),
     resolveBuildTimeSettings,
   ) where
@@ -80,21 +74,19 @@ import Distribution.Verbosity
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-         ( Doc, render, text, vcat, nest, empty, isEmpty )
+         ( render, text, empty )
 import Text.PrettyPrint
-         ( (<+>), ($+$) )
+         ( ($+$) )
 
 import Distribution.ParseUtils
-         ( FieldDescr(..), liftField, Field(..), readFieldsFlat
-         , LineNo, ParseResult(..)
+         ( FieldDescr(..), liftField, ParseResult(..)
          , PError(..), syntaxError, locatedErrorMsg
-         , PWarning(..), warning, showPWarning
+         , PWarning(..), showPWarning
          , simpleField, commaListField )
 import Distribution.Client.ParseUtils
-         ( ppFields )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
-         , OptionField, viewAsFieldDescr, option, reqArg' )
+         , OptionField, option, reqArg' )
 
 import Control.Applicative
 import Control.Monad
@@ -110,178 +102,30 @@ import System.FilePath hiding (combine)
 import System.Directory
 
 
--- | Find the root of this project.
---
--- Searches for an explicit @cabal.project@ file, in the current directory or
--- parent directories. If no project file is found then the current dir is the
--- project root (and the project will use an implicit config).
---
-findProjectRoot :: IO FilePath
-findProjectRoot = do
-
-    curdir  <- getCurrentDirectory
-    homedir <- getHomeDirectory
-
-    -- Search upwards. If we get to the users home dir or the filesystem root,
-    -- then use the current dir
-    let probe dir | isDrive dir || dir == homedir
-                  = return curdir -- implicit project root
-        probe dir = do
-          exists <- doesFileExist (dir </> "cabal.project")
-          if exists
-            then return dir       -- explicit project root
-            else probe (takeDirectory dir)
-
-    probe curdir
-   --TODO: [nice to have] add compat support for old style sandboxes
-
-
--- | Read all the config relevant for a project. This includes the project
--- file if any, plus other global config.
---
-readProjectConfig :: Verbosity -> FilePath
-                  -> Rebuild ProjectConfig
-readProjectConfig verbosity projectRootDir = do
-    global <- readGlobalConfig verbosity
-    local  <- readProjectLocalConfig      verbosity projectRootDir
-    extra  <- readProjectLocalExtraConfig verbosity projectRootDir
-    return (global <> local <> extra)
-
-
--- | Reads an explicit @cabal.project@ file in the given project root dir,
--- or returns the default project config for an implicitly defined project.
---
-readProjectLocalConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalConfig verbosity projectRootDir = do
-  usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
-  if usesExplicitProjectRoot
-    then do
-      monitorFiles [MonitorFileHashed projectFile]
-      liftIO readProjectFile
-    else do
-      monitorFiles [MonitorNonExistentFile projectFile]
-      return defaultImplicitProjectConfig
-
-  where
-    projectFile = projectRootDir </> "cabal.project"
-    readProjectFile =
-          reportParseResult verbosity "project file" projectFile
-        . parseProjectConfig
-      =<< readFile projectFile
-
-    defaultImplicitProjectConfig :: ProjectConfig
-    defaultImplicitProjectConfig =
-      ProjectConfig
-        [ GlobFile (Glob [WildCard, Literal ".cabal"])
-        , GlobDir  (Glob [WildCard]) $
-          GlobFile (Glob [WildCard, Literal ".cabal"])
-        ]
-        mempty mempty mempty mempty
-
-
--- | Reads a @cabal.project.extra@ file in the given project root dir,
--- or returns empty. This file gets written by @cabal configure@, or in
--- principle can be edited manually or by other tools.
---
-readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalExtraConfig verbosity projectRootDir = do
-    hasExtraConfig <- liftIO $ doesFileExist projectExtraConfigFile
-    if hasExtraConfig
-      then do monitorFiles [MonitorFileHashed projectExtraConfigFile]
-              liftIO readProjectExtraConfigFile
-      else do monitorFiles [MonitorNonExistentFile projectExtraConfigFile]
-              return mempty
-  where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
-
-    readProjectExtraConfigFile =
-          reportParseResult verbosity "project extra configuration file"
-                            projectExtraConfigFile
-        . parseProjectConfig
-      =<< readFile projectExtraConfigFile
-
--- | Write a @cabal.project.extra@ file in the given project root dir.
---
-writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
-writeProjectLocalExtraConfig projectRootDir config =
-    writeFile projectExtraConfigFile
-              (showLegacyProjectConfig config)
-  where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
-
-
--- | Read the user's @~/.cabal/config@ file.
---
-readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
-readGlobalConfig verbosity = do
-    config     <- liftIO (loadConfig verbosity mempty)
-    configFile <- liftIO defaultConfigFile
-    monitorFiles [MonitorFileHashed configFile]
-    return (globalConfigToProjectConfig config)
-    --TODO: do this properly, there's several possible locations
-    -- and env vars, and flags for selecting the global config
-
-
-globalConfigToProjectConfig :: SavedConfig
-                            -> ProjectConfig
-globalConfigToProjectConfig
-    SavedConfig {
-      savedGlobalFlags       = globalFlags,
-      savedInstallFlags      = installFlags,
-      savedConfigureFlags    = configFlags,
-      savedConfigureExFlags  = configExFlags,
-      savedUserInstallDirs   = _,
-      savedGlobalInstallDirs = _,
-      savedUploadFlags       = _,
-      savedReportFlags       = _,
-      savedHaddockFlags      = haddockFlags
-    } =
-    mempty {
-      projectConfigShared        = configAllPackages,
-      projectConfigLocalPackages = configLocalPackages,
-      projectConfigBuildOnly     = configBuildOnly
-    }
-  where
-    --TODO: [code cleanup] eliminate use of default*Flags here and specify the
-    -- defaults in the various resolve functions in terms of the new types.
-    configExFlags' = defaultConfigExFlags <> configExFlags
-    installFlags'  = defaultInstallFlags  <> installFlags
-    haddockFlags'  = defaultHaddockFlags  <> haddockFlags
-
-    configLocalPackages = convertLegacyPerPackageFlags
-                            configFlags installFlags' haddockFlags'
-    configAllPackages   = convertLegacyAllPackageFlags
-                            globalFlags configFlags
-                            configExFlags' installFlags'
-    configBuildOnly     = convertLegacyBuildOnlyFlags
-                            globalFlags configFlags
-                            installFlags' haddockFlags'
-
-
--- | Convert configuration from the @cabal configure@ or @cabal build@ command
--- line into a 'ProjectConfig' value that can combined with configuration from
--- other sources.
---
-commandLineFlagsToProjectConfig :: ProjectConfigShared
-                                -> PackageConfig
-                                -> ProjectConfig
-commandLineFlagsToProjectConfig cliConfigAllPackages
-                                cliConfigLocalPackages =
-    mempty {
-      projectConfigShared        = cliConfigAllPackages,
-      projectConfigLocalPackages = cliConfigLocalPackages
-    }
-
-
-
 -------------------------------
 -- Project config types
 --
 
+-- | This type corresponds directly to what can be written in the
+-- @cabal.project@ file. Other sources of configuration can also be injected
+-- into this type, such as the user-wide @~/.cabal/config@ file and the
+-- command line of @cabal configure@ or @cabal build@.
+--
+-- Since it corresponds to the external project file it is an instance of
+-- 'Monoid' and all the fields can be empty. This also means there has to
+-- be a step where we resolve configuration. At a minimum resolving means
+-- applying defaults but it can also mean merging information from multiple
+-- sources. For example for package-specific configuration the project file
+-- can specify configuration that applies to all local packages, and then
+-- additional configuration for a specific package.
+--
+-- Future directions: multiple profiles, conditionals. If we add these
+-- features then the gap between configuration as written in the config file
+-- and resolved settings we actually use will become even bigger.
+--
 data ProjectConfig
    = ProjectConfig {
-       projectConfigPackageGlobs :: [FilePathGlob],
-
+       projectConfigPackageGlobs    :: [FilePathGlob],
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
        projectConfigShared          :: ProjectConfigShared,
        projectConfigLocalPackages   :: PackageConfig,
@@ -289,6 +133,11 @@ data ProjectConfig
      }
   deriving (Eq, Show, Generic)
 
+-- | That part of the project configuration that only affects /how/ we build
+-- and not the /value/ of the things we build. This means this information
+-- does not need to be tracked for changes since it does not affect the
+-- outcome.
+--
 data ProjectConfigBuildOnly
    = ProjectConfigBuildOnly {
        projectConfigVerbosity             :: Flag Verbosity,
@@ -313,6 +162,9 @@ data ProjectConfigBuildOnly
   deriving (Eq, Show, Generic)
 
 
+-- | Project configuration that is shared between all packages in the project.
+-- In particular this includes configuration that affects the solver.
+--
 data ProjectConfigShared
    = ProjectConfigShared {
        projectConfigProgramPaths      :: [(String, FilePath)],
@@ -359,6 +211,10 @@ data ProjectConfigShared
   deriving (Eq, Show, Generic)
 
 
+-- | Project configuration that is specific to each package, that is where we
+-- can in principle have different values for different packages in the same
+-- project.
+--
 data PackageConfig
    = PackageConfig {
        packageConfigDynExe              :: Flag Bool,
@@ -513,7 +369,8 @@ instance Monoid ProjectConfigShared where
   mappend = (<>)
 
 instance Semigroup ProjectConfigShared where
-  a <> b = ProjectConfigShared {
+  a <> b =
+    ProjectConfigShared {
       projectConfigProgramPaths     = combine projectConfigProgramPaths,
       projectConfigProgramArgs      = combine projectConfigProgramArgs,
       projectConfigProgramPathExtra = combine projectConfigProgramPathExtra,
@@ -589,7 +446,8 @@ instance Monoid PackageConfig where
   mappend = (<>)
 
 instance Semigroup PackageConfig where
-  a <> b = PackageConfig {
+  a <> b =
+    PackageConfig {
       packageConfigDynExe              = combine packageConfigDynExe,
       packageConfigProf                = combine packageConfigProf,
       packageConfigProfLib             = combine packageConfigProfLib,
@@ -627,6 +485,14 @@ instance Semigroup PackageConfig where
     where combine field = field a `mappend` field b
 
 
+----------------------------------------
+-- Resolving configuration to settings
+--
+
+-- | Look up a 'PackageConfig' field in the 'ProjectConfig' for a specific
+-- 'PackageName'. This returns the configuration that applies to all local
+-- packages plus any package-specific configuration for this package.
+--
 lookupLocalPackageConfig :: (Semigroup a, Monoid a)
                          => (PackageConfig -> a)
                          -> ProjectConfig
@@ -637,259 +503,6 @@ lookupLocalPackageConfig field ProjectConfig {
                          } pkgname =
     field projectConfigLocalPackages
  <> maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
-
-lookupNonLocalPackageConfig :: Monoid a
-                            => (PackageConfig -> a)
-                            -> ProjectConfig
-                            -> PackageName -> a
-lookupNonLocalPackageConfig field ProjectConfig {
-                              projectConfigSpecificPackage
-                            } pkgname =
-    maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
-
-
-reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
-reportParseResult verbosity _filetype filename (ParseOk warnings x) = do
-    unless (null warnings) $
-      let msg = unlines (map (showPWarning filename) warnings)
-       in warn verbosity msg
-    return x
-reportParseResult _verbosity filetype filename (ParseFailed err) =
-    let (line, msg) = locatedErrorMsg err
-     in die $ "Error parsing " ++ filetype ++ " " ++ filename
-           ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
-
-
-parseProjectConfig :: String -> ParseResult ProjectConfig
-parseProjectConfig content =
-    convertFromLegacyProjectConfig <$>
-      parseLegacyProjectConfig content
-
-
-convertFromLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
-convertFromLegacyProjectConfig
-  (LegacyProjectConfig
-    localPackageGlobs _repoPackages
-    (LegacySharedConfig globalFlags configExFlags installFlags)
-    (LegacyPackageConfig configFlags haddockFlags)
-    specificConfig) =
-
-    ProjectConfig {
-      projectConfigPackageGlobs = localPackageGlobs,
-
-      projectConfigBuildOnly       = configBuildOnly,
-      projectConfigShared          = configAllPackages,
-      projectConfigLocalPackages   = configLocalPackages,
-      projectConfigSpecificPackage = fmap perPackage specificConfig
-    }
-  where
-    configLocalPackages = convertLegacyPerPackageFlags
-                            configFlags installFlags haddockFlags
-    configAllPackages   = convertLegacyAllPackageFlags
-                            globalFlags configFlags
-                            configExFlags installFlags
-    configBuildOnly     = convertLegacyBuildOnlyFlags
-                            globalFlags configFlags
-                            installFlags haddockFlags
-
-    perPackage (LegacyPackageConfig perPkgConfigFlags perPkgHaddockFlags) =
-      convertLegacyPerPackageFlags
-        perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags
-      where
-        perPkgInstallFlags = mempty --TODO
-
-
-commandLineFlagsToLegacyProjectConfig :: GlobalFlags
-                                      -> ConfigFlags  -> ConfigExFlags
-                                      -> InstallFlags -> HaddockFlags
-                                      -> LegacyProjectConfig
-commandLineFlagsToLegacyProjectConfig globalFlags
-                                      configFlags configExFlags
-                                      installFlags haddockFlags =
-    LegacyProjectConfig {
-      legacyLocalPackgeGlobs   = [],
-      legacyRepoPackges        = [],
-      legacySharedConfig = LegacySharedConfig {
-        legacyGlobalFlags      = globalFlags,
-        legacyConfigureExFlags = configExFlags,
-        legacyInstallFlags     = installFlags
-      },
-      legacyLocalConfig = LegacyPackageConfig {
-        legacyConfigureFlags   = configFlags,
-        legacyHaddockFlags     = haddockFlags
-      },
-      legacySpecificConfig = Map.empty
-    }
-
-convertLegacyCommandLineFlags :: GlobalFlags
-                              -> ConfigFlags  -> ConfigExFlags
-                              -> InstallFlags -> HaddockFlags
-                              -> ( ( ProjectConfigShared
-                                   , PackageConfig
-                                   )
-                                 , ProjectConfigBuildOnly
-                                 )
-convertLegacyCommandLineFlags globalFlags configFlags configExFlags
-                              installFlags haddockFlags =
-    ( ( configAllPackages
-      , configLocalPackages
-      )
-    , configBuildOnly
-    )
-  where
-    configLocalPackages = convertLegacyPerPackageFlags
-                            configFlags installFlags haddockFlags
-    configAllPackages   = convertLegacyAllPackageFlags
-                            globalFlags configFlags
-                            configExFlags installFlags
-    configBuildOnly     = convertLegacyBuildOnlyFlags
-                            globalFlags configFlags
-                            installFlags haddockFlags
-
-
-convertLegacyAllPackageFlags :: GlobalFlags -> ConfigFlags
-                             -> ConfigExFlags -> InstallFlags
-                             -> ProjectConfigShared
-convertLegacyAllPackageFlags globalFlags configFlags configExFlags installFlags =
-    ProjectConfigShared{..}
-  where
-    GlobalFlags {
-      globalConfigFile        = _, -- TODO: [required feature]
-      globalSandboxConfigFile = _, -- ??
-      globalRemoteRepos       = projectConfigRemoteRepos,
-      globalLocalRepos        = projectConfigLocalRepos
-    } = globalFlags
-
-    ConfigFlags {
-      configProgramPaths        = projectConfigProgramPaths,
-      configProgramArgs         = projectConfigProgramArgs,
-      configProgramPathExtra    = projectConfigProgramPathExtra,
-      configHcFlavor            = projectConfigHcFlavor,
-      configHcPath              = projectConfigHcPath,
-      configHcPkg               = projectConfigHcPkg,
-      configVanillaLib          = projectConfigVanillaLib,
-      configSharedLib           = projectConfigSharedLib,
-      configInstallDirs         = projectConfigInstallDirs,
-      configUserInstall         = projectConfigUserInstall,
-      configPackageDBs          = projectConfigPackageDBs,
-      configConfigurationsFlags = projectConfigFlagAssignment,
-      configRelocatable         = projectConfigRelocatable
-    } = configFlags
-
-    ConfigExFlags {
-      configCabalVersion        = projectConfigCabalVersion,
-      configExConstraints       = projectConfigConstraints,
-      configPreferences         = projectConfigPreferences,
-      configSolver              = projectConfigSolver,
-      configAllowNewer          = projectConfigAllowNewer
-    } = configExFlags
-
-    InstallFlags {
-      installHaddockIndex       = projectConfigHaddockIndex,
-      installReinstall          = projectConfigReinstall,
-      installAvoidReinstalls    = projectConfigAvoidReinstalls,
-      installOverrideReinstall  = projectConfigOverrideReinstall,
-      installMaxBackjumps       = projectConfigMaxBackjumps,
-      installUpgradeDeps        = projectConfigUpgradeDeps,
-      installReorderGoals       = projectConfigReorderGoals,
-      installIndependentGoals   = projectConfigIndependentGoals,
-      installShadowPkgs         = projectConfigShadowPkgs,
-      installStrongFlags        = projectConfigStrongFlags
-    } = installFlags
-
-
-
-convertLegacyPerPackageFlags :: ConfigFlags -> InstallFlags -> HaddockFlags
-                             -> PackageConfig
-convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
-    PackageConfig{..}
-  where
-    ConfigFlags {
-      configVanillaLib          = _packageConfigVanillaLib, --TODO: hmm, not per pkg?
-      configProfLib             = packageConfigProfLib,
-      configSharedLib           = _packageConfigSharedLib, --TODO hmm, not per pkg?
-      configDynExe              = packageConfigDynExe,
-      configProfExe             = packageConfigProfExe,
-      configProf                = packageConfigProf,
-      configProfDetail          = packageConfigProfDetail,
-      configProfLibDetail       = packageConfigProfLibDetail,
-      configConfigureArgs       = packageConfigConfigureArgs,
-      configOptimization        = packageConfigOptimization,
-      configProgPrefix          = packageConfigProgPrefix,
-      configProgSuffix          = packageConfigProgSuffix,
-      configGHCiLib             = packageConfigGHCiLib,
-      configSplitObjs           = packageConfigSplitObjs,
-      configStripExes           = packageConfigStripExes,
-      configStripLibs           = packageConfigStripLibs,
-      configExtraLibDirs        = packageConfigExtraLibDirs,
-      configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
-      configConfigurationsFlags = _projectConfigFlagAssignment, --TODO: should be per pkg
-      configTests               = packageConfigTests,
-      configBenchmarks          = packageConfigBenchmarks,
-      configCoverage            = coverage,
-      configLibCoverage         = libcoverage, --deprecated
-      configDebugInfo           = packageConfigDebugInfo
-    } = configFlags
-
-    packageConfigCoverage       = coverage <> libcoverage
-
-    InstallFlags {
-      installDocumentation      = packageConfigDocumentation,
-      installRunTests           = packageConfigRunTests
-    } = installFlags
-
-    HaddockFlags {
-      haddockHoogle             = packageConfigHaddockHoogle,
-      haddockHtml               = packageConfigHaddockHtml,
-      haddockHtmlLocation       = packageConfigHaddockHtmlLocation,
-      haddockExecutables        = packageConfigHaddockExecutables,
-      haddockTestSuites         = packageConfigHaddockTestSuites,
-      haddockBenchmarks         = packageConfigHaddockBenchmarks,
-      haddockInternal           = packageConfigHaddockInternal,
-      haddockCss                = packageConfigHaddockCss,
-      haddockHscolour           = packageConfigHaddockHscolour,
-      haddockHscolourCss        = packageConfigHaddockHscolourCss,
-      haddockContents           = packageConfigHaddockContents
-    } = haddockFlags
-
-
-convertLegacyBuildOnlyFlags :: GlobalFlags -> ConfigFlags
-                              -> InstallFlags -> HaddockFlags
-                              -> ProjectConfigBuildOnly
-convertLegacyBuildOnlyFlags globalFlags configFlags
-                              installFlags haddockFlags =
-    ProjectConfigBuildOnly{..}
-  where
-    GlobalFlags {
-      globalCacheDir          = projectConfigCacheDir,
-      globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = projectConfigWorldFile,
-      globalHttpTransport     = projectConfigHttpTransport,
-      globalIgnoreExpiry      = projectConfigIgnoreExpiry
-    } = globalFlags
-
-    ConfigFlags {
-      configVerbosity           = projectConfigVerbosity
-    } = configFlags
-
-    InstallFlags {
-      installDryRun             = projectConfigDryRun,
-      installOnly               = _,
-      installOnlyDeps           = projectConfigOnlyDeps,
-      installRootCmd            = projectConfigRootCmd,
-      installSummaryFile        = projectConfigSummaryFile,
-      installLogFile            = projectConfigLogFile,
-      installBuildReports       = projectConfigBuildReports,
-      installReportPlanningFailure = projectConfigReportPlanningFailure,
-      installSymlinkBinDir      = projectConfigSymlinkBinDir,
-      installOneShot            = projectConfigOneShot,
-      installNumJobs            = projectConfigNumJobs,
-      installOfflineMode        = projectConfigOfflineMode
-    } = installFlags
-
-    HaddockFlags {
-      haddockKeepTempFiles      = projectConfigKeepTempFiles --TODO: this ought to live elsewhere
-    } = haddockFlags
 
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
@@ -928,6 +541,15 @@ projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
 
+
+-- | Resolved configuration for the solver. The idea is that this is easier to
+-- use than the raw configuration because in the raw configuration everything
+-- is optional (monoidial). In the 'BuildTimeSettings' every field is filled
+-- in, if only with the defaults.
+--
+-- Use 'resolveSolverSettings' to make one from the project config (by
+-- applying defaults etc).
+--
 data SolverSettings
    = SolverSettings {
        solverSettingRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
@@ -955,6 +577,9 @@ data SolverSettings
 instance Binary SolverSettings
 
 
+-- | Resolve the project configuration, with all its optional fields, into
+-- 'SolverSettings' with no optional fields (by applying defaults).
+--
 resolveSolverSettings :: ProjectConfigShared -> SolverSettings
 resolveSolverSettings projectConfig =
     SolverSettings {..}
@@ -996,6 +621,15 @@ resolveSolverSettings projectConfig =
     }
 
 
+-- | Resolved configuration for things that affect how we build and not the
+-- value of the things we build. The idea is that this is easier to use than
+-- the raw configuration because in the raw configuration everything is
+-- optional (monoidial). In the 'BuildTimeSettings' every field is filled in,
+-- if only with the defaults.
+--
+-- Use 'resolveBuildTimeSettings' to make one from the project config (by
+-- applying defaults etc).
+--
 data BuildTimeSettings
    = BuildTimeSettings {
        buildSettingDryRun                :: Bool,
@@ -1021,6 +655,9 @@ data BuildTimeSettings
      }
 
 
+-- | Resolve the project configuration, with all its optional fields, into
+-- 'BuildTimeSettings' with no optional fields (by applying defaults).
+--
 resolveBuildTimeSettings :: Verbosity
                          -> CabalDirLayout
                          -> ProjectConfigShared
@@ -1043,7 +680,7 @@ resolveBuildTimeSettings verbosity
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
-    --buildSettingLogFile       -- defined below, more complicated
+    --buildSettingLogFile       -- defined below, more complicated 
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
@@ -1123,12 +760,173 @@ resolveBuildTimeSettings verbosity
       | otherwise                                   = False
 
 
-------------------------------------
--- Reading the project config file
+---------------------------------------------
+-- Reading and writing project config files
 --
 
--- But for the moment we use the old types and will convert later.
+-- | Find the root of this project.
+--
+-- Searches for an explicit @cabal.project@ file, in the current directory or
+-- parent directories. If no project file is found then the current dir is the
+-- project root (and the project will use an implicit config).
+--
+findProjectRoot :: IO FilePath
+findProjectRoot = do
 
+    curdir  <- getCurrentDirectory
+    homedir <- getHomeDirectory
+
+    -- Search upwards. If we get to the users home dir or the filesystem root,
+    -- then use the current dir
+    let probe dir | isDrive dir || dir == homedir
+                  = return curdir -- implicit project root
+        probe dir = do
+          exists <- doesFileExist (dir </> "cabal.project")
+          if exists
+            then return dir       -- explicit project root
+            else probe (takeDirectory dir)
+
+    probe curdir
+   --TODO: [nice to have] add compat support for old style sandboxes
+
+
+-- | Read all the config relevant for a project. This includes the project
+-- file if any, plus other global config.
+--
+readProjectConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
+readProjectConfig verbosity projectRootDir = do
+    global <- readGlobalConfig verbosity
+    local  <- readProjectLocalConfig      verbosity projectRootDir
+    extra  <- readProjectLocalExtraConfig verbosity projectRootDir
+    return (global <> local <> extra)
+
+
+-- | Reads an explicit @cabal.project@ file in the given project root dir,
+-- or returns the default project config for an implicitly defined project.
+--
+readProjectLocalConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
+readProjectLocalConfig verbosity projectRootDir = do
+  usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
+  if usesExplicitProjectRoot
+    then do
+      monitorFiles [MonitorFileHashed projectFile]
+      liftIO readProjectFile
+    else do
+      monitorFiles [MonitorNonExistentFile projectFile]
+      return defaultImplicitProjectConfig
+
+  where
+    projectFile = projectRootDir </> "cabal.project"
+    readProjectFile =
+          reportParseResult verbosity "project file" projectFile
+        . parseProjectConfig
+      =<< readFile projectFile
+
+    defaultImplicitProjectConfig :: ProjectConfig
+    defaultImplicitProjectConfig =
+      ProjectConfig
+        [ GlobFile (Glob [WildCard, Literal ".cabal"])
+        , GlobDir  (Glob [WildCard]) $
+          GlobFile (Glob [WildCard, Literal ".cabal"])
+        ]
+        mempty mempty mempty mempty
+
+
+-- | Reads a @cabal.project.extra@ file in the given project root dir,
+-- or returns empty. This file gets written by @cabal configure@, or in
+-- principle can be edited manually or by other tools.
+--
+readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
+readProjectLocalExtraConfig verbosity projectRootDir = do
+    hasExtraConfig <- liftIO $ doesFileExist projectExtraConfigFile
+    if hasExtraConfig
+      then do monitorFiles [MonitorFileHashed projectExtraConfigFile]
+              liftIO readProjectExtraConfigFile
+      else do monitorFiles [MonitorNonExistentFile projectExtraConfigFile]
+              return mempty
+  where
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+
+    readProjectExtraConfigFile =
+          reportParseResult verbosity "project extra configuration file"
+                            projectExtraConfigFile
+        . parseProjectConfig
+      =<< readFile projectExtraConfigFile
+
+
+-- | Parse the 'ProjectConfig' format.
+--
+-- For the moment this is implemented in terms of parsers for legacy
+-- configuration types, plus a conversion.
+--
+parseProjectConfig :: String -> ParseResult ProjectConfig
+parseProjectConfig content =
+    convertLegacyProjectConfig <$>
+      parseLegacyProjectConfig content
+
+
+-- | Write a @cabal.project.extra@ file in the given project root dir.
+--
+writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
+writeProjectLocalExtraConfig projectRootDir config =
+    writeFile projectExtraConfigFile
+              (showLegacyProjectConfig config)
+  where
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+
+
+-- | Read the user's @~/.cabal/config@ file.
+--
+readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
+readGlobalConfig verbosity = do
+    config     <- liftIO (loadConfig verbosity mempty)
+    configFile <- liftIO defaultConfigFile
+    monitorFiles [MonitorFileHashed configFile]
+    return (convertLegacyGlobalConfig config)
+    --TODO: do this properly, there's several possible locations
+    -- and env vars, and flags for selecting the global config
+
+
+-- | Convert configuration from the @cabal configure@ or @cabal build@ command
+-- line into a 'ProjectConfig' value that can combined with configuration from
+-- other sources.
+--
+commandLineFlagsToProjectConfig :: ProjectConfigShared
+                                -> PackageConfig
+                                -> ProjectConfig
+commandLineFlagsToProjectConfig cliConfigAllPackages
+                                cliConfigLocalPackages =
+    mempty {
+      projectConfigShared        = cliConfigAllPackages,
+      projectConfigLocalPackages = cliConfigLocalPackages
+    }
+
+
+reportParseResult :: Verbosity -> String -> FilePath -> ParseResult a -> IO a
+reportParseResult verbosity _filetype filename (ParseOk warnings x) = do
+    unless (null warnings) $
+      let msg = unlines (map (showPWarning filename) warnings)
+       in warn verbosity msg
+    return x
+reportParseResult _verbosity filetype filename (ParseFailed err) =
+    let (line, msg) = locatedErrorMsg err
+     in die $ "Error parsing " ++ filetype ++ " " ++ filename
+           ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+
+
+------------------------------------------------------------------
+-- Representing the project config file in terms of legacy types
+--
+
+-- | We already have parsers\/pretty-printers for almost all the fields in the
+-- project config file, but they're in terms of the types used for the command
+-- line flags for Setup.hs or cabal commands. We don't want to redefine them
+-- all, at least not yet so for the moment we use the parsers at the old types
+-- and use conversion functions.
+--
+-- Ultimately if\/when this project-based approach becomes the default then we
+-- can redefine the parsers directly for the new types.
+--
 data LegacyProjectConfig = LegacyProjectConfig {
        -- local packages, including dirs, .cabal files and tarballs
        legacyLocalPackgeGlobs  :: [FilePathGlob],
@@ -1141,8 +939,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
      }
 
 instance Monoid LegacyProjectConfig where
-  mempty =
-    LegacyProjectConfig mempty mempty mempty mempty mempty
+  mempty  = LegacyProjectConfig mempty mempty mempty mempty mempty
   mappend = (<>)
 
 instance Semigroup LegacyProjectConfig where
@@ -1162,8 +959,7 @@ data LegacyPackageConfig = LegacyPackageConfig {
      }
 
 instance Monoid LegacyPackageConfig where
-  mempty =
-    LegacyPackageConfig mempty mempty
+  mempty  = LegacyPackageConfig mempty mempty
   mappend = (<>)
 
 instance Semigroup LegacyPackageConfig where
@@ -1181,8 +977,7 @@ data LegacySharedConfig = LegacySharedConfig {
      }
 
 instance Monoid LegacySharedConfig where
-  mempty =
-    LegacySharedConfig mempty mempty mempty
+  mempty  = LegacySharedConfig mempty mempty mempty
   mappend = (<>)
 
 instance Semigroup LegacySharedConfig where
@@ -1193,6 +988,302 @@ instance Semigroup LegacySharedConfig where
       legacyInstallFlags       = combine legacyInstallFlags
     }
     where combine field = field a `mappend` field b
+
+
+------------------------------------------------------------------
+-- Converting from and to the legacy types
+--
+
+-- | Convert from the types currently used for the user-wide @~/.cabal/config@
+-- file into the 'ProjectConfig' type.
+--
+-- Only a subset of the 'ProjectConfig' can be represented in the user-wide
+-- config. In particular it does not include packages that are in the project,
+-- and it also doesn't support package-specific configuration (only
+-- configuration that applies to all packages).
+--
+convertLegacyGlobalConfig :: SavedConfig -> ProjectConfig
+convertLegacyGlobalConfig
+    SavedConfig {
+      savedGlobalFlags       = globalFlags,
+      savedInstallFlags      = installFlags,
+      savedConfigureFlags    = configFlags,
+      savedConfigureExFlags  = configExFlags,
+      savedUserInstallDirs   = _,
+      savedGlobalInstallDirs = _,
+      savedUploadFlags       = _,
+      savedReportFlags       = _,
+      savedHaddockFlags      = haddockFlags
+    } =
+    mempty {
+      projectConfigShared        = configAllPackages,
+      projectConfigLocalPackages = configLocalPackages,
+      projectConfigBuildOnly     = configBuildOnly
+    }
+  where
+    --TODO: [code cleanup] eliminate use of default*Flags here and specify the
+    -- defaults in the various resolve functions in terms of the new types.
+    configExFlags' = defaultConfigExFlags <> configExFlags
+    installFlags'  = defaultInstallFlags  <> installFlags
+    haddockFlags'  = defaultHaddockFlags  <> haddockFlags
+
+    configLocalPackages = convertLegacyPerPackageFlags
+                            configFlags installFlags' haddockFlags'
+    configAllPackages   = convertLegacyAllPackageFlags
+                            globalFlags configFlags
+                            configExFlags' installFlags'
+    configBuildOnly     = convertLegacyBuildOnlyFlags
+                            globalFlags configFlags
+                            installFlags' haddockFlags'
+
+
+-- | Convert the project config from the legacy types to the 'ProjectConfig'
+-- and associated types. See 'LegacyProjectConfig' for an explanation of the
+-- approach.
+--
+convertLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
+convertLegacyProjectConfig
+  (LegacyProjectConfig
+    localPackageGlobs _repoPackages
+    (LegacySharedConfig globalFlags configExFlags installFlags)
+    (LegacyPackageConfig configFlags haddockFlags)
+    specificConfig) =
+
+    ProjectConfig {
+      projectConfigPackageGlobs = localPackageGlobs,
+
+      projectConfigBuildOnly       = configBuildOnly,
+      projectConfigShared          = configAllPackages,
+      projectConfigLocalPackages   = configLocalPackages,
+      projectConfigSpecificPackage = fmap perPackage specificConfig
+    }
+  where
+    configLocalPackages = convertLegacyPerPackageFlags
+                            configFlags installFlags haddockFlags
+    configAllPackages   = convertLegacyAllPackageFlags
+                            globalFlags configFlags
+                            configExFlags installFlags
+    configBuildOnly     = convertLegacyBuildOnlyFlags
+                            globalFlags configFlags
+                            installFlags haddockFlags
+
+    perPackage (LegacyPackageConfig perPkgConfigFlags perPkgHaddockFlags) =
+      convertLegacyPerPackageFlags
+        perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags
+      where
+        perPkgInstallFlags = mempty --TODO
+
+
+--TODO: eliminate, add ProjectConfig -> LegacyProjectConfig and use
+-- convertLegacyCommandLineFlags
+commandLineFlagsToLegacyProjectConfig :: GlobalFlags
+                                      -> ConfigFlags  -> ConfigExFlags
+                                      -> InstallFlags -> HaddockFlags
+                                      -> LegacyProjectConfig
+commandLineFlagsToLegacyProjectConfig globalFlags
+                                      configFlags configExFlags
+                                      installFlags haddockFlags =
+    LegacyProjectConfig {
+      legacyLocalPackgeGlobs   = [],
+      legacyRepoPackges        = [],
+      legacySharedConfig = LegacySharedConfig {
+        legacyGlobalFlags      = globalFlags,
+        legacyConfigureExFlags = configExFlags,
+        legacyInstallFlags     = installFlags
+      },
+      legacyLocalConfig = LegacyPackageConfig {
+        legacyConfigureFlags   = configFlags,
+        legacyHaddockFlags     = haddockFlags
+      },
+      legacySpecificConfig = Map.empty
+    }
+
+--TODO: return ProjectConfig instead
+convertLegacyCommandLineFlags :: GlobalFlags
+                              -> ConfigFlags  -> ConfigExFlags
+                              -> InstallFlags -> HaddockFlags
+                              -> ( ( ProjectConfigShared
+                                   , PackageConfig
+                                   )
+                                 , ProjectConfigBuildOnly
+                                 )
+convertLegacyCommandLineFlags globalFlags configFlags configExFlags
+                              installFlags haddockFlags =
+    ( ( configAllPackages
+      , configLocalPackages
+      )
+    , configBuildOnly
+    )
+  where
+    configLocalPackages = convertLegacyPerPackageFlags
+                            configFlags installFlags haddockFlags
+    configAllPackages   = convertLegacyAllPackageFlags
+                            globalFlags configFlags
+                            configExFlags installFlags
+    configBuildOnly     = convertLegacyBuildOnlyFlags
+                            globalFlags configFlags
+                            installFlags haddockFlags
+
+
+-- | Helper used by other conversion functions that returns the
+-- 'ProjectConfigShared' subset of the 'ProjectConfig'.
+--
+convertLegacyAllPackageFlags :: GlobalFlags -> ConfigFlags
+                             -> ConfigExFlags -> InstallFlags
+                             -> ProjectConfigShared
+convertLegacyAllPackageFlags globalFlags configFlags
+                             configExFlags installFlags =
+    ProjectConfigShared{..}
+  where
+    GlobalFlags {
+      globalConfigFile        = _, -- TODO: [required feature]
+      globalSandboxConfigFile = _, -- ??
+      globalRemoteRepos       = projectConfigRemoteRepos,
+      globalLocalRepos        = projectConfigLocalRepos
+    } = globalFlags
+
+    ConfigFlags {
+      configProgramPaths        = projectConfigProgramPaths,
+      configProgramArgs         = projectConfigProgramArgs,
+      configProgramPathExtra    = projectConfigProgramPathExtra,
+      configHcFlavor            = projectConfigHcFlavor,
+      configHcPath              = projectConfigHcPath,
+      configHcPkg               = projectConfigHcPkg,
+      configVanillaLib          = projectConfigVanillaLib,
+      configSharedLib           = projectConfigSharedLib,
+      configInstallDirs         = projectConfigInstallDirs,
+      configUserInstall         = projectConfigUserInstall,
+      configPackageDBs          = projectConfigPackageDBs,
+      configConfigurationsFlags = projectConfigFlagAssignment,
+      configRelocatable         = projectConfigRelocatable
+    } = configFlags
+
+    ConfigExFlags {
+      configCabalVersion        = projectConfigCabalVersion,
+      configExConstraints       = projectConfigConstraints,
+      configPreferences         = projectConfigPreferences,
+      configSolver              = projectConfigSolver,
+      configAllowNewer          = projectConfigAllowNewer
+    } = configExFlags
+
+    InstallFlags {
+      installHaddockIndex       = projectConfigHaddockIndex,
+      installReinstall          = projectConfigReinstall,
+      installAvoidReinstalls    = projectConfigAvoidReinstalls,
+      installOverrideReinstall  = projectConfigOverrideReinstall,
+      installMaxBackjumps       = projectConfigMaxBackjumps,
+      installUpgradeDeps        = projectConfigUpgradeDeps,
+      installReorderGoals       = projectConfigReorderGoals,
+      installIndependentGoals   = projectConfigIndependentGoals,
+      installShadowPkgs         = projectConfigShadowPkgs,
+      installStrongFlags        = projectConfigStrongFlags
+    } = installFlags
+
+
+
+-- | Helper used by other conversion functions that returns the
+-- 'PackageConfig' subset of the 'ProjectConfig'.
+--
+convertLegacyPerPackageFlags :: ConfigFlags -> InstallFlags -> HaddockFlags
+                             -> PackageConfig
+convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
+    PackageConfig{..}
+  where
+    ConfigFlags {
+      configVanillaLib          = _packageConfigVanillaLib, --TODO: hmm, not per pkg?
+      configProfLib             = packageConfigProfLib,
+      configSharedLib           = _packageConfigSharedLib, --TODO hmm, not per pkg?
+      configDynExe              = packageConfigDynExe,
+      configProfExe             = packageConfigProfExe,
+      configProf                = packageConfigProf,
+      configProfDetail          = packageConfigProfDetail,
+      configProfLibDetail       = packageConfigProfLibDetail,
+      configConfigureArgs       = packageConfigConfigureArgs,
+      configOptimization        = packageConfigOptimization,
+      configProgPrefix          = packageConfigProgPrefix,
+      configProgSuffix          = packageConfigProgSuffix,
+      configGHCiLib             = packageConfigGHCiLib,
+      configSplitObjs           = packageConfigSplitObjs,
+      configStripExes           = packageConfigStripExes,
+      configStripLibs           = packageConfigStripLibs,
+      configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
+      configConfigurationsFlags = _projectConfigFlagAssignment, --TODO: should be per pkg
+      configTests               = packageConfigTests,
+      configBenchmarks          = packageConfigBenchmarks,
+      configCoverage            = coverage,
+      configLibCoverage         = libcoverage, --deprecated
+      configDebugInfo           = packageConfigDebugInfo
+    } = configFlags
+
+    packageConfigCoverage       = coverage <> libcoverage
+
+    InstallFlags {
+      installDocumentation      = packageConfigDocumentation,
+      installRunTests           = packageConfigRunTests
+    } = installFlags
+
+    HaddockFlags {
+      haddockHoogle             = packageConfigHaddockHoogle,
+      haddockHtml               = packageConfigHaddockHtml,
+      haddockHtmlLocation       = packageConfigHaddockHtmlLocation,
+      haddockExecutables        = packageConfigHaddockExecutables,
+      haddockTestSuites         = packageConfigHaddockTestSuites,
+      haddockBenchmarks         = packageConfigHaddockBenchmarks,
+      haddockInternal           = packageConfigHaddockInternal,
+      haddockCss                = packageConfigHaddockCss,
+      haddockHscolour           = packageConfigHaddockHscolour,
+      haddockHscolourCss        = packageConfigHaddockHscolourCss,
+      haddockContents           = packageConfigHaddockContents
+    } = haddockFlags
+
+
+
+-- | Helper used by other conversion functions that returns the
+-- 'ProjectConfigBuildOnly' subset of the 'ProjectConfig'.
+--
+convertLegacyBuildOnlyFlags :: GlobalFlags -> ConfigFlags
+                            -> InstallFlags -> HaddockFlags
+                            -> ProjectConfigBuildOnly
+convertLegacyBuildOnlyFlags globalFlags configFlags
+                              installFlags haddockFlags =
+    ProjectConfigBuildOnly{..}
+  where
+    GlobalFlags {
+      globalCacheDir          = projectConfigCacheDir,
+      globalLogsDir           = projectConfigLogsDir,
+      globalWorldFile         = projectConfigWorldFile,
+      globalHttpTransport     = projectConfigHttpTransport,
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry
+    } = globalFlags
+
+    ConfigFlags {
+      configVerbosity           = projectConfigVerbosity
+    } = configFlags
+
+    InstallFlags {
+      installDryRun             = projectConfigDryRun,
+      installOnly               = _,
+      installOnlyDeps           = projectConfigOnlyDeps,
+      installRootCmd            = projectConfigRootCmd,
+      installSummaryFile        = projectConfigSummaryFile,
+      installLogFile            = projectConfigLogFile,
+      installBuildReports       = projectConfigBuildReports,
+      installReportPlanningFailure = projectConfigReportPlanningFailure,
+      installSymlinkBinDir      = projectConfigSymlinkBinDir,
+      installOneShot            = projectConfigOneShot,
+      installNumJobs            = projectConfigNumJobs,
+      installOfflineMode        = projectConfigOfflineMode
+    } = installFlags
+
+    HaddockFlags {
+      haddockKeepTempFiles      = projectConfigKeepTempFiles --TODO: this ought to live elsewhere
+    } = haddockFlags
+
+
+------------------------------------------------
+-- Parsing and showing the project config file
+--
 
 parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig =
@@ -1493,98 +1584,3 @@ programConfigurationOptions progConf showOrParseArgs get set =
     escape arg | any isSpace arg = "\"" ++ arg ++ "\""
                | otherwise       = arg
 
-
-liftFields :: (b -> a)
-           -> (a -> b -> b)
-           -> [FieldDescr a]
-           -> [FieldDescr b]
-liftFields get set = map (liftField get set)
-
-
-filterFields :: [String] -> [FieldDescr a] -> [FieldDescr a]
-filterFields includeFields = filter ((`elem` includeFields) . fieldName)
-
-mapFieldNames :: (String -> String) -> [FieldDescr a] -> [FieldDescr a]
-mapFieldNames mangleName =
-    map (\descr -> descr { fieldName = mangleName (fieldName descr) })
-
-commandOptionsToFields :: [OptionField a] -> [FieldDescr a]
-commandOptionsToFields = map viewAsFieldDescr
-
-
-data SectionDescr a = forall b. Monoid b => SectionDescr {
-       sectionName        :: String,
-       sectionFields      :: [FieldDescr b],
-       sectionSubsections :: [SectionDescr b],
-       sectionGet         :: a -> [(String, b)],
-       sectionSet         :: LineNo -> String -> b -> a -> ParseResult a
-     }
-
-liftSection :: (b -> a)
-            -> (a -> b -> b)
-            -> SectionDescr a
-            -> SectionDescr b
-liftSection get' set' (SectionDescr name fields sections get set) =
-    let sectionGet' = get . get'
-        sectionSet' lineno param x y = do x' <- set lineno param x (get' y)
-                                          return (set' x' y)
-
-     in SectionDescr name fields sections sectionGet' sectionSet'
-
-parseConfig :: Monoid a => [FieldDescr a] -> [SectionDescr a]
-            -> String -> ParseResult a
-parseConfig fields sections str =
-    accumFieldsAndSections fields sections =<< readFieldsFlat str
-
-
-accumFieldsAndSections :: Monoid a => [FieldDescr a] -> [SectionDescr a]
-              -> [Field] -> ParseResult a
-accumFieldsAndSections fieldDescrs sectionDescrs =
-    foldM accumField mempty
-  where
-    fieldMap   = Map.fromList [ (fieldName   f, f) | f <- fieldDescrs   ]
-    sectionMap = Map.fromList [ (sectionName s, s) | s <- sectionDescrs ]
-
-    accumField a (F line name value) =
-      case Map.lookup name fieldMap of
-        Just (FieldDescr _ _ set) -> set line value a
-        Nothing -> do
-          warning $ "Unrecognized field '" ++ name
-                 ++ "' on line " ++ show line
-          return a
-
-    accumField a (Section line name param fields) =
-      case Map.lookup name sectionMap of
-        Just (SectionDescr _ fieldDescrs' sectionDescrs' _ set) -> do
-          b <- accumFieldsAndSections fieldDescrs' sectionDescrs' fields
-          set line param b a
-        Nothing -> do
-          warning $ "Unrecognized section '" ++ name
-                 ++ "' on line " ++ show line
-          return a
-
-    accumField _ (IfBlock {}) = error "accumFieldsAndSections: impossible"
-
-showConfig :: [FieldDescr a] -> [SectionDescr a] -> a -> Disp.Doc
-showConfig fields sections val =
-      ppFields fields Nothing val
-        $+$
-      Disp.vcat
-      [ Disp.text "" $+$ sectionDoc
-      | SectionDescr {
-          sectionName, sectionGet,
-          sectionFields, sectionSubsections
-        } <- sections
-      , (param, x) <- sectionGet val
-      , let sectionDoc = ppSection' sectionName param sectionFields sectionSubsections x
-      , not (Disp.isEmpty sectionDoc) ]
-
-ppSection' :: String -> String -> [FieldDescr a] -> [SectionDescr a] -> a -> Disp.Doc
-ppSection' name arg fields sections cur
-  | Disp.isEmpty fieldsDoc = Disp.empty
-  | otherwise              = Disp.text name <+> argDoc
-                             $+$ (Disp.nest 2 fieldsDoc)
-  where
-    fieldsDoc = showConfig fields sections cur
-    argDoc | arg == "" = Disp.empty
-           | otherwise = Disp.text arg
