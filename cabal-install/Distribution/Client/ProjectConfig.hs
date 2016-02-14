@@ -29,7 +29,7 @@ module Distribution.Client.ProjectConfig (
 
     -- * build time settings
     BuildTimeSettings(..),
-    resolveBuildTimeSettings,    
+    resolveBuildTimeSettings,
   ) where
 
 import Distribution.Client.RebuildMonad
@@ -96,11 +96,11 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Data.Maybe
-import Data.Monoid
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
 import Distribution.Compat.Binary (Binary)
+import Distribution.Compat.Semigroup
 import GHC.Generics (Generic)
 import System.FilePath hiding (combine)
 import System.Directory
@@ -407,7 +407,10 @@ instance Monoid ProjectConfig where
       projectConfigLocalPackages   = mempty,
       projectConfigSpecificPackage = mempty
     }
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup ProjectConfig where
+  a <> b =
     ProjectConfig {
       projectConfigPackageGlobs    = combine projectConfigPackageGlobs,
       projectConfigBuildOnly       = combine projectConfigBuildOnly,
@@ -420,7 +423,7 @@ instance Monoid ProjectConfig where
 
 
 instance Monoid ProjectConfigBuildOnly where
-  mempty = 
+  mempty =
     ProjectConfigBuildOnly {
       projectConfigVerbosity             = mempty,
       projectConfigDryRun                = mempty,
@@ -441,7 +444,10 @@ instance Monoid ProjectConfigBuildOnly where
       projectConfigWorldFile             = mempty,
       projectConfigRootCmd               = mempty
     }
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup ProjectConfigBuildOnly where
+  a <> b =
     ProjectConfigBuildOnly {
       projectConfigVerbosity             = combine projectConfigVerbosity,
       projectConfigDryRun                = combine projectConfigDryRun,
@@ -466,7 +472,7 @@ instance Monoid ProjectConfigBuildOnly where
 
 
 instance Monoid ProjectConfigSolver where
-  mempty = 
+  mempty =
     ProjectConfigSolver {
       projectConfigSolverConstraints       = mempty,
       projectConfigSolverPreferences       = mempty,
@@ -486,7 +492,10 @@ instance Monoid ProjectConfigSolver where
       projectConfigSolverOverrideReinstall = mempty,
       projectConfigSolverUpgradeDeps       = mempty
     }
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup ProjectConfigSolver where
+  a <> b =
     ProjectConfigSolver {
       projectConfigSolverConstraints       = combine projectConfigSolverConstraints,
       projectConfigSolverPreferences       = combine projectConfigSolverPreferences,
@@ -526,7 +535,10 @@ instance Monoid PackageConfigShared where
       packageConfigPackageDBs       = mempty,
       packageConfigRelocatable      = mempty
     }
-  mappend a b = PackageConfigShared {
+  mappend = (<>)
+
+instance Semigroup PackageConfigShared where
+  a <> b = PackageConfigShared {
       packageConfigProgramPaths     = combine packageConfigProgramPaths,
       packageConfigProgramArgs      = combine packageConfigProgramArgs,
       packageConfigProgramPathExtra = combine packageConfigProgramPathExtra,
@@ -581,7 +593,10 @@ instance Monoid PackageConfig where
       packageConfigHaddockHscolourCss  = mempty,
       packageConfigHaddockContents     = mempty
     }
-  mappend a b = PackageConfig {
+  mappend = (<>)
+
+instance Semigroup PackageConfig where
+  a <> b = PackageConfig {
       packageConfigDynExe              = combine packageConfigDynExe,
       packageConfigProf                = combine packageConfigProf,
       packageConfigProfLib             = combine packageConfigProfLib,
@@ -619,7 +634,7 @@ instance Monoid PackageConfig where
     where combine field = field a `mappend` field b
 
 
-lookupLocalPackageConfig :: Monoid a
+lookupLocalPackageConfig :: (Semigroup a, Monoid a)
                          => (PackageConfig -> a)
                          -> ProjectConfig
                          -> PackageName -> a
@@ -975,7 +990,7 @@ resolveBuildTimeSettings verbosity
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
-    --buildSettingLogFile       -- defined below, more complicated 
+    --buildSettingLogFile       -- defined below, more complicated
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
@@ -1075,7 +1090,10 @@ data LegacyProjectConfig = LegacyProjectConfig {
 instance Monoid LegacyProjectConfig where
   mempty =
     LegacyProjectConfig mempty mempty mempty mempty mempty
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup LegacyProjectConfig where
+  a <> b =
     LegacyProjectConfig {
       legacyLocalPackgeGlobs   = combine legacyLocalPackgeGlobs,
       legacyRepoPackges        = combine legacyRepoPackges,
@@ -1093,7 +1111,10 @@ data LegacyPackageConfig = LegacyPackageConfig {
 instance Monoid LegacyPackageConfig where
   mempty =
     LegacyPackageConfig mempty mempty
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup LegacyPackageConfig where
+  a <> b =
     LegacyPackageConfig {
       legacyConfigureFlags     = combine legacyConfigureFlags,
       legacyHaddockFlags       = combine legacyHaddockFlags
@@ -1109,7 +1130,10 @@ data LegacySharedConfig = LegacySharedConfig {
 instance Monoid LegacySharedConfig where
   mempty =
     LegacySharedConfig mempty mempty mempty
-  mappend a b =
+  mappend = (<>)
+
+instance Semigroup LegacySharedConfig where
+  a <> b =
     LegacySharedConfig {
       legacyGlobalFlags        = combine legacyGlobalFlags,
       legacyConfigureExFlags   = combine legacyConfigureExFlags,
@@ -1208,7 +1232,7 @@ legacyPackageConfigFieldDescrs =
       ]
   . commandOptionsToFields
   ) (configureOptions ParseArgs)
- ++ 
+ ++
     liftFields
       legacyConfigureFlags
       (\flags conf -> conf { legacyConfigureFlags = flags })
@@ -1216,7 +1240,7 @@ legacyPackageConfigFieldDescrs =
     , overrideFieldOptimization
     , overrideFieldDebugInfo
     ]
- ++ 
+ ++
   ( liftFields
       legacyHaddockFlags
       (\flags conf -> conf { legacyHaddockFlags = flags })
@@ -1342,7 +1366,7 @@ programOptionsFieldDescrs =
       ParseArgs id (++)
 
 programOptionsSectionDescr :: SectionDescr LegacyPackageConfig
-programOptionsSectionDescr = 
+programOptionsSectionDescr =
     SectionDescr {
       sectionName        = "program-options",
       sectionFields      = programOptionsFieldDescrs,
@@ -1511,4 +1535,3 @@ ppSection' name arg fields sections cur
     fieldsDoc = showConfig fields sections cur
     argDoc | arg == "" = Disp.empty
            | otherwise = Disp.text arg
-

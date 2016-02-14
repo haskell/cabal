@@ -79,6 +79,7 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 #endif
 import Control.Monad
+import qualified Distribution.Compat.MonadFail as Fail
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))
 #endif
@@ -1396,16 +1397,20 @@ instance Functor Match where
   fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
 
 instance Applicative Match where
-  pure = return
-  (<*>) = ap
+  pure a = ExactMatch 0 [a]
+  (<*>)  = ap
 
 instance Monad Match where
-  return a                = ExactMatch 0 [a]
   NoMatch      d ms >>= _ = NoMatch d ms
   ExactMatch   d xs >>= f = addDepth d
                           $ msum (map f xs)
   InexactMatch d xs >>= f = addDepth d . forceInexact
                           $ msum (map f xs)
+
+  return                  = pure
+  fail                    = Fail.fail
+
+instance Fail.MonadFail Match where
   fail _msg               = mzero
 
 addDepth :: Confidence -> Match a -> Match a
