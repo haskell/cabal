@@ -1,4 +1,7 @@
-module PackageTests.TestSuiteTests.ExeV10.Check (tests) where
+module PackageTests.TestSuiteTests.ExeV10.Check (
+    sharedLibTests
+  , nonSharedLibTests
+  ) where
 
 import qualified Control.Exception as E (IOException, catch)
 import Control.Monad (when)
@@ -21,15 +24,18 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-tests :: SuiteConfig -> [TestTree]
-tests config =
+sharedLibTests :: SuiteConfig -> [TestTree]
+sharedLibTests config = [testGroup "WithHpc" $ hpcTestMatrix True config]
+
+nonSharedLibTests :: SuiteConfig -> [TestTree]
+nonSharedLibTests config =
     -- TODO: hierarchy and subnaming is a little unfortunate
     [ tc "Test" "Default" $ do
         cabal_build ["--enable-tests"]
         -- This one runs both tests, including the very LONG Foo
         -- test which prints a lot of output
         cabal "test" ["--show-details=direct"]
-    , testGroup "WithHpc" $ hpcTestMatrix config
+    , testGroup "WithHpc" $ hpcTestMatrix False config
     , testGroup "WithoutHpc"
       -- Ensures that even if -fhpc is manually provided no .tix file is output.
       [ tc "NoTix" "NoHpcNoTix" $ do
@@ -64,8 +70,8 @@ tests config =
         = testCase name
             (runTestM config "TestSuiteTests/ExeV10" (Just subname) m)
 
-hpcTestMatrix :: SuiteConfig -> [TestTree]
-hpcTestMatrix config = do
+hpcTestMatrix :: Bool -> SuiteConfig -> [TestTree]
+hpcTestMatrix useSharedLibs config = do
     libProf <- [True, False]
     exeProf <- [True, False]
     exeDyn <- [True, False]
@@ -89,9 +95,13 @@ hpcTestMatrix config = do
             enable cond flag
               | cond = Just $ "--enable-" ++ flag
               | otherwise = Nothing
-    -- Ensure that both .tix file and markup are generated if coverage
-    -- is enabled.
-    return $ tc name ("WithHpc-" ++ name) $ do
+    -- In order to avoid duplicate tests, each combination should be used for
+    -- exactly one value of 'useSharedLibs'.
+    if (exeDyn || shared) /= useSharedLibs
+      then []
+      -- Ensure that both .tix file and markup are generated if coverage
+      -- is enabled.
+      else return $ tc name ("WithHpc-" ++ name) $ do
         isCorrectVersion <- liftIO $ correctHpcVersion
         when isCorrectVersion $ do
             dist_dir <- distDir
