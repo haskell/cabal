@@ -74,21 +74,17 @@ configureToolchain :: GhcImplInfo
                    -> ProgramConfiguration
 configureToolchain implInfo ghcProg ghcInfo =
     addKnownProgram gccProgram {
-      programName         = gccProgramName,
       programFindLocation = findProg gccProgramName extraGccPath,
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programName         = ldProgramName,
       programFindLocation = findProg ldProgramName extraLdPath,
       programPostConf     = configureLd
     }
   . addKnownProgram arProgram {
-      programName         = arProgramName,
       programFindLocation = findProg arProgramName extraArPath
     }
   . addKnownProgram stripProgram {
-      programName         = stripProgramName,
       programFindLocation = findProg stripProgramName extraStripPath
     }
   where
