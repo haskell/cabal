@@ -1,5 +1,5 @@
 name: Cabal
-version: 1.23.1.0
+version: 1.23.2.0
 copyright: 2003-2006, Isaac Jones
            2005-2011, Duncan Coutts
 license: BSD3
@@ -188,6 +188,9 @@ library
       Win32 >= 2.2 && < 2.4
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
+  if impl(ghc >= 8.0)
+    ghc-options: -Wcompat -Wnoncanonical-monad-instances
+                 -Wnoncanonical-monadfail-instances
 
   exposed-modules:
     Distribution.Compat.CreatePipe
@@ -195,6 +198,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
+    Distribution.Compat.Semigroup
     Distribution.Compiler
     Distribution.InstalledPackageInfo
     Distribution.License
@@ -268,7 +272,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
-    Distribution.Compat.Semigroup
+    Distribution.Compat.MonadFail
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
@@ -292,17 +296,19 @@ test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
   other-modules:
+    Test.Laws
+    Test.QuickCheck.Utils
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Simple.Program.Internal
-    UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
+    UnitTests.Distribution.Utils.NubList
     UnitTests.Distribution.Version
-    Test.Laws
-    Test.QuickCheck.Utils
   main-is: UnitTests.hs
   build-depends:
     base,
+    directory,
     tasty,
     tasty-hunit,
     tasty-quickcheck,

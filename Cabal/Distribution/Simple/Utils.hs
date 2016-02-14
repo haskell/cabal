@@ -26,6 +26,9 @@ module Distribution.Simple.Utils (
         debugNoWrap, chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
+        -- * exceptions
+        handleDoesNotExist,
+
         -- * running programs
         rawSystemExit,
         rawSystemExitCode,
@@ -65,6 +68,8 @@ module Distribution.Simple.Utils (
         -- * file names
         currentDir,
         shortRelativePath,
+        dropExeExtension,
+        exeExtensions,
 
         -- * finding files
         findFile,
@@ -349,6 +354,14 @@ chattyTry desc action =
   catchIO action $ \exception ->
     putStrLn $ "Error while " ++ desc ++ ": " ++ show exception
 
+-- | Run an IO computation, returning @e@ if it raises a "file
+-- does not exist" error.
+handleDoesNotExist :: a -> IO a -> IO a
+handleDoesNotExist e =
+    Exception.handleJust
+      (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
+      (\_ -> return e)
+
 -- -----------------------------------------------------------------------------
 -- Helper functions
 
@@ -464,17 +477,18 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
     mbToStd :: Maybe Handle -> Process.StdStream
     mbToStd = maybe Process.Inherit Process.UseHandle
 
-createProcessWithEnv :: Verbosity
-                     -> FilePath
-                     -> [String]
-                     -> Maybe FilePath           -- ^ New working dir or inherit
-                     -> Maybe [(String, String)] -- ^ New environment or inherit
-                     -> Process.StdStream  -- ^ stdin
-                     -> Process.StdStream  -- ^ stdout
-                     -> Process.StdStream  -- ^ stderr
-                     -> IO (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle)
-                        -- ^ Any handles created for stdin, stdout, or stderr
-                        -- with 'CreateProcess', and a handle to the process.
+createProcessWithEnv ::
+  Verbosity
+  -> FilePath
+  -> [String]
+  -> Maybe FilePath           -- ^ New working dir or inherit
+  -> Maybe [(String, String)] -- ^ New environment or inherit
+  -> Process.StdStream  -- ^ stdin
+  -> Process.StdStream  -- ^ stdout
+  -> Process.StdStream  -- ^ stderr
+  -> IO (Maybe Handle, Maybe Handle, Maybe Handle,ProcessHandle)
+  -- ^ Any handles created for stdin, stdout, or stderr
+  -- with 'CreateProcess', and a handle to the process.
 createProcessWithEnv verbosity path args mcwd menv inp out err = do
     printRawCommandAndArgsAndEnv verbosity path args menv
     hFlush stdout
@@ -1021,7 +1035,8 @@ copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
 copyDirectoryRecursive verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
-  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f)
+                                                   | f <- srcFiles ]
 
 -------------------
 -- File permissions
@@ -1083,7 +1098,8 @@ withTempFileEx opts tmpDir template action =
   Exception.bracket
     (openTempFile tmpDir template)
     (\(name, handle) -> do hClose handle
-                           unless (optKeepTempFiles opts) $ removeFile name)
+                           unless (optKeepTempFiles opts) $
+                             handleDoesNotExist () . removeFile $ name)
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -1109,7 +1125,8 @@ withTempDirectoryEx :: Verbosity
 withTempDirectoryEx _verbosity opts targetDir template =
   Exception.bracket
     (createTempDirectory targetDir template)
-    (unless (optKeepTempFiles opts) . removeDirectoryRecursive)
+    (unless (optKeepTempFiles opts)
+     . handleDoesNotExist () . removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files
@@ -1175,6 +1192,24 @@ shortRelativePath from to =
     dropCommonPrefix (x:xs) (y:ys)
         | x == y    = dropCommonPrefix xs ys
     dropCommonPrefix xs ys = (xs,ys)
+
+-- | Drop the extension if it's one of 'exeExtensions', or return the path
+-- unchanged.
+dropExeExtension :: FilePath -> FilePath
+dropExeExtension filepath =
+  case splitExtension filepath of
+    (filepath', extension) | extension `elem` exeExtensions -> filepath'
+                           | otherwise                      -> filepath
+
+-- | List of possible executable file extensions on the current platform.
+exeExtensions :: [String]
+exeExtensions = case buildOS of
+  -- Possible improvement: on Windows, read the list of extensions from the
+  -- PATHEXT environment variable. By default PATHEXT is ".com; .exe; .bat;
+  -- .cmd".
+  Windows -> ["", "exe"]
+  Ghcjs   -> ["", "exe"]
+  _       -> [""]
 
 -- ------------------------------------------------------------
 -- * Finding the description file

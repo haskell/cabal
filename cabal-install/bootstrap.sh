@@ -181,7 +181,7 @@ PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
 DEEPSEQ_VER="1.4.1.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-BINARY_VER="0.8.0.1";  BINARY_VER_REGEXP="[0]\.[78]\."
+BINARY_VER="0.8.2.1";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
 TEXT_VER="1.2.2.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
@@ -189,13 +189,13 @@ NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 NETWORK_URI_VER="2.6.0.3"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
-CABAL_VER="1.23.1.0";  CABAL_VER_REGEXP="1\.23\.[1-9]"
-                       # >= 1.23.1 && < 1.24
+CABAL_VER="1.23.2.0";  CABAL_VER_REGEXP="1\.23\.[2-9]"
+                       # >= 1.23.2 && < 1.24
 TRANS_VER="0.5.1.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
-HTTP_VER="4000.3.2";   HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
+HTTP_VER="4000.3.3";   HTTP_VER_REGEXP="4000\.(2\.([5-9]|1[0-9]|2[0-9])|3\.?)"
                        # >= 4000.2.5 < 4000.4
 ZLIB_VER="0.6.1.1";    ZLIB_VER_REGEXP="(0\.5\.([3-9]|1[0-9])|0\.6)"
                        # >= 0.5.3 && <= 0.7
@@ -213,7 +213,7 @@ BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
                        # 0.1.1
 CRYPTOHASH_VER="0.11.6"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
                        # 0.11.*
-ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
+ED25519_VER="0.0.2.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.0.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.?"
                        # >= 0.5 && < 0.6
@@ -221,6 +221,8 @@ TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
                        # >= 0.5.0.1  && < 0.6
 BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
                                     # >=1.0
+HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
+                       # 1.*
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -267,24 +269,32 @@ fetch_pkg () {
   PKG=$1
   VER=$2
 
-  URL=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
+  URL_PKG=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
+  URL_PKGDESC=${HACKAGE_URL}/${PKG}-${VER}/${PKG}.cabal
   if which ${CURL} > /dev/null
   then
     # TODO: switch back to resuming curl command once
     #       https://github.com/haskell/hackage-server/issues/111 is resolved
-    #${CURL} -L --fail -C - -O ${URL} || die "Failed to download ${PKG}."
-    ${CURL} -L --fail -O ${URL} || die "Failed to download ${PKG}."
+    #${CURL} -L --fail -C - -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -O ${URL_PKG} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -O ${URL_PKGDESC} \
+        || die "Failed to download '${PKG}.cabal'."
   elif which ${WGET} > /dev/null
   then
-    ${WGET} -c ${URL} || die "Failed to download ${PKG}."
+    ${WGET} -c ${URL_PKG} || die "Failed to download ${PKG}."
+    ${WGET} -c ${URL_PKGDESC} || die "Failed to download '${PKG}.cabal'."
   elif which ${FETCH} > /dev/null
     then
-      ${FETCH} ${URL} || die "Failed to download ${PKG}."
+      ${FETCH} ${URL_PKG} || die "Failed to download ${PKG}."
+      ${FETCH} ${URL_PKGDESC} || die "Failed to download '${PKG}.cabal'."
   else
     die "Failed to find a downloader. 'curl', 'wget' or 'fetch' is required."
   fi
   [ -f "${PKG}-${VER}.tar.gz" ] ||
-     die "Downloading ${URL} did not create ${PKG}-${VER}.tar.gz"
+     die "Downloading ${URL_PKG} did not create ${PKG}-${VER}.tar.gz"
+  [ -f "${PKG}.cabal" ] ||
+     die "Downloading ${URL_PKGDESC} did not create ${PKG}.cabal"
+  mv "${PKG}.cabal" "${PKG}.cabal.hackage"
 }
 
 unpack_pkg () {
@@ -294,6 +304,7 @@ unpack_pkg () {
   rm -rf "${PKG}-${VER}.tar" "${PKG}-${VER}"
   ${GZIP_PROGRAM} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -xf -
   [ -d "${PKG}-${VER}" ] || die "Failed to unpack ${PKG}-${VER}.tar.gz"
+  cp "${PKG}.cabal.hackage" "${PKG}-${VER}/${PKG}.cabal"
 }
 
 install_pkg () {
@@ -319,7 +330,8 @@ install_pkg () {
 
   if [ ! ${NO_DOCUMENTATION} ]
   then
-    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} > /dev/null 2>&1
+    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} \
+        > /dev/null 2>&1
     then
       echo "Skipping documentation for the ${PKG} package."
     else
@@ -368,8 +380,10 @@ do_network_uri_pkg () {
     do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
   else
     # Use network < 2.6 && network-uri < 2.6
-    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} \
+        ${NETWORK_URI_DUMMY_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} \
+        ${NETWORK_URI_DUMMY_VER_REGEXP}
   fi
 }
 
@@ -395,6 +409,7 @@ info_pkg "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 info_pkg "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
 info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
+info_pkg "hashable"          ${HASHABLE_VER}          ${HASHABLE_VER_REGEXP}
 info_pkg "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -421,6 +436,7 @@ do_pkg   "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 do_pkg   "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
+do_pkg   "hashable"         ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 do_pkg   "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
 
 

@@ -13,7 +13,7 @@
 -- probably know about the 'System.Info.os' however using that is very
 -- inconvenient because it is a string and different Haskell implementations
 -- do not agree on using the same strings for the same platforms! (In
--- particular see the controversy over \"windows\" vs \"ming32\"). So to make it
+-- particular see the controversy over \"windows\" vs \"mingw32\"). So to make it
 -- more consistent and easy to use we have an 'OS' enumeration.
 --
 module Distribution.System (

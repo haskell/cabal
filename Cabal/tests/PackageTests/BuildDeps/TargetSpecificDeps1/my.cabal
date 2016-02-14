@@ -19,4 +19,4 @@ Library
 
 Executable lemon
     main-is: lemon.hs
-    build-depends: base, bytestring, old-time
+    build-depends: base, bytestring, pretty

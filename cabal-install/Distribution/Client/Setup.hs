@@ -95,6 +95,8 @@ import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
+import Distribution.Compat.Semigroup
+         ( Semigroup((<>)) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -485,7 +487,10 @@ instance Monoid ConfigExFlags where
     configSolver       = mempty,
     configAllowNewer   = mempty
   }
-  mappend a b = ConfigExFlags {
+  mappend = (<>)
+
+instance Semigroup ConfigExFlags where
+  a <> b = ConfigExFlags {
     configCabalVersion = combine configCabalVersion,
     configExConstraints= combine configExConstraints,
     configPreferences  = combine configPreferences,
@@ -534,7 +539,10 @@ instance Monoid BuildExFlags where
   mempty = BuildExFlags {
     buildOnly    = mempty
   }
-  mappend a b = BuildExFlags {
+  mappend = (<>)
+
+instance Semigroup BuildExFlags where
+  a <> b = BuildExFlags {
     buildOnly    = combine buildOnly
   }
     where combine field = field a `mappend` field b
@@ -933,7 +941,10 @@ instance Monoid ReportFlags where
     reportPassword  = mempty,
     reportVerbosity = mempty
   }
-  mappend a b = ReportFlags {
+  mappend = (<>)
+
+instance Semigroup ReportFlags where
+  a <> b = ReportFlags {
     reportUsername  = combine reportUsername,
     reportPassword  = combine reportPassword,
     reportVerbosity = combine reportVerbosity
@@ -1014,7 +1025,10 @@ instance Monoid GetFlags where
     getSourceRepository = mempty,
     getVerbosity        = mempty
     }
-  mappend a b = GetFlags {
+  mappend = (<>)
+
+instance Semigroup GetFlags where
+  a <> b = GetFlags {
     getDestDir          = combine getDestDir,
     getPristine         = combine getPristine,
     getSourceRepository = combine getSourceRepository,
@@ -1093,7 +1107,10 @@ instance Monoid ListFlags where
     listVerbosity    = mempty,
     listPackageDBs   = mempty
     }
-  mappend a b = ListFlags {
+  mappend = (<>)
+
+instance Semigroup ListFlags where
+  a <> b = ListFlags {
     listInstalled    = combine listInstalled,
     listSimpleOutput = combine listSimpleOutput,
     listVerbosity    = combine listVerbosity,
@@ -1149,7 +1166,10 @@ instance Monoid InfoFlags where
     infoVerbosity  = mempty,
     infoPackageDBs = mempty
     }
-  mappend a b = InfoFlags {
+  mappend = (<>)
+
+instance Semigroup InfoFlags where
+  a <> b = InfoFlags {
     infoVerbosity  = combine infoVerbosity,
     infoPackageDBs = combine infoPackageDBs
   }
@@ -1485,7 +1505,10 @@ instance Monoid InstallFlags where
     installRunTests        = mempty,
     installOfflineMode     = mempty
   }
-  mappend a b = InstallFlags {
+  mappend = (<>)
+
+instance Semigroup InstallFlags where
+  a <> b = InstallFlags {
     installDocumentation   = combine installDocumentation,
     installHaddockIndex    = combine installHaddockIndex,
     installDryRun          = combine installDryRun,
@@ -1588,7 +1611,10 @@ instance Monoid UploadFlags where
     uploadPasswordCmd = mempty,
     uploadVerbosity   = mempty
   }
-  mappend a b = UploadFlags {
+  mappend = (<>)
+
+instance Semigroup UploadFlags where
+  a <> b = UploadFlags {
     uploadCheck       = combine uploadCheck,
     uploadDoc         = combine uploadDoc,
     uploadUsername    = combine uploadUsername,
@@ -1829,7 +1855,10 @@ instance Monoid SDistExFlags where
   mempty = SDistExFlags {
     sDistFormat  = mempty
   }
-  mappend a b = SDistExFlags {
+  mappend = (<>)
+
+instance Semigroup SDistExFlags where
+  a <> b = SDistExFlags {
     sDistFormat  = combine sDistFormat
   }
     where
@@ -1867,7 +1896,10 @@ instance Monoid Win32SelfUpgradeFlags where
   mempty      = Win32SelfUpgradeFlags {
     win32SelfUpgradeVerbosity = mempty
     }
-  mappend a b = Win32SelfUpgradeFlags {
+  mappend = (<>)
+
+instance Semigroup Win32SelfUpgradeFlags where
+  a <> b = Win32SelfUpgradeFlags {
     win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
     }
     where combine field = field a `mappend` field b
@@ -1908,7 +1940,10 @@ instance Monoid ActAsSetupFlags where
   mempty      = ActAsSetupFlags {
      actAsSetupBuildType = mempty
     }
-  mappend a b = ActAsSetupFlags {
+  mappend = (<>)
+
+instance Semigroup ActAsSetupFlags where
+  a <> b = ActAsSetupFlags {
     actAsSetupBuildType = combine actAsSetupBuildType
     }
     where combine field = field a `mappend` field b
@@ -2034,7 +2069,10 @@ instance Monoid SandboxFlags where
     sandboxSnapshot  = mempty,
     sandboxLocation  = mempty
     }
-  mappend a b = SandboxFlags {
+  mappend = (<>)
+
+instance Semigroup SandboxFlags where
+  a <> b = SandboxFlags {
     sandboxVerbosity = combine sandboxVerbosity,
     sandboxSnapshot  = combine sandboxSnapshot,
     sandboxLocation  = combine sandboxLocation
@@ -2102,7 +2140,10 @@ instance Monoid ExecFlags where
   mempty = ExecFlags {
     execVerbosity = mempty
     }
-  mappend a b = ExecFlags {
+  mappend = (<>)
+
+instance Semigroup ExecFlags where
+  a <> b = ExecFlags {
     execVerbosity = combine execVerbosity
     }
     where combine field = field a `mappend` field b
@@ -2121,7 +2162,10 @@ instance Monoid UserConfigFlags where
     userConfigVerbosity = toFlag normal,
     userConfigForce     = toFlag False
     }
-  mappend a b = UserConfigFlags {
+  mappend = (<>)
+
+instance Semigroup UserConfigFlags where
+  a <> b = UserConfigFlags {
     userConfigVerbosity = combine userConfigVerbosity,
     userConfigForce     = combine userConfigForce
     }

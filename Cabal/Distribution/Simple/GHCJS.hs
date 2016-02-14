@@ -46,9 +46,8 @@ import Data.Char                ( isSpace )
 import qualified Data.Map as M  ( fromList  )
 import Data.Monoid as Mon       ( Monoid(..) )
 import System.Directory         ( doesFileExist )
-import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension,
-                                  splitExtension )
+import System.FilePath          ( (</>), (<.>), takeExtension
+                                , takeDirectory, replaceExtension )
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration
@@ -175,13 +174,6 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
   where takeVersionSuffix :: FilePath -> String
         takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
                             reverse
-
-        dropExeExtension :: FilePath -> FilePath
-        dropExeExtension filepath =
-          case splitExtension filepath of
-            (filepath', extension) | extension == exeExtension -> filepath'
-                                   | otherwise                 -> filepath
-
 
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration

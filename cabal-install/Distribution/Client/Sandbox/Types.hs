@@ -15,9 +15,10 @@ module Distribution.Client.Sandbox.Types (
 
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (SourcePackage)
+import Distribution.Compat.Semigroup (Semigroup((<>)))
 
 #if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
+import Data.Monoid (Monoid(..))
 #endif
 import qualified Data.Set as S
 
@@ -26,10 +27,12 @@ data UseSandbox = UseSandbox FilePath | NoSandbox
 
 instance Monoid UseSandbox where
   mempty = NoSandbox
+  mappend = (<>)
 
-  NoSandbox        `mappend` s                  = s
-  u0@(UseSandbox _) `mappend` NoSandbox         = u0
-  (UseSandbox   _)  `mappend` u1@(UseSandbox _) = u1
+instance Semigroup UseSandbox where
+  NoSandbox         <> s                 = s
+  u0@(UseSandbox _) <> NoSandbox         = u0
+  (UseSandbox _)    <> u1@(UseSandbox _) = u1
 
 -- | Convert a @UseSandbox@ value to a boolean. Useful in conjunction with
 -- @when@.

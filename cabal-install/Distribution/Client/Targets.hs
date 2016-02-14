@@ -100,6 +100,8 @@ import Control.Monad (liftM)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
+import qualified Distribution.Compat.Semigroup as Semi
+         ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<>), (<+>) )
@@ -675,7 +677,10 @@ newtype PackageNameEnv = PackageNameEnv (PackageName -> [PackageName])
 
 instance Monoid PackageNameEnv where
   mempty = PackageNameEnv (const [])
-  mappend (PackageNameEnv lookupA) (PackageNameEnv lookupB) =
+  mappend = (Semi.<>)
+
+instance Semi.Semigroup PackageNameEnv where
+  PackageNameEnv lookupA <> PackageNameEnv lookupB =
     PackageNameEnv (\name -> lookupA name ++ lookupB name)
 
 indexPackageNameEnv :: PackageIndex pkg -> PackageNameEnv

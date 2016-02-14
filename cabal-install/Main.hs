@@ -162,7 +162,7 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
-import System.FilePath          ( splitExtension, takeBaseName
+import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #ifdef mingw32_HOST_OS
@@ -1272,7 +1272,10 @@ manpageAction commands _ extraArgs _ = do
   unless (null extraArgs) $
     die $ "'manpage' doesn't take any extra arguments: " ++ unwords extraArgs
   pname <- getProgName
-  putStrLn $ manpage (takeBaseName pname) commands
+  let cabalCmd = if takeExtension pname == ".exe"
+                 then dropExtension pname
+                 else pname
+  putStrLn $ manpage cabalCmd commands
 
 
 ------------------------------------------------------------------------------

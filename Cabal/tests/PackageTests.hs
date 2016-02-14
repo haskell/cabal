@@ -92,6 +92,8 @@ main = do
     ghc_pkg_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC_PKG" ghcPkgProgram
     haddock_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_HADDOCK" haddockProgram
 
+    with_ghc_path     <- fromMaybe ghc_path `fmap` lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
+
     ghc_version_env <- lookupEnv "CABAL_PACKAGETESTS_GHC_VERSION"
     ghc_version <- case ghc_version_env of
         Nothing -> do
@@ -144,6 +146,7 @@ main = do
                  , ghcPath = ghc_path
                  , ghcVersion = ghc_version
                  , ghcPkgPath = ghc_pkg_path
+                 , withGhcPath = with_ghc_path
                  , packageDBStack = packageDBStack2
                  , suiteVerbosity = verbosity
                  , absoluteCWD = test_dir
@@ -159,6 +162,7 @@ main = do
     putStrLn $ "CABAL_PACKAGETESTS_GHC=" ++ show ghc_path ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_GHC_VERSION=" ++ show (display ghc_version) ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_GHC_PKG=" ++ show ghc_pkg_path ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_WITH_GHC=" ++ show with_ghc_path ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_HADDOCK=" ++ show haddock_path ++ " \\"
     -- For brevity, do pre-canonicalization
     putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++

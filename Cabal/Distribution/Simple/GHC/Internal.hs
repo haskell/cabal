@@ -58,7 +58,8 @@ import Control.Monad            ( unless, when )
 import Data.Monoid as Mon       ( Monoid(..) )
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
-import System.FilePath          ( (</>), (<.>), takeExtension, takeDirectory )
+import System.FilePath          ( (</>), (<.>), takeExtension
+                                , takeDirectory, takeFileName)
 import System.IO                ( hClose, hPutStrLn )
 
 targetPlatform :: [(String, String)] -> Maybe Platform
@@ -73,18 +74,22 @@ configureToolchain :: GhcImplInfo
                    -> ProgramConfiguration
 configureToolchain implInfo ghcProg ghcInfo =
     addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram extraGccPath,
+      programName         = gccProgramName,
+      programFindLocation = findProg gccProgramName extraGccPath,
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram extraLdPath,
+      programName         = ldProgramName,
+      programFindLocation = findProg ldProgramName extraLdPath,
       programPostConf     = configureLd
     }
   . addKnownProgram arProgram {
-      programFindLocation = findProg arProgram extraArPath
+      programName         = arProgramName,
+      programFindLocation = findProg arProgramName extraArPath
     }
   . addKnownProgram stripProgram {
-      programFindLocation = findProg stripProgram extraStripPath
+      programName         = stripProgramName,
+      programFindLocation = findProg stripProgramName extraStripPath
     }
   where
     compilerDir = takeDirectory (programPath ghcProg)
@@ -94,6 +99,14 @@ configureToolchain implInfo ghcProg ghcInfo =
     includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
     binPrefix   = ""
+
+    maybeName :: Program -> Maybe FilePath -> String
+    maybeName prog   = maybe (programName prog) (dropExeExtension . takeFileName)
+
+    gccProgramName   = maybeName gccProgram   mbGccLocation
+    ldProgramName    = maybeName ldProgram    mbLdLocation
+    arProgramName    = maybeName arProgram    mbArLocation
+    stripProgramName = maybeName stripProgram mbStripLocation
 
     mkExtraPath :: Maybe FilePath -> FilePath -> [FilePath]
     mkExtraPath mbPath mingwPath | isWindows = mbDir ++ [mingwPath]
@@ -114,11 +127,11 @@ configureToolchain implInfo ghcProg ghcInfo =
           let b = mingwBinDir </> binPrefix
           in  (b, b, b, b)
 
-    findProg :: Program -> [FilePath]
+    findProg :: String -> [FilePath]
              -> Verbosity -> ProgramSearchPath
              -> IO (Maybe (FilePath, [FilePath]))
-    findProg prog extraPath v searchpath =
-        programFindLocation prog v searchpath'
+    findProg progName extraPath v searchpath =
+        findProgramOnSearchPath v searchpath' progName
       where
         searchpath' = (map ProgramSearchPathDir extraPath) ++ searchpath
 

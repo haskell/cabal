@@ -38,12 +38,13 @@ import System.Directory
 import System.FilePath
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (testCase, Assertion, assertFailure)
-import Control.Monad ( filterM, forM, when )
+import Control.Monad ( filterM, forM, unless, when )
 import Data.List (isPrefixOf, isSuffixOf, sort)
 import Data.IORef (newIORef, writeIORef, readIORef)
 import System.Exit (ExitCode(..))
 import System.IO (withBinaryFile, IOMode(ReadMode))
 import System.Process (runProcess, waitForProcess)
+import Text.Regex.Posix ((=~))
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C8
 import           Data.ByteString (ByteString)
@@ -146,21 +147,27 @@ pathIfExists p = do
 fileMatchesString :: FilePath -> ByteString -> IO Bool
 fileMatchesString p s = do
   withBinaryFile p ReadMode $ \h -> do
-    s' <- B.hGetContents h -- Strict
-    return $ normalizeLinebreaks s' == normalizeLinebreaks s
+    expected <- (C8.lines . normalizeLinebreaks) `fmap` B.hGetContents h -- Strict
+    let actual = C8.lines $ normalizeLinebreaks s
+    return $ length expected == length actual &&
+             and (zipWith matches expected actual)
   where
+    matches :: ByteString -> ByteString -> Bool
+    matches pattern line
+        | C8.pack "RE:" `B.isPrefixOf` pattern = line =~ C8.drop 3 pattern
+        | otherwise                            = line == pattern
+
     -- This is a bit of a hack, but since we're comparing
     -- *text* output, we should be OK.
     normalizeLinebreaks = B.filter (not . ((==) 13))
 
 mustMatch :: TestResult -> String -> ByteString -> Maybe FilePath -> Assertion
-mustMatch _          _          _ Nothing  =  return ()
-mustMatch testResult handleName s (Just p) = do
-  m <- fileMatchesString p s
-  if not m then
-      assertFailure $ "<" ++ handleName ++ "> did not match file '" ++ p ++ "'.\n" ++ testResultToString testResult
-    else
-      return ()
+mustMatch _          _          _      Nothing         =  return ()
+mustMatch testResult handleName actual (Just expected) = do
+  m <- fileMatchesString expected actual
+  unless m $ assertFailure $
+      "<" ++ handleName ++ "> did not match file '"
+      ++ expected ++ "'.\n" ++ testResultToString testResult
 
 discoverTestCategories :: FilePath -> IO [String]
 discoverTestCategories directory = do

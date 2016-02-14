@@ -1,0 +1,23 @@
+install:
+  - choco install HaskellPlatform -version 2014.2.0.0
+  - SET PATH=C:\Program Files\Haskell Platform\2014.2.0.0\bin;C:\Program Files\Haskell Platform\2014.2.0.0\mingw\bin;C:\Program Files\Haskell Platform\2014.2.0.0\lib\extralibs\bin;%PATH%
+  - cabal update
+
+build_script:
+  - cd Cabal
+  - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
+
+  # 'echo "" |' works around an AppVeyor issue:
+  # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
+  - echo "" | cabal install --only-dependencies --enable-tests
+
+  - Setup configure --user --ghc-option=-Werror --enable-tests
+  - Setup build
+  - Setup test unit-tests --show-details=streaming
+  - Setup install
+  - cd ..\cabal-install
+  - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
+  - echo "" | cabal install --only-dependencies --enable-tests --force-reinstalls
+  - Setup configure --user --ghc-option=-Werror --enable-tests
+  - Setup build
+  # - Setup test unit-tests --show-details=streaming

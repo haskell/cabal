@@ -1,0 +1,3 @@
+. ../common.sh
+
+cabal exec

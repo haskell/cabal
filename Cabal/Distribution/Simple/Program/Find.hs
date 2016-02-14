@@ -118,14 +118,6 @@ findProgramOnSearchPath verbosity searchpath prog = do
       dirs <- getSystemSearchPath
       findFirstExe [ dir </> prog <.> ext | dir <- dirs, ext <- exeExtensions ]
 
-    -- Possible improvement: on Windows, read the list of extensions from
-    -- the PATHEXT environment variable. By default PATHEXT is ".com; .exe;
-    -- .bat; .cmd".
-    exeExtensions = case buildOS of
-                      Windows -> ["", "exe"]
-                      Ghcjs   -> ["", "exe"]
-                      _       -> [""]
-
     findFirstExe :: [FilePath] -> IO (Maybe FilePath, [FilePath])
     findFirstExe = go []
       where

@@ -14,6 +14,8 @@ module Distribution.Client.GlobalFlags (
 
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..) )
+import Distribution.Compat.Semigroup
+         ( Semigroup((<>)) )
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -111,7 +113,10 @@ instance Monoid GlobalFlags where
     globalIgnoreExpiry      = mempty,
     globalHttpTransport     = mempty
   }
-  mappend a b = GlobalFlags {
+  mappend = (<>)
+
+instance Semigroup GlobalFlags where
+  a <> b = GlobalFlags {
     globalVersion           = combine globalVersion,
     globalNumericVersion    = combine globalNumericVersion,
     globalConfigFile        = combine globalConfigFile,

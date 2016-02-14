@@ -1,7 +1,7 @@
 import qualified Data.ByteString.Char8 as C
-import System.Time
+import Text.PrettyPrint
 
 main = do
-    getClockTime
+    putStrLn (render (text "foo"))
     let text = "lemon"
     C.putStrLn $ C.pack text

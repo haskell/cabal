@@ -17,4 +17,4 @@ build-depends: base
 
 Executable lemon
     main-is: lemon.hs
-    build-depends: bytestring, old-time
+    build-depends: bytestring, pretty

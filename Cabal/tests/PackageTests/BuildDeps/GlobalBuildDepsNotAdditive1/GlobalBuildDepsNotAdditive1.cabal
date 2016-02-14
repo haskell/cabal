@@ -17,4 +17,4 @@ build-depends: base
 
 Library
     exposed-modules: MyLibrary
-    build-depends: bytestring, old-time
+    build-depends: bytestring, pretty

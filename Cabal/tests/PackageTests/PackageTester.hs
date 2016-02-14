@@ -130,12 +130,14 @@ onlyIfExists m = liftIO $
 
 -- | Global configuration for the entire test suite.
 data SuiteConfig = SuiteConfig
-    -- | Where GHC lives
+    -- | Path to GHC that was used to compile Cabal library under test.
     { ghcPath :: FilePath
-    -- | Version of GHC
+    -- | Version of GHC that compiled Cabal.
     , ghcVersion :: Version
-    -- | Where ghc-pkg lives
+    -- | Path to ghc-pkg corresponding to 'ghcPath'.
     , ghcPkgPath :: FilePath
+    -- | Path to GHC that we should use to "./Setup --with-ghc"
+    , withGhcPath :: FilePath
     -- | The build directory that was used to build Cabal (used
     -- to compile Setup scripts.)
     , cabalDistPref :: FilePath
@@ -262,8 +264,12 @@ cabal' cmd extraArgs0 = do
                 -- here will make us error loudly if we try to install
                 -- into a bad place.
                 [ "--global"
-                , "--with-ghc", ghcPath suite
-                , "--with-ghc-pkg", ghcPkgPath suite
+                , "--with-ghc", withGhcPath suite
+                -- This improves precision but it increases the number
+                -- of flags one has to specify and I don't like that;
+                -- Cabal is going to configure it and usually figure
+                -- out the right location in any case.
+                -- , "--with-ghc-pkg", withGhcPkgPath suite
                 -- Would really like to do this, but we're not always
                 -- going to be building against sufficiently recent
                 -- Cabal which provides this macro.
@@ -274,7 +280,11 @@ cabal' cmd extraArgs0 = do
                 , "--disable-optimization"
                 -- Specify where we want our installed packages to go
                 , "--prefix=" ++ prefix_dir
-                ] ++ packageDBParams (packageDBStack suite)
+                ] -- Only add the LBI package stack if the GHC version
+                  -- matches.
+                  ++ (if withGhcPath suite == ghcPath suite
+                        then packageDBParams (packageDBStack suite)
+                        else [])
                   ++ extraArgs0
             -- This gives us MUCH better error messages
             "build" -> "-v" : extraArgs0
@@ -337,6 +347,8 @@ compileSetup = do
 
 rawCompileSetup :: Verbosity -> SuiteConfig -> [(String, Maybe String)] -> FilePath -> IO ()
 rawCompileSetup verbosity suite e path = do
+    -- NB: Use 'ghcPath', not 'withGhcPath', since we need to be able to
+    -- link against the Cabal library which was built with 'ghcPath'.
     r <- rawRun verbosity (Just path) (ghcPath suite) e $
         [ "--make"] ++
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
