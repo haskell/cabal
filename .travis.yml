@@ -46,7 +46,7 @@ script:
  - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
 
@@ -76,7 +76,7 @@ script:
  - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
- - ./dist/setup/setup test --show-details=streaming
+ - ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
  - cabal check
  - cabal sdist
  - install_from_tarball
