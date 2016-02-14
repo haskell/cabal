@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 -- The intention is that this will be the new unit test framework.
 -- Please add any working tests here.  This file should do nothing
 -- but import tests from other modules.
@@ -25,9 +27,12 @@ import Distribution.Verbosity (normal, flagToVerbosity)
 import Distribution.ReadE (readEOrFail)
 
 import Control.Exception
+import Data.Typeable (Proxy(..), Typeable)
 import Distribution.Compat.Environment ( lookupEnv )
 import System.Directory
 import Test.Tasty
+import Test.Tasty.Options
+import Test.Tasty.Ingredients
 import Data.Maybe
 
 #if MIN_VERSION_base(4,6,0)
@@ -173,7 +178,18 @@ main = do
     putStrLn $ "Building shared ./Setup executable"
     rawCompileSetup verbosity suite [] "tests"
 
-    defaultMain $ testGroup "Package Tests" (tests suite)
+    defaultMainWithIngredients options (tests suite)
+
+-- | The tests are divided into two top-level trees, depending on whether they
+-- require shared libraries. The option --skip-shared-library-tests can be used
+-- when shared libraries are unavailable.
+tests :: SuiteConfig -> TestTree
+tests suite = askOption $ \(OptionSkipSharedLibraryTests skip) ->
+                testGroup "Package Tests" $
+                noSharedLibs : [sharedLibs | not skip]
+  where
+    sharedLibs = testGroup "SharedLibs" $ sharedLibTests suite
+    noSharedLibs = testGroup "NoSharedLibs" $ nonSharedLibTests suite
 
 -- Reverse of 'interpretPackageDbFlags'.
 -- prop_idem stk b
@@ -255,3 +271,17 @@ getPersistBuildConfig_ filename = do
                        show err
       Left err -> return (throw err)
       Right lbi -> return lbi
+
+newtype OptionSkipSharedLibraryTests = OptionSkipSharedLibraryTests Bool
+  deriving Typeable
+
+instance IsOption OptionSkipSharedLibraryTests where
+  defaultValue   = OptionSkipSharedLibraryTests False
+  parseValue     = fmap OptionSkipSharedLibraryTests . safeRead
+  optionName     = return "skip-shared-library-tests"
+  optionHelp     = return "Skip the tests that require shared libraries"
+  optionCLParser = flagCLParser Nothing (OptionSkipSharedLibraryTests True)
+
+options :: [Ingredient]
+options = includingOptions [Option (Proxy :: Proxy OptionSkipSharedLibraryTests)] :
+          defaultIngredients
