@@ -94,10 +94,13 @@ main = do
     -- (Cabal will go off and probe GHC and we really aren't keen
     -- on doing this every time we run the test suite.)
     ghc_path     <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC" ghcProgram
-    ghc_pkg_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC_PKG" ghcPkgProgram
-    haddock_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_HADDOCK" haddockProgram
+    ghc_pkg_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_GHC_PKG"
+                    ghcPkgProgram
+    haddock_path <- getExePathFromEnvOrLBI "CABAL_PACKAGETESTS_HADDOCK"
+                    haddockProgram
 
-    with_ghc_path     <- fromMaybe ghc_path `fmap` lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
+    with_ghc_path     <- fromMaybe ghc_path
+                         `fmap` lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
 
     ghc_version_env <- lookupEnv "CABAL_PACKAGETESTS_GHC_VERSION"
     ghc_version <- case ghc_version_env of
@@ -142,7 +145,8 @@ main = do
     -- default install paths.  VERY IMPORTANT.
 
     -- TODO: make this controllable by a flag
-    verbosity <- maybe normal (readEOrFail flagToVerbosity) `fmap` lookupEnv "VERBOSE"
+    verbosity <- maybe normal (readEOrFail flagToVerbosity)
+                 `fmap` lookupEnv "VERBOSE"
         -- The inplaceDB is where the Cabal library was registered
         -- in place (and is usable.)  inplaceConfig is a convenient
         -- set of flags to make sure we make it visible.
@@ -157,7 +161,8 @@ main = do
                  , absoluteCWD = test_dir
                  }
 
-    putStrLn $ "Cabal test suite - testing cabal version " ++ display cabalVersion
+    putStrLn $ "Cabal test suite - testing cabal version "
+      ++ display cabalVersion
     putStrLn $ "Cabal build directory: " ++ dist_dir
     putStrLn $ "Test directory: " ++ test_dir
     -- TODO: it might be useful to factor this out so that ./Setup
@@ -165,14 +170,16 @@ main = do
     -- stable way.
     putStrLn $ "Environment:"
     putStrLn $ "CABAL_PACKAGETESTS_GHC=" ++ show ghc_path ++ " \\"
-    putStrLn $ "CABAL_PACKAGETESTS_GHC_VERSION=" ++ show (display ghc_version) ++ " \\"
+    putStrLn $ "CABAL_PACKAGETESTS_GHC_VERSION="
+      ++ show (display ghc_version) ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_GHC_PKG=" ++ show ghc_pkg_path ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_WITH_GHC=" ++ show with_ghc_path ++ " \\"
     putStrLn $ "CABAL_PACKAGETESTS_HADDOCK=" ++ show haddock_path ++ " \\"
     -- For brevity, do pre-canonicalization
     putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++
                 show (intercalate [searchPathSeparator]
-                    (showPackageDbList (uninterpretPackageDBFlags packageDBStack0)))
+                    (showPackageDbList (uninterpretPackageDBFlags
+                                        packageDBStack0)))
 
     -- Create a shared Setup executable to speed up Simple tests
     putStrLn $ "Building shared ./Setup executable"
@@ -211,7 +218,8 @@ uninterpretPackageDBFlags stk = Nothing : map (\x -> Just x) stk
 --        checking for the CABAL_BUILDDIR environment variable as
 --        well as the default location in the current working directory.
 --
--- NB: If you update this, also update its copy in cabal-install's IntegrationTests
+-- NB: If you update this, also update its copy in cabal-install's
+-- IntegrationTests
 guessDistDir :: IO FilePath
 guessDistDir = do
 #if MIN_VERSION_base(4,6,0)
@@ -263,12 +271,13 @@ getPersistBuildConfig_ filename = do
       Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
       -- These errors are lazy!  We might not need these parameters.
       Left (ConfigStateFileBadVersion _ _ (Left err))
-        -> return . error $ "We couldn't understand the build configuration.  Try " ++
-                       "editing Cabal.cabal to have 'build-type: Custom' " ++
-                       "and then rebuilding, or manually specifying CABAL_PACKAGETESTS_* " ++
-                       "environment variables (see README.md for more details)." ++
-                       "\n\nOriginal error: " ++
-                       show err
+        -> return . error $
+           "We couldn't understand the build configuration.  Try " ++
+           "editing Cabal.cabal to have 'build-type: Custom' " ++
+           "and then rebuilding, or manually specifying CABAL_PACKAGETESTS_* " ++
+           "environment variables (see README.md for more details)." ++
+           "\n\nOriginal error: " ++
+           show err
       Left err -> return (throw err)
       Right lbi -> return lbi
 
@@ -283,5 +292,6 @@ instance IsOption OptionSkipSharedLibraryTests where
   optionCLParser = flagCLParser Nothing (OptionSkipSharedLibraryTests True)
 
 options :: [Ingredient]
-options = includingOptions [Option (Proxy :: Proxy OptionSkipSharedLibraryTests)] :
+options = includingOptions
+          [Option (Proxy :: Proxy OptionSkipSharedLibraryTests)] :
           defaultIngredients
