@@ -332,6 +332,7 @@ test-suite package-tests
   build-depends:
     base,
     containers,
+    tagged,
     tasty,
     tasty-hunit,
     transformers,

@@ -27,7 +27,8 @@ import Distribution.Verbosity (normal, flagToVerbosity)
 import Distribution.ReadE (readEOrFail)
 
 import Control.Exception
-import Data.Typeable (Proxy(..), Typeable)
+import Data.Proxy                      ( Proxy(..) )
+import Data.Typeable                   ( Typeable )
 import Distribution.Compat.Environment ( lookupEnv )
 import System.Directory
 import Test.Tasty
