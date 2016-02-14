@@ -38,11 +38,14 @@ import           Distribution.Text
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
+import qualified Data.ByteString.Builder as BB
 
+import           Control.Exception (bracket)
 import           Control.Monad
 import           Data.Monoid
 import           Data.List
 import           Data.Either
+import           System.IO (hClose, openBinaryFile, IOMode(WriteMode))
 
 
 ------------------------------------------------------------------------------
@@ -136,7 +139,7 @@ build verbosity
 
     --TODO [code cleanup] move this inside the caching performed by
     -- rebuildInstallPlan so that we do not need to write it out every time
-    writeFile (distProjectCacheFile distDirLayout "plan.json") $
+    writeFileBB (distProjectCacheFile distDirLayout "plan.json") $
                encodePlanToJson sharedPackageConfig elaboratedInstallPlan
 
     let buildSettings = resolveBuildTimeSettings
@@ -495,12 +498,11 @@ printPlan verbosity dryRun pkgsBuildStatus pkgs
 -- | For the benefit of debugging and some external tools, write out a
 -- representation of the install plan.
 --
-encodePlanToJson :: ElaboratedSharedConfig -> ElaboratedInstallPlan -> String
+encodePlanToJson :: ElaboratedSharedConfig -> ElaboratedInstallPlan -> BB.Builder
 encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
-    --TODO: [nice to have] faster json encoding
     --TODO: [nice to have] include all of the sharedPackageConfig and all of
     --      the parts of the elaboratedInstallPlan
-    J.encodeToString $
+    J.encodeToBuilder $
       J.object [ "install-plan" J..= jsonIPlan ]
   where
     jsonIPlan = map toJ (InstallPlan.toList elaboratedInstallPlan)
@@ -528,3 +530,7 @@ encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
 
     unCId uid = J.String (display uid)
 
+-- | Write a 'BB.Builder' to a file
+writeFileBB :: FilePath -> BB.Builder -> IO ()
+writeFileBB f bb =
+    bracket (openBinaryFile f WriteMode) hClose (`BB.hPutBuilder` bb)
