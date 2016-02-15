@@ -14,6 +14,7 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     findProjectRoot,
     readProjectConfig,
+    showProjectConfig,
     writeProjectLocalExtraConfig,
     commandLineFlagsToProjectConfig,
     convertLegacyCommandLineFlags,
@@ -865,6 +866,16 @@ parseProjectConfig content =
       parseLegacyProjectConfig content
 
 
+-- | Render the 'ProjectConfig' format.
+--
+-- For the moment this is implemented in terms of a pretty printer for the
+-- legacy configuration types, plus a conversion.
+--
+showProjectConfig :: ProjectConfig -> String
+showProjectConfig =
+    showLegacyProjectConfig . convertToLegacyProjectConfig
+
+
 -- | Write a @cabal.project.extra@ file in the given project root dir.
 --
 writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
@@ -1217,6 +1228,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
     } = configFlags
 
     packageConfigCoverage       = coverage <> libcoverage
+    --TODO: defer this merging to the resolve phase
 
     InstallFlags {
       installDocumentation      = packageConfigDocumentation,
@@ -1279,6 +1291,228 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     HaddockFlags {
       haddockKeepTempFiles      = projectConfigKeepTempFiles --TODO: this ought to live elsewhere
     } = haddockFlags
+
+
+convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
+convertToLegacyProjectConfig
+    projectConfig@ProjectConfig {
+      projectConfigPackageGlobs,
+      projectConfigLocalPackages,
+      projectConfigSpecificPackage
+      
+    } =
+    LegacyProjectConfig {
+      legacyLocalPackgeGlobs = projectConfigPackageGlobs,
+      legacyRepoPackges      = [],
+      legacySharedConfig     = convertToLegacySharedConfig projectConfig,
+      legacyLocalConfig      = convertToLegacyAllPackageConfig projectConfig
+                            <> convertToLegacyPerPackageConfig
+                                 projectConfigLocalPackages,
+      legacySpecificConfig   = fmap convertToLegacyPerPackageConfig
+                                    projectConfigSpecificPackage
+    }
+
+convertToLegacySharedConfig :: ProjectConfig -> LegacySharedConfig
+convertToLegacySharedConfig
+    ProjectConfig {
+      projectConfigBuildOnly     = ProjectConfigBuildOnly {..},
+      projectConfigShared        = ProjectConfigShared {..},
+      projectConfigLocalPackages = PackageConfig {..}
+    } =
+
+    LegacySharedConfig {
+      legacyGlobalFlags      = globalFlags,
+      legacyConfigureExFlags = configExFlags,
+      legacyInstallFlags     = installFlags
+    }
+  where
+    globalFlags = GlobalFlags {
+      globalVersion           = mempty,
+      globalNumericVersion    = mempty,
+      globalConfigFile        = mempty,
+      globalSandboxConfigFile = mempty,
+      globalConstraintsFile   = mempty,
+      globalRemoteRepos       = projectConfigRemoteRepos,
+      globalCacheDir          = projectConfigCacheDir,
+      globalLocalRepos        = projectConfigLocalRepos,
+      globalLogsDir           = projectConfigLogsDir,
+      globalWorldFile         = projectConfigWorldFile,
+      globalRequireSandbox    = mempty,
+      globalIgnoreSandbox     = mempty,
+      globalIgnoreExpiry      = projectConfigIgnoreExpiry,
+      globalHttpTransport     = projectConfigHttpTransport
+    }
+
+    configExFlags = ConfigExFlags {
+      configCabalVersion  = projectConfigCabalVersion,
+      configExConstraints = projectConfigConstraints,
+      configPreferences   = projectConfigPreferences,
+      configSolver        = projectConfigSolver,
+      configAllowNewer    = projectConfigAllowNewer
+    }
+
+    installFlags = InstallFlags {
+      installDocumentation     = packageConfigDocumentation,
+      installHaddockIndex      = projectConfigHaddockIndex,
+      installDryRun            = projectConfigDryRun,
+      installReinstall         = projectConfigReinstall,
+      installAvoidReinstalls   = projectConfigAvoidReinstalls,
+      installOverrideReinstall = projectConfigOverrideReinstall,
+      installMaxBackjumps      = projectConfigMaxBackjumps,
+      installUpgradeDeps       = projectConfigUpgradeDeps,
+      installReorderGoals      = projectConfigReorderGoals,
+      installIndependentGoals  = projectConfigIndependentGoals,
+      installShadowPkgs        = projectConfigShadowPkgs,
+      installStrongFlags       = projectConfigStrongFlags,
+      installOnly              = mempty,
+      installOnlyDeps          = projectConfigOnlyDeps,
+      installRootCmd           = projectConfigRootCmd,
+      installSummaryFile       = projectConfigSummaryFile,
+      installLogFile           = projectConfigLogFile,
+      installBuildReports      = projectConfigBuildReports,
+      installReportPlanningFailure = projectConfigReportPlanningFailure,
+      installSymlinkBinDir     = projectConfigSymlinkBinDir,
+      installOneShot           = projectConfigOneShot,
+      installNumJobs           = projectConfigNumJobs,
+      installRunTests          = packageConfigRunTests,
+      installOfflineMode       = projectConfigOfflineMode
+    }
+
+
+convertToLegacyAllPackageConfig :: ProjectConfig -> LegacyPackageConfig
+convertToLegacyAllPackageConfig 
+    ProjectConfig {
+      projectConfigBuildOnly = ProjectConfigBuildOnly {..},
+      projectConfigShared    = ProjectConfigShared {..}
+    } =
+
+    LegacyPackageConfig {
+      legacyConfigureFlags = configFlags,
+      legacyHaddockFlags   = haddockFlags
+    }
+  where
+    configFlags = ConfigFlags {
+      configPrograms            = configPrograms mempty,
+      configProgramPaths        = projectConfigProgramPaths,
+      configProgramArgs         = projectConfigProgramArgs,
+      configProgramPathExtra    = projectConfigProgramPathExtra,
+      configHcFlavor            = projectConfigHcFlavor,
+      configHcPath              = projectConfigHcPath,
+      configHcPkg               = projectConfigHcPkg,
+      configVanillaLib          = projectConfigVanillaLib,
+      configProfLib             = mempty,
+      configSharedLib           = projectConfigSharedLib,
+      configDynExe              = mempty,
+      configProfExe             = mempty,
+      configProf                = mempty,
+      configProfDetail          = mempty,
+      configProfLibDetail       = mempty,
+      configConfigureArgs       = mempty,
+      configOptimization        = mempty,
+      configProgPrefix          = mempty,
+      configProgSuffix          = mempty,
+      configInstallDirs         = mempty,
+      configScratchDir          = mempty,
+      configDistPref            = mempty,
+      configVerbosity           = projectConfigVerbosity,
+      configUserInstall         = projectConfigUserInstall,
+      configPackageDBs          = projectConfigPackageDBs,
+      configGHCiLib             = mempty,
+      configSplitObjs           = mempty,
+      configStripExes           = mempty,
+      configStripLibs           = mempty,
+      configExtraLibDirs        = mempty,
+      configConstraints         = mempty,
+      configDependencies        = mempty,
+      configExtraIncludeDirs    = mempty,
+      configIPID                = mempty,
+      configConfigurationsFlags = projectConfigFlagAssignment,
+      configTests               = mempty,
+      configCoverage            = mempty, --TODO: don't merge
+      configLibCoverage         = mempty, --TODO: don't merge
+      configExactConfiguration  = mempty,
+      configBenchmarks          = mempty,
+      configFlagError           = mempty,                --TODO: ???
+      configRelocatable         = projectConfigRelocatable,
+      configDebugInfo           = mempty
+    }
+
+    haddockFlags = mempty {
+      haddockKeepTempFiles = projectConfigKeepTempFiles
+    }
+
+
+convertToLegacyPerPackageConfig :: PackageConfig -> LegacyPackageConfig
+convertToLegacyPerPackageConfig PackageConfig {..} =
+    LegacyPackageConfig {
+      legacyConfigureFlags = configFlags,
+      legacyHaddockFlags   = haddockFlags
+    }
+  where
+    configFlags = ConfigFlags {
+      configPrograms            = configPrograms mempty,
+      configProgramPaths        = mempty,
+      configProgramArgs         = mempty,
+      configProgramPathExtra    = mempty,
+      configHcFlavor            = mempty,
+      configHcPath              = mempty,
+      configHcPkg               = mempty,
+      configVanillaLib          = mempty,
+      configProfLib             = packageConfigProfLib,
+      configSharedLib           = mempty,
+      configDynExe              = packageConfigDynExe,
+      configProfExe             = packageConfigProfExe,
+      configProf                = packageConfigProf,
+      configProfDetail          = packageConfigProfDetail,
+      configProfLibDetail       = packageConfigProfLibDetail,
+      configConfigureArgs       = packageConfigConfigureArgs,
+      configOptimization        = packageConfigOptimization,
+      configProgPrefix          = packageConfigProgPrefix,
+      configProgSuffix          = packageConfigProgSuffix,
+      configInstallDirs         = mempty,
+      configScratchDir          = mempty,
+      configDistPref            = mempty,
+      configVerbosity           = mempty,
+      configUserInstall         = mempty,
+      configPackageDBs          = mempty,
+      configGHCiLib             = packageConfigGHCiLib,
+      configSplitObjs           = packageConfigSplitObjs,
+      configStripExes           = packageConfigStripExes,
+      configStripLibs           = packageConfigStripLibs,
+      configExtraLibDirs        = packageConfigExtraLibDirs,
+      configConstraints         = mempty,
+      configDependencies        = mempty,
+      configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
+      configIPID                = mempty,
+      configConfigurationsFlags = mempty,
+      configTests               = packageConfigTests,
+      configCoverage            = packageConfigCoverage, --TODO: don't merge
+      configLibCoverage         = packageConfigCoverage, --TODO: don't merge
+      configExactConfiguration  = mempty,
+      configBenchmarks          = packageConfigBenchmarks,
+      configFlagError           = mempty,                --TODO: ???
+      configRelocatable         = mempty,
+      configDebugInfo           = packageConfigDebugInfo
+    }
+    haddockFlags = HaddockFlags {
+      haddockProgramPaths  = mempty,
+      haddockProgramArgs   = mempty,
+      haddockHoogle        = packageConfigHaddockHoogle,
+      haddockHtml          = packageConfigHaddockHtml,
+      haddockHtmlLocation  = packageConfigHaddockHtmlLocation,
+      haddockForHackage    = mempty, --TODO: added recently
+      haddockExecutables   = packageConfigHaddockExecutables,
+      haddockTestSuites    = packageConfigHaddockTestSuites,
+      haddockBenchmarks    = packageConfigHaddockBenchmarks,
+      haddockInternal      = packageConfigHaddockInternal,
+      haddockCss           = packageConfigHaddockCss,
+      haddockHscolour      = packageConfigHaddockHscolour,
+      haddockHscolourCss   = packageConfigHaddockHscolourCss,
+      haddockContents      = packageConfigHaddockContents,
+      haddockDistPref      = mempty,
+      haddockKeepTempFiles = mempty,
+      haddockVerbosity     = mempty
+    }
 
 
 ------------------------------------------------
