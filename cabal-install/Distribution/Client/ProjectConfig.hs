@@ -15,6 +15,7 @@ module Distribution.Client.ProjectConfig (
     findProjectRoot,
     readProjectConfig,
     writeProjectLocalExtraConfig,
+    writeProjectConfigFile,
     commandLineFlagsToProjectConfig,
 
     -- * Resolving configuration
@@ -877,9 +878,16 @@ showProjectConfig =
 --
 writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir =
-    writeFile projectExtraConfigFile . showProjectConfig
+    writeProjectConfigFile projectExtraConfigFile
   where
     projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+
+
+-- | Write in the @cabal.project@ format to the given file.
+--
+writeProjectConfigFile :: FilePath -> ProjectConfig -> IO ()
+writeProjectConfigFile file =
+    writeFile file . showProjectConfig
 
 
 -- | Read the user's @~/.cabal/config@ file.

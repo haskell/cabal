@@ -487,6 +487,8 @@ rebuildInstallPlan verbosity
                                  <> cliConfig {
                                       projectConfigBuildOnly = mempty
                                     }
+      liftIO $ writeProjectConfigFile (distProjectCacheFile "config")
+                                      projectConfigPersistent
       return (projectConfigPersistent, projectConfigTransient)
 
     -- Look for all the cabal packages in the project
