@@ -115,11 +115,9 @@ build verbosity
     projectRootDir <- findProjectRoot
     let distDirLayout = defaultDistDirLayout projectRootDir
 
-    let (cliConfig,
-         cliBuildSettings) = convertLegacyCommandLineFlags
-                               globalFlags
-                               configFlags configExFlags
-                               installFlags haddockFlags
+    let cliConfig = commandLineFlagsToProjectConfig
+                      globalFlags configFlags configExFlags
+                      installFlags haddockFlags
 
     userTargets <- readUserBuildTargets targetStrings
 
@@ -147,7 +145,7 @@ build verbosity
                           verbosity cabalDirLayout
                           (projectConfigShared    projectConfig)
                           (projectConfigBuildOnly projectConfig)
-                          cliBuildSettings
+                          (projectConfigBuildOnly cliConfig)
 
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
@@ -233,16 +231,14 @@ configure verbosity
     projectRootDir <- findProjectRoot
     let distDirLayout = defaultDistDirLayout projectRootDir
 
-    let legacyconfig = commandLineFlagsToLegacyProjectConfig
-                         globalFlags
-                         configFlags configExFlags
-                         installFlags haddockFlags
-    writeProjectLocalExtraConfig projectRootDir legacyconfig
+    let cliConfig = commandLineFlagsToProjectConfig
+                      globalFlags configFlags configExFlags
+                      installFlags haddockFlags
+    writeProjectLocalExtraConfig projectRootDir cliConfig
 
     (_elaboratedInstallPlan, _sharedPackageConfig, _projectConfig) <-
       rebuildInstallPlan verbosity
-                         projectRootDir distDirLayout cabalDirLayout
-                         (mempty, mempty)
+                         projectRootDir distDirLayout cabalDirLayout mempty
 
     --TODO: print what we would build.
     -- Hmm, but we don't have any targets. Could pick implicit target like "."

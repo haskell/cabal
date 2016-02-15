@@ -403,13 +403,9 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
-type CliConfig = ( ProjectConfigShared
-                 , PackageConfig
-                 )
-
 rebuildInstallPlan :: Verbosity
                    -> FilePath -> DistDirLayout -> CabalDirLayout
-                   -> CliConfig
+                   -> ProjectConfig
                    -> IO ( ElaboratedInstallPlan
                          , ElaboratedSharedConfig
                          , ProjectConfig )
@@ -424,28 +420,31 @@ rebuildInstallPlan verbosity
                      cabalPackageCacheDirectory,
                      cabalStoreDirectory,
                      cabalStorePackageDB
-                   } = \cliConfig ->
+                   }
+                   cliConfig =
     runRebuild $ do
     progsearchpath <- liftIO $ getSystemSearchPath
+    let cliConfigPersistent = cliConfig { projectConfigBuildOnly = mempty }
 
     -- The overall improved plan is cached
     rerunIfChanged verbosity projectRootDir fileMonitorImprovedPlan
                    -- react to changes in command line args and the path
-                   (cliConfig, progsearchpath) $ do
+                   (cliConfigPersistent, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
       (elaboratedPlan, elaboratedShared,
        projectConfig) <-
         rerunIfChanged verbosity projectRootDir fileMonitorElaboratedPlan
-                       (cliConfig, progsearchpath) $ do
+                       (cliConfigPersistent, progsearchpath) $ do
 
-          projectConfig <- phaseReadProjectConfig cliConfig
+          (projectConfig, projectConfigTransient) <- phaseReadProjectConfig
           localPackages <- phaseReadLocalPackages projectConfig
           compilerEtc   <- phaseConfigureCompiler projectConfig
-          solverPlan    <- phaseRunSolver         projectConfig compilerEtc
-                                                  localPackages
+          solverPlan    <- phaseRunSolver         projectConfigTransient
+                                                  compilerEtc localPackages
           (elaboratedPlan,
-           elaboratedShared) <- phaseElaboratePlan projectConfig compilerEtc
+           elaboratedShared) <- phaseElaboratePlan projectConfigTransient
+                                                   compilerEtc
                                                    solverPlan localPackages
 
           return (elaboratedPlan, elaboratedShared,
@@ -470,20 +469,25 @@ rebuildInstallPlan verbosity
     -- Read the cabal.project (or implicit config) and combine it with
     -- arguments from the command line
     --
-    phaseReadProjectConfig :: CliConfig -> Rebuild ProjectConfig
-    phaseReadProjectConfig ( cliConfigAllPackages
-                           , cliConfigLocalPackages
-                           ) = do
+    phaseReadProjectConfig :: Rebuild (ProjectConfig, ProjectConfig)
+    phaseReadProjectConfig = do
       liftIO $ do
         info verbosity "Project settings changed, reconfiguring..."
         createDirectoryIfMissingVerbose verbosity False distDirectory
         createDirectoryIfMissingVerbose verbosity False distProjectCacheDirectory
 
       projectConfig <- readProjectConfig verbosity projectRootDir
-      return (projectConfig
-           <> commandLineFlagsToProjectConfig
-                cliConfigAllPackages
-                cliConfigLocalPackages)
+
+      -- The project config comming from the command line includes "build only"
+      -- flags that we don't cache persistently (because like all "build only"
+      -- flags they do not affect the value of the outcome) but that we do
+      -- sometimes using during planning (in particular the http transport)
+      let projectConfigTransient  = projectConfig <> cliConfig
+          projectConfigPersistent = projectConfig
+                                 <> cliConfig {
+                                      projectConfigBuildOnly = mempty
+                                    }
+      return (projectConfigPersistent, projectConfigTransient)
 
     -- Look for all the cabal packages in the project
     -- some of which may be local src dirs, tarballs etc
@@ -567,9 +571,6 @@ rebuildInstallPlan verbosity
                            cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
-        --TODO: [required eventually] the projectConfigBuildOnly we have here
-        -- comes only from the config file, not from the command line, so
-        -- cannot select the http transport etc.
         solverSettings = resolveSolverSettings projectConfigShared
         logMsg message rest = debugNoWrap verbosity message >> rest
 

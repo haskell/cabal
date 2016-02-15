@@ -14,11 +14,8 @@ module Distribution.Client.ProjectConfig (
     -- * Project config files
     findProjectRoot,
     readProjectConfig,
-    showProjectConfig,
     writeProjectLocalExtraConfig,
     commandLineFlagsToProjectConfig,
-    convertLegacyCommandLineFlags,
-    commandLineFlagsToLegacyProjectConfig,
 
     -- * Resolving configuration
     lookupLocalPackageConfig,
@@ -878,10 +875,9 @@ showProjectConfig =
 
 -- | Write a @cabal.project.extra@ file in the given project root dir.
 --
-writeProjectLocalExtraConfig :: FilePath -> LegacyProjectConfig -> IO ()
-writeProjectLocalExtraConfig projectRootDir config =
-    writeFile projectExtraConfigFile
-              (showLegacyProjectConfig config)
+writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
+writeProjectLocalExtraConfig projectRootDir =
+    writeFile projectExtraConfigFile . showProjectConfig
   where
     projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
 
@@ -902,14 +898,24 @@ readGlobalConfig verbosity = do
 -- line into a 'ProjectConfig' value that can combined with configuration from
 -- other sources.
 --
-commandLineFlagsToProjectConfig :: ProjectConfigShared
-                                -> PackageConfig
+-- At the moment this uses the legacy command line flag types. See
+-- 'LegacyProjectConfig' for an explanation.
+--
+commandLineFlagsToProjectConfig :: GlobalFlags
+                                -> ConfigFlags  -> ConfigExFlags
+                                -> InstallFlags -> HaddockFlags
                                 -> ProjectConfig
-commandLineFlagsToProjectConfig cliConfigAllPackages
-                                cliConfigLocalPackages =
+commandLineFlagsToProjectConfig globalFlags configFlags configExFlags
+                                installFlags haddockFlags =
     mempty {
-      projectConfigShared        = cliConfigAllPackages,
-      projectConfigLocalPackages = cliConfigLocalPackages
+      projectConfigBuildOnly     = convertLegacyBuildOnlyFlags
+                                     globalFlags configFlags
+                                     installFlags haddockFlags,
+      projectConfigShared        = convertLegacyAllPackageFlags
+                                     globalFlags configFlags
+                                     configExFlags installFlags,
+      projectConfigLocalPackages = convertLegacyPerPackageFlags
+                                     configFlags installFlags haddockFlags
     }
 
 
@@ -1083,57 +1089,6 @@ convertLegacyProjectConfig
         perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags
       where
         perPkgInstallFlags = mempty --TODO
-
-
---TODO: eliminate, add ProjectConfig -> LegacyProjectConfig and use
--- convertLegacyCommandLineFlags
-commandLineFlagsToLegacyProjectConfig :: GlobalFlags
-                                      -> ConfigFlags  -> ConfigExFlags
-                                      -> InstallFlags -> HaddockFlags
-                                      -> LegacyProjectConfig
-commandLineFlagsToLegacyProjectConfig globalFlags
-                                      configFlags configExFlags
-                                      installFlags haddockFlags =
-    LegacyProjectConfig {
-      legacyLocalPackgeGlobs   = [],
-      legacyRepoPackges        = [],
-      legacySharedConfig = LegacySharedConfig {
-        legacyGlobalFlags      = globalFlags,
-        legacyConfigureExFlags = configExFlags,
-        legacyInstallFlags     = installFlags
-      },
-      legacyLocalConfig = LegacyPackageConfig {
-        legacyConfigureFlags   = configFlags,
-        legacyHaddockFlags     = haddockFlags
-      },
-      legacySpecificConfig = Map.empty
-    }
-
---TODO: return ProjectConfig instead
-convertLegacyCommandLineFlags :: GlobalFlags
-                              -> ConfigFlags  -> ConfigExFlags
-                              -> InstallFlags -> HaddockFlags
-                              -> ( ( ProjectConfigShared
-                                   , PackageConfig
-                                   )
-                                 , ProjectConfigBuildOnly
-                                 )
-convertLegacyCommandLineFlags globalFlags configFlags configExFlags
-                              installFlags haddockFlags =
-    ( ( configAllPackages
-      , configLocalPackages
-      )
-    , configBuildOnly
-    )
-  where
-    configLocalPackages = convertLegacyPerPackageFlags
-                            configFlags installFlags haddockFlags
-    configAllPackages   = convertLegacyAllPackageFlags
-                            globalFlags configFlags
-                            configExFlags installFlags
-    configBuildOnly     = convertLegacyBuildOnlyFlags
-                            globalFlags configFlags
-                            installFlags haddockFlags
 
 
 -- | Helper used by other conversion functions that returns the
