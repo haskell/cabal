@@ -229,8 +229,25 @@ nonSharedLibTests config =
         assertOutputContains "Flags chosen: build-exe=False" r
         cabal "build" []
 
+  , tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
+  , tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
+
+  -- TODO: Disable these tests on Windows
+  , tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
+
   ]
   where
+    ghc_pkg_guess bin_name = do
+        cwd <- packageDir
+        with_ghc <- getWithGhcPath
+        r <- withEnv [("WITH_GHC", Just with_ghc)]
+           . shouldFail $ cabal' "configure" ["-w", cwd </> bin_name]
+        assertOutputContains "is version 9999999" r
+        return ()
+
     -- Shared test function for BuildDeps/InternalLibrary* tests.
     internal_lib_test expect = withPackageDb $ do
         withPackage "to-install" $ cabal_install []

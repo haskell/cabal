@@ -15,6 +15,7 @@ module PackageTests.PackageTester
     , distDir
     , relativeDistDir
     , sharedDBPath
+    , getWithGhcPath
 
     -- * Running cabal commands
     , cabal
@@ -246,6 +247,11 @@ sharedDBPath :: TestM FilePath
 sharedDBPath = do
     top_dir <- topDir
     return $ top_dir </> "packagedb"
+
+getWithGhcPath :: TestM FilePath
+getWithGhcPath = do
+    (suite, _) <- ask
+    return $ withGhcPath suite
 
 ------------------------------------------------------------------------
 -- * Running cabal
