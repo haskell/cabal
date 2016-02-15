@@ -14,6 +14,11 @@ module Distribution.Client.Sandbox.Timestamp (
   maybeAddCompilerTimestampRecord,
   listModifiedDeps,
   removeTimestamps,
+
+  -- * For testing
+  TimestampFileRecord,
+  readTimestampFile,
+  writeTimestampFile
   ) where
 
 import Control.Exception                             (IOException)
@@ -50,12 +55,13 @@ import Distribution.Client.Utils
   (inDir, removeExistingFile, tryCanonicalizePath, tryFindAddSourcePackageDesc)
 
 import Distribution.Compat.Exception                 (catchIO)
-import Distribution.Client.Compat.Time               (EpochTime, getCurTime,
-                                                      getModTime)
+import Distribution.Client.Compat.Time               (ModTime, getCurTime,
+                                                      getModTime,
+                                                      posixSecondsToModTime)
 
 
 -- | Timestamp of an add-source dependency.
-type AddSourceTimestamp  = (FilePath, EpochTime)
+type AddSourceTimestamp  = (FilePath, ModTime)
 -- | Timestamp file record - a string identifying the compiler & platform plus a
 -- list of add-source timestamps.
 type TimestampFileRecord = (String, [AddSourceTimestamp])
@@ -79,15 +85,37 @@ readTimestampFile :: FilePath -> IO [TimestampFileRecord]
 readTimestampFile timestampFile = do
   timestampString <- readFile timestampFile `catchIO` \_ -> return "[]"
   case reads timestampString of
-    [(timestamps, s)] | all isSpace s -> return timestamps
-    _                                 ->
-      die $ "The timestamps file is corrupted. "
-      ++ "Please delete & recreate the sandbox."
+    [(version, s)]
+      | version == (2::Int) ->
+        case reads s of
+          [(timestamps, s')] | all isSpace s' -> return timestamps
+          _                                   -> dieCorrupted
+      | otherwise   -> dieWrongFormat
+
+    -- Old format (timestamps are POSIX seconds). Convert to new format.
+    [] ->
+      case reads timestampString of
+        [(timestamps, s)] | all isSpace s -> do
+          let timestamps' = map (\(i, ts) ->
+                                  (i, map (\(p, t) ->
+                                            (p, posixSecondsToModTime t)) ts))
+                            timestamps
+          writeTimestampFile timestampFile timestamps'
+          return timestamps'
+        _ -> dieCorrupted
+    _ -> dieCorrupted
+  where
+    dieWrongFormat    = die $ wrongFormat ++ deleteAndRecreate
+    dieCorrupted      = die $ corrupted ++ deleteAndRecreate
+    wrongFormat       = "The timestamps file is in the wrong format."
+    corrupted         = "The timestamps file is corrupted."
+    deleteAndRecreate = " Please delete and recreate the sandbox."
 
 -- | Write the timestamp file, atomically.
 writeTimestampFile :: FilePath -> [TimestampFileRecord] -> IO ()
 writeTimestampFile timestampFile timestamps = do
-  writeFile  timestampTmpFile (show timestamps)
+  writeFile  timestampTmpFile "2\n" -- version
+  appendFile timestampTmpFile (show timestamps ++ "\n")
   renameFile timestampTmpFile timestampFile
   where
     timestampTmpFile = timestampFile <.> "tmp"
@@ -105,7 +133,7 @@ withTimestampFile sandboxDir process = do
 -- we've added and an initial timestamp, add an 'AddSourceTimestamp' to the list
 -- for each path. If a timestamp for a given path already exists in the list,
 -- update it.
-addTimestamps :: EpochTime -> [AddSourceTimestamp] -> [FilePath]
+addTimestamps :: ModTime -> [AddSourceTimestamp] -> [FilePath]
                  -> [AddSourceTimestamp]
 addTimestamps initial timestamps newPaths =
   [ (p, initial) | p <- newPaths ] ++ oldTimestamps
@@ -116,7 +144,7 @@ addTimestamps initial timestamps newPaths =
 -- | Given a list of 'AddSourceTimestamp's, a list of paths to add-source deps
 -- we've reinstalled and a new timestamp value, update the timestamp value for
 -- the deps in the list. If there are new paths in the list, ignore them.
-updateTimestamps :: [AddSourceTimestamp] -> [FilePath] -> EpochTime
+updateTimestamps :: [AddSourceTimestamp] -> [FilePath] -> ModTime
                     -> [AddSourceTimestamp]
 updateTimestamps timestamps pathsToUpdate newTimestamp =
   foldr updateTimestamp [] timestamps
@@ -156,7 +184,7 @@ maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
 -- build tree refs to the timestamps file (for all compilers).
 withAddTimestamps :: FilePath -> IO [FilePath] -> IO ()
 withAddTimestamps sandboxDir act = do
-  let initialTimestamp = 0
+  let initialTimestamp = minBound
   withActionOnAllTimestamps (addTimestamps initialTimestamp) sandboxDir act
 
 -- | Given a list of build tree refs, remove those
@@ -192,7 +220,7 @@ withActionOnAllTimestamps f sandboxDir act =
 -- list of 'AddSourceTimestamp's for this compiler, applies 'f' to the result
 -- and then updates the timestamp file record. The IO action is run only once.
 withActionOnCompilerTimestamps :: ([AddSourceTimestamp]
-                                   -> [FilePath] -> EpochTime
+                                   -> [FilePath] -> ModTime
                                    -> [AddSourceTimestamp])
                                   -> FilePath
                                   -> CompilerId
@@ -250,7 +278,7 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
   return ret
 
 -- | Has this dependency been modified since we have last looked at it?
-isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
+isDepModified :: Verbosity -> ModTime -> AddSourceTimestamp -> IO Bool
 isDepModified verbosity now (packageDir, timestamp) = do
   debug verbosity ("Checking whether the dependency is modified: " ++ packageDir)
   depSources <- allPackageSourceFiles verbosity packageDir
