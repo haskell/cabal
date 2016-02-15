@@ -241,7 +241,7 @@ testGlobNoChange =
     updateMonitor root monitor [monitorFileGlob "dir/good-*"] () ()
     (res, files) <- expectMonitorUnchanged root monitor ()
     res   @?= ()
-    files @?= [monitorFileGlob ("dir" </> "good-*")]
+    files @?= [monitorFileGlob "dir/good-*"]
 
 testGlobAddMatch :: Assertion
 testGlobAddMatch =
