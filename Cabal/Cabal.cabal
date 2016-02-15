@@ -89,6 +89,24 @@ extra-source-files:
   tests/PackageTests/DuplicateModuleName/tests/Foo.hs
   tests/PackageTests/DuplicateModuleName/tests2/Foo.hs
   tests/PackageTests/EmptyLib/empty/empty.cabal
+  tests/PackageTests/GhcPkgGuess/SameDirectory/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/SameDirectory/ghc
+  tests/PackageTests/GhcPkgGuess/SameDirectory/ghc-pkg
+  tests/PackageTests/GhcPkgGuess/SameDirectoryGhcVersion/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/SameDirectoryGhcVersion/ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SameDirectoryGhcVersion/ghc-pkg-ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SameDirectoryVersion/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/SameDirectoryVersion/ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SameDirectoryVersion/ghc-pkg-7.10
+  tests/PackageTests/GhcPkgGuess/Symlink/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/Symlink/bin/ghc
+  tests/PackageTests/GhcPkgGuess/Symlink/bin/ghc-pkg
+  tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/bin/ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/bin/ghc-pkg-7.10
+  tests/PackageTests/GhcPkgGuess/SymlinkVersion/SameDirectory.cabal
+  tests/PackageTests/GhcPkgGuess/SymlinkVersion/bin/ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SymlinkVersion/bin/ghc-pkg-ghc-7.10
   tests/PackageTests/Haddock/CPP.hs
   tests/PackageTests/Haddock/Literate.lhs
   tests/PackageTests/Haddock/NoCPP.hs

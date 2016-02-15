@@ -186,22 +186,24 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
        real_path <- canonicalizePath given_path
        let real_dir           = takeDirectory real_path
            versionSuffix path = takeVersionSuffix (dropExeExtension path)
+           given_suf = versionSuffix given_path
+           real_suf  = versionSuffix real_path
            guessNormal       dir = dir </> toolname <.> exeExtension
-           guessGhcVersioned dir = dir </> (toolname ++ "-ghc"
-                                            ++ versionSuffix dir)
-                                       <.> exeExtension
-           guessVersioned    dir = dir </> (toolname ++ versionSuffix dir)
-                                       <.> exeExtension
-           mkGuesses dir | null (versionSuffix dir) = [guessNormal dir]
-                         | otherwise                = [guessGhcVersioned dir,
-                                                       guessVersioned dir,
-                                                       guessNormal dir]
-           guesses = mkGuesses given_dir ++
+           guessGhcVersioned dir suf = dir </> (toolname ++ "-ghc" ++ suf)
+                                           <.> exeExtension
+           guessVersioned    dir suf = dir </> (toolname ++ suf)
+                                           <.> exeExtension
+           mkGuesses dir suf | null suf  = [guessNormal dir]
+                             | otherwise = [guessGhcVersioned dir suf,
+                                            guessVersioned dir suf,
+                                            guessNormal dir]
+           guesses = mkGuesses given_dir given_suf ++
                             if real_path == given_path
                                 then []
-                                else mkGuesses real_dir
+                                else mkGuesses real_dir real_suf
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ given_dir
+       debug verbosity $ "candidate locations: " ++ show guesses
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
