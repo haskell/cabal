@@ -339,7 +339,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
     IPI.ldOptions          = ldOptions bi,
-    IPI.frameworkDirs      = [],
+    IPI.frameworkDirs      = frameworkDirs bi,
     IPI.frameworks         = frameworks bi,
     IPI.haddockInterfaces  = [haddockdir installDirs </> haddockName pkg],
     IPI.haddockHTMLs       = [htmldir installDirs],

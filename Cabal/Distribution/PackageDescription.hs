@@ -812,6 +812,7 @@ data BuildInfo = BuildInfo {
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
+        frameworkDirs     :: [String],
         cSources          :: [FilePath],
         jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
@@ -851,6 +852,7 @@ instance Monoid BuildInfo where
     ldOptions         = [],
     pkgconfigDepends  = [],
     frameworks        = [],
+    frameworkDirs     = [],
     cSources          = [],
     jsSources         = [],
     hsSourceDirs      = [],
@@ -884,6 +886,7 @@ instance Semigroup BuildInfo where
     ldOptions         = combine    ldOptions,
     pkgconfigDepends  = combine    pkgconfigDepends,
     frameworks        = combineNub frameworks,
+    frameworkDirs     = combineNub frameworkDirs,
     cSources          = combineNub cSources,
     jsSources         = combineNub jsSources,
     hsSourceDirs      = combineNub hsSourceDirs,

@@ -405,6 +405,9 @@ binfoFieldDescrs =
  , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
+ , listField "framework-dirs"
+           showToken          parseFilePathQ
+           frameworkDirs      (\val binfo -> binfo{frameworkDirs=val})
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
