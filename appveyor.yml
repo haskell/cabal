@@ -14,7 +14,7 @@ build_script:
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
   - Setup test unit-tests --show-details=streaming
-  - Setup test package-tests --show-details=streaming --test-option=--skip-shared-library-tests --test-option='--pattern=!GhcPkgGuess'
+  - Setup test package-tests --show-details=streaming --test-option=--skip-shared-library-tests --test-option=--pattern=!GhcPkgGuess
   - Setup install
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
