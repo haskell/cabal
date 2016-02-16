@@ -66,7 +66,8 @@ main = do
          (tests mtimeChangeDelay)
 
 -- Based on code written by Neill Mitchell for Shake. See
--- 'sleepFileTimeCalibrate' in 'Test.Type'.
+-- 'sleepFileTimeCalibrate' in 'Test.Type'. The returned delay is never smaller
+-- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO Int
 calibrateMtimeChangeDelay = do
   withTempDirectory silent "." "calibration-" $ \dir -> do
@@ -81,8 +82,8 @@ calibrateMtimeChangeDelay = do
       spin (0::Int)
     let mtimeChange = maximum mtimes
     putStrLn $ "Mtime delay calibration completed, calculated delay: "
-      ++ (show mtimeChange) ++ " ms."
-    return $ min 1000000 mtimeChange
+      ++ (show $ fromIntegral mtimeChange / (1000.0 :: Double)) ++ " ms."
+    return $ min 1000000 (max 10000 mtimeChange)
   where
     time :: IO () -> IO Int
     time act = do
