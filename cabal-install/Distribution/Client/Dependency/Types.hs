@@ -261,6 +261,9 @@ data ConstraintSource =
   -- | Main config file, which is ~/.cabal/config by default.
   ConstraintSourceMainConfig FilePath
 
+  -- | Local cabal.project file
+  | ConstraintSourceProjectConfig FilePath
+
   -- | Sandbox config file, which is ./cabal.sandbox.config by default.
   | ConstraintSourceSandboxConfig FilePath
 
@@ -298,6 +301,8 @@ instance Binary ConstraintSource
 showConstraintSource :: ConstraintSource -> String
 showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
+showConstraintSource (ConstraintSourceProjectConfig path) =
+    "project config " ++ path
 showConstraintSource (ConstraintSourceSandboxConfig path) =
     "sandbox config " ++ path
 showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path

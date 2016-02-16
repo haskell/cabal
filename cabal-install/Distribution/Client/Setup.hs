@@ -23,6 +23,7 @@ module Distribution.Client.Setup
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
+    , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand

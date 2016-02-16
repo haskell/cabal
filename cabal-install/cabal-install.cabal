@@ -181,6 +181,9 @@ executable cabal
         Distribution.Client.ParseUtils
         Distribution.Client.PkgConfigDb
         Distribution.Client.PlanIndex
+        Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectConfig.Types
+        Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.Run
         Distribution.Client.RebuildMonad
         Distribution.Client.Sandbox
