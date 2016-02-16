@@ -107,6 +107,10 @@ data GhcOptions = GhcOptions {
   -- | OSX only: frameworks to link in; the @ghc -framework@ flag.
   ghcOptLinkFrameworks :: NubListR String,
 
+  -- | OSX only: Search path for frameworks to link in; the
+  -- @ghc -framework-path@ flag.
+  ghcOptLinkFrameworkDirs :: NubListR String,
+
   -- | Don't do the link step, useful in make mode; the @ghc -no-link@ flag.
   ghcOptNoLink :: Flag Bool,
 
@@ -363,6 +367,7 @@ renderGhcOptions comp opts
   , ["-l" ++ lib     | lib <- flags ghcOptLinkLibs ]
   , ["-L" ++ dir     | dir <- flags ghcOptLinkLibPath ]
   , concat [ ["-framework", fmwk] | fmwk <- flags ghcOptLinkFrameworks ]
+  , concat [ ["-framework-path", path] | path <- flags ghcOptLinkFrameworkDirs ]
   , [ "-no-hs-main"  | flagBool ghcOptLinkNoHsMain ]
   , [ "-dynload deploy" | not (null (flags ghcOptRPaths)) ]
   , concat [ [ "-optl-Wl,-rpath," ++ dir]
@@ -500,6 +505,7 @@ instance Monoid GhcOptions where
     ghcOptLinkLibPath        = mempty,
     ghcOptLinkOptions        = mempty,
     ghcOptLinkFrameworks     = mempty,
+    ghcOptLinkFrameworkDirs  = mempty,
     ghcOptNoLink             = mempty,
     ghcOptLinkNoHsMain       = mempty,
     ghcOptCcOptions          = mempty,
@@ -556,6 +562,7 @@ instance Semigroup GhcOptions where
     ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
     ghcOptLinkOptions        = combine ghcOptLinkOptions,
     ghcOptLinkFrameworks     = combine ghcOptLinkFrameworks,
+    ghcOptLinkFrameworkDirs  = combine ghcOptLinkFrameworkDirs,
     ghcOptNoLink             = combine ghcOptNoLink,
     ghcOptLinkNoHsMain       = combine ghcOptLinkNoHsMain,
     ghcOptCcOptions          = combine ghcOptCcOptions,
