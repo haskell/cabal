@@ -72,7 +72,7 @@ calibrateMtimeChangeDelay :: IO Int
 calibrateMtimeChangeDelay = do
   withTempDirectory silent "." "calibration-" $ \dir -> do
     let fileName = dir </> "probe"
-    mtimes <- forM [1..10] $ \(i::Int) -> time $ do
+    mtimes <- forM [1..25] $ \(i::Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName
       let spin j = do
@@ -80,11 +80,18 @@ calibrateMtimeChangeDelay = do
             t1 <- getModTime fileName
             unless (t0 < t1) (spin $ j + 1)
       spin (0::Int)
-    let mtimeChange = maximum mtimes
-    putStrLn $ "Mtime delay calibration completed, calculated delay: "
-      ++ (show $ fromIntegral mtimeChange / (1000.0 :: Double)) ++ " ms."
-    return $ min 1000000 (max 10000 mtimeChange)
+    let mtimeChange  = maximum mtimes
+        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
+    notice normal $ "File modification time resolution calibration completed, "
+      ++ "maximum delay observed: "
+      ++ (show . toMillis $ mtimeChange ) ++ " ms. "
+      ++ "Will be using delay of " ++ (show . toMillis $ mtimeChange')
+      ++ " for test runs."
+    return mtimeChange'
   where
+    toMillis :: Int -> Double
+    toMillis x = fromIntegral x / (1000.0 :: Double)
+
     time :: IO () -> IO Int
     time act = do
       t0 <- getCurrentTime
