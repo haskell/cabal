@@ -1,12 +1,10 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-module UnitTests.Distribution.Client.Dependency.Modular.Solver (tests, options) where
+module UnitTests.Distribution.Client.Dependency.Modular.Solver (tests)
+       where
 
 -- base
 import Control.Monad
 import Data.Maybe (isNothing)
-import Data.Proxy
-import Data.Typeable
 
 import qualified Data.Version         as V
 import qualified Distribution.Version as V
@@ -14,13 +12,14 @@ import qualified Distribution.Version as V
 -- test-framework
 import Test.Tasty as TF
 import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
-import Test.Tasty.Options
 
 -- Cabal
-import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(..))
+import Language.Haskell.Extension ( Extension(..)
+                                  , KnownExtension(..), Language(..))
 
 -- cabal-install
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
+import UnitTests.Options
 
 tests :: [TF.TestTree]
 tests = [
@@ -493,22 +492,3 @@ dbBuildable2 = [
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
   ]
-
-{-------------------------------------------------------------------------------
-  Test options
--------------------------------------------------------------------------------}
-
-options :: [OptionDescription]
-options = [
-    Option (Proxy :: Proxy OptionShowSolverLog)
-  ]
-
-newtype OptionShowSolverLog = OptionShowSolverLog Bool
-  deriving Typeable
-
-instance IsOption OptionShowSolverLog where
-  defaultValue   = OptionShowSolverLog False
-  parseValue     = fmap OptionShowSolverLog . safeRead
-  optionName     = return "show-solver-log"
-  optionHelp     = return "Show full log from the solver"
-  optionCLParser = flagCLParser Nothing (OptionShowSolverLog True)

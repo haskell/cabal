@@ -11,40 +11,37 @@ import Distribution.Client.Compat.Time
 import Test.Tasty
 import Test.Tasty.HUnit
 
--- TODO: Calibrate, like Shake's test suite does.
-mtimeDelay :: Int
-mtimeDelay = 500000 -- 0.5 s
+tests :: Int -> [TestTree]
+tests mtimeChange =
+  [ testCase "getModTime has sub-second resolution" $ getModTimeTest mtimeChange
+  , testCase "getCurTime works as expected"         $ getCurTimeTest mtimeChange
+  ]
 
-tests :: [TestTree]
-tests =
-  [ testCase "getModTime has sub-second resolution" getModTimeTest
-  , testCase "getCurTime works as expected"         getCurTimeTest ]
-
-getModTimeTest :: Assertion
-getModTimeTest =
+getModTimeTest :: Int -> Assertion
+getModTimeTest mtimeChange =
   withTempDirectory silent "." "getmodtime-" $ \dir -> do
     let fileName = dir </> "foo"
     writeFile fileName "bar"
     t0 <- getModTime fileName
-    threadDelay mtimeDelay
+    threadDelay mtimeChange
     writeFile fileName "baz"
     t1 <- getModTime fileName
     assertBool "expected different file mtimes" (t1 > t0)
 
 
-getCurTimeTest :: Assertion
-getCurTimeTest =
+getCurTimeTest :: Int -> Assertion
+getCurTimeTest mtimeChange =
   withTempDirectory silent "." "getmodtime-" $ \dir -> do
     let fileName = dir </> "foo"
     writeFile fileName "bar"
     t0 <- getModTime fileName
-    threadDelay mtimeDelay
+    threadDelay mtimeChange
     t1 <- getCurTime
     assertBool("expected file mtime (" ++ show t0
                ++ ") to be earlier than current time (" ++ show t1 ++ ")")
       (t0 < t1)
 
-    threadDelay mtimeDelay
+    threadDelay mtimeChange
     writeFile fileName "baz"
     t2 <- getModTime fileName
     assertBool ("expected current time (" ++ show t1

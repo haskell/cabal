@@ -276,6 +276,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
+    UnitTests.Options
   build-depends:
         base,
         array,
