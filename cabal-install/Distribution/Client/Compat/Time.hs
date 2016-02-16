@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving #-}
 module Distribution.Client.Compat.Time
        ( ModTime(..) -- Needed for testing
        , getModTime, getFileAge, getCurTime
@@ -9,6 +9,8 @@ import Control.Arrow    ( first )
 import Data.Int         ( Int64 )
 import Data.Word        ( Word64 )
 import System.Directory ( getModificationTime )
+
+import Distribution.Compat.Binary ( Binary )
 
 import Data.Time.Clock.POSIX ( POSIXTime, getPOSIXTime )
 #if MIN_VERSION_directory(1,2,0)
@@ -48,7 +50,7 @@ import System.Posix.Files ( modificationTime )
 -- | An opaque type representing a file's modification time, represented
 -- internally as a 64-bit unsigned integer in the Windows UTC format.
 newtype ModTime = ModTime Word64
-                deriving (Bounded, Eq, Ord)
+                deriving (Binary, Bounded, Eq, Ord)
 
 instance Show ModTime where
   show (ModTime x) = show x
