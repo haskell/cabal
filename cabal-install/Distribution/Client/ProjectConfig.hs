@@ -78,8 +78,7 @@ import Text.PrettyPrint
          ( ($+$) )
 
 import Distribution.ParseUtils
-         ( FieldDescr(..), liftField, ParseResult(..)
-         , PError(..), syntaxError, locatedErrorMsg
+         ( ParseResult(..), PError(..), syntaxError, locatedErrorMsg
          , PWarning(..), showPWarning
          , simpleField, commaListField )
 import Distribution.Client.ParseUtils
@@ -1486,6 +1485,7 @@ parseLegacyProjectConfig :: String -> ParseResult LegacyProjectConfig
 parseLegacyProjectConfig =
     parseConfig legacyProjectConfigFieldDescrs
                 legacyPackageConfigSectionDescrs
+                mempty
 
 showLegacyProjectConfig :: LegacyProjectConfig -> String
 showLegacyProjectConfig config =
@@ -1696,7 +1696,8 @@ programSpecificOptions =
             legacySpecificConfig =
               Map.insertWith mappend (PackageName pkgname) pkgconf
                              (legacySpecificConfig projconf)
-          }
+          },
+      sectionEmpty       = mempty
     }
 
 programOptionsFieldDescrs :: [FieldDescr [(String, [String])]]
@@ -1723,7 +1724,8 @@ programOptionsSectionDescr =
               legacyConfigureFlags = (legacyConfigureFlags pkgconf) {
                 configProgramArgs = args
             }
-          }
+          },
+      sectionEmpty       = mempty
     }
 
 programLocationsFieldDescrs :: [FieldDescr ConfigFlags]
@@ -1749,7 +1751,8 @@ programLocationsSectionDescr =
         \lineno unused confflags pkgconf -> do
           unless (null unused) $
             syntaxError lineno "the section 'program-locations' takes no arguments"
-          return pkgconf { legacyConfigureFlags = confflags }
+          return pkgconf { legacyConfigureFlags = confflags },
+      sectionEmpty       = mempty
     }
 
 
