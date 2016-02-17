@@ -701,25 +701,25 @@ buildMonitorStateFileSet mstartTime hashcache root =
     go !singlePaths !globPaths [] =
       return (MonitorStateFileSet singlePaths globPaths)
 
-    go !singlePaths !globPaths (MonitorFile path : monitors) = do
-      let file = root </> path
+    go !singlePaths !globPaths (MonitorFile file : monitors) = do
+      let absfile = root </> file
       monitorState <- handleDoesNotExist (MonitorStateFile Nothing) $ do
-        mtime <- getModTime file
+        mtime <- getModTime absfile
         if changedDuringUpdate mstartTime mtime
           then return (MonitorStateFile Nothing)
           else return (MonitorStateFile (Just mtime))
-      let singlePaths' = Map.insert path monitorState singlePaths
+      let singlePaths' = Map.insert file monitorState singlePaths
       go singlePaths' globPaths monitors
 
-    go !singlePaths !globPaths (MonitorFileHashed path : monitors) = do
-      let file = root </> path
+    go !singlePaths !globPaths (MonitorFileHashed file : monitors) = do
+      let absfile = root </> file
       monitorState <- handleDoesNotExist (MonitorStateFileHashed Nothing 0) $ do
-        mtime <- getModTime file
+        mtime <- getModTime absfile
         if changedDuringUpdate mstartTime mtime
           then return (MonitorStateFileHashed Nothing 0)
-          else do hash <- getFileHash hashcache path file mtime
+          else do hash <- getFileHash hashcache file absfile mtime
                   return (MonitorStateFileHashed (Just mtime) hash)
-      let singlePaths' = Map.insert path monitorState singlePaths
+      let singlePaths' = Map.insert file monitorState singlePaths
       go singlePaths' globPaths monitors
 
     go !singlePaths !globPaths (MonitorNonExistentFile path : monitors) = do
@@ -755,12 +755,12 @@ buildMonitorStateGlob :: Maybe MonitorTimestamp -- ^ start time of update
                       -> FilePathGlob -- ^ the matching glob
                       -> IO MonitorStateGlob
 buildMonitorStateGlob mstartTime hashcache root dir globPath = do
-    dirEntries <- getDirectoryContents (root </> dir)
-    dirMTime   <- getModTime (root </> dir)
+    let absdir = root </> dir
+    dirEntries <- getDirectoryContents absdir
+    dirMTime   <- getModTime absdir
     case globPath of
       GlobDir glob globPath' -> do
-        subdirs <- filterM (\subdir -> doesDirectoryExist
-                                         (root </> dir </> subdir))
+        subdirs <- filterM (\subdir -> doesDirectoryExist (absdir </> subdir))
                  $ filter (globMatches glob) dirEntries
         subdirStates <-
           forM (sort subdirs) $ \subdir -> do
@@ -770,16 +770,16 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
         return $! MonitorStateGlobDirs glob globPath' dirMTime subdirStates
 
       GlobFile glob -> do
-        files <- filterM (\fname -> doesFileExist (root </> dir </> fname))
+        files <- filterM (\fname -> doesFileExist (absdir </> fname))
                $ filter (globMatches glob) dirEntries
         filesStates <-
           forM (sort files) $ \file -> do
-            let path = root </> dir </> file
-            mtime <- getModTime path
+            let absfile = absdir </> file
+            mtime <- getModTime absfile
             let mtime' | changedDuringUpdate mstartTime mtime
                                    = Nothing
                        | otherwise = Just mtime
-            hash <- getFileHash hashcache (dir </> file) path mtime
+            hash <- getFileHash hashcache (dir </> file) absfile mtime
             return (file, mtime', hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
 
