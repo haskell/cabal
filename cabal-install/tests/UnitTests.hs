@@ -90,7 +90,7 @@ calibrateMtimeChangeDelay = do
     return mtimeChange'
   where
     toMillis :: Int -> Double
-    toMillis x = fromIntegral x / (1000.0 :: Double)
+    toMillis x = fromIntegral x / 1000.0
 
     time :: IO () -> IO Int
     time act = do
