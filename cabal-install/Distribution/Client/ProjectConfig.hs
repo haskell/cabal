@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric,
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveGeneric,
              ExistentialQuantification, ScopedTypeVariables #-}
 
 -- | Handling project configuration, types and reading.
@@ -86,7 +86,9 @@ import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Data.Maybe
