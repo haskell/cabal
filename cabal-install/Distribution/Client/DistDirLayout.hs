@@ -66,7 +66,7 @@ data DistDirLayout = DistDirLayout {
 --TODO: move to another module, e.g. CabalDirLayout?
 data CabalDirLayout = CabalDirLayout {
        cabalStoreDirectory        :: CompilerId -> FilePath,
-       cabalStorePackageDirectory :: CompilerId -> InstalledPackageId
+       cabalStorePackageDirectory :: CompilerId -> UnitId
                                                 -> FilePath,
        cabalStorePackageDBPath    :: CompilerId -> FilePath,
        cabalStorePackageDB        :: CompilerId -> PackageDB,
