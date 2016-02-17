@@ -732,9 +732,7 @@ buildMonitorStateFileSet mstartTime hashcache root =
         mtime <- getModificationTime file
         if changedDuringUpdate mstartTime mtime
           then return (MonitorStateFileHashed Nothing 0)
-          else do hash <- case lookupFileHashCache hashcache path mtime of
-                            Just hash -> return hash
-                            Nothing   -> readFileHash file
+          else do hash <- getFileHash hashcache path file mtime
                   return (MonitorStateFileHashed (Just mtime) hash)
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
@@ -796,9 +794,7 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
             let mtime' | changedDuringUpdate mstartTime mtime
                                    = Nothing
                        | otherwise = Just mtime
-            hash <- case lookupFileHashCache hashcache (dir </> file) mtime of
-                      Just hash -> return hash
-                      Nothing   -> readFileHash path
+            hash <- getFileHash hashcache (dir </> file) path mtime
             return (file, mtime', hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
 
@@ -839,6 +835,13 @@ lookupFileHashCache hashcache file mtime = do
     (mtime', hash) <- Map.lookup file hashcache
     guard (mtime' == mtime)
     return hash
+
+-- | Either get it from the cache or go read the file
+getFileHash :: FileHashCache -> FilePath -> FilePath -> ModTime -> IO Hash
+getFileHash hashcache relfile absfile mtime =
+    case lookupFileHashCache hashcache relfile mtime of
+      Just hash -> return hash
+      Nothing   -> readFileHash absfile
 
 -- | Build a 'FileHashCache' from the previous 'MonitorStateFileSet'. While
 -- in principle we could preserve the structure of the previous state, given
