@@ -172,10 +172,10 @@ getCurrentModTime = System.Time.getClockTime
 -- This covers all the cases of 'MonitorFilePath' except for globs which is
 -- covered separately by 'MonitorStateGlob'.
 --
--- The @Maybe ModTime@ is to cover the case where the we already consider the
+-- The @Maybe ModTime@ is to cover the case where we already consider the
 -- file to have changed, either because it had already changed by the time we
 -- did the snapshot (i.e. too new, changed since start of update process) or it
--- no longer existes at all.
+-- no longer exists at all.
 --
 data MonitorStateFile
    = MonitorStateFile       !(Maybe ModTime) -- ^ cached file mtime
