@@ -1386,6 +1386,9 @@ values for these fields.
 
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
+    The options specified via this field are combined with the ones specified
+    via `ghc-options`, and are passed to GHC during both the compile and
+    link phases.
 
 `includes:` _filename list_
 :   A list of header files to be included in any compilations via C.
