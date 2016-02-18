@@ -30,6 +30,7 @@ tests =
   , testCase "missing file"          testMissingFile
   , testCase "change file"           testChangedFile
   , testCase "file mtime vs content" testChangedFileMtimeVsContent
+  , testCase "update during action"  testUpdateDuringAction
   , testCase "remove file"           testRemoveFile
   , testCase "non-existent file"     testNonExistentFile
 
@@ -178,6 +179,40 @@ testChangedFileMtimeVsContent =
     write root "a" "different"
     reason2 <- expectMonitorChanged root monitor ()
     reason2 @?= MonitoredFileChanged "a"
+
+
+testUpdateDuringAction :: Assertion
+testUpdateDuringAction = do
+    test (MonitorFile "a")       "a"
+    test (MonitorFileHashed "a") "a"
+    test (monitorFileGlob "*")   "a"
+  where
+    test monitorSpec file =
+      withFileMonitor $ \root monitor -> do
+        touch root file
+        updateMonitor root monitor [monitorSpec] () ()
+
+        -- start doing an update action...
+        threadDelayMTimeChange  -- some time passes
+        touch root file         -- a file gets updates during the action
+        threadDelayMTimeChange  -- some time passes then we finish
+        updateMonitor root monitor [monitorSpec] () ()
+        -- we don't notice this change since we took the timestamp after the
+        -- action finished
+        (res, files) <- expectMonitorUnchanged root monitor ()
+        res   @?= ()
+        files @?= [monitorSpec]
+
+        -- Let's try again, this time taking the timestamp before the action
+        timestamp' <- beginUpdateFileMonitor
+        threadDelayMTimeChange  -- some time passes
+        touch root file         -- a file gets updates during the action
+        threadDelayMTimeChange  -- some time passes then we finish
+        updateMonitorWithTimestamp root monitor timestamp' [monitorSpec] () ()
+        -- now we do notice the change since we took the snapshot before the
+        -- action finished
+        reason <- expectMonitorChanged root monitor ()
+        reason @?= MonitoredFileChanged file
 
 
 testRemoveFile :: Assertion
@@ -549,7 +584,13 @@ updateMonitor :: (Binary a, Binary b)
               => RootPath -> FileMonitor a b
               -> [MonitorFilePath] -> a -> b -> IO ()
 updateMonitor (RootPath root) monitor files key result =
-  updateFileMonitor monitor root files key result
+  updateFileMonitor monitor root Nothing files key result
+
+updateMonitorWithTimestamp :: (Binary a, Binary b)
+              => RootPath -> FileMonitor a b -> MonitorTimestamp
+              -> [MonitorFilePath] -> a -> b -> IO ()
+updateMonitorWithTimestamp (RootPath root) monitor timestamp files key result =
+  updateFileMonitor monitor root (Just timestamp) files key result
 
 withFileMonitor :: Eq a => (RootPath -> FileMonitor a b -> IO c) -> IO c
 withFileMonitor action = do
