@@ -96,12 +96,12 @@ import qualified Distribution.PackageDescription as PD
          , GenericPackageDescription(..)
          , Flag(flagName), FlagName(..) )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription, transformAllBuildDepends )
+         ( finalizePackageDescription )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
          ( VersionRange, anyVersion, thisVersion, withinRange
-         , removeUpperBound, simplifyVersionRange )
+         , simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -110,6 +110,8 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, warn, info )
+import Distribution.Simple.Configure
+         ( relaxPackageDeps )
 import Distribution.Simple.Setup
          ( AllowNewer(..) )
 import Distribution.Text
@@ -363,35 +365,17 @@ hideBrokenInstalledPackages params =
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
 removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
-removeUpperBounds allowNewer params =
+removeUpperBounds AllowNewerNone params = params
+removeUpperBounds allowNewer     params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
   where
-    sourcePkgIndex  = depResolverSourcePkgIndex params
-    sourcePkgIndex' = case allowNewer of
-      AllowNewerNone      -> sourcePkgIndex
-      AllowNewerAll       -> fmap relaxAllPackageDeps         sourcePkgIndex
-      AllowNewerSome pkgs -> fmap (relaxSomePackageDeps pkgs) sourcePkgIndex
+    sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
 
-    relaxAllPackageDeps :: SourcePackage -> SourcePackage
-    relaxAllPackageDeps = onAllBuildDepends doRelax
-      where
-        doRelax (Dependency pkgName verRange) =
-          Dependency pkgName (removeUpperBound verRange)
-
-    relaxSomePackageDeps :: [PackageName] -> SourcePackage -> SourcePackage
-    relaxSomePackageDeps pkgNames = onAllBuildDepends doRelax
-      where
-        doRelax d@(Dependency pkgName verRange)
-          | pkgName `elem` pkgNames = Dependency pkgName
-                                      (removeUpperBound verRange)
-          | otherwise               = d
-
-    onAllBuildDepends :: (Dependency -> Dependency)
-                      -> SourcePackage -> SourcePackage
-    onAllBuildDepends f srcPkg = srcPkg {
-      packageDescription = transformAllBuildDepends f
+    relaxDeps :: SourcePackage -> SourcePackage
+    relaxDeps srcPkg = srcPkg {
+      packageDescription = relaxPackageDeps allowNewer
                            (packageDescription srcPkg)
       }
 

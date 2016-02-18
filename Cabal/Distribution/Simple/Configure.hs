@@ -48,6 +48,7 @@ module Distribution.Simple.Configure (configure,
                                       ConfigStateFileError(..),
                                       tryGetConfigStateFile,
                                       platformDefines,
+                                      relaxPackageDeps,
                                      )
     where
 
@@ -787,6 +788,19 @@ dependencySatisfiable
         isInternalDep = not . null
                       $ PackageIndex.lookupDependency internalPackageSet d
 
+-- | Relax the dependencies of this package if needed
+relaxPackageDeps :: AllowNewer -> GenericPackageDescription
+                 -> GenericPackageDescription
+relaxPackageDeps AllowNewerNone = id
+relaxPackageDeps AllowNewerAll  =
+  transformAllBuildDepends $ \(Dependency pkgName verRange) ->
+  Dependency pkgName (removeUpperBound verRange)
+relaxPackageDeps (AllowNewerSome pkgNames) =
+  transformAllBuildDepends $ \d@(Dependency pkgName verRange) ->
+  if pkgName `elem` pkgNames
+  then Dependency pkgName (removeUpperBound verRange)
+  else d
+
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePackageDescription' but there's a bit of other nattering
 -- about necessary.
@@ -813,8 +827,15 @@ configureFinalizedPackage verbosity cfg
         flaggedBenchmarks = map (\(n, bm) ->
                                   (n, mapTreeData enableBenchmark bm))
                            (condBenchmarks pkg_descr0)
-        pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
-                                  , condBenchmarks = flaggedBenchmarks }
+        pkg_descr0''' =
+          -- Ignore '--allow-newer' when we're given '--exact-configuration'.
+          if fromFlagOrDefault False (configExactConfiguration cfg)
+          then pkg_descr0
+          else relaxPackageDeps
+               (fromFlagOrDefault AllowNewerNone $ configAllowNewer cfg)
+               pkg_descr0
+        pkg_descr0''  = pkg_descr0''' { condTestSuites = flaggedTests
+                                      , condBenchmarks = flaggedBenchmarks }
 
     (pkg_descr0', flags) <-
             case finalizePackageDescription
