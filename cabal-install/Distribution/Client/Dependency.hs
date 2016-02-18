@@ -92,13 +92,11 @@ import Distribution.Package
          , Package(..), packageName, packageVersion
          , UnitId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), Library(..), Executable(..)
-         , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
-         , GenericPackageDescription(..), CondTree
+         ( PackageDescription(..), SetupBuildInfo(..)
+         , GenericPackageDescription(..)
          , Flag(flagName), FlagName(..) )
-import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
 import Distribution.PackageDescription.Configuration
-         ( mapCondTree, finalizePackageDescription )
+         ( finalizePackageDescription, transformAllBuildDepends )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
@@ -388,59 +386,12 @@ removeUpperBounds allowNewer params =
                                       (removeUpperBound verRange)
           | otherwise               = d
 
-    -- Walk a 'GenericPackageDescription' and apply 'f' to all 'build-depends'
-    -- fields.
     onAllBuildDepends :: (Dependency -> Dependency)
                       -> SourcePackage -> SourcePackage
-    onAllBuildDepends f srcPkg = srcPkg'
-      where
-        gpd        = packageDescription srcPkg
-        pd         = PD.packageDescription gpd
-        condLib    = PD.condLibrary        gpd
-        condExes   = PD.condExecutables    gpd
-        condTests  = PD.condTestSuites     gpd
-        condBenchs = PD.condBenchmarks     gpd
-
-        f' = onBuildInfo f
-        onBuildInfo g bi = bi
-          { targetBuildDepends = map g (targetBuildDepends bi) }
-
-        onLibrary    lib  = lib { PD.libBuildInfo  = f' $ PD.libBuildInfo  lib }
-        onExecutable exe  = exe { PD.buildInfo     = f' $ PD.buildInfo     exe }
-        onTestSuite  tst  = tst { PD.testBuildInfo = f' $ PD.testBuildInfo tst }
-        onBenchmark  bmk  = bmk { PD.benchmarkBuildInfo =
-                                     f' $ PD.benchmarkBuildInfo bmk }
-        onSetup      stp  = stp { PD.setupDepends  =
-                                     map f $ PD.setupDepends stp }
-
-        srcPkg' = srcPkg { packageDescription = gpd' }
-        gpd'    = gpd {
-          PD.packageDescription = pd',
-          PD.condLibrary        = condLib',
-          PD.condExecutables    = condExes',
-          PD.condTestSuites     = condTests',
-          PD.condBenchmarks     = condBenchs'
-          }
-        pd' = pd {
-          PD.buildDepends = map  f            (PD.buildDepends pd),
-          PD.library      = fmap onLibrary    (PD.library pd),
-          PD.executables  = map  onExecutable (PD.executables pd),
-          PD.testSuites   = map  onTestSuite  (PD.testSuites pd),
-          PD.benchmarks   = map  onBenchmark  (PD.benchmarks pd),
-          PD.setupBuildInfo = fmap onSetup    (PD.setupBuildInfo pd)
-          }
-        condLib'    = fmap (onCondTree onLibrary)             condLib
-        condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
-        condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
-        condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
-
-        mapSnd :: (a -> b) -> (c,a) -> (c,b)
-        mapSnd = fmap
-
-        onCondTree :: (a -> b) -> PD.CondTree v [Dependency] a
-                   -> PD.CondTree v [Dependency] b
-        onCondTree g = mapCondTree g (map f) id
-
+    onAllBuildDepends f srcPkg = srcPkg {
+      packageDescription = transformAllBuildDepends f
+                           (packageDescription srcPkg)
+      }
 
 -- | Supply defaults for packages without explicit Setup dependencies
 --
