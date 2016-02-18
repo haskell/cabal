@@ -115,7 +115,9 @@ executable cabal
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
     if impl(ghc >= 8.0)
-        ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
+        ghc-options: -Wcompat
+                     -Wnoncanonical-monad-instances
+                     -Wnoncanonical-monadfail-instances
 
     other-modules:
         Distribution.Client.BuildReports.Anonymous
@@ -274,6 +276,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
+    UnitTests.Options
   build-depends:
         base,
         array,

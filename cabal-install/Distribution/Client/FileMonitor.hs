@@ -40,11 +40,6 @@ import           Data.Traversable (traverse)
 #endif
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)
-#if MIN_VERSION_directory(1,2,0)
-import           Data.Time (UTCTime(..), Day(..))
-#else
-import           System.Time (ClockTime(..))
-#endif
 
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
@@ -61,6 +56,7 @@ import           Distribution.Compat.ReadP ((<++))
 import qualified Distribution.Compat.ReadP as ReadP
 import qualified Text.PrettyPrint as Disp
 
+import           Distribution.Client.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
@@ -153,11 +149,6 @@ data MonitorStateFileSet
   deriving Show
 
 type Hash = Int
-#if MIN_VERSION_directory(1,2,0)
-type ModTime = UTCTime
-#else
-type ModTime = ClockTime
-#endif
 
 -- | The state necessary to determine whether a monitored file has changed.
 --
@@ -676,7 +667,7 @@ buildMonitorStateFileSet root =
     go !singlePaths !globPaths (MonitorFile path : monitors) = do
       let file = root </> path
       monitorState <- handleDoesNotExist MonitorStateFileGone $
-                        MonitorStateFile <$> getModificationTime file
+                        MonitorStateFile <$> getModTime file
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
 
@@ -684,7 +675,7 @@ buildMonitorStateFileSet root =
       let file = root </> path
       monitorState <- handleDoesNotExist MonitorStateFileHashGone $
                         MonitorStateFileHashed
-                          <$> getModificationTime file
+                          <$> getModTime file
                           <*> readFileHash file
       let singlePaths' = Map.insert path monitorState singlePaths
       go singlePaths' globPaths monitors
@@ -712,7 +703,7 @@ buildMonitorStateGlob :: FilePath     -- ^ the root directory
                       -> IO MonitorStateGlob
 buildMonitorStateGlob root dir globPath = do
     dirEntries <- getDirectoryContents (root </> dir)
-    dirMTime   <- getModificationTime (root </> dir)
+    dirMTime   <- getModTime (root </> dir)
     case globPath of
       GlobDir glob globPath' -> do
         subdirs <- filterM (\subdir -> doesDirectoryExist
@@ -730,7 +721,7 @@ buildMonitorStateGlob root dir globPath = do
         filesStates <-
           forM (sort files) $ \file -> do
             let path = root </> dir </> file
-            mtime <- getModificationTime path
+            mtime <- getModTime path
             hash  <- readFileHash path
             return (file, mtime, hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
@@ -789,7 +780,7 @@ checkModificationTimeUnchanged :: FilePath -> FilePath
                                -> ModTime -> IO Bool
 checkModificationTimeUnchanged root file mtime =
   handleDoesNotExist False $ do
-    mtime' <- getModificationTime (root </> file)
+    mtime' <- getModTime (root </> file)
     return (mtime == mtime')
 
 -- | Returns @True@ if, inside the @root@ directory, @file@ has the
@@ -798,7 +789,7 @@ checkFileModificationTimeAndHashUnchanged :: FilePath -> FilePath
                                           -> ModTime -> Hash -> IO Bool
 checkFileModificationTimeAndHashUnchanged root file mtime chash =
   handleDoesNotExist False $ do
-    mtime' <- getModificationTime (root </> file)
+    mtime' <- getModTime (root </> file)
     if mtime == mtime'
       then return True
       else do
@@ -816,7 +807,7 @@ readFileHash file =
 checkDirectoryModificationTime :: FilePath -> ModTime -> IO (Maybe ModTime)
 checkDirectoryModificationTime dir mtime =
   handleDoesNotExist Nothing $ do
-    mtime' <- getModificationTime dir
+    mtime' <- getModTime dir
     if mtime == mtime'
       then return Nothing
       else return (Just mtime')
@@ -842,27 +833,6 @@ instance Text FilePathGlob where
                        globs <- parse
                        return (GlobDir glob globs)
       asFile glob = return (GlobFile glob)
-
-#if MIN_VERSION_directory(1,2,0)
-instance Binary UTCTime where
-  put (UTCTime (ModifiedJulianDay day) tod) = do
-    put day
-    put (toRational tod)
-  get = do
-    day  <- get
-    tod <- get
-    return $! UTCTime (ModifiedJulianDay day)
-                      (fromRational tod)
-#else
-instance Binary ClockTime where
-  put (TOD sec subsec) = do
-    put sec
-    put subsec
-  get = do
-    !sec    <- get
-    !subsec <- get
-    return (TOD sec subsec)
-#endif
 
 instance Binary MonitorStateFileSet where
   put (MonitorStateFileSet singlePaths globPaths) = do
