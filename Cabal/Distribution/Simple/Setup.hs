@@ -34,6 +34,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
+  AllowNewer(..),    isAllowNewer,
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
@@ -64,7 +65,8 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, optionNumJobs ) where
+  boolOpt, boolOpt', trueArg, falseArg,
+  optionVerbosity, optionNumJobs, readPToMaybe ) where
 
 import Distribution.Compiler
 import Distribution.ReadE
@@ -86,6 +88,7 @@ import Distribution.Compat.Semigroup as Semi
 
 import Control.Monad (liftM)
 import Data.List   ( sort )
+import Data.Maybe  ( listToMaybe )
 import Data.Char   ( isSpace, isAlpha )
 import GHC.Generics (Generic)
 
@@ -252,6 +255,57 @@ instance Semigroup GlobalFlags where
 -- * Config flags
 -- ------------------------------------------------------------
 
+-- | Policy for relaxing upper bounds in dependencies. For example, given
+-- 'build-depends: array >= 0.3 && < 0.5', are we allowed to relax the upper
+-- bound and choose a version of 'array' that is greater or equal to 0.5? By
+-- default the upper bounds are always strictly honored.
+data AllowNewer =
+
+  -- | Default: honor the upper bounds in all dependencies, never choose
+  -- versions newer than allowed.
+  AllowNewerNone
+
+  -- | Ignore upper bounds in dependencies on the given packages.
+  | AllowNewerSome [PackageName]
+
+  -- | Ignore upper bounds in dependencies on all packages.
+  | AllowNewerAll
+  deriving (Eq, Ord, Read, Show, Generic)
+
+instance Binary AllowNewer
+
+instance Semigroup AllowNewer where
+  AllowNewerNone       <> r                    = r
+  l@AllowNewerAll      <> _                    = l
+  l@(AllowNewerSome _) <> AllowNewerNone       = l
+  (AllowNewerSome   _) <> r@AllowNewerAll      = r
+  (AllowNewerSome   a) <> (AllowNewerSome b)   = AllowNewerSome (a ++ b)
+
+instance Monoid AllowNewer where
+  mempty  = AllowNewerNone
+  mappend = (Semi.<>)
+
+-- | Convert 'AllowNewer' to a boolean.
+isAllowNewer :: AllowNewer -> Bool
+isAllowNewer AllowNewerNone     = False
+isAllowNewer (AllowNewerSome _) = True
+isAllowNewer AllowNewerAll      = True
+
+allowNewerParser :: ReadE AllowNewer
+allowNewerParser = ReadE $ \s ->
+  case readPToMaybe pkgsParser s of
+    Just pkgs -> Right . AllowNewerSome $ pkgs
+    Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
+  where
+    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
+
+allowNewerPrinter :: Flag AllowNewer -> [Maybe String]
+allowNewerPrinter (Flag AllowNewerNone)        = [Just "False"]
+allowNewerPrinter (Flag AllowNewerAll)         = [Just "True"]
+allowNewerPrinter (Flag (AllowNewerSome pkgs)) =
+  [Just . intercalate "," . map display $ pkgs]
+allowNewerPrinter NoFlag                       = []
+
 -- | Flags to @configure@ command.
 --
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
@@ -319,7 +373,8 @@ data ConfigFlags = ConfigFlags {
     configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
-    configDebugInfo :: Flag DebugInfoLevel  -- ^ Emit debug info.
+    configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configAllowNewer :: Flag AllowNewer      -- ^
   }
   deriving (Generic, Read, Show)
 
@@ -365,7 +420,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configExactConfiguration = Flag False,
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
-    configDebugInfo    = Flag NoDebugInfo
+    configDebugInfo    = Flag NoDebugInfo,
+    configAllowNewer   = NoFlag
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -602,6 +658,13 @@ configureOptions showOrParseArgs =
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
 
+      ,option [] ["allow-newer"]
+       ("Ignore upper bounds in all dependencies or DEPS")
+       configAllowNewer (\v flags -> flags { configAllowNewer = v})
+       (optArg "DEPS"
+        (fmap Flag allowNewerParser) (Flag AllowNewerAll)
+        allowNewerPrinter)
+
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."
          configExactConfiguration
@@ -769,7 +832,8 @@ instance Monoid ConfigFlags where
     configBenchmarks          = mempty,
     configFlagError     = mempty,
     configRelocatable   = mempty,
-    configDebugInfo     = mempty
+    configDebugInfo     = mempty,
+    configAllowNewer    = mempty
   }
   mappend = (Semi.<>)
 
@@ -817,9 +881,13 @@ instance Semigroup ConfigFlags where
     configBenchmarks          = combine configBenchmarks,
     configFlagError     = combine configFlagError,
     configRelocatable   = combine configRelocatable,
-    configDebugInfo     = combine configDebugInfo
+    configDebugInfo     = combine configDebugInfo,
+    configAllowNewer    = combineAllowNewer (configAllowNewer a)
+                          (configAllowNewer b)
   }
     where combine field = field a `mappend` field b
+          combineAllowNewer (Flag fa) (Flag fb) = (Flag $ fa `mappend` fb)
+          combineAllowNewer fa        fb        = fa `mappend` fb
 
 -- ------------------------------------------------------------
 -- * Copy flags
@@ -2155,6 +2223,10 @@ optionNumJobs get set =
 -- ------------------------------------------------------------
 -- * Other Utils
 -- ------------------------------------------------------------
+
+readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
+readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
+                                     , all isSpace s ]
 
 -- | Arguments to pass to a @configure@ script, e.g. generated by
 -- @autoconf@.

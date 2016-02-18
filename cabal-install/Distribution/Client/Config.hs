@@ -324,7 +324,8 @@ instance Semigroup SavedConfig where
         configLibCoverage         = combine configLibCoverage,
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
-        configRelocatable         = combine configRelocatable
+        configRelocatable         = combine configRelocatable,
+        configAllowNewer          = combine configAllowNewer
         }
         where
           combine        = combine'        savedConfigureFlags
@@ -337,8 +338,7 @@ instance Semigroup SavedConfig where
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
         configPreferences   = lastNonEmpty configPreferences,
-        configSolver        = combine configSolver,
-        configAllowNewer    = combine configAllowNewer
+        configSolver        = combine configSolver
         }
         where
           combine      = combine' savedConfigureExFlags

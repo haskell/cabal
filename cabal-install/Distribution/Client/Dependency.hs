@@ -78,7 +78,7 @@ import Distribution.Client.Dependency.Types
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
-         , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
+         , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Sandbox.Types
@@ -110,6 +110,8 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, warn, info )
+import Distribution.Simple.Setup
+         ( AllowNewer(..) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
