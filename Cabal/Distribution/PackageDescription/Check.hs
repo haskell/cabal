@@ -675,6 +675,7 @@ checkGhcOptions pkg =
     all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
     lib_ghc_options    = maybe [] (get_ghc_options . libBuildInfo) (library pkg)
     get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
+                         ++ hcSharedOptions GHC bi
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
@@ -1363,6 +1364,7 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
     has_Wall         = "-Wall"   `elem` ghc_options
     has_W            = "-W"      `elem` ghc_options
     ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
+                       ++ hcSharedOptions GHC bi
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) ghc_options)
