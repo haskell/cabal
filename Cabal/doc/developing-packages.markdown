@@ -1370,7 +1370,7 @@ values for these fields.
     enabled.
 
     Note that as of Cabal-1.24, the default profiling detail level defaults to
-    `exported-functions` for libraries and `toplevel-funcitons` for
+    `exported-functions` for libraries and `toplevel-functions` for
     executables. For GHC these correspond to the flags `-fprof-auto-exported`
     and `-fprof-auto-top`. Prior to Cabal-1.24 the level defaulted to `none`.
     These levels can be adjusted by the person building the package with the
