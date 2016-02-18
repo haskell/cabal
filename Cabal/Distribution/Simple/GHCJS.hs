@@ -464,6 +464,8 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
                 ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
                 ghcOptInputFiles         = toNubListR dynamicObjectFiles,
                 ghcOptOutputFile         = toFlag sharedLibFilePath,
+                ghcOptExtra              = toNubListR $
+                                           ghcjsSharedOptions libBi,
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = toNubListR $
