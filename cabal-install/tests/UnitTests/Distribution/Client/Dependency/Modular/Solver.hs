@@ -72,6 +72,11 @@ tests = [
         , runTest $ mkTest db12 "baseShim5" ["D"] Nothing
         , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
         ]
+    , testGroup "Cycles" [
+          runTest $ mkTest db14 "simpleCycle1"         ["A"]      Nothing
+        , runTest $ mkTest db14 "simpleCycle2"         ["A", "B"] Nothing
+        , runTest $ mkTest db14 "cycleWithFlagChoice1" ["C"]      (Just [("C", 1), ("E", 1)])
+        ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] Nothing
         , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupportedIndirect" ["B"] Nothing
@@ -421,6 +426,20 @@ db13 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
   , Right $ exAv "A" 3 []
+  ]
+
+-- | Database with some cycles
+--
+-- * Simplest non-trivial cycle: A -> B and B -> A
+-- * There is a cycle C -> D -> C, but it can be broken by picking the
+--   right flag assignment.
+db14 :: ExampleDb
+db14 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "A"]
+  , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
+  , Right $ exAv "D" 1 [ExAny "C"]
+  , Right $ exAv "E" 1 []
   ]
 
 dbExts1 :: ExampleDb

@@ -82,6 +82,7 @@ data FailReason = InconsistentInitialConstraints
                 | Backjump
                 | MultipleInstances
                 | DependenciesNotLinked String
+                | CyclicDependencies
   deriving (Eq, Show)
 
 -- | Functor for the tree type.
