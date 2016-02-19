@@ -34,7 +34,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
-  AllowNewer(..),    isAllowNewer,
+  AllowNewer(..),    AllowNewerDep(..),  isAllowNewer,
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
@@ -86,11 +86,12 @@ import Distribution.Utils.NubList
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
 
-import Control.Monad (liftM)
-import Data.List   ( sort )
-import Data.Maybe  ( listToMaybe )
-import Data.Char   ( isSpace, isAlpha )
-import GHC.Generics (Generic)
+import Control.Applicative as A ( Applicative(..), (<*) )
+import Control.Monad            ( liftM )
+import Data.List                ( sort )
+import Data.Maybe               ( listToMaybe )
+import Data.Char                ( isSpace, isAlpha )
+import GHC.Generics             ( Generic )
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -266,13 +267,29 @@ data AllowNewer =
   AllowNewerNone
 
   -- | Ignore upper bounds in dependencies on the given packages.
-  | AllowNewerSome [PackageName]
+  | AllowNewerSome [AllowNewerDep]
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Read, Show, Generic)
+
+-- | Dependencies can be relaxed either for all packages in the install plan, or
+-- only for some packages.
+data AllowNewerDep = AllowNewerDep PackageName
+                   | AllowNewerDepScoped PackageName PackageName
+                   deriving (Read, Show, Generic)
+
+instance Text AllowNewerDep where
+  disp (AllowNewerDep p0)          = disp p0
+  disp (AllowNewerDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
+
+  parse = scopedP Parse.<++ normalP
+    where
+      scopedP = AllowNewerDepScoped `fmap` parse A.<* Parse.char ':' A.<*> parse
+      normalP = AllowNewerDep       `fmap` parse
 
 instance Binary AllowNewer
+instance Binary AllowNewerDep
 
 instance Semigroup AllowNewer where
   AllowNewerNone       <> r                    = r

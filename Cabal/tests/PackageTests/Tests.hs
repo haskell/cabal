@@ -236,6 +236,15 @@ nonSharedLibTests config =
         shouldFail $ cabal "configure" ["--enable-benchmarks", "--enable-tests"]
         cabal "configure" ["--enable-benchmarks", "--enable-tests"
                           ,"--allow-newer"]
+        shouldFail $ cabal "configure" ["--allow-newer=Foo:base"]
+        shouldFail $ cabal "configure" ["--allow-newer=Foo:base"
+                                       ,"--enable-tests", "--enable-benchmarks"]
+        cabal "configure" ["--allow-newer=AllowNewer:base"]
+        cabal "configure" ["--allow-newer=AllowNewer:base"
+                          ,"--allow-newer=Foo:base"]
+        cabal "configure" ["--allow-newer=AllowNewer:base"
+                          ,"--allow-newer=Foo:base"
+                          ,"--enable-tests", "--enable-benchmarks"]
 
   -- Test that Cabal can choose flags to disable building a component when that
   -- component's dependencies are unavailable. The build should succeed without
