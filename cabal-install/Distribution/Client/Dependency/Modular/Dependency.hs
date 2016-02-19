@@ -30,6 +30,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
+  , extendConflictSet
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -344,6 +345,10 @@ instance ResetGoal Goal where
 -- closure of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
 toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
+
+-- | Add another variable into a conflict set
+extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
+extendConflictSet = S.insert . simplifyVar
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty

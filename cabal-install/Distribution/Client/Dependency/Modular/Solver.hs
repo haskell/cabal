@@ -11,6 +11,7 @@ import Distribution.Client.Dependency.Types
 
 import Distribution.Client.Dependency.Modular.Assignment
 import Distribution.Client.Dependency.Modular.Builder
+import Distribution.Client.Dependency.Modular.Cycles
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Explore
 import Distribution.Client.Dependency.Modular.Index
@@ -40,6 +41,7 @@ solve :: SolverConfig ->                      -- solver parameters
          Log Message (Assignment, RevDepMap)
 solve sc cinfo idx userPrefs userConstraints userGoals =
   explorePhase     $
+  detectCycles     $
   heuristicsPhase  $
   preferencesPhase $
   validationPhase  $
