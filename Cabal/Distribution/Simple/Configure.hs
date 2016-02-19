@@ -310,7 +310,13 @@ findDistPrefOrDefault = findDistPref defaultDistPref
 -- Returns the @.setup-config@ file.
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
-configure (pkg_descr0, pbi) cfg = do
+configure (pkg_descr0', pbi) cfg = do
+    let pkg_descr0 =
+          -- Ignore '--allow-newer' when we're given '--exact-configuration'.
+          if fromFlagOrDefault False (configExactConfiguration cfg)
+          then pkg_descr0'
+          else relaxPackageDeps (configAllowNewer cfg) pkg_descr0'
+
     setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
     checkDeprecatedFlags verbosity cfg
@@ -827,15 +833,8 @@ configureFinalizedPackage verbosity cfg
         flaggedBenchmarks = map (\(n, bm) ->
                                   (n, mapTreeData enableBenchmark bm))
                            (condBenchmarks pkg_descr0)
-        pkg_descr0''' =
-          -- Ignore '--allow-newer' when we're given '--exact-configuration'.
-          if fromFlagOrDefault False (configExactConfiguration cfg)
-          then pkg_descr0
-          else relaxPackageDeps
-               (fromFlagOrDefault AllowNewerNone $ configAllowNewer cfg)
-               pkg_descr0
-        pkg_descr0''  = pkg_descr0''' { condTestSuites = flaggedTests
-                                      , condBenchmarks = flaggedBenchmarks }
+        pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
+                                  , condBenchmarks = flaggedBenchmarks }
 
     (pkg_descr0', flags) <-
             case finalizePackageDescription

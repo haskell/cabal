@@ -42,6 +42,8 @@
 	default location or as specified by --config-file (#2553).
 	* The man page for 'cabal-install' is now automatically generated
 	(#2877).
+	* The '--allow-newer' option now works as expected when specified
+	multiple times (#2588).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

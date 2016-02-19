@@ -417,7 +417,7 @@ planPackages comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
-    allowNewer       = fromFlag (configAllowNewer         configFlags)
+    allowNewer       = (configAllowNewer         configFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg

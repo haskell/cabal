@@ -299,12 +299,11 @@ allowNewerParser = ReadE $ \s ->
   where
     pkgsParser = Parse.sepBy1 parse (Parse.char ',')
 
-allowNewerPrinter :: Flag AllowNewer -> [Maybe String]
-allowNewerPrinter (Flag AllowNewerNone)        = [Just "False"]
-allowNewerPrinter (Flag AllowNewerAll)         = [Just "True"]
-allowNewerPrinter (Flag (AllowNewerSome pkgs)) =
+allowNewerPrinter :: AllowNewer -> [Maybe String]
+allowNewerPrinter AllowNewerNone        = []
+allowNewerPrinter AllowNewerAll         = [Nothing]
+allowNewerPrinter (AllowNewerSome pkgs) =
   [Just . intercalate "," . map display $ pkgs]
-allowNewerPrinter NoFlag                       = []
 
 -- | Flags to @configure@ command.
 --
@@ -374,7 +373,8 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configAllowNewer :: Flag AllowNewer      -- ^
+    configAllowNewer :: AllowNewer      -- ^ Ignore upper bounds on all or some
+                                        -- dependencies.
   }
   deriving (Generic, Read, Show)
 
@@ -421,7 +421,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
-    configAllowNewer   = NoFlag
+    configAllowNewer   = AllowNewerNone
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -661,9 +661,7 @@ configureOptions showOrParseArgs =
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")
        configAllowNewer (\v flags -> flags { configAllowNewer = v})
-       (optArg "DEPS"
-        (fmap Flag allowNewerParser) (Flag AllowNewerAll)
-        allowNewerPrinter)
+       (optArg "DEPS" allowNewerParser AllowNewerAll allowNewerPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."
@@ -882,12 +880,9 @@ instance Semigroup ConfigFlags where
     configFlagError     = combine configFlagError,
     configRelocatable   = combine configRelocatable,
     configDebugInfo     = combine configDebugInfo,
-    configAllowNewer    = combineAllowNewer (configAllowNewer a)
-                          (configAllowNewer b)
+    configAllowNewer    = combine configAllowNewer
   }
     where combine field = field a `mappend` field b
-          combineAllowNewer (Flag fa) (Flag fb) = (Flag $ fa `mappend` fb)
-          combineAllowNewer fa        fb        = fa `mappend` fb
 
 -- ------------------------------------------------------------
 -- * Copy flags

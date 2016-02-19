@@ -204,6 +204,11 @@ instance Semigroup SavedConfig where
       combine'        field subfield =
         (subfield . field $ a) `mappend` (subfield . field $ b)
 
+      combineMonoid :: Monoid mon => (SavedConfig -> flags) -> (flags -> mon)
+                    -> mon
+      combineMonoid field subfield =
+        (subfield . field $ a) `mappend` (subfield . field $ b)
+
       lastNonEmpty' :: (SavedConfig -> flags) -> (flags -> [a]) -> [a]
       lastNonEmpty'   field subfield =
         let a' = subfield . field $ a
@@ -325,7 +330,8 @@ instance Semigroup SavedConfig where
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
-        configAllowNewer          = combine configAllowNewer
+        configAllowNewer          = combineMonoid savedConfigureFlags
+                                    configAllowNewer
         }
         where
           combine        = combine'        savedConfigureFlags
