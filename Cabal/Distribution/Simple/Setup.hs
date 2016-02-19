@@ -308,19 +308,19 @@ isAllowNewer AllowNewerNone     = False
 isAllowNewer (AllowNewerSome _) = True
 isAllowNewer AllowNewerAll      = True
 
-allowNewerParser :: ReadE AllowNewer
+allowNewerParser :: ReadE (Maybe AllowNewer)
 allowNewerParser = ReadE $ \s ->
   case readPToMaybe pkgsParser s of
-    Just pkgs -> Right . AllowNewerSome $ pkgs
+    Just pkgs -> Right . Just . AllowNewerSome $ pkgs
     Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
   where
     pkgsParser = Parse.sepBy1 parse (Parse.char ',')
 
-allowNewerPrinter :: AllowNewer -> [Maybe String]
-allowNewerPrinter AllowNewerNone        = []
-allowNewerPrinter AllowNewerAll         = [Nothing]
-allowNewerPrinter (AllowNewerSome pkgs) =
-  [Just . intercalate "," . map display $ pkgs]
+allowNewerPrinter :: (Maybe AllowNewer) -> [Maybe String]
+allowNewerPrinter Nothing                      = []
+allowNewerPrinter (Just AllowNewerNone)        = []
+allowNewerPrinter (Just AllowNewerAll)         = [Nothing]
+allowNewerPrinter (Just (AllowNewerSome pkgs)) = map (Just . display) $ pkgs
 
 -- | Flags to @configure@ command.
 --
@@ -392,8 +392,9 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configAllowNewer :: AllowNewer      -- ^ Ignore upper bounds on all or some
-                                        -- dependencies.
+    configAllowNewer :: Maybe AllowNewer
+    -- ^ Ignore upper bounds on all or some dependencies. Wrapped in 'Maybe' to
+    -- distinguish between "default" and "explicitly disabled".
   }
   deriving (Generic, Read, Show)
 
@@ -440,7 +441,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
-    configAllowNewer   = AllowNewerNone
+    configAllowNewer   = Nothing
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -686,7 +687,7 @@ configureOptions showOrParseArgs =
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")
        configAllowNewer (\v flags -> flags { configAllowNewer = v})
-       (optArg "DEPS" allowNewerParser AllowNewerAll allowNewerPrinter)
+       (optArg "DEPS" allowNewerParser (Just AllowNewerAll) allowNewerPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."

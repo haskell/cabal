@@ -315,7 +315,9 @@ configure (pkg_descr0', pbi) cfg = do
           -- Ignore '--allow-newer' when we're given '--exact-configuration'.
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
-          else relaxPackageDeps (configAllowNewer cfg) pkg_descr0'
+          else relaxPackageDeps
+               (fromMaybe AllowNewerNone $ configAllowNewer cfg)
+               pkg_descr0'
 
     setupMessage verbosity "Configuring" (packageId pkg_descr0)
 

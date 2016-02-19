@@ -43,7 +43,8 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+         ( ConfigFlags(..), AllowNewer(..)
+         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Simple.Utils
@@ -86,7 +87,8 @@ chooseCabalVersion configFlags maybeVersion =
   where
     -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
     -- for '--allow-newer' to work.
-    allowNewer = isAllowNewer (configAllowNewer configFlags)
+    allowNewer = isAllowNewer
+                 (fromMaybe AllowNewerNone $ configAllowNewer configFlags)
 
     defaultVersionRange = if allowNewer
                           then orLaterVersion (Version [1,19,2] [])
@@ -288,7 +290,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
-          removeUpperBounds (configAllowNewer configFlags)
+          removeUpperBounds
+          (fromMaybe AllowNewerNone $ configAllowNewer configFlags)
 
         . addPreferences
             -- preferences from the config file or command line
