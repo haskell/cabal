@@ -62,6 +62,7 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
+         , AllowNewer(..), isAllowNewer
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
@@ -74,7 +75,7 @@ import Distribution.ParseUtils
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, spaceListField
+         , simpleField, boolField, listField, spaceListField
          , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
@@ -668,6 +669,10 @@ configFieldDescriptions src =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
+       ,let toAllowNewer True  = AllowNewerAll
+            toAllowNewer False = AllowNewerNone in
+        boolField "allow-newer" (isAllowNewer . configAllowNewer)
+        (\v flags -> flags { configAllowNewer = toAllowNewer v })
         -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
         -- fails on that. Instead of a hand-written hackaged parser
