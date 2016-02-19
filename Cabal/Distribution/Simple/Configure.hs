@@ -717,7 +717,7 @@ checkExactConfiguration pkg_descr0 cfg = do
           allFlags     = map flagName . genPackageFlags $ pkg_descr0
           diffFlags    = allFlags \\ cmdlineFlags
       when (not . null $ diffFlags) $
-        die $ "'--exact-conf' was given, "
+        die $ "'--exact-configuration' was given, "
         ++ "but the following flags were not specified: "
         ++ intercalate ", " (map show diffFlags)
 
