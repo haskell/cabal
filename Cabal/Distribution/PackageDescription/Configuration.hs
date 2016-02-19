@@ -28,6 +28,8 @@ module Distribution.PackageDescription.Configuration (
     mapTreeData,
     mapTreeConds,
     mapTreeConstrs,
+    transformAllBuildInfos,
+    transformAllBuildDepends,
   ) where
 
 import Distribution.Package
@@ -665,3 +667,82 @@ biFillInDefaults bi =
     if null (hsSourceDirs bi)
     then bi { hsSourceDirs = [currentDir] }
     else bi
+
+-- Walk a 'GenericPackageDescription' and apply @onBuildInfo@/@onSetupBuildInfo@
+-- to all nested 'BuildInfo'/'SetupBuildInfo' values.
+transformAllBuildInfos :: (BuildInfo -> BuildInfo)
+                       -> (SetupBuildInfo -> SetupBuildInfo)
+                       -> GenericPackageDescription
+                       -> GenericPackageDescription
+transformAllBuildInfos onBuildInfo onSetupBuildInfo gpd = gpd'
+  where
+    onLibrary    lib  = lib { libBuildInfo  = onBuildInfo $ libBuildInfo  lib }
+    onExecutable exe  = exe { buildInfo     = onBuildInfo $ buildInfo     exe }
+    onTestSuite  tst  = tst { testBuildInfo = onBuildInfo $ testBuildInfo tst }
+    onBenchmark  bmk  = bmk { benchmarkBuildInfo =
+                                 onBuildInfo $ benchmarkBuildInfo bmk }
+
+    pd = packageDescription gpd
+    pd'  = pd {
+      library        = fmap onLibrary        (library pd),
+      executables    = map  onExecutable     (executables pd),
+      testSuites     = map  onTestSuite      (testSuites pd),
+      benchmarks     = map  onBenchmark      (benchmarks pd),
+      setupBuildInfo = fmap onSetupBuildInfo (setupBuildInfo pd)
+      }
+
+    gpd' = transformAllCondTrees onLibrary onExecutable
+           onTestSuite onBenchmark id
+           $ gpd { packageDescription = pd' }
+
+-- | Walk a 'GenericPackageDescription' and apply @f@ to all nested
+-- @build-depends@ fields.
+transformAllBuildDepends :: (Dependency -> Dependency)
+                         -> GenericPackageDescription
+                         -> GenericPackageDescription
+transformAllBuildDepends f gpd = gpd'
+  where
+    onBI  bi  = bi  { targetBuildDepends = map f $ targetBuildDepends bi }
+    onSBI stp = stp { setupDepends       = map f $ setupDepends stp      }
+    onPD  pd  = pd  { buildDepends       = map f $ buildDepends pd       }
+
+    pd'   = onPD $ packageDescription gpd
+    gpd'  = transformAllCondTrees id id id id (map f)
+            . transformAllBuildInfos onBI onSBI
+            $ gpd { packageDescription = pd' }
+
+-- | Walk all 'CondTree's inside a 'GenericPackageDescription' and apply
+-- appropriate transformations to all nodes. Helper function used by
+-- 'transformAllBuildDepends' and 'transformAllBuildInfos'.
+transformAllCondTrees :: (Library -> Library)
+                      -> (Executable -> Executable)
+                      -> (TestSuite -> TestSuite)
+                      -> (Benchmark -> Benchmark)
+                      -> ([Dependency] -> [Dependency])
+                      -> GenericPackageDescription -> GenericPackageDescription
+transformAllCondTrees onLibrary onExecutable
+  onTestSuite onBenchmark onDepends gpd = gpd'
+  where
+    gpd'    = gpd {
+      condLibrary        = condLib',
+      condExecutables    = condExes',
+      condTestSuites     = condTests',
+      condBenchmarks     = condBenchs'
+      }
+
+    condLib    = condLibrary        gpd
+    condExes   = condExecutables    gpd
+    condTests  = condTestSuites     gpd
+    condBenchs = condBenchmarks     gpd
+
+    condLib'    = fmap (onCondTree onLibrary)             condLib
+    condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
+    condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
+    condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
+
+    mapSnd :: (a -> b) -> (c,a) -> (c,b)
+    mapSnd = fmap
+
+    onCondTree :: (a -> b) -> CondTree v [Dependency] a
+               -> CondTree v [Dependency] b
+    onCondTree g = mapCondTree g onDepends id

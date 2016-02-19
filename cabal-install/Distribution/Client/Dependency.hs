@@ -78,7 +78,7 @@ import Distribution.Client.Dependency.Types
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
-         , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
+         , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Sandbox.Types
@@ -92,18 +92,16 @@ import Distribution.Package
          , Package(..), packageName, packageVersion
          , UnitId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), Library(..), Executable(..)
-         , TestSuite(..), Benchmark(..), SetupBuildInfo(..)
-         , GenericPackageDescription(..), CondTree
+         ( PackageDescription(..), SetupBuildInfo(..)
+         , GenericPackageDescription(..)
          , Flag(flagName), FlagName(..) )
-import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
 import Distribution.PackageDescription.Configuration
-         ( mapCondTree, finalizePackageDescription )
+         ( finalizePackageDescription )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
          ( VersionRange, anyVersion, thisVersion, withinRange
-         , removeUpperBound, simplifyVersionRange )
+         , simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -112,6 +110,10 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, warn, info )
+import Distribution.Simple.Configure
+         ( relaxPackageDeps )
+import Distribution.Simple.Setup
+         ( AllowNewer(..) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -363,84 +365,19 @@ hideBrokenInstalledPackages params =
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
 removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
-removeUpperBounds allowNewer params =
+removeUpperBounds AllowNewerNone params = params
+removeUpperBounds allowNewer     params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
   where
-    sourcePkgIndex  = depResolverSourcePkgIndex params
-    sourcePkgIndex' = case allowNewer of
-      AllowNewerNone      -> sourcePkgIndex
-      AllowNewerAll       -> fmap relaxAllPackageDeps         sourcePkgIndex
-      AllowNewerSome pkgs -> fmap (relaxSomePackageDeps pkgs) sourcePkgIndex
+    sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
 
-    relaxAllPackageDeps :: SourcePackage -> SourcePackage
-    relaxAllPackageDeps = onAllBuildDepends doRelax
-      where
-        doRelax (Dependency pkgName verRange) =
-          Dependency pkgName (removeUpperBound verRange)
-
-    relaxSomePackageDeps :: [PackageName] -> SourcePackage -> SourcePackage
-    relaxSomePackageDeps pkgNames = onAllBuildDepends doRelax
-      where
-        doRelax d@(Dependency pkgName verRange)
-          | pkgName `elem` pkgNames = Dependency pkgName
-                                      (removeUpperBound verRange)
-          | otherwise               = d
-
-    -- Walk a 'GenericPackageDescription' and apply 'f' to all 'build-depends'
-    -- fields.
-    onAllBuildDepends :: (Dependency -> Dependency)
-                      -> SourcePackage -> SourcePackage
-    onAllBuildDepends f srcPkg = srcPkg'
-      where
-        gpd        = packageDescription srcPkg
-        pd         = PD.packageDescription gpd
-        condLib    = PD.condLibrary        gpd
-        condExes   = PD.condExecutables    gpd
-        condTests  = PD.condTestSuites     gpd
-        condBenchs = PD.condBenchmarks     gpd
-
-        f' = onBuildInfo f
-        onBuildInfo g bi = bi
-          { targetBuildDepends = map g (targetBuildDepends bi) }
-
-        onLibrary    lib  = lib { PD.libBuildInfo  = f' $ PD.libBuildInfo  lib }
-        onExecutable exe  = exe { PD.buildInfo     = f' $ PD.buildInfo     exe }
-        onTestSuite  tst  = tst { PD.testBuildInfo = f' $ PD.testBuildInfo tst }
-        onBenchmark  bmk  = bmk { PD.benchmarkBuildInfo =
-                                     f' $ PD.benchmarkBuildInfo bmk }
-        onSetup      stp  = stp { PD.setupDepends  =
-                                     map f $ PD.setupDepends stp }
-
-        srcPkg' = srcPkg { packageDescription = gpd' }
-        gpd'    = gpd {
-          PD.packageDescription = pd',
-          PD.condLibrary        = condLib',
-          PD.condExecutables    = condExes',
-          PD.condTestSuites     = condTests',
-          PD.condBenchmarks     = condBenchs'
-          }
-        pd' = pd {
-          PD.buildDepends = map  f            (PD.buildDepends pd),
-          PD.library      = fmap onLibrary    (PD.library pd),
-          PD.executables  = map  onExecutable (PD.executables pd),
-          PD.testSuites   = map  onTestSuite  (PD.testSuites pd),
-          PD.benchmarks   = map  onBenchmark  (PD.benchmarks pd),
-          PD.setupBuildInfo = fmap onSetup    (PD.setupBuildInfo pd)
-          }
-        condLib'    = fmap (onCondTree onLibrary)             condLib
-        condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
-        condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
-        condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs
-
-        mapSnd :: (a -> b) -> (c,a) -> (c,b)
-        mapSnd = fmap
-
-        onCondTree :: (a -> b) -> PD.CondTree v [Dependency] a
-                   -> PD.CondTree v [Dependency] b
-        onCondTree g = mapCondTree g (map f) id
-
+    relaxDeps :: SourcePackage -> SourcePackage
+    relaxDeps srcPkg = srcPkg {
+      packageDescription = relaxPackageDeps allowNewer
+                           (packageDescription srcPkg)
+      }
 
 -- | Supply defaults for packages without explicit Setup dependencies
 --

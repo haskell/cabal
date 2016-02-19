@@ -58,7 +58,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( AllowNewer(..), PreSolver(..), ConstraintSource(..) )
+         ( PreSolver(..), ConstraintSource(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -79,7 +79,8 @@ import Distribution.Simple.Setup
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg, optionNumJobs )
+         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg
+         , readPToMaybe, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -94,7 +95,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, readS_to_P, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
          ( Semigroup((<>)) )
 import Distribution.Verbosity
@@ -107,11 +108,11 @@ import Distribution.Client.GlobalFlags
          )
 
 import Data.Char
-         ( isSpace, isAlphaNum )
+         ( isAlphaNum )
 import Data.List
          ( intercalate, deleteFirstsBy )
 import Data.Maybe
-         ( listToMaybe, maybeToList, fromMaybe )
+         ( maybeToList, fromMaybe )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
@@ -364,8 +365,13 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,23,0] [] = flags_1_22_0
   | otherwise = flags_latest
   where
-    -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
-    flags_latest = flags        { configConstraints = [] }
+    flags_latest = flags        {
+      -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
+      configConstraints = [],
+      -- Passing '--allow-newer' to Setup.hs is unnecessary, we use
+      -- '--exact-configuration' instead.
+      configAllowNewer  = Cabal.AllowNewerNone
+      }
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
@@ -418,14 +424,12 @@ data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
     configPreferences  :: [Dependency],
-    configSolver       :: Flag PreSolver,
-    configAllowNewer   :: Flag AllowNewer
+    configSolver       :: Flag PreSolver
   }
   deriving (Eq, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver
-                              , configAllowNewer = Flag AllowNewerNone }
+defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
@@ -469,23 +473,14 @@ configureExOptions _showOrParseArgs src =
 
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
-  , option [] ["allow-newer"]
-    ("Ignore upper bounds in all dependencies or " ++ allowNewerArgument)
-    configAllowNewer (\v flags -> flags { configAllowNewer = v})
-    (optArg allowNewerArgument
-     (fmap Flag allowNewerParser) (Flag AllowNewerAll)
-     allowNewerPrinter)
-
   ]
-  where allowNewerArgument = "DEPS"
 
 instance Monoid ConfigExFlags where
   mempty = ConfigExFlags {
     configCabalVersion = mempty,
     configExConstraints= mempty,
     configPreferences  = mempty,
-    configSolver       = mempty,
-    configAllowNewer   = mempty
+    configSolver       = mempty
   }
   mappend = (<>)
 
@@ -494,8 +489,7 @@ instance Semigroup ConfigExFlags where
     configCabalVersion = combine configCabalVersion,
     configExConstraints= combine configExConstraints,
     configPreferences  = combine configPreferences,
-    configSolver       = combine configSolver,
-    configAllowNewer   = combine configAllowNewer
+    configSolver       = combine configSolver
   }
     where combine field = field a `mappend` field b
 
@@ -1241,27 +1235,6 @@ defaultInstallFlags = InstallFlags {
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
                                    </> "$arch-$os-$compiler" </> "index.html")
-
-allowNewerParser :: ReadE AllowNewer
-allowNewerParser = ReadE $ \s ->
-  case s of
-    ""      -> Right AllowNewerNone
-    "False" -> Right AllowNewerNone
-    "True"  -> Right AllowNewerAll
-    _       ->
-      case readPToMaybe pkgsParser s of
-        Just pkgs -> Right . AllowNewerSome $ pkgs
-        Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
-  where
-    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
-
-allowNewerPrinter :: Flag AllowNewer -> [Maybe String]
-allowNewerPrinter (Flag AllowNewerNone)        = [Just "False"]
-allowNewerPrinter (Flag AllowNewerAll)         = [Just "True"]
-allowNewerPrinter (Flag (AllowNewerSome pkgs)) =
-  [Just . intercalate "," . map display $ pkgs]
-allowNewerPrinter NoFlag                       = []
-
 
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 2000
@@ -2289,10 +2262,6 @@ parsePackageArgs = parsePkgArgs []
         Nothing  -> Left $
          show arg ++ " is not valid syntax for a package name or"
                   ++ " package dependency."
-
-readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                     , all isSpace s ]
 
 parseDependencyOrPackageId :: Parse.ReadP r Dependency
 parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse

@@ -66,7 +66,7 @@ import qualified Distribution.Client.ComponentDeps as CD
   * The difference between `GenericPackageDescription` and `PackageDescription`
     is that `PackageDescription` describes a particular _configuration_ of a
     package (for instance, see documentation for `checkPackage`). A
-    `GenericPackageDescription` can be returned into a `PackageDescription` in
+    `GenericPackageDescription` can be turned into a `PackageDescription` in
     two ways:
 
       a. `finalizePackageDescription` does the proper translation, by taking

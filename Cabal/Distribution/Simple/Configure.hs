@@ -48,6 +48,7 @@ module Distribution.Simple.Configure (configure,
                                       ConfigStateFileError(..),
                                       tryGetConfigStateFile,
                                       platformDefines,
+                                      relaxPackageDeps,
                                      )
     where
 
@@ -309,7 +310,13 @@ findDistPrefOrDefault = findDistPref defaultDistPref
 -- Returns the @.setup-config@ file.
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
-configure (pkg_descr0, pbi) cfg = do
+configure (pkg_descr0', pbi) cfg = do
+    let pkg_descr0 =
+          -- Ignore '--allow-newer' when we're given '--exact-configuration'.
+          if fromFlagOrDefault False (configExactConfiguration cfg)
+          then pkg_descr0'
+          else relaxPackageDeps (configAllowNewer cfg) pkg_descr0'
+
     setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
     checkDeprecatedFlags verbosity cfg
@@ -786,6 +793,19 @@ dependencySatisfiable
         pkgs = PackageIndex.merge internalPackageSet installedPackageSet
         isInternalDep = not . null
                       $ PackageIndex.lookupDependency internalPackageSet d
+
+-- | Relax the dependencies of this package if needed
+relaxPackageDeps :: AllowNewer -> GenericPackageDescription
+                 -> GenericPackageDescription
+relaxPackageDeps AllowNewerNone = id
+relaxPackageDeps AllowNewerAll  =
+  transformAllBuildDepends $ \(Dependency pkgName verRange) ->
+  Dependency pkgName (removeUpperBound verRange)
+relaxPackageDeps (AllowNewerSome pkgNames) =
+  transformAllBuildDepends $ \d@(Dependency pkgName verRange) ->
+  if pkgName `elem` pkgNames
+  then Dependency pkgName (removeUpperBound verRange)
+  else d
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePackageDescription' but there's a bit of other nattering
