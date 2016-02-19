@@ -227,6 +227,8 @@ nonSharedLibTests config =
         cabal "configure" ["--allow-newer"]
         shouldFail $ cabal "configure" ["--allow-newer=baz,quux"]
         cabal "configure" ["--allow-newer=base", "--allow-newer=baz,quux"]
+        cabal "configure" ["--allow-newer=bar", "--allow-newer=base,baz"
+                          ,"--allow-newer=quux"]
         shouldFail $ cabal "configure" ["--enable-tests"]
         cabal "configure" ["--enable-tests", "--allow-newer"]
         shouldFail $ cabal "configure" ["--enable-benchmarks"]
