@@ -268,12 +268,14 @@ Test-Suite unit-tests
   ghc-options: -Wall -fwarn-tabs
   other-modules:
     UnitTests.Distribution.Client.Targets
+    UnitTests.Distribution.Client.Compat.Time
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
+    UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Options
