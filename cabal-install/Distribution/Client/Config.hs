@@ -978,7 +978,9 @@ installDirsFields = map viewAsFieldDescr installDirsOptions
 
 ppRemoteRepoSection :: RemoteRepo -> Doc
 ppRemoteRepoSection vals = ppSection "repository" (remoteRepoName vals)
-        remoteRepoFields Nothing vals
+        remoteRepoFields def vals
+  where
+    def = Just (emptyRemoteRepo "ignored") { remoteRepoSecure = Just False }
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
