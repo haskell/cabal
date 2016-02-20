@@ -308,13 +308,9 @@ isAllowNewer AllowNewerNone     = False
 isAllowNewer (AllowNewerSome _) = True
 isAllowNewer AllowNewerAll      = True
 
-allowNewerParser :: ReadE (Maybe AllowNewer)
-allowNewerParser = ReadE $ \s ->
-  case readPToMaybe pkgsParser s of
-    Just pkgs -> Right . Just . AllowNewerSome $ pkgs
-    Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
-  where
-    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
+allowNewerParser :: Parse.ReadP r (Maybe AllowNewer)
+allowNewerParser =
+  (Just . AllowNewerSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
 
 allowNewerPrinter :: (Maybe AllowNewer) -> [Maybe String]
 allowNewerPrinter Nothing                      = []
@@ -687,7 +683,9 @@ configureOptions showOrParseArgs =
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")
        configAllowNewer (\v flags -> flags { configAllowNewer = v})
-       (optArg "DEPS" allowNewerParser (Just AllowNewerAll) allowNewerPrinter)
+       (optArg "DEPS"
+        (readP_to_E ("Cannot parse the list of packages: " ++) allowNewerParser)
+        (Just AllowNewerAll) allowNewerPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."

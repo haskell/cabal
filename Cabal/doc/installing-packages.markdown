@@ -1000,7 +1000,8 @@ be controlled with the following command line options.
     ~~~~~~~~~~~~~~~~
 
     Finally, one can enable `--allow-newer` permanently by setting `allow-newer:
-    True` in the `~/.cabal/config` file.
+    True` in the `~/.cabal/config` file. Enabling 'allow-newer' selectively is
+    also supported in the config file (`allow-newer: foo, bar, baz:base`).
 
 `--constraint=`_constraint_
 :   Restrict solutions involving a package to a given version range.

@@ -76,7 +76,7 @@ import Distribution.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseTokenQ )
+         , parseFilePathQ, parseOptCommaList, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
@@ -108,7 +108,7 @@ import Data.Monoid
 import Control.Monad
          ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
-         ( option )
+         ( (<++), option )
 import Distribution.Compat.Semigroup
          ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
@@ -677,7 +677,8 @@ configFieldDescriptions src =
             toAllowNewer True  = Just AllowNewerAll
             toAllowNewer False = Just AllowNewerNone
 
-            parseAllowNewer = toAllowNewer `fmap` Text.parse in
+            pkgs = (Just . AllowNewerSome) `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = (toAllowNewer `fmap` Text.parse) Parse.<++ pkgs in
         simpleField "allow-newer"
         showAllowNewer parseAllowNewer
         configAllowNewer (\v flags -> flags { configAllowNewer = v })
