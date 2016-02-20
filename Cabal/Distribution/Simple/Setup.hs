@@ -34,7 +34,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
-  AllowNewer(..),    isAllowNewer,
+  AllowNewer(..),    AllowNewerDep(..),  isAllowNewer,
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
@@ -86,11 +86,12 @@ import Distribution.Utils.NubList
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
 
-import Control.Monad (liftM)
-import Data.List   ( sort )
-import Data.Maybe  ( listToMaybe )
-import Data.Char   ( isSpace, isAlpha )
-import GHC.Generics (Generic)
+import Control.Applicative as A ( Applicative(..), (<*) )
+import Control.Monad            ( liftM )
+import Data.List                ( sort )
+import Data.Maybe               ( listToMaybe )
+import Data.Char                ( isSpace, isAlpha )
+import GHC.Generics             ( Generic )
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -266,13 +267,29 @@ data AllowNewer =
   AllowNewerNone
 
   -- | Ignore upper bounds in dependencies on the given packages.
-  | AllowNewerSome [PackageName]
+  | AllowNewerSome [AllowNewerDep]
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
-  deriving (Eq, Ord, Read, Show, Generic)
+  deriving (Read, Show, Generic)
+
+-- | Dependencies can be relaxed either for all packages in the install plan, or
+-- only for some packages.
+data AllowNewerDep = AllowNewerDep PackageName
+                   | AllowNewerDepScoped PackageName PackageName
+                   deriving (Read, Show, Generic)
+
+instance Text AllowNewerDep where
+  disp (AllowNewerDep p0)          = disp p0
+  disp (AllowNewerDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
+
+  parse = scopedP Parse.<++ normalP
+    where
+      scopedP = AllowNewerDepScoped `fmap` parse A.<* Parse.char ':' A.<*> parse
+      normalP = AllowNewerDep       `fmap` parse
 
 instance Binary AllowNewer
+instance Binary AllowNewerDep
 
 instance Semigroup AllowNewer where
   AllowNewerNone       <> r                    = r
@@ -291,19 +308,15 @@ isAllowNewer AllowNewerNone     = False
 isAllowNewer (AllowNewerSome _) = True
 isAllowNewer AllowNewerAll      = True
 
-allowNewerParser :: ReadE AllowNewer
-allowNewerParser = ReadE $ \s ->
-  case readPToMaybe pkgsParser s of
-    Just pkgs -> Right . AllowNewerSome $ pkgs
-    Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
-  where
-    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
+allowNewerParser :: Parse.ReadP r (Maybe AllowNewer)
+allowNewerParser =
+  (Just . AllowNewerSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
 
-allowNewerPrinter :: AllowNewer -> [Maybe String]
-allowNewerPrinter AllowNewerNone        = []
-allowNewerPrinter AllowNewerAll         = [Nothing]
-allowNewerPrinter (AllowNewerSome pkgs) =
-  [Just . intercalate "," . map display $ pkgs]
+allowNewerPrinter :: (Maybe AllowNewer) -> [Maybe String]
+allowNewerPrinter Nothing                      = []
+allowNewerPrinter (Just AllowNewerNone)        = []
+allowNewerPrinter (Just AllowNewerAll)         = [Nothing]
+allowNewerPrinter (Just (AllowNewerSome pkgs)) = map (Just . display) $ pkgs
 
 -- | Flags to @configure@ command.
 --
@@ -375,8 +388,9 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
-    configAllowNewer :: AllowNewer      -- ^ Ignore upper bounds on all or some
-                                        -- dependencies.
+    configAllowNewer :: Maybe AllowNewer
+    -- ^ Ignore upper bounds on all or some dependencies. Wrapped in 'Maybe' to
+    -- distinguish between "default" and "explicitly disabled".
   }
   deriving (Generic, Read, Show)
 
@@ -423,7 +437,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configFlagError    = NoFlag,
     configRelocatable  = Flag False,
     configDebugInfo    = Flag NoDebugInfo,
-    configAllowNewer   = AllowNewerNone
+    configAllowNewer   = Nothing
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -669,7 +683,9 @@ configureOptions showOrParseArgs =
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")
        configAllowNewer (\v flags -> flags { configAllowNewer = v})
-       (optArg "DEPS" allowNewerParser AllowNewerAll allowNewerPrinter)
+       (optArg "DEPS"
+        (readP_to_E ("Cannot parse the list of packages: " ++) allowNewerParser)
+        (Just AllowNewerAll) allowNewerPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."

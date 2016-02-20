@@ -62,6 +62,7 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
+         , AllowNewer(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
@@ -75,7 +76,7 @@ import Distribution.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseTokenQ )
+         , parseFilePathQ, parseOptCommaList, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
@@ -107,7 +108,7 @@ import Data.Monoid
 import Control.Monad
          ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
-         ( option )
+         ( (<++), option )
 import Distribution.Compat.Semigroup
          ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
@@ -639,7 +640,8 @@ commentSavedConfig = do
     savedInstallFlags      = defaultInstallFlags,
     savedConfigureExFlags  = defaultConfigExFlags,
     savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
-      configUserInstall    = toFlag defaultUserInstall
+      configUserInstall    = toFlag defaultUserInstall,
+      configAllowNewer     = Just AllowNewerNone
     },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
@@ -668,6 +670,18 @@ configFieldDescriptions src =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
+       ,let showAllowNewer Nothing               = mempty
+            showAllowNewer (Just AllowNewerNone) = Disp.text "False"
+            showAllowNewer (Just _)              = Disp.text "True"
+
+            toAllowNewer True  = Just AllowNewerAll
+            toAllowNewer False = Just AllowNewerNone
+
+            pkgs = (Just . AllowNewerSome) `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = (toAllowNewer `fmap` Text.parse) Parse.<++ pkgs in
+        simpleField "allow-newer"
+        showAllowNewer parseAllowNewer
+        configAllowNewer (\v flags -> flags { configAllowNewer = v })
         -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
         -- fails on that. Instead of a hand-written hackaged parser

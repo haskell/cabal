@@ -47,6 +47,10 @@
 	* New config file field: 'extra-framework-dirs' (extra locations
 	to find OS X frameworks in). Can be also specified as an argument
 	for 'install' and 'configure' commands (#3158).
+	* It's now possible to limit the scope of '--allow-newer' to
+	single packages in the install plan (#2756).
+	* Full '--allow-newer' syntax is now supported in the config file
+	(that is, 'allow-newer: base, ghc-prim,  some-package:vector') (#3171).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

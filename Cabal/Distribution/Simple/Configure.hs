@@ -98,7 +98,7 @@ import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
 import Data.Maybe
-    ( isNothing, catMaybes, fromMaybe, isJust )
+    ( isNothing, catMaybes, fromMaybe, mapMaybe, isJust )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
@@ -315,7 +315,9 @@ configure (pkg_descr0', pbi) cfg = do
           -- Ignore '--allow-newer' when we're given '--exact-configuration'.
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
-          else relaxPackageDeps (configAllowNewer cfg) pkg_descr0'
+          else relaxPackageDeps
+               (fromMaybe AllowNewerNone $ configAllowNewer cfg)
+               pkg_descr0'
 
     setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
@@ -794,18 +796,28 @@ dependencySatisfiable
         isInternalDep = not . null
                       $ PackageIndex.lookupDependency internalPackageSet d
 
--- | Relax the dependencies of this package if needed
+-- | Relax the dependencies of this package if needed.
 relaxPackageDeps :: AllowNewer -> GenericPackageDescription
                  -> GenericPackageDescription
-relaxPackageDeps AllowNewerNone = id
-relaxPackageDeps AllowNewerAll  =
-  transformAllBuildDepends $ \(Dependency pkgName verRange) ->
-  Dependency pkgName (removeUpperBound verRange)
-relaxPackageDeps (AllowNewerSome pkgNames) =
-  transformAllBuildDepends $ \d@(Dependency pkgName verRange) ->
-  if pkgName `elem` pkgNames
-  then Dependency pkgName (removeUpperBound verRange)
-  else d
+relaxPackageDeps AllowNewerNone gpd = gpd
+relaxPackageDeps AllowNewerAll  gpd = transformAllBuildDepends relaxAll gpd
+  where
+    relaxAll = \(Dependency pkgName verRange) ->
+      Dependency pkgName (removeUpperBound verRange)
+relaxPackageDeps (AllowNewerSome allowNewerDeps') gpd =
+  transformAllBuildDepends relaxSome gpd
+  where
+    thisPkgName    = packageName gpd
+    allowNewerDeps = mapMaybe f allowNewerDeps'
+
+    f (Setup.AllowNewerDep p) = Just p
+    f (Setup.AllowNewerDepScoped scope p) | scope == thisPkgName = Just p
+                                          | otherwise            = Nothing
+
+    relaxSome = \d@(Dependency depName verRange) ->
+      if depName `elem` allowNewerDeps
+      then Dependency depName (removeUpperBound verRange)
+      else d
 
 -- | Finalize a generic package description.  The workhorse is
 -- 'finalizePackageDescription' but there's a bit of other nattering
