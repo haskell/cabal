@@ -1255,12 +1255,12 @@ pass to `cabal bench`.
 
 ### Build information ###
 
-The following fields may be optionally present in a library or
-executable section, and give information for the building of the
+The following fields may be optionally present in a library, executable, test
+suite or benchmark section, and give information for the building of the
 corresponding library or executable.  See also the sections on
 [system-dependent parameters](#system-dependent-parameters) and
-[configurations](#configurations) for a way to supply system-dependent
-values for these fields.
+[configurations](#configurations) for a way to supply system-dependent values
+for these fields.
 
 `build-depends:` _package list_
 :   A list of packages needed to build this one. Each package can be
@@ -1466,6 +1466,10 @@ values for these fields.
 :   On Darwin/MacOS X, a list of frameworks to link to. See Apple's
     developer documentation for more details on frameworks.  This entry
     is ignored on all other platforms.
+
+`extra-frameworks-dirs:` _directory list_
+:   On Darwin/MacOS X, a list of directories to search for frameworks.
+    This entry is ignored on all other platforms.
 
 ### Configurations ###
 

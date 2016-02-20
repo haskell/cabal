@@ -546,10 +546,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions    = toNubListR $ PD.ldOptions libBi,
-                      ghcOptLinkLibs       = toNubListR $ extraLibs libBi,
-                      ghcOptLinkLibPath    = toNubListR $ extraLibDirs libBi,
-                      ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi,
+                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions libBi,
+                      ghcOptLinkLibs          = toNubListR $ extraLibs libBi,
+                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
+                      ghcOptLinkFrameworks    = toNubListR $
+                                                PD.frameworks libBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $
+                                                PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
                                              [libTargetDir </> x | x <- cObjs]
                    }
@@ -724,6 +727,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
+                ghcOptLinkFrameworkDirs  =
+                  toNubListR $ PD.extraFrameworkDirs libBi,
                 ghcOptRPaths             = rpaths
               }
 
@@ -846,10 +851,13 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
-                      ghcOptLinkLibs       = toNubListR $ extraLibs exeBi,
-                      ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
+                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions exeBi,
+                      ghcOptLinkLibs          = toNubListR $ extraLibs exeBi,
+                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs exeBi,
+                      ghcOptLinkFrameworks    = toNubListR $
+                                                PD.frameworks exeBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $
+                                                PD.extraFrameworkDirs exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs]
                     }

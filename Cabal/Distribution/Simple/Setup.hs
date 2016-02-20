@@ -346,6 +346,8 @@ data ConfigFlags = ConfigFlags {
                                                             -- paths
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
+    configExtraFrameworkDirs :: [FilePath],   -- ^ path to search for extra
+                                              -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
     configIPID          :: Flag String, -- ^ explicit IPID to be used
 
@@ -624,6 +626,12 @@ configureOptions showOrParseArgs =
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
+      ,option "" ["extra-framework-dirs"]
+         "A list of directories to search for external frameworks (OS X only)"
+         configExtraFrameworkDirs
+         (\v flags -> flags {configExtraFrameworkDirs = v})
+         (reqArg' "PATH" (\x -> [x]) id)
+
       ,option "" ["extra-prog-path"]
          "A list of directories to search for required programs (in addition to the normal search locations)"
          configProgramPathExtra (\v flags -> flags {configProgramPathExtra = v})
@@ -818,6 +826,7 @@ instance Monoid ConfigFlags where
     configStripExes     = mempty,
     configStripLibs     = mempty,
     configExtraLibDirs  = mempty,
+    configExtraFrameworkDirs = mempty,
     configConstraints   = mempty,
     configDependencies  = mempty,
     configExtraIncludeDirs    = mempty,
@@ -867,6 +876,7 @@ instance Semigroup ConfigFlags where
     configStripExes     = combine configStripExes,
     configStripLibs     = combine configStripLibs,
     configExtraLibDirs  = combine configExtraLibDirs,
+    configExtraFrameworkDirs = combine configExtraFrameworkDirs,
     configConstraints   = combine configConstraints,
     configDependencies  = combine configDependencies,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,

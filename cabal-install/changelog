@@ -44,6 +44,9 @@
 	(#2877).
 	* The '--allow-newer' option now works as expected when specified
 	multiple times (#2588).
+	* New config file field: 'extra-framework-dirs' (extra locations
+	to find OS X frameworks in). Can be also specified as an argument
+	for 'install' and 'configure' commands (#3158).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

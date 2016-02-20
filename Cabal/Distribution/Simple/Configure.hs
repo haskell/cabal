@@ -864,6 +864,7 @@ configureFinalizedPackage verbosity cfg
   where
     addExtraIncludeLibDirs pkg_descr =
         let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
+                             , extraFrameworkDirs = configExtraFrameworkDirs cfg
                              , PD.includeDirs = configExtraIncludeDirs cfg}
             modifyLib l        = l{ libBuildInfo = libBuildInfo l
                                                    `mappend` extraBi }
