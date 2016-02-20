@@ -990,13 +990,13 @@ remoteRepoFields =
         (text . show)            (parseTokenQ >>= parseURI')
         remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
     , simpleField "secure"
-        showSecure               (parseTokenQ >>= parseSecure)
+        showSecure               (Just `fmap` Text.parse)
         remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
     , listField "root-keys"
         text                     parseTokenQ
         remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
     , simpleField "key-threshold"
-        showThreshold            (parseTokenQ >>= parseInt)
+        showThreshold            Text.parse
         remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
     ]
   where
@@ -1005,21 +1005,9 @@ remoteRepoFields =
         Nothing  -> fail $ "remote-repo: no parse on " ++ show uriString
         Just uri -> return uri
 
-    -- from base >= 4.6 we can use 'Text.Read.readEither' but right now we
-    -- support everything back to ghc 7.2 (base 4.4)
-    parseInt intString =
-      case filter (null . snd) (reads intString) of
-        [(n, _)] -> return n
-        _ -> fail $ "remote-remo: could not parse int " ++ show intString
-
-
     showSecure  Nothing      = mempty       -- default 'secure' setting
     showSecure  (Just True)  = text "True"  -- user explicitly enabled it
     showSecure  (Just False) = text "False" -- user explicitly disabled it
-
-    parseSecure "True"  = return $ Just True
-    parseSecure "False" = return $ Just False
-    parseSecure str = fail $ "remote-repo: could not parse bool " ++ show str
 
     -- If the key-threshold is set to 0, we omit it as this is the default
     -- and it looks odd to have a value for key-threshold but not for 'secure'

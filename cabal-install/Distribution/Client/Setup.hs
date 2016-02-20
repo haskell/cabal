@@ -95,7 +95,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readS_to_P, char, munch1, pfail,  (+++) )
+         ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
          ( Semigroup((<>)) )
 import Distribution.Verbosity
@@ -2214,8 +2214,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
-      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
-                                (fmap toFlag (Parse.readS_to_P reads)))
+      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++) (fmap toFlag parse))
                     (map show . flagToList))
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
