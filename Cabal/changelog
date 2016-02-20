@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 1.23.x.x (current development version)
+	* Support GHC 8.
 	* Deal with extra C sources from preprocessors (#238).
 	* Include cabal_macros.h when running c2hs (#2600).
 	* Don't recompile C sources unless needed (#2601).
@@ -21,6 +22,9 @@
 	* Improved the './Setup configure' solver (#3082, #3076).
 	* The '--allow-newer' option can be now used with './Setup
 	configure' (#3163).
+	* Added a way to specify extra locations to find OS X frameworks
+	in ('extra-framework-dirs'). Can be used both in .cabal files and
+	as an argument to './Setup configure' (#3158).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.

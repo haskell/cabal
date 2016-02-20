@@ -552,7 +552,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks libBi,
                       ghcOptLinkFrameworkDirs = toNubListR $
-                                                PD.frameworkDirs libBi,
+                                                PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
                                              [libTargetDir </> x | x <- cObjs]
                    }
@@ -727,7 +727,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
-                ghcOptLinkFrameworkDirs  = toNubListR $ PD.frameworkDirs libBi,
+                ghcOptLinkFrameworkDirs  =
+                  toNubListR $ PD.extraFrameworkDirs libBi,
                 ghcOptRPaths             = rpaths
               }
 
@@ -856,7 +857,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkFrameworks    = toNubListR $
                                                 PD.frameworks exeBi,
                       ghcOptLinkFrameworkDirs = toNubListR $
-                                                PD.frameworkDirs exeBi,
+                                                PD.extraFrameworkDirs exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs]
                     }

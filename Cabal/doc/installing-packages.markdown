@@ -932,6 +932,10 @@ be controlled with the following command line options.
 :   An extra directory to search for system libraries files. You can use
     this flag multiple times to get a list of directories.
 
+`--extra-framework-dirs`[=_dir_]
+:   An extra directory to search for frameworks (OS X only). You can use this
+    flag multiple times to get a list of directories.
+
     You might need to use this flag if you have standard system
     libraries in a non-standard location that is not mentioned in the
     package's `.cabal` file. Using this option has the same affect as
