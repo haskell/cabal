@@ -162,7 +162,14 @@ showDepResolverParams p =
   ++ "\npreferences: "
   ++   concatMap (("\n  " ++) . showPackagePreference)
        (depResolverPreferences p)
-  ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
+  ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault p)
+  ++ "\nreorder goals: "     ++ show (depResolverReorderGoals      p)
+  ++ "\nindependent goals: " ++ show (depResolverIndependentGoals  p)
+  ++ "\navoid reinstalls: "  ++ show (depResolverAvoidReinstalls   p)
+  ++ "\nshadow packages: "   ++ show (depResolverShadowPkgs        p)
+  ++ "\nstrong flags: "      ++ show (depResolverStrongFlags       p)
+  ++ "\nmax backjumps: "     ++ show (fromMaybe 0 $
+                                      depResolverMaxBackjumps      p)
   where
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
