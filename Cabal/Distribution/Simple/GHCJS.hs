@@ -275,12 +275,13 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
         when (not forRepl &&  (forceShared || withSharedLib lbi))
       whenGHCiLib = when (not forRepl && withGHCiLib lbi && withVanillaLib lbi)
       ifReplLib = when forRepl
-      comp = compiler lbi
-      implInfo = getImplInfo comp
+      comp      = compiler lbi
+      platform  = hostPlatform lbi
+      implInfo  = getImplInfo comp
       nativeToo = ghcjsNativeToo comp
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-  let runGhcjsProg        = runGHC verbosity ghcjsProg comp
+  let runGhcjsProg        = runGHC verbosity ghcjsProg comp platform
       libBi               = libBuildInfo lib
       isGhcjsDynamic      = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
@@ -489,16 +490,16 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
         runGhcjsProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
-startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
+startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
-startInterpreter verbosity conf comp packageDBs = do
+startInterpreter verbosity conf comp platform packageDBs = do
   let replOpts = mempty {
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack packageDBs
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram conf
-  runGHC verbosity ghcjsProg comp replOpts
+  runGHC verbosity ghcjsProg comp platform replOpts
 
 buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
                   -> PackageDescription -> LocalBuildInfo
@@ -514,8 +515,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
   let comp         = compiler lbi
+      platform     = hostPlatform lbi
       implInfo     = getImplInfo comp
-      runGhcjsProg = runGHC verbosity ghcjsProg comp
+      runGhcjsProg = runGHC verbosity ghcjsProg comp platform
       exeBi        = buildInfo exe
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
@@ -767,6 +769,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   let
       libBi       = libBuildInfo lib
       comp        = compiler lbi
+      platform    = hostPlatform lbi
       vanillaArgs =
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
@@ -782,7 +785,8 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
            else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-  getProgramInvocationOutput verbosity (ghcInvocation ghcjsProg comp ghcArgs)
+  getProgramInvocationOutput verbosity
+    (ghcInvocation ghcjsProg comp platform ghcArgs)
 
 adjustExts :: String -> String -> GhcOptions -> GhcOptions
 adjustExts hiSuf objSuf opts =

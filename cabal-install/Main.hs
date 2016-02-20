@@ -439,12 +439,13 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
     onNoPkgDesc = do
       (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
       let configFlags = savedConfigureFlags config
-      (comp, _platform, programDb) <- configCompilerAux' configFlags
+      (comp, platform, programDb) <- configCompilerAux' configFlags
       programDb' <- reconfigurePrograms verbosity
                                         (replProgramPaths replFlags)
                                         (replProgramArgs replFlags)
                                         programDb
-      startInterpreter verbosity programDb' comp (configPackageDB' configFlags)
+      startInterpreter verbosity programDb' comp platform
+                       (configPackageDB' configFlags)
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:
