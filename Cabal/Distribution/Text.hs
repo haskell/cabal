@@ -51,17 +51,16 @@ instance Text Bool where
                        , (Parse.string "False" Parse.+++
                           Parse.string "false") >> return False ]
 
+instance Text Int where
+  disp  = Disp.text . show
+  parse = read `fmap` Parse.munch1 Char.isDigit
+
 instance Text Version where
   disp (Version branch _tags)     -- Death to version tags!!
     = Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
 
   parse = do
-      branch <- Parse.sepBy1 digits (Parse.char '.')
+      branch <- Parse.sepBy1 parse (Parse.char '.')
                 -- allow but ignore tags:
       _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
       return (Version branch [])
-    where
-      digits = do
-        first <- Parse.satisfy Char.isDigit
-        rest <- Parse.munch Char.isDigit
-        return (read (first : rest))
