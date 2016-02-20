@@ -994,7 +994,7 @@ remoteRepoFields =
         text                     parseTokenQ
         remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
     , simpleField "key-threshold"
-        showThreshold            (parseTokenQ >>= parseInt)
+        showThreshold            Text.parse
         remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
     ]
   where
@@ -1002,14 +1002,6 @@ remoteRepoFields =
       case parseURI uriString of
         Nothing  -> fail $ "remote-repo: no parse on " ++ show uriString
         Just uri -> return uri
-
-    -- from base >= 4.6 we can use 'Text.Read.readEither' but right now we
-    -- support everything back to ghc 7.2 (base 4.4)
-    parseInt intString =
-      case filter (null . snd) (reads intString) of
-        [(n, _)] -> return n
-        _ -> fail $ "remote-remo: could not parse int " ++ show intString
-
 
     showSecure  Nothing      = mempty       -- default 'secure' setting
     showSecure  (Just True)  = text "True"  -- user explicitly enabled it
