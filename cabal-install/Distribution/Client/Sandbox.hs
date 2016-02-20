@@ -109,18 +109,23 @@ import qualified Data.Map                          as M
 import qualified Data.Set                          as S
 import Data.Either                            (partitionEithers)
 import Control.Exception                      ( assert, bracket_ )
-import Control.Monad                          ( forM, liftM2, unless, when )
+import Control.Monad                          ( forM, liftM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl', intersperse, groupBy)
+import Data.List                              ( delete
+                                              , foldl'
+                                              , intersperse
+                                              , isPrefixOf
+                                              , groupBy )
 import Data.Maybe                             ( fromJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
 #endif
 import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
-import System.Directory                       ( createDirectory
+import System.Directory                       ( canonicalizePath
+                                              , createDirectory
                                               , doesDirectoryExist
                                               , doesFileExist
                                               , getCurrentDirectory
@@ -130,6 +135,7 @@ import System.Directory                       ( createDirectory
 import System.FilePath                        ( (</>), equalFilePath
                                               , getSearchPath
                                               , searchPathSeparator
+                                              , splitSearchPath
                                               , takeDirectory )
 
 --
@@ -367,6 +373,26 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
 
       notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
       removeDirectoryRecursive sandboxDir
+
+      absSandboxDir <- canonicalizePath sandboxDir
+
+      let
+        pathInsideSandbox = isPrefixOf absSandboxDir
+
+        -- Warn the user if deleting the sandbox deleted a package database
+        -- referenced in the current environment.
+        checkPackagePaths var = do
+          let
+            checkPath path = do
+              absPath <- canonicalizePath path
+              (when (pathInsideSandbox absPath) . warn verbosity)
+                (var ++ " refers to package database " ++ path
+                 ++ " inside the deleted sandbox.")
+          liftM (maybe [] splitSearchPath) (lookupEnv var) >>= mapM_ checkPath
+
+      checkPackagePaths "CABAL_SANDBOX_PACKAGE_PATH"
+      checkPackagePaths "GHC_PACKAGE_PATH"
+      checkPackagePaths "GHCJS_PACKAGE_PATH"
 
 -- Common implementation of 'sandboxAddSource' and 'sandboxAddSourceSnapshot'.
 doAddSource :: Verbosity -> [FilePath] -> FilePath -> PackageEnvironment
