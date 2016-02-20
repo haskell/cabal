@@ -1467,6 +1467,10 @@ values for these fields.
     developer documentation for more details on frameworks.  This entry
     is ignored on all other platforms.
 
+`frameworks-dirs:` _directory list_
+:   On Darwin/MacOS X, a list of directories to search for frameworks.
+    This entry is ignored on all other platforms.
+
 ### Configurations ###
 
 Library and executable sections may include conditional
