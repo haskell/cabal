@@ -21,6 +21,7 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Setup
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
+import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity
 import Distribution.Utils.NubList
@@ -238,17 +239,19 @@ data GhcProfAuto = GhcProfAutoAll       -- ^ @-fprof-auto@
                  | GhcProfAutoExported  -- ^ @-fprof-auto-exported@
  deriving (Show, Eq)
 
-runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> GhcOptions -> IO ()
-runGHC verbosity ghcProg comp opts = do
-  runProgramInvocation verbosity (ghcInvocation ghcProg comp opts)
+runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> Platform  -> GhcOptions
+       -> IO ()
+runGHC verbosity ghcProg comp platform opts = do
+  runProgramInvocation verbosity (ghcInvocation ghcProg comp platform opts)
 
 
-ghcInvocation :: ConfiguredProgram -> Compiler -> GhcOptions -> ProgramInvocation
-ghcInvocation prog comp opts =
-    programInvocation prog (renderGhcOptions comp opts)
+ghcInvocation :: ConfiguredProgram -> Compiler -> Platform -> GhcOptions
+              -> ProgramInvocation
+ghcInvocation prog comp platform opts =
+    programInvocation prog (renderGhcOptions comp platform opts)
 
-renderGhcOptions :: Compiler -> GhcOptions -> [String]
-renderGhcOptions comp opts
+renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]
+renderGhcOptions comp _platform@(Platform _arch os) opts
   | compilerFlavor comp `notElem` [GHC, GHCJS] =
     error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
     ++ "compiler flavor must be 'GHC' or 'GHCJS'!"
@@ -366,8 +369,14 @@ renderGhcOptions comp opts
   , [ "-optl" ++ opt | opt <- flags ghcOptLinkOptions ]
   , ["-l" ++ lib     | lib <- flags ghcOptLinkLibs ]
   , ["-L" ++ dir     | dir <- flags ghcOptLinkLibPath ]
-  , concat [ ["-framework", fmwk] | fmwk <- flags ghcOptLinkFrameworks ]
-  , concat [ ["-framework-path", path] | path <- flags ghcOptLinkFrameworkDirs ]
+  , if isOSX
+    then concat [ ["-framework", fmwk]
+                | fmwk <- flags ghcOptLinkFrameworks ]
+    else []
+  , if isOSX
+    then concat [ ["-framework-path", path]
+                | path <- flags ghcOptLinkFrameworkDirs ]
+    else []
   , [ "-no-hs-main"  | flagBool ghcOptLinkNoHsMain ]
   , [ "-dynload deploy" | not (null (flags ghcOptRPaths)) ]
   , concat [ [ "-optl-Wl,-rpath," ++ dir]
@@ -434,6 +443,7 @@ renderGhcOptions comp opts
 
   where
     implInfo     = getImplInfo comp
+    isOSX        = os == OSX
     flag     flg = flagToList (flg opts)
     flags    flg = fromNubListR . flg $ opts
     flagBool flg = fromFlagOrDefault False (flg opts)
