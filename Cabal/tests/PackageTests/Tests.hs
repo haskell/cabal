@@ -1,4 +1,4 @@
-module PackageTests.Tests(sharedLibTests, nonSharedLibTests) where
+module PackageTests.Tests(tests) where
 
 import PackageTests.PackageTester
 
@@ -11,14 +11,12 @@ import Control.Monad
 
 import Data.Version
 import Test.Tasty (TestTree, testGroup, mkTimeout, localOption)
-import qualified Test.Tasty.HUnit as HUnit
-
--- | Tests that do not require shared libraries.
+import Test.Tasty.HUnit (testCase)
 
 -- TODO: turn this into a "test-defining writer monad".
 -- This will let us handle scoping gracefully.
-nonSharedLibTests :: SuiteConfig -> [TestTree]
-nonSharedLibTests config =
+tests :: SuiteConfig -> [TestTree]
+tests config =
   tail [ undefined
 
   ---------------------------------------------------------------------
@@ -40,15 +38,15 @@ nonSharedLibTests config =
 
     -- Test exitcode-stdio-1.0 test suites (and HPC)
     [ testGroup "ExeV10"
-      (PackageTests.TestSuiteTests.ExeV10.Check.nonSharedLibTests config)
+      (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
 
     -- Test detailed-0.9 test suites
     , testGroup "LibV09" $
       let
         tcs :: FilePath -> TestM a -> TestTree
         tcs name m
-            = HUnit.testCase name (runTestM config ("TestSuiteTests/LibV09")
-                                                   (Just name) m)
+            = testCase name (runTestM config ("TestSuiteTests/LibV09")
+                                             (Just name) m)
       in -- Test if detailed-0.9 builds correctly
          [ tcs "Build" $ cabal_build ["--enable-tests"]
 
@@ -156,6 +154,10 @@ nonSharedLibTests config =
   -- Test building a profiled library/executable which uses Template Haskell
   -- (Cabal has to build the non-profiled version first)
   , tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling", "--enable-profiling"]
+
+  -- Test building a dynamic library/executable which uses Template
+  -- Haskell
+  , tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
 
   -- Test building an executable whose main() function is defined in a C
   -- file
@@ -284,28 +286,5 @@ nonSharedLibTests config =
             (concatOutput (resultOutput r))
 
     tc :: FilePath -> TestM a -> TestTree
-    tc = testCase config
-
--- | Tests that require shared libraries.
-sharedLibTests :: SuiteConfig -> [TestTree]
-sharedLibTests config =
-  tail [ undefined
-
-  , testGroup "TestSuiteTests"
-
-    -- Test exitcode-stdio-1.0 test suites (and HPC) using
-    -- --enable-executable-dynamic and --enable-shared
-    [ testGroup "ExeV10"
-      (PackageTests.TestSuiteTests.ExeV10.Check.sharedLibTests config)
-    ]
-
-  -- Test building a dynamic library/executable which uses Template
-  -- Haskell
-  , testCase config "TemplateHaskell/dynamic" $
-    cabal_build ["--enable-shared", "--enable-executable-dynamic"]
-
-  ]
-
-testCase :: SuiteConfig -> FilePath -> TestM a -> TestTree
-testCase config name m
-    = HUnit.testCase name (runTestM config name Nothing m)
+    tc name m
+        = testCase name (runTestM config name Nothing m)
