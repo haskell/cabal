@@ -260,7 +260,7 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
         (\xs -> if List.null xs then Nothing else Just xs)
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
--- | Backwards compatibility wrapper for pre-Cabal 1.23.
+-- | Backwards compatibility wrapper for Cabal pre-1.24.
 {-# DEPRECATED deleteInstalledPackageId "Use deleteUnitId instead" #-}
 deleteInstalledPackageId :: HasUnitId a
                          => UnitId -> PackageIndex a
@@ -350,7 +350,7 @@ lookupUnitId :: PackageIndex a -> UnitId
              -> Maybe a
 lookupUnitId (PackageIndex pids _) pid = Map.lookup pid pids
 
--- | Backwards compatibility for pre Cabal-1.23.
+-- | Backwards compatibility for Cabal pre-1.24.
 {-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}
 lookupInstalledPackageId :: PackageIndex a -> UnitId
                          -> Maybe a
