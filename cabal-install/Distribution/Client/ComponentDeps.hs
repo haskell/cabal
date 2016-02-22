@@ -51,7 +51,7 @@ import Data.Traversable (Traversable(traverse))
   Types
 -------------------------------------------------------------------------------}
 
--- | Component of a package
+-- | Component of a package.
 data Component =
     ComponentLib
   | ComponentExe   String
@@ -62,10 +62,10 @@ data Component =
 
 instance Binary Component
 
--- | Dependency for a single component
+-- | Dependency for a single component.
 type ComponentDep a = (Component, a)
 
--- | Fine-grained dependencies for a package
+-- | Fine-grained dependencies for a package.
 --
 -- Typically used as @ComponentDeps [Dependency]@, to represent the list of
 -- dependencies for each named component within a package.
@@ -116,13 +116,13 @@ filterDeps p = ComponentDeps . Map.filterWithKey p . unComponentDeps
 fromLibraryDeps :: a -> ComponentDeps a
 fromLibraryDeps = singleton ComponentLib
 
--- | ComponentDeps containing setup dependencies only
+-- | ComponentDeps containing setup dependencies only.
 fromSetupDeps :: a -> ComponentDeps a
 fromSetupDeps = singleton ComponentSetup
 
--- | ComponentDeps for installed packages
+-- | ComponentDeps for installed packages.
 --
--- We assume that installed packages only record their library dependencies
+-- We assume that installed packages only record their library dependencies.
 fromInstalled :: a -> ComponentDeps a
 fromInstalled = fromLibraryDeps
 
@@ -133,7 +133,7 @@ fromInstalled = fromLibraryDeps
 toList :: ComponentDeps a -> [ComponentDep a]
 toList = Map.toList . unComponentDeps
 
--- | All dependencies of a package
+-- | All dependencies of a package.
 --
 -- This is just a synonym for 'fold', but perhaps a use of 'flatDeps' is more
 -- obvious than a use of 'fold', and moreover this avoids introducing lots of
@@ -141,21 +141,21 @@ toList = Map.toList . unComponentDeps
 flatDeps :: Monoid a => ComponentDeps a -> a
 flatDeps = fold
 
--- | All dependencies except the setup dependencies
+-- | All dependencies except the setup dependencies.
 --
--- Prior to the introduction of setup dependencies (TODO: Version? 1.23) this
--- would have been _all_ dependencies
+-- Prior to the introduction of setup dependencies in version 1.24 this
+-- would have been _all_ dependencies.
 nonSetupDeps :: Monoid a => ComponentDeps a -> a
 nonSetupDeps = select (/= ComponentSetup)
 
--- | Library dependencies proper only
+-- | Library dependencies proper only.
 libraryDeps :: Monoid a => ComponentDeps a -> a
 libraryDeps = select (== ComponentLib)
 
--- | Setup dependencies
+-- | Setup dependencies.
 setupDeps :: Monoid a => ComponentDeps a -> a
 setupDeps = select (== ComponentSetup)
 
--- | Select dependencies satisfying a given predicate
+-- | Select dependencies satisfying a given predicate.
 select :: Monoid a => (Component -> Bool) -> ComponentDeps a -> a
 select p = foldMap snd . filter (p . fst) . toList
