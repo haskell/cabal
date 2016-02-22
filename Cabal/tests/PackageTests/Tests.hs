@@ -10,62 +10,58 @@ import qualified PackageTests.TestSuiteTests.ExeV10.Check
 import Control.Monad
 
 import Data.Version
-import Test.Tasty (TestTree, testGroup, mkTimeout, localOption)
+import Test.Tasty (mkTimeout, localOption)
 import Test.Tasty.HUnit (testCase)
 
--- TODO: turn this into a "test-defining writer monad".
--- This will let us handle scoping gracefully.
-tests :: SuiteConfig -> [TestTree]
-tests config =
-  tail [ undefined
+tests :: SuiteConfig -> TestTreeM ()
+tests config = do
 
   ---------------------------------------------------------------------
   -- * External tests
 
   -- Test that Cabal parses 'benchmark' sections correctly
-  , tc "BenchmarkStanza"  PackageTests.BenchmarkStanza.Check.suite
+  tc "BenchmarkStanza"  PackageTests.BenchmarkStanza.Check.suite
 
   -- Test that Cabal parses 'test' sections correctly
-  , tc "TestStanza"       PackageTests.TestStanza.Check.suite
+  tc "TestStanza"       PackageTests.TestStanza.Check.suite
 
   -- Test that Cabal determinstically generates object archives
-  , tc "DeterministicAr"  PackageTests.DeterministicAr.Check.suite
+  tc "DeterministicAr"  PackageTests.DeterministicAr.Check.suite
 
   ---------------------------------------------------------------------
   -- * Test suite tests
 
-  , testGroup "TestSuiteTests"
+  groupTests "TestSuiteTests" $ do
 
     -- Test exitcode-stdio-1.0 test suites (and HPC)
-    [ testGroup "ExeV10"
+    groupTests "ExeV10"
       (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
 
     -- Test detailed-0.9 test suites
-    , testGroup "LibV09" $
+    groupTests "LibV09" $
       let
-        tcs :: FilePath -> TestM a -> TestTree
+        tcs :: FilePath -> TestM a -> TestTreeM ()
         tcs name m
-            = testCase name (runTestM config ("TestSuiteTests/LibV09")
-                                             (Just name) m)
-      in -- Test if detailed-0.9 builds correctly
-         [ tcs "Build" $ cabal_build ["--enable-tests"]
+            = testTree' $ testCase name (runTestM config ("TestSuiteTests/LibV09")
+                                                         (Just name) m)
+      in do
+          -- Test if detailed-0.9 builds correctly
+          tcs "Build" $ cabal_build ["--enable-tests"]
 
-         -- Tests for #2489, stdio deadlock
-         , localOption (mkTimeout $ 10 ^ (8 :: Int))
-         . tcs "Deadlock" $ do
-            cabal_build ["--enable-tests"]
-            shouldFail $ cabal "test" []
-         ]
-    ]
+          -- Tests for #2489, stdio deadlock
+          mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
+            . tcs "Deadlock" $ do
+              cabal_build ["--enable-tests"]
+              shouldFail $ cabal "test" []
 
   ---------------------------------------------------------------------
   -- * Inline tests
 
   -- Test if exitcode-stdio-1.0 benchmark builds correctly
-  , tc "BenchmarkExeV10" $ cabal_build ["--enable-benchmarks"]
+  tc "BenchmarkExeV10" $ cabal_build ["--enable-benchmarks"]
 
   -- Test --benchmark-option(s) flags on ./Setup bench
-  , tc "BenchmarkOptions" $ do
+  tc "BenchmarkOptions" $ do
       cabal_build ["--enable-benchmarks"]
       cabal "bench" [ "--benchmark-options=1 2 3" ]
       cabal "bench" [ "--benchmark-option=1"
@@ -74,7 +70,7 @@ tests config =
                     ]
 
   -- Test --test-option(s) flags on ./Setup test
-  , tc "TestOptions" $ do
+  tc "TestOptions" $ do
       cabal_build ["--enable-tests"]
       cabal "test" ["--test-options=1 2 3"]
       cabal "test" [ "--test-option=1"
@@ -84,36 +80,36 @@ tests config =
 
   -- Test attempt to have executable depend on internal
   -- library, but cabal-version is too old.
-  , tc "BuildDeps/InternalLibrary0" $ do
+  tc "BuildDeps/InternalLibrary0" $ do
       r <- shouldFail $ cabal' "configure" []
       -- Should tell you how to enable the desired behavior
       let sb = "library which is defined within the same package."
       assertOutputContains sb r
 
   -- Test executable depends on internal library.
-  , tc "BuildDeps/InternalLibrary1" $ cabal_build []
+  tc "BuildDeps/InternalLibrary1" $ cabal_build []
 
   -- Test that internal library is preferred to an installed on
   -- with the same name and version
-  , tc "BuildDeps/InternalLibrary2" $ internal_lib_test "internal"
+  tc "BuildDeps/InternalLibrary2" $ internal_lib_test "internal"
 
   -- Test that internal library is preferred to an installed on
   -- with the same name and LATER version
-  , tc "BuildDeps/InternalLibrary3" $ internal_lib_test "internal"
+  tc "BuildDeps/InternalLibrary3" $ internal_lib_test "internal"
 
   -- Test that an explicit dependency constraint which doesn't
   -- match the internal library causes us to use external library
-  , tc "BuildDeps/InternalLibrary4" $ internal_lib_test "installed"
+  tc "BuildDeps/InternalLibrary4" $ internal_lib_test "installed"
 
   -- Test "old build-dep behavior", where we should get the
   -- same package dependencies on all targets if cabal-version
   -- is sufficiently old.
-  , tc "BuildDeps/SameDepsAllRound" $ cabal_build []
+  tc "BuildDeps/SameDepsAllRound" $ cabal_build []
 
   -- Test "new build-dep behavior", where each target gets
   -- separate dependencies.  This tests that an executable
   -- dep does not leak into the library.
-  , tc "BuildDeps/TargetSpecificDeps1" $ do
+  tc "BuildDeps/TargetSpecificDeps1" $ do
       cabal "configure" []
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in MyLibrary.hs" $
@@ -123,12 +119,12 @@ tests config =
 
   -- This is a control on TargetSpecificDeps1; it should
   -- succeed.
-  , tc "BuildDeps/TargetSpecificDeps2" $ cabal_build []
+  tc "BuildDeps/TargetSpecificDeps2" $ cabal_build []
 
   -- Test "new build-dep behavior", where each target gets
   -- separate dependencies.  This tests that an library
   -- dep does not leak into the executable.
-  , tc "BuildDeps/TargetSpecificDeps3" $ do
+  tc "BuildDeps/TargetSpecificDeps3" $ do
       cabal "configure" []
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in lemon.hs" $
@@ -137,38 +133,38 @@ tests config =
           resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
 
   -- Test that Paths module is generated and available for executables.
-  , tc "PathsModule/Executable" $ cabal_build []
+  tc "PathsModule/Executable" $ cabal_build []
 
   -- Test that Paths module is generated and available for libraries.
-  , tc "PathsModule/Library" $ cabal_build []
+  tc "PathsModule/Library" $ cabal_build []
 
   -- Check that preprocessors (hsc2hs) are run
-  , tc "PreProcess" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
+  tc "PreProcess" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
 
   -- Check that preprocessors that generate extra C sources are handled
-  , tc "PreProcessExtraSources" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
+  tc "PreProcessExtraSources" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
 
   -- Test building a vanilla library/executable which uses Template Haskell
-  , tc "TemplateHaskell/vanilla" $ cabal_build []
+  tc "TemplateHaskell/vanilla" $ cabal_build []
 
   -- Test building a profiled library/executable which uses Template Haskell
   -- (Cabal has to build the non-profiled version first)
-  , tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling", "--enable-profiling"]
+  tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling", "--enable-profiling"]
 
   -- Test building a dynamic library/executable which uses Template
   -- Haskell
-  , tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
+  tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
 
   -- Test building an executable whose main() function is defined in a C
   -- file
-  , tc "CMain" $ cabal_build []
+  tc "CMain" $ cabal_build []
 
   -- Test build when the library is empty, for #1241
-  , tc "EmptyLib" $
+  tc "EmptyLib" $
       withPackage "empty" $ cabal_build []
 
   -- Test that "./Setup haddock" works correctly
-  , tc "Haddock" $ do
+  tc "Haddock" $ do
       dist_dir <- distDir
       let haddocksDir = dist_dir </> "doc" </> "html" </> "Haddock"
       cabal "configure" []
@@ -179,21 +175,21 @@ tests config =
       mapM_ (assertFindInFile "For hiding needles.") docFiles
 
   -- Test that Haddock with a newline in synopsis works correctly, #3004
-  , tc "HaddockNewline" $ do
+  tc "HaddockNewline" $ do
         cabal "configure" []
         cabal "haddock" []
 
   -- Test that Cabal properly orders GHC flags passed to GHC (when
   -- there are multiple ghc-options fields.)
-  , tc "OrderFlags" $ cabal_build []
+  tc "OrderFlags" $ cabal_build []
 
   -- Test that reexported modules build correctly
   -- TODO: should also test that they import OK!
-  , tc "ReexportedModules" $ do
+  tc "ReexportedModules" $ do
       whenGhcVersion (>= Version [7,9] []) $ cabal_build []
 
   -- Test that Cabal computes different IPIDs when the source changes.
-  , tc "UniqueIPID" . withPackageDb $ do
+  tc "UniqueIPID" . withPackageDb $ do
       withPackage "P1" $ cabal "configure" []
       withPackage "P2" $ cabal "configure" []
       withPackage "P1" $ cabal "build" []
@@ -207,7 +203,7 @@ tests config =
         assertFailure $ "cabal has not calculated different Installed " ++
           "package ID when source is changed."
 
-  , tc "DuplicateModuleName" $ do
+  tc "DuplicateModuleName" $ do
       cabal_build ["--enable-tests"]
       r1 <- shouldFail $ cabal' "test" ["foo"]
       assertOutputContains "test B" r1
@@ -216,7 +212,7 @@ tests config =
       assertOutputContains "test C" r2
       assertOutputContains "test A" r2
 
-  , tc "TestNameCollision" $ do
+  tc "TestNameCollision" $ do
         withPackageDb $ do
           withPackage "parent" $ cabal_install []
           withPackage "child" $ do
@@ -224,7 +220,7 @@ tests config =
             cabal "test" []
 
   -- Test that '--allow-newer' works via the 'Setup.hs configure' interface.
-  , tc "AllowNewer" $ do
+  tc "AllowNewer" $ do
         shouldFail $ cabal "configure" []
         cabal "configure" ["--allow-newer"]
         shouldFail $ cabal "configure" ["--allow-newer=baz,quux"]
@@ -251,21 +247,20 @@ tests config =
   -- Test that Cabal can choose flags to disable building a component when that
   -- component's dependencies are unavailable. The build should succeed without
   -- requiring the component's dependencies or imports.
-  , tc "BuildableField" $ do
-        r <- cabal' "configure" ["-v"]
-        assertOutputContains "Flags chosen: build-exe=False" r
-        cabal "build" []
+  tc "BuildableField" $ do
+      r <- cabal' "configure" ["-v"]
+      assertOutputContains "Flags chosen: build-exe=False" r
+      cabal "build" []
 
-  , tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
-  , tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
-  , tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
+  tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
+  tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
+  tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
 
   -- TODO: Disable these tests on Windows
-  , tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
-  , tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
-  , tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
+  tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
+  tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
+  tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
 
-  ]
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
@@ -285,6 +280,5 @@ tests config =
             ("foo foo myLibFunc " ++ expect)
             (concatOutput (resultOutput r))
 
-    tc :: FilePath -> TestM a -> TestTree
-    tc name m
-        = testCase name (runTestM config name Nothing m)
+    tc :: FilePath -> TestM a -> TestTreeM ()
+    tc name = testTree config name Nothing

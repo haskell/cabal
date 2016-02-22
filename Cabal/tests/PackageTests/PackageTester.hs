@@ -49,6 +49,14 @@ module PackageTests.PackageTester
     , assertFindInFile
     , concatOutput
 
+    -- * Test trees
+    , TestTreeM
+    , runTestTree
+    , testTree
+    , testTree'
+    , groupTests
+    , mapTestTrees
+
     , getPersistBuildConfig
 
     -- Common utilities
@@ -79,6 +87,7 @@ import Text.Regex.Posix
 import qualified Control.Exception as E
 import Control.Monad
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.Writer
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as C
 import Data.List
@@ -92,6 +101,7 @@ import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess, showCommandForUser)
+import Test.Tasty (TestTree, testGroup)
 
 -- | Our test monad maintains an environment recording the global test
 -- suite configuration 'SuiteConfig', and the local per-test
@@ -603,6 +613,27 @@ assertFindInFile needle path =
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+
+------------------------------------------------------------------------
+-- * Test trees
+
+type TestTreeM = Writer [TestTree]
+
+runTestTree :: String -> TestTreeM () -> TestTree
+runTestTree name ts = testGroup name (execWriter ts)
+
+testTree :: SuiteConfig -> String -> Maybe String -> TestM a -> TestTreeM ()
+testTree config name subname m =
+    testTree' $ HUnit.testCase name $ runTestM config name subname m
+
+testTree' :: TestTree -> TestTreeM ()
+testTree' tc = tell [tc]
+
+groupTests :: String -> TestTreeM () -> TestTreeM ()
+groupTests name = censor (\ts -> [testGroup name ts])
+
+mapTestTrees :: (TestTree -> TestTree) -> TestTreeM a -> TestTreeM a
+mapTestTrees = censor . map
 
 ------------------------------------------------------------------------
 -- Verbosity

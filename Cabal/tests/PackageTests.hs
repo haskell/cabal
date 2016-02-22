@@ -180,7 +180,8 @@ main = do
     putStrLn $ "Building shared ./Setup executable"
     rawCompileSetup verbosity suite [] "tests"
 
-    defaultMain $ testGroup "Package Tests" (tests suite)
+    defaultMain $
+        runTestTree "Package Tests" (tests suite)
 
 -- Reverse of 'interpretPackageDbFlags'.
 -- prop_idem stk b
