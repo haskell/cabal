@@ -6,6 +6,7 @@
 
 module Main where
 
+import PackageTests.Options
 import PackageTests.PackageTester
 import PackageTests.Tests
 
@@ -14,7 +15,7 @@ import Distribution.Simple.Configure
     , interpretPackageDbFlags )
 import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program.Types (programPath, programVersion)
+import Distribution.Simple.Program.Types (Program(..), programPath, programVersion)
 import Distribution.Simple.Program.Builtin
     ( ghcProgram, ghcPkgProgram, haddockProgram )
 import Distribution.Simple.Program.Db (requireProgram)
@@ -25,9 +26,12 @@ import Distribution.Verbosity (normal, flagToVerbosity)
 import Distribution.ReadE (readEOrFail)
 
 import Control.Exception
+import Data.Proxy                      ( Proxy(..) )
 import Distribution.Compat.Environment ( lookupEnv )
 import System.Directory
 import Test.Tasty
+import Test.Tasty.Options
+import Test.Tasty.Ingredients
 import Data.Maybe
 
 #if MIN_VERSION_base(4,6,0)
@@ -105,6 +109,12 @@ main = do
         Just str ->
             return (fromJust (simpleParse str))
 
+    with_ghc_version <- do
+         version <- programFindVersion ghcProgram normal with_ghc_path
+         case version of
+           Nothing -> error "Cannot determine version of GHC used for --with-ghc"
+           Just v -> return v
+
     -- Package DBs are not guaranteed to be absolute, so make them so in
     -- case a subprocess using the package DB needs a different CWD.
     db_stack_env <- lookupEnv "CABAL_PACKAGETESTS_DB_STACK"
@@ -151,6 +161,7 @@ main = do
                  , ghcVersion = ghc_version
                  , ghcPkgPath = ghc_pkg_path
                  , withGhcPath = with_ghc_path
+                 , withGhcVersion = with_ghc_version
                  , packageDBStack = packageDBStack2
                  , suiteVerbosity = verbosity
                  , absoluteCWD = test_dir
@@ -180,7 +191,7 @@ main = do
     putStrLn $ "Building shared ./Setup executable"
     rawCompileSetup verbosity suite [] "tests"
 
-    defaultMain $
+    defaultMainWithIngredients options $
         runTestTree "Package Tests" (tests suite)
 
 -- Reverse of 'interpretPackageDbFlags'.
@@ -265,3 +276,8 @@ getPersistBuildConfig_ filename = do
            show err
       Left err -> return (throw err)
       Right lbi -> return lbi
+
+options :: [Ingredient]
+options = includingOptions
+          [Option (Proxy :: Proxy OptionEnableAllTests)] :
+          defaultIngredients

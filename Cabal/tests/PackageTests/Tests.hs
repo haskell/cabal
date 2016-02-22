@@ -153,7 +153,8 @@ tests config = do
 
   -- Test building a dynamic library/executable which uses Template
   -- Haskell
-  tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
+  testWhen (hasSharedLibraries config) $
+    tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
 
   -- Test building an executable whose main() function is defined in a C
   -- file
@@ -252,14 +253,16 @@ tests config = do
       assertOutputContains "Flags chosen: build-exe=False" r
       cabal "build" []
 
-  tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
-  tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
-  tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
+  -- TODO: Enable these tests on Windows
+  unlessWindows $ do
+      tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
+      tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
+      tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
 
-  -- TODO: Disable these tests on Windows
-  tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
-  tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
-  tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
+  unlessWindows $ do
+      tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
+      tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
+      tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
 
   where
     ghc_pkg_guess bin_name = do

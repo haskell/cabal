@@ -85,7 +85,8 @@ hpcTestMatrix config = forM_ (choose4 [True, False]) $
               | otherwise = Nothing
     -- Ensure that both .tix file and markup are generated if coverage
     -- is enabled.
-    tc name ("WithHpc-" ++ name) $ do
+    testUnless ((exeDyn || shared) && not (hasSharedLibraries config)) $
+      tc name ("WithHpc-" ++ name) $ do
         isCorrectVersion <- liftIO $ correctHpcVersion
         when isCorrectVersion $ do
             dist_dir <- distDir
