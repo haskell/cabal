@@ -19,6 +19,7 @@ import Network.URI (URI(uriPath), parseURI)
 import Network.HTTP (Header(..), HeaderName(..))
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
+import System.Exit      (exitFailure)
 import Control.Exception (bracket)
 import System.FilePath  ((</>), takeExtension, takeFileName)
 import qualified System.FilePath.Posix as FilePath.Posix ((</>))
@@ -88,11 +89,14 @@ uploadDoc verbosity repoCtxt mUsername mPassword path = do
     notice verbosity $ "Uploading documentation " ++ path ++ "... "
     resp <- putHttpFile transport verbosity uploadURI path auth headers
     case resp of
-      (200,_)     -> notice verbosity "Ok"
-      (code,err)  -> notice verbosity $ "Error uploading documentation "
-                                        ++ path ++ ": "
-                                        ++ "http code " ++ show code ++ "\n"
-                                        ++ err
+      (200,_)     ->
+        notice verbosity "Ok"
+      (code,err)  -> do
+        notice verbosity $ "Error uploading documentation "
+                        ++ path ++ ": "
+                        ++ "http code " ++ show code ++ "\n"
+                        ++ err
+        exitFailure
 
 promptUsername :: IO Username
 promptUsername = do
@@ -150,7 +154,10 @@ handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
 handlePackage transport verbosity uri auth path =
   do resp <- postHttpFile transport verbosity uri path auth
      case resp of
-       (200,_)     -> notice verbosity "Ok"
-       (code,err)  -> notice verbosity $ "Error uploading " ++ path ++ ": "
-                      ++ "http code " ++ show code ++ "\n"
-                      ++ err
+       (200,_)     ->
+          notice verbosity "Ok"
+       (code,err)  -> do
+          notice verbosity $ "Error uploading " ++ path ++ ": "
+                          ++ "http code " ++ show code ++ "\n"
+                          ++ err
+          exitFailure
