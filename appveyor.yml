@@ -19,7 +19,7 @@ build_script:
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
   # 'echo "" |' works around an AppVeyor issue:
   # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
-  - echo "" | cabal install --only-dependencies --enable-tests --force-reinstalls
+  - echo "" | cabal install --only-dependencies --enable-tests --force-reinstalls --allow-newer=Cabal
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
   - Setup test unit-tests --show-details=streaming --test-option=--pattern=!FileMonitor
