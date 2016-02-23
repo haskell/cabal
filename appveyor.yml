@@ -7,8 +7,9 @@ build_script:
   - cd Cabal
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
 
-  # Cabal should be buildable out of the box.
-  # - echo "" | cabal install --only-dependencies --enable-tests
+  # 'echo "" |' works around an AppVeyor issue:
+  # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
+  - echo "" | cabal install --only-dependencies --enable-tests
 
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
@@ -17,8 +18,6 @@ build_script:
   - Setup install
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
-  # 'echo "" |' works around an AppVeyor issue:
-  # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
   - echo "" | cabal install --only-dependencies --enable-tests --force-reinstalls --allow-newer=Cabal
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
