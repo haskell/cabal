@@ -62,7 +62,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, info, debug, die )
+         ( warn, notice, debug, die )
 import Distribution.Simple.Setup
          ( isAllowNewer )
 import Distribution.System
@@ -121,8 +121,8 @@ configure verbosity packageDBs repoCtxt comp platform conf
                             progress
   case maybePlan of
     Left message -> do
-      info verbosity $
-           "Warning: solver failed to find a solution:\n"
+      warn verbosity $
+           "solver failed to find a solution:\n"
         ++ message
         ++ "Trying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
