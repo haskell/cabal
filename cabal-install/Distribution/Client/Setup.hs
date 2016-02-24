@@ -25,6 +25,7 @@ module Distribution.Client.Setup
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
+    , defaultFreezeFlags
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
@@ -32,6 +33,7 @@ module Distribution.Client.Setup
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
+    , statusCommand, StatusFlags(..)
     , genBoundsCommand
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
@@ -176,6 +178,7 @@ globalCommand commands = CommandUI {
           , "register"
           , "sandbox"
           , "exec"
+          , "status"
           ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
@@ -196,6 +199,7 @@ globalCommand commands = CommandUI {
         , addCmd "install"
         , par
         , addCmd "help"
+        , addCmd "status"
         , addCmd "info"
         , addCmd "list"
         , addCmd "fetch"
@@ -786,6 +790,105 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
 
+  }
+
+-- ------------------------------------------------------------
+-- * Status command
+-- ------------------------------------------------------------
+
+data StatusFlags = StatusFlags {
+    statusVersion       :: Flag Bool,
+    statusProgVersions  :: Flag Bool,
+    statusCompiler      :: Flag Bool,
+    statusPackage       :: Flag Bool,
+    statusPlan          :: Flag Bool,
+    statusSandbox       :: Flag Bool,
+    statusPkgDbs        :: Flag Bool,
+    statusCheckDb       :: Flag Bool,
+    statusAll           :: Flag Bool,
+    statusVerbosity     :: Flag Verbosity
+  }
+
+defaultStatusFlags :: StatusFlags
+defaultStatusFlags = StatusFlags {
+    statusVersion      = toFlag False,
+    statusProgVersions = toFlag False,
+    statusCompiler     = toFlag False,
+    statusPackage      = toFlag False,
+    statusPlan         = toFlag False,
+    statusSandbox      = toFlag False,
+    statusPkgDbs       = toFlag False,
+    statusCheckDb      = toFlag False,
+    statusAll          = toFlag False,
+    statusVerbosity    = toFlag normal
+  }
+
+statusCommand :: CommandUI StatusFlags
+statusCommand = CommandUI {
+    commandName         = "status",
+    commandSynopsis     = "Show various cabal/packagedb-related information.",
+    commandUsage        = usageAlternatives "status" [ "[FLAGS]" ],
+    commandDescription  = Just $ \_ -> wrapText $
+          "A summary of the state of your cabal environment (for the local"
+       ++ " folder). Shows all, or a subset of: Various program versions,"
+       ++ " information about the local package (if present),"
+       ++ " the sandbox (if present), and the package-databases"
+       ++ " in use (and their contents and consistency).",
+    commandNotes        = Nothing,
+    commandDefaultFlags = defaultStatusFlags,
+    commandOptions      = \ _showOrParseArgs -> [
+         optionVerbosity statusVerbosity (\v flags -> flags { statusVerbosity = v })
+
+       , option [] ["version"]
+           "print the version of this program."
+           statusVersion  (\v flags -> flags { statusVersion = v })
+           trueArg
+
+       , option [] ["versions"]
+           "list the versions of all known/related programs"
+           statusProgVersions (\v flags -> flags { statusProgVersions = v })
+           trueArg
+
+       , option [] ["compiler"]
+           "print the currently configured compiler info"
+           statusCompiler (\v flags -> flags { statusCompiler = v })
+           trueArg
+
+       , option [] ["package"]
+           (wrapText $ "print information about the package in the"
+                    ++ " current directory")
+           statusPackage (\v flags -> flags { statusPackage = v })
+           trueArg
+
+       , option [] ["plan"]
+           (wrapText $ "list all packages in the install plan for the current"
+                   ++  " package. Implies --package.")
+           statusPlan (\v flags -> flags { statusPlan = v })
+           trueArg
+
+       , option [] ["sandbox"]
+           (wrapText $ "print if there is a configured sandbox, and"
+                    ++ " information about it.")
+           statusSandbox (\v flags -> flags { statusSandbox = v })
+           trueArg
+
+       , option [] ["databases"]
+           (wrapText $ "list all the packages in the global, local"
+                    ++ " and sandbox package databases")
+           statusPkgDbs (\v flags -> flags { statusPkgDbs = v })
+           trueArg
+
+       , option [] ["check"]
+           "check package-databases for consistency"
+           statusCheckDb (\v flags -> flags { statusCheckDb = v })
+           trueArg
+
+       , option [] ["all"]
+           "include all the information"
+           statusAll (\v flags -> flags { statusAll = v })
+           trueArg
+
+       ]
   }
 
 genBoundsCommand :: CommandUI FreezeFlags

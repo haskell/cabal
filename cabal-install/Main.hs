@@ -27,6 +27,7 @@ import Distribution.Client.Setup
          , installCommand, upgradeCommand, uninstallCommand
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
+         , StatusFlags(..), statusCommand
          , genBoundsCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
@@ -83,6 +84,7 @@ import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.GenBounds          (genBounds)
 import Distribution.Client.Check as Check     (check)
+import Distribution.Client.Status as Status   (status)
 --import Distribution.Client.Clean            (clean)
 import qualified Distribution.Client.Upload as Upload
 import Distribution.Client.Run                (run, splitRunArgs)
@@ -248,6 +250,7 @@ mainWorker args = topHandler $
       , regularCmd fetchCommand fetchAction
       , regularCmd freezeCommand freezeAction
       , regularCmd getCommand getAction
+      , regularCmd statusCommand statusAction
       , hiddenCmd  unpackCommand unpackAction
       , regularCmd checkCommand checkAction
       , regularCmd sdistCommand sdistAction
@@ -856,6 +859,11 @@ freezeAction freezeFlags _extraArgs globalFlags = do
             comp platform progdb
             mSandboxPkgInfo
             globalFlags' freezeFlags
+
+statusAction :: StatusFlags -> [String] -> Action
+statusAction statusFlags _extraArgs globalFlags =
+  Status.status (fromFlag $ statusVerbosity statusFlags) globalFlags statusFlags
+
 
 genBoundsAction :: FreezeFlags -> [String] -> GlobalFlags -> IO ()
 genBoundsAction freezeFlags _extraArgs globalFlags = do

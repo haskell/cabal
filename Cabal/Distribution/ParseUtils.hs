@@ -56,7 +56,7 @@ import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
 import Text.PrettyPrint
-    ( Doc, render, style, renderStyle
+    ( Doc, style, renderStyle
     , text, colon, nest, punctuate, comma, sep
     , fsep, hsep, isEmpty, vcat, mode, Mode (..)
     , ($+$), (<+>)

@@ -105,6 +105,7 @@ module Distribution.Simple.Utils (
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
         findPackageDesc,
+        listPackageDescs,
         tryFindPackageDesc,
         defaultHookedPackageDesc,
         findHookedPackageDesc,
@@ -1270,29 +1271,36 @@ defaultPackageDesc _verbosity = tryFindPackageDesc currentDir
 -- @.cabal@ files.
 findPackageDesc :: FilePath                    -- ^Where to look
                 -> NoCallStackIO (Either String FilePath) -- ^<pkgname>.cabal
-findPackageDesc dir
- = do files <- getDirectoryContents dir
-      -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
-      -- file we filter to exclude dirs and null base file names:
-      cabalFiles <- filterM doesFileExist
-                       [ dir </> file
-                       | file <- files
-                       , let (name, ext) = splitExtension file
-                       , not (null name) && ext == ".cabal" ]
-      case cabalFiles of
-        []          -> return (Left  noDesc)
-        [cabalFile] -> return (Right cabalFile)
-        multiple    -> return (Left  $ multiDesc multiple)
-
+findPackageDesc dir = do
+  cabalFiles <- listPackageDescs dir
+  case cabalFiles of
+    []          -> return (Left  noDesc)
+    [cabalFile] -> return (Right cabalFile)
+    multiple    -> return (Left  $ multiDesc multiple)
   where
     noDesc :: String
     noDesc = "No cabal file found.\n"
              ++ "Please create a package description file <pkgname>.cabal"
-
     multiDesc :: [String] -> String
     multiDesc l = "Multiple cabal files found.\n"
                   ++ "Please use only one of: "
                   ++ intercalate ", " l
+
+-- | List all package descriptions in the given directory.
+-- 
+-- In contrast to 'findPackageDesc', finding more than one
+-- package description is possible and does not lead
+-- to an error/'Left' value.
+listPackageDescs :: FilePath -> IO [FilePath]
+listPackageDescs dir = do
+  files <- getDirectoryContents dir
+  -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
+  -- file we filter to exclude dirs and null base file names:
+  filterM doesFileExist
+    [ dir </> file
+    | file <- files
+    , let (name, ext) = splitExtension file
+    , not (null name) && ext == ".cabal" ]
 
 -- |Like 'findPackageDesc', but calls 'die' in case of error.
 tryFindPackageDesc :: FilePath -> IO FilePath

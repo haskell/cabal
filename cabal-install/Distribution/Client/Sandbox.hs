@@ -21,6 +21,7 @@ module Distribution.Client.Sandbox (
     withSandboxBinDirOnSearchPath,
 
     getSandboxConfigFilePath,
+    tryLoadSandboxConfig,
     loadConfigOrSandboxConfig,
     findSavedDistPref,
     initPackageDBIfNeeded,

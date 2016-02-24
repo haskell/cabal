@@ -63,7 +63,7 @@ import System.Directory (doesFileExist)
 import Control.Monad    (mapM)
 
 import Text.PrettyPrint
-       (vcat, ($$), (<+>), text, render,
+       (vcat, ($$), (<+>), text,
         comma, fsep, nest, ($+$), punctuate)
 
 

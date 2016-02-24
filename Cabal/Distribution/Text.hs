@@ -17,6 +17,8 @@ module Distribution.Text (
   display,
   simpleParse,
   stdParse,
+  render,
+  brokenString
   ) where
 
 import Prelude ()
@@ -40,6 +42,17 @@ defaultStyle = Disp.Style { Disp.mode           = Disp.PageMode
 
 display :: Text a => a -> String
 display = Disp.renderStyle defaultStyle . disp
+
+-- | similar to Disp.render, but using the Cabal default style
+--   (which is different from Text.Prettyprint default).
+render :: Disp.Doc -> String
+render = Disp.renderStyle defaultStyle
+
+-- | Takes a string, and turns it into a paragraph-like
+--   Doc, i.e. an fsep of the words in it. Main purpose is
+--   to produce indented paragraphs.
+brokenString :: String -> Disp.Doc
+brokenString s = Disp.fsep $ fmap Disp.text $ words s
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str

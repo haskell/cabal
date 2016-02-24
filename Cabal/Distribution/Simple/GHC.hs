@@ -36,6 +36,7 @@ module Distribution.Simple.GHC (
         getGhcInfo,
         configure,
         getInstalledPackages,
+        checkPackageDBs,
         getInstalledPackagesMonitorFiles,
         getPackageDBContents,
         buildLib, buildExe,
@@ -299,6 +300,17 @@ getInstalledPackages verbosity comp packagedbs progdb = do
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
         _  -> index -- No (or multiple) ghc rts package is registered!!
                     -- Feh, whatever, the ghc test suite does some crazy stuff.
+
+-- | Check the consistency of the given package databases.
+checkPackageDBs :: Verbosity -> Compiler -> PackageDBStack
+                -> ProgramConfiguration
+                -> IO [(PackageDB, [String])]
+checkPackageDBs verbosity comp packagedbs conf = do
+  checkPackageDbStack comp packagedbs
+  sequenceA
+    [ do strs <- HcPkg.check (hcPkgInfo conf) verbosity packagedb
+         return (packagedb, strs)
+    | packagedb <- packagedbs ]
 
 -- | Given a list of @(PackageDB, InstalledPackageInfo)@ pairs, produce a
 -- @PackageIndex@. Helper function used by 'getPackageDBContents' and
