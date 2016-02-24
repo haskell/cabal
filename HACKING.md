@@ -98,7 +98,7 @@ To build and test the `Cabal` library, do:
 
     We will refer to this as `PACKAGEDB`.
 
-5. Configure and build Cabal, and run all tests.  (Note that many of the package tests require shared libraries, which are not provided by GHC >= 7.8 on Windows: https://ghc.haskell.org/trac/ghc/ticket/8228)
+5. Configure and build Cabal, and run all tests:
 
     ~~~~
     ./Setup configure --enable-tests --package-db=$PACKAGEDB
