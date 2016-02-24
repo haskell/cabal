@@ -14,6 +14,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Freeze (
     freeze,
+    planPackages
   ) where
 
 import Distribution.Client.Config ( SavedConfig(..) )

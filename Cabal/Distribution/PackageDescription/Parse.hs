@@ -67,7 +67,7 @@ import Control.Arrow    (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
-import Text.PrettyPrint
+import Text.PrettyPrint hiding (render)
 
 
 -- -----------------------------------------------------------------------------

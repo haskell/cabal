@@ -51,7 +51,7 @@ import Distribution.Text
 import Distribution.Simple.Utils
 import Language.Haskell.Extension
 
-import Text.PrettyPrint hiding (braces)
+import Text.PrettyPrint hiding (braces, render)
 import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
 import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
