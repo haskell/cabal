@@ -2237,7 +2237,6 @@ optionNumJobs get set =
         _        -> case reads s of
           [(n, "")]
             | n < 1     -> Left "The number of jobs should be 1 or more."
-            | n > 64    -> Left "You probably don't want that many jobs."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
 
