@@ -29,7 +29,6 @@ import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.Setup as Cabal
-import qualified Distribution.Simple.BuildTarget as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Verbosity
@@ -301,7 +300,7 @@ data BuildTargetProblem
 resolveAndCheckTargets :: ElaboratedInstallPlan
                        -> [BuildTarget PackageName]
                        -> Either [BuildTargetProblem]
-                                 (Map InstalledPackageId [ComponentTarget])
+                                 (Map InstalledPackageId [PackageTarget])
 resolveAndCheckTargets installPlan targets =
     case partitionEithers (map checkTarget targets) of
       ([], targets') -> Right $ Map.fromListWith (++)
@@ -315,28 +314,28 @@ resolveAndCheckTargets installPlan targets =
     -- We can ask to build any whole package, project-local or a dependency
     checkTarget (BuildTargetPackage pn)
       | Just ipkgid <- Map.lookup pn projAllPkgs
-      = Right (ipkgid, BuildAllDefaultComponents)
+      = Right (ipkgid, BuildDefaultComponents)
 
     -- But if we ask to build an individual component, then that component
     -- had better be in a package that is local to the project.
     -- TODO: and if it's an optional stanza, then that stanza must be available
     checkTarget t@(BuildTargetComponent pn cn)
       | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetComponent cn))
+      = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn WholeComponent))
 
       | Map.member pn projAllPkgs
       = Left (BuildTargetComponentNotProjectLocal t)
 
     checkTarget t@(BuildTargetModule pn cn mn)
       | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetModule cn mn))
+      = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (ModuleTarget mn)))
 
       | Map.member pn projAllPkgs
       = Left (BuildTargetComponentNotProjectLocal t)
 
     checkTarget t@(BuildTargetFile pn cn fn)
       | Just ipkgid <- Map.lookup pn projLocalPkgs
-      = Right (ipkgid, BuildSpecificComponent (Cabal.BuildTargetFile cn fn))
+      = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (FileTarget fn)))
 
       | Map.member pn projAllPkgs
       = Left (BuildTargetComponentNotProjectLocal t)
@@ -459,9 +458,7 @@ printPlan verbosity dryRun pkgsBuildStatus pkgs
     showTargets pkg
       | null (pkgBuildTargets pkg) = ""
       | otherwise
-      = " (" ++ unwords
-                  [ Cabal.showBuildTarget Cabal.QL1 (packageId pkg) t
-                  | t <- pkgBuildTargets pkg ]
+      = " (" ++ unwords [ showComponentTarget pkg t | t <- pkgBuildTargets pkg ]
              ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place

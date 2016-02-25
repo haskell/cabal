@@ -46,7 +46,6 @@ import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
-import           Distribution.Simple.BuildTarget (buildTargetComponentName)
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -382,8 +381,7 @@ packageFileMonitorKeyValues pkg =
   where
     pkgconfig = pkg { pkgBuildTargets = [] }
 
-    buildComponents = Set.fromList (map buildTargetComponentName
-                                        (pkgBuildTargets pkg))
+    buildComponents = pkgBuildTargetWholeComponents pkg
 
 -- | Do all the checks on whether a package has changed and thus needs either
 -- rebuilding or reconfiguring and rebuilding.
