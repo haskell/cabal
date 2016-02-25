@@ -72,7 +72,7 @@ script:
  - cp Setup.hs ./dist/setup/setup.hs
  - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
- - cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer=Cabal
+ - cabal install --only-dependencies --enable-tests --enable-benchmarks
  - ./dist/setup/setup configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
  - ./dist/setup/setup build
  - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
