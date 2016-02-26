@@ -66,6 +66,7 @@ import           Control.Exception
 import           Control.Concurrent.Async
 import           Control.Concurrent.MVar
 import           Data.List
+import           Data.Maybe
 
 import           System.FilePath
 import           System.IO
@@ -390,7 +391,11 @@ packageFileMonitorKeyValues :: ElaboratedConfiguredPackage
 packageFileMonitorKeyValues pkg =
     (pkgconfig, buildComponents)
   where
-    pkgconfig = pkg { pkgBuildTargets = [] }
+    pkgconfig = pkg {
+      pkgBuildTargets  = [],
+      pkgReplTarget    = Nothing,
+      pkgBuildHaddocks = False
+    }
 
     buildComponents = pkgBuildTargetWholeComponents pkg
 
@@ -1129,6 +1134,11 @@ buildInplaceUnpackedPackage verbosity
           updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
           return mipkg
 
+        -- Repl phase
+        --
+        whenRepl $
+          setup replCommand' replFlags replArgs
+
         return (BuildSuccess mipkg buildSuccess)
 
   where
@@ -1147,6 +1157,10 @@ buildInplaceUnpackedPackage verbosity
       | null (pkgBuildTargets pkg) = return ()
       | otherwise                  = action
 
+    whenRepl action
+      | isNothing (pkgReplTarget pkg) = return ()
+      | otherwise                     = action
+
     whenReRegister  action = case buildStatus of
       BuildStatusConfigure          _ -> action
       BuildStatusBuild Nothing      _ -> action
@@ -1161,6 +1175,11 @@ buildInplaceUnpackedPackage verbosity
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
     buildArgs        = setupHsBuildArgs  pkg
+
+    replCommand'     = Cabal.replCommand defaultProgramConfiguration
+    replFlags _      = setupHsReplFlags pkg pkgshared
+                                        verbosity builddir
+    replArgs         = setupHsReplArgs  pkg
 
     scriptOptions    = setupHsScriptOptions rpkg pkgshared
                                             srcdir builddir

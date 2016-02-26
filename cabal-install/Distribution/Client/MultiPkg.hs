@@ -8,6 +8,7 @@ module Distribution.Client.MultiPkg (
     -- * High level things
     configure,
     build,
+    repl,
   ) where
 
 import           Distribution.Client.ProjectConfig
@@ -198,6 +199,94 @@ build verbosity
     -- Notionally, the 'BuildFlags' should be things that do not affect what
     -- we build, just how we do it. These ones of course do 
 
+repl :: Verbosity
+     -> GlobalFlags
+     -> ConfigFlags
+     -> ConfigExFlags
+     -> InstallFlags
+     -> Cabal.HaddockFlags
+     -> [String]
+     -> IO ()
+repl verbosity
+      globalFlags
+      configFlags configExFlags
+      installFlags haddockFlags
+      targetStrings = do
+
+    cabalDir <- defaultCabalDir
+    let cabalDirLayout = defaultCabalDirLayout cabalDir
+
+    projectRootDir <- findProjectRoot
+    let distDirLayout = defaultDistDirLayout projectRootDir
+
+    let cliConfig = commandLineFlagsToProjectConfig
+                      globalFlags configFlags configExFlags
+                      installFlags haddockFlags
+
+    userTargets <- readUserBuildTargets targetStrings
+
+    -- The (re)build is split into two major parts:
+    --  * decide what to do
+    --  * do it
+
+    -- Phase 1: decide what to do.
+    --
+    -- 1.a) Take the project configuration and make a plan for how to build
+    -- everything in the project. This is independent of any specific targets
+    -- the user has asked for.
+    --
+    (elaboratedInstallPlan, sharedPackageConfig, projectConfig) <-
+      rebuildInstallPlan verbosity
+                         projectRootDir distDirLayout cabalDirLayout
+                         cliConfig
+
+    --TODO [code cleanup] move this inside the caching performed by
+    -- rebuildInstallPlan so that we do not need to write it out every time
+    writeFileBB (distProjectCacheFile distDirLayout "plan.json") $
+               encodePlanToJson sharedPackageConfig elaboratedInstallPlan
+
+    let buildSettings = resolveBuildTimeSettings
+                          verbosity cabalDirLayout
+                          (projectConfigShared    projectConfig)
+                          (projectConfigBuildOnly projectConfig)
+                          (projectConfigBuildOnly cliConfig)
+
+    -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
+
+    -- 1.b) Now given the specific targets the user has asked for, decide
+    -- which bits of the plan we will want to execute.
+    --
+    elaboratedInstallPlan' <-
+      selectReplTargets elaboratedInstallPlan userTargets
+
+    -- 1.c) Check if any packages don't need rebuilding, and improve the plan.
+    -- This also gives us more accurate reasons for the --dry-run output.
+    --
+    (elaboratedInstallPlan'', pkgsBuildStatus) <-
+      rebuildTargetsDryRun distDirLayout
+                           elaboratedInstallPlan'
+
+    -- Tell the user what we're going to do
+    checkPrintPlan verbosity
+                   elaboratedInstallPlan''
+                   pkgsBuildStatus
+                   buildSettings
+
+    -- Phase 2: now do it.
+    --
+    -- Execute all or parts of the description of what to do to build or
+    -- rebuild the various packages needed.
+    --
+    unless (buildSettingDryRun buildSettings) $ do
+      _ <- rebuildTargets verbosity
+                          distDirLayout
+                          elaboratedInstallPlan''
+                          sharedPackageConfig
+                          pkgsBuildStatus
+                          buildSettings
+      return ()
+
+
 -- To a first approximation, configure just runs the first phase of 'build'
 -- where we bring the install plan up to date (thus checking that it's
 -- possible).
@@ -377,6 +466,108 @@ reportBuildTargetProblem (BuildTargetComponentNotProjectLocal t) =
      ++ "project but it is not a locally unpacked package, so  "
 
 reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
+
+
+--FIXME: huge duplication here with selectBuildTargets
+selectReplTargets :: ElaboratedInstallPlan
+                  -> [UserBuildTarget]
+                  -> IO ElaboratedInstallPlan
+selectReplTargets installPlan userReplTargets = do
+
+    -- Match the user targets against the available targets. If no targets are
+    -- given this uses the package in the current directory, if any.
+    --
+    replTargets <- resolveUserBuildTargets localPackages userReplTargets
+    --TODO: [required eventually] report something if there are no targets
+
+    --TODO: [required eventually]
+    -- we cannot resolve names of packages other than those that are
+    -- directly in the current plan. We ought to keep a set of the known
+    -- hackage packages so we can resolve names to those. Though we don't
+    -- really need that until we can do something sensible with packages
+    -- outside of the project.
+
+    -- Now check if those targets belong to the current project or not.
+    -- Ultimately we want to do something sensible for targets not in this
+    -- project, but for now we just bail. This gives us back the ipkgid from
+    -- the plan.
+    --
+    replTargets' <- either reportBuildTargetProblems return
+                  $ resolveAndCheckReplTargets installPlan replTargets
+
+    -- Finally, prune the install plan to cover just those target packages
+    -- and their deps.
+    --
+    return (pruneInstallPlanToTargets replTargets' installPlan)
+  where
+    localPackages =
+      [ (pkgDescription pkg, pkgSourceLocation pkg)
+      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+      --TODO: [code cleanup] is there a better way to identify local packages?
+
+
+--FIXME: huge duplication here with resolveAndCheckBuildTargets
+resolveAndCheckReplTargets :: ElaboratedInstallPlan
+                           -> [BuildTarget PackageName]
+                           -> Either [BuildTargetProblem]
+                                     (Map InstalledPackageId [PackageTarget])
+resolveAndCheckReplTargets installPlan targets =
+    case partitionEithers (map checkTarget targets) of
+      ([], targets') -> Right $ Map.fromListWith (++)
+                                  [ (ipkgid, [t]) | (ipkgid, t) <- targets' ]
+      (problems, _)  -> Left problems
+  where
+    -- TODO [required eventually] currently all build targets refer to packages
+    -- inside the project. Ultimately this has to be generalised to allow
+    -- referring to other packages and targets.
+
+    -- We can ask to build any whole package, project-local or a dependency
+    checkTarget (BuildTargetPackage pn)
+      | Just ipkgid <- Map.lookup pn projAllPkgs
+      = Right (ipkgid, ReplDefaultComponent)
+
+    -- But if we ask to build an individual component, then that component
+    -- had better be in a package that is local to the project.
+    -- TODO: and if it's an optional stanza, then that stanza must be available
+    checkTarget t@(BuildTargetComponent pn cn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, ReplSpecificComponent (ComponentTarget cn WholeComponent))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t@(BuildTargetModule pn cn mn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, ReplSpecificComponent (ComponentTarget cn (ModuleTarget mn)))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t@(BuildTargetFile pn cn fn)
+      | Just ipkgid <- Map.lookup pn projLocalPkgs
+      = Right (ipkgid, ReplSpecificComponent (ComponentTarget cn (FileTarget fn)))
+
+      | Map.member pn projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal t)
+
+    checkTarget t
+      = Left (BuildTargetNotInProject (buildTargetPackage t))
+
+
+    projAllPkgs, projLocalPkgs :: Map PackageName InstalledPackageId
+    projAllPkgs =
+      Map.fromList
+        [ (packageName pkg, installedPackageId pkg)
+        | pkg <- InstallPlan.toList installPlan ]
+
+    projLocalPkgs =
+      Map.fromList
+        [ (packageName pkg, installedPackageId pkg)
+        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        , case pkgSourceLocation pkg of
+            LocalUnpackedPackage _ -> True; _ -> False
+          --TODO: [code cleanup] is there a better way to identify local packages?
+        ]
 
 
 -------------------------------

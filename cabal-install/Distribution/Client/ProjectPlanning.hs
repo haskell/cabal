@@ -44,6 +44,8 @@ module Distribution.Client.ProjectPlanning (
     setupHsConfigureFlags,
     setupHsBuildFlags,
     setupHsBuildArgs,
+    setupHsReplFlags,
+    setupHsReplArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
 
@@ -300,7 +302,9 @@ data ElaboratedConfiguredPackage
        pkgSetupScriptCliVersion :: Version,
 
        -- Build time related:
-       pkgBuildTargets          :: [ComponentTarget]
+       pkgBuildTargets          :: [ComponentTarget],
+       pkgReplTarget            :: Maybe ComponentTarget,
+       pkgBuildHaddocks         :: Bool
      }
   deriving (Eq, Show, Generic)
 
@@ -1085,9 +1089,11 @@ elaborateInstallPlan platform compiler progdb
             tests      = perPkgOptionMaybe pkgid packageConfigTests
             benchmarks = perPkgOptionMaybe pkgid packageConfigBenchmarks
 
-        -- These two sometimes get adjusted later
+        -- These sometimes get adjusted later
         pkgStanzasEnabled   = Set.empty
         pkgBuildTargets     = []
+        pkgReplTarget       = Nothing
+        pkgBuildHaddocks    = False
 
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
@@ -1287,6 +1293,9 @@ data PackageTarget =
      BuildDefaultComponents
      -- | Build a specific component in this package.
    | BuildSpecificComponent ComponentTarget
+   | ReplDefaultComponent
+   | ReplSpecificComponent  ComponentTarget
+   | HaddockDefaultComponents
   deriving (Eq, Show, Generic)
 
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
@@ -1304,18 +1313,31 @@ instance Binary SubComponentTarget
 
 --TODO: this needs to report some user target/config errors
 elaboratePackageTargets :: ElaboratedConfiguredPackage -> [PackageTarget]
-                        -> [ComponentTarget]
+                        -> ([ComponentTarget], Maybe ComponentTarget, Bool)
 elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
     let buildTargets  = nubComponentTargets
                       . map compatSubComponentTargets
                       . concatMap elaborateBuildTarget
                       $ targets
+        --TODO: instead of listToMaybe we should be reporting an error here
+        replTargets   = listToMaybe
+                      . nubComponentTargets
+                      . map compatSubComponentTargets 
+                      . concatMap elaborateReplTarget
+                      $ targets
+        buildHaddocks = HaddockDefaultComponents `elem` targets
 
-     in buildTargets
+     in (buildTargets, replTargets, buildHaddocks)
   where
     --TODO: need to report an error here if defaultComponents is empty
     elaborateBuildTarget  BuildDefaultComponents    = pkgDefaultComponents
     elaborateBuildTarget (BuildSpecificComponent t) = [t]
+    elaborateBuildTarget  _                         = []
+
+    --TODO: need to report an error here if defaultComponents is empty
+    elaborateReplTarget  ReplDefaultComponent     = take 1 pkgDefaultComponents
+    elaborateReplTarget (ReplSpecificComponent t) = [t]
+    elaborateReplTarget  _                        = []
 
     pkgDefaultComponents =
         [ ComponentTarget cname WholeComponent
@@ -1363,7 +1385,8 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
 
 pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
 pkgHasEphemeralBuildTargets pkg =
-    (not . null) [ () | ComponentTarget _ subtarget <- pkgBuildTargets pkg
+    isJust (pkgReplTarget pkg)
+ || (not . null) [ () | ComponentTarget _ subtarget <- pkgBuildTargets pkg
                       , subtarget /= WholeComponent ]
 
 -- | The components that we'll build all of, meaning that after they're built
@@ -1425,9 +1448,14 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- based on the targets from the user, not targets implied by reverse
     -- depencencies. Those comes in the second pass once we know the rev deps.
     --
-    setBuildTargets pkg = pkg { pkgBuildTargets = buildTargets }
+    setBuildTargets pkg =
+        pkg {
+          pkgBuildTargets   = buildTargets,
+          pkgReplTarget     = replTarget,
+          pkgBuildHaddocks  = buildHaddocks
+        }
       where
-        buildTargets
+        (buildTargets, replTarget, buildHaddocks)
                 = elaboratePackageTargets pkg targets
         targets = fromMaybe []
                 $ Map.lookup (installedPackageId pkg) perPkgTargetsMap
@@ -1478,6 +1506,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
       Set.fromList
         [ stanza
         | ComponentTarget cname _ <- pkgBuildTargets pkg
+                                  ++ maybeToList (pkgReplTarget pkg)
         , stanza <- maybeToList (componentOptionalStanza cname)
         ]
 
@@ -2059,6 +2088,27 @@ showComponentTarget pkg =
         WholeComponent     -> Cabal.BuildTargetComponent cname
         ModuleTarget mname -> Cabal.BuildTargetModule    cname mname
         FileTarget   fname -> Cabal.BuildTargetFile      cname fname
+
+
+setupHsReplFlags :: ElaboratedConfiguredPackage
+                 -> ElaboratedSharedConfig
+                 -> Verbosity
+                 -> FilePath
+                 -> Cabal.ReplFlags
+setupHsReplFlags ElaboratedConfiguredPackage{..} _ verbosity builddir =
+    Cabal.ReplFlags {
+      replProgramPaths = mempty, --unused, set at configure time
+      replProgramArgs  = mempty, --unused, set at configure time
+      replVerbosity    = toFlag verbosity,
+      replDistPref     = toFlag builddir,
+      replReload       = mempty  --only used as callback from repl
+    }
+
+
+setupHsReplArgs :: ElaboratedConfiguredPackage -> [String]
+setupHsReplArgs pkg =
+    maybe [] (\t -> [showComponentTarget pkg t]) (pkgReplTarget pkg)
+    --TODO: should be able to give multiple modules in one component
 
 
 setupHsCopyFlags :: ElaboratedConfiguredPackage

@@ -66,7 +66,7 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
-import qualified Distribution.Client.MultiPkg as MultiPkg (configure, build)
+import qualified Distribution.Client.MultiPkg as MultiPkg
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
@@ -274,6 +274,7 @@ mainWorker args = topHandler $
 
       , hiddenCmd  installCommand { commandName = "new-configure" } newConfigureAction
       , hiddenCmd  installCommand { commandName = "new-build" } newBuildAction
+      , hiddenCmd  installCommand { commandName = "new-repl"  } newReplAction
       ]
 
 type Action = GlobalFlags -> IO ()
@@ -1299,6 +1300,18 @@ newBuildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 newBuildAction (configFlags, configExFlags, installFlags, haddockFlags)
                extraArgs globalFlags =
     MultiPkg.build verbosity
+      globalFlags configFlags configExFlags
+      installFlags haddockFlags
+      extraArgs
+  where
+    verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+
+newReplAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+              -> [String] -> GlobalFlags -> IO ()
+newReplAction (configFlags, configExFlags, installFlags, haddockFlags)
+               extraArgs globalFlags =
+    MultiPkg.repl verbosity
       globalFlags configFlags configExFlags
       installFlags haddockFlags
       extraArgs
