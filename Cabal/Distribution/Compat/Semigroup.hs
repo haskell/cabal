@@ -21,6 +21,12 @@ import qualified Data.Monoid as Mon
 #else
 -- provide internal simplified non-exposed class for older GHCs
 import Data.Monoid as Mon (Monoid(..), All(..), Any(..), Dual(..))
+-- containers
+import Data.Set (Set)
+import Data.IntSet (IntSet)
+import Data.Map (Map)
+import Data.IntMap (IntMap)
+
 
 class Semigroup a where
     (<>) :: a -> a -> a
@@ -73,6 +79,18 @@ instance (Semigroup a, Semigroup b, Semigroup c, Semigroup d, Semigroup e)
          => Semigroup (a, b, c, d, e) where
     (a,b,c,d,e) <> (a',b',c',d',e') = (a<>a',b<>b',c<>c',d<>d',e<>e')
 
+-- containers instances
+instance Semigroup IntSet where
+  (<>) = mappend
+
+instance Ord a => Semigroup (Set a) where
+  (<>) = mappend
+
+instance Semigroup (IntMap v) where
+  (<>) = mappend
+
+instance Ord k => Semigroup (Map k v) where
+  (<>) = mappend
 #endif
 
 -------------------------------------------------------------------------------
