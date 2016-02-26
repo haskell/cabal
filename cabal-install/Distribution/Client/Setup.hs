@@ -1035,7 +1035,7 @@ listCommand = CommandUI {
             trueArg
 
         , option [] ["simple-output"]
-            "Print in a easy-to-parse format"
+            "Print in an easy-to-parse format"
             listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
             trueArg
 
