@@ -36,6 +36,7 @@ module Distribution.Client.ProjectPlanning (
     pruneInstallPlanToTargets,
 
     -- * Utils required for building
+    pkgHasEphemeralBuildTargets,
     pkgBuildTargetWholeComponents,
 
     -- * Setup.hs CLI flags for building
@@ -1359,6 +1360,11 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
         (t:_) -> [t]
         []    -> ts
 
+
+pkgHasEphemeralBuildTargets :: ElaboratedConfiguredPackage -> Bool
+pkgHasEphemeralBuildTargets pkg =
+    (not . null) [ () | ComponentTarget _ subtarget <- pkgBuildTargets pkg
+                      , subtarget /= WholeComponent ]
 
 -- | The components that we'll build all of, meaning that after they're built
 -- we can skip building them again (unlike with building just some modules or

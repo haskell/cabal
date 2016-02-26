@@ -8,6 +8,7 @@ module Distribution.Client.ProjectBuilding (
     BuildStatus(..),
     BuildStatusMap,
     BuildStatusRebuild(..),
+    BuildReason(..),
     MonitorChangedReason(..),
     rebuildTargetsDryRun,
     rebuildTargets
@@ -159,37 +160,47 @@ data BuildStatusRebuild =
      --   needs to be (re)run.
      BuildStatusConfigure (MonitorChangedReason ())
 
-     -- | The depencencies of this package have been (re)built but the
-     --   configuration has not changed. So the build phase needs to be rerun.
+     -- | The configuration has not changed but the build phase needs to be
+     -- rerun. We record the reason the (re)build is needed.
      --
      -- The optional registration info here tells us if we've registered the
      -- package already, or if we stil need to do that after building.
      --
-   | BuildStatusDepsRebuilt (Maybe (Maybe InstalledPackageInfo))
+   | BuildStatusBuild (Maybe (Maybe InstalledPackageInfo)) BuildReason
 
-     -- | The package changed but the configuration and deps have not changed.
-     --   So the build phase needs to be rerun. Typically this is due to
-     --   changes in files within the package.
-     --
-     --   An important special case here is that no files have changed but the
-     --   set of components the /user asked to build/ has changed. We track the
-     --   set of components /we have built/, which of course only grows (until
-     --   some other change resets it).
-     --
-     --   So the 'Set' 'ComponentName' here is the union of the components we
-     --   have built previously plus the ones the user has asked for this time.
-     --   So that means it's also the new set we will have built, and we will
-     --   save this for next time.
+data BuildReason =
+     -- | The depencencies of this package have been (re)built so the build
+     -- phase needs to be rerun.
      --
      -- The optional registration info here tells us if we've registered the
      -- package already, or if we stil need to do that after building.
      --
-   | BuildStatusBuild (MonitorChangedReason (Set ComponentName))
-                      (Maybe (Maybe InstalledPackageInfo))
+     BuildReasonDepsRebuilt
+
+     -- | Changes in files within the package (or first run or corrupt cache) 
+   | BuildReasonFilesChanged (MonitorChangedReason ())
+
+     -- | An important special case is that no files have changed but the
+     -- set of components the /user asked to build/ has changed. We track the
+     -- set of components /we have built/, which of course only grows (until
+     -- some other change resets it).
+     --
+     -- The @Set 'ComponentName'@ is the set of components we have built
+     -- previously. When we update the monitor we take the union of the ones
+     -- we have built previously with the ones the user has asked for this
+     -- time and save those. See 'updatePackageBuildFileMonitor'.
+     --
+   | BuildReasonExtraTargets (Set ComponentName)
+
+     -- | Although we're not going to build any additional targets as a whole,
+     -- we're going to build some part of a component or run a repl or any
+     -- other action that does not result in additional persistent artifacts.
+     -- 
+   | BuildReasonEphemeralTargets
 
 -- | Which 'BuildStatus' values indicate we'll have to do some build work of
--- some sort. In particular we use this as part of checking if any a package's
--- deps have changed.
+-- some sort. In particular we use this as part of checking if any of a
+-- package's deps have changed.
 --
 buildStatusRequiresBuild :: BuildStatus -> Bool
 buildStatusRequiresBuild BuildStatusPreExisting = False
@@ -399,8 +410,10 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
     configChanged <- checkFileMonitorChanged
                        pkgFileMonitorConfig srcdir pkgconfig
     case configChanged of
-      MonitorChanged reason ->
-        return (Left (BuildStatusConfigure (fmap (const ()) reason)))
+      MonitorChanged monitorReason ->
+          return (Left (BuildStatusConfigure monitorReason'))
+        where
+          monitorReason' = fmap (const ()) monitorReason
 
       MonitorUnchanged () _
           -- The configChanged here includes the identity of the dependencies,
@@ -409,24 +422,40 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
         | any buildStatusRequiresBuild (CD.flatDeps depsBuildStatus) -> do
             regChanged <- checkFileMonitorChanged pkgFileMonitorReg srcdir ()
             let mreg = changedToMaybe regChanged
-            return (Left (BuildStatusDepsRebuilt mreg))
+            return (Left (BuildStatusBuild mreg BuildReasonDepsRebuilt))
 
         | otherwise -> do
             buildChanged  <- checkFileMonitorChanged
                                pkgFileMonitorBuild srcdir buildComponents
             regChanged    <- checkFileMonitorChanged
                                pkgFileMonitorReg srcdir ()
+            let mreg = changedToMaybe regChanged
             case (buildChanged, regChanged) of
-              (MonitorChanged reason, _) -> do
-                let mreg = changedToMaybe regChanged
-                return (Left (BuildStatusBuild reason mreg))
+              (MonitorChanged (MonitoredValueChanged prevBuildComponents), _) ->
+                  return (Left (BuildStatusBuild mreg buildReason))
+                where
+                  buildReason = BuildReasonExtraTargets prevBuildComponents
 
-              (MonitorUnchanged _ _, MonitorChanged reason) -> do
-                -- this should only happen if the file is corrput or been
+              (MonitorChanged monitorReason, _) ->
+                  return (Left (BuildStatusBuild mreg buildReason))
+                where
+                  buildReason    = BuildReasonFilesChanged monitorReason'
+                  monitorReason' = fmap (const ()) monitorReason
+
+              (MonitorUnchanged _ _, MonitorChanged monitorReason) ->
+                -- this should only happen if the file is corrupt or been
                 -- manually deleted. We don't want to bother with another
                 -- phase just for this, so we'll reregister by doing a build.
-                let reason' = fmap (const Set.empty) reason
-                return (Left (BuildStatusBuild reason' Nothing))
+                  return (Left (BuildStatusBuild Nothing buildReason))
+                where
+                  buildReason    = BuildReasonFilesChanged monitorReason'
+                  monitorReason' = fmap (const ()) monitorReason
+
+              (MonitorUnchanged _ _, MonitorUnchanged _ _)
+                | pkgHasEphemeralBuildTargets pkg ->
+                  return (Left (BuildStatusBuild mreg buildReason))
+                where
+                  buildReason = BuildReasonEphemeralTargets
 
               (MonitorUnchanged buildSuccess _, MonitorUnchanged mipkg _) ->
                 return (Right (mipkg, buildSuccess))
@@ -473,7 +502,7 @@ updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
     -- that it's /only/ the value that changed not any files that changed.
     buildComponents' =
       case pkgBuildStatus of
-        BuildStatusBuild (MonitoredValueChanged prevBuildComponents) _
+        BuildStatusBuild _ (BuildReasonExtraTargets prevBuildComponents)
           -> buildComponents `Set.union` prevBuildComponents
         _ -> buildComponents
 
@@ -1062,23 +1091,24 @@ buildInplaceUnpackedPackage verbosity
 
         -- Build phase
         --
-        timestamp <- beginUpdateFileMonitor
-        setup buildCommand' buildFlags buildArgs
-
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
 
             buildSuccess :: BuildSuccess
             buildSuccess = BuildOk docsResult testsResult
 
-        --TODO: [required eventually] temporary hack. We need to look at the package description
-        -- and work out the exact file monitors to use
-        allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
-                   <$> getDirectoryContentsRecursive srcdir
+        whenRebuild $ do
+          timestamp <- beginUpdateFileMonitor
+          setup buildCommand' buildFlags buildArgs
 
-        updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
-                                      pkg buildStatus
-                                      allSrcFiles buildSuccess
+          --TODO: [required eventually] temporary hack. We need to look at the package description
+          -- and work out the exact file monitors to use
+          allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
+                     <$> getDirectoryContentsRecursive srcdir
+
+          updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
+                                        pkg buildStatus
+                                        allSrcFiles buildSuccess
 
         mipkg <- whenReRegister $ do
           -- Register locally
@@ -1113,12 +1143,14 @@ buildInplaceUnpackedPackage verbosity
       BuildStatusConfigure _ -> action
       _                      -> return ()
 
+    whenRebuild action
+      | null (pkgBuildTargets pkg) = return ()
+      | otherwise                  = action
+
     whenReRegister  action = case buildStatus of
-      BuildStatusConfigure _              -> action
-      BuildStatusDepsRebuilt Nothing      -> action
-      BuildStatusBuild _     Nothing      -> action
-      BuildStatusDepsRebuilt (Just mipkg) -> return mipkg
-      BuildStatusBuild _     (Just mipkg) -> return mipkg
+      BuildStatusConfigure          _ -> action
+      BuildStatusBuild Nothing      _ -> action
+      BuildStatusBuild (Just mipkg) _ -> return mipkg
 
     configureCommand'= Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $

@@ -474,14 +474,16 @@ printPlan verbosity dryRun pkgsBuildStatus pkgs
       BuildStatusUnpack   {} -> "requires build"
       BuildStatusRebuild _ rebuild -> case rebuild of
         BuildStatusConfigure
-          (MonitoredValueChanged _) -> "configuration changed"
-        BuildStatusConfigure reason -> showMonitorChangedReason reason
-        BuildStatusDepsRebuilt    _ -> "dependency rebuilt"
-        BuildStatusBuild
-          (MonitoredValueChanged _) _ -> "additional components to build"
-        BuildStatusBuild
-          (MonitoredFileChanged  _) _ -> "package files changed"
-        BuildStatusBuild reason _     -> showMonitorChangedReason reason
+          (MonitoredValueChanged _)   -> "configuration changed"
+        BuildStatusConfigure mreason  -> showMonitorChangedReason mreason
+        BuildStatusBuild _ buildreason -> case buildreason of
+          BuildReasonDepsRebuilt      -> "dependency rebuilt"
+          BuildReasonFilesChanged
+            (MonitoredFileChanged _)  -> "files changed"
+          BuildReasonFilesChanged
+            mreason                   -> showMonitorChangedReason mreason
+          BuildReasonExtraTargets _   -> "additional components to build"
+          BuildReasonEphemeralTargets -> "ephemeral targets"
       BuildStatusUpToDate {} -> "up to date" -- doesn't happen
 
     showMonitorChangedReason (MonitoredFileChanged file) = "file " ++ file
