@@ -80,7 +80,7 @@ import Text.PrettyPrint
 import Distribution.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, locatedErrorMsg
          , PWarning(..), showPWarning
-         , simpleField, commaListField )
+         , simpleField, commaListField, commaNewLineListField )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
@@ -1533,8 +1533,21 @@ legacySharedConfigFieldDescrs =
   ( liftFields
       legacyConfigureExFlags
       (\flags conf -> conf { legacyConfigureExFlags = flags })
+  . addFields
+      [ commaNewLineListField "constraints"
+        (disp . fst) (fmap (\constraint -> (constraint, constraintSrc)) parse)
+        configExConstraints (\v conf -> conf { configExConstraints = v })
+
+      , commaNewLineListField "preferences"
+        disp parse
+        configPreferences (\v conf -> conf { configPreferences = v })
+      ]
+  . filterFields
+      [ "cabal-lib-version", "solver", "allow-newer"
+        -- not "constraint" or "preference", we use our own plural ones above
+      ]
   . commandOptionsToFields
-  ) (configureExOptions ParseArgs (ConstraintSourceProjectConfig "TODO"))
+  ) (configureExOptions ParseArgs constraintSrc)
  ++
   ( liftFields
       legacyInstallFlags
@@ -1550,7 +1563,9 @@ legacySharedConfigFieldDescrs =
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)
-
+  where
+    constraintSrc = ConstraintSourceProjectConfig "TODO"
+    addFields     = (++)
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]
 legacyPackageConfigFieldDescrs =
