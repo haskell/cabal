@@ -455,7 +455,7 @@ getBuildConfig hooks verbosity distPref = do
             -- of a configure run:
             configPrograms = restoreProgramConfiguration
                                (builtinPrograms ++ hookedPrograms hooks)
-                               (configPrograms cFlags),
+                               `fmap` configPrograms cFlags,
 
             -- Use the current, not saved verbosity level:
             configVerbosity = Flag verbosity
