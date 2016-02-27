@@ -125,6 +125,7 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+import Distribution.Compat.Semigroup ( Last'(..) )
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
@@ -346,7 +347,7 @@ configure (pkg_descr0', pbi) cfg = do
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
             (flagToMaybe (configHcPkg cfg))
-            (mkProgramsConfig cfg (configPrograms cfg))
+            (mkProgramsConfig cfg (configPrograms' cfg))
             (lessVerbose verbosity)
 
     -- The InstalledPackageIndex of all installed packages
@@ -685,6 +686,11 @@ configure (pkg_descr0', pbi) cfg = do
              [ name | (name, _, _) <- knownProfDetailLevels ]
         return (Flag ProfDetailDefault)
       checkProfDetail other = return other
+
+      -- | More convenient version of 'configPrograms'. Results in an
+      -- 'error' if internal invariant is violated.
+      configPrograms' :: ConfigFlags -> ProgramConfiguration
+      configPrograms' = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms
 
 mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
 mkProgramsConfig cfg initialProgramsConfig = programsConfig

@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | Compatibility layer for "Data.Semigroup"
 module Distribution.Compat.Semigroup
@@ -6,8 +8,12 @@ module Distribution.Compat.Semigroup
     , Mon.Monoid(..)
     , All(..)
     , Any(..)
+
+    , Last'(..)
     ) where
 
+import GHC.Generics (Generic)
+import Data.Binary (Binary)
 #if __GLASGOW_HASKELL__ >= 711
 -- Data.Semigroup is available since GHC 8.0/base-4.9
 import Data.Semigroup
@@ -68,3 +74,22 @@ instance (Semigroup a, Semigroup b, Semigroup c, Semigroup d, Semigroup e)
     (a,b,c,d,e) <> (a',b',c',d',e') = (a<>a',b<>b',c<>c',d<>d',e<>e')
 
 #endif
+
+-- | Cabal's own 'Data.Monoid.Last' copy to avoid requiring an orphan
+-- 'Binary' instance.
+--
+-- Once the oldest `binary` version we support provides a 'Binary'
+-- instance for 'Data.Monoid.Last' we can remove this one here.
+--
+-- NB: 'Data.Semigroup.Last' is defined differently and not a 'Monoid'
+newtype Last' a = Last' { getLast' :: Maybe a }
+                deriving (Eq, Ord, Read, Show, Binary,
+                          Functor, Applicative, Generic)
+
+instance Semigroup (Last' a) where
+    x <> Last' Nothing = x
+    _ <> x             = x
+
+instance Monoid (Last' a) where
+    mempty = Last' Nothing
+    mappend = (<>)
