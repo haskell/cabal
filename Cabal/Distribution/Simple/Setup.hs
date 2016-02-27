@@ -327,8 +327,8 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramConfiguration directly and not via ConfigFlags
-    configPrograms      :: ProgramConfiguration, -- ^All programs that cabal may
-                                                 -- run
+    configPrograms      :: Last' ProgramConfiguration, -- ^All programs that
+                                                       -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -404,7 +404,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
-    configPrograms     = progConf,
+    configPrograms     = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
@@ -812,7 +812,7 @@ emptyConfigFlags = mempty
 
 instance Monoid ConfigFlags where
   mempty = ConfigFlags {
-    configPrograms      = error "FIXME: remove configPrograms",
+    configPrograms      = mempty,
     configProgramPaths  = mempty,
     configProgramArgs   = mempty,
     configProgramPathExtra = mempty,
@@ -862,7 +862,7 @@ instance Monoid ConfigFlags where
 
 instance Semigroup ConfigFlags where
   a <> b =  ConfigFlags {
-    configPrograms      = configPrograms b,
+    configPrograms      = combine configPrograms,
     configProgramPaths  = combine configProgramPaths,
     configProgramArgs   = combine configProgramArgs,
     configProgramPathExtra = combine configProgramPathExtra,
