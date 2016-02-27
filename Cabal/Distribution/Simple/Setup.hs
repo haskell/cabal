@@ -862,7 +862,7 @@ instance Monoid ConfigFlags where
 
 instance Semigroup ConfigFlags where
   a <> b =  ConfigFlags {
-    configPrograms      = configPrograms b,
+    configPrograms      = combine configPrograms,
     configProgramPaths  = combine configProgramPaths,
     configProgramArgs   = combine configProgramArgs,
     configProgramPathExtra = combine configProgramPathExtra,
