@@ -1139,6 +1139,10 @@ buildInplaceUnpackedPackage verbosity
         whenRepl $
           setup replCommand replFlags replArgs
 
+        -- Haddock phase
+        whenHaddock $
+          setup haddockCommand haddockFlags []
+
         return (BuildSuccess mipkg buildSuccess)
 
   where
@@ -1161,6 +1165,10 @@ buildInplaceUnpackedPackage verbosity
       | isNothing (pkgReplTarget pkg) = return ()
       | otherwise                     = action
 
+    whenHaddock action
+      | pkgBuildHaddocks pkg = action
+      | otherwise            = return ()
+
     whenReRegister  action = case buildStatus of
       BuildStatusConfigure          _ -> action
       BuildStatusBuild Nothing      _ -> action
@@ -1180,6 +1188,10 @@ buildInplaceUnpackedPackage verbosity
     replFlags _      = setupHsReplFlags pkg pkgshared
                                         verbosity builddir
     replArgs         = setupHsReplArgs  pkg
+
+    haddockCommand   = Cabal.haddockCommand
+    haddockFlags _   = setupHsHaddockFlags pkg pkgshared
+                                           verbosity builddir
 
     scriptOptions    = setupHsScriptOptions rpkg pkgshared
                                             srcdir builddir

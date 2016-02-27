@@ -48,6 +48,7 @@ module Distribution.Client.ProjectPlanning (
     setupHsReplArgs,
     setupHsCopyFlags,
     setupHsRegisterFlags,
+    setupHsHaddockFlags,
 
     packageHashInputs,
 
@@ -288,6 +289,18 @@ data ElaboratedConfiguredPackage
        pkgProgSuffix            :: Maybe PathTemplate,
 
        pkgInstallDirs           :: InstallDirs.InstallDirs FilePath,
+
+       pkgHaddockHoogle         :: Bool,
+       pkgHaddockHtml           :: Bool,
+       pkgHaddockHtmlLocation   :: Maybe String,
+       pkgHaddockExecutables    :: Bool,
+       pkgHaddockTestSuites     :: Bool,
+       pkgHaddockBenchmarks     :: Bool,
+       pkgHaddockInternal       :: Bool,
+       pkgHaddockCss            :: Maybe FilePath,
+       pkgHaddockHscolour       :: Bool,
+       pkgHaddockHscolourCss    :: Maybe FilePath,
+       pkgHaddockContents       :: Maybe PathTemplate,
 
        -- Setup.hs related things:
 
@@ -1107,7 +1120,11 @@ elaborateInstallPlan platform compiler progdb
                                       pkgsImplicitSetupDeps pkg pkgDescription
         pkgSetupScriptCliVersion  = packageSetupScriptSpecVersion
                                       pkgSetupScriptStyle pkgDescription deps
-        pkgSetupPackageDBStack    = buildAndRegisterDbs        
+        pkgSetupPackageDBStack    = buildAndRegisterDbs
+
+        buildAndRegisterDbs
+          | shouldBuildInplaceOnly pkg = inplacePackageDbs
+          | otherwise                  = storePackageDbs
 
         pkgDescriptionOverride    = descOverride
 
@@ -1159,9 +1176,17 @@ elaborateInstallPlan platform compiler progdb
               (compilerId compiler)
               pkgInstalledId
 
-        buildAndRegisterDbs
-          | shouldBuildInplaceOnly pkg = inplacePackageDbs
-          | otherwise                  = storePackageDbs
+        pkgHaddockHoogle       = perPkgOptionFlag pkgid False packageConfigHaddockHoogle
+        pkgHaddockHtml         = perPkgOptionFlag pkgid False packageConfigHaddockHtml
+        pkgHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
+        pkgHaddockExecutables  = perPkgOptionFlag pkgid False packageConfigHaddockExecutables
+        pkgHaddockTestSuites   = perPkgOptionFlag pkgid False packageConfigHaddockTestSuites
+        pkgHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
+        pkgHaddockInternal     = perPkgOptionFlag pkgid False packageConfigHaddockInternal
+        pkgHaddockCss          = perPkgOptionMaybe pkgid packageConfigHaddockCss
+        pkgHaddockHscolour     = perPkgOptionFlag pkgid False packageConfigHaddockHscolour
+        pkgHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
+        pkgHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
 
     sharedOptionFlag  :: a         -> (ProjectConfigShared -> Flag a) -> a
     perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
@@ -2146,16 +2171,33 @@ setupHsRegisterFlags ElaboratedConfiguredPackage {pkgBuildStyle} _
       regVerbosity   = toFlag verbosity
     }
 
-{- TODO: [required feature]
 setupHsHaddockFlags :: ElaboratedConfiguredPackage
                     -> ElaboratedSharedConfig
                     -> Verbosity
                     -> FilePath
                     -> Cabal.HaddockFlags
-setupHsHaddockFlags _ _ verbosity builddir =
+setupHsHaddockFlags ElaboratedConfiguredPackage{..} _ verbosity builddir =
     Cabal.HaddockFlags {
+      haddockProgramPaths  = mempty, --unused, set at configure time
+      haddockProgramArgs   = mempty, --unused, set at configure time
+      haddockHoogle        = toFlag pkgHaddockHoogle,
+      haddockHtml          = toFlag pkgHaddockHtml,
+      haddockHtmlLocation  = maybe mempty toFlag pkgHaddockHtmlLocation,
+      haddockForHackage    = mempty, --TODO: new flag
+      haddockExecutables   = toFlag pkgHaddockExecutables,
+      haddockTestSuites    = toFlag pkgHaddockTestSuites,
+      haddockBenchmarks    = toFlag pkgHaddockBenchmarks,
+      haddockInternal      = toFlag pkgHaddockInternal,
+      haddockCss           = maybe mempty toFlag pkgHaddockCss,
+      haddockHscolour      = toFlag pkgHaddockHscolour,
+      haddockHscolourCss   = maybe mempty toFlag pkgHaddockHscolourCss,
+      haddockContents      = maybe mempty toFlag pkgHaddockContents,
+      haddockDistPref      = toFlag builddir,
+      haddockKeepTempFiles = mempty, --TODO: from build settings
+      haddockVerbosity     = toFlag verbosity
     }
 
+{-
 setupHsTestFlags :: ElaboratedConfiguredPackage
                  -> ElaboratedSharedConfig
                  -> Verbosity
