@@ -941,13 +941,13 @@ buildAndInstallUnpackedPackage verbosity
     when isParallelBuild $
       notice verbosity $ "Configuring " ++ display pkgid ++ "..."
     annotateFailure ConfigureFailed $
-      setup configureCommand' configureFlags
+      setup configureCommand configureFlags
 
     -- Build phase
     when isParallelBuild $
       notice verbosity $ "Building " ++ display pkgid ++ "..."
     annotateFailure BuildFailed $
-      setup buildCommand' buildFlags
+      setup buildCommand buildFlags
 
     -- Install phase
     mipkg <-
@@ -1005,12 +1005,12 @@ buildAndInstallUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
-    configureCommand'= Cabal.configureCommand defaultProgramConfiguration
+    configureCommand = Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
-    buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
+    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
@@ -1090,7 +1090,7 @@ buildInplaceUnpackedPackage verbosity
         -- Configure phase
         --
         whenReConfigure $ do
-          setup configureCommand' configureFlags []
+          setup configureCommand configureFlags []
           invalidatePackageRegFileMonitor packageFileMonitor
           updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
 
@@ -1104,7 +1104,7 @@ buildInplaceUnpackedPackage verbosity
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
-          setup buildCommand' buildFlags buildArgs
+          setup buildCommand buildFlags buildArgs
 
           --TODO: [required eventually] temporary hack. We need to look at the package description
           -- and work out the exact file monitors to use
@@ -1137,7 +1137,7 @@ buildInplaceUnpackedPackage verbosity
         -- Repl phase
         --
         whenRepl $
-          setup replCommand' replFlags replArgs
+          setup replCommand replFlags replArgs
 
         return (BuildSuccess mipkg buildSuccess)
 
@@ -1166,17 +1166,17 @@ buildInplaceUnpackedPackage verbosity
       BuildStatusBuild Nothing      _ -> action
       BuildStatusBuild (Just mipkg) _ -> return mipkg
 
-    configureCommand'= Cabal.configureCommand defaultProgramConfiguration
+    configureCommand = Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
 
-    buildCommand'    = Cabal.buildCommand defaultProgramConfiguration
+    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
     buildArgs        = setupHsBuildArgs  pkg
 
-    replCommand'     = Cabal.replCommand defaultProgramConfiguration
+    replCommand      = Cabal.replCommand defaultProgramConfiguration
     replFlags _      = setupHsReplFlags pkg pkgshared
                                         verbosity builddir
     replArgs         = setupHsReplArgs  pkg
