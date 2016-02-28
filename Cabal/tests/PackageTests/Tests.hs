@@ -42,8 +42,8 @@ tests config = do
       let
         tcs :: FilePath -> TestM a -> TestTreeM ()
         tcs name m
-            = testTree' $ testCase name (runTestM config ("TestSuiteTests/LibV09")
-                                                         (Just name) m)
+            = testTree' $ testCase name (runTestM config
+                                         "TestSuiteTests/LibV09" (Just name) m)
       in do
           -- Test if detailed-0.9 builds correctly
           tcs "Build" $ cabal_build ["--enable-tests"]
@@ -114,7 +114,8 @@ tests config = do
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in MyLibrary.hs" $
           resultOutput r =~ "^MyLibrary.hs:"
-      assertBool "error should be \"Could not find module `Text\\.PrettyPrint\"" $
+      assertBool
+        "error should be \"Could not find module `Text\\.PrettyPrint\"" $
           resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
 
   -- This is a control on TargetSpecificDeps1; it should
@@ -129,7 +130,8 @@ tests config = do
       r <- shouldFail $ cabal' "build" []
       assertBool "error should be in lemon.hs" $
           resultOutput r =~ "^lemon.hs:"
-      assertBool "error should be \"Could not find module `Text\\.PrettyPrint\"" $
+      assertBool
+        "error should be \"Could not find module `Text\\.PrettyPrint\"" $
           resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
 
   -- Test that Paths module is generated and available for executables.
@@ -142,19 +144,22 @@ tests config = do
   tc "PreProcess" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
 
   -- Check that preprocessors that generate extra C sources are handled
-  tc "PreProcessExtraSources" $ cabal_build ["--enable-tests", "--enable-benchmarks"]
+  tc "PreProcessExtraSources" $ cabal_build ["--enable-tests",
+                                             "--enable-benchmarks"]
 
   -- Test building a vanilla library/executable which uses Template Haskell
   tc "TemplateHaskell/vanilla" $ cabal_build []
 
   -- Test building a profiled library/executable which uses Template Haskell
   -- (Cabal has to build the non-profiled version first)
-  tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling", "--enable-profiling"]
+  tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling",
+                                                "--enable-profiling"]
 
   -- Test building a dynamic library/executable which uses Template
   -- Haskell
   testWhen (hasSharedLibraries config) $
-    tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
+    tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared",
+                                                "--enable-executable-dynamic"]
 
   -- Test building an executable whose main() function is defined in a C
   -- file
