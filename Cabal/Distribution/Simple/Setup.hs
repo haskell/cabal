@@ -239,18 +239,11 @@ emptyGlobalFlags :: GlobalFlags
 emptyGlobalFlags = mempty
 
 instance Monoid GlobalFlags where
-  mempty = GlobalFlags {
-    globalVersion        = mempty,
-    globalNumericVersion = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup GlobalFlags where
-  a <> b = GlobalFlags {
-    globalVersion        = combine globalVersion,
-    globalNumericVersion = combine globalNumericVersion
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Config flags
@@ -811,104 +804,11 @@ emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty
 
 instance Monoid ConfigFlags where
-  mempty = ConfigFlags {
-    configPrograms      = mempty,
-    configProgramPaths  = mempty,
-    configProgramArgs   = mempty,
-    configProgramPathExtra = mempty,
-    configHcFlavor      = mempty,
-    configHcPath        = mempty,
-    configHcPkg         = mempty,
-    configVanillaLib    = mempty,
-    configProfLib       = mempty,
-    configSharedLib     = mempty,
-    configDynExe        = mempty,
-    configProfExe       = mempty,
-    configProf          = mempty,
-    configProfDetail    = mempty,
-    configProfLibDetail = mempty,
-    configConfigureArgs = mempty,
-    configOptimization  = mempty,
-    configProgPrefix    = mempty,
-    configProgSuffix    = mempty,
-    configInstallDirs   = mempty,
-    configScratchDir    = mempty,
-    configDistPref      = mempty,
-    configVerbosity     = mempty,
-    configUserInstall   = mempty,
-    configPackageDBs    = mempty,
-    configGHCiLib       = mempty,
-    configSplitObjs     = mempty,
-    configStripExes     = mempty,
-    configStripLibs     = mempty,
-    configExtraLibDirs  = mempty,
-    configExtraFrameworkDirs = mempty,
-    configConstraints   = mempty,
-    configDependencies  = mempty,
-    configExtraIncludeDirs    = mempty,
-    configIPID          = mempty,
-    configConfigurationsFlags = mempty,
-    configTests               = mempty,
-    configCoverage         = mempty,
-    configLibCoverage   = mempty,
-    configExactConfiguration  = mempty,
-    configBenchmarks          = mempty,
-    configFlagError     = mempty,
-    configRelocatable   = mempty,
-    configDebugInfo     = mempty,
-    configAllowNewer    = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup ConfigFlags where
-  a <> b =  ConfigFlags {
-    configPrograms      = combine configPrograms,
-    configProgramPaths  = combine configProgramPaths,
-    configProgramArgs   = combine configProgramArgs,
-    configProgramPathExtra = combine configProgramPathExtra,
-    configHcFlavor      = combine configHcFlavor,
-    configHcPath        = combine configHcPath,
-    configHcPkg         = combine configHcPkg,
-    configVanillaLib    = combine configVanillaLib,
-    configProfLib       = combine configProfLib,
-    configSharedLib     = combine configSharedLib,
-    configDynExe        = combine configDynExe,
-    configProfExe       = combine configProfExe,
-    configProf          = combine configProf,
-    configProfDetail    = combine configProfDetail,
-    configProfLibDetail = combine configProfLibDetail,
-    configConfigureArgs = combine configConfigureArgs,
-    configOptimization  = combine configOptimization,
-    configProgPrefix    = combine configProgPrefix,
-    configProgSuffix    = combine configProgSuffix,
-    configInstallDirs   = combine configInstallDirs,
-    configScratchDir    = combine configScratchDir,
-    configDistPref      = combine configDistPref,
-    configVerbosity     = combine configVerbosity,
-    configUserInstall   = combine configUserInstall,
-    configPackageDBs    = combine configPackageDBs,
-    configGHCiLib       = combine configGHCiLib,
-    configSplitObjs     = combine configSplitObjs,
-    configStripExes     = combine configStripExes,
-    configStripLibs     = combine configStripLibs,
-    configExtraLibDirs  = combine configExtraLibDirs,
-    configExtraFrameworkDirs = combine configExtraFrameworkDirs,
-    configConstraints   = combine configConstraints,
-    configDependencies  = combine configDependencies,
-    configExtraIncludeDirs    = combine configExtraIncludeDirs,
-    configIPID          = combine configIPID,
-    configConfigurationsFlags = combine configConfigurationsFlags,
-    configTests               = combine configTests,
-    configCoverage         = combine configCoverage,
-    configLibCoverage         = combine configLibCoverage,
-    configExactConfiguration  = combine configExactConfiguration,
-    configBenchmarks          = combine configBenchmarks,
-    configFlagError     = combine configFlagError,
-    configRelocatable   = combine configRelocatable,
-    configDebugInfo     = combine configDebugInfo,
-    configAllowNewer    = combine configAllowNewer
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Copy flags
@@ -959,20 +859,11 @@ emptyCopyFlags :: CopyFlags
 emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
-  mempty = CopyFlags {
-    copyDest      = mempty,
-    copyDistPref  = mempty,
-    copyVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup CopyFlags where
-  a <> b = CopyFlags {
-    copyDest      = combine copyDest,
-    copyDistPref  = combine copyDistPref,
-    copyVerbosity = combine copyVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Install flags
@@ -1039,24 +930,11 @@ emptyInstallFlags :: InstallFlags
 emptyInstallFlags = mempty
 
 instance Monoid InstallFlags where
-  mempty = InstallFlags{
-    installPackageDB = mempty,
-    installDistPref  = mempty,
-    installUseWrapper = mempty,
-    installInPlace    = mempty,
-    installVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup InstallFlags where
-  a <> b = InstallFlags{
-    installPackageDB = combine installPackageDB,
-    installDistPref  = combine installDistPref,
-    installUseWrapper = combine installUseWrapper,
-    installInPlace    = combine installInPlace,
-    installVerbosity = combine installVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * SDist flags
@@ -1119,24 +997,11 @@ emptySDistFlags :: SDistFlags
 emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
-  mempty = SDistFlags {
-    sDistSnapshot    = mempty,
-    sDistDirectory   = mempty,
-    sDistDistPref    = mempty,
-    sDistListSources = mempty,
-    sDistVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup SDistFlags where
-  a <> b = SDistFlags {
-    sDistSnapshot    = combine sDistSnapshot,
-    sDistDirectory   = combine sDistDirectory,
-    sDistDistPref    = combine sDistDistPref,
-    sDistListSources = combine sDistListSources,
-    sDistVerbosity   = combine sDistVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Register flags
@@ -1245,28 +1110,11 @@ emptyRegisterFlags :: RegisterFlags
 emptyRegisterFlags = mempty
 
 instance Monoid RegisterFlags where
-  mempty = RegisterFlags {
-    regPackageDB   = mempty,
-    regGenScript   = mempty,
-    regGenPkgConf  = mempty,
-    regInPlace     = mempty,
-    regPrintId     = mempty,
-    regDistPref    = mempty,
-    regVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup RegisterFlags where
-  a <> b = RegisterFlags {
-    regPackageDB   = combine regPackageDB,
-    regGenScript   = combine regGenScript,
-    regGenPkgConf  = combine regGenPkgConf,
-    regInPlace     = combine regInPlace,
-    regPrintId     = combine regPrintId,
-    regDistPref    = combine regDistPref,
-    regVerbosity   = combine regVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * HsColour flags
@@ -1296,26 +1144,11 @@ defaultHscolourFlags = HscolourFlags {
   }
 
 instance Monoid HscolourFlags where
-  mempty = HscolourFlags {
-    hscolourCSS         = mempty,
-    hscolourExecutables = mempty,
-    hscolourTestSuites  = mempty,
-    hscolourBenchmarks  = mempty,
-    hscolourDistPref    = mempty,
-    hscolourVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup HscolourFlags where
-  a <> b = HscolourFlags {
-    hscolourCSS         = combine hscolourCSS,
-    hscolourExecutables = combine hscolourExecutables,
-    hscolourTestSuites  = combine hscolourTestSuites,
-    hscolourBenchmarks  = combine hscolourBenchmarks,
-    hscolourDistPref    = combine hscolourDistPref,
-    hscolourVerbosity   = combine hscolourVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 hscolourCommand :: CommandUI HscolourFlags
 hscolourCommand = CommandUI
@@ -1526,48 +1359,11 @@ emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
 
 instance Monoid HaddockFlags where
-  mempty = HaddockFlags {
-    haddockProgramPaths = mempty,
-    haddockProgramArgs  = mempty,
-    haddockHoogle       = mempty,
-    haddockHtml         = mempty,
-    haddockHtmlLocation = mempty,
-    haddockForHackage   = mempty,
-    haddockExecutables  = mempty,
-    haddockTestSuites   = mempty,
-    haddockBenchmarks   = mempty,
-    haddockInternal     = mempty,
-    haddockCss          = mempty,
-    haddockHscolour     = mempty,
-    haddockHscolourCss  = mempty,
-    haddockContents     = mempty,
-    haddockDistPref     = mempty,
-    haddockKeepTempFiles= mempty,
-    haddockVerbosity    = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup HaddockFlags where
-  a <> b = HaddockFlags {
-    haddockProgramPaths = combine haddockProgramPaths,
-    haddockProgramArgs  = combine haddockProgramArgs,
-    haddockHoogle       = combine haddockHoogle,
-    haddockHtml         = combine haddockHtml,
-    haddockHtmlLocation = combine haddockHtmlLocation,
-    haddockForHackage   = combine haddockForHackage,
-    haddockExecutables  = combine haddockExecutables,
-    haddockTestSuites   = combine haddockTestSuites,
-    haddockBenchmarks   = combine haddockBenchmarks,
-    haddockInternal     = combine haddockInternal,
-    haddockCss          = combine haddockCss,
-    haddockHscolour     = combine haddockHscolour,
-    haddockHscolourCss  = combine haddockHscolourCss,
-    haddockContents     = combine haddockContents,
-    haddockDistPref     = combine haddockDistPref,
-    haddockKeepTempFiles= combine haddockKeepTempFiles,
-    haddockVerbosity    = combine haddockVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Clean flags
@@ -1614,20 +1410,11 @@ emptyCleanFlags :: CleanFlags
 emptyCleanFlags = mempty
 
 instance Monoid CleanFlags where
-  mempty = CleanFlags {
-    cleanSaveConf  = mempty,
-    cleanDistPref  = mempty,
-    cleanVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup CleanFlags where
-  a <> b = CleanFlags {
-    cleanSaveConf  = combine cleanSaveConf,
-    cleanDistPref  = combine cleanDistPref,
-    cleanVerbosity = combine cleanVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Build flags
@@ -1718,26 +1505,11 @@ emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
-  mempty = BuildFlags {
-    buildProgramPaths = mempty,
-    buildProgramArgs = mempty,
-    buildVerbosity   = mempty,
-    buildDistPref    = mempty,
-    buildNumJobs     = mempty,
-    buildArgs        = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup BuildFlags where
-  a <> b = BuildFlags {
-    buildProgramPaths = combine buildProgramPaths,
-    buildProgramArgs = combine buildProgramArgs,
-    buildVerbosity   = combine buildVerbosity,
-    buildDistPref    = combine buildDistPref,
-    buildNumJobs     = combine buildNumJobs,
-    buildArgs        = combine buildArgs
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * REPL Flags
@@ -1762,24 +1534,11 @@ defaultReplFlags  = ReplFlags {
   }
 
 instance Monoid ReplFlags where
-  mempty = ReplFlags {
-    replProgramPaths = mempty,
-    replProgramArgs = mempty,
-    replVerbosity   = mempty,
-    replDistPref    = mempty,
-    replReload      = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup ReplFlags where
-  a <> b = ReplFlags {
-    replProgramPaths = combine replProgramPaths,
-    replProgramArgs = combine replProgramArgs,
-    replVerbosity   = combine replVerbosity,
-    replDistPref    = combine replDistPref,
-    replReload      = combine replReload
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 replCommand :: ProgramConfiguration -> CommandUI ReplFlags
 replCommand progConf = CommandUI
@@ -1979,28 +1738,11 @@ emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
 
 instance Monoid TestFlags where
-  mempty = TestFlags {
-    testDistPref    = mempty,
-    testVerbosity   = mempty,
-    testHumanLog    = mempty,
-    testMachineLog  = mempty,
-    testShowDetails = mempty,
-    testKeepTix     = mempty,
-    testOptions     = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup TestFlags where
-  a <> b = TestFlags {
-    testDistPref    = combine testDistPref,
-    testVerbosity   = combine testVerbosity,
-    testHumanLog    = combine testHumanLog,
-    testMachineLog  = combine testMachineLog,
-    testShowDetails = combine testShowDetails,
-    testKeepTix     = combine testKeepTix,
-    testOptions     = combine testOptions
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Benchmark flags
@@ -2069,20 +1811,11 @@ emptyBenchmarkFlags :: BenchmarkFlags
 emptyBenchmarkFlags = mempty
 
 instance Monoid BenchmarkFlags where
-  mempty = BenchmarkFlags {
-    benchmarkDistPref  = mempty,
-    benchmarkVerbosity = mempty,
-    benchmarkOptions   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup BenchmarkFlags where
-  a <> b = BenchmarkFlags {
-    benchmarkDistPref  = combine benchmarkDistPref,
-    benchmarkVerbosity = combine benchmarkVerbosity,
-    benchmarkOptions   = combine benchmarkOptions
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Shared options utils

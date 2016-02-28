@@ -111,7 +111,7 @@ module Distribution.PackageDescription (
 
 import Distribution.Compat.Binary
 import qualified Distribution.Compat.Semigroup as Semi ((<>))
-import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup)
+import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup, gmempty, gmappend)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.Package
@@ -314,15 +314,12 @@ data SetupBuildInfo = SetupBuildInfo {
 
 instance Binary SetupBuildInfo
 
-instance Monoid SetupBuildInfo where
-  mempty = SetupBuildInfo {
-    setupDepends = Semi.mempty
-  }
+instance Semi.Monoid SetupBuildInfo where
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup SetupBuildInfo where
-  a <> b = SetupBuildInfo { setupDepends = combine setupDepends }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ---------------------------------------------------------------------------
 -- Module renaming
@@ -498,11 +495,7 @@ data Executable = Executable {
 instance Binary Executable
 
 instance Monoid Executable where
-  mempty = Executable {
-    exeName    = mempty,
-    modulePath = mempty,
-    buildInfo  = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup Executable where
