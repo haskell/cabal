@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -90,27 +91,9 @@ data InstallDirs dir = InstallDirs {
         htmldir      :: dir,
         haddockdir   :: dir,
         sysconfdir   :: dir
-    } deriving (Eq, Read, Show, Generic)
+    } deriving (Eq, Read, Show, Functor, Generic)
 
 instance Binary dir => Binary (InstallDirs dir)
-
-instance Functor InstallDirs where
-  fmap f dirs = InstallDirs {
-    prefix       = f (prefix dirs),
-    bindir       = f (bindir dirs),
-    libdir       = f (libdir dirs),
-    libsubdir    = f (libsubdir dirs),
-    dynlibdir    = f (dynlibdir dirs),
-    libexecdir   = f (libexecdir dirs),
-    includedir   = f (includedir dirs),
-    datadir      = f (datadir dirs),
-    datasubdir   = f (datasubdir dirs),
-    docdir       = f (docdir dirs),
-    mandir       = f (mandir dirs),
-    htmldir      = f (htmldir dirs),
-    haddockdir   = f (haddockdir dirs),
-    sysconfdir   = f (sysconfdir dirs)
-  }
 
 instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
   mempty = gmempty
