@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -32,6 +34,7 @@ import Distribution.Text
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
+import GHC.Generics (Generic)
 
 -- | InitFlags is really just a simple type to represent certain
 --   portions of a .cabal file.  Rather than have a flag for EVERY
@@ -72,7 +75,7 @@ data InitFlags =
               , initVerbosity :: Flag Verbosity
               , overwrite     :: Flag Bool
               }
-  deriving (Show)
+  deriving (Show, Generic)
 
   -- the Monoid instance for Flag has later values override earlier
   -- ones, which is why we want Maybe [foo] for collecting foo values,

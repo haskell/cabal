@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -140,6 +141,7 @@ import Data.Function
          ( on )
 import Data.List
          ( nubBy )
+import GHC.Generics ( Generic )
 
 --
 -- * Configuration saved in the config file
@@ -155,7 +157,7 @@ data SavedConfig = SavedConfig {
     savedUploadFlags       :: UploadFlags,
     savedReportFlags       :: ReportFlags,
     savedHaddockFlags      :: HaddockFlags
-  }
+  } deriving Generic
 
 instance Monoid SavedConfig where
   mempty = SavedConfig {
