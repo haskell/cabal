@@ -113,26 +113,11 @@ instance Functor InstallDirs where
   }
 
 instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
-  mempty = InstallDirs {
-      prefix       = mempty,
-      bindir       = mempty,
-      libdir       = mempty,
-      libsubdir    = mempty,
-      dynlibdir    = mempty,
-      libexecdir   = mempty,
-      includedir   = mempty,
-      datadir      = mempty,
-      datasubdir   = mempty,
-      docdir       = mempty,
-      mandir       = mempty,
-      htmldir      = mempty,
-      haddockdir   = mempty,
-      sysconfdir   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup dir => Semigroup (InstallDirs dir) where
-  (<>) = combineInstallDirs (<>)
+  (<>) = gmappend
 
 combineInstallDirs :: (a -> b -> c)
                    -> InstallDirs a
