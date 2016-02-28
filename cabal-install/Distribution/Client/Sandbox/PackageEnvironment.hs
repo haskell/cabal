@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -63,11 +62,8 @@ import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
 import Data.Maybe                      ( isJust )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid                     ( Monoid(..) )
-#endif
 import Distribution.Compat.Exception   ( catchIO )
-import Distribution.Compat.Semigroup   ( Semigroup((<>)) )
+import Distribution.Compat.Semigroup
 import System.Directory                ( doesDirectoryExist, doesFileExist
                                        , renameFile )
 import System.FilePath                 ( (<.>), (</>), takeDirectory )
@@ -95,19 +91,11 @@ data PackageEnvironment = PackageEnvironment {
 } deriving Generic
 
 instance Monoid PackageEnvironment where
-  mempty = PackageEnvironment {
-    pkgEnvInherit       = mempty,
-    pkgEnvSavedConfig   = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup PackageEnvironment where
-  a <> b = PackageEnvironment {
-    pkgEnvInherit       = combine pkgEnvInherit,
-    pkgEnvSavedConfig   = combine pkgEnvSavedConfig
-    }
-    where
-      combine f = f a `mappend` f b
+  (<>) = gmappend
 
 -- | The automatically-created package environment file that should not be
 -- touched by the user.

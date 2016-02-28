@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -19,7 +18,7 @@ module Distribution.Client.Init.Types where
 import Distribution.Simple.Setup
   ( Flag(..) )
 
-import Distribution.Compat.Semigroup (Semigroup((<>)))
+import Distribution.Compat.Semigroup
 import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Package as P
@@ -31,10 +30,7 @@ import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
-import GHC.Generics (Generic)
+import GHC.Generics ( Generic )
 
 -- | InitFlags is really just a simple type to represent certain
 --   portions of a .cabal file.  Rather than have a flag for EVERY
@@ -89,66 +85,11 @@ instance Text PackageType where
   parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable]
 
 instance Monoid InitFlags where
-  mempty = InitFlags
-    { nonInteractive = mempty
-    , quiet          = mempty
-    , packageDir     = mempty
-    , noComments     = mempty
-    , minimal        = mempty
-    , packageName    = mempty
-    , version        = mempty
-    , cabalVersion   = mempty
-    , license        = mempty
-    , author         = mempty
-    , email          = mempty
-    , homepage       = mempty
-    , synopsis       = mempty
-    , category       = mempty
-    , extraSrc       = mempty
-    , packageType    = mempty
-    , mainIs         = mempty
-    , language       = mempty
-    , exposedModules = mempty
-    , otherModules   = mempty
-    , otherExts      = mempty
-    , dependencies   = mempty
-    , sourceDirs     = mempty
-    , buildTools     = mempty
-    , initVerbosity  = mempty
-    , overwrite      = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup InitFlags where
-  a <> b = InitFlags
-    { nonInteractive = combine nonInteractive
-    , quiet          = combine quiet
-    , packageDir     = combine packageDir
-    , noComments     = combine noComments
-    , minimal        = combine minimal
-    , packageName    = combine packageName
-    , version        = combine version
-    , cabalVersion   = combine cabalVersion
-    , license        = combine license
-    , author         = combine author
-    , email          = combine email
-    , homepage       = combine homepage
-    , synopsis       = combine synopsis
-    , category       = combine category
-    , extraSrc       = combine extraSrc
-    , packageType    = combine packageType
-    , mainIs         = combine mainIs
-    , language       = combine language
-    , exposedModules = combine exposedModules
-    , otherModules   = combine otherModules
-    , otherExts      = combine otherExts
-    , dependencies   = combine dependencies
-    , sourceDirs     = combine sourceDirs
-    , buildTools     = combine buildTools
-    , initVerbosity  = combine initVerbosity
-    , overwrite      = combine overwrite
-    }
-    where combine field = field a <> field b
+  (<>) = gmappend
 
 -- | Some common package categories.
 data Category
