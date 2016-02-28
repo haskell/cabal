@@ -503,7 +503,7 @@ data SkipAddSourceDepsCheck =
 
 data BuildExFlags = BuildExFlags {
   buildOnly     :: Flag SkipAddSourceDepsCheck
-}
+} deriving Generic
 
 buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
 buildExOptions _showOrParseArgs =
@@ -894,7 +894,7 @@ data ReportFlags = ReportFlags {
     reportUsername  :: Flag Username,
     reportPassword  :: Flag Password,
     reportVerbosity :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultReportFlags :: ReportFlags
 defaultReportFlags = ReportFlags {
@@ -954,7 +954,7 @@ data GetFlags = GetFlags {
     getPristine         :: Flag Bool,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
@@ -1039,7 +1039,7 @@ data ListFlags = ListFlags {
     listSimpleOutput :: Flag Bool,
     listVerbosity    :: Flag Verbosity,
     listPackageDBs   :: [Maybe PackageDB]
-  }
+  } deriving Generic
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
@@ -1119,7 +1119,7 @@ instance Semigroup ListFlags where
 data InfoFlags = InfoFlags {
     infoVerbosity  :: Flag Verbosity,
     infoPackageDBs :: [Maybe PackageDB]
-  }
+  } deriving Generic
 
 defaultInfoFlags :: InfoFlags
 defaultInfoFlags = InfoFlags {
@@ -1520,7 +1520,7 @@ data UploadFlags = UploadFlags {
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
     uploadVerbosity   :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
@@ -1792,7 +1792,7 @@ initCommand = CommandUI {
 data SDistExFlags = SDistExFlags {
     sDistFormat    :: Flag ArchiveFormat
   }
-  deriving Show
+  deriving (Show, Generic)
 
 data ArchiveFormat = TargzFormat | ZipFormat -- | ...
   deriving (Show, Eq)
@@ -1843,7 +1843,7 @@ instance Semigroup SDistExFlags where
 
 data Win32SelfUpgradeFlags = Win32SelfUpgradeFlags {
   win32SelfUpgradeVerbosity :: Flag Verbosity
-}
+} deriving Generic
 
 defaultWin32SelfUpgradeFlags :: Win32SelfUpgradeFlags
 defaultWin32SelfUpgradeFlags = Win32SelfUpgradeFlags {
@@ -1883,7 +1883,7 @@ instance Semigroup Win32SelfUpgradeFlags where
 
 data ActAsSetupFlags = ActAsSetupFlags {
     actAsSetupBuildType :: Flag BuildType
-}
+} deriving Generic
 
 defaultActAsSetupFlags :: ActAsSetupFlags
 defaultActAsSetupFlags = ActAsSetupFlags {
@@ -1930,7 +1930,7 @@ data SandboxFlags = SandboxFlags {
   sandboxSnapshot  :: Flag Bool, -- FIXME: this should be an 'add-source'-only
                                  -- flag.
   sandboxLocation  :: Flag FilePath
-}
+} deriving Generic
 
 defaultSandboxLocation :: FilePath
 defaultSandboxLocation = ".cabal-sandbox"
@@ -2058,7 +2058,7 @@ instance Semigroup SandboxFlags where
 
 data ExecFlags = ExecFlags {
   execVerbosity :: Flag Verbosity
-}
+} deriving Generic
 
 defaultExecFlags :: ExecFlags
 defaultExecFlags = ExecFlags {

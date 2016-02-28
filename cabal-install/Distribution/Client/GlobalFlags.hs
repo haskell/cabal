@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -44,6 +45,7 @@ import qualified Data.Map as Map
 import Data.Monoid
          ( Monoid(..) )
 #endif
+import GHC.Generics ( Generic )
 
 import qualified Hackage.Security.Client                    as Sec
 import qualified Hackage.Security.Util.Path                 as Sec
@@ -73,7 +75,7 @@ data GlobalFlags = GlobalFlags {
     globalIgnoreSandbox     :: Flag Bool,
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String
-  }
+  } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {

@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox.PackageEnvironment
@@ -76,6 +78,7 @@ import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 import qualified Distribution.Text         as Text
+import GHC.Generics ( Generic )
 
 
 --
@@ -89,7 +92,7 @@ data PackageEnvironment = PackageEnvironment {
   -- for constructing nested sandboxes (see discussion in #1196).
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
-}
+} deriving Generic
 
 instance Monoid PackageEnvironment where
   mempty = PackageEnvironment {
