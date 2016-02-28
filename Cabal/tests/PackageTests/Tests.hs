@@ -112,11 +112,10 @@ tests config = do
   tc "BuildDeps/TargetSpecificDeps1" $ do
       cabal "configure" []
       r <- shouldFail $ cabal' "build" []
-      assertBool "error should be in MyLibrary.hs" $
-          resultOutput r =~ "^MyLibrary.hs:"
-      assertBool
-        "error should be \"Could not find module `Text\\.PrettyPrint\"" $
-          resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
+      assertRegex "error should be in MyLibrary.hs" "^MyLibrary.hs:" r
+      assertRegex
+        "error should be \"Could not find module `Text\\.PrettyPrint\""
+        "Could not find module.*Text\\.PrettyPrint" r
 
   -- This is a control on TargetSpecificDeps1; it should
   -- succeed.
@@ -128,11 +127,10 @@ tests config = do
   tc "BuildDeps/TargetSpecificDeps3" $ do
       cabal "configure" []
       r <- shouldFail $ cabal' "build" []
-      assertBool "error should be in lemon.hs" $
-          resultOutput r =~ "^lemon.hs:"
-      assertBool
-        "error should be \"Could not find module `Text\\.PrettyPrint\"" $
-          resultOutput r =~ "Could not find module.*Text\\.PrettyPrint"
+      assertRegex "error should be in lemon.hs" "^lemon.hs:" r
+      assertRegex
+        "error should be \"Could not find module `Text\\.PrettyPrint\""
+        "Could not find module.*Text\\.PrettyPrint" r
 
   -- Test that Paths module is generated and available for executables.
   tc "PathsModule/Executable" $ cabal_build []
@@ -287,6 +285,11 @@ tests config = do
             ("executable should have linked with the " ++ expect ++ " library")
             ("foo foo myLibFunc " ++ expect)
             (concatOutput (resultOutput r))
+
+    assertRegex :: String -> String -> Result -> TestM ()
+    assertRegex msg regex r = let out = resultOutput r
+                              in assertBool (msg ++ ",\nactual output:\n" ++ out)
+                                 (out =~ regex)
 
     tc :: FilePath -> TestM a -> TestTreeM ()
     tc name = testTree config name Nothing
