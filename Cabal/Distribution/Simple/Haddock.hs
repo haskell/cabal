@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Haddock
@@ -54,6 +56,7 @@ import Data.Char        ( isSpace )
 import Data.Either      ( rights )
 import Data.Foldable    ( traverse_, foldl' )
 import Data.Maybe       ( fromMaybe, listToMaybe )
+import GHC.Generics     ( Generic )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>)
@@ -97,7 +100,7 @@ data HaddockArgs = HaddockArgs {
  -- ^ To find the correct GHC, required.
  argTargets :: [FilePath]
  -- ^ Modules to process.
-}
+} deriving Generic
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)

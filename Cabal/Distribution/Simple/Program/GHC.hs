@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
@@ -27,6 +29,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import GHC.Generics (Generic)
 import qualified Data.Map as M
 
 -- | A structured set of GHC options/flags
@@ -211,7 +214,7 @@ data GhcOptions = GhcOptions {
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
-} deriving Show
+} deriving (Show, Generic)
 
 
 data GhcMode = GhcModeCompile     -- ^ @ghc -c@

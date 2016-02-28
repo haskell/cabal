@@ -188,7 +188,7 @@ allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
 data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool
-  }
+  } deriving (Generic)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -920,7 +920,7 @@ data CopyFlags = CopyFlags {
     copyDistPref  :: Flag FilePath,
     copyVerbosity :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
@@ -986,7 +986,7 @@ data InstallFlags = InstallFlags {
     installInPlace    :: Flag Bool,
     installVerbosity :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
@@ -1070,7 +1070,7 @@ data SDistFlags = SDistFlags {
     sDistListSources :: Flag FilePath,
     sDistVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
@@ -1153,7 +1153,7 @@ data RegisterFlags = RegisterFlags {
     regPrintId     :: Flag Bool,
     regVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags = RegisterFlags {
@@ -1280,7 +1280,7 @@ data HscolourFlags = HscolourFlags {
     hscolourDistPref    :: Flag FilePath,
     hscolourVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 emptyHscolourFlags :: HscolourFlags
 emptyHscolourFlags = mempty
@@ -1389,7 +1389,7 @@ data HaddockFlags = HaddockFlags {
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags  = HaddockFlags {
@@ -1578,7 +1578,7 @@ data CleanFlags = CleanFlags {
     cleanDistPref  :: Flag FilePath,
     cleanVerbosity :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
@@ -1643,7 +1643,7 @@ data BuildFlags = BuildFlags {
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
   }
-  deriving Show
+  deriving (Show, Generic)
 
 {-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
 buildVerbose :: BuildFlags -> Verbosity
@@ -1750,7 +1750,7 @@ data ReplFlags = ReplFlags {
     replVerbosity   :: Flag Verbosity,
     replReload      :: Flag Bool
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultReplFlags :: ReplFlags
 defaultReplFlags  = ReplFlags {
@@ -1887,7 +1887,7 @@ data TestFlags = TestFlags {
     testKeepTix     :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
-  }
+  } deriving (Generic)
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -2010,7 +2010,7 @@ data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
     benchmarkOptions   :: [PathTemplate]
-  }
+  } deriving (Generic)
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
