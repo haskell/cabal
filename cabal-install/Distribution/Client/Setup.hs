@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RankNTypes #-}
@@ -97,7 +96,6 @@ import Distribution.ReadE
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
-         ( Semigroup((<>)) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -113,10 +111,6 @@ import Data.List
          ( intercalate, deleteFirstsBy )
 import Data.Maybe
          ( maybeToList, fromMaybe )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary)
 import Control.Monad
@@ -476,22 +470,11 @@ configureExOptions _showOrParseArgs src =
   ]
 
 instance Monoid ConfigExFlags where
-  mempty = ConfigExFlags {
-    configCabalVersion = mempty,
-    configExConstraints= mempty,
-    configPreferences  = mempty,
-    configSolver       = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ConfigExFlags where
-  a <> b = ConfigExFlags {
-    configCabalVersion = combine configCabalVersion,
-    configExConstraints= combine configExConstraints,
-    configPreferences  = combine configPreferences,
-    configSolver       = combine configSolver
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Build flags
@@ -503,7 +486,7 @@ data SkipAddSourceDepsCheck =
 
 data BuildExFlags = BuildExFlags {
   buildOnly     :: Flag SkipAddSourceDepsCheck
-}
+} deriving Generic
 
 buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
 buildExOptions _showOrParseArgs =
@@ -530,16 +513,11 @@ buildCommand = parent {
     parent = Cabal.buildCommand defaultProgramConfiguration
 
 instance Monoid BuildExFlags where
-  mempty = BuildExFlags {
-    buildOnly    = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup BuildExFlags where
-  a <> b = BuildExFlags {
-    buildOnly    = combine buildOnly
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Repl command
@@ -894,7 +872,7 @@ data ReportFlags = ReportFlags {
     reportUsername  :: Flag Username,
     reportPassword  :: Flag Password,
     reportVerbosity :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultReportFlags :: ReportFlags
 defaultReportFlags = ReportFlags {
@@ -930,20 +908,11 @@ reportCommand = CommandUI {
   }
 
 instance Monoid ReportFlags where
-  mempty = ReportFlags {
-    reportUsername  = mempty,
-    reportPassword  = mempty,
-    reportVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ReportFlags where
-  a <> b = ReportFlags {
-    reportUsername  = combine reportUsername,
-    reportPassword  = combine reportPassword,
-    reportVerbosity = combine reportVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Get flags
@@ -954,7 +923,7 @@ data GetFlags = GetFlags {
     getPristine         :: Flag Bool,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
@@ -1013,22 +982,11 @@ unpackCommand = getCommand {
   }
 
 instance Monoid GetFlags where
-  mempty = GetFlags {
-    getDestDir          = mempty,
-    getPristine         = mempty,
-    getSourceRepository = mempty,
-    getVerbosity        = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup GetFlags where
-  a <> b = GetFlags {
-    getDestDir          = combine getDestDir,
-    getPristine         = combine getPristine,
-    getSourceRepository = combine getSourceRepository,
-    getVerbosity        = combine getVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * List flags
@@ -1039,7 +997,7 @@ data ListFlags = ListFlags {
     listSimpleOutput :: Flag Bool,
     listVerbosity    :: Flag Verbosity,
     listPackageDBs   :: [Maybe PackageDB]
-  }
+  } deriving Generic
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
@@ -1095,22 +1053,11 @@ listCommand = CommandUI {
   }
 
 instance Monoid ListFlags where
-  mempty = ListFlags {
-    listInstalled    = mempty,
-    listSimpleOutput = mempty,
-    listVerbosity    = mempty,
-    listPackageDBs   = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ListFlags where
-  a <> b = ListFlags {
-    listInstalled    = combine listInstalled,
-    listSimpleOutput = combine listSimpleOutput,
-    listVerbosity    = combine listVerbosity,
-    listPackageDBs   = combine listPackageDBs
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Info flags
@@ -1119,7 +1066,7 @@ instance Semigroup ListFlags where
 data InfoFlags = InfoFlags {
     infoVerbosity  :: Flag Verbosity,
     infoPackageDBs :: [Maybe PackageDB]
-  }
+  } deriving Generic
 
 defaultInfoFlags :: InfoFlags
 defaultInfoFlags = InfoFlags {
@@ -1156,18 +1103,11 @@ infoCommand = CommandUI {
   }
 
 instance Monoid InfoFlags where
-  mempty = InfoFlags {
-    infoVerbosity  = mempty,
-    infoPackageDBs = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup InfoFlags where
-  a <> b = InfoFlags {
-    infoVerbosity  = combine infoVerbosity,
-    infoPackageDBs = combine infoPackageDBs
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Install flags
@@ -1452,62 +1392,11 @@ installOptions showOrParseArgs =
 
 
 instance Monoid InstallFlags where
-  mempty = InstallFlags {
-    installDocumentation   = mempty,
-    installHaddockIndex    = mempty,
-    installDryRun          = mempty,
-    installReinstall       = mempty,
-    installAvoidReinstalls = mempty,
-    installOverrideReinstall = mempty,
-    installMaxBackjumps    = mempty,
-    installUpgradeDeps     = mempty,
-    installReorderGoals    = mempty,
-    installIndependentGoals= mempty,
-    installShadowPkgs      = mempty,
-    installStrongFlags     = mempty,
-    installOnly            = mempty,
-    installOnlyDeps        = mempty,
-    installRootCmd         = mempty,
-    installSummaryFile     = mempty,
-    installLogFile         = mempty,
-    installBuildReports    = mempty,
-    installReportPlanningFailure = mempty,
-    installSymlinkBinDir   = mempty,
-    installOneShot         = mempty,
-    installNumJobs         = mempty,
-    installRunTests        = mempty,
-    installOfflineMode     = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup InstallFlags where
-  a <> b = InstallFlags {
-    installDocumentation   = combine installDocumentation,
-    installHaddockIndex    = combine installHaddockIndex,
-    installDryRun          = combine installDryRun,
-    installReinstall       = combine installReinstall,
-    installAvoidReinstalls = combine installAvoidReinstalls,
-    installOverrideReinstall = combine installOverrideReinstall,
-    installMaxBackjumps    = combine installMaxBackjumps,
-    installUpgradeDeps     = combine installUpgradeDeps,
-    installReorderGoals    = combine installReorderGoals,
-    installIndependentGoals= combine installIndependentGoals,
-    installShadowPkgs      = combine installShadowPkgs,
-    installStrongFlags     = combine installStrongFlags,
-    installOnly            = combine installOnly,
-    installOnlyDeps        = combine installOnlyDeps,
-    installRootCmd         = combine installRootCmd,
-    installSummaryFile     = combine installSummaryFile,
-    installLogFile         = combine installLogFile,
-    installBuildReports    = combine installBuildReports,
-    installReportPlanningFailure = combine installReportPlanningFailure,
-    installSymlinkBinDir   = combine installSymlinkBinDir,
-    installOneShot         = combine installOneShot,
-    installNumJobs         = combine installNumJobs,
-    installRunTests        = combine installRunTests,
-    installOfflineMode     = combine installOfflineMode
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Upload flags
@@ -1520,7 +1409,7 @@ data UploadFlags = UploadFlags {
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
     uploadVerbosity   :: Flag Verbosity
-  }
+  } deriving Generic
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
@@ -1576,26 +1465,11 @@ uploadCommand = CommandUI {
   }
 
 instance Monoid UploadFlags where
-  mempty = UploadFlags {
-    uploadCheck       = mempty,
-    uploadDoc         = mempty,
-    uploadUsername    = mempty,
-    uploadPassword    = mempty,
-    uploadPasswordCmd = mempty,
-    uploadVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup UploadFlags where
-  a <> b = UploadFlags {
-    uploadCheck       = combine uploadCheck,
-    uploadDoc         = combine uploadDoc,
-    uploadUsername    = combine uploadUsername,
-    uploadPassword    = combine uploadPassword,
-    uploadPasswordCmd = combine uploadPasswordCmd,
-    uploadVerbosity   = combine uploadVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Init flags
@@ -1792,7 +1666,7 @@ initCommand = CommandUI {
 data SDistExFlags = SDistExFlags {
     sDistFormat    :: Flag ArchiveFormat
   }
-  deriving Show
+  deriving (Show, Generic)
 
 data ArchiveFormat = TargzFormat | ZipFormat -- | ...
   deriving (Show, Eq)
@@ -1825,17 +1699,11 @@ sdistCommand = Cabal.sdistCommand {
       ]
 
 instance Monoid SDistExFlags where
-  mempty = SDistExFlags {
-    sDistFormat  = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup SDistExFlags where
-  a <> b = SDistExFlags {
-    sDistFormat  = combine sDistFormat
-  }
-    where
-      combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Win32SelfUpgrade flags
@@ -1843,7 +1711,7 @@ instance Semigroup SDistExFlags where
 
 data Win32SelfUpgradeFlags = Win32SelfUpgradeFlags {
   win32SelfUpgradeVerbosity :: Flag Verbosity
-}
+} deriving Generic
 
 defaultWin32SelfUpgradeFlags :: Win32SelfUpgradeFlags
 defaultWin32SelfUpgradeFlags = Win32SelfUpgradeFlags {
@@ -1866,16 +1734,11 @@ win32SelfUpgradeCommand = CommandUI {
 }
 
 instance Monoid Win32SelfUpgradeFlags where
-  mempty      = Win32SelfUpgradeFlags {
-    win32SelfUpgradeVerbosity = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup Win32SelfUpgradeFlags where
-  a <> b = Win32SelfUpgradeFlags {
-    win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * ActAsSetup flags
@@ -1883,7 +1746,7 @@ instance Semigroup Win32SelfUpgradeFlags where
 
 data ActAsSetupFlags = ActAsSetupFlags {
     actAsSetupBuildType :: Flag BuildType
-}
+} deriving Generic
 
 defaultActAsSetupFlags :: ActAsSetupFlags
 defaultActAsSetupFlags = ActAsSetupFlags {
@@ -1910,16 +1773,11 @@ actAsSetupCommand = CommandUI {
 }
 
 instance Monoid ActAsSetupFlags where
-  mempty      = ActAsSetupFlags {
-     actAsSetupBuildType = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ActAsSetupFlags where
-  a <> b = ActAsSetupFlags {
-    actAsSetupBuildType = combine actAsSetupBuildType
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Sandbox-related flags
@@ -1930,7 +1788,7 @@ data SandboxFlags = SandboxFlags {
   sandboxSnapshot  :: Flag Bool, -- FIXME: this should be an 'add-source'-only
                                  -- flag.
   sandboxLocation  :: Flag FilePath
-}
+} deriving Generic
 
 defaultSandboxLocation :: FilePath
 defaultSandboxLocation = ".cabal-sandbox"
@@ -2037,20 +1895,11 @@ sandboxCommand = CommandUI {
   }
 
 instance Monoid SandboxFlags where
-  mempty = SandboxFlags {
-    sandboxVerbosity = mempty,
-    sandboxSnapshot  = mempty,
-    sandboxLocation  = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup SandboxFlags where
-  a <> b = SandboxFlags {
-    sandboxVerbosity = combine sandboxVerbosity,
-    sandboxSnapshot  = combine sandboxSnapshot,
-    sandboxLocation  = combine sandboxLocation
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Exec Flags
@@ -2058,7 +1907,7 @@ instance Semigroup SandboxFlags where
 
 data ExecFlags = ExecFlags {
   execVerbosity :: Flag Verbosity
-}
+} deriving Generic
 
 defaultExecFlags :: ExecFlags
 defaultExecFlags = ExecFlags {
@@ -2110,16 +1959,11 @@ execCommand = CommandUI {
   }
 
 instance Monoid ExecFlags where
-  mempty = ExecFlags {
-    execVerbosity = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ExecFlags where
-  a <> b = ExecFlags {
-    execVerbosity = combine execVerbosity
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * UserConfig flags
@@ -2128,7 +1972,7 @@ instance Semigroup ExecFlags where
 data UserConfigFlags = UserConfigFlags {
   userConfigVerbosity :: Flag Verbosity,
   userConfigForce     :: Flag Bool
-}
+} deriving Generic
 
 instance Monoid UserConfigFlags where
   mempty = UserConfigFlags {
@@ -2138,11 +1982,7 @@ instance Monoid UserConfigFlags where
   mappend = (<>)
 
 instance Semigroup UserConfigFlags where
-  a <> b = UserConfigFlags {
-    userConfigVerbosity = combine userConfigVerbosity,
-    userConfigForce     = combine userConfigForce
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 userConfigCommand :: CommandUI UserConfigFlags
 userConfigCommand = CommandUI {

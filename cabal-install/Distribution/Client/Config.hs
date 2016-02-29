@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -101,16 +101,11 @@ import Data.List
          ( partition, find, foldl' )
 import Data.Maybe
          ( fromMaybe )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
 import Control.Monad
          ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
          ( (<++), option )
 import Distribution.Compat.Semigroup
-         ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Text.PrettyPrint
@@ -140,6 +135,7 @@ import Data.Function
          ( on )
 import Data.List
          ( nubBy )
+import GHC.Generics ( Generic )
 
 --
 -- * Configuration saved in the config file
@@ -155,20 +151,10 @@ data SavedConfig = SavedConfig {
     savedUploadFlags       :: UploadFlags,
     savedReportFlags       :: ReportFlags,
     savedHaddockFlags      :: HaddockFlags
-  }
+  } deriving Generic
 
 instance Monoid SavedConfig where
-  mempty = SavedConfig {
-    savedGlobalFlags       = mempty,
-    savedInstallFlags      = mempty,
-    savedConfigureFlags    = mempty,
-    savedConfigureExFlags  = mempty,
-    savedUserInstallDirs   = mempty,
-    savedGlobalInstallDirs = mempty,
-    savedUploadFlags       = mempty,
-    savedReportFlags       = mempty,
-    savedHaddockFlags      = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup SavedConfig where

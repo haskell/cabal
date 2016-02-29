@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
@@ -27,6 +29,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import GHC.Generics (Generic)
 import qualified Data.Map as M
 
 -- | A structured set of GHC options/flags
@@ -211,7 +214,7 @@ data GhcOptions = GhcOptions {
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
-} deriving Show
+} deriving (Show, Generic)
 
 
 data GhcMode = GhcModeCompile     -- ^ @ghc -c@
@@ -496,116 +499,8 @@ packageDbArgs implInfo
 -- Boilerplate Monoid instance for GhcOptions
 
 instance Monoid GhcOptions where
-  mempty = GhcOptions {
-    ghcOptMode               = mempty,
-    ghcOptExtra              = mempty,
-    ghcOptExtraDefault       = mempty,
-    ghcOptInputFiles         = mempty,
-    ghcOptInputModules       = mempty,
-    ghcOptOutputFile         = mempty,
-    ghcOptOutputDynFile      = mempty,
-    ghcOptSourcePathClear    = mempty,
-    ghcOptSourcePath         = mempty,
-    ghcOptThisUnitId         = mempty,
-    ghcOptPackageDBs         = mempty,
-    ghcOptPackages           = mempty,
-    ghcOptHideAllPackages    = mempty,
-    ghcOptNoAutoLinkPackages = mempty,
-    ghcOptLinkLibs           = mempty,
-    ghcOptLinkLibPath        = mempty,
-    ghcOptLinkOptions        = mempty,
-    ghcOptLinkFrameworks     = mempty,
-    ghcOptLinkFrameworkDirs  = mempty,
-    ghcOptNoLink             = mempty,
-    ghcOptLinkNoHsMain       = mempty,
-    ghcOptCcOptions          = mempty,
-    ghcOptCppOptions         = mempty,
-    ghcOptCppIncludePath     = mempty,
-    ghcOptCppIncludes        = mempty,
-    ghcOptFfiIncludes        = mempty,
-    ghcOptLanguage           = mempty,
-    ghcOptExtensions         = mempty,
-    ghcOptExtensionMap       = mempty,
-    ghcOptOptimisation       = mempty,
-    ghcOptDebugInfo          = mempty,
-    ghcOptProfilingMode      = mempty,
-    ghcOptProfilingAuto      = mempty,
-    ghcOptSplitObjs          = mempty,
-    ghcOptNumJobs            = mempty,
-    ghcOptHPCDir             = mempty,
-    ghcOptGHCiScripts        = mempty,
-    ghcOptHiSuffix           = mempty,
-    ghcOptObjSuffix          = mempty,
-    ghcOptDynHiSuffix        = mempty,
-    ghcOptDynObjSuffix       = mempty,
-    ghcOptHiDir              = mempty,
-    ghcOptObjDir             = mempty,
-    ghcOptOutputDir          = mempty,
-    ghcOptStubDir            = mempty,
-    ghcOptDynLinkMode        = mempty,
-    ghcOptShared             = mempty,
-    ghcOptFPic               = mempty,
-    ghcOptDylibName          = mempty,
-    ghcOptRPaths             = mempty,
-    ghcOptVerbosity          = mempty,
-    ghcOptCabal              = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup GhcOptions where
-  a <> b = GhcOptions {
-    ghcOptMode               = combine ghcOptMode,
-    ghcOptExtra              = combine ghcOptExtra,
-    ghcOptExtraDefault       = combine ghcOptExtraDefault,
-    ghcOptInputFiles         = combine ghcOptInputFiles,
-    ghcOptInputModules       = combine ghcOptInputModules,
-    ghcOptOutputFile         = combine ghcOptOutputFile,
-    ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
-    ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
-    ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptThisUnitId         = combine ghcOptThisUnitId,
-    ghcOptPackageDBs         = combine ghcOptPackageDBs,
-    ghcOptPackages           = combine ghcOptPackages,
-    ghcOptHideAllPackages    = combine ghcOptHideAllPackages,
-    ghcOptNoAutoLinkPackages = combine ghcOptNoAutoLinkPackages,
-    ghcOptLinkLibs           = combine ghcOptLinkLibs,
-    ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
-    ghcOptLinkOptions        = combine ghcOptLinkOptions,
-    ghcOptLinkFrameworks     = combine ghcOptLinkFrameworks,
-    ghcOptLinkFrameworkDirs  = combine ghcOptLinkFrameworkDirs,
-    ghcOptNoLink             = combine ghcOptNoLink,
-    ghcOptLinkNoHsMain       = combine ghcOptLinkNoHsMain,
-    ghcOptCcOptions          = combine ghcOptCcOptions,
-    ghcOptCppOptions         = combine ghcOptCppOptions,
-    ghcOptCppIncludePath     = combine ghcOptCppIncludePath,
-    ghcOptCppIncludes        = combine ghcOptCppIncludes,
-    ghcOptFfiIncludes        = combine ghcOptFfiIncludes,
-    ghcOptLanguage           = combine ghcOptLanguage,
-    ghcOptExtensions         = combine ghcOptExtensions,
-    ghcOptExtensionMap       = combine ghcOptExtensionMap,
-    ghcOptOptimisation       = combine ghcOptOptimisation,
-    ghcOptDebugInfo          = combine ghcOptDebugInfo,
-    ghcOptProfilingMode      = combine ghcOptProfilingMode,
-    ghcOptProfilingAuto      = combine ghcOptProfilingAuto,
-    ghcOptSplitObjs          = combine ghcOptSplitObjs,
-    ghcOptNumJobs            = combine ghcOptNumJobs,
-    ghcOptHPCDir             = combine ghcOptHPCDir,
-    ghcOptGHCiScripts        = combine ghcOptGHCiScripts,
-    ghcOptHiSuffix           = combine ghcOptHiSuffix,
-    ghcOptObjSuffix          = combine ghcOptObjSuffix,
-    ghcOptDynHiSuffix        = combine ghcOptDynHiSuffix,
-    ghcOptDynObjSuffix       = combine ghcOptDynObjSuffix,
-    ghcOptHiDir              = combine ghcOptHiDir,
-    ghcOptObjDir             = combine ghcOptObjDir,
-    ghcOptOutputDir          = combine ghcOptOutputDir,
-    ghcOptStubDir            = combine ghcOptStubDir,
-    ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
-    ghcOptShared             = combine ghcOptShared,
-    ghcOptFPic               = combine ghcOptFPic,
-    ghcOptDylibName          = combine ghcOptDylibName,
-    ghcOptRPaths             = combine ghcOptRPaths,
-    ghcOptVerbosity          = combine ghcOptVerbosity,
-    ghcOptCabal              = combine ghcOptCabal
-  }
-    where
-      combine field = field a `mappend` field b
+  (<>) = gmappend

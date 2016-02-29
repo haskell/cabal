@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Haddock
@@ -54,6 +56,7 @@ import Data.Char        ( isSpace )
 import Data.Either      ( rights )
 import Data.Foldable    ( traverse_, foldl' )
 import Data.Maybe       ( fromMaybe, listToMaybe )
+import GHC.Generics     ( Generic )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>)
@@ -97,7 +100,7 @@ data HaddockArgs = HaddockArgs {
  -- ^ To find the correct GHC, required.
  argTargets :: [FilePath]
  -- ^ Modules to process.
-}
+} deriving Generic
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)
@@ -760,46 +763,11 @@ exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
 instance Monoid HaddockArgs where
-    mempty = HaddockArgs {
-                argInterfaceFile = mempty,
-                argPackageName = mempty,
-                argHideModules = mempty,
-                argIgnoreExports = mempty,
-                argLinkSource = mempty,
-                argCssFile = mempty,
-                argContents = mempty,
-                argVerbose = mempty,
-                argOutput = mempty,
-                argInterfaces = mempty,
-                argOutputDir = mempty,
-                argTitle = mempty,
-                argPrologue = mempty,
-                argGhcOptions = mempty,
-                argGhcLibDir = mempty,
-                argTargets = mempty
-             }
+    mempty = gmempty
     mappend = (Semi.<>)
 
 instance Semigroup HaddockArgs where
-    a <> b = HaddockArgs {
-                argInterfaceFile = mult argInterfaceFile,
-                argPackageName = mult argPackageName,
-                argHideModules = mult argHideModules,
-                argIgnoreExports = mult argIgnoreExports,
-                argLinkSource = mult argLinkSource,
-                argCssFile = mult argCssFile,
-                argContents = mult argContents,
-                argVerbose = mult argVerbose,
-                argOutput = mult argOutput,
-                argInterfaces = mult argInterfaces,
-                argOutputDir = mult argOutputDir,
-                argTitle = mult argTitle,
-                argPrologue = mult argPrologue,
-                argGhcOptions = mult argGhcOptions,
-                argGhcLibDir = mult argGhcLibDir,
-                argTargets = mult argTargets
-             }
-      where mult f = f a `mappend` f b
+    (<>) = gmappend
 
 instance Monoid Directory where
     mempty = Dir "."
