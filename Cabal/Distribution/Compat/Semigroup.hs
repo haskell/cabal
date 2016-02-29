@@ -137,12 +137,6 @@ gmappend x y = to (gmappend' (from x) (from y))
 class GSemigroup f where
     gmappend' :: f p -> f p -> f p
 
-instance GSemigroup U1 where
-    gmappend' _ _ = U1
-
-instance GSemigroup V1 where
-    gmappend' x y = x `seq` y `seq` error "GSemigroup.V1: gmappend'"
-
 instance Semigroup a => GSemigroup (K1 i a) where
     gmappend' (K1 x) (K1 y) = K1 (x <> y)
 
@@ -166,9 +160,6 @@ gmempty = to gmempty'
 
 class GSemigroup f => GMonoid f where
     gmempty' :: f p
-
-instance GMonoid U1 where
-    gmempty' = U1
 
 instance (Semigroup a, Monoid a) => GMonoid (K1 i a) where
     gmempty' = K1 mempty
