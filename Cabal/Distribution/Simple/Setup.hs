@@ -34,6 +34,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
+  configPrograms,
   AllowNewer(..),    AllowNewerDep(..),  isAllowNewer,
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
@@ -320,7 +321,7 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramConfiguration directly and not via ConfigFlags
-    configPrograms      :: Last' ProgramConfiguration, -- ^All programs that
+    configPrograms_     :: Last' ProgramConfiguration, -- ^All programs that
                                                        -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
@@ -389,6 +390,11 @@ data ConfigFlags = ConfigFlags {
 
 instance Binary ConfigFlags
 
+-- | More convenient version of 'configPrograms'. Results in an
+-- 'error' if internal invariant is violated.
+configPrograms :: ConfigFlags -> ProgramConfiguration
+configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
@@ -397,7 +403,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
-    configPrograms     = pure progConf,
+    configPrograms_    = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
