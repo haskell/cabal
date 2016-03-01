@@ -994,7 +994,9 @@ instance Semigroup GetFlags where
 
 data ListFlags = ListFlags {
     listInstalled    :: Flag Bool,
+    listDependencies :: Flag Bool,      -- this implies last.
     listSimpleOutput :: Flag Bool,
+    listFields       :: NubList String, -- when last two set: fields to print
     listVerbosity    :: Flag Verbosity,
     listPackageDBs   :: [Maybe PackageDB]
   } deriving Generic
@@ -1002,7 +1004,9 @@ data ListFlags = ListFlags {
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
     listInstalled    = Flag False,
+    listDependencies = Flag False,
     listSimpleOutput = Flag False,
+    listFields       = mempty,
     listVerbosity    = toFlag normal,
     listPackageDBs   = []
   }
@@ -1010,10 +1014,13 @@ defaultListFlags = ListFlags {
 listCommand  :: CommandUI ListFlags
 listCommand = CommandUI {
     commandName         = "list",
-    commandSynopsis     = "List packages matching a search string.",
+    commandSynopsis     = "List packages.",
     commandDescription  = Just $ \_ -> wrapText $
-         "List all packages, or all packages matching one of the search"
-      ++ " strings.\n"
+         "List all packages, all packages matching one of the search"
+      ++ " strings, or all package dependencies.\n"
+      ++ "\n"
+      ++ "In the '--dependencies --simple-output' variant, you may specify"
+      ++ " the names of Cabal fields to be printed using the '--field' flag.\n"
       ++ "\n"
       ++ "If there is a sandbox in the current directory and "
       ++ "config:ignore-sandbox is False, use the sandbox package database. "
@@ -1022,9 +1029,17 @@ listCommand = CommandUI {
     commandNotes        = Just $ \pname ->
          "Examples:\n"
       ++ "  " ++ pname ++ " list pandoc\n"
-      ++ "    Will find pandoc, pandoc-citeproc, pandoc-lens, ...\n",
-    commandUsage        = usageAlternatives "list" [ "[FLAGS]"
-                                                   , "[FLAGS] STRINGS"],
+      ++ "    Will find pandoc, pandoc-citeproc, pandoc-lens, ...\n"
+      ++ "  " ++ pname ++ " list --dependencies\n"
+      ++ "    Will list the installed dependencies\n"
+      ++ "  " ++ pname ++ " list --dependencies --simple-output --field=license\n"
+      ++ "    Will list the 'license' field for each package dependency\n",
+    commandUsage        =
+      usageAlternatives "list"
+        [ "[FLAGS]"
+        , "[FLAGS] STRINGS"
+        , "--dependencies"
+        , "--dependencies --simple-output [--field=FIELD ...]"],
     commandDefaultFlags = defaultListFlags,
     commandOptions      = \_ -> [
         optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
@@ -1034,10 +1049,20 @@ listCommand = CommandUI {
             listInstalled (\v flags -> flags { listInstalled = v })
             trueArg
 
+        , option [] ["dependencies"]
+            "Print installed dependencies of the current package"
+            listDependencies (\v flags -> flags { listDependencies = v })
+            trueArg
+
         , option [] ["simple-output"]
             "Print in an easy-to-parse format"
             listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
             trueArg
+
+        , option ['f'] ["field"]
+            "Print field FIELD of installed package"
+            listFields (\v flags -> flags { listFields = v })
+            (reqArg' "FIELD" (\x -> toNubList [x]) fromNubList)
 
         , option "" ["package-db"]
           (   "Append the given package database to the list of package"

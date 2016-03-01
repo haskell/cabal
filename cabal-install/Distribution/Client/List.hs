@@ -13,6 +13,8 @@ module Distribution.Client.List (
   list, info
   ) where
 
+import Distribution.Client.SetupWrapper
+         ( SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
          , Dependency(..), simplifyDependency
@@ -26,8 +28,11 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 
+import Distribution.ParseUtils ( fieldName, ppFields )
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
+import Distribution.Simple.Configure (getPersistBuildConfig)
+import qualified Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
@@ -36,7 +41,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Version
-         ( Version(..), VersionRange, withinRange, anyVersion
+         ( Version(..), VersionRange, withinRange, anyVersion, thisVersion
          , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text
@@ -57,7 +62,11 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
          ( isFetched )
+import Distribution.Utils.NubList
+         ( fromNubList )
 
+import Data.Either
+         ( partitionEithers )
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
 import Data.Maybe
@@ -65,7 +74,7 @@ import Data.Maybe
 import qualified Data.Map as Map
 import Data.Tree as Tree
 import Control.Monad
-         ( MonadPlus(mplus), join )
+         ( MonadPlus(mplus), join, unless )
 import Control.Exception
          ( assert )
 import Text.PrettyPrint as Disp
@@ -129,6 +138,94 @@ getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
       , pkg <- search index pat ]
 
 
+-- | List the installed packages that the current package depends on.
+-- This is similar to getPkgList, but it takes no patterns; rather, it assumes
+-- there is a current, configured configuration so it can determine the exact
+-- (installed) packages depended on.
+listPkgDeps :: Verbosity
+            -> RepoContext
+            -> ListFlags
+            -> IO ()
+listPkgDeps verbosity repoCtxt listFlags =
+    case possiblyShowPackageFields of
+      Left msg                -> die msg
+      Right showPackageFields -> do
+          installedPkgIndex <-
+            fmap Distribution.Simple.LocalBuildInfo.installedPkgs $
+              getPersistBuildConfig (useDistPref defaultSetupScriptOptions)
+               -- TODO: add a --builddir=DIR option rather than assume
+               -- the default value of 'dist'
+
+          srcPkgIndex <- fmap packageIndex $
+                           getSourcePackages verbosity repoCtxt
+
+          let
+              showPkgSimple pkg =
+                display (packageName pkg)
+                ++ " "
+                ++ display (packageVersion pkg)
+                ++ showPackageFields pkg
+
+              showPkgStd = showPackageSummaryInfo . mkDisplayInfo srcPkgIndex
+
+              pkgs = InstalledPackageIndex.topologicalOrder installedPkgIndex
+
+          if simpleOutput
+            then putStr $ unlines $ map showPkgSimple pkgs
+            else putStr $ unlines $ map showPkgStd    pkgs
+
+  where
+
+  -- flags:
+  simpleOutput = fromFlag (listSimpleOutput listFlags)
+  fields       = fromNubList $ listFields listFlags
+
+  -- Left if any of the fields are bad, otherwise Right with the show function:
+  possiblyShowPackageFields :: Either String
+                                 (Installed.InstalledPackageInfo -> String)
+  possiblyShowPackageFields =
+    if null fields then
+      Right (\_pkg -> "")
+    else
+      case partitionEithers (map getFieldDescr fields) of
+        ([], fds) -> Right $
+                       \pkg-> '\n' : showFields fds pkg
+
+        (ss, _  ) -> Left $
+                    unlines $
+                      [ "unrecognized package fields: "
+                        ++ unwords ss
+                      , "must use one of these field names:"
+                      ]
+                      ++ map ((" - "++) . fieldName)
+                             Installed.fieldsInstalledPackageInfo
+    where
+    getFieldDescr nm =
+      case [ fd | fd <- Installed.fieldsInstalledPackageInfo
+                , nm == fieldName fd ] of
+         []   -> Left nm
+         fd:_ -> Right fd
+
+    showFields fds = render . nest 2 . ($+$ text "") . ppFields fds
+
+  mkDisplayInfo :: PackageIndex.PackageIndex SourcePackage
+                -> Installed.InstalledPackageInfo
+                -> PackageDisplayInfo
+  mkDisplayInfo srcPkgIndex pkg =
+    mergePackageInfo
+      pref
+      [pkg]
+      srcPkgs
+      (listToMaybe srcPkgs)
+      False
+
+    where
+    pref    = thisVersion (packageVersion pkg)
+    srcPkgs = PackageIndex.lookupDependency
+                srcPkgIndex
+                (Dependency (packageName pkg) pref)
+
+
 -- | Show information about packages.
 list :: Verbosity
      -> PackageDBStack
@@ -138,27 +235,39 @@ list :: Verbosity
      -> ListFlags
      -> [String]
      -> IO ()
-list verbosity packageDBs repos comp conf listFlags pats = do
-    matches <- getPkgList verbosity packageDBs repos comp conf listFlags pats
+list verbosity packageDBs repoCtxt comp conf listFlags pats = do
+  unless (simpleOutput || null fields) $
+    die "--field requires \"--dependencies --simple-output\""
+  if onlyDependencies
+    then
+      if null pats
+        then listPkgDeps verbosity repoCtxt listFlags
+        else die "no patterns allowed in 'list --dependencies'"
+    else
+      do
+      matches <-
+        getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats
 
-    if simpleOutput
-      then putStr $ unlines
-             [ display (pkgName pkg) ++ " " ++ display version
-             | pkg <- matches
-             , version <- if onlyInstalled
-                            then              installedVersions pkg
-                            else nub . sort $ installedVersions pkg
-                                           ++ sourceVersions    pkg ]
-             -- Note: this only works because for 'list', one cannot currently
-             -- specify any version constraints, so listing all installed
-             -- and source ones works.
-      else
-        if null matches
-            then notice verbosity "No matches found."
-            else putStr $ unlines (map showPackageSummaryInfo matches)
+      if simpleOutput
+        then putStr $ unlines
+               [ display (pkgName pkg) ++ " " ++ display version
+               | pkg <- matches
+               , version <- if onlyInstalled
+                              then              installedVersions pkg
+                              else nub . sort $ installedVersions pkg
+                                             ++ sourceVersions    pkg ]
+            -- Note: this only works because for 'list', one cannot currently
+            -- specify any version constraints, so listing all installed
+            -- and source ones works.
+        else
+          if null matches
+              then notice verbosity "No matches found."
+              else putStr $ unlines (map showPackageSummaryInfo matches)
   where
-    onlyInstalled = fromFlag (listInstalled listFlags)
-    simpleOutput  = fromFlag (listSimpleOutput listFlags)
+    onlyInstalled    = fromFlag (listInstalled listFlags)
+    simpleOutput     = fromFlag (listSimpleOutput listFlags)
+    onlyDependencies = fromFlag (listDependencies listFlags)
+    fields           = fromNubList $ listFields listFlags
 
 info :: Verbosity
      -> PackageDBStack
