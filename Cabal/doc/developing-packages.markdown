@@ -676,10 +676,11 @@ message headers.
 The syntax of the value depends on the field.  Field types include:
 
 _token_, _filename_, _directory_
-:   Either a sequence of one or more non-space non-comma characters, or
-    a quoted string in Haskell 98 lexical syntax. Unless otherwise
-    stated, relative filenames and directories are interpreted from the
-    package root directory.
+:   Either a sequence of one or more non-space non-comma characters, or a quoted
+    string in Haskell 98 lexical syntax. The latter can be used for escaping
+    whitespace, for example: `ghc-options: -Wall "-with-rtsopts=-T -I1"`.
+    Unless otherwise stated, relative filenames and directories are interpreted
+    from the package root directory.
 
 _freeform_, _URL_, _address_
 :   An arbitrary, uninterpreted string.
@@ -1364,6 +1365,9 @@ for these fields.
 
     Options required only by one module may be specified by placing an
     `OPTIONS_GHC` pragma in the source file affected.
+
+    As with many other fields, whitespace can be escaped by using Haskell string
+    syntax. Example: `ghc-options: -Werror "-with-rtsopts=-T -I1" -Wall`.
 
 `ghc-prof-options:` _token list_
 :   Additional options for GHC when the package is built with profiling
