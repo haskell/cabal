@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.22.9.0 Ryan Thomas <ryan@ryant.org> March 2016
+	* Include Cabal-1.22.8.0
+
 1.22.8.0 Ryan Thomas <ryan@ryant.org> February 2016
 	* Only Custom setup scripts should be compiled with '-i -i.'.
 	* installedCabalVersion: Don't special-case Cabal anymore.
