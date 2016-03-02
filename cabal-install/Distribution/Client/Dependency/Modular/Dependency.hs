@@ -30,6 +30,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
+  , extendConflictSet
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -171,7 +172,7 @@ data FlaggedDep comp qpn =
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
   | Simple (Dep qpn) comp
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show)
 
 -- | Conversatively flatten out flagged dependencies
 --
@@ -189,10 +190,15 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 
 -- | A dependency (constraint) associates a package name with a
 -- constrained instance.
+--
+-- 'Dep' intentionally has no 'Functor' instance because the type variable
+-- is used both to record the dependencies as well as who's doing the
+-- depending; having a 'Functor' instance makes bugs where we don't distinguish
+-- these two far too likely. (By rights 'Dep' ought to have two type variables.)
 data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
              | Ext  Extension     -- dependency on a language extension
              | Lang Language      -- dependency on a language version
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
 showDep (Dep qpn (Fixed i (Goal v _))          ) =
@@ -236,17 +242,25 @@ qualifyDeps QO{..} (Q pp' pn) = go
     go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
     go1 (Simple dep comp)    = Simple (goD dep comp) comp
 
+    -- Suppose package B has a setup dependency on package A.
+    -- This will be recorded as something like
+    --
+    -- > Dep "A" (Constrained [(AnyVersion, Goal (P "B") reason])
+    --
+    -- Observe that when we qualify this dependency, we need to turn that
+    -- @"A"@ into @"B-setup.A"@, but we should not apply that same qualifier
+    -- to the goal or the goal reason chain.
     goD :: Dep PN -> Component -> Dep QPN
-    goD dep comp
-      | qBase  dep  = fmap (Q (Base  pn pp)) dep
-      | qSetup comp = fmap (Q (Setup pn pp)) dep
-      | otherwise   = fmap (Q           pp ) dep
+    goD (Ext  ext)    _    = Ext  ext
+    goD (Lang lang)   _    = Lang lang
+    goD (Dep  dep ci) comp
+      | qBase  dep  = Dep (Q (Base  pn pp) dep) (fmap (Q pp) ci)
+      | qSetup comp = Dep (Q (Setup pn pp) dep) (fmap (Q pp) ci)
+      | otherwise   = Dep (Q           pp  dep) (fmap (Q pp) ci)
 
     -- Should we qualify this goal with the 'Base' package path?
-    qBase :: Dep PN -> Bool
-    qBase (Dep dep _ci) = qoBaseShim && unPackageName dep == "base"
-    qBase (Ext _)       = False
-    qBase (Lang _)      = False
+    qBase :: PN -> Bool
+    qBase dep = qoBaseShim && unPackageName dep == "base"
 
     -- Should we qualify this goal with the 'Setup' packaeg path?
     qSetup :: Component -> Bool
@@ -331,6 +345,10 @@ instance ResetGoal Goal where
 -- closure of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
 toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
+
+-- | Add another variable into a conflict set
+extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
+extendConflictSet = S.insert . simplifyVar
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
