@@ -1,3 +1,8 @@
+1.22.8.0 Ryan Thomas <ryan@ryant.org> March 2016
+	* Distribution.Simple.Setup: remove job cap. Fixes #3191.
+	* Check all object file suffixes for recompilation. Fixes #3128.
+	* Move source files under 'src/'. Fixes #3003.
+
 1.22.7.0 Ryan Thomas <ryan@ryant.org> January 2016
 	* Backport #3012 to the 1.22 branch
 	* Cabal.cabal: change build-type to Simple
