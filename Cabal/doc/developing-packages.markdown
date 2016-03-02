@@ -1367,7 +1367,7 @@ for these fields.
     `OPTIONS_GHC` pragma in the source file affected.
 
     As with many other fields, whitespace can be escaped by using Haskell string
-    syntax. Example: `ghc-options: -Werror "-with-rtsopts=-T -I1" -Wall`.
+    syntax. Example: `ghc-options: -Wcompat "-with-rtsopts=-T -I1" -Wall`.
 
 `ghc-prof-options:` _token list_
 :   Additional options for GHC when the package is built with profiling
