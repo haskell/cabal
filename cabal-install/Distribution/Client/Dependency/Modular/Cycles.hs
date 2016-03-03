@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Distribution.Client.Dependency.Modular.Cycles (
-    detectCycles
+    detectCyclesPhase
   ) where
 
 import Prelude hiding (cycle)
@@ -24,9 +24,9 @@ import Distribution.Client.Dependency.Modular.Tree
 
 type DetectCycles = Reader (ConflictSet QPN)
 
--- | Find any reject any solutions that are cyclic
-detectCycles :: Tree QGoalReasonChain -> Tree QGoalReasonChain
-detectCycles = (`runReader` Set.empty) .  cata go
+-- | Find and reject any solutions that are cyclic
+detectCyclesPhase :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+detectCyclesPhase = (`runReader` Set.empty) .  cata go
   where
     -- Most cases are simple; we just need to remember which choices we made
     go :: TreeF QGoalReasonChain (DetectCycles (Tree QGoalReasonChain)) -> DetectCycles (Tree QGoalReasonChain)
@@ -46,7 +46,7 @@ detectCycles = (`runReader` Set.empty) .  cata go
 
 -- | Given the reverse dependency map from a 'Done' node in the tree, as well
 -- as the full conflict set containing all decisions that led to that 'Done'
--- node, check of the solution is cyclic. If it is, return the conflic set
+-- node, check if the solution is cyclic. If it is, return the conflic set
 -- containing all decisions that could potentially break the cycle.
 findCycles :: ConflictSet QPN -> RevDepMap -> Maybe (ConflictSet QPN)
 findCycles fullSet revDeps = do
