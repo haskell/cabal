@@ -341,8 +341,8 @@ instance ResetGoal Dep where
 instance ResetGoal Goal where
   resetGoal = const
 
--- | Compute a conflic set from a goal. The conflict set contains the
--- closure of goal reasons as well as the variable of the goal itself.
+-- | Compute a conflict set from a goal. The conflict set contains the closure
+-- of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
 toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
 
