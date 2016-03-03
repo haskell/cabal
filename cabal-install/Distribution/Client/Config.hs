@@ -204,6 +204,11 @@ instance Semigroup SavedConfig where
       combine'        field subfield =
         (subfield . field $ a) `mappend` (subfield . field $ b)
 
+      combineMonoid :: Monoid mon => (SavedConfig -> flags) -> (flags -> mon)
+                    -> mon
+      combineMonoid field subfield =
+        (subfield . field $ a) `mappend` (subfield . field $ b)
+
       lastNonEmpty' :: (SavedConfig -> flags) -> (flags -> [a]) -> [a]
       lastNonEmpty'   field subfield =
         let a' = subfield . field $ a
@@ -324,7 +329,9 @@ instance Semigroup SavedConfig where
         configLibCoverage         = combine configLibCoverage,
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
-        configRelocatable         = combine configRelocatable
+        configRelocatable         = combine configRelocatable,
+        configAllowNewer          = combineMonoid savedConfigureFlags
+                                    configAllowNewer
         }
         where
           combine        = combine'        savedConfigureFlags
@@ -337,8 +344,7 @@ instance Semigroup SavedConfig where
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
         configPreferences   = lastNonEmpty configPreferences,
-        configSolver        = combine configSolver,
-        configAllowNewer    = combine configAllowNewer
+        configSolver        = combine configSolver
         }
         where
           combine      = combine' savedConfigureExFlags

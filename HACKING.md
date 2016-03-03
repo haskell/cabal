@@ -70,7 +70,7 @@ To build and test the `Cabal` library, do:
     we cannot use `cabal` for the next steps;
     we need to use Setup instead.
     So, compile Setup.hs:
-    
+
     ~~~~
     ghc --make -threaded Setup.hs
     ~~~~
@@ -89,7 +89,7 @@ To build and test the `Cabal` library, do:
     ~~~~
     ~/MyHaskellCode/cabal/Cabal/.cabal-sandbox/$SOMESTUFF-packages.conf.d
     ~~~~
-    
+
     (or, as a relative path with my setup:)
 
     ~~~~

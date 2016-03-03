@@ -221,6 +221,22 @@ nonSharedLibTests config =
             cabal_build ["--enable-tests"]
             cabal "test" []
 
+  -- Test that '--allow-newer' works via the 'Setup.hs configure' interface.
+  , tc "AllowNewer" $ do
+        shouldFail $ cabal "configure" []
+        cabal "configure" ["--allow-newer"]
+        shouldFail $ cabal "configure" ["--allow-newer=baz,quux"]
+        cabal "configure" ["--allow-newer=base", "--allow-newer=baz,quux"]
+        cabal "configure" ["--allow-newer=bar", "--allow-newer=base,baz"
+                          ,"--allow-newer=quux"]
+        shouldFail $ cabal "configure" ["--enable-tests"]
+        cabal "configure" ["--enable-tests", "--allow-newer"]
+        shouldFail $ cabal "configure" ["--enable-benchmarks"]
+        cabal "configure" ["--enable-benchmarks", "--allow-newer"]
+        shouldFail $ cabal "configure" ["--enable-benchmarks", "--enable-tests"]
+        cabal "configure" ["--enable-benchmarks", "--enable-tests"
+                          ,"--allow-newer"]
+
   -- Test that Cabal can choose flags to disable building a component when that
   -- component's dependencies are unavailable. The build should succeed without
   -- requiring the component's dependencies or imports.

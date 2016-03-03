@@ -19,7 +19,6 @@ module Distribution.Client.Dependency.Types (
     DependencyResolver,
     ResolverPackage(..),
 
-    AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
     showPackageConstraint,
     PackagePreferences(..),
@@ -210,31 +209,6 @@ data PackagesPreferenceDefault =
      --
    | PreferLatestForSelected
   deriving Show
-
--- | Policy for relaxing upper bounds in dependencies. For example, given
--- 'build-depends: array >= 0.3 && < 0.5', are we allowed to relax the upper
--- bound and choose a version of 'array' that is greater or equal to 0.5? By
--- default the upper bounds are always strictly honored.
-data AllowNewer =
-
-  -- | Default: honor the upper bounds in all dependencies, never choose
-  -- versions newer than allowed.
-  AllowNewerNone
-
-  -- | Ignore upper bounds in dependencies on the given packages.
-  | AllowNewerSome [PackageName]
-
-  -- | Ignore upper bounds in dependencies on all packages.
-  | AllowNewerAll
-  deriving (Eq, Ord, Show, Generic)
-
-instance Binary AllowNewer
-
--- | Convert 'AllowNewer' to a boolean.
-isAllowNewer :: AllowNewer -> Bool
-isAllowNewer AllowNewerNone     = False
-isAllowNewer (AllowNewerSome _) = True
-isAllowNewer AllowNewerAll      = True
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final

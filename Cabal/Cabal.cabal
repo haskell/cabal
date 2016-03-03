@@ -32,6 +32,10 @@ extra-source-files:
   -- Generated with 'misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/PackageTests/AllowNewer/AllowNewer.cabal
+  tests/PackageTests/AllowNewer/benchmarks/Bench.hs
+  tests/PackageTests/AllowNewer/src/Foo.hs
+  tests/PackageTests/AllowNewer/tests/Test.hs
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal

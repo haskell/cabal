@@ -417,7 +417,7 @@ planPackages comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
-    allowNewer       = fromFlag (configAllowNewer         configExFlags)
+    allowNewer       = (configAllowNewer         configFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg
@@ -1092,7 +1092,7 @@ performInstallations verbosity
         platform
         conf
         distPref
-        (chooseCabalVersion configExFlags (libVersion miscOptions))
+        (chooseCabalVersion configFlags (libVersion miscOptions))
         (Just lock)
         parallelInstall
         index

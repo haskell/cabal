@@ -20,7 +20,7 @@ module Distribution.Client.Configure (
 
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( AllowNewer(..), isAllowNewer, ConstraintSource(..)
+         ( ConstraintSource(..)
          , LabeledPackageConstraint(..), showConstraintSource )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
@@ -62,6 +62,8 @@ import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
          ( warn, notice, info, debug, die )
+import Distribution.Simple.Setup
+         ( isAllowNewer )
 import Distribution.System
          ( Platform )
 import Distribution.Text ( display )
@@ -78,14 +80,13 @@ import Data.Maybe (isJust, fromMaybe)
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.
-chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
-chooseCabalVersion configExFlags maybeVersion =
+chooseCabalVersion :: ConfigFlags -> Maybe Version -> VersionRange
+chooseCabalVersion configFlags maybeVersion =
   maybe defaultVersionRange thisVersion maybeVersion
   where
     -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
     -- for '--allow-newer' to work.
-    allowNewer = fromFlagOrDefault False $
-                 fmap isAllowNewer (configAllowNewer configExFlags)
+    allowNewer = isAllowNewer (configAllowNewer configFlags)
 
     defaultVersionRange = if allowNewer
                           then orLaterVersion (Version [1,19,2] [])
@@ -152,7 +153,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
            (useDistPref defaultSetupScriptOptions)
            (configDistPref configFlags))
         (chooseCabalVersion
-           configExFlags
+           configFlags
            (flagToMaybe (configCabalVersion configExFlags)))
         Nothing
         False
@@ -287,8 +288,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
-          removeUpperBounds (fromFlagOrDefault AllowNewerNone $
-                             configAllowNewer configExFlags)
+          removeUpperBounds (configAllowNewer configFlags)
 
         . addPreferences
             -- preferences from the config file or command line
