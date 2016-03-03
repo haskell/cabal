@@ -24,3 +24,4 @@ build_script:
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests
   - ..\cabal build
   - ..\cabal test unit-tests --show-details=streaming --test-option=--pattern=!FileMonitor
+  - ..\cabal test integration-tests --show-details=streaming --test-option=--pattern=!exec
