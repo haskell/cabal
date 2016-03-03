@@ -74,13 +74,12 @@ solve sc cinfo idx userPrefs userConstraints userGoals =
   buildPhase
   where
     explorePhase     = exploreTreeLog . backjump
-    heuristicsPhase  = P.firstGoal . -- after doing goal-choice heuristics, commit to the first choice (saves space)
-                       P.deferSetupChoices .
+    heuristicsPhase  = (if preferEasyGoalChoices sc
+                         then P.preferEasyGoalChoices -- also leaves just one choice
+                         else P.firstGoal) .
                        P.deferWeakFlagChoices .
+                       P.deferSetupChoices .
                        P.preferBaseGoalChoice .
-                       (if preferEasyGoalChoices sc
-                         then P.lpreferEasyGoalChoices
-                         else id) .
                        P.preferLinked
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
