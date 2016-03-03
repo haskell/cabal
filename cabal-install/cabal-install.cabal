@@ -73,8 +73,6 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/should_run/q/Setup.hs
   tests/IntegrationTests/multiple-source/should_run/q/q.cabal
   tests/IntegrationTests/sandbox-sources/common.sh
-  tests/IntegrationTests/sandbox-sources/should_fail/fail_on_nonexistent_source.err
-  tests/IntegrationTests/sandbox-sources/should_fail/fail_on_nonexistent_source.sh
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.err
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.sh
   tests/IntegrationTests/sandbox-sources/should_fail/p/Setup.hs
@@ -85,6 +83,7 @@ Extra-Source-Files:
   tests/IntegrationTests/sandbox-sources/should_run/p/p.cabal
   tests/IntegrationTests/sandbox-sources/should_run/q/Setup.hs
   tests/IntegrationTests/sandbox-sources/should_run/q/q.cabal
+  tests/IntegrationTests/sandbox-sources/should_run/remove_nonexistent_source.sh
   tests/IntegrationTests/sandbox-sources/should_run/report_success_removing_source.out
   tests/IntegrationTests/sandbox-sources/should_run/report_success_removing_source.sh
   tests/IntegrationTests/user-config/common.sh
