@@ -83,7 +83,6 @@ import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
-import qualified Distribution.PackageDescription.Parse as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -527,7 +526,7 @@ rebuildInstallPlan verbosity
                            -> Rebuild [SourcePackage]
     phaseReadLocalPackages projectConfig = do
 
-      localCabalFiles <- findProjectCabalFiles projectRootDir projectConfig
+      localCabalFiles <- findProjectPackages projectRootDir projectConfig
       mapM (readSourcePackage verbosity) localCabalFiles
 
 
@@ -704,29 +703,6 @@ rebuildInstallPlan verbosity
           pkgConfigProgramDb = progdb
         } = elaboratedShared
 
-
-
-findProjectCabalFiles :: FilePath -> ProjectConfig -> Rebuild [FilePath]
-findProjectCabalFiles projectRootDir ProjectConfig{..} = do
-    monitorFiles (map MonitorFileGlob projectConfigPackageGlobs)
-    liftIO $ map (projectRootDir </>) . concat
-         <$> mapM (matchFileGlob projectRootDir) projectConfigPackageGlobs
-    --TODO: certain package things must match. Globs perhaps can match nothing,
-    -- but specific files really must match or fail noisily.
-    -- silently matching nothing is not ok.
-
-
-readSourcePackage :: Verbosity -> FilePath -> Rebuild SourcePackage
-readSourcePackage verbosity cabalFile = do
-    -- no need to monitorFiles because findProjectCabalFiles did it already
-    pkgdesc <- liftIO $ Cabal.readPackageDescription verbosity cabalFile
-    let srcLocation = LocalUnpackedPackage (takeDirectory cabalFile)
-    return SourcePackage {
-             packageInfoId        = packageId pkgdesc,
-             packageDescription   = pkgdesc,
-             packageSource        = srcLocation,
-             packageDescrOverride = Nothing
-           }
 
 programsMonitorFiles :: ProgramDb -> [MonitorFilePath]
 programsMonitorFiles progdb =

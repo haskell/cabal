@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric,
+{-# LANGUAGE RecordWildCards, NamedFieldPuns,
+             DeriveGeneric, DeriveDataTypeable,
              ExistentialQuantification, ScopedTypeVariables #-}
 
 -- | Handling project configuration, types and reading.
@@ -18,6 +19,13 @@ module Distribution.Client.ProjectConfig (
     writeProjectConfigFile,
     commandLineFlagsToProjectConfig,
 
+    -- * Packages within projects
+    ProjectPackageLocation(..),
+    BadPackageLocation(..),
+    BadPackageLocationMatch(..),
+    findProjectPackages,
+    readSourcePackage,
+
     -- * Resolving configuration
     lookupLocalPackageConfig,
     projectConfigWithBuilderRepoContext,
@@ -29,6 +37,7 @@ module Distribution.Client.ProjectConfig (
   ) where
 
 import Distribution.Client.RebuildMonad
+import Distribution.Client.FileMonitor (isTrivialFilePathGlob)
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
@@ -42,7 +51,10 @@ import Distribution.Client.Config (SavedConfig(..), loadConfig, defaultConfigFil
 import Distribution.Package
 import Distribution.Version
 import Distribution.System
-import Distribution.PackageDescription (FlagAssignment, SourceRepo)
+import Distribution.PackageDescription
+         ( FlagAssignment, SourceRepo(..), RepoKind(..) )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription, sourceRepoFieldDescrs )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, CompilerFlavor, PackageDB
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
@@ -72,15 +84,18 @@ import Distribution.Verbosity
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP
+         ( ReadP, (+++) )
 import qualified Text.PrettyPrint as Disp
-         ( render, text, empty )
+         ( render, text, empty, sep )
 import Text.PrettyPrint
-         ( ($+$) )
+         ( Doc, ($+$) )
 
+import qualified Distribution.ParseUtils as ParseUtils (field)
 import Distribution.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, locatedErrorMsg
          , PWarning(..), showPWarning
-         , simpleField, commaListField, commaNewLineListField )
+         , simpleField, commaNewLineListField )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
@@ -89,7 +104,10 @@ import Distribution.Simple.Command
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans (liftIO)
+import Control.Exception
+import Data.Typeable
 import Data.Maybe
+import Data.Either
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
@@ -98,6 +116,7 @@ import Distribution.Compat.Semigroup
 import GHC.Generics (Generic)
 import System.FilePath hiding (combine)
 import System.Directory
+import Network.URI (URI(..), URIAuth(..), parseAbsoluteURI)
 
 
 -------------------------------
@@ -123,7 +142,24 @@ import System.Directory
 --
 data ProjectConfig
    = ProjectConfig {
-       projectConfigPackageGlobs    :: [FilePathGlob],
+
+       -- | Packages in this project, including local dirs, local .cabal files
+       -- local and remote tarballs. Where these are file globs, they must
+       -- match something.
+       projectPackages              :: [String],
+
+       -- | Like 'projectConfigPackageGlobs' but /optional/ in the sense that
+       -- file globs are allowed to match nothing. The primary use case for
+       -- this is to be able to say @optional-packages: */@ to automagically
+       -- pick up deps that we unpack locally.
+       projectPackagesOptional      :: [String],
+
+       -- | Packages in this project from remote source repositories.
+       projectPackagesRepo          :: [SourceRepo],
+
+       -- | Packages in this project from hackage repositories.
+       projectPackagesNamed         :: [Dependency],
+
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
        projectConfigShared          :: ProjectConfigShared,
        projectConfigLocalPackages   :: PackageConfig,
@@ -260,7 +296,10 @@ instance Binary PackageConfig
 instance Monoid ProjectConfig where
   mempty =
     ProjectConfig {
-      projectConfigPackageGlobs    = mempty,
+      projectPackages              = mempty,
+      projectPackagesOptional      = mempty,
+      projectPackagesRepo          = mempty,
+      projectPackagesNamed         = mempty,
       projectConfigBuildOnly       = mempty,
       projectConfigShared          = mempty,
       projectConfigLocalPackages   = mempty,
@@ -271,7 +310,10 @@ instance Monoid ProjectConfig where
 instance Semigroup ProjectConfig where
   a <> b =
     ProjectConfig {
-      projectConfigPackageGlobs    = combine projectConfigPackageGlobs,
+      projectPackages              = combine projectPackages,
+      projectPackagesOptional      = combine projectPackagesOptional,
+      projectPackagesRepo          = combine projectPackagesRepo,
+      projectPackagesNamed         = combine projectPackagesNamed,
       projectConfigBuildOnly       = combine projectConfigBuildOnly,
       projectConfigShared          = combine projectConfigShared,
       projectConfigLocalPackages   = combine projectConfigLocalPackages,
@@ -822,12 +864,13 @@ readProjectLocalConfig verbosity projectRootDir = do
 
     defaultImplicitProjectConfig :: ProjectConfig
     defaultImplicitProjectConfig =
-      ProjectConfig
-        [ GlobFile (Glob [WildCard, Literal ".cabal"])
-        , GlobDir  (Glob [WildCard]) $
-          GlobFile (Glob [WildCard, Literal ".cabal"])
-        ]
-        mempty mempty mempty mempty
+      mempty {
+        -- We expect a package in the current directory.
+        projectPackages         = [ "./*.cabal" ],
+
+        -- This is to automatically pick up deps that we unpack locally.
+        projectPackagesOptional = [ "./*/*.cabal" ]
+      }
 
 
 -- | Reads a @cabal.project.extra@ file in the given project root dir,
@@ -938,6 +981,224 @@ reportParseResult _verbosity filetype filename (ParseFailed err) =
            ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
 
+---------------------------------------------
+-- Reading packages in the project
+--
+
+data ProjectPackageLocation =
+     ProjectPackageLocalCabalFile FilePath
+   | ProjectPackageLocalDirectory FilePath FilePath -- dir and .cabal file
+   | ProjectPackageLocalTarball   FilePath
+   | ProjectPackageRemoteTarball  URI
+   | ProjectPackageRemoteRepo     SourceRepo
+   | ProjectPackageNamed          Dependency
+  deriving Show
+
+
+-- | Exception thrown by 'findProjectPackages'.
+--
+newtype BadPackageLocations = BadPackageLocations [BadPackageLocation]
+  deriving (Show, Typeable)
+
+instance Exception BadPackageLocations
+--TODO: [required eventually] displayException for nice rendering
+--TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+data BadPackageLocation
+   = BadPackageLocationFile    BadPackageLocationMatch
+   | BadLocGlobEmptyMatch      String
+   | BadLocGlobBadMatches      String [BadPackageLocationMatch]
+   | BadLocUnexpectedUriScheme String
+   | BadLocUnrecognisedUri     String
+   | BadLocUnrecognised        String
+  deriving Show
+
+data BadPackageLocationMatch
+   = BadLocUnexpectedFile      String
+   | BadLocNonexistantFile     String
+   | BadLocDirNoCabalFile      String
+   | BadLocDirManyCabalFiles   String
+  deriving Show
+
+
+-- | Given the project config, 
+--
+-- Throws 'BadPackageLocations'.
+--
+findProjectPackages :: FilePath -> ProjectConfig
+                    -> Rebuild [ProjectPackageLocation]
+findProjectPackages projectRootDir ProjectConfig{..} = do
+
+    requiredPkgs <- findPackageLocations True    projectPackages
+    optionalPkgs <- findPackageLocations False   projectPackagesOptional
+    let repoPkgs  = map ProjectPackageRemoteRepo projectPackagesRepo
+        namedPkgs = map ProjectPackageNamed      projectPackagesNamed
+
+    return (concat [requiredPkgs, optionalPkgs, repoPkgs, namedPkgs])
+  where
+    findPackageLocations required pkglocstr = do
+      (problems, pkglocs) <-
+        partitionEithers <$> mapM (findPackageLocation required) pkglocstr
+      unless (null problems) $
+        liftIO $ throwIO $ BadPackageLocations problems
+      return (concat pkglocs)
+
+
+    findPackageLocation :: Bool -> String
+                        -> Rebuild (Either BadPackageLocation
+                                          [ProjectPackageLocation])
+    findPackageLocation _required@True pkglocstr =
+      -- strategy: try first as a file:// or http(s):// URL.
+      -- then as a file glob (usually encompassing single file)
+      -- finally as a single file, for files that fail to parse as globs
+                    checkIsUriPackage pkglocstr
+      `mplusMaybeT` checkIsFileGlobPackage pkglocstr
+      `mplusMaybeT` checkIsSingleFilePackage pkglocstr
+      >>= maybe (return (Left (BadLocUnrecognised pkglocstr))) return
+
+
+    findPackageLocation _required@False pkglocstr = do
+      -- just globs for optional case
+      res <- checkIsFileGlobPackage pkglocstr
+      case res of
+        Nothing              -> return (Left (BadLocUnrecognised pkglocstr))
+        Just (Left _)        -> return (Right []) -- it's optional
+        Just (Right pkglocs) -> return (Right pkglocs)
+
+
+    checkIsUriPackage, checkIsFileGlobPackage, checkIsSingleFilePackage
+      :: String -> Rebuild (Maybe (Either BadPackageLocation
+                                         [ProjectPackageLocation]))
+    checkIsUriPackage pkglocstr =
+      return $!
+      case parseAbsoluteURI pkglocstr of
+        Just uri@URI {
+            uriScheme    = scheme,
+            uriAuthority = Just URIAuth { uriRegName = host }
+          }
+          | recognisedScheme && not (null host) ->
+            Just (Right [ProjectPackageRemoteTarball uri])
+
+          | not recognisedScheme && not (null host) ->
+            Just (Left (BadLocUnexpectedUriScheme pkglocstr))
+
+          | recognisedScheme && null host ->
+            Just (Left (BadLocUnrecognisedUri pkglocstr))
+          where
+            recognisedScheme = scheme == "http:" || scheme == "https:"
+                            || scheme == "file:"
+
+        _ -> Nothing
+
+
+    checkIsFileGlobPackage pkglocstr =
+      case simpleParse pkglocstr of
+        Nothing   -> return Nothing
+        Just glob -> liftM Just $ do
+          matches <- matchFileGlob projectRootDir glob
+          case matches of
+            [] | isJust (isTrivialFilePathGlob glob)
+               -> return (Left (BadPackageLocationFile 
+                                  (BadLocNonexistantFile pkglocstr)))
+
+            [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
+
+            _  -> do
+              (failures, pkglocs) <- partitionEithers <$>
+                                     mapM checkFilePackageMatch matches
+              if null pkglocs
+                then return (Left (BadLocGlobBadMatches pkglocstr failures))
+                else return (Right pkglocs)
+
+
+    checkIsSingleFilePackage pkglocstr = do
+      let filename = projectRootDir </> pkglocstr
+      isFile <- liftIO $ doesFileExist filename
+      isDir  <- liftIO $ doesDirectoryExist filename
+      if isFile || isDir
+        then checkFilePackageMatch pkglocstr
+         >>= either (return . Just . Left  . BadPackageLocationFile)
+                    (return . Just . Right . (\x->[x]))
+        else return Nothing
+
+
+    checkFilePackageMatch :: String -> Rebuild (Either BadPackageLocationMatch
+                                                       ProjectPackageLocation)
+    checkFilePackageMatch pkglocstr = do
+      let filename = projectRootDir </> pkglocstr
+      isDir  <- liftIO $ doesDirectoryExist filename
+      parentDirExists <- case takeDirectory filename of
+                           []  -> return False
+                           dir -> liftIO $ doesDirectoryExist dir
+      case () of
+        _ | isDir
+         -> do let dirname = filename -- now we know its a dir
+                   glob    = globStarDotCabal pkglocstr
+               matches <- matchFileGlob projectRootDir glob
+               case matches of
+                 [match]
+                     -> return (Right (ProjectPackageLocalDirectory
+                                         dirname cabalFile))
+                   where
+                     cabalFile = dirname </> match
+                 []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
+                 _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
+
+          | extensionIsTarGz filename
+         -> return (Right (ProjectPackageLocalTarball filename))
+
+          | takeExtension filename == ".cabal"
+         -> return (Right (ProjectPackageLocalCabalFile filename))
+
+          | parentDirExists
+         -> return (Left (BadLocNonexistantFile pkglocstr))
+
+          | otherwise
+         -> return (Left (BadLocUnexpectedFile pkglocstr))
+
+
+    extensionIsTarGz f = takeExtension f                 == ".gz"
+                      && takeExtension (dropExtension f) == ".tar"
+
+
+-- | The glob @$dir/*.cabal@
+globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal =
+    foldr (\dirpart -> GlobDir (Glob [Literal dirpart]))
+          (GlobFile (Glob [WildCard, Literal ".cabal"]))
+  . splitDirectories
+
+
+--TODO: [code cleanup] use sufficiently recent transformers package
+mplusMaybeT :: Monad m => m (Maybe a) -> m (Maybe a) -> m (Maybe a)
+mplusMaybeT ma mb = do
+  mx <- ma
+  case mx of
+    Nothing -> mb
+    Just x  -> return (Just x)
+
+
+readSourcePackage :: Verbosity -> ProjectPackageLocation
+                  -> Rebuild SourcePackage
+readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
+    readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
+  where
+    dir = takeDirectory cabalFile
+
+readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
+    -- no need to monitorFiles because findProjectCabalFiles did it already
+    pkgdesc <- liftIO $ readPackageDescription verbosity cabalFile
+    return SourcePackage {
+      packageInfoId        = packageId pkgdesc,
+      packageDescription   = pkgdesc,
+      packageSource        = LocalUnpackedPackage dir,
+      packageDescrOverride = Nothing
+    }
+readSourcePackage _verbosity _ =
+    fail $ "TODO: add support for fetching and reading local tarballs, remote "
+        ++ "tarballs, remote repos and passing named packages through"
+
+
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
 --
@@ -952,10 +1213,10 @@ reportParseResult _verbosity filetype filename (ParseFailed err) =
 -- can redefine the parsers directly for the new types.
 --
 data LegacyProjectConfig = LegacyProjectConfig {
-       -- local packages, including dirs, .cabal files and tarballs
-       legacyLocalPackgeGlobs  :: [FilePathGlob],
-       -- packages from source repos
-       legacyRepoPackges       :: [SourceRepo], --TODO: [nice to have] use this
+       legacyPackages          :: [String],
+       legacyPackagesOptional  :: [String],
+       legacyPackagesRepo      :: [SourceRepo],
+       legacyPackagesNamed     :: [Dependency],
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
@@ -963,14 +1224,17 @@ data LegacyProjectConfig = LegacyProjectConfig {
      }
 
 instance Monoid LegacyProjectConfig where
-  mempty  = LegacyProjectConfig mempty mempty mempty mempty mempty
+  mempty  = LegacyProjectConfig mempty mempty mempty mempty
+                                mempty mempty mempty
   mappend = (<>)
 
 instance Semigroup LegacyProjectConfig where
   a <> b =
     LegacyProjectConfig {
-      legacyLocalPackgeGlobs   = combine legacyLocalPackgeGlobs,
-      legacyRepoPackges        = combine legacyRepoPackges,
+      legacyPackages           = combine legacyPackages,
+      legacyPackagesOptional   = combine legacyPackagesOptional,
+      legacyPackagesRepo       = combine legacyPackagesRepo,
+      legacyPackagesNamed      = combine legacyPackagesNamed,
       legacySharedConfig       = combine legacySharedConfig,
       legacyLocalConfig        = combine legacyLocalConfig,
       legacySpecificConfig     = combine legacySpecificConfig
@@ -1067,19 +1331,27 @@ convertLegacyGlobalConfig
 --
 convertLegacyProjectConfig :: LegacyProjectConfig -> ProjectConfig
 convertLegacyProjectConfig
-  (LegacyProjectConfig
-    localPackageGlobs _repoPackages
-    (LegacySharedConfig globalFlags configExFlags installFlags)
-    (LegacyPackageConfig configFlags haddockFlags)
-    specificConfig) =
+  LegacyProjectConfig {
+    legacyPackages,
+    legacyPackagesOptional,
+    legacyPackagesRepo,
+    legacyPackagesNamed,
+    legacySharedConfig = LegacySharedConfig globalFlags configExFlags
+                                            installFlags,
+    legacyLocalConfig  = LegacyPackageConfig configFlags haddockFlags,
+    legacySpecificConfig
+  } =
 
     ProjectConfig {
-      projectConfigPackageGlobs = localPackageGlobs,
+      projectPackages              = legacyPackages,
+      projectPackagesOptional      = legacyPackagesOptional,
+      projectPackagesRepo          = legacyPackagesRepo,
+      projectPackagesNamed         = legacyPackagesNamed,
 
       projectConfigBuildOnly       = configBuildOnly,
       projectConfigShared          = configAllPackages,
       projectConfigLocalPackages   = configLocalPackages,
-      projectConfigSpecificPackage = fmap perPackage specificConfig
+      projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
     }
   where
     configLocalPackages = convertLegacyPerPackageFlags
@@ -1258,14 +1530,18 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
 convertToLegacyProjectConfig :: ProjectConfig -> LegacyProjectConfig
 convertToLegacyProjectConfig
     projectConfig@ProjectConfig {
-      projectConfigPackageGlobs,
+      projectPackages,
+      projectPackagesOptional,
+      projectPackagesRepo,
+      projectPackagesNamed,
       projectConfigLocalPackages,
       projectConfigSpecificPackage
-      
     } =
     LegacyProjectConfig {
-      legacyLocalPackgeGlobs = projectConfigPackageGlobs,
-      legacyRepoPackges      = [],
+      legacyPackages         = projectPackages,
+      legacyPackagesOptional = projectPackagesOptional,
+      legacyPackagesRepo     = projectPackagesRepo,
+      legacyPackagesNamed    = projectPackagesNamed,
       legacySharedConfig     = convertToLegacySharedConfig projectConfig,
       legacyLocalConfig      = convertToLegacyAllPackageConfig projectConfig
                             <> convertToLegacyPerPackageConfig
@@ -1500,10 +1776,18 @@ showLegacyProjectConfig config =
 legacyProjectConfigFieldDescrs :: [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs =
 
-    [ commaListField "packages"  --TODO: [code cleanup] ought to be listField, but ReadP introduces ambiguity
+    [ newLineListField "packages"
+        Disp.text parsePackageLocationTokenQ
+        legacyPackages
+        (\v flags -> flags { legacyPackages = v })
+    , newLineListField "optional-packages"
+        Disp.text parsePackageLocationTokenQ
+        legacyPackagesOptional
+        (\v flags -> flags { legacyPackagesOptional = v })
+    , newLineListField "extra-packages"
         disp parse
-        legacyLocalPackgeGlobs
-        (\v flags -> flags { legacyLocalPackgeGlobs = v })
+        legacyPackagesNamed
+        (\v flags -> flags { legacyPackagesNamed = v })
     ]
 
  ++ map (liftField
@@ -1515,6 +1799,38 @@ legacyProjectConfigFieldDescrs =
            legacyLocalConfig
            (\flags conf -> conf { legacyLocalConfig = flags }))
         legacyPackageConfigFieldDescrs
+
+-- | This is a bit tricky since it has to cover globs which have embedded @,@
+-- chars. But we don't just want to parse strictly as a glob since we want to
+-- allow http urls which don't parse as globs, and possibly some
+-- system-dependent file paths. So we parse fairly liberally as a token, but
+-- we allow @,@ inside matched @{}@ braces.
+--
+parsePackageLocationTokenQ :: ReadP r String
+parsePackageLocationTokenQ = parseHaskellString
+                   Parse.<++ parsePackageLocationToken
+  where
+    parseHaskellString :: ReadP r String
+    parseHaskellString = Parse.readS_to_P reads
+
+    parsePackageLocationToken :: ReadP r String
+    parsePackageLocationToken = fmap fst (Parse.gather outerTerm)
+      where
+        outerTerm   = alternateEither1 outerToken (braces innerTerm)
+        innerTerm   = alternateEither innerToken (braces innerTerm)
+        outerToken  = Parse.munch1 outerChar >> return ()
+        innerToken  = Parse.munch1 innerChar >> return ()
+        outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
+        innerChar c = not (isSpace c || c == '{' || c == '}')
+        braces      = Parse.between (Parse.char '{') (Parse.char '}')
+
+    alternateEither, alternateEither1, alternate, alternate1
+      :: ReadP r () -> ReadP r () -> ReadP r ()
+
+    alternateEither  p q = alternateEither1 p q +++ return ()
+    alternateEither1 p q = alternate1 p q +++ alternate1 q p
+    alternate1       p q = p >> alternate q p
+    alternate        p q = alternate1 p q +++ return ()
 
 
 legacySharedConfigFieldDescrs :: [FieldDescr LegacySharedConfig]
@@ -1676,7 +1992,9 @@ legacyPackageConfigFieldDescrs =
 
 legacyPackageConfigSectionDescrs :: [SectionDescr LegacyProjectConfig]
 legacyPackageConfigSectionDescrs =
-    [ liftSection
+    [ packageRepoSectionDescr
+    , packageSpecificOptionsSectionDescr
+    , liftSection
         legacyLocalConfig
         (\flags conf -> conf { legacyLocalConfig = flags })
         programOptionsSectionDescr
@@ -1684,11 +2002,36 @@ legacyPackageConfigSectionDescrs =
         legacyLocalConfig
         (\flags conf -> conf { legacyLocalConfig = flags })
         programLocationsSectionDescr
-    , programSpecificOptions
     ]
 
-programSpecificOptions :: SectionDescr LegacyProjectConfig
-programSpecificOptions =
+packageRepoSectionDescr :: SectionDescr LegacyProjectConfig
+packageRepoSectionDescr =
+    SectionDescr {
+      sectionName        = "source-repository-package",
+      sectionFields      = sourceRepoFieldDescrs,
+      sectionSubsections = [],
+      sectionGet         = map (\x->("", x))
+                         . legacyPackagesRepo,
+      sectionSet         =
+        \lineno unused pkgrepo projconf -> do
+          unless (null unused) $
+            syntaxError lineno "the section 'source-repository-package' takes no arguments"
+          return projconf {
+            legacyPackagesRepo = legacyPackagesRepo projconf ++ [pkgrepo]
+          },
+      sectionEmpty       = SourceRepo {
+                             repoKind     = RepoThis, -- hopefully unused
+                             repoType     = Nothing,
+                             repoLocation = Nothing,
+                             repoModule   = Nothing,
+                             repoBranch   = Nothing,
+                             repoTag      = Nothing,
+                             repoSubdir   = Nothing
+                           }
+    }
+
+packageSpecificOptionsSectionDescr :: SectionDescr LegacyProjectConfig
+packageSpecificOptionsSectionDescr =
     SectionDescr {
       sectionName        = "package",
       sectionFields      = legacyPackageConfigFieldDescrs
@@ -1706,10 +2049,15 @@ programSpecificOptions =
                              [ (display pkgname, pkgconf)
                              | (pkgname, pkgconf) <- Map.toList (legacySpecificConfig projconf) ],
       sectionSet         =
-        \_lineno pkgname pkgconf projconf ->
+        \lineno pkgnamestr pkgconf projconf -> do
+          pkgname <- case simpleParse pkgnamestr of
+            Just pkgname -> return pkgname
+            Nothing      -> syntaxError lineno $
+                                "a 'package' section requires a package name "
+                             ++ "as an argument"
           return projconf {
             legacySpecificConfig =
-              Map.insertWith mappend (PackageName pkgname) pkgconf
+              Map.insertWith mappend pkgname pkgconf
                              (legacySpecificConfig projconf)
           },
       sectionEmpty       = mempty
@@ -1798,4 +2146,39 @@ programConfigurationOptions progConf showOrParseArgs get set =
     joinsArgs = unwords . map escape
     escape arg | any isSpace arg = "\"" ++ arg ++ "\""
                | otherwise       = arg
+
+
+-------------------------------
+-- Local field utils
+--
+
+--TODO: [code cleanup] all these utils should move to Distribution.ParseUtils
+-- either augmenting or replacing the ones there
+
+--TODO: [code cleanup] this is a different definition from listField, like
+-- commaNewLineListField it pretty prints on multiple lines
+newLineListField :: String -> (a -> Doc) -> ReadP [a] a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+newLineListField = listFieldWithSep Disp.sep
+
+--TODO: [code cleanup] local copy purely so we can use the fixed version
+-- of parseOptCommaList below
+listFieldWithSep :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+listFieldWithSep separator name showF readF get set =
+  liftField get set' $
+    ParseUtils.field name showF' (parseOptCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = separator . map showF
+
+--TODO: [code cleanup] local redefinition that should replace the version in
+-- D.ParseUtils. This version avoid parse ambiguity for list element parsers
+-- that have multiple valid parses of prefixes.
+parseOptCommaList :: ReadP r a -> ReadP r [a]
+parseOptCommaList p = Parse.sepBy p sep
+  where
+    -- The separator must not be empty or it introduces ambiguity
+    sep = (Parse.skipSpaces >> Parse.char ',' >> Parse.skipSpaces)
+      +++ (Parse.satisfy isSpace >> Parse.skipSpaces)
 
