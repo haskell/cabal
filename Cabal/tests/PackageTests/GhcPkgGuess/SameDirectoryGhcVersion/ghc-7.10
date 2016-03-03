@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -z "$WITH_GHC" ]; then
+    echo "Need to set WITH_GHC"
+    exit 1
+fi
+exec "$WITH_GHC" "$@"

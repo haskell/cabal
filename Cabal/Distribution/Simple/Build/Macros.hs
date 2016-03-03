@@ -31,7 +31,8 @@ import Distribution.Version
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(withPrograms), externalPackageDeps, localComponentId, localCompatPackageKey )
+         ( LocalBuildInfo(withPrograms), externalPackageDeps
+         , localComponentId, localCompatPackageKey )
 import Distribution.Simple.Program.Db
          ( configuredPrograms )
 import Distribution.Simple.Program.Types

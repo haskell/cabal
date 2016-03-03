@@ -1,4 +1,4 @@
-module PackageTests.Tests(tests) where
+module PackageTests.Tests(sharedLibTests, nonSharedLibTests) where
 
 import PackageTests.PackageTester
 
@@ -11,12 +11,14 @@ import Control.Monad
 
 import Data.Version
 import Test.Tasty (TestTree, testGroup, mkTimeout, localOption)
-import Test.Tasty.HUnit (testCase)
+import qualified Test.Tasty.HUnit as HUnit
+
+-- | Tests that do not require shared libraries.
 
 -- TODO: turn this into a "test-defining writer monad".
 -- This will let us handle scoping gracefully.
-tests :: SuiteConfig -> [TestTree]
-tests config =
+nonSharedLibTests :: SuiteConfig -> [TestTree]
+nonSharedLibTests config =
   tail [ undefined
 
   ---------------------------------------------------------------------
@@ -38,15 +40,15 @@ tests config =
 
     -- Test exitcode-stdio-1.0 test suites (and HPC)
     [ testGroup "ExeV10"
-      (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
+      (PackageTests.TestSuiteTests.ExeV10.Check.nonSharedLibTests config)
 
     -- Test detailed-0.9 test suites
     , testGroup "LibV09" $
       let
         tcs :: FilePath -> TestM a -> TestTree
         tcs name m
-            = testCase name (runTestM config ("TestSuiteTests/LibV09")
-                                             (Just name) m)
+            = HUnit.testCase name (runTestM config ("TestSuiteTests/LibV09")
+                                                   (Just name) m)
       in -- Test if detailed-0.9 builds correctly
          [ tcs "Build" $ cabal_build ["--enable-tests"]
 
@@ -155,10 +157,6 @@ tests config =
   -- (Cabal has to build the non-profiled version first)
   , tc "TemplateHaskell/profiling" $ cabal_build ["--enable-library-profiling", "--enable-profiling"]
 
-  -- Test building a dynamic library/executable which uses Template
-  -- Haskell
-  , tc "TemplateHaskell/dynamic" $ cabal_build ["--enable-shared", "--enable-executable-dynamic"]
-
   -- Test building an executable whose main() function is defined in a C
   -- file
   , tc "CMain" $ cabal_build []
@@ -231,8 +229,25 @@ tests config =
         assertOutputContains "Flags chosen: build-exe=False" r
         cabal "build" []
 
+  , tc "GhcPkgGuess/SameDirectory" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SameDirectoryVersion" $ ghc_pkg_guess "ghc-7.10"
+  , tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
+
+  -- TODO: Disable these tests on Windows
+  , tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
+  , tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
+
   ]
   where
+    ghc_pkg_guess bin_name = do
+        cwd <- packageDir
+        with_ghc <- getWithGhcPath
+        r <- withEnv [("WITH_GHC", Just with_ghc)]
+           . shouldFail $ cabal' "configure" ["-w", cwd </> bin_name]
+        assertOutputContains "is version 9999999" r
+        return ()
+
     -- Shared test function for BuildDeps/InternalLibrary* tests.
     internal_lib_test expect = withPackageDb $ do
         withPackage "to-install" $ cabal_install []
@@ -240,9 +255,32 @@ tests config =
         r <- runExe' "lemon" []
         assertEqual
             ("executable should have linked with the " ++ expect ++ " library")
-            ("foofoomyLibFunc " ++ expect)
-            (concat $ lines (resultOutput r))
+            ("foo foo myLibFunc " ++ expect)
+            (concatOutput (resultOutput r))
 
     tc :: FilePath -> TestM a -> TestTree
-    tc name m
-        = testCase name (runTestM config name Nothing m)
+    tc = testCase config
+
+-- | Tests that require shared libraries.
+sharedLibTests :: SuiteConfig -> [TestTree]
+sharedLibTests config =
+  tail [ undefined
+
+  , testGroup "TestSuiteTests"
+
+    -- Test exitcode-stdio-1.0 test suites (and HPC) using
+    -- --enable-executable-dynamic and --enable-shared
+    [ testGroup "ExeV10"
+      (PackageTests.TestSuiteTests.ExeV10.Check.sharedLibTests config)
+    ]
+
+  -- Test building a dynamic library/executable which uses Template
+  -- Haskell
+  , testCase config "TemplateHaskell/dynamic" $
+    cabal_build ["--enable-shared", "--enable-executable-dynamic"]
+
+  ]
+
+testCase :: SuiteConfig -> FilePath -> TestM a -> TestTree
+testCase config name m
+    = HUnit.testCase name (runTestM config name Nothing m)

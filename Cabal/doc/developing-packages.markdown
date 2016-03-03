@@ -1370,7 +1370,7 @@ values for these fields.
     enabled.
 
     Note that as of Cabal-1.24, the default profiling detail level defaults to
-    `exported-functions` for libraries and `toplevel-funcitons` for
+    `exported-functions` for libraries and `toplevel-functions` for
     executables. For GHC these correspond to the flags `-fprof-auto-exported`
     and `-fprof-auto-top`. Prior to Cabal-1.24 the level defaulted to `none`.
     These levels can be adjusted by the person building the package with the
@@ -1386,6 +1386,9 @@ values for these fields.
 
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
+    The options specified via this field are combined with the ones specified
+    via `ghc-options`, and are passed to GHC during both the compile and
+    link phases.
 
 `includes:` _filename list_
 :   A list of header files to be included in any compilations via C.

@@ -311,7 +311,8 @@ getComponent pkg cname =
            ++ "component corresponding to " ++ show cname
 
 
-getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
+getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName
+                           -> ComponentLocalBuildInfo
 getComponentLocalBuildInfo lbi cname =
     case [ clbi
          | (cname', clbi, _) <- componentsConfigs lbi
@@ -366,9 +367,9 @@ withAllComponentsInBuildOrder pkg lbi f =
       | (cname, clbi) <- allComponentsInBuildOrder lbi ]
 
 withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
-                                  -> [ComponentName]
-                                  -> (Component -> ComponentLocalBuildInfo -> IO ())
-                                  -> IO ()
+                           -> [ComponentName]
+                           -> (Component -> ComponentLocalBuildInfo -> IO ())
+                           -> IO ()
 withComponentsInBuildOrder pkg lbi cnames f =
     sequence_
       [ f (getComponent pkg cname') clbi

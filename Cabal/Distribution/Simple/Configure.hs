@@ -57,7 +57,8 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.PreProcess
 import Distribution.Package
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo
+                                         ,emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -130,7 +131,8 @@ data ConfigStateFileError
     | ConfigStateFileBadHeader -- ^ Incorrect header.
     | ConfigStateFileNoParse -- ^ Cannot parse file contents.
     | ConfigStateFileMissing -- ^ No file!
-    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
+    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier
+      (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
   deriving (Typeable)
 
 instance Show ConfigStateFileError where
@@ -192,7 +194,8 @@ getConfigStateFile filename = do
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
 
--- | Read the 'localBuildInfoFile', returning either an error or the local build info.
+-- | Read the 'localBuildInfoFile', returning either an error or the local build
+-- info.
 tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
                       -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile = try . getConfigStateFile
@@ -236,12 +239,13 @@ currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
--- | Parse the @setup-config@ file header, returning the package identifiers 
+-- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
 parseHeader :: ByteString -- ^ The file contents.
             -> (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
-  ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
+  ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId,
+   "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
           _ <- simpleParse (BLC8.unpack pkgId) :: Maybe PackageIdentifier
           cabalId' <- simpleParse (BLC8.unpack cabalId)
@@ -276,9 +280,9 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- * Configuration
 -- -----------------------------------------------------------------------------
 
--- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
--- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
--- environment variable, or the default prefix.
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken
+-- from (in order of highest to lowest preference) the override prefix, the
+-- \"CABAL_BUILDDIR\" environment variable, or the default prefix.
 findDistPref :: FilePath  -- ^ default \"dist\" prefix
              -> Setup.Flag FilePath  -- ^ override \"dist\" prefix
              -> IO FilePath
@@ -291,11 +295,12 @@ findDistPref defDistPref overrideDistPref = do
         Just distPref | not (null distPref) -> toFlag distPref
         _ -> NoFlag
 
--- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
--- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
--- environment variable, or 'defaultDistPref' is used. Call this function to resolve a
--- @*DistPref@ flag whenever it is not known to be set. (The @*DistPref@ flags are always
--- set to a definite value before invoking 'UserHooks'.)
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken
+-- from (in order of highest to lowest preference) the override prefix, the
+-- \"CABAL_BUILDDIR\" environment variable, or 'defaultDistPref' is used. Call
+-- this function to resolve a @*DistPref@ flag whenever it is not known to be
+-- set. (The @*DistPref@ flags are always set to a definite value before
+-- invoking 'UserHooks'.)
 findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
                       -> IO FilePath
 findDistPrefOrDefault = findDistPref defaultDistPref
@@ -453,7 +458,8 @@ configure (pkg_descr0, pbi) cfg = do
                      , (pkg, ver) <- uses ]
 
     -- installation directories
-    defaultDirs <- defaultInstallDirs (compilerFlavor comp) (fromFlag (configUserInstall cfg)) (hasLibs pkg_descr)
+    defaultDirs <- defaultInstallDirs (compilerFlavor comp)
+                   (fromFlag (configUserInstall cfg)) (hasLibs pkg_descr)
     let installDirs = combineInstallDirs fromFlagOrDefault
                         defaultDirs (configInstallDirs cfg)
 
@@ -679,7 +685,8 @@ mkProgramsConfig cfg initialProgramsConfig = programsConfig
                    . setProgramSearchPath searchpath
                    $ initialProgramsConfig
     searchpath     = getProgramSearchPath (initialProgramsConfig)
-                  ++ map ProgramSearchPathDir (fromNubList $ configProgramPathExtra cfg)
+                  ++ map ProgramSearchPathDir
+                     (fromNubList $ configProgramPathExtra cfg)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
@@ -929,7 +936,8 @@ data FailedDependency = DependencyNotExists PackageName
 selectDependency :: InstalledPackageIndex  -- ^ Internally defined packages
                  -> InstalledPackageIndex  -- ^ Installed packages
                  -> Map PackageName InstalledPackageInfo
-                    -- ^ Packages for which we have been given specific deps to use
+                    -- ^ Packages for which we have been given specific deps to
+                    -- use
                  -> Dependency
                  -> Either FailedDependency ResolvedDependency
 selectDependency internalIndex installedIndex requiredDepsMap
@@ -1097,7 +1105,8 @@ combinedConstraints constraints dependencies installedPackages = do
     when (not (null badNames)) $
       Left $ render $ text "The following package dependencies were requested"
          $+$ nest 4 (dispDependencies badNames)
-         $+$ text "however the installed package's name does not match the name given."
+         $+$ text ("however the installed package's name does not match "
+                   ++ "the name given.")
 
     --TODO: we don't check that all dependencies are used!
 
@@ -1472,8 +1481,9 @@ computeCompatPackageKey comp pid cname uid@(SimpleUnitId (ComponentId str))
                             CExeName n   -> "-z-exe-"   ++ zdashcode n
             package_name
                 | cname == CLibName = pkgName pid
-                | otherwise = PackageName $ "z-" ++ zdashcode (display (pkgName pid))
-                                                 ++ zdashcode cname_str
+                | otherwise = PackageName $ "z-"
+                              ++ zdashcode (display (pkgName pid))
+                              ++ zdashcode cname_str
             old_style_key
                 | cname == CLibName = display pid
                 | otherwise         = display package_name ++ "-"
@@ -1519,20 +1529,24 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                     let env = packageTemplateEnv (package pkg_descr)
                                                  (mkUnitId "")
                         str = fromPathTemplate
-                                (InstallDirs.substPathTemplate env (toPathTemplate cid0))
+                                (InstallDirs.substPathTemplate env
+                                 (toPathTemplate cid0))
                     in ComponentId str
                 _ ->
-                  computeComponentId (package pkg_descr) CLibName (getDeps CLibName) flagAssignment
+                  computeComponentId (package pkg_descr) CLibName
+                  (getDeps CLibName) flagAssignment
         uid = SimpleUnitId cid
-        (_, compat_key) = computeCompatPackageKey comp (package pkg_descr) CLibName uid
+        (_, compat_key) = computeCompatPackageKey comp
+                          (package pkg_descr) CLibName uid
     sequence
       [ do clbi <- componentLocalBuildInfo uid compat_key c
            return (componentName c, clbi, cdeps)
       | (c, cdeps) <- graph ]
   where
     getDeps cname =
-          let externalPkgs = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
-                                                            externalPkgDeps)
+          let externalPkgs = maybe [] (\lib -> selectSubset
+                                               (componentBuildInfo lib)
+                                               externalPkgDeps)
                                       (lookupComponent pkg_descr cname)
           in map Installed.installedComponentId externalPkgs
 
@@ -1595,7 +1609,8 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                 -- deps were bundled up in buildDepends, we didn't do this for
                 -- renamings, so it's not even clear how to get the merged
                 -- version.  So just assume that all of them are the default..
-                else Map.fromList (map (\(_,pid) -> (packageName pid, defaultRenaming)) cpds)
+                else Map.fromList (map (\(_,pid) ->
+                                   (packageName pid, defaultRenaming)) cpds)
 
     selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
     selectSubset bi pkgs =
@@ -1618,7 +1633,8 @@ resolveModuleReexports :: InstalledPackageIndex
                        -> Either [(ModuleReexport, String)] -- errors
                                  [Installed.ExposedModule] -- ok
 resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
-    case partitionEithers (map resolveModuleReexport (PD.reexportedModules lib)) of
+    case partitionEithers
+         (map resolveModuleReexport (PD.reexportedModules lib)) of
       ([],  ok) -> Right ok
       (errs, _) -> Left  errs
   where
@@ -1633,7 +1649,8 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
                                                   exposedModule)])
           -- The package index here contains all the indirect deps of the
           -- package we're configuring, but we want just the direct deps
-        | let directDeps = Set.fromList (map Installed.installedUnitId externalPkgDeps)
+        | let directDeps = Set.fromList
+                           (map Installed.installedUnitId externalPkgDeps)
         , pkg <- PackageIndex.allPackages installedPackages
         , Installed.installedUnitId pkg `Set.member` directDeps
         , let exportingPackageName = packageName pkg
@@ -1661,9 +1678,11 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
         case Installed.exposedReexport exposedModule of
         -- The first case is the modules actually defined in this package.
         -- In this case the reexport will point to this package.
-            Nothing -> return exposedModule { Installed.exposedReexport =
-                            Just (Installed.OriginalModule (Installed.installedUnitId pkg)
-                                                 (Installed.exposedName exposedModule)) }
+            Nothing -> return exposedModule {
+              Installed.exposedReexport =
+                 Just (Installed.OriginalModule
+                       (Installed.installedUnitId pkg)
+                       (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package
         -- doing the re-export will point us to the original defining
@@ -1688,8 +1707,9 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
       case (matches, moriginalPackageName) of
         ((_, exposedModule):rest, _)
           -- TODO: Refine this check for signatures
-          | all (\(_, exposedModule') -> Installed.exposedReexport exposedModule
-                                      == Installed.exposedReexport exposedModule') rest
+          | all (\(_, exposedModule') ->
+                  Installed.exposedReexport exposedModule
+                  == Installed.exposedReexport exposedModule') rest
            -> Right exposedModule { Installed.exposedName = newName }
 
         ([], Just originalPackageName)

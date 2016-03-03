@@ -25,6 +25,7 @@ Build-type:         Custom
 Cabal-Version:      >= 1.10
 Extra-Source-Files:
   README.md bash-completion/cabal bootstrap.sh changelog
+  tests/README.md
 
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
@@ -118,7 +119,9 @@ executable cabal
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
     if impl(ghc >= 8.0)
-        ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
+        ghc-options: -Wcompat
+                     -Wnoncanonical-monad-instances
+                     -Wnoncanonical-monadfail-instances
 
     other-modules:
         Distribution.Client.BuildTarget
@@ -285,14 +288,17 @@ Test-Suite unit-tests
   ghc-options: -Wall -fwarn-tabs
   other-modules:
     UnitTests.Distribution.Client.Targets
+    UnitTests.Distribution.Client.Compat.Time
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.GZipUtils
     UnitTests.Distribution.Client.Sandbox
+    UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
+    UnitTests.Options
   build-depends:
         base,
         array,
