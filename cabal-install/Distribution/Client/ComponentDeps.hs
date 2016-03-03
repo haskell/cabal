@@ -73,7 +73,7 @@ type ComponentDep a = (Component, a)
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
   deriving (Show, Functor, Eq, Ord, Generic)
 
-instance (Semigroup a, Monoid a) => Monoid (ComponentDeps a) where
+instance Semigroup a => Monoid (ComponentDeps a) where
   mempty = ComponentDeps Map.empty
   mappend = (<>)
 

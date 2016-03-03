@@ -451,11 +451,13 @@ probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
       <$> traverseWithKey (probeFileStatus root)     singlePaths
       <*> traverse        (probeGlobStatus root ".") globPaths
 
-traverseWithKey :: (Applicative t, Eq k)
-                => (k -> a -> t b) -> Map k a -> t (Map k b)
 #if MIN_VERSION_containers(0,5,0)
+traverseWithKey :: Applicative t
+                => (k -> a -> t b) -> Map k a -> t (Map k b)
 traverseWithKey = Map.traverseWithKey
 #else
+traverseWithKey :: (Applicative t, Eq k)
+                => (k -> a -> t b) -> Map k a -> t (Map k b)
 traverseWithKey f = fmap Map.fromAscList
                   . traverse (\(k, v) -> (,) k <$> f k v)
                   . Map.toAscList
