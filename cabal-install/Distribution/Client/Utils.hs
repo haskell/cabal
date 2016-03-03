@@ -63,7 +63,7 @@ import GHC.IO.Encoding.Failure
          ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
 #endif
 
-#if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import Prelude hiding (ioError)
 import Control.Monad (liftM2, unless)
 import System.Directory (doesDirectoryExist)
