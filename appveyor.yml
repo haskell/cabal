@@ -16,12 +16,12 @@ build_script:
 
   - Setup configure --user --ghc-option=-Werror --enable-tests
   - Setup build
-  - Setup test unit-tests --show-details=streaming
-  - Setup test package-tests --show-details=streaming
+  - Setup test --show-details=streaming
   - Setup install
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
-  - echo "" | ..\cabal install --only-dependencies --enable-tests --force-reinstalls
+  - echo "" | ..\cabal install --only-dependencies --enable-tests
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests
   - ..\cabal build
   - ..\cabal test unit-tests --show-details=streaming --test-option=--pattern=!FileMonitor
+  - ..\cabal test integration-tests --show-details=streaming --test-option=--pattern=!exec

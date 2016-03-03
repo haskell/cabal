@@ -1,7 +1,3 @@
-Warning: Source directory not found for paths: "r" "s"
-If you are trying to delete a reference to a removed directory, please provide
-the full absolute path (as given by `sandbox list-sources`).
-
 Warning: Sources not registered: "q"
 
-cabal: The sources with the above errors were skipped. ("r" "s" "q")
+RE:^cabal(\.exe)?: The sources with the above errors were skipped\. \("q"\)$
