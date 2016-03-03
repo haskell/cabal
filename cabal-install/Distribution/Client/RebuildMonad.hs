@@ -74,7 +74,7 @@ runRebuild (Rebuild action) = evalStateT action []
 --
 -- Do not share 'FileMonitor's between different uses of 'rerunIfChanged'.
 --
-rerunIfChanged :: (Eq a, Binary a, Binary b)
+rerunIfChanged :: (Binary a, Binary b)
                => Verbosity
                -> FilePath
                -> FileMonitor a b
