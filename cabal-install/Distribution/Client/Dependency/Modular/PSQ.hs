@@ -1,21 +1,29 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Client.Dependency.Modular.PSQ
     ( PSQ(..)  -- Unit test needs constructor access
+    , Degree(..)
     , casePSQ
     , cons
+    , degree
     , delete
+    , dminimumBy
     , length
-    , llength
     , lookup
     , filter
     , filterKeys
+    , firstOnly
     , fromList
+    , isZeroOrOne
     , keys
     , map
     , mapKeys
     , mapWithKey
     , mapWithKeyState
+    , minimumBy
     , null
+    , prefer
+    , preferByKeys
+    , preferOrElse
     , snoc
     , sortBy
     , sortByKeys
@@ -36,6 +44,7 @@ import Control.Arrow (first, second)
 import qualified Data.Foldable as F
 import Data.Function
 import qualified Data.List as S
+import Data.Ord (comparing)
 import Data.Traversable
 import Prelude hiding (foldr, length, lookup, filter, null, map)
 
@@ -94,6 +103,62 @@ sortBy cmp (PSQ xs) = PSQ (S.sortBy (cmp `on` snd) xs)
 sortByKeys :: (k -> k -> Ordering) -> PSQ k a -> PSQ k a
 sortByKeys cmp (PSQ xs) = PSQ (S.sortBy (cmp `on` fst) xs)
 
+-- | Given a measure in form of a pseudo-peano-natural number,
+-- determine the approximate minimum. This is designed to stop
+-- even traversing the list as soon as we find any element with
+-- measure 'ZeroOrOne'.
+--
+-- Always returns a one-element queue (except if the queue is
+-- empty, then we return an empty queue again).
+--
+dminimumBy :: (a -> Degree) -> PSQ k a -> PSQ k a
+dminimumBy _   (PSQ [])       = PSQ []
+dminimumBy sel (PSQ (x : xs)) = go (sel (snd x)) x xs
+  where
+    go ZeroOrOne v _ = PSQ [v]
+    go _ v []        = PSQ [v]
+    go c v (y : ys)  = case compare c d of
+      LT -> go c v ys
+      EQ -> go c v ys
+      GT -> go d y ys
+      where
+        d = sel (snd y)
+
+minimumBy :: (a -> Int) -> PSQ k a -> PSQ k a
+minimumBy sel (PSQ xs) =
+  PSQ [snd (S.minimumBy (comparing fst) (S.map (\ x -> (sel (snd x), x)) xs))]
+
+-- | Will partition the list according to the predicate. If
+-- there is any element that satisfies the precidate, then only
+-- the elements satisfying the predicate are returned.
+-- Otherwise, the rest is returned.
+--
+prefer :: (a -> Bool) -> PSQ k a -> PSQ k a
+prefer p (PSQ xs) =
+  let
+    (pro, con) = S.partition (p . snd) xs
+  in
+    if S.null pro then PSQ con else PSQ pro
+
+-- | Variant of 'prefer' that takes a continuation for the case
+-- that there are none of the desired elements.
+preferOrElse :: (a -> Bool) -> (PSQ k a -> PSQ k a) -> PSQ k a -> PSQ k a
+preferOrElse p k (PSQ xs) =
+  let
+    (pro, con) = S.partition (p . snd) xs
+  in
+    if S.null pro then k (PSQ con) else PSQ pro
+
+-- | Variant of 'prefer' that takes a predicate on the keys
+-- rather than on the values.
+--
+preferByKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
+preferByKeys p (PSQ xs) =
+  let
+    (pro, con) = S.partition (p . fst) xs
+  in
+    if S.null pro then PSQ con else PSQ pro
+
 filterKeys :: (k -> Bool) -> PSQ k a -> PSQ k a
 filterKeys p (PSQ xs) = PSQ (S.filter (p . fst) xs)
 
@@ -103,17 +168,43 @@ filter p (PSQ xs) = PSQ (S.filter (p . snd) xs)
 length :: PSQ k a -> Int
 length (PSQ xs) = S.length xs
 
--- | "Lazy length".
+-- | Approximation of the branching degree.
 --
--- Only approximates the length, but doesn't force the list.
-llength :: PSQ k a -> Int
-llength (PSQ [])      = 0
-llength (PSQ [_])     = 1
-llength (PSQ [_, _])  = 2
-llength (PSQ _)       = 3
+-- This is designed for computing the branching degree of a goal choice
+-- node. If the degree is 0 or 1, it is always good to take that goal,
+-- because we can either abort immediately, or have no other choice anyway.
+--
+-- So we do not actually want to compute the full degree (which is
+-- somewhat costly) in cases where we have such an easy choice.
+--
+data Degree = ZeroOrOne | Two | Other
+  deriving (Show, Eq)
+
+instance Ord Degree where
+  compare ZeroOrOne _         = LT -- lazy approximation
+  compare _         ZeroOrOne = GT -- approximation
+  compare Two       Two       = EQ
+  compare Two       Other     = LT
+  compare Other     Two       = GT
+  compare Other     Other     = EQ
+
+degree :: PSQ k a -> Degree
+degree (PSQ [])     = ZeroOrOne
+degree (PSQ [_])    = ZeroOrOne
+degree (PSQ [_, _]) = Two
+degree (PSQ _)      = Other
 
 null :: PSQ k a -> Bool
 null (PSQ xs) = S.null xs
+
+isZeroOrOne :: PSQ k a -> Bool
+isZeroOrOne (PSQ [])  = True
+isZeroOrOne (PSQ [_]) = True
+isZeroOrOne _         = False
+
+firstOnly :: PSQ k a -> PSQ k a
+firstOnly (PSQ [])      = PSQ []
+firstOnly (PSQ (x : _)) = PSQ [x]
 
 toList :: PSQ k a -> [(k, a)]
 toList (PSQ xs) = xs
