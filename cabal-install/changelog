@@ -53,7 +53,9 @@
 	* It's now possible to limit the scope of '--allow-newer' to
 	single packages in the install plan (#2756).
 	* Full '--allow-newer' syntax is now supported in the config file
-	(that is, 'allow-newer: base, ghc-prim,  some-package:vector') (#3171).
+	(that is, 'allow-newer: base, ghc-prim,  some-package:vector')
+	(#3171).
+	* Improved performance of '--reorder-goals' (#3208).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
