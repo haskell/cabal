@@ -7,11 +7,12 @@ module Distribution.Client.Dependency.Modular.Tree
     , ana
     , cata
     , choices
+    , dchoices
     , inn
     , innM
-    , lchoices
     , para
     , trav
+    , zeroOrOneChoices
     ) where
 
 import Control.Monad hiding (mapM, sequence)
@@ -134,15 +135,23 @@ choices (GoalChoice         _ ) = 1
 choices (Done       _         ) = 1
 choices (Fail       _ _       ) = 0
 
--- | Variant of 'choices' that only approximates the number of choices,
--- using 'llength'.
-lchoices :: Tree a -> Int
-lchoices (PChoice    _ _     ts) = P.llength (P.filter active ts)
-lchoices (FChoice    _ _ _ _ ts) = P.llength (P.filter active ts)
-lchoices (SChoice    _ _ _   ts) = P.llength (P.filter active ts)
-lchoices (GoalChoice         _ ) = 1
-lchoices (Done       _         ) = 1
-lchoices (Fail       _ _       ) = 0
+-- | Variant of 'choices' that only approximates the number of choices.
+dchoices :: Tree a -> P.Degree
+dchoices (PChoice    _ _     ts) = P.degree (P.filter active ts)
+dchoices (FChoice    _ _ _ _ ts) = P.degree (P.filter active ts)
+dchoices (SChoice    _ _ _   ts) = P.degree (P.filter active ts)
+dchoices (GoalChoice         _ ) = P.ZeroOrOne
+dchoices (Done       _         ) = P.ZeroOrOne
+dchoices (Fail       _ _       ) = P.ZeroOrOne
+
+-- | Variant of 'choices' that only approximates the number of choices.
+zeroOrOneChoices :: Tree a -> Bool
+zeroOrOneChoices (PChoice    _ _     ts) = P.isZeroOrOne (P.filter active ts)
+zeroOrOneChoices (FChoice    _ _ _ _ ts) = P.isZeroOrOne (P.filter active ts)
+zeroOrOneChoices (SChoice    _ _ _   ts) = P.isZeroOrOne (P.filter active ts)
+zeroOrOneChoices (GoalChoice         _ ) = True
+zeroOrOneChoices (Done       _         ) = True
+zeroOrOneChoices (Fail       _ _       ) = True
 
 -- | Catamorphism on trees.
 cata :: (TreeF a b -> b) -> Tree a -> b

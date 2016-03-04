@@ -7,10 +7,11 @@ module Distribution.Client.Dependency.Modular.Preference
     , enforcePackageConstraints
     , enforceSingleInstanceRestriction
     , firstGoal
-    , lpreferEasyGoalChoices
     , preferBaseGoalChoice
+    , preferEasyGoalChoices
     , preferLinked
     , preferPackagePreferences
+    , preferReallyEasyGoalChoices
     , requireInstalled
     ) where
 
@@ -25,7 +26,6 @@ import Control.Applicative
 import qualified Data.Set as S
 import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
-import Data.Ord
 import Data.Map (Map)
 import Data.Traversable (sequence)
 
@@ -68,7 +68,6 @@ preferLinked = trav go
     cmpL Nothing  (Just _) = GT
     cmpL (Just _) Nothing  = LT
     cmpL (Just _) (Just _) = EQ
-
 
 -- | Ordering that treats versions satisfying more preferred ranges as greater
 --   than versions satisfying less preferred ranges.
@@ -283,8 +282,7 @@ avoidReinstalls p = trav go
 firstGoal :: Tree a -> Tree a
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = -- P.casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
-                          P.casePSQ xs (GoalChoiceF (P.fromList [])) (\ g t _ -> GoalChoiceF (P.fromList [(g, t)]))
+    go (GoalChoiceF xs) = GoalChoiceF (P.firstOnly xs)
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 
@@ -294,26 +292,24 @@ firstGoal = trav go
 preferBaseGoalChoice :: Tree a -> Tree a
 preferBaseGoalChoice = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys preferBase xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys isBase xs)
     go x                = x
 
-    preferBase :: OpenGoal comp -> OpenGoal comp -> Ordering
-    preferBase (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) _ | unPN pn == "base" = LT
-    preferBase _ (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) | unPN pn == "base" = GT
-    preferBase _ _                                                              = EQ
+    isBase :: OpenGoal comp -> Bool
+    isBase (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) | unPN pn == "base" = True
+    isBase _                                                              = False
 
 -- | Deal with setup dependencies after regular dependencies, so that we can
 -- will link setup depencencies against package dependencies when possible
 deferSetupChoices :: Tree a -> Tree a
 deferSetupChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys deferSetup xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys noSetup xs)
     go x                = x
 
-    deferSetup :: OpenGoal comp -> OpenGoal comp -> Ordering
-    deferSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) _ = GT
-    deferSetup _ (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = LT
-    deferSetup _ _                                                 = EQ
+    noSetup :: OpenGoal comp -> Bool
+    noSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = False
+    noSetup _                                                 = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
@@ -321,28 +317,44 @@ deferSetupChoices = trav go
 deferWeakFlagChoices :: Tree a -> Tree a
 deferWeakFlagChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.prefer noWeakStanza (P.prefer noWeakFlag xs))
     go x                = x
 
-    -- weak flags go very last, weak stanzas second last
-    defer :: Tree a -> Tree a -> Ordering
-    defer (FChoice _ _ True _ _) _ = GT
-    defer _ (FChoice _ _ True _ _) = LT
-    defer (SChoice _ _ True _) _   = GT
-    defer _ (SChoice _ _ True _)   = LT
-    defer _ _                      = EQ
+    noWeakStanza :: Tree a -> Bool
+    noWeakStanza (SChoice _ _ True _) = False
+    noWeakStanza _                    = True
 
--- Transformation that sorts choice nodes so that
--- child nodes with a small branching degree are preferred. As a
--- special case, choices with 0 branches will be preferred (as they
--- are immediately considered inconsistent), and choices with 1
--- branch will also be preferred (as they don't involve choice).
+    noWeakFlag :: Tree a -> Bool
+    noWeakFlag (FChoice _ _ True _ _) = False
+    noWeakFlag _                      = True
+
+-- | Transformation that sorts choice nodes so that
+-- child nodes with a small branching degree are preferred.
 --
 -- Only approximates the number of choices in the branches.
-lpreferEasyGoalChoices :: Tree a -> Tree a
-lpreferEasyGoalChoices = trav go
+-- In particular, we try to take any goal immediately if it has
+-- a branching degree of 0 (guaranteed failure) or 1 (no other
+-- choice possible).
+--
+-- Returns at most one choice.
+--
+preferEasyGoalChoices :: Tree a -> Tree a
+preferEasyGoalChoices = trav go
   where
-    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing lchoices) xs)
+    go (GoalChoiceF xs) = GoalChoiceF (P.dminimumBy dchoices xs)
+      -- (a different implementation that seems slower):
+      -- GoalChoiceF (P.firstOnly (P.preferOrElse zeroOrOneChoices (P.minimumBy choices) xs))
+    go x                = x
+
+-- | A variant of 'preferEasyGoalChoices' that just keeps the
+-- ones with a branching degree of 0 or 1. Note that unlike
+-- 'preferEasyGoalChoices', this may return more than one
+-- choice.
+--
+preferReallyEasyGoalChoices :: Tree a -> Tree a
+preferReallyEasyGoalChoices = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.prefer zeroOrOneChoices xs)
     go x                = x
 
 -- | Monad used internally in enforceSingleInstanceRestriction
