@@ -1,11 +1,9 @@
 module Distribution.Client.Dependency.Modular.Explore
     ( backjump
-    , exploreTreeLog
+    , backjumpAndExplore
     ) where
 
-import Control.Applicative as A
-import Data.Foldable
-import Data.List as L
+import Data.Foldable as F
 import Data.Map as M
 import Data.Set as S
 
@@ -16,95 +14,68 @@ import Distribution.Client.Dependency.Modular.Message
 import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
+import qualified Distribution.Client.Dependency.Types as T
 
--- | Backjumping.
+-- | This function takes the variable we're currently considering and a
+-- list of children's logs. Each log yields either a solution or a
+-- conflict set. The result is a combined log for the parent node that
+-- has explored a prefix of the children.
 --
--- A tree traversal that tries to propagate conflict sets
--- up the tree from the leaves, and thereby cut branches.
--- All the tricky things are done in the function 'combine'.
-backjump :: Tree a -> Tree (Maybe (ConflictSet QPN))
-backjump = snd . cata go
-  where
-    go (FailF c fr) = (Just c, Fail c fr)
-    go (DoneF rdm ) = (Nothing, Done rdm)
-    go (PChoiceF qpn _     ts) = (c, PChoice qpn c     (P.fromList ts'))
-      where
-        ~(c, ts') = combine (P qpn) (P.toList ts) S.empty
-    go (FChoiceF qfn _ b m ts) = (c, FChoice qfn c b m (P.fromList ts'))
-      where
-        ~(c, ts') = combine (F qfn) (P.toList ts) S.empty
-    go (SChoiceF qsn _ b   ts) = (c, SChoice qsn c b   (P.fromList ts'))
-      where
-        ~(c, ts') = combine (S qsn) (P.toList ts) S.empty
-    go (GoalChoiceF        ts) = (c, GoalChoice        (P.fromList ts'))
-      where
-        ~(cs, ts') = unzip $ L.map (\ (k, (x, v)) -> (x, (k, v))) $ P.toList ts
-        c          = case cs of []    -> Nothing
-                                d : _ -> d
-
--- | The 'combine' function is at the heart of backjumping. It takes
--- the variable we're currently considering, and a list of children
--- annotated with their respective conflict sets, and an accumulator
--- for the result conflict set. It returns a combined conflict set
--- for the parent node, and a (potentially shortened) list of children
--- with the annotations removed.
+-- We can stop traversing the children's logs if we find an individual
+-- conflict set that does not contain the current variable. In this
+-- case, we can just lift the conflict set to the current level,
+-- because the current level cannot possibly have contributed to this
+-- conflict, so no other choice at the current level would avoid the
+-- conflict.
 --
--- It is *essential* that we produce the results as early as possible.
--- In particular, we have to produce the list of children prior to
--- traversing the entire list -- otherwise we lose the desired behaviour
--- of being able to traverse the tree from left to right incrementally.
---
--- We can shorten the list of children if we find an individual conflict
--- set that does not contain the current variable. In this case, we can
--- just lift the conflict set to the current level, because the current
--- level cannot possibly have contributed to this conflict, so no other
--- choice at the current level would avoid the conflict.
---
--- If any of the children might contain a successful solution
--- (indicated by Nothing), then Nothing will be the combined
--- conflict set. If all children contain conflict sets, we can
+-- If any of the children might contain a successful solution, we can
+-- return it immediately. If all children contain conflict sets, we can
 -- take the union as the combined conflict set.
-combine :: Var QPN -> [(a, (Maybe (ConflictSet QPN), b))] ->
-           ConflictSet QPN -> (Maybe (ConflictSet QPN), [(a, b)])
-combine _   []                      c = (Just c, [])
-combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
-                                        case d of
-                                          Just e | not (simplifyVar var `S.member` e) -> (Just e, [])
-                                                 | otherwise                          -> combine var xs (e `S.union` c)
-                                          Nothing                                     -> (Nothing, snd $ combine var xs S.empty)
+backjump :: F.Foldable t => Var QPN -> t (ConflictSetLog a) -> ConflictSetLog a
+backjump var xs = F.foldr combine backjumpInfo xs S.empty
+  where
+    combine :: ConflictSetLog a
+            -> (ConflictSet QPN -> ConflictSetLog a)
+            ->  ConflictSet QPN -> ConflictSetLog a
+    combine (T.Done x)    _ _               = T.Done x
+    combine (T.Fail cs)   f csAcc
+      | not (simplifyVar var `S.member` cs) = backjumpInfo cs
+      | otherwise                           = f (csAcc `S.union` cs)
+    combine (T.Step m ms) f cs              = T.Step m (combine ms f cs)
 
--- | Version of 'explore' that returns a 'Log'.
-exploreLog :: Tree (Maybe (ConflictSet QPN)) ->
-              (Assignment -> Log Message (Assignment, RevDepMap))
+type ConflictSetLog = T.Progress Message (ConflictSet QPN)
+
+-- | A tree traversal that simultaneously propagates conflict sets up
+-- the tree from the leaves and creates a log.
+exploreLog :: Tree a -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
 exploreLog = cata go
   where
-    go (FailF c fr)          _           = failWith (Failure c fr)
+    go :: TreeF a (Assignment -> ConflictSetLog (Assignment, RevDepMap))
+               -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
+    go (FailF c fr)          _           = failWith (Failure c fr) c
     go (DoneF rdm)           a           = succeedWith Success (a, rdm)
-    go (PChoiceF qpn c     ts) (A pa fa sa)   =
-      backjumpInfo c $
-      asum $                                      -- try children in order,
+    go (PChoiceF qpn _     ts) (A pa fa sa)   =
+      backjump (P qpn) $                          -- try children in order,
       P.mapWithKey                                -- when descending ...
-        (\ i@(POption k _) r -> tryWith (TryP qpn i) $     -- log and ...
+        (\ i@(POption k _) r -> tryWith (TryP qpn i) $ -- log and ...
                     r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
       ts
-    go (FChoiceF qfn c _ _ ts) (A pa fa sa)   =
-      backjumpInfo c $
-      asum $                                      -- try children in order,
+    go (FChoiceF qfn _ _ _ ts) (A pa fa sa)   =
+      backjump (F qfn) $                          -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
                     r (A pa (M.insert qfn k fa) sa)) -- record the pkg choice
       ts
-    go (SChoiceF qsn c _   ts) (A pa fa sa)   =
-      backjumpInfo c $
-      asum $                                      -- try children in order,
+    go (SChoiceF qsn _ _   ts) (A pa fa sa)   =
+      backjump (S qsn) $                          -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryS qsn k) $          -- log and ...
                     r (A pa fa (M.insert qsn k sa))) -- record the pkg choice
       ts
     go (GoalChoiceF        ts) a           =
       P.casePSQ ts
-        (failWith (Failure S.empty EmptyGoalChoice))   -- empty goal choice is an internal error
-        (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
+        (failWith (Failure S.empty EmptyGoalChoice) S.empty) -- empty goal choice is an internal error
+        (\ k v _xs -> continueWith (Next (close k)) (v a))   -- commit to the first goal choice
 
 -- | Add in information about pruned trees.
 --
@@ -112,11 +83,12 @@ exploreLog = cata go
 -- tree, but rather make assumptions about where that shape originated from. It'd be
 -- better if the pruning itself would leave information that we could pick up at this
 -- point.
-backjumpInfo :: Maybe (ConflictSet QPN) -> Log Message a -> Log Message a
-backjumpInfo c m = m <|> case c of -- important to produce 'm' before matching on 'c'!
-                           Nothing -> A.empty
-                           Just cs -> failWith (Failure cs Backjump)
+backjumpInfo :: ConflictSet QPN -> ConflictSetLog a
+backjumpInfo cs = failWith (Failure cs Backjump) cs
 
 -- | Interface.
-exploreTreeLog :: Tree (Maybe (ConflictSet QPN)) -> Log Message (Assignment, RevDepMap)
-exploreTreeLog t = exploreLog t (A M.empty M.empty M.empty)
+backjumpAndExplore :: Tree a -> Log Message (Assignment, RevDepMap)
+backjumpAndExplore t = toLog $ exploreLog t (A M.empty M.empty M.empty)
+  where
+    toLog :: T.Progress step fail done -> Log step done
+    toLog = T.foldProgress T.Step (const (T.Fail ())) T.Done
