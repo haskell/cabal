@@ -32,16 +32,19 @@ import qualified Distribution.Client.Dependency.Types as T
 -- return it immediately. If all children contain conflict sets, we can
 -- take the union as the combined conflict set.
 backjump :: F.Foldable t => Var QPN -> t (ConflictSetLog a) -> ConflictSetLog a
-backjump var xs = F.foldr combine backjumpInfo xs S.empty
+backjump var xs = F.foldr combine logBackjump xs S.empty
   where
     combine :: ConflictSetLog a
             -> (ConflictSet QPN -> ConflictSetLog a)
             ->  ConflictSet QPN -> ConflictSetLog a
     combine (T.Done x)    _ _               = T.Done x
     combine (T.Fail cs)   f csAcc
-      | not (simplifyVar var `S.member` cs) = backjumpInfo cs
+      | not (simplifyVar var `S.member` cs) = logBackjump cs
       | otherwise                           = f (csAcc `S.union` cs)
     combine (T.Step m ms) f cs              = T.Step m (combine ms f cs)
+
+    logBackjump :: ConflictSet QPN -> ConflictSetLog a
+    logBackjump cs = failWith (Failure cs Backjump) cs
 
 type ConflictSetLog = T.Progress Message (ConflictSet QPN)
 
@@ -76,15 +79,6 @@ exploreLog = cata go
       P.casePSQ ts
         (failWith (Failure S.empty EmptyGoalChoice) S.empty) -- empty goal choice is an internal error
         (\ k v _xs -> continueWith (Next (close k)) (v a))   -- commit to the first goal choice
-
--- | Add in information about pruned trees.
---
--- TODO: This isn't quite optimal, because we do not merely report the shape of the
--- tree, but rather make assumptions about where that shape originated from. It'd be
--- better if the pruning itself would leave information that we could pick up at this
--- point.
-backjumpInfo :: ConflictSet QPN -> ConflictSetLog a
-backjumpInfo cs = failWith (Failure cs Backjump) cs
 
 -- | Interface.
 backjumpAndExplore :: Tree a -> Log Message (Assignment, RevDepMap)
