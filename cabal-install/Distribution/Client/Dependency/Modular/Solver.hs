@@ -73,10 +73,10 @@ solve sc cinfo idx userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = exploreTreeLog . backjump
+    explorePhase     = backjumpAndExplore
     heuristicsPhase  = (if preferEasyGoalChoices sc
                          then P.preferEasyGoalChoices -- also leaves just one choice
-                         else P.firstGoal) .
+                         else P.firstGoal) . -- after doing goal-choice heuristics, commit to the first choice (saves space)
                        P.deferWeakFlagChoices .
                        P.deferSetupChoices .
                        P.preferBaseGoalChoice .
