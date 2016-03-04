@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -- The intention is that this will be the new unit test framework.
 -- Please add any working tests here.  This file should do nothing
 -- but import tests from other modules.
@@ -8,6 +6,7 @@
 
 module Main where
 
+import PackageTests.Options
 import PackageTests.PackageTester
 import PackageTests.Tests
 
@@ -16,7 +15,7 @@ import Distribution.Simple.Configure
     , interpretPackageDbFlags )
 import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program.Types (programPath, programVersion)
+import Distribution.Simple.Program.Types (Program(..), programPath, programVersion)
 import Distribution.Simple.Program.Builtin
     ( ghcProgram, ghcPkgProgram, haddockProgram )
 import Distribution.Simple.Program.Db (requireProgram)
@@ -28,7 +27,6 @@ import Distribution.ReadE (readEOrFail)
 
 import Control.Exception
 import Data.Proxy                      ( Proxy(..) )
-import Data.Typeable                   ( Typeable )
 import Distribution.Compat.Environment ( lookupEnv )
 import System.Directory
 import Test.Tasty
@@ -111,6 +109,12 @@ main = do
         Just str ->
             return (fromJust (simpleParse str))
 
+    with_ghc_version <- do
+         version <- programFindVersion ghcProgram normal with_ghc_path
+         case version of
+           Nothing -> error "Cannot determine version of GHC used for --with-ghc"
+           Just v -> return v
+
     -- Package DBs are not guaranteed to be absolute, so make them so in
     -- case a subprocess using the package DB needs a different CWD.
     db_stack_env <- lookupEnv "CABAL_PACKAGETESTS_DB_STACK"
@@ -157,6 +161,7 @@ main = do
                  , ghcVersion = ghc_version
                  , ghcPkgPath = ghc_pkg_path
                  , withGhcPath = with_ghc_path
+                 , withGhcVersion = with_ghc_version
                  , packageDBStack = packageDBStack2
                  , suiteVerbosity = verbosity
                  , absoluteCWD = test_dir
@@ -186,18 +191,8 @@ main = do
     putStrLn $ "Building shared ./Setup executable"
     rawCompileSetup verbosity suite [] "tests"
 
-    defaultMainWithIngredients options (tests suite)
-
--- | The tests are divided into two top-level trees, depending on whether they
--- require shared libraries. The option --skip-shared-library-tests can be used
--- when shared libraries are unavailable.
-tests :: SuiteConfig -> TestTree
-tests suite = askOption $ \(OptionSkipSharedLibraryTests skip) ->
-                testGroup "Package Tests" $
-                noSharedLibs : [sharedLibs | not skip]
-  where
-    sharedLibs = testGroup "SharedLibs" $ sharedLibTests suite
-    noSharedLibs = testGroup "NoSharedLibs" $ nonSharedLibTests suite
+    defaultMainWithIngredients options $
+        runTestTree "Package Tests" (tests suite)
 
 -- Reverse of 'interpretPackageDbFlags'.
 -- prop_idem stk b
@@ -282,17 +277,7 @@ getPersistBuildConfig_ filename = do
       Left err -> return (throw err)
       Right lbi -> return lbi
 
-newtype OptionSkipSharedLibraryTests = OptionSkipSharedLibraryTests Bool
-  deriving Typeable
-
-instance IsOption OptionSkipSharedLibraryTests where
-  defaultValue   = OptionSkipSharedLibraryTests False
-  parseValue     = fmap OptionSkipSharedLibraryTests . safeRead
-  optionName     = return "skip-shared-library-tests"
-  optionHelp     = return "Skip the tests that require shared libraries"
-  optionCLParser = flagCLParser Nothing (OptionSkipSharedLibraryTests True)
-
 options :: [Ingredient]
 options = includingOptions
-          [Option (Proxy :: Proxy OptionSkipSharedLibraryTests)] :
+          [Option (Proxy :: Proxy OptionEnableAllTests)] :
           defaultIngredients

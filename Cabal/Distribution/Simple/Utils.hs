@@ -137,6 +137,7 @@ module Distribution.Simple.Utils (
         listUnionRight,
         ordNub,
         ordNubRight,
+        safeTail,
         wrapText,
         wrapLine,
   ) where
@@ -1472,6 +1473,11 @@ listUnionRight :: (Ord a) => [a] -> [a] -> [a]
 listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
   where
     bSet = Set.fromList b
+
+-- | A total variant of 'tail'.
+safeTail :: [a] -> [a]
+safeTail []     = []
+safeTail (_:xs) = xs
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y

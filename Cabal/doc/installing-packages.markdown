@@ -932,6 +932,10 @@ be controlled with the following command line options.
 :   An extra directory to search for system libraries files. You can use
     this flag multiple times to get a list of directories.
 
+`--extra-framework-dirs`[=_dir_]
+:   An extra directory to search for frameworks (OS X only). You can use this
+    flag multiple times to get a list of directories.
+
     You might need to use this flag if you have standard system
     libraries in a non-standard location that is not mentioned in the
     package's `.cabal` file. Using this option has the same affect as
@@ -978,8 +982,26 @@ be controlled with the following command line options.
     $ cabal install --allow-newer=bar --constraint="bar==2.1" foo
     ~~~~~~~~~~~~~~~~
 
-    It's also possible to enable `--allow-newer` permanently by setting
-    `allow-newer: True` in the `~/.cabal/config` file.
+    It's also possible to limit the scope of `--allow-newer` to single
+    packages with the `--allow-newer=scope:dep` syntax. This means that the
+    dependency on `dep` will be relaxed only for the package `scope`.
+
+    Example:
+
+    ~~~~~~~~~~~~~~~~
+    # Relax upper bound in foo's dependency on base; also relax upper bound in
+    # every package's dependency on lens.
+    $ cabal install --allow-newer=foo:base,lens
+
+    # Relax upper bounds in foo's dependency on base and bar's dependency
+    # on time; also relax the upper bound in the dependency on lens specified by
+    # any package.
+    $ cabal install --allow-newer=foo:base,lens --allow-newer=bar:time
+    ~~~~~~~~~~~~~~~~
+
+    Finally, one can enable `--allow-newer` permanently by setting `allow-newer:
+    True` in the `~/.cabal/config` file. Enabling 'allow-newer' selectively is
+    also supported in the config file (`allow-newer: foo, bar, baz:base`).
 
 `--constraint=`_constraint_
 :   Restrict solutions involving a package to a given version range.

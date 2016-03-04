@@ -488,10 +488,10 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       comp = compiler lbi
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
-      (Platform _hostArch hostOS) = hostPlatform lbi
+      platform@(Platform _hostArch hostOS) = hostPlatform lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let runGhcProg = runGHC verbosity ghcProg comp
+  let runGhcProg = runGHC verbosity ghcProg comp platform
 
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
@@ -546,10 +546,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions    = toNubListR $ PD.ldOptions libBi,
-                      ghcOptLinkLibs       = toNubListR $ extraLibs libBi,
-                      ghcOptLinkLibPath    = toNubListR $ extraLibDirs libBi,
-                      ghcOptLinkFrameworks = toNubListR $ PD.frameworks libBi,
+                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions libBi,
+                      ghcOptLinkLibs          = toNubListR $ extraLibs libBi,
+                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs libBi,
+                      ghcOptLinkFrameworks    = toNubListR $
+                                                PD.frameworks libBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $
+                                                PD.extraFrameworkDirs libBi,
                       ghcOptInputFiles     = toNubListR
                                              [libTargetDir </> x | x <- cObjs]
                    }
@@ -724,6 +727,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
+                ghcOptLinkFrameworkDirs  =
+                  toNubListR $ PD.extraFrameworkDirs libBi,
                 ghcOptRPaths             = rpaths
               }
 
@@ -744,16 +749,16 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         runGhcProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
-startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
+startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
-startInterpreter verbosity conf comp packageDBs = do
+startInterpreter verbosity conf comp platform packageDBs = do
   let replOpts = mempty {
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram conf
-  runGHC verbosity ghcProg comp replOpts
+  runGHC verbosity ghcProg comp platform replOpts
 
 -- | Build an executable with GHC.
 --
@@ -771,8 +776,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
+      platform   = hostPlatform lbi
       implInfo   = getImplInfo comp
-      runGhcProg = runGHC verbosity ghcProg comp
+      runGhcProg = runGHC verbosity ghcProg comp platform
 
   exeBi <- hackThreadedFlag verbosity
              comp (withProfExe lbi) (buildInfo exe)
@@ -846,10 +852,13 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
-                      ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
-                      ghcOptLinkLibs       = toNubListR $ extraLibs exeBi,
-                      ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
+                      ghcOptLinkOptions       = toNubListR $ PD.ldOptions exeBi,
+                      ghcOptLinkLibs          = toNubListR $ extraLibs exeBi,
+                      ghcOptLinkLibPath       = toNubListR $ extraLibDirs exeBi,
+                      ghcOptLinkFrameworks    = toNubListR $
+                                                PD.frameworks exeBi,
+                      ghcOptLinkFrameworkDirs = toNubListR $
+                                                PD.extraFrameworkDirs exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs]
                     }
@@ -1027,6 +1036,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
       comp        = compiler lbi
+      platform    = hostPlatform lbi
       vanillaArgs =
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
@@ -1056,7 +1066,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   hash <- getProgramInvocationOutput verbosity
-          (ghcInvocation ghcProg comp ghcArgs)
+          (ghcInvocation ghcProg comp platform ghcArgs)
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo

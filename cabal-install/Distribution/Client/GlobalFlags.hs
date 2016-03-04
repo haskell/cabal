@@ -1,5 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,7 +15,6 @@ module Distribution.Client.GlobalFlags (
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..) )
 import Distribution.Compat.Semigroup
-         ( Semigroup((<>)) )
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -42,11 +41,7 @@ import Network.URI
 import Data.Map
          ( Map )
 import qualified Data.Map as Map
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
+import GHC.Generics ( Generic )
 
 import qualified Hackage.Security.Client                    as Sec
 import qualified Hackage.Security.Util.Path                 as Sec
@@ -76,7 +71,7 @@ data GlobalFlags = GlobalFlags {
     globalIgnoreSandbox     :: Flag Bool,
     globalIgnoreExpiry      :: Flag Bool,    -- ^ Ignore security expiry dates
     globalHttpTransport     :: Flag String
-  }
+  } deriving Generic
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -97,42 +92,11 @@ defaultGlobalFlags  = GlobalFlags {
   }
 
 instance Monoid GlobalFlags where
-  mempty = GlobalFlags {
-    globalVersion           = mempty,
-    globalNumericVersion    = mempty,
-    globalConfigFile        = mempty,
-    globalSandboxConfigFile = mempty,
-    globalConstraintsFile   = mempty,
-    globalRemoteRepos       = mempty,
-    globalCacheDir          = mempty,
-    globalLocalRepos        = mempty,
-    globalLogsDir           = mempty,
-    globalWorldFile         = mempty,
-    globalRequireSandbox    = mempty,
-    globalIgnoreSandbox     = mempty,
-    globalIgnoreExpiry      = mempty,
-    globalHttpTransport     = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup GlobalFlags where
-  a <> b = GlobalFlags {
-    globalVersion           = combine globalVersion,
-    globalNumericVersion    = combine globalNumericVersion,
-    globalConfigFile        = combine globalConfigFile,
-    globalSandboxConfigFile = combine globalConfigFile,
-    globalConstraintsFile   = combine globalConstraintsFile,
-    globalRemoteRepos       = combine globalRemoteRepos,
-    globalCacheDir          = combine globalCacheDir,
-    globalLocalRepos        = combine globalLocalRepos,
-    globalLogsDir           = combine globalLogsDir,
-    globalWorldFile         = combine globalWorldFile,
-    globalRequireSandbox    = combine globalRequireSandbox,
-    globalIgnoreSandbox     = combine globalIgnoreSandbox,
-    globalIgnoreExpiry      = combine globalIgnoreExpiry,
-    globalHttpTransport     = combine globalHttpTransport
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Repo context

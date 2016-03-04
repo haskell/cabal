@@ -52,8 +52,9 @@ import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
 
-import Distribution.Verbosity
+import Distribution.System
 import Distribution.Text
+import Distribution.Verbosity
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -153,11 +154,12 @@ repl pkg_descr lbi flags suffixes args = do
 
 
 -- | Start an interpreter without loading any package files.
-startInterpreter :: Verbosity -> ProgramDb -> Compiler -> PackageDBStack -> IO ()
-startInterpreter verbosity programDb comp packageDBs =
+startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
+                 -> PackageDBStack -> IO ()
+startInterpreter verbosity programDb comp platform packageDBs =
   case compilerFlavor comp of
-    GHC   -> GHC.startInterpreter   verbosity programDb comp packageDBs
-    GHCJS -> GHCJS.startInterpreter verbosity programDb comp packageDBs
+    GHC   -> GHC.startInterpreter   verbosity programDb comp platform packageDBs
+    GHCJS -> GHCJS.startInterpreter verbosity programDb comp platform packageDBs
     _     -> die "A REPL is not supported with this compiler."
 
 buildComponent :: Verbosity

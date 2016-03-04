@@ -635,7 +635,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                                  | useVersionMacros options' ]
             , ghcOptExtra           = toNubListR extraOpts
             }
-      let ghcCmdLine = renderGhcOptions compiler ghcOptions
+      let ghcCmdLine = renderGhcOptions compiler platform ghcOptions
       when (useVersionMacros options') $
         rewriteFile cppMacrosFile (generatePackageVersionMacros
                                      [ pid | (_ipid, pid) <- selectedDeps ])

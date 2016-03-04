@@ -98,7 +98,7 @@ To build and test the `Cabal` library, do:
 
     We will refer to this as `PACKAGEDB`.
 
-5. Configure and build Cabal, and run all tests.  (Note that many of the package tests require shared libraries, which are not provided by GHC >= 7.8 on Windows: https://ghc.haskell.org/trac/ghc/ticket/8228)
+5. Configure and build Cabal, and run all tests:
 
     ~~~~
     ./Setup configure --enable-tests --package-db=$PACKAGEDB
@@ -134,8 +134,9 @@ Coding Conventions
 
 Use spaces, not tabs. Use lines no longer than 80 characters. If you modify a
 file, please follow the style conventions used in that file. When you add a new
-top-level definition, please also add a Haddock comment. Use of GHC extensions
-is allowed (except Template Haskell), provided that the dependencies policy is
+top-level definition, please also add a Haddock comment. Use explicit import
+lists for third-party and standard library imports. Use of GHC extensions is
+allowed (except Template Haskell), provided that the dependencies policy is
 respected. In general, try to adhere to [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md

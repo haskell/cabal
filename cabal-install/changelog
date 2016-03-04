@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-1.23.x.x (current development version)
+1.24.0.0 Ryan Thomas <ryan@ryant.org> February 2016
 	* If there are multiple remote repos, 'cabal update' now updates
 	them in parallel (#2503).
 	* New 'cabal upload' option '-P'/'--password-command' for reading
@@ -44,6 +44,13 @@
 	(#2877).
 	* The '--allow-newer' option now works as expected when specified
 	multiple times (#2588).
+	* New config file field: 'extra-framework-dirs' (extra locations
+	to find OS X frameworks in). Can be also specified as an argument
+	for 'install' and 'configure' commands (#3158).
+	* It's now possible to limit the scope of '--allow-newer' to
+	single packages in the install plan (#2756).
+	* Full '--allow-newer' syntax is now supported in the config file
+	(that is, 'allow-newer: base, ghc-prim,  some-package:vector') (#3171).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

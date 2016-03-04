@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Haddock
@@ -41,6 +43,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import Distribution.Simple.Utils
+import Distribution.System
 import Distribution.Text
 import Distribution.Utils.NubList
 import Distribution.Version
@@ -53,6 +56,7 @@ import Data.Char        ( isSpace )
 import Data.Either      ( rights )
 import Data.Foldable    ( traverse_, foldl' )
 import Data.Maybe       ( fromMaybe, listToMaybe )
+import GHC.Generics     ( Generic )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>)
@@ -96,7 +100,7 @@ data HaddockArgs = HaddockArgs {
  -- ^ To find the correct GHC, required.
  argTargets :: [FilePath]
  -- ^ Modules to process.
-}
+} deriving Generic
 
 -- | The FilePath of a directory, it's a monoid under '(</>)'.
 newtype Directory = Dir { unDir' :: FilePath } deriving (Read,Show,Eq,Ord)
@@ -129,6 +133,7 @@ haddock pkg_descr _ _ haddockFlags
 haddock pkg_descr lbi suffixes flags' = do
     let verbosity     = flag haddockVerbosity
         comp          = compiler lbi
+        platform      = hostPlatform lbi
 
         flags
           | fromFlag (haddockForHackage flags') = flags'
@@ -196,7 +201,8 @@ haddock pkg_descr lbi suffixes flags' = do
                 exeArgs <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
                            version
                 let exeArgs' = commonArgs `mappend` exeArgs
-                runHaddock verbosity tmpFileOpts comp confHaddock exeArgs'
+                runHaddock verbosity tmpFileOpts comp platform
+                  confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
@@ -208,7 +214,7 @@ haddock pkg_descr lbi suffixes flags' = do
               libArgs <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
                          version
               let libArgs' = commonArgs `mappend` libArgs
-              runHaddock verbosity tmpFileOpts comp confHaddock libArgs'
+              runHaddock verbosity tmpFileOpts comp platform confHaddock libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe component
         CTest  _ -> when (flag haddockTestSuites)  $ doExe component
         CBench _ -> when (flag haddockBenchmarks)  $ doExe component
@@ -423,13 +429,14 @@ getGhcLibDir verbosity lbi = do
 runHaddock :: Verbosity
               -> TempFileOptions
               -> Compiler
+              -> Platform
               -> ConfiguredProgram
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp confHaddock args = do
+runHaddock verbosity tmpFileOpts comp platform confHaddock args = do
   let haddockVersion = fromMaybe (error "unable to determine haddock version")
                        (programVersion confHaddock)
-  renderArgs verbosity tmpFileOpts haddockVersion comp args $
+  renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
     \(flags,result)-> do
 
       rawSystemProgram verbosity confHaddock flags
@@ -441,10 +448,11 @@ renderArgs :: Verbosity
               -> TempFileOptions
               -> Version
               -> Compiler
+              -> Platform
               -> HaddockArgs
               -> (([String], FilePath) -> IO a)
               -> IO a
-renderArgs verbosity tmpFileOpts version comp args k = do
+renderArgs verbosity tmpFileOpts version comp platform args k = do
   let haddockSupportsUTF8          = version >= Version [2,14,4] []
       haddockSupportsResponseFiles = version >  Version [2,16,2] []
   createDirectoryIfMissingVerbose verbosity True outputDir
@@ -455,7 +463,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
-                 renderedArgs = pflag : renderPureArgs version comp args
+                 renderedArgs = pflag : renderPureArgs version comp platform args
              if haddockSupportsResponseFiles
                then
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
@@ -493,8 +501,8 @@ renderArgs verbosity tmpFileOpts version comp args k = do
         | otherwise    = c:cs
       escapeArg = reverse . foldl' escape []
 
-renderPureArgs :: Version -> Compiler -> HaddockArgs -> [String]
-renderPureArgs version comp args = concat
+renderPureArgs :: Version -> Compiler -> Platform -> HaddockArgs -> [String]
+renderPureArgs version comp platform args = concat
     [ (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
       . fromFlag . argInterfaceFile $ args
 
@@ -536,7 +544,7 @@ renderPureArgs version comp args = concat
       . fromFlag . argTitle $ args
 
     , [ "--optghc=" ++ opt | (opts, _ghcVer) <- flagToList (argGhcOptions args)
-                           , opt <- renderGhcOptions comp opts ]
+                           , opt <- renderGhcOptions comp platform opts ]
 
     , maybe [] (\l -> ["-B"++l]) $
       flagToMaybe (argGhcLibDir args) -- error if Nothing?
@@ -755,46 +763,11 @@ exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
 instance Monoid HaddockArgs where
-    mempty = HaddockArgs {
-                argInterfaceFile = mempty,
-                argPackageName = mempty,
-                argHideModules = mempty,
-                argIgnoreExports = mempty,
-                argLinkSource = mempty,
-                argCssFile = mempty,
-                argContents = mempty,
-                argVerbose = mempty,
-                argOutput = mempty,
-                argInterfaces = mempty,
-                argOutputDir = mempty,
-                argTitle = mempty,
-                argPrologue = mempty,
-                argGhcOptions = mempty,
-                argGhcLibDir = mempty,
-                argTargets = mempty
-             }
+    mempty = gmempty
     mappend = (Semi.<>)
 
 instance Semigroup HaddockArgs where
-    a <> b = HaddockArgs {
-                argInterfaceFile = mult argInterfaceFile,
-                argPackageName = mult argPackageName,
-                argHideModules = mult argHideModules,
-                argIgnoreExports = mult argIgnoreExports,
-                argLinkSource = mult argLinkSource,
-                argCssFile = mult argCssFile,
-                argContents = mult argContents,
-                argVerbose = mult argVerbose,
-                argOutput = mult argOutput,
-                argInterfaces = mult argInterfaces,
-                argOutputDir = mult argOutputDir,
-                argTitle = mult argTitle,
-                argPrologue = mult argPrologue,
-                argGhcOptions = mult argGhcOptions,
-                argGhcLibDir = mult argGhcLibDir,
-                argTargets = mult argTargets
-             }
-      where mult f = f a `mappend` f b
+    (<>) = gmappend
 
 instance Monoid Directory where
     mempty = Dir "."

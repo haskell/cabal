@@ -111,7 +111,7 @@ module Distribution.PackageDescription (
 
 import Distribution.Compat.Binary
 import qualified Distribution.Compat.Semigroup as Semi ((<>))
-import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup)
+import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup, gmempty, gmappend)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.Package
@@ -314,15 +314,12 @@ data SetupBuildInfo = SetupBuildInfo {
 
 instance Binary SetupBuildInfo
 
-instance Monoid SetupBuildInfo where
-  mempty = SetupBuildInfo {
-    setupDepends = Semi.mempty
-  }
+instance Semi.Monoid SetupBuildInfo where
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup SetupBuildInfo where
-  a <> b = SetupBuildInfo { setupDepends = combine setupDepends }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ---------------------------------------------------------------------------
 -- Module renaming
@@ -498,11 +495,7 @@ data Executable = Executable {
 instance Binary Executable
 
 instance Monoid Executable where
-  mempty = Executable {
-    exeName    = mempty,
-    modulePath = mempty,
-    buildInfo  = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup Executable where
@@ -812,6 +805,7 @@ data BuildInfo = BuildInfo {
         ldOptions         :: [String],  -- ^ options for linker
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
+        extraFrameworkDirs:: [String], -- ^ extra locations to find frameworks.
         cSources          :: [FilePath],
         jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
@@ -844,66 +838,68 @@ instance Binary BuildInfo
 
 instance Monoid BuildInfo where
   mempty = BuildInfo {
-    buildable         = True,
-    buildTools        = [],
-    cppOptions        = [],
-    ccOptions         = [],
-    ldOptions         = [],
-    pkgconfigDepends  = [],
-    frameworks        = [],
-    cSources          = [],
-    jsSources         = [],
-    hsSourceDirs      = [],
-    otherModules      = [],
-    defaultLanguage   = Nothing,
-    otherLanguages    = [],
-    defaultExtensions = [],
-    otherExtensions   = [],
-    oldExtensions     = [],
-    extraLibs         = [],
-    extraGHCiLibs     = [],
-    extraLibDirs      = [],
-    includeDirs       = [],
-    includes          = [],
-    installIncludes   = [],
-    options           = [],
-    profOptions       = [],
-    sharedOptions     = [],
-    customFieldsBI    = [],
-    targetBuildDepends = [],
+    buildable           = True,
+    buildTools          = [],
+    cppOptions          = [],
+    ccOptions           = [],
+    ldOptions           = [],
+    pkgconfigDepends    = [],
+    frameworks          = [],
+    extraFrameworkDirs  = [],
+    cSources            = [],
+    jsSources           = [],
+    hsSourceDirs        = [],
+    otherModules        = [],
+    defaultLanguage     = Nothing,
+    otherLanguages      = [],
+    defaultExtensions   = [],
+    otherExtensions     = [],
+    oldExtensions       = [],
+    extraLibs           = [],
+    extraGHCiLibs       = [],
+    extraLibDirs        = [],
+    includeDirs         = [],
+    includes            = [],
+    installIncludes     = [],
+    options             = [],
+    profOptions         = [],
+    sharedOptions       = [],
+    customFieldsBI      = [],
+    targetBuildDepends  = [],
     targetBuildRenaming = Map.empty
   }
   mappend = (Semi.<>)
 
 instance Semigroup BuildInfo where
   a <> b = BuildInfo {
-    buildable         = buildable a && buildable b,
-    buildTools        = combine    buildTools,
-    cppOptions        = combine    cppOptions,
-    ccOptions         = combine    ccOptions,
-    ldOptions         = combine    ldOptions,
-    pkgconfigDepends  = combine    pkgconfigDepends,
-    frameworks        = combineNub frameworks,
-    cSources          = combineNub cSources,
-    jsSources         = combineNub jsSources,
-    hsSourceDirs      = combineNub hsSourceDirs,
-    otherModules      = combineNub otherModules,
-    defaultLanguage   = combineMby defaultLanguage,
-    otherLanguages    = combineNub otherLanguages,
-    defaultExtensions = combineNub defaultExtensions,
-    otherExtensions   = combineNub otherExtensions,
-    oldExtensions     = combineNub oldExtensions,
-    extraLibs         = combine    extraLibs,
-    extraGHCiLibs     = combine    extraGHCiLibs,
-    extraLibDirs      = combineNub extraLibDirs,
-    includeDirs       = combineNub includeDirs,
-    includes          = combineNub includes,
-    installIncludes   = combineNub installIncludes,
-    options           = combine    options,
-    profOptions       = combine    profOptions,
-    sharedOptions     = combine    sharedOptions,
-    customFieldsBI    = combine    customFieldsBI,
-    targetBuildDepends = combineNub targetBuildDepends,
+    buildable           = buildable a && buildable b,
+    buildTools          = combine    buildTools,
+    cppOptions          = combine    cppOptions,
+    ccOptions           = combine    ccOptions,
+    ldOptions           = combine    ldOptions,
+    pkgconfigDepends    = combine    pkgconfigDepends,
+    frameworks          = combineNub frameworks,
+    extraFrameworkDirs  = combineNub extraFrameworkDirs,
+    cSources            = combineNub cSources,
+    jsSources           = combineNub jsSources,
+    hsSourceDirs        = combineNub hsSourceDirs,
+    otherModules        = combineNub otherModules,
+    defaultLanguage     = combineMby defaultLanguage,
+    otherLanguages      = combineNub otherLanguages,
+    defaultExtensions   = combineNub defaultExtensions,
+    otherExtensions     = combineNub otherExtensions,
+    oldExtensions       = combineNub oldExtensions,
+    extraLibs           = combine    extraLibs,
+    extraGHCiLibs       = combine    extraGHCiLibs,
+    extraLibDirs        = combineNub extraLibDirs,
+    includeDirs         = combineNub includeDirs,
+    includes            = combineNub includes,
+    installIncludes     = combineNub installIncludes,
+    options             = combine    options,
+    profOptions         = combine    profOptions,
+    sharedOptions       = combine    sharedOptions,
+    customFieldsBI      = combine    customFieldsBI,
+    targetBuildDepends  = combineNub targetBuildDepends,
     targetBuildRenaming = combineMap targetBuildRenaming
   }
     where

@@ -91,7 +91,7 @@ data PackageCheck =
      | PackageDistSuspicious { explanation :: String }
 
        -- | Like PackageDistSuspicious but will only display warnings
-       -- rather than causing abnormal exit.
+       -- rather than causing abnormal exit when you run 'cabal check'.
      | PackageDistSuspiciousWarn { explanation :: String }
 
        -- | An issue that is OK in the author's environment but is almost
@@ -669,6 +669,14 @@ checkGhcOptions pkg =
 
   , checkAlternatives "ghc-options" "extra-lib-dirs"
       [ (flag, dir) | flag@('-':'L':dir) <- all_ghc_options ]
+
+  , checkAlternatives "ghc-options" "frameworks"
+      [ (flag, fmwk) | (flag@"-framework", fmwk) <-
+           zip all_ghc_options (safeTail all_ghc_options) ]
+
+  , checkAlternatives "ghc-options" "extra-framework-dirs"
+      [ (flag, dir) | (flag@"-framework-path", dir) <-
+           zip all_ghc_options (safeTail all_ghc_options) ]
   ]
 
   where
@@ -912,6 +920,13 @@ checkCabalVersion pkg =
         ++ ". To use this new syntax, the package needs to specify at least"
         ++ "'cabal-version: >= 1.21'."
 
+    -- check use of 'extra-framework-dirs' field
+  , checkVersion [1,23] (any (not . null) (buildInfoField extraFrameworkDirs)) $
+      -- Just a warning, because this won't break on old Cabal versions.
+      PackageDistSuspiciousWarn $
+           "To use the 'extra-framework-dirs' field the package needs to specify"
+        ++ " at least 'cabal-version: >= 1.23'."
+
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions
   , checkVersion [1,10] (any (not . null) (buildInfoField defaultExtensions)) $
@@ -1037,7 +1052,7 @@ checkCabalVersion pkg =
   , check (specVersion pkg < Version [1,23] []
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
-      PackageDistSuspicious $
+      PackageDistSuspiciousWarn $
            "From version 1.23 cabal supports specifiying explicit dependencies "
         ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
         ++ "adding a 'custom-setup' section with a 'setup-depends' field "
@@ -1568,6 +1583,8 @@ checkLocalPathsExist ops pkg = do
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
                   [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+               ++ [ (dir, "extra-framework-dirs")
+                  | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
                ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelative dir ]

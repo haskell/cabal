@@ -1,5 +1,0 @@
-Warning: Source directory not found for paths: "p"
-If you are trying to delete a reference to a removed directory, please provide
-the full absolute path (as given by `sandbox list-sources`).
-
-cabal: The sources with the above errors were skipped. ("p")

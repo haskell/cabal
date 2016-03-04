@@ -105,7 +105,7 @@ installedComponentId ipi = case installedUnitId ipi of
                             SimpleUnitId cid -> cid
 
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
--- | Backwards compatibility with pre-Cabal 1.23.
+-- | Backwards compatibility with Cabal pre-1.24.
 installedPackageId :: InstalledPackageInfo -> UnitId
 installedPackageId = installedUnitId
 

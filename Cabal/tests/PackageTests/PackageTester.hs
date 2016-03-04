@@ -49,6 +49,18 @@ module PackageTests.PackageTester
     , assertFindInFile
     , concatOutput
 
+    -- * Test trees
+    , TestTreeM
+    , runTestTree
+    , testTree
+    , testTree'
+    , groupTests
+    , mapTestTrees
+    , testWhen
+    , testUnless
+    , unlessWindows
+    , hasSharedLibraries
+
     , getPersistBuildConfig
 
     -- Common utilities
@@ -58,9 +70,12 @@ module PackageTests.PackageTester
     , module Text.Regex.Posix
     ) where
 
+import PackageTests.Options
+
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.Compiler (PackageDBStack, PackageDB(..))
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
+import Distribution.System (OS(Windows), buildOS)
 import Distribution.Simple.Utils
     ( printRawCommandAndArgsAndEnv, withFileContents )
 import Distribution.Simple.Configure
@@ -78,7 +93,9 @@ import Text.Regex.Posix
 
 import qualified Control.Exception as E
 import Control.Monad
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Reader
+import Control.Monad.Trans.Writer
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as C
 import Data.List
@@ -92,6 +109,7 @@ import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess, showCommandForUser)
+import Test.Tasty (TestTree, askOption, testGroup)
 
 -- | Our test monad maintains an environment recording the global test
 -- suite configuration 'SuiteConfig', and the local per-test
@@ -140,6 +158,8 @@ data SuiteConfig = SuiteConfig
     , ghcPkgPath :: FilePath
     -- | Path to GHC that we should use to "./Setup --with-ghc"
     , withGhcPath :: FilePath
+    -- | Version of GHC at 'withGhcPath'.
+    , withGhcVersion :: Version
     -- | The build directory that was used to build Cabal (used
     -- to compile Setup scripts.)
     , cabalDistPref :: FilePath
@@ -603,6 +623,47 @@ assertFindInFile needle path =
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+
+------------------------------------------------------------------------
+-- * Test trees
+
+-- | Monad for creating test trees. The option --enable-all-tests determines
+-- whether to filter tests with 'testWhen' and 'testUnless'.
+type TestTreeM = WriterT [TestTree] (Reader OptionEnableAllTests)
+
+runTestTree :: String -> TestTreeM () -> TestTree
+runTestTree name ts = askOption $
+                      testGroup name . runReader (execWriterT ts)
+
+testTree :: SuiteConfig -> String -> Maybe String -> TestM a -> TestTreeM ()
+testTree config name subname m =
+    testTree' $ HUnit.testCase name $ runTestM config name subname m
+
+testTree' :: TestTree -> TestTreeM ()
+testTree' tc = tell [tc]
+
+-- | Create a test group from the output of the given action.
+groupTests :: String -> TestTreeM () -> TestTreeM ()
+groupTests name = censor (\ts -> [testGroup name ts])
+
+-- | Apply a function to each top-level test tree.
+mapTestTrees :: (TestTree -> TestTree) -> TestTreeM a -> TestTreeM a
+mapTestTrees = censor . map
+
+testWhen :: Bool -> TestTreeM () -> TestTreeM ()
+testWhen c test = do
+  OptionEnableAllTests enableAll <- lift ask
+  when (enableAll || c) test
+
+testUnless :: Bool -> TestTreeM () -> TestTreeM ()
+testUnless = testWhen . not
+
+unlessWindows :: TestTreeM () -> TestTreeM ()
+unlessWindows = testUnless (buildOS == Windows)
+
+hasSharedLibraries :: SuiteConfig -> Bool
+hasSharedLibraries config =
+    buildOS /= Windows || withGhcVersion config < Version [7,8] []
 
 ------------------------------------------------------------------------
 -- Verbosity

@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox.PackageEnvironment
@@ -61,11 +62,8 @@ import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
 import Data.Maybe                      ( isJust )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid                     ( Monoid(..) )
-#endif
 import Distribution.Compat.Exception   ( catchIO )
-import Distribution.Compat.Semigroup   ( Semigroup((<>)) )
+import Distribution.Compat.Semigroup
 import System.Directory                ( doesDirectoryExist, doesFileExist
                                        , renameFile )
 import System.FilePath                 ( (<.>), (</>), takeDirectory )
@@ -76,6 +74,7 @@ import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 import qualified Distribution.Text         as Text
+import GHC.Generics ( Generic )
 
 
 --
@@ -89,22 +88,14 @@ data PackageEnvironment = PackageEnvironment {
   -- for constructing nested sandboxes (see discussion in #1196).
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
-}
+} deriving Generic
 
 instance Monoid PackageEnvironment where
-  mempty = PackageEnvironment {
-    pkgEnvInherit       = mempty,
-    pkgEnvSavedConfig   = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup PackageEnvironment where
-  a <> b = PackageEnvironment {
-    pkgEnvInherit       = combine pkgEnvInherit,
-    pkgEnvSavedConfig   = combine pkgEnvSavedConfig
-    }
-    where
-      combine f = f a `mappend` f b
+  (<>) = gmappend
 
 -- | The automatically-created package environment file that should not be
 -- touched by the user.

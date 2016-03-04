@@ -1,13 +1,9 @@
-module PackageTests.TestSuiteTests.ExeV10.Check (
-    sharedLibTests
-  , nonSharedLibTests
-  ) where
+module PackageTests.TestSuiteTests.ExeV10.Check (tests) where
 
 import qualified Control.Exception as E (IOException, catch)
-import Control.Monad (when)
+import Control.Monad (forM_, liftM4, when)
 import Data.Maybe (catMaybes)
 import System.FilePath
-import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase)
 
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
@@ -24,21 +20,18 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-sharedLibTests :: SuiteConfig -> [TestTree]
-sharedLibTests config = [testGroup "WithHpc" $ hpcTestMatrix True config]
-
-nonSharedLibTests :: SuiteConfig -> [TestTree]
-nonSharedLibTests config =
+tests :: SuiteConfig -> TestTreeM ()
+tests config = do
     -- TODO: hierarchy and subnaming is a little unfortunate
-    [ tc "Test" "Default" $ do
+    tc "Test" "Default" $ do
         cabal_build ["--enable-tests"]
         -- This one runs both tests, including the very LONG Foo
         -- test which prints a lot of output
         cabal "test" ["--show-details=direct"]
-    , testGroup "WithHpc" $ hpcTestMatrix False config
-    , testGroup "WithoutHpc"
+    groupTests "WithHpc" $ hpcTestMatrix config
+    groupTests "WithoutHpc" $ do
       -- Ensures that even if -fhpc is manually provided no .tix file is output.
-      [ tc "NoTix" "NoHpcNoTix" $ do
+      tc "NoTix" "NoHpcNoTix" $ do
             dist_dir <- distDir
             cabal_build
               [ "--enable-tests"
@@ -51,7 +44,7 @@ nonSharedLibTests config =
             shouldNotExist $ tixFilePath dist_dir way "test-Short"
       -- Ensures that even if a .tix file happens to be left around
       -- markup isn't generated.
-      , tc "NoMarkup" "NoHpcNoMarkup" $ do
+      tc "NoMarkup" "NoHpcNoMarkup" $ do
             dist_dir <- distDir
             let tixFile = tixFilePath dist_dir Vanilla "test-Short"
             withEnv [("HPCTIXFILE", Just tixFile)] $ do
@@ -62,20 +55,15 @@ nonSharedLibTests config =
                   , "--ghc-option=" ++ dist_dir ++ "/hpc/vanilla" ]
                 cabal "test" ["test-Short", "--show-details=direct"]
             shouldNotExist $ htmlDir dist_dir Vanilla "test-Short" </> "hpc_index.html"
-      ]
-    ]
   where
-    tc :: String -> String -> TestM a -> TestTree
+    tc :: String -> String -> TestM a -> TestTreeM ()
     tc name subname m
-        = testCase name
+        = testTree' $ testCase name
             (runTestM config "TestSuiteTests/ExeV10" (Just subname) m)
 
-hpcTestMatrix :: Bool -> SuiteConfig -> [TestTree]
-hpcTestMatrix useSharedLibs config = do
-    libProf <- [True, False]
-    exeProf <- [True, False]
-    exeDyn <- [True, False]
-    shared <- [True, False]
+hpcTestMatrix :: SuiteConfig -> TestTreeM ()
+hpcTestMatrix config = forM_ (choose4 [True, False]) $
+                       \(libProf, exeProf, exeDyn, shared) -> do
     let name | null suffixes = "Vanilla"
              | otherwise = intercalate "-" suffixes
           where
@@ -95,13 +83,10 @@ hpcTestMatrix useSharedLibs config = do
             enable cond flag
               | cond = Just $ "--enable-" ++ flag
               | otherwise = Nothing
-    -- In order to avoid duplicate tests, each combination should be used for
-    -- exactly one value of 'useSharedLibs'.
-    if (exeDyn || shared) /= useSharedLibs
-      then []
-      -- Ensure that both .tix file and markup are generated if coverage
-      -- is enabled.
-      else return $ tc name ("WithHpc-" ++ name) $ do
+    -- Ensure that both .tix file and markup are generated if coverage
+    -- is enabled.
+    testUnless ((exeDyn || shared) && not (hasSharedLibraries config)) $
+      tc name ("WithHpc-" ++ name) $ do
         isCorrectVersion <- liftIO $ correctHpcVersion
         when isCorrectVersion $ do
             dist_dir <- distDir
@@ -121,10 +106,13 @@ hpcTestMatrix useSharedLibs config = do
                 , htmlDir dist_dir way "test-Short" </> "hpc_index.html"
                 ]
   where
-    tc :: String -> String -> TestM a -> TestTree
+    tc :: String -> String -> TestM a -> TestTreeM ()
     tc name subname m
-        = testCase name
+        = testTree' $ testCase name
             (runTestM config "TestSuiteTests/ExeV10" (Just subname) m)
+
+    choose4 :: [a] -> [(a, a, a, a)]
+    choose4 xs = liftM4 (,,,) xs xs xs xs
 
 -- | Checks for a suitable HPC version for testing.
 correctHpcVersion :: IO Bool

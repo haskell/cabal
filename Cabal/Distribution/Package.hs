@@ -217,7 +217,7 @@ class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
 
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
--- | Compatibility wrapper for pre-Cabal 1.23.
+-- | Compatibility wrapper for Cabal pre-1.24.
 installedPackageId :: HasUnitId pkg => pkg -> UnitId
 installedPackageId = installedUnitId
 

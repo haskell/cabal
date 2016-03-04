@@ -43,7 +43,8 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+         ( ConfigFlags(..), AllowNewer(..)
+         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Simple.Utils
@@ -61,7 +62,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, info, debug, die )
+         ( warn, notice, debug, die )
 import Distribution.Simple.Setup
          ( isAllowNewer )
 import Distribution.System
@@ -86,7 +87,8 @@ chooseCabalVersion configFlags maybeVersion =
   where
     -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
     -- for '--allow-newer' to work.
-    allowNewer = isAllowNewer (configAllowNewer configFlags)
+    allowNewer = isAllowNewer
+                 (fromMaybe AllowNewerNone $ configAllowNewer configFlags)
 
     defaultVersionRange = if allowNewer
                           then orLaterVersion (Version [1,19,2] [])
@@ -119,8 +121,8 @@ configure verbosity packageDBs repoCtxt comp platform conf
                             progress
   case maybePlan of
     Left message -> do
-      info verbosity $
-           "Warning: solver failed to find a solution:\n"
+      warn verbosity $
+           "solver failed to find a solution:\n"
         ++ message
         ++ "Trying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
@@ -288,7 +290,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
-          removeUpperBounds (configAllowNewer configFlags)
+          removeUpperBounds
+          (fromMaybe AllowNewerNone $ configAllowNewer configFlags)
 
         . addPreferences
             -- preferences from the config file or command line

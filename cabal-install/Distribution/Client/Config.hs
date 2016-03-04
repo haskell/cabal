@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -62,6 +62,7 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
+         , AllowNewer(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
@@ -75,7 +76,7 @@ import Distribution.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, spaceListField
-         , parseFilePathQ, parseTokenQ )
+         , parseFilePathQ, parseOptCommaList, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import Distribution.Client.HttpUtils
@@ -100,16 +101,11 @@ import Data.List
          ( partition, find, foldl' )
 import Data.Maybe
          ( fromMaybe )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
 import Control.Monad
          ( when, unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse
-         ( option )
+         ( (<++), option )
 import Distribution.Compat.Semigroup
-         ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Text.PrettyPrint
@@ -139,6 +135,7 @@ import Data.Function
          ( on )
 import Data.List
          ( nubBy )
+import GHC.Generics ( Generic )
 
 --
 -- * Configuration saved in the config file
@@ -154,20 +151,10 @@ data SavedConfig = SavedConfig {
     savedUploadFlags       :: UploadFlags,
     savedReportFlags       :: ReportFlags,
     savedHaddockFlags      :: HaddockFlags
-  }
+  } deriving Generic
 
 instance Monoid SavedConfig where
-  mempty = SavedConfig {
-    savedGlobalFlags       = mempty,
-    savedInstallFlags      = mempty,
-    savedConfigureFlags    = mempty,
-    savedConfigureExFlags  = mempty,
-    savedUserInstallDirs   = mempty,
-    savedGlobalInstallDirs = mempty,
-    savedUploadFlags       = mempty,
-    savedReportFlags       = mempty,
-    savedHaddockFlags      = mempty
-  }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup SavedConfig where
@@ -275,7 +262,7 @@ instance Semigroup SavedConfig where
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
 
       combinedSavedConfigureFlags = ConfigFlags {
-        configPrograms            = configPrograms . savedConfigureFlags $ b,
+        configPrograms_           = configPrograms_ . savedConfigureFlags $ b,
         -- TODO: NubListify
         configProgramPaths        = lastNonEmpty configProgramPaths,
         -- TODO: NubListify
@@ -305,6 +292,8 @@ instance Semigroup SavedConfig where
         configScratchDir          = combine configScratchDir,
         -- TODO: NubListify
         configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
+        -- TODO: NubListify
+        configExtraFrameworkDirs  = lastNonEmpty configExtraFrameworkDirs,
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
         configIPID                = combine configIPID,
@@ -637,7 +626,8 @@ commentSavedConfig = do
     savedInstallFlags      = defaultInstallFlags,
     savedConfigureExFlags  = defaultConfigExFlags,
     savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
-      configUserInstall    = toFlag defaultUserInstall
+      configUserInstall    = toFlag defaultUserInstall,
+      configAllowNewer     = Just AllowNewerNone
     },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
@@ -666,6 +656,18 @@ configFieldDescriptions src =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
+       ,let showAllowNewer Nothing               = mempty
+            showAllowNewer (Just AllowNewerNone) = Disp.text "False"
+            showAllowNewer (Just _)              = Disp.text "True"
+
+            toAllowNewer True  = Just AllowNewerAll
+            toAllowNewer False = Just AllowNewerNone
+
+            pkgs = (Just . AllowNewerSome) `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = (toAllowNewer `fmap` Text.parse) Parse.<++ pkgs in
+        simpleField "allow-newer"
+        showAllowNewer parseAllowNewer
+        configAllowNewer (\v flags -> flags { configAllowNewer = v })
         -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
         -- fails on that. Instead of a hand-written hackaged parser
@@ -978,7 +980,9 @@ installDirsFields = map viewAsFieldDescr installDirsOptions
 
 ppRemoteRepoSection :: RemoteRepo -> Doc
 ppRemoteRepoSection vals = ppSection "repository" (remoteRepoName vals)
-        remoteRepoFields Nothing vals
+        remoteRepoFields def vals
+  where
+    def = Just (emptyRemoteRepo "ignored") { remoteRepoSecure = Just False }
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
@@ -986,13 +990,13 @@ remoteRepoFields =
         (text . show)            (parseTokenQ >>= parseURI')
         remoteRepoURI            (\x repo -> repo { remoteRepoURI = x })
     , simpleField "secure"
-        showSecure               (parseTokenQ >>= parseSecure)
+        showSecure               (Just `fmap` Text.parse)
         remoteRepoSecure         (\x repo -> repo { remoteRepoSecure = x })
     , listField "root-keys"
         text                     parseTokenQ
         remoteRepoRootKeys       (\x repo -> repo { remoteRepoRootKeys = x })
     , simpleField "key-threshold"
-        showThreshold            (parseTokenQ >>= parseInt)
+        showThreshold            Text.parse
         remoteRepoKeyThreshold   (\x repo -> repo { remoteRepoKeyThreshold = x })
     ]
   where
@@ -1001,21 +1005,9 @@ remoteRepoFields =
         Nothing  -> fail $ "remote-repo: no parse on " ++ show uriString
         Just uri -> return uri
 
-    -- from base >= 4.6 we can use 'Text.Read.readEither' but right now we
-    -- support everything back to ghc 7.2 (base 4.4)
-    parseInt intString =
-      case filter (null . snd) (reads intString) of
-        [(n, _)] -> return n
-        _ -> fail $ "remote-remo: could not parse int " ++ show intString
-
-
     showSecure  Nothing      = mempty       -- default 'secure' setting
     showSecure  (Just True)  = text "True"  -- user explicitly enabled it
     showSecure  (Just False) = text "False" -- user explicitly disabled it
-
-    parseSecure "True"  = return $ Just True
-    parseSecure "False" = return $ Just False
-    parseSecure str = fail $ "remote-repo: could not parse bool " ++ show str
 
     -- If the key-threshold is set to 0, we omit it as this is the default
     -- and it looks odd to have a value for key-threshold but not for 'secure'
