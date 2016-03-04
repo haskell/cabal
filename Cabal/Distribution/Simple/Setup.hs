@@ -265,13 +265,13 @@ data AllowNewer =
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
-  deriving (Read, Show, Generic)
+  deriving (Eq, Read, Show, Generic)
 
 -- | Dependencies can be relaxed either for all packages in the install plan, or
 -- only for some packages.
 data AllowNewerDep = AllowNewerDep PackageName
                    | AllowNewerDepScoped PackageName PackageName
-                   deriving (Read, Show, Generic)
+                   deriving (Eq, Read, Show, Generic)
 
 instance Text AllowNewerDep where
   disp (AllowNewerDep p0)          = disp p0
