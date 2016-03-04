@@ -36,6 +36,8 @@ module Distribution.Client.ProjectConfig (
     resolveBuildTimeSettings,
   ) where
 
+--import Distribution.Client.ProjectConfig.Types
+--import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
 import Distribution.Client.FileMonitor (isTrivialFilePathGlob)
 
@@ -228,7 +230,7 @@ data ProjectConfigShared
        projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
-       projectConfigAllowNewer        :: AllowNewer,
+       projectConfigAllowNewer        :: Flag AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag Bool,
        projectConfigStrongFlags       :: Flag Bool,
@@ -262,6 +264,7 @@ data PackageConfig
        packageConfigProgPrefix          :: Flag PathTemplate,
        packageConfigProgSuffix          :: Flag PathTemplate,
        packageConfigExtraLibDirs        :: [FilePath],
+       packageConfigExtraFrameworkDirs  :: [FilePath],
        packageConfigExtraIncludeDirs    :: [FilePath],
        packageConfigGHCiLib             :: Flag Bool,
        packageConfigSplitObjs           :: Flag Bool,
@@ -460,6 +463,7 @@ instance Monoid PackageConfig where
       packageConfigProgPrefix          = mempty,
       packageConfigProgSuffix          = mempty,
       packageConfigExtraLibDirs        = mempty,
+      packageConfigExtraFrameworkDirs  = mempty,
       packageConfigExtraIncludeDirs    = mempty,
       packageConfigGHCiLib             = mempty,
       packageConfigSplitObjs           = mempty,
@@ -499,6 +503,7 @@ instance Semigroup PackageConfig where
       packageConfigProgPrefix          = combine packageConfigProgPrefix,
       packageConfigProgSuffix          = combine packageConfigProgSuffix,
       packageConfigExtraLibDirs        = combine packageConfigExtraLibDirs,
+      packageConfigExtraFrameworkDirs  = combine packageConfigExtraFrameworkDirs,
       packageConfigExtraIncludeDirs    = combine packageConfigExtraIncludeDirs,
       packageConfigGHCiLib             = combine packageConfigGHCiLib,
       packageConfigSplitObjs           = combine packageConfigSplitObjs,
@@ -631,7 +636,7 @@ resolveSolverSettings projectConfig =
     solverSettingFlagAssignment    = projectConfigFlagAssignment
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
-    solverSettingAllowNewer        = projectConfigAllowNewer
+    solverSettingAllowNewer        = fromFlag projectConfigAllowNewer
     solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
                                        n | n < 0     -> Nothing
                                          | otherwise -> Just n
@@ -648,6 +653,7 @@ resolveSolverSettings projectConfig =
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
+       projectConfigAllowNewer        = Flag AllowNewerNone,
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag False,
        projectConfigStrongFlags       = Flag False,
@@ -1402,8 +1408,9 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configPackageDBs          = projectConfigPackageDBs,
       configConfigurationsFlags = projectConfigFlagAssignment,
       configRelocatable         = projectConfigRelocatable,
-      configAllowNewer          = projectConfigAllowNewer
+      configAllowNewer          = projectConfigAllowNewer'
     } = configFlags
+    projectConfigAllowNewer     = maybe mempty toFlag projectConfigAllowNewer'
 
     ConfigExFlags {
       configCabalVersion        = projectConfigCabalVersion,
@@ -1453,6 +1460,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configConfigurationsFlags = _projectConfigFlagAssignment, --TODO: should be per pkg
       configTests               = packageConfigTests,
@@ -1584,7 +1592,7 @@ convertToLegacySharedConfig
     }
 
     configFlags = mempty {
-      configAllowNewer    = projectConfigAllowNewer
+      configAllowNewer    = flagToMaybe projectConfigAllowNewer
     }
 
     configExFlags = ConfigExFlags {
@@ -1635,7 +1643,7 @@ convertToLegacyAllPackageConfig
     }
   where
     configFlags = ConfigFlags {
-      configPrograms            = configPrograms mempty,
+      configPrograms_           = mempty,
       configProgramPaths        = projectConfigProgramPaths,
       configProgramArgs         = projectConfigProgramArgs,
       configProgramPathExtra    = projectConfigProgramPathExtra,
@@ -1665,6 +1673,7 @@ convertToLegacyAllPackageConfig
       configStripExes           = mempty,
       configStripLibs           = mempty,
       configExtraLibDirs        = mempty,
+      configExtraFrameworkDirs  = mempty,
       configConstraints         = mempty,
       configDependencies        = mempty,
       configExtraIncludeDirs    = mempty,
@@ -1694,7 +1703,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
     }
   where
     configFlags = ConfigFlags {
-      configPrograms            = configPrograms mempty,
+      configPrograms_           = configPrograms_ mempty,
       configProgramPaths        = mempty,
       configProgramArgs         = mempty,
       configProgramPathExtra    = mempty,
@@ -1724,6 +1733,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configStripExes           = packageConfigStripExes,
       configStripLibs           = packageConfigStripLibs,
       configExtraLibDirs        = packageConfigExtraLibDirs,
+      configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configConstraints         = mempty,
       configDependencies        = mempty,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,

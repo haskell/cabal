@@ -283,6 +283,7 @@ data ElaboratedConfiguredPackage
 
        pkgConfigureScriptArgs   :: [String],
        pkgExtraLibDirs          :: [FilePath],
+       pkgExtraFrameworkDirs    :: [FilePath],
        pkgExtraIncludeDirs      :: [FilePath],
        pkgProgPrefix            :: Maybe PathTemplate,
        pkgProgSuffix            :: Maybe PathTemplate,
@@ -1126,6 +1127,7 @@ elaborateInstallPlan platform compiler progdb
 
         pkgConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
         pkgExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
+        pkgExtraFrameworkDirs  = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
         pkgExtraIncludeDirs    = perPkgOptionList pkgid packageConfigExtraIncludeDirs
         pkgProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
         pkgProgSuffix          = perPkgOptionMaybe pkgid packageConfigProgSuffix
@@ -2006,6 +2008,7 @@ setupHsConfigureFlags (ReadyPackage
     configConfigurationsFlags = pkgFlagAssignment
     configConfigureArgs       = pkgConfigureScriptArgs
     configExtraLibDirs        = pkgExtraLibDirs
+    configExtraFrameworkDirs  = pkgExtraFrameworkDirs
     configExtraIncludeDirs    = pkgExtraIncludeDirs
     configProgPrefix          = maybe mempty toFlag pkgProgPrefix
     configProgSuffix          = maybe mempty toFlag pkgProgSuffix
@@ -2033,7 +2036,7 @@ setupHsConfigureFlags (ReadyPackage
     configRelocatable         = mempty --TODO: [research required] ???
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
-    configPrograms            = error "setupHsConfigureFlags: configPrograms"
+    configPrograms_           = mempty -- never use, shouldn't exist
 
     programDbProgramPaths db =
       [ (programId prog, programPath prog)
@@ -2287,6 +2290,7 @@ packageHashConfigInputs
       pkgHashStripExes           = pkgStripExes,
       pkgHashDebugInfo           = pkgDebugInfo,
       pkgHashExtraLibDirs        = pkgExtraLibDirs,
+      pkgHashExtraFrameworkDirs  = pkgExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = pkgExtraIncludeDirs,
       pkgHashProgPrefix          = pkgProgPrefix,
       pkgHashProgSuffix          = pkgProgSuffix
