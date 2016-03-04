@@ -229,238 +229,35 @@ instance Binary PackageConfig
 
 
 instance Monoid ProjectConfig where
-  mempty =
-    ProjectConfig {
-      projectPackages              = mempty,
-      projectPackagesOptional      = mempty,
-      projectPackagesRepo          = mempty,
-      projectPackagesNamed         = mempty,
-      projectConfigBuildOnly       = mempty,
-      projectConfigShared          = mempty,
-      projectConfigLocalPackages   = mempty,
-      projectConfigSpecificPackage = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ProjectConfig where
-  a <> b =
-    ProjectConfig {
-      projectPackages              = combine projectPackages,
-      projectPackagesOptional      = combine projectPackagesOptional,
-      projectPackagesRepo          = combine projectPackagesRepo,
-      projectPackagesNamed         = combine projectPackagesNamed,
-      projectConfigBuildOnly       = combine projectConfigBuildOnly,
-      projectConfigShared          = combine projectConfigShared,
-      projectConfigLocalPackages   = combine projectConfigLocalPackages,
-      projectConfigSpecificPackage = combine projectConfigSpecificPackage
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 
 instance Monoid ProjectConfigBuildOnly where
-  mempty =
-    ProjectConfigBuildOnly {
-      projectConfigVerbosity             = mempty,
-      projectConfigDryRun                = mempty,
-      projectConfigOnlyDeps              = mempty,
-      projectConfigSummaryFile           = mempty,
-      projectConfigLogFile               = mempty,
-      projectConfigBuildReports          = mempty,
-      projectConfigReportPlanningFailure = mempty,
-      projectConfigSymlinkBinDir         = mempty,
-      projectConfigOneShot               = mempty,
-      projectConfigNumJobs               = mempty,
-      projectConfigOfflineMode           = mempty,
-      projectConfigKeepTempFiles         = mempty,
-      projectConfigHttpTransport         = mempty,
-      projectConfigIgnoreExpiry          = mempty,
-      projectConfigCacheDir              = mempty,
-      projectConfigLogsDir               = mempty,
-      projectConfigWorldFile             = mempty,
-      projectConfigRootCmd               = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ProjectConfigBuildOnly where
-  a <> b =
-    ProjectConfigBuildOnly {
-      projectConfigVerbosity             = combine projectConfigVerbosity,
-      projectConfigDryRun                = combine projectConfigDryRun,
-      projectConfigOnlyDeps              = combine projectConfigOnlyDeps,
-      projectConfigSummaryFile           = combine projectConfigSummaryFile,
-      projectConfigLogFile               = combine projectConfigLogFile,
-      projectConfigBuildReports          = combine projectConfigBuildReports,
-      projectConfigReportPlanningFailure = combine projectConfigReportPlanningFailure,
-      projectConfigSymlinkBinDir         = combine projectConfigSymlinkBinDir,
-      projectConfigOneShot               = combine projectConfigOneShot,
-      projectConfigNumJobs               = combine projectConfigNumJobs,
-      projectConfigOfflineMode           = combine projectConfigOfflineMode,
-      projectConfigKeepTempFiles         = combine projectConfigKeepTempFiles,
-      projectConfigHttpTransport         = combine projectConfigHttpTransport,
-      projectConfigIgnoreExpiry          = combine projectConfigIgnoreExpiry,
-      projectConfigCacheDir              = combine projectConfigCacheDir,
-      projectConfigLogsDir               = combine projectConfigLogsDir,
-      projectConfigWorldFile             = combine projectConfigWorldFile,
-      projectConfigRootCmd               = combine projectConfigRootCmd
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 
 instance Monoid ProjectConfigShared where
-  mempty =
-    ProjectConfigShared {
-      projectConfigProgramPaths     = mempty,
-      projectConfigProgramArgs      = mempty,
-      projectConfigProgramPathExtra = mempty,
-      projectConfigHcFlavor         = mempty,
-      projectConfigHcPath           = mempty,
-      projectConfigHcPkg            = mempty,
-      projectConfigVanillaLib       = mempty,
-      projectConfigSharedLib        = mempty,
-      projectConfigHaddockIndex     = mempty,
-      projectConfigUserInstall      = mempty,
-      projectConfigInstallDirs      = mempty,
-      projectConfigPackageDBs       = mempty,
-      projectConfigRelocatable      = mempty,
-
-      projectConfigConstraints       = mempty,
-      projectConfigPreferences       = mempty,
-      projectConfigFlagAssignment    = mempty,
-      projectConfigCabalVersion      = mempty,
-      projectConfigSolver            = mempty,
-      projectConfigAllowNewer        = mempty,
-      projectConfigRemoteRepos       = mempty,
-      projectConfigLocalRepos        = mempty,
-      projectConfigMaxBackjumps      = mempty,
-      projectConfigReorderGoals      = mempty,
-      projectConfigStrongFlags       = mempty,
-      projectConfigIndependentGoals  = mempty,
-      projectConfigShadowPkgs        = mempty,
-      projectConfigReinstall         = mempty,
-      projectConfigAvoidReinstalls   = mempty,
-      projectConfigOverrideReinstall = mempty,
-      projectConfigUpgradeDeps       = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup ProjectConfigShared where
-  a <> b =
-    ProjectConfigShared {
-      projectConfigProgramPaths     = combine projectConfigProgramPaths,
-      projectConfigProgramArgs      = combine projectConfigProgramArgs,
-      projectConfigProgramPathExtra = combine projectConfigProgramPathExtra,
-      projectConfigHcFlavor         = combine projectConfigHcFlavor,
-      projectConfigHcPath           = combine projectConfigHcPath,
-      projectConfigHcPkg            = combine projectConfigHcPkg,
-      projectConfigVanillaLib       = combine projectConfigVanillaLib,
-      projectConfigSharedLib        = combine projectConfigSharedLib,
-      projectConfigHaddockIndex     = combine projectConfigHaddockIndex,
-      projectConfigUserInstall      = combine projectConfigUserInstall,
-      projectConfigInstallDirs      = combine projectConfigInstallDirs,
-      projectConfigPackageDBs       = combine projectConfigPackageDBs,
-      projectConfigRelocatable      = combine projectConfigRelocatable,
-
-      projectConfigConstraints       = combine projectConfigConstraints,
-      projectConfigPreferences       = combine projectConfigPreferences,
-      projectConfigFlagAssignment    = combine projectConfigFlagAssignment,
-      projectConfigCabalVersion      = combine projectConfigCabalVersion,
-      projectConfigSolver            = combine projectConfigSolver,
-      projectConfigAllowNewer        = combine projectConfigAllowNewer,
-      projectConfigRemoteRepos       = combine projectConfigRemoteRepos,
-      projectConfigLocalRepos        = combine projectConfigLocalRepos,
-      projectConfigMaxBackjumps      = combine projectConfigMaxBackjumps,
-      projectConfigReorderGoals      = combine projectConfigReorderGoals,
-      projectConfigStrongFlags       = combine projectConfigStrongFlags,
-      projectConfigIndependentGoals  = combine projectConfigIndependentGoals,
-      projectConfigShadowPkgs        = combine projectConfigShadowPkgs,
-      projectConfigReinstall         = combine projectConfigReinstall,
-      projectConfigAvoidReinstalls   = combine projectConfigAvoidReinstalls,
-      projectConfigOverrideReinstall = combine projectConfigOverrideReinstall,
-      projectConfigUpgradeDeps       = combine projectConfigUpgradeDeps
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 
 instance Monoid PackageConfig where
-  mempty =
-    PackageConfig {
-      packageConfigDynExe              = mempty,
-      packageConfigProf                = mempty,
-      packageConfigProfLib             = mempty,
-      packageConfigProfExe             = mempty,
-      packageConfigProfDetail          = mempty,
-      packageConfigProfLibDetail       = mempty,
-      packageConfigConfigureArgs       = mempty,
-      packageConfigOptimization        = mempty,
-      packageConfigProgPrefix          = mempty,
-      packageConfigProgSuffix          = mempty,
-      packageConfigExtraLibDirs        = mempty,
-      packageConfigExtraFrameworkDirs  = mempty,
-      packageConfigExtraIncludeDirs    = mempty,
-      packageConfigGHCiLib             = mempty,
-      packageConfigSplitObjs           = mempty,
-      packageConfigStripExes           = mempty,
-      packageConfigStripLibs           = mempty,
-      packageConfigTests               = mempty,
-      packageConfigBenchmarks          = mempty,
-      packageConfigCoverage            = mempty,
-      packageConfigDebugInfo           = mempty,
-      packageConfigRunTests            = mempty,
-      packageConfigDocumentation       = mempty,
-      packageConfigHaddockHoogle       = mempty,
-      packageConfigHaddockHtml         = mempty,
-      packageConfigHaddockHtmlLocation = mempty,
-      packageConfigHaddockExecutables  = mempty,
-      packageConfigHaddockTestSuites   = mempty,
-      packageConfigHaddockBenchmarks   = mempty,
-      packageConfigHaddockInternal     = mempty,
-      packageConfigHaddockCss          = mempty,
-      packageConfigHaddockHscolour     = mempty,
-      packageConfigHaddockHscolourCss  = mempty,
-      packageConfigHaddockContents     = mempty
-    }
+  mempty = gmempty
   mappend = (<>)
 
 instance Semigroup PackageConfig where
-  a <> b =
-    PackageConfig {
-      packageConfigDynExe              = combine packageConfigDynExe,
-      packageConfigProf                = combine packageConfigProf,
-      packageConfigProfLib             = combine packageConfigProfLib,
-      packageConfigProfExe             = combine packageConfigProfExe,
-      packageConfigProfDetail          = combine packageConfigProfDetail,
-      packageConfigProfLibDetail       = combine packageConfigProfLibDetail,
-      packageConfigConfigureArgs       = combine packageConfigConfigureArgs,
-      packageConfigOptimization        = combine packageConfigOptimization,
-      packageConfigProgPrefix          = combine packageConfigProgPrefix,
-      packageConfigProgSuffix          = combine packageConfigProgSuffix,
-      packageConfigExtraLibDirs        = combine packageConfigExtraLibDirs,
-      packageConfigExtraFrameworkDirs  = combine packageConfigExtraFrameworkDirs,
-      packageConfigExtraIncludeDirs    = combine packageConfigExtraIncludeDirs,
-      packageConfigGHCiLib             = combine packageConfigGHCiLib,
-      packageConfigSplitObjs           = combine packageConfigSplitObjs,
-      packageConfigStripExes           = combine packageConfigStripExes,
-      packageConfigStripLibs           = combine packageConfigStripLibs,
-      packageConfigTests               = combine packageConfigTests,
-      packageConfigBenchmarks          = combine packageConfigBenchmarks,
-      packageConfigCoverage            = combine packageConfigCoverage,
-      packageConfigDebugInfo           = combine packageConfigDebugInfo,
-      packageConfigRunTests            = combine packageConfigRunTests,
-      packageConfigDocumentation       = combine packageConfigDocumentation,
-      packageConfigHaddockHoogle       = combine packageConfigHaddockHoogle,
-      packageConfigHaddockHtml         = combine packageConfigHaddockHtml,
-      packageConfigHaddockHtmlLocation = combine packageConfigHaddockHtmlLocation,
-      packageConfigHaddockExecutables  = combine packageConfigHaddockExecutables,
-      packageConfigHaddockTestSuites   = combine packageConfigHaddockTestSuites,
-      packageConfigHaddockBenchmarks   = combine packageConfigHaddockBenchmarks,
-      packageConfigHaddockInternal     = combine packageConfigHaddockInternal,
-      packageConfigHaddockCss          = combine packageConfigHaddockCss,
-      packageConfigHaddockHscolour     = combine packageConfigHaddockHscolour,
-      packageConfigHaddockHscolourCss  = combine packageConfigHaddockHscolourCss,
-      packageConfigHaddockContents     = combine packageConfigHaddockContents
-    }
-    where combine field = field a `mappend` field b
-
+  (<>) = gmappend
 
 ----------------------------------------
 -- Resolving configuration to settings

@@ -69,7 +69,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
 import Distribution.Compat.Semigroup
-
+import GHC.Generics (Generic)
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -93,63 +93,40 @@ data LegacyProjectConfig = LegacyProjectConfig {
        legacySharedConfig      :: LegacySharedConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
        legacySpecificConfig    :: Map PackageName LegacyPackageConfig
-     }
+     } deriving Generic
 
 instance Monoid LegacyProjectConfig where
-  mempty  = LegacyProjectConfig mempty mempty mempty mempty
-                                mempty mempty mempty
+  mempty  = gmempty
   mappend = (<>)
 
 instance Semigroup LegacyProjectConfig where
-  a <> b =
-    LegacyProjectConfig {
-      legacyPackages           = combine legacyPackages,
-      legacyPackagesOptional   = combine legacyPackagesOptional,
-      legacyPackagesRepo       = combine legacyPackagesRepo,
-      legacyPackagesNamed      = combine legacyPackagesNamed,
-      legacySharedConfig       = combine legacySharedConfig,
-      legacyLocalConfig        = combine legacyLocalConfig,
-      legacySpecificConfig     = combine legacySpecificConfig
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 data LegacyPackageConfig = LegacyPackageConfig {
        legacyConfigureFlags    :: ConfigFlags,
        legacyHaddockFlags      :: HaddockFlags
-     }
+     } deriving Generic
 
 instance Monoid LegacyPackageConfig where
-  mempty  = LegacyPackageConfig mempty mempty
+  mempty  = gmempty
   mappend = (<>)
 
 instance Semigroup LegacyPackageConfig where
-  a <> b =
-    LegacyPackageConfig {
-      legacyConfigureFlags     = combine legacyConfigureFlags,
-      legacyHaddockFlags       = combine legacyHaddockFlags
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 data LegacySharedConfig = LegacySharedConfig {
        legacyGlobalFlags       :: GlobalFlags,
        legacyConfigureShFlags  :: ConfigFlags,
        legacyConfigureExFlags  :: ConfigExFlags,
        legacyInstallFlags      :: InstallFlags
-     }
+     } deriving Generic
 
 instance Monoid LegacySharedConfig where
-  mempty  = LegacySharedConfig mempty mempty mempty mempty
+  mempty  = gmempty
   mappend = (<>)
 
 instance Semigroup LegacySharedConfig where
-  a <> b =
-    LegacySharedConfig {
-      legacyGlobalFlags        = combine legacyGlobalFlags,
-      legacyConfigureShFlags   = combine legacyConfigureShFlags,
-      legacyConfigureExFlags   = combine legacyConfigureExFlags,
-      legacyInstallFlags       = combine legacyInstallFlags
-    }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 
 ------------------------------------------------------------------
