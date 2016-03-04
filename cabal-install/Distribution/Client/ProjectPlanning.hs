@@ -2001,6 +2001,7 @@ setupHsConfigureFlags (ReadyPackage
     configStripExes           = toFlag pkgStripExes
     configStripLibs           = toFlag pkgStripLibs
     configDebugInfo           = toFlag pkgDebugInfo
+    configAllowNewer          = mempty -- we use configExactConfiguration True
 
     configConfigurationsFlags = pkgFlagAssignment
     configConfigureArgs       = pkgConfigureScriptArgs

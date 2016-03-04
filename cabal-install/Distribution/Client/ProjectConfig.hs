@@ -61,14 +61,14 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, fromFlagOrDefault
-         , ConfigFlags(..), configureOptions
+         , ConfigFlags(..), configureOptions, AllowNewer(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , programConfigurationPaths', splitArgs )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
          , InstallFlags(..), installOptions, defaultInstallFlags
-         , defaultSolver, defaultMaxBackjumps )
+         , defaultSolver, defaultMaxBackjumps, )
 import Distribution.Simple.InstallDirs
          ( InstallDirs, PathTemplate, fromPathTemplate
          , toPathTemplate, substPathTemplate, initialPathTemplateEnv )
@@ -228,7 +228,7 @@ data ProjectConfigShared
        projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
-       projectConfigAllowNewer        :: Flag AllowNewer,
+       projectConfigAllowNewer        :: AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag Bool,
        projectConfigStrongFlags       :: Flag Bool,
@@ -631,7 +631,7 @@ resolveSolverSettings projectConfig =
     solverSettingFlagAssignment    = projectConfigFlagAssignment
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
-    solverSettingAllowNewer        = fromFlag projectConfigAllowNewer
+    solverSettingAllowNewer        = projectConfigAllowNewer
     solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
                                        n | n < 0     -> Nothing
                                          | otherwise -> Just n
@@ -648,7 +648,6 @@ resolveSolverSettings projectConfig =
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
-       projectConfigAllowNewer        = Flag AllowNewerNone,
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag False,
        projectConfigStrongFlags       = Flag False,
@@ -1260,18 +1259,20 @@ instance Semigroup LegacyPackageConfig where
 
 data LegacySharedConfig = LegacySharedConfig {
        legacyGlobalFlags       :: GlobalFlags,
+       legacyConfigureShFlags  :: ConfigFlags,
        legacyConfigureExFlags  :: ConfigExFlags,
        legacyInstallFlags      :: InstallFlags
      }
 
 instance Monoid LegacySharedConfig where
-  mempty  = LegacySharedConfig mempty mempty mempty
+  mempty  = LegacySharedConfig mempty mempty mempty mempty
   mappend = (<>)
 
 instance Semigroup LegacySharedConfig where
   a <> b =
     LegacySharedConfig {
       legacyGlobalFlags        = combine legacyGlobalFlags,
+      legacyConfigureShFlags   = combine legacyConfigureShFlags,
       legacyConfigureExFlags   = combine legacyConfigureExFlags,
       legacyInstallFlags       = combine legacyInstallFlags
     }
@@ -1336,8 +1337,8 @@ convertLegacyProjectConfig
     legacyPackagesOptional,
     legacyPackagesRepo,
     legacyPackagesNamed,
-    legacySharedConfig = LegacySharedConfig globalFlags configExFlags
-                                            installFlags,
+    legacySharedConfig = LegacySharedConfig globalFlags configShFlags
+                                            configExFlags installFlags,
     legacyLocalConfig  = LegacyPackageConfig configFlags haddockFlags,
     legacySpecificConfig
   } =
@@ -1357,7 +1358,7 @@ convertLegacyProjectConfig
     configLocalPackages = convertLegacyPerPackageFlags
                             configFlags installFlags haddockFlags
     configAllPackages   = convertLegacyAllPackageFlags
-                            globalFlags configFlags
+                            globalFlags (configFlags <> configShFlags)
                             configExFlags installFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
@@ -1400,15 +1401,15 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configUserInstall         = projectConfigUserInstall,
       configPackageDBs          = projectConfigPackageDBs,
       configConfigurationsFlags = projectConfigFlagAssignment,
-      configRelocatable         = projectConfigRelocatable
+      configRelocatable         = projectConfigRelocatable,
+      configAllowNewer          = projectConfigAllowNewer
     } = configFlags
 
     ConfigExFlags {
       configCabalVersion        = projectConfigCabalVersion,
       configExConstraints       = projectConfigConstraints,
       configPreferences         = projectConfigPreferences,
-      configSolver              = projectConfigSolver,
-      configAllowNewer          = projectConfigAllowNewer
+      configSolver              = projectConfigSolver
     } = configExFlags
 
     InstallFlags {
@@ -1560,6 +1561,7 @@ convertToLegacySharedConfig
 
     LegacySharedConfig {
       legacyGlobalFlags      = globalFlags,
+      legacyConfigureShFlags = configFlags,
       legacyConfigureExFlags = configExFlags,
       legacyInstallFlags     = installFlags
     }
@@ -1581,12 +1583,15 @@ convertToLegacySharedConfig
       globalHttpTransport     = projectConfigHttpTransport
     }
 
+    configFlags = mempty {
+      configAllowNewer    = projectConfigAllowNewer
+    }
+
     configExFlags = ConfigExFlags {
       configCabalVersion  = projectConfigCabalVersion,
       configExConstraints = projectConfigConstraints,
       configPreferences   = projectConfigPreferences,
-      configSolver        = projectConfigSolver,
-      configAllowNewer    = projectConfigAllowNewer
+      configSolver        = projectConfigSolver
     }
 
     installFlags = InstallFlags {
@@ -1672,7 +1677,8 @@ convertToLegacyAllPackageConfig
       configBenchmarks          = mempty,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = projectConfigRelocatable,
-      configDebugInfo           = mempty
+      configDebugInfo           = mempty,
+      configAllowNewer          = mempty
     }
 
     haddockFlags = mempty {
@@ -1730,7 +1736,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configBenchmarks          = packageConfigBenchmarks,
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
-      configDebugInfo           = packageConfigDebugInfo
+      configDebugInfo           = packageConfigDebugInfo,
+      configAllowNewer          = mempty
     }
     haddockFlags = HaddockFlags {
       haddockProgramPaths  = mempty,
@@ -1847,6 +1854,13 @@ legacySharedConfigFieldDescrs =
   ) (commandOptions (globalCommand []) ParseArgs)
  ++
   ( liftFields
+      legacyConfigureShFlags
+      (\flags conf -> conf { legacyConfigureShFlags = flags })
+  . filterFields ["allow-newer"]
+  . commandOptionsToFields
+  ) (configureOptions ParseArgs)
+ ++
+  ( liftFields
       legacyConfigureExFlags
       (\flags conf -> conf { legacyConfigureExFlags = flags })
   . addFields
@@ -1859,7 +1873,7 @@ legacySharedConfigFieldDescrs =
         configPreferences (\v conf -> conf { configPreferences = v })
       ]
   . filterFields
-      [ "cabal-lib-version", "solver", "allow-newer"
+      [ "cabal-lib-version", "solver"
         -- not "constraint" or "preference", we use our own plural ones above
       ]
   . commandOptionsToFields
