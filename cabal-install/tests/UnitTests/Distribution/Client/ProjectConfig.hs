@@ -9,6 +9,7 @@ import Data.Map (Map)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Compiler
+import Distribution.ParseUtils
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
@@ -37,55 +38,124 @@ tests =
     , testProperty "specific"  prop_roundtrip_legacytypes_specific
     , testProperty "all"       prop_roundtrip_legacytypes_all
     ]
+
+  , testGroup "ProjectConfig printing/parsing round trip"
+    [ testProperty "packages"  prop_roundtrip_printparse_packages
+    , testProperty "buildonly" prop_roundtrip_printparse_buildonly
+    , testProperty "shared"    prop_roundtrip_printparse_shared
+    , testProperty "local"     prop_roundtrip_printparse_local
+    , testProperty "specific"  prop_roundtrip_printparse_specific
+    , testProperty "all"       prop_roundtrip_printparse_all
+    ]
   ]
 
+
+------------------------------------------------
+-- Round trip: conversion to/from legacy types
+--
 
 roundtrip :: Eq a => (a -> b) -> (b -> a) -> a -> Bool
 roundtrip f f_inv x =
     (f_inv . f) x == x
 
-prop_roundtrip_legacytypes_all :: ProjectConfig -> Bool
-prop_roundtrip_legacytypes_all =
+roundtrip_legacytypes :: ProjectConfig -> Bool
+roundtrip_legacytypes =
     roundtrip convertToLegacyProjectConfig
               convertLegacyProjectConfig
+
+
+prop_roundtrip_legacytypes_all :: ProjectConfig -> Bool
+prop_roundtrip_legacytypes_all =
+    roundtrip_legacytypes
 
 prop_roundtrip_legacytypes_packages :: ProjectConfig -> Bool
 prop_roundtrip_legacytypes_packages config =
-    roundtrip convertToLegacyProjectConfig
-              convertLegacyProjectConfig
-              config {
-                projectPackagesRepo          = mempty,
-                projectPackagesNamed         = mempty,
-                projectConfigBuildOnly       = mempty,
-                projectConfigShared          = mempty,
-                projectConfigLocalPackages   = mempty,
-                projectConfigSpecificPackage = mempty
-              }
+    roundtrip_legacytypes
+      config {
+        projectPackagesRepo          = mempty,
+        projectPackagesNamed         = mempty,
+        projectConfigBuildOnly       = mempty,
+        projectConfigShared          = mempty,
+        projectConfigLocalPackages   = mempty,
+        projectConfigSpecificPackage = mempty
+      }
 
 prop_roundtrip_legacytypes_buildonly :: ProjectConfigBuildOnly -> Bool
 prop_roundtrip_legacytypes_buildonly config =
-    roundtrip convertToLegacyProjectConfig
-              convertLegacyProjectConfig
-              mempty { projectConfigBuildOnly = config }
+    roundtrip_legacytypes
+      mempty { projectConfigBuildOnly = config }
 
 prop_roundtrip_legacytypes_shared :: ProjectConfigShared -> Bool
 prop_roundtrip_legacytypes_shared config =
-    roundtrip convertToLegacyProjectConfig
-              convertLegacyProjectConfig
-              mempty { projectConfigShared = config }
+    roundtrip_legacytypes
+      mempty { projectConfigShared = config }
 
 prop_roundtrip_legacytypes_local :: PackageConfig -> Bool
 prop_roundtrip_legacytypes_local config =
-    roundtrip convertToLegacyProjectConfig
-              convertLegacyProjectConfig
-              mempty { projectConfigLocalPackages = config }
+    roundtrip_legacytypes
+      mempty { projectConfigLocalPackages = config }
 
 prop_roundtrip_legacytypes_specific :: Map PackageName PackageConfig -> Bool
 prop_roundtrip_legacytypes_specific config =
-    roundtrip convertToLegacyProjectConfig
-              convertLegacyProjectConfig
-              mempty { projectConfigSpecificPackage = config }
+    roundtrip_legacytypes
+      mempty { projectConfigSpecificPackage = config }
 
+
+--------------------------------------------
+-- Round trip: printing and parsing config
+--
+
+roundtrip_printparse :: ProjectConfig -> Bool
+roundtrip_printparse config =
+    case (fmap convertLegacyProjectConfig
+        . parseLegacyProjectConfig
+        . showLegacyProjectConfig
+        . convertToLegacyProjectConfig)
+          config of
+      ParseOk  [] x -> x == config
+      _             -> False
+
+
+prop_roundtrip_printparse_all :: ProjectConfig -> Bool
+prop_roundtrip_printparse_all =
+    roundtrip_printparse
+
+prop_roundtrip_printparse_packages :: ProjectConfig -> Bool
+prop_roundtrip_printparse_packages config =
+    roundtrip_printparse
+      config {
+        projectPackagesRepo          = mempty,
+        projectPackagesNamed         = mempty,
+        projectConfigBuildOnly       = mempty,
+        projectConfigShared          = mempty,
+        projectConfigLocalPackages   = mempty,
+        projectConfigSpecificPackage = mempty
+      }
+
+prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Bool
+prop_roundtrip_printparse_buildonly config =
+    roundtrip_printparse
+      mempty { projectConfigBuildOnly = config }
+
+prop_roundtrip_printparse_shared :: ProjectConfigShared -> Bool
+prop_roundtrip_printparse_shared config =
+    roundtrip_printparse
+      mempty { projectConfigShared = config }
+
+prop_roundtrip_printparse_local :: PackageConfig -> Bool
+prop_roundtrip_printparse_local config =
+    roundtrip_printparse
+      mempty { projectConfigLocalPackages = config }
+
+prop_roundtrip_printparse_specific :: Map PackageName PackageConfig -> Bool
+prop_roundtrip_printparse_specific config =
+    roundtrip_printparse
+      mempty { projectConfigSpecificPackage = config }
+
+
+------------------------
+-- Arbitrary instances
+--
 
 instance Arbitrary ProjectConfig where
     arbitrary =
