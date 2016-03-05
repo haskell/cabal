@@ -69,6 +69,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.PkgConfigDb (PkgConfigDb)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
          , ConfiguredPackage(..), ConfiguredId(..)
@@ -523,25 +524,26 @@ runSolver Modular = modularResolver
 --
 resolveDependencies :: Platform
                     -> CompilerInfo
+                    -> PkgConfigDb
                     -> Solver
                     -> DepResolverParams
                     -> Progress String String InstallPlan
 
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
-resolveDependencies platform comp _solver params
+resolveDependencies platform comp _pkgConfigDB _solver params
   | null (depResolverTargets params)
   = return (validateSolverResult platform comp indGoals [])
   where
     indGoals = depResolverIndependentGoals params
 
-resolveDependencies platform comp  solver params =
+resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
-                     preferences constraints targets
+                     pkgConfigDB preferences constraints targets
   where
 
     finalparams @ (DepResolverParams

@@ -278,6 +278,8 @@ linkDeps parents pp' = mapM_ go
     -- No choice is involved, just checking, so there is nothing to link.
     go (Simple (Ext  _)             _) = return ()
     go (Simple (Lang _)             _) = return ()
+    -- Similarly for pkg-config constraints
+    go (Simple (Pkg  _ _)           _) = return ()
     go (Flagged fn _ t f) = do
       vs <- get
       case M.lookup fn (vsFlags vs) of

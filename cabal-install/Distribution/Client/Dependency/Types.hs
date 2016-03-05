@@ -49,6 +49,8 @@ import Data.Monoid
          ( Monoid(..) )
 #endif
 
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb )
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
 
@@ -115,6 +117,7 @@ type DependencyResolver = Platform
                        -> CompilerInfo
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
+                       -> PkgConfigDb
                        -> (PackageName -> PackagePreferences)
                        -> [LabeledPackageConstraint]
                        -> [PackageName]

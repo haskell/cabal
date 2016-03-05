@@ -198,6 +198,7 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
              | Ext  Extension     -- dependency on a language extension
              | Lang Language      -- dependency on a language version
+             | Pkg  PN VR         -- dependency on a pkg-config package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
@@ -210,6 +211,9 @@ showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
 showDep (Ext ext)   = "requires " ++ display ext
 showDep (Lang lang) = "requires " ++ display lang
+showDep (Pkg pn vr) = "requires pkg-config package "
+                      ++ display pn ++ display vr
+                      ++ ", not found in the pkg-config database"
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -253,6 +257,7 @@ qualifyDeps QO{..} (Q pp' pn) = go
     goD :: Dep PN -> Component -> Dep QPN
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
+    goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
       | qBase  dep  = Dep (Q (Base  pn pp) dep) (fmap (Q pp) ci)
       | qSetup comp = Dep (Q (Setup pn pp) dep) (fmap (Q pp) ci)
@@ -337,6 +342,7 @@ instance ResetGoal Dep where
   resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
   resetGoal _ (Ext ext)    = Ext ext
   resetGoal _ (Lang lang)  = Lang lang
+  resetGoal _ (Pkg pn vr)  = Pkg pn vr
 
 instance ResetGoal Goal where
   resetGoal = const
@@ -376,6 +382,8 @@ close (OpenGoal (Simple (Ext     _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Ext goal"
 close (OpenGoal (Simple (Lang    _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Lang goal"
+close (OpenGoal (Simple (Pkg   _ _) _) _ ) =
+  error "Distribution.Client.Dependency.Modular.Dependency.close: called on Pkg goal"
 close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
 close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 
