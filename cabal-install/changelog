@@ -1,7 +1,7 @@
 -*-change-log-*-
 
 1.25.x.x (current development version)
-	* No changes yet.
+	* Made the solver aware of pkg-config constraints (#3023).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
