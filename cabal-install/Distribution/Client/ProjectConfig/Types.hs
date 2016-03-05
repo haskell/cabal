@@ -146,7 +146,9 @@ data ProjectConfigShared
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
        projectConfigUserInstall       :: Flag Bool,
-       projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
+     --projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
+     --TODO: [required eventually] decide what to do with InstallDirs
+     -- currently we don't allow it to be specified in the config file
        projectConfigPackageDBs        :: [Maybe PackageDB],
        projectConfigRelocatable       :: Flag Bool,
 

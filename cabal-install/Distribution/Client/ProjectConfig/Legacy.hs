@@ -270,7 +270,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configHcPkg               = projectConfigHcPkg,
       configVanillaLib          = projectConfigVanillaLib,
       configSharedLib           = projectConfigSharedLib,
-      configInstallDirs         = projectConfigInstallDirs,
+    --configInstallDirs         = projectConfigInstallDirs,
       configUserInstall         = projectConfigUserInstall,
       configPackageDBs          = projectConfigPackageDBs,
       configConfigurationsFlags = projectConfigFlagAssignment,

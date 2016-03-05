@@ -7,7 +7,7 @@ import Control.Applicative
 import Data.Map (Map)
 
 import Distribution.Package
-import Distribution.PackageDescription
+import Distribution.PackageDescription hiding (Flag)
 import Distribution.Compiler
 import Distribution.ParseUtils
 import Distribution.Simple.Compiler
@@ -207,12 +207,12 @@ instance Arbitrary ProjectConfigShared where
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitrary
-        <*> arbitraryConstraints                                -- 16
+        <*> arbitrary <*> arbitrary <*> arbitraryConstraints
+                                    <*> arbitrary              -- 16
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 20
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 24
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 28
-        <*> arbitrary <*> arbitrary                             -- 30
+        <*> arbitrary
       where
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
@@ -224,29 +224,28 @@ instance Arbitrary ProjectConfigShared where
               x10 x11 x12 x13 x14
               x15 x16 x17 x18 x19
               x20 x21 x22 x23 x24
-              x25 x26 x27 x28 x29) =
+              x25 x26 x27 x28) =
       [ ProjectConfigShared
           x00' x01' x02' x03' x04'
           x05' x06' x07' x08' x09'
-          x10' x11' x12' x13' x14'
-          (map (\uc -> (uc, projectConfigConstraintSource)) x15')
-               x16' x17' x18' x19'
+          x10' x11' x12' x13'
+          (map (\uc -> (uc, projectConfigConstraintSource)) x14')
+          x15' x16' x17' x18' x19'
           x20' x21' x22' x23' x24'
-          x25' x26' x27' x28' x29'
+          x25' x26' x27' x28'
       | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x21', x22', x23', x24'),
-          (x25', x26', x27', x28', x29')))
+          (x25', x26', x27', x28')))
           <- shrink
                (((x00, x01, x02, x03, x04),
                  (x05, x06, x07, x08, x09),
-                 (x10, x11, x12, x13, x14),
-                 (map fst x15,
-                       x16, x17, x18, x19)),
+                 (x10, x11, x12, x13, map fst x14),
+                 (x15, x16, x17, x18, x19)),
                 ((x20, x21, x22, x23, x24),
-                 (x25, x26, x27, x28, x29)))
+                 (x25, x26, x27, x28)))
       ]
 
 projectConfigConstraintSource :: ConstraintSource
