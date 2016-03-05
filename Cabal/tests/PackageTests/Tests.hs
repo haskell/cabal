@@ -17,7 +17,6 @@ import Control.Monad
 import System.Directory
 import Data.Version
 import Test.Tasty (mkTimeout, localOption)
-import Test.Tasty.HUnit (testCase)
 
 tests :: SuiteConfig -> TestTreeM ()
 tests config = do
