@@ -27,6 +27,7 @@ import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
+import Distribution.Client.Dependency.Modular.Version
 
 -- | A (partial) package assignment. Qualified package names
 -- are associated with instances.
@@ -62,9 +63,10 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 -- or the successfully extended assignment.
 extend :: (Extension -> Bool) -- ^ is a given extension supported
        -> (Language  -> Bool) -- ^ is a given language supported
+       -> (PN -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> Goal QPN
        -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
-extend extSupported langSupported goal@(Goal var _) = foldM extendSingle
+extend extSupported langSupported pkgPresent goal@(Goal var _) = foldM extendSingle
   where
 
     extendSingle :: PPreAssignment -> Dep QPN
@@ -75,6 +77,9 @@ extend extSupported langSupported goal@(Goal var _) = foldM extendSingle
     extendSingle a (Lang lang)  =
       if langSupported lang then Right a
                             else Left (toConflictSet goal, [Lang lang])
+    extendSingle a (Pkg pn vr)  =
+      if pkgPresent pn vr then Right a
+                          else Left (toConflictSet goal, [Pkg pn vr])
     extendSingle a (Dep qpn ci) =
       let ci' = M.findWithDefault (Constrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of

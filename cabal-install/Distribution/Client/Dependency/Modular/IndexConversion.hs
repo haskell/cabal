@@ -143,6 +143,7 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
                  L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
+              ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch os arch cinfo pi fds comp getInfo) branches
   where
     bi = getInfo info
