@@ -1,8 +1,6 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable,
-             ExistentialQuantification, ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
 
--- | Handling project configuration, types and reading.
+-- | Project configuration, implementation in terms of legacy types.
 --
 module Distribution.Client.ProjectConfig.Legacy (
 
