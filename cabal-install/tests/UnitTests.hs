@@ -24,6 +24,7 @@ import qualified UnitTests.Distribution.Client.Sandbox.Timestamp
 import qualified UnitTests.Distribution.Client.Tar
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
+import qualified UnitTests.Distribution.Client.ProjectConfig
 
 import UnitTests.Options
 
@@ -56,6 +57,8 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.Targets.tests
   , testGroup "UnitTests.Distribution.Client.UserConfig"
        UnitTests.Distribution.Client.UserConfig.tests
+  , testGroup "UnitTests.Distribution.Client.ProjectConfig"
+       UnitTests.Distribution.Client.ProjectConfig.tests
   ]
 
 main :: IO ()
