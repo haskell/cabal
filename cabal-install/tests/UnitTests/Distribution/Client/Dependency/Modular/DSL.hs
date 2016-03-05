@@ -156,7 +156,7 @@ type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
 
-exAvSrcPkg :: ExampleAvailable -> SourcePackage
+exAvSrcPkg :: ExampleAvailable -> SourcePackage UnresolvedPkgLoc
 exAvSrcPkg ex =
     let (libraryDeps, testSuites, exts, mlang, pcpkgs) = splitTopLevel (CD.libraryDeps (exAvDeps ex))
     in SourcePackage {
@@ -339,7 +339,7 @@ exInstPkgId ex = C.PackageIdentifier {
     , pkgVersion = Version [exInstVersion ex, 0, 0] []
     }
 
-exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex SourcePackage
+exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex (SourcePackage UnresolvedPkgLoc)
 exAvIdx = CI.PackageIndex.fromList . map exAvSrcPkg
 
 exInstIdx :: [ExampleInstalled] -> C.PackageIndex.InstalledPackageIndex
@@ -391,7 +391,7 @@ extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
     confPkg (CI.InstallPlan.Configured pkg) = Just $ srcPkg pkg
     confPkg _                               = Nothing
 
-    srcPkg :: ConfiguredPackage -> (String, Int)
+    srcPkg :: ConfiguredPackage UnresolvedPkgLoc -> (String, Int)
     srcPkg (ConfiguredPackage pkg _flags _stanzas _deps) =
       let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) =
             packageInfoId pkg

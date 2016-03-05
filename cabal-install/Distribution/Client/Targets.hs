@@ -53,7 +53,7 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
+         ( SourcePackage(..), PackageLocation(..), UnresolvedPkgLoc, OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ConstraintSource(..)
          , LabeledPackageConstraint(..) )
@@ -372,7 +372,7 @@ resolveUserTargets :: Package pkg
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier SourcePackage]
+                   -> IO [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
 resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -482,7 +482,7 @@ fetchPackageTarget verbosity repoCtxt target = case target of
 --
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)
-                  -> IO (PackageTarget SourcePackage)
+                  -> IO (PackageTarget (SourcePackage UnresolvedPkgLoc))
 readPackageTarget verbosity target = case target of
 
     PackageTargetNamed pkgname constraints userTarget ->

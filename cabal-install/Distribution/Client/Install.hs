@@ -237,7 +237,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
                       , PkgConfigDb
-                      , [UserTarget], [PackageSpecifier SourcePackage]
+                      , [UserTarget], [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
                       , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -342,7 +342,7 @@ planPackages :: Compiler
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier SourcePackage]
+             -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
              -> Progress String String InstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
@@ -467,7 +467,7 @@ checkPrintPlan :: Verbosity
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
-               -> [PackageSpecifier SourcePackage]
+               -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
                -> IO ()
 checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
@@ -680,14 +680,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
-    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
+    nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
     nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
-    stanzas :: ConfiguredPackage -> [OptionalStanza]
+    stanzas :: ConfiguredPackage loc -> [OptionalStanza]
     stanzas (ConfiguredPackage _ _ sts _) = sts
 
     showStanzas :: [OptionalStanza] -> String
@@ -1247,7 +1247,7 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
 installReadyPackage :: Platform -> CompilerInfo
                     -> ConfigFlags
                     -> ReadyPackage
-                    -> (ConfigFlags -> PackageLocation (Maybe FilePath)
+                    -> (ConfigFlags -> UnresolvedPkgLoc
                                     -> PackageDescription
                                     -> PackageDescriptionOverride
                                     -> a)
@@ -1284,7 +1284,7 @@ fetchSourcePackage
   :: Verbosity
   -> RepoContext
   -> JobLimit
-  -> PackageLocation (Maybe FilePath)
+  -> UnresolvedPkgLoc
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
 fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do

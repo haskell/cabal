@@ -12,9 +12,7 @@ module Distribution.Client.Dependency.Modular
 import Data.Map as M
          ( fromListWith )
 import Distribution.Client.Dependency.Modular.Assignment
-         ( Assignment, toCPs )
-import Distribution.Client.Dependency.Modular.Dependency
-         ( RevDepMap )
+         ( toCPs )
 import Distribution.Client.Dependency.Modular.ConfiguredConversion
          ( convCP )
 import Distribution.Client.Dependency.Modular.IndexConversion
@@ -26,14 +24,14 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, ResolverPackage
+         ( DependencyResolver
          , PackageConstraint(..), unlabelPackageConstraint )
 import Distribution.System
          ( Platform(..) )
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
-modularResolver :: SolverConfig -> DependencyResolver
+modularResolver :: SolverConfig -> DependencyResolver loc
 modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
   fmap (uncurry postprocess)      $ -- convert install plan
   logToProgress (maxBackjumps sc) $ -- convert log format into progress format
@@ -47,7 +45,6 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
           pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
 
       -- Results have to be converted into an install plan.
-      postprocess :: Assignment -> RevDepMap -> [ResolverPackage]
       postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.

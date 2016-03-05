@@ -15,6 +15,7 @@ module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
+         , UnresolvedPkgLoc
          , OptionalStanza, ConfiguredId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -44,7 +45,7 @@ data InstalledOrSource installed source
 
 data FinalSelectedPackage
    = SelectedInstalled InstalledPackage
-   | SelectedSource    ConfiguredPackage
+   | SelectedSource    (ConfiguredPackage UnresolvedPkgLoc)
 
 type TopologicalSortNumber = Int
 
@@ -62,18 +63,18 @@ data InstalledPackageEx
 
 data UnconfiguredPackage
    = UnconfiguredPackage
-       SourcePackage
+       (SourcePackage UnresolvedPkgLoc)
        !TopologicalSortNumber
        FlagAssignment
        [OptionalStanza]
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
-       SourcePackage     -- package info
-       FlagAssignment    -- total flag assignment for the package
-       [OptionalStanza]  -- enabled optional stanzas
-       [Dependency]      -- dependencies we end up with when we apply
-                         -- the flag assignment
+       (SourcePackage UnresolvedPkgLoc)  -- package info
+       FlagAssignment                    -- total flag assignment for the package
+       [OptionalStanza]                  -- enabled optional stanzas
+       [Dependency]                      -- dependencies we end up with when we apply
+                                         -- the flag assignment
 
 instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
@@ -131,7 +132,7 @@ class Package a => PackageSourceDeps a where
 instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
-instance PackageSourceDeps ConfiguredPackage where
+instance PackageSourceDeps (ConfiguredPackage loc) where
   sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps InstalledPackage where
