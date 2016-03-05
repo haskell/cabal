@@ -27,6 +27,8 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..)
          , RepoContext(..) )
@@ -120,6 +122,7 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)
@@ -129,7 +132,7 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
     sanityCheck pkgSpecifiers
     planPackages
                verbosity comp platform mSandboxPkgInfo freezeFlags
-               installedPkgIndex sourcePkgDb pkgSpecifiers
+               installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
   where
     sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
@@ -146,10 +149,11 @@ planPackages :: Verbosity
              -> FreezeFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
+             -> PkgConfigDb
              -> [PackageSpecifier SourcePackage]
              -> IO [PlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
-             installedPkgIndex sourcePkgDb pkgSpecifiers = do
+             installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
 
   solver <- chooseSolver verbosity
             (fromFlag (freezeSolver freezeFlags)) (compilerInfo comp)
@@ -157,7 +161,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
   installPlan <- foldProgress logMsg die return $
                    resolveDependencies
-                     platform (compilerInfo comp)
+                     platform (compilerInfo comp) pkgConfigDb
                      solver
                      resolverParams
 

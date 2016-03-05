@@ -251,7 +251,7 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
+topDownResolver platform cinfo installedPkgIndex sourcePkgIndex _pkgConfigDB
                 preferences constraints targets =
     mapMessages $ topDownResolver'
                     platform cinfo

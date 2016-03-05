@@ -22,6 +22,8 @@ import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )
 
@@ -82,6 +84,7 @@ fetch verbosity packageDBs repoCtxt comp platform conf
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)
@@ -90,7 +93,7 @@ fetch verbosity packageDBs repoCtxt comp platform conf
 
     pkgs  <- planPackages
                verbosity comp platform fetchFlags
-               installedPkgIndex sourcePkgDb pkgSpecifiers
+               installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
     pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
     if null pkgs'
@@ -116,10 +119,11 @@ planPackages :: Verbosity
              -> FetchFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
+             -> PkgConfigDb
              -> [PackageSpecifier SourcePackage]
              -> IO [SourcePackage]
 planPackages verbosity comp platform fetchFlags
-             installedPkgIndex sourcePkgDb pkgSpecifiers
+             installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
   | includeDependencies = do
       solver <- chooseSolver verbosity
@@ -127,7 +131,7 @@ planPackages verbosity comp platform fetchFlags
       notice verbosity "Resolving dependencies..."
       installPlan <- foldProgress logMsg die return $
                        resolveDependencies
-                         platform (compilerInfo comp)
+                         platform (compilerInfo comp) pkgConfigDb
                          solver
                          resolverParams
 

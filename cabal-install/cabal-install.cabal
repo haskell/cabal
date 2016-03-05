@@ -202,6 +202,7 @@ executable cabal
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
+        Distribution.Client.PkgConfigDb
         Distribution.Client.PlanIndex
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectConfig

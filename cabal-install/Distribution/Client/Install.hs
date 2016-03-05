@@ -149,6 +149,8 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
@@ -234,6 +236,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
+                      , PkgConfigDb
                       , [UserTarget], [PackageSpecifier SourcePackage]
                       , HttpTransport )
 
@@ -262,6 +265,8 @@ makeInstallContext verbosity
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    pkgConfigDb       <- readPkgConfigDb      verbosity conf
+
     checkConfigExFlags verbosity installedPkgIndex
                        (packageIndex sourcePkgDb) configExFlags
     transport <- repoContextGetTransport repoCtxt
@@ -284,7 +289,7 @@ makeInstallContext verbosity
                          userTargets
         return (userTargets, pkgSpecifiers)
 
-    return (installedPkgIndex, sourcePkgDb, userTargets
+    return (installedPkgIndex, sourcePkgDb, pkgConfigDb, userTargets
            ,pkgSpecifiers, transport)
 
 -- | Make an install plan given install context and install arguments.
@@ -294,7 +299,7 @@ makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
-  (installedPkgIndex, sourcePkgDb,
+  (installedPkgIndex, sourcePkgDb, pkgConfigDb,
    _, pkgSpecifiers, _) = do
 
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
@@ -302,7 +307,7 @@ makeInstallPlan verbosity
     notice verbosity "Resolving dependencies..."
     return $ planPackages comp platform mSandboxPkgInfo solver
       configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgSpecifiers
+      installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
@@ -310,7 +315,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> IO ()
 processInstallPlan verbosity
   args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
-  (installedPkgIndex, sourcePkgDb,
+  (installedPkgIndex, sourcePkgDb, _,
    userTargets, pkgSpecifiers, _) installPlan = do
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
@@ -336,14 +341,15 @@ planPackages :: Compiler
              -> InstallFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
+             -> PkgConfigDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
-             installedPkgIndex sourcePkgDb pkgSpecifiers =
+             installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
 
         resolveDependencies
-          platform (compilerInfo comp)
+          platform (compilerInfo comp) pkgConfigDb
           solver
           resolverParams
 
@@ -723,7 +729,7 @@ reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
   ,_, configFlags, _, installFlags, _)
-  (_, sourcePkgDb, _, pkgSpecifiers, _)
+  (_, sourcePkgDb, _, _, pkgSpecifiers, _)
   message = do
 
   when reportFailure $ do
