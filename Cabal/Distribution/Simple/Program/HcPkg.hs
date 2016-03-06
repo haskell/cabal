@@ -11,6 +11,7 @@
 
 module Distribution.Simple.Program.HcPkg (
     HcPkgInfo(..),
+    MultiInstance(..),
 
     init,
     invoke,
@@ -73,6 +74,10 @@ data HcPkgInfo = HcPkgInfo
   , nativeMultiInstance  :: Bool -- ^ supports --enable-multi-instance flag
   , recacheMultiInstance :: Bool -- ^ supports multi-instance via recache
   }
+
+-- | Whether or not use multi-instance functionality.
+data MultiInstance = MultiInstance | NoMultiInstance
+  deriving (Show, Read, Eq, Ord)
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
 --
@@ -353,11 +358,11 @@ registerInvocation, reregisterInvocation, registerMultiInstanceInvocation
   :: HcPkgInfo -> Verbosity -> PackageDBStack
   -> Either FilePath InstalledPackageInfo
   -> ProgramInvocation
-registerInvocation   = registerInvocation' "register" False
-reregisterInvocation = registerInvocation' "update"   False
-registerMultiInstanceInvocation = registerInvocation' "update" True
+registerInvocation   = registerInvocation' "register" NoMultiInstance
+reregisterInvocation = registerInvocation' "update"   NoMultiInstance
+registerMultiInstanceInvocation = registerInvocation' "update" MultiInstance
 
-registerInvocation' :: String -> Bool
+registerInvocation' :: String -> MultiInstance
                     -> HcPkgInfo -> Verbosity -> PackageDBStack
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
@@ -377,7 +382,7 @@ registerInvocation' cmdname multiInstance hpi
              ++ (if noPkgDbStack hpi
                    then [packageDbOpts hpi (last packagedbs)]
                    else packageDbStackOpts hpi packagedbs)
-             ++ [ "--enable-multi-instance" | multiInstance ]
+             ++ [ "--enable-multi-instance" | multiInstance == MultiInstance ]
              ++ verbosityOpts hpi verbosity
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId

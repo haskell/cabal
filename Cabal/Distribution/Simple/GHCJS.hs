@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Distribution.Simple.GHCJS (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
@@ -795,12 +796,12 @@ adjustExts hiSuf objSuf opts =
 
 registerPackage :: Verbosity
                 -> ProgramConfiguration
-                -> Bool
+                -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
                 -> IO ()
 registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-  | multiInstance
+  | HcPkg.MultiInstance <- multiInstance
   = HcPkg.registerMultiInstance (hcPkgInfo progdb) verbosity
       packageDbs installedPkgInfo
 

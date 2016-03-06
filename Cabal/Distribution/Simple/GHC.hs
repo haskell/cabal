@@ -1204,12 +1204,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 registerPackage
   :: Verbosity
   -> ProgramConfiguration
-  -> Bool
+  -> HcPkg.MultiInstance
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()
 registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-  | multiInstance
+  | HcPkg.MultiInstance <- multiInstance
   = HcPkg.registerMultiInstance (hcPkgInfo progdb) verbosity
       packageDbs installedPkgInfo
 

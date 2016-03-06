@@ -114,7 +114,7 @@ registerOne pkg lbi regFlags lib
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
        | otherwise             -> do
            setupMessage verbosity "Registering" (packageId pkg)
-           registerPackage verbosity (compiler lbi) (withPrograms lbi) False
+           registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.NoMultiInstance
                            packageDbs installedPkgInfo
 
   where
@@ -257,7 +257,7 @@ withHcPkg name comp conf f =
 registerPackage :: Verbosity
                 -> Compiler
                 -> ProgramConfiguration
-                -> Bool
+                -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
                 -> IO ()
@@ -265,7 +265,7 @@ registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo 
   case compilerFlavor comp of
     GHC   -> GHC.registerPackage   verbosity progdb multiInstance packageDbs installedPkgInfo
     GHCJS -> GHCJS.registerPackage verbosity progdb multiInstance packageDbs installedPkgInfo
-    _ | multiInstance
+    _ | HcPkg.MultiInstance == multiInstance
           -> die "Registering multiple package instances is not yet supported for this compiler"
     LHC   -> LHC.registerPackage   verbosity      progdb packageDbs installedPkgInfo
     UHC   -> UHC.registerPackage   verbosity comp progdb packageDbs installedPkgInfo

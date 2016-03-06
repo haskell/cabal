@@ -33,6 +33,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.PackageDescription hiding (Flag)
@@ -187,7 +188,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
                                                        (AbiHash "") lib' lbi clbi
 
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) True
+    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
                     (withPackageDB lbi) installedPkgInfo
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
@@ -231,7 +232,7 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     -- NB: need to enable multiple instances here, because on 7.10+
     -- the package name is the same as the library, and we still
     -- want the registration to go through.
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) True
+    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
                     (withPackageDB lbi) ipi
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
