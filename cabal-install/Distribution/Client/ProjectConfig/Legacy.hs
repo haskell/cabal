@@ -102,6 +102,7 @@ instance Semigroup LegacyProjectConfig where
 
 data LegacyPackageConfig = LegacyPackageConfig {
        legacyConfigureFlags    :: ConfigFlags,
+       legacyInstallPkgFlags   :: InstallFlags,
        legacyHaddockFlags      :: HaddockFlags
      } deriving Generic
 
@@ -211,8 +212,9 @@ convertLegacyProjectConfig
     legacyPackagesRepo,
     legacyPackagesNamed,
     legacySharedConfig = LegacySharedConfig globalFlags configShFlags
-                                            configExFlags installFlags,
-    legacyLocalConfig  = LegacyPackageConfig configFlags haddockFlags,
+                                            configExFlags installSharedFlags,
+    legacyLocalConfig  = LegacyPackageConfig configFlags installPerPkgFlags
+                                             haddockFlags,
     legacySpecificConfig
   } =
 
@@ -229,19 +231,18 @@ convertLegacyProjectConfig
     }
   where
     configLocalPackages = convertLegacyPerPackageFlags
-                            configFlags installFlags haddockFlags
+                            configFlags installPerPkgFlags haddockFlags
     configAllPackages   = convertLegacyAllPackageFlags
                             globalFlags (configFlags <> configShFlags)
-                            configExFlags installFlags
+                            configExFlags installSharedFlags
     configBuildOnly     = convertLegacyBuildOnlyFlags
                             globalFlags configFlags
-                            installFlags haddockFlags
+                            installSharedFlags haddockFlags
 
-    perPackage (LegacyPackageConfig perPkgConfigFlags perPkgHaddockFlags) =
+    perPackage (LegacyPackageConfig perPkgConfigFlags perPkgInstallFlags
+                                    perPkgHaddockFlags) =
       convertLegacyPerPackageFlags
         perPkgConfigFlags perPkgInstallFlags perPkgHaddockFlags
-      where
-        perPkgInstallFlags = mempty --TODO
 
 
 -- | Helper used by other conversion functions that returns the
@@ -430,8 +431,7 @@ convertToLegacySharedConfig :: ProjectConfig -> LegacySharedConfig
 convertToLegacySharedConfig
     ProjectConfig {
       projectConfigBuildOnly     = ProjectConfigBuildOnly {..},
-      projectConfigShared        = ProjectConfigShared {..},
-      projectConfigLocalPackages = PackageConfig {..}
+      projectConfigShared        = ProjectConfigShared {..}
     } =
 
     LegacySharedConfig {
@@ -470,7 +470,7 @@ convertToLegacySharedConfig
     }
 
     installFlags = InstallFlags {
-      installDocumentation     = packageConfigDocumentation,
+      installDocumentation     = mempty,
       installHaddockIndex      = projectConfigHaddockIndex,
       installDryRun            = projectConfigDryRun,
       installReinstall         = projectConfigReinstall,
@@ -492,7 +492,7 @@ convertToLegacySharedConfig
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
       installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
-      installRunTests          = packageConfigRunTests,
+      installRunTests          = mempty,
       installOfflineMode       = projectConfigOfflineMode
     }
 
@@ -506,6 +506,7 @@ convertToLegacyAllPackageConfig
 
     LegacyPackageConfig {
       legacyConfigureFlags = configFlags,
+      legacyInstallPkgFlags= mempty,
       legacyHaddockFlags   = haddockFlags
     }
   where
@@ -565,8 +566,9 @@ convertToLegacyAllPackageConfig
 convertToLegacyPerPackageConfig :: PackageConfig -> LegacyPackageConfig
 convertToLegacyPerPackageConfig PackageConfig {..} =
     LegacyPackageConfig {
-      legacyConfigureFlags = configFlags,
-      legacyHaddockFlags   = haddockFlags
+      legacyConfigureFlags  = configFlags,
+      legacyInstallPkgFlags = installFlags,
+      legacyHaddockFlags    = haddockFlags
     }
   where
     configFlags = ConfigFlags {
@@ -616,6 +618,12 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configDebugInfo           = packageConfigDebugInfo,
       configAllowNewer          = mempty
     }
+
+    installFlags = mempty {
+      installDocumentation      = packageConfigDocumentation,
+      installRunTests           = packageConfigRunTests
+    }
+
     haddockFlags = HaddockFlags {
       haddockProgramPaths  = mempty,
       haddockProgramArgs   = mempty,

@@ -39,7 +39,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( Flag, AllowNewer(..) )
 import Distribution.Simple.InstallDirs
-         ( InstallDirs, PathTemplate )
+         ( PathTemplate )
 import Distribution.Utils.NubList
          ( NubList )
 import Distribution.Verbosity
