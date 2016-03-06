@@ -14,6 +14,9 @@ module Distribution.Client.ProjectConfig.Legacy (
     convertLegacyProjectConfig,
     convertLegacyGlobalConfig,
     convertToLegacyProjectConfig,
+
+    -- * Internals, just for tests
+    parsePackageLocationTokenQ,
   ) where
 
 import Distribution.Client.ProjectConfig.Types
@@ -49,6 +52,7 @@ import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( ReadP, (+++) )
+import qualified Text.Read as Read
 import qualified Text.PrettyPrint as Disp
          ( render, text, empty, sep )
 import Text.PrettyPrint
@@ -669,11 +673,11 @@ legacyProjectConfigFieldDescrs :: [FieldDescr LegacyProjectConfig]
 legacyProjectConfigFieldDescrs =
 
     [ newLineListField "packages"
-        Disp.text parsePackageLocationTokenQ
+        (Disp.text . renderPackageLocationToken) parsePackageLocationTokenQ
         legacyPackages
         (\v flags -> flags { legacyPackages = v })
     , newLineListField "optional-packages"
-        Disp.text parsePackageLocationTokenQ
+        (Disp.text . renderPackageLocationToken) parsePackageLocationTokenQ
         legacyPackagesOptional
         (\v flags -> flags { legacyPackagesOptional = v })
     , newLineListField "extra-packages"
@@ -702,27 +706,53 @@ parsePackageLocationTokenQ :: ReadP r String
 parsePackageLocationTokenQ = parseHaskellString
                    Parse.<++ parsePackageLocationToken
   where
+    --TODO: [code cleanup] use this to replace the parseHaskellString in
+    -- Distribution.ParseUtils. It turns out Read instance for String accepts
+    -- the ['a', 'b'] syntax, which we do not want. In particular it messes
+    -- up any token starting with [].
     parseHaskellString :: ReadP r String
-    parseHaskellString = Parse.readS_to_P reads
+    parseHaskellString =
+      Parse.readS_to_P $
+        Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
 
     parsePackageLocationToken :: ReadP r String
     parsePackageLocationToken = fmap fst (Parse.gather outerTerm)
       where
         outerTerm   = alternateEither1 outerToken (braces innerTerm)
-        innerTerm   = alternateEither innerToken (braces innerTerm)
+        innerTerm   = alternateEither  innerToken (braces innerTerm)
         outerToken  = Parse.munch1 outerChar >> return ()
         innerToken  = Parse.munch1 innerChar >> return ()
         outerChar c = not (isSpace c || c == '{' || c == '}' || c == ',')
         innerChar c = not (isSpace c || c == '{' || c == '}')
         braces      = Parse.between (Parse.char '{') (Parse.char '}')
 
-    alternateEither, alternateEither1, alternate, alternate1
+    alternateEither, alternateEither1,
+      alternatePQs, alternate1PQs, alternateQsP, alternate1QsP
       :: ReadP r () -> ReadP r () -> ReadP r ()
 
+    alternateEither1 p q = alternate1PQs p q +++ alternate1QsP q p
     alternateEither  p q = alternateEither1 p q +++ return ()
-    alternateEither1 p q = alternate1 p q +++ alternate1 q p
-    alternate1       p q = p >> alternate q p
-    alternate        p q = alternate1 p q +++ return ()
+    alternate1PQs    p q = p >> alternateQsP q p
+    alternatePQs     p q = alternate1PQs p q +++ return ()
+    alternate1QsP    q p = Parse.many1 q >> alternatePQs p q
+    alternateQsP     q p = alternate1QsP q p +++ return ()
+
+renderPackageLocationToken :: String -> String
+renderPackageLocationToken s | needsQuoting = show s
+                             | otherwise    = s
+  where
+    needsQuoting  = not (ok 0 s)
+                 || s == "." -- . on its own on a line has special meaning
+                 || take 2 s == "--" -- on its own line is comment syntax
+                 --TODO: [code cleanup] these "." and "--" escaping issues
+                 -- ought to be dealt with systematically in ParseUtils.
+    ok :: Int -> String -> Bool
+    ok n []       = n == 0
+    ok _ ('"':_)  = False
+    ok n ('{':cs) = ok (n+1) cs
+    ok n ('}':cs) = ok (n-1) cs
+    ok n (',':cs) = (n > 0) && ok n cs
+    ok n (_  :cs) = ok n cs
 
 
 legacySharedConfigFieldDescrs :: [FieldDescr LegacySharedConfig]
@@ -733,7 +763,7 @@ legacySharedConfigFieldDescrs =
       (\flags conf -> conf { legacyGlobalFlags = flags })
   . filterFields
       [ "remote-repo", "remote-repo-cache", "local-repo"
-      , "logs-dir", "world-file", "http-transport"
+      , "logs-dir", "world-file", "ignore-expiry", "http-transport"
       ]
   . commandOptionsToFields
   ) (commandOptions (globalCommand []) ParseArgs)
@@ -772,7 +802,7 @@ legacySharedConfigFieldDescrs =
       , "root-cmd", "symlink-bindir"
       , "build-summary", "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "run-tests", "offline"
+      , "run-tests", "jobs", "offline"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "strong-flags"
       ]

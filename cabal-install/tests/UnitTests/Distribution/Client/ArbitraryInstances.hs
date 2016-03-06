@@ -3,7 +3,8 @@
 module UnitTests.Distribution.Client.ArbitraryInstances (
     adjustSize,
     shortListOf1,
-    arbitraryShortToken
+    arbitraryShortToken,
+    arbitraryFlag
   ) where
 
 import Control.Monad
@@ -90,15 +91,27 @@ instance Arbitrary Platform where
     arbitrary = Platform <$> arbitrary <*> arbitrary
 
 instance Arbitrary a => Arbitrary (Flag a) where
-    arbitrary = frequency [ (1, pure NoFlag)
-                          , (3, Flag <$> arbitrary) ]
+    arbitrary = arbitraryFlag arbitrary
+    shrink NoFlag   = []
+    shrink (Flag x) = NoFlag : [ Flag x' | x' <- shrink x ]
+
+arbitraryFlag :: Gen a -> Gen (Flag a)
+arbitraryFlag genA =
+    sized $ \sz ->
+      case sz of
+        0 -> pure NoFlag
+        _ -> frequency [ (1, pure NoFlag)
+                       , (3, Flag <$> genA) ]
+
 
 instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
     arbitrary = toNubList <$> arbitrary
+    shrink xs = [ toNubList xs' | xs' <- shrink (fromNubList xs) ]
 
 instance Arbitrary Verbosity where
     arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken
+    shrink t  = [ toPathTemplate s | s <- shrink (show t), not (null s) ]
 

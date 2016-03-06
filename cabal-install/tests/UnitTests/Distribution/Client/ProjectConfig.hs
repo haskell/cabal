@@ -5,6 +5,7 @@ module UnitTests.Distribution.Client.ProjectConfig (tests) where
 import Data.Monoid
 import Control.Applicative
 import Data.Map (Map)
+import Data.List
 
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
@@ -13,6 +14,7 @@ import Distribution.ParseUtils
 import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
+import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
@@ -37,6 +39,10 @@ tests =
     , testProperty "local"     prop_roundtrip_legacytypes_local
     , testProperty "specific"  prop_roundtrip_legacytypes_specific
     , testProperty "all"       prop_roundtrip_legacytypes_all
+    ]
+
+  , testGroup "individual parser tests"
+    [ testProperty "package location"  prop_parsePackageLocationTokenQ
     ]
 
   , testGroup "ProjectConfig printing/parsing round trip"
@@ -153,6 +159,18 @@ prop_roundtrip_printparse_specific config =
       mempty { projectConfigSpecificPackage = config }
 
 
+----------------------------
+-- Individual Parser tests 
+--
+
+prop_parsePackageLocationTokenQ :: Property
+prop_parsePackageLocationTokenQ =
+    forAll arbitraryPackageLocationString $ \str ->
+      case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ str ] of
+        [str'] -> str' == str
+        _      -> False
+
+
 ------------------------
 -- Arbitrary instances
 --
@@ -160,17 +178,45 @@ prop_roundtrip_printparse_specific config =
 instance Arbitrary ProjectConfig where
     arbitrary =
       ProjectConfig
-        <$> arbitrary --PackageLocationString
-        <*> arbitrary --PackageLocationString
+        <$> listOf arbitraryPackageLocationString
+        <*> listOf arbitraryPackageLocationString
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
 
     shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7) =
-      [ ProjectConfig x0' x1' x2' x3' x4' x5' x6' x7'
-      | ((x0', x1', x2', x3'), (x4', x5', x6', x7'))
-          <- shrink ((x0, x1, x2, x3), (x4, x5, x6, x7))
+      [ ProjectConfig x0 x1 x2' x3' x4' x5' x6' x7'
+      | ((x2', x3'), (x4', x5', x6', x7'))
+          <- shrink ((x2, x3), (x4, x5, x6, x7))
+      ] ++
+      [ ProjectConfig x0' x1 x2 x3 x4 x5 x6 x7
+      | x0' <- shrinkList (const []) x0
+      ] ++
+      [ ProjectConfig x0 x1' x2 x3 x4 x5 x6 x7
+      | x1' <- shrinkList (const []) x1
       ]
+
+arbitraryPackageLocationString :: Gen String
+arbitraryPackageLocationString =
+    oneof
+      [ --show <$> (arbitrary :: Gen String)
+        arbitraryGlobLikeStr
+      , show <$> (arbitrary :: Gen URI)
+      ]
+  where
+
+arbitraryGlobLikeStr :: Gen String
+arbitraryGlobLikeStr = outerTerm
+  where
+    outerTerm  = concat <$> shortListOf1
+                  (frequency [ (2, token)
+                             , (1, braces <$> innerTerm) ])
+    innerTerm  = intercalate "," <$> listOf1
+                  (frequency [ (3, token)
+                             , (1, braces <$> innerTerm) ])
+    token      = listOf1 (elements (['#'..'~'] \\ "{,}"))
+    braces s   = "{" ++ s ++ "}"
+
 
 instance Arbitrary ProjectConfigBuildOnly where
     arbitrary =
@@ -178,7 +224,8 @@ instance Arbitrary ProjectConfigBuildOnly where
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary <*> arbitrary <*> arbitrary -- 16
         <*> arbitrary <*> arbitrary
 
     shrink (ProjectConfigBuildOnly
@@ -188,16 +235,16 @@ instance Arbitrary ProjectConfigBuildOnly where
       [ ProjectConfigBuildOnly
           x00' x01' x02' x03' x04'
           x05' x06' x07' x08' x09'
-          x10' x11' x12' x13' x14'
+          x10' x11' x12  x13' x14'
           x15' x16' x17'
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12', x13', x14'),
+         (x10', x11',       x13', x14'),
          (x15', x16', x17'))
           <- shrink
                ((x00, x01, x02, x03, x04),
                 (x05, x06, x07, x08, x09),
-                (x10, x11, x12, x13, x14),
+                (x10, x11,      x13, x14),
                 (x15, x16, x17))
       ]
 
@@ -307,6 +354,12 @@ instance Arbitrary SourceRepo where
                            <*> arbitrary
                            <*> arbitrary
                            <*> arbitrary
+    shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
+      [ SourceRepo RepoThis x1' x2' x3' x4' x5' x6'
+      | ((x1', x2', x3'), (x4', x5', x6'))
+          <- shrink ((x1, x2, x3), (x4, x5, x6))
+      ]
+
 
 instance Arbitrary RepoType where
     arbitrary = elements knownRepoTypes
