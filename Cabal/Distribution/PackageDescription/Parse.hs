@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -1203,31 +1204,35 @@ parseHookedBuildInfo inp = do
   fields <- readFields inp
   let (mLibFields:rest) = stanzas fields
   mLib <- parseLib mLibFields
-  foldM parseStanza (mLib, []) rest
+  foldM parseStanza mLib rest
   where
     -- For backwards compatibility, if you have a bare stanza,
     -- we assume it's part of the public library.  We don't
     -- know what the name is, so the people using the HookedBuildInfo
     -- have to handle this carefully.
-    parseLib :: [Field] -> ParseResult [(String, BuildInfo)]
+    parseLib :: [Field] -> ParseResult [(ComponentName, BuildInfo)]
     parseLib (bi@(F _ inFieldName _:_))
         | lowercase inFieldName /= "executable" &&
-          lowercase inFieldName /= "library"
-            = liftM (\bis -> [("", bis)]) (parseBI bi)
+          lowercase inFieldName /= "library" &&
+          lowercase inFieldName /= "benchmark" &&
+          lowercase inFieldName /= "test-suite"
+            = liftM (\bis -> [(CLibName "", bis)]) (parseBI bi)
     parseLib _ = return []
 
     parseStanza :: HookedBuildInfo -> [Field] -> ParseResult HookedBuildInfo
-    parseStanza (lib_bis, exe_bis) (F line inFieldName mName:bi)
-        | lowercase inFieldName == "executable"
-            = do bis <- parseBI bi
-                 return (lib_bis, (mName, bis):exe_bis)
-        | lowercase inFieldName == "library"
-            = do bis <- parseBI bi
-                 return ((mName, bis):lib_bis, exe_bis)
+    parseStanza bis (F line inFieldName mName:bi)
+        | Just k <- case lowercase inFieldName of
+                        "executable" -> Just CExeName
+                        "library"    -> Just CLibName
+                        "benchmark"  -> Just CBenchName
+                        "test-suite" -> Just CTestName
+                        _ -> Nothing
+            = do bi' <- parseBI bi
+                 return ((k mName, bi'):bis)
         | otherwise
             = syntaxError line $
-                "expecting 'executable' or 'library' at top of stanza, " ++
-                "but got '" ++ inFieldName ++ "'"
+                "expecting 'executable', 'library', 'benchmark' or 'test-suite' " ++
+                "at top of stanza, but got '" ++ inFieldName ++ "'"
     parseStanza _ (_:_) = cabalBug "`parseStanza' called on a non-field"
     parseStanza _ [] = syntaxError 0 "error in parsing buildinfo file. Expected stanza"
 
@@ -1263,16 +1268,16 @@ writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
                              . showHookedBuildInfo
 
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo (lib_bis, ex_bis) = render $
+showHookedBuildInfo bis = render $
      vcat [    space
-            $$ text "library:" <+> text name
+            $$ ppName name
             $$ ppBuildInfo bi
-          | (name, bi) <- lib_bis ]
-  $$ vcat [    space
-            $$ text "executable:" <+> text name
-            $$ ppBuildInfo bi
-          | (name, bi) <- ex_bis ]
+          | (name, bi) <- bis ]
   where
+    ppName (CLibName name) = text "library:" <+> text name
+    ppName (CExeName name) = text "executable:" <+> text name
+    ppName (CTestName name) = text "test-suite:" <+> text name
+    ppName (CBenchName name) = text "benchmark:" <+> text name
     ppBuildInfo bi = ppFields binfoFieldDescrs bi
                   $$ ppCustomFields (customFieldsBI bi)
 

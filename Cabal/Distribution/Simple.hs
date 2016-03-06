@@ -96,7 +96,7 @@ import Distribution.Compat.Environment (getEnvironment)
 
 import Control.Monad   (when)
 import Data.Foldable   (traverse_)
-import Data.List       (unionBy, nub, (\\))
+import Data.List       (unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -407,24 +407,15 @@ hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags ar
    post_hook hooks args flags pkg_descr localbuildinfo
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
-sanityCheckHookedBuildInfo pkg_descr (hookLibs, hookExes)
-    | not (null nonExistantLibs)
-    = die $ "The buildinfo contains info for an library called '"
-         ++ head nonExistantLibs ++ "' but the package does not have a "
-         ++ "library with that name."
-    | not (null nonExistantExes)
-    = die $ "The buildinfo contains info for an executable called '"
-         ++ head nonExistantExes ++ "' but the package does not have a "
-         ++ "executable with that name."
+sanityCheckHookedBuildInfo pkg_descr hooked_bis
+    | not (null nonExistentComponents)
+    = die $ "The buildinfo contains info for these non-existent components:"
+         ++ intercalate ", " (map showComponentName nonExistentComponents)
   where
-    pkgExeNames  = nub (map exeName (executables pkg_descr))
-    hookExeNames = nub (map fst hookExes)
-    nonExistantExes  = hookExeNames \\ pkgExeNames
-
-    -- Blank refers to the default, public library
-    pkgLibNames  = "" : nub (map libName (libraries pkg_descr))
-    hookLibNames = nub (map fst hookLibs)
-    nonExistantLibs  = hookLibNames \\ pkgLibNames
+    nonExistentComponents =
+        [ cname
+        | (cname, _) <- hooked_bis
+        , Nothing <- [lookupComponent pkg_descr cname] ]
 
 sanityCheckHookedBuildInfo _ _ = return ()
 

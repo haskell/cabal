@@ -90,6 +90,8 @@ module Distribution.PackageDescription (
         hcSharedOptions,
 
         -- ** Supplementary build information
+        ComponentName(..),
+        defaultLibName,
         HookedBuildInfo,
         emptyHookedBuildInfo,
         updatePackageDescription,
@@ -958,10 +960,22 @@ usedExtensions :: BuildInfo -> [Extension]
 usedExtensions bi = oldExtensions bi
                  ++ defaultExtensions bi
 
-type HookedBuildInfo = ([(String, BuildInfo)], [(String, BuildInfo)])
+-- Libraries live in a separate namespace, so must distinguish
+data ComponentName = CLibName   String
+                   | CExeName   String
+                   | CTestName  String
+                   | CBenchName String
+                   deriving (Eq, Generic, Ord, Read, Show)
+
+instance Binary ComponentName
+
+defaultLibName :: PackageIdentifier -> ComponentName
+defaultLibName pid = CLibName (display (pkgName pid))
+
+type HookedBuildInfo = [(ComponentName, BuildInfo)]
 
 emptyHookedBuildInfo :: HookedBuildInfo
-emptyHookedBuildInfo = ([], [])
+emptyHookedBuildInfo = []
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
@@ -1117,21 +1131,22 @@ lowercase = map Char.toLower
 -- ------------------------------------------------------------
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
-updatePackageDescription (lib_bi, exe_bi) p
-    = p{ executables = updateMany exeName updateExecutable exe_bi (executables p)
-       , libraries   = updateMany libName updateLibrary    lib_bi (libraries   p)
-       }
+updatePackageDescription hooked_bis p
+  = p{ executables = updateMany (CExeName . exeName)         updateExecutable (executables p)
+     , libraries   = updateMany (CLibName . libName)         updateLibrary    (libraries   p)
+     , benchmarks  = updateMany (CBenchName . benchmarkName) updateBenchmark  (benchmarks p)
+     , testSuites  = updateMany (CTestName . testName)       updateTestSuite  (testSuites p)
+     }
     where
-      updateMany :: (a -> String) -- ^ @exeName@ or @libName@
-                 -> (BuildInfo -> a -> a) -- ^ @updateExecutable@ or @updateLibrary@
-                 -> [(String, BuildInfo)] -- ^[(name, new buildinfo)]
+      updateMany :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
+                 -> (BuildInfo -> a -> a) -- ^ @updateExecutable@, @updateLibrary@, etc
                  -> [a]          -- ^list of components to update
                  -> [a]          -- ^list with updated components
-      updateMany name update hooked_bi' cs' = foldr (updateOne name update) cs' hooked_bi'
+      updateMany name update cs' = foldr (updateOne name update) cs' hooked_bis
 
-      updateOne :: (a -> String) -- ^ @exeName@ or @libName@
-                -> (BuildInfo -> a -> a) -- ^ @updateExecutable@ or @updateLibrary@
-                -> (String, BuildInfo) -- ^(name, new buildinfo)
+      updateOne :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
+                -> (BuildInfo -> a -> a) -- ^ @updateExecutable@, @updateLibrary@, etc
+                -> (ComponentName, BuildInfo) -- ^(name, new buildinfo)
                 -> [a]        -- ^list of components to update
                 -> [a]        -- ^list with name component updated
       updateOne _ _ _                 []         = []
@@ -1140,12 +1155,14 @@ updatePackageDescription (lib_bi, exe_bi) p
           -- Special case: an empty name means "please update the BuildInfo for
           -- the public library, i.e. the one with the same name as the
           -- package."  See 'parseHookedBuildInfo'.
-          (name == "" && name_sel c == display (pkgName (package p)))
+          name == CLibName "" && name_sel c == defaultLibName (package p)
           = update bi c : cs
         | otherwise          = c : updateOne name_sel update hooked_bi' cs
 
       updateExecutable bi exe = exe{buildInfo    = bi `mappend` buildInfo exe}
       updateLibrary    bi lib = lib{libBuildInfo = bi `mappend` libBuildInfo lib}
+      updateBenchmark  bi ben = ben{benchmarkBuildInfo = bi `mappend` benchmarkBuildInfo ben}
+      updateTestSuite  bi test = test{testBuildInfo = bi `mappend` testBuildInfo test}
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type

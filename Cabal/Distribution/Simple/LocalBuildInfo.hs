@@ -207,18 +207,6 @@ data Component = CLib   Library
                | CBench Benchmark
                deriving (Show, Eq, Read)
 
--- Libraries live in a separate namespace, so must distinguish
-data ComponentName = CLibName   String
-                   | CExeName   String
-                   | CTestName  String
-                   | CBenchName String
-                   deriving (Eq, Generic, Ord, Read, Show)
-
-defaultLibName :: PackageIdentifier -> ComponentName
-defaultLibName pid = CLibName (display (pkgName pid))
-
-instance Binary ComponentName
-
 -- | This gets the 'String' component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning
 -- @Nothing@ if the 'ComponentName' was for the public
