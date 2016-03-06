@@ -1,7 +1,7 @@
 -*-change-log-*-
 
 1.25.x.x (current development version)
-	* No changes yet.
+	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
