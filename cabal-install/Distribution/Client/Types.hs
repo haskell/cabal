@@ -209,6 +209,8 @@ enableStanzas stanzas gpkg = gpkg
 
 type UnresolvedPkgLoc = PackageLocation (Maybe FilePath)
 
+type ResolvedPkgLoc = PackageLocation FilePath
+
 data PackageLocation local =
 
     -- | An unpacked package in the given dir, or current dir

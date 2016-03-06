@@ -1285,7 +1285,7 @@ fetchSourcePackage
   -> RepoContext
   -> JobLimit
   -> UnresolvedPkgLoc
-  -> (PackageLocation FilePath -> IO BuildResult)
+  -> (ResolvedPkgLoc -> IO BuildResult)
   -> IO BuildResult
 fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
   fetched <- checkFetched src
@@ -1300,7 +1300,7 @@ fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
 installLocalPackage
   :: Verbosity
   -> JobLimit
-  -> PackageIdentifier -> PackageLocation FilePath -> FilePath
+  -> PackageIdentifier -> ResolvedPkgLoc -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installLocalPackage verbosity jobLimit pkgid location distPref installPkg =

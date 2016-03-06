@@ -72,7 +72,7 @@ isFetched loc = case loc of
 
 
 checkFetched :: UnresolvedPkgLoc
-             -> IO (Maybe (PackageLocation FilePath))
+             -> IO (Maybe ResolvedPkgLoc)
 checkFetched loc = case loc of
     LocalUnpackedPackage dir  ->
       return (Just $ LocalUnpackedPackage dir)
@@ -97,7 +97,7 @@ checkFetched loc = case loc of
 fetchPackage :: Verbosity
              -> RepoContext
              -> UnresolvedPkgLoc
-             -> IO (PackageLocation FilePath)
+             -> IO ResolvedPkgLoc
 fetchPackage verbosity repoCtxt loc = case loc of
     LocalUnpackedPackage dir  ->
       return (LocalUnpackedPackage dir)
