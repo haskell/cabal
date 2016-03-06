@@ -115,7 +115,7 @@ tests config = do
       assertRegex "error should be in MyLibrary.hs" "^MyLibrary.hs:" r
       assertRegex
         "error should be \"Could not find module `Text\\.PrettyPrint\""
-        "Could not find module.*Text\\.PrettyPrint" r
+        "(Could not find module|Failed to load interface for).*Text\\.PrettyPrint" r
 
   -- This is a control on TargetSpecificDeps1; it should
   -- succeed.
@@ -130,7 +130,7 @@ tests config = do
       assertRegex "error should be in lemon.hs" "^lemon.hs:" r
       assertRegex
         "error should be \"Could not find module `Text\\.PrettyPrint\""
-        "Could not find module.*Text\\.PrettyPrint" r
+        "(Could not find module|Failed to load interface for).*Text\\.PrettyPrint" r
 
   -- Test that Paths module is generated and available for executables.
   tc "PathsModule/Executable" $ cabal_build []
