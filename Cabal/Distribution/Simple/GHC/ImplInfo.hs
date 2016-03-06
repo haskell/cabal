@@ -31,17 +31,7 @@ import Distribution.Version
 -}
 
 data GhcImplInfo = GhcImplInfo
-  { hasCcOdirBug         :: Bool -- ^ bug in -odir handling for C compilations.
-  , flagInfoLanguages    :: Bool -- ^ --info and --supported-languages flags
-  , fakeRecordPuns       :: Bool -- ^ use -XRecordPuns for NamedFieldPuns
-  , flagStubdir          :: Bool -- ^ -stubdir flag supported
-  , flagOutputDir        :: Bool -- ^ -outputdir flag supported
-  , noExtInSplitSuffix   :: Bool -- ^ split-obj suffix does not contain p_o ext
-  , flagFfiIncludes      :: Bool -- ^ -#include on command line for FFI includes
-  , flagBuildingCabalPkg :: Bool -- ^ -fbuilding-cabal-package flag supported
-  , flagPackageId        :: Bool -- ^ -package-id / -package flags supported
-  , separateGccMingw     :: Bool -- ^ mingw and gcc are in separate directories
-  , supportsHaskell2010  :: Bool -- ^ -XHaskell2010 and -XHaskell98 flags
+  { supportsHaskell2010  :: Bool -- ^ -XHaskell2010 and -XHaskell98 flags
   , reportsNoExt         :: Bool -- ^ --supported-languages gives Ext and NoExt
   , alwaysNondecIndent   :: Bool -- ^ NondecreasingIndentation is always on
   , flagGhciScript       :: Bool -- ^ -ghci-script flag supported
@@ -65,17 +55,7 @@ getImplInfo comp =
 
 ghcVersionImplInfo :: Version -> GhcImplInfo
 ghcVersionImplInfo (Version v _) = GhcImplInfo
-  { hasCcOdirBug         = v <  [6,4,1]
-  , flagInfoLanguages    = v >= [6,7]
-  , fakeRecordPuns       = v >= [6,8] && v < [6,10]
-  , flagStubdir          = v >= [6,8]
-  , flagOutputDir        = v >= [6,10]
-  , noExtInSplitSuffix   = v <  [6,11]
-  , flagFfiIncludes      = v <  [6,11]
-  , flagBuildingCabalPkg = v >= [6,11]
-  , flagPackageId        = v >  [6,11]
-  , separateGccMingw     = v <  [6,12]
-  , supportsHaskell2010  = v >= [7]
+  { supportsHaskell2010  = v >= [7]
   , reportsNoExt         = v >= [7]
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
@@ -86,17 +66,7 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
 
 ghcjsVersionImplInfo :: Version -> Version -> GhcImplInfo
 ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
-  { hasCcOdirBug         = False
-  , flagInfoLanguages    = True
-  , fakeRecordPuns       = False
-  , flagStubdir          = True
-  , flagOutputDir        = True
-  , noExtInSplitSuffix   = False
-  , flagFfiIncludes      = False
-  , flagBuildingCabalPkg = True
-  , flagPackageId        = True
-  , separateGccMingw     = False
-  , supportsHaskell2010  = True
+  { supportsHaskell2010  = True
   , reportsNoExt         = True
   , alwaysNondecIndent   = False
   , flagGhciScript       = True

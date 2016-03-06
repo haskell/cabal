@@ -111,7 +111,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, conf1) <-
     requireProgramVersion verbosity ghcProgram
-      (orLaterVersion (Version [6,4] []))
+      (orLaterVersion (Version [6,11] []))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
