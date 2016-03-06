@@ -120,8 +120,8 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier SourcePackage]
-             -> IO [SourcePackage]
+             -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+             -> IO [SourcePackage UnresolvedPkgLoc]
 planPackages verbosity comp platform fetchFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 

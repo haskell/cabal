@@ -73,6 +73,7 @@ import Distribution.Client.PkgConfigDb (PkgConfigDb)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
          , ConfiguredPackage(..), ConfiguredId(..)
+         , UnresolvedPkgLoc
          , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
@@ -145,7 +146,7 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
-       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex (SourcePackage UnresolvedPkgLoc),
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
@@ -207,7 +208,7 @@ showPackagePreference (PackageStanzasPreference pn st) =
   display pn ++ " " ++ show st
 
 basicDepResolverParams :: InstalledPackageIndex
-                       -> PackageIndex.PackageIndex SourcePackage
+                       -> PackageIndex.PackageIndex (SourcePackage UnresolvedPkgLoc)
                        -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
@@ -312,7 +313,7 @@ dontUpgradeNonUpgradeablePackages params =
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
 
-addSourcePackages :: [SourcePackage]
+addSourcePackages :: [SourcePackage UnresolvedPkgLoc]
                   -> DepResolverParams -> DepResolverParams
 addSourcePackages pkgs params =
     params {
@@ -381,7 +382,7 @@ removeUpperBounds allowNewer     params =
   where
     sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
 
-    relaxDeps :: SourcePackage -> SourcePackage
+    relaxDeps :: SourcePackage UnresolvedPkgLoc -> SourcePackage UnresolvedPkgLoc
     relaxDeps srcPkg = srcPkg {
       packageDescription = relaxPackageDeps allowNewer
                            (packageDescription srcPkg)
@@ -393,7 +394,7 @@ removeUpperBounds allowNewer     params =
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
-addDefaultSetupDependencies :: (SourcePackage -> [Dependency])
+addDefaultSetupDependencies :: (SourcePackage UnresolvedPkgLoc -> [Dependency])
                             -> DepResolverParams -> DepResolverParams
 addDefaultSetupDependencies defaultSetupDeps params =
     params {
@@ -401,7 +402,7 @@ addDefaultSetupDependencies defaultSetupDeps params =
         fmap applyDefaultSetupDeps (depResolverSourcePkgIndex params)
     }
   where
-    applyDefaultSetupDeps :: SourcePackage -> SourcePackage
+    applyDefaultSetupDeps :: SourcePackage UnresolvedPkgLoc -> SourcePackage UnresolvedPkgLoc
     applyDefaultSetupDeps srcpkg =
         srcpkg {
           packageDescription = gpkgdesc {
@@ -431,7 +432,7 @@ reinstallTargets params =
 
 standardInstallPolicy :: InstalledPackageIndex
                       -> SourcePackageDb
-                      -> [PackageSpecifier SourcePackage]
+                      -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
                       -> DepResolverParams
 standardInstallPolicy
     installedPkgIndex (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
@@ -512,7 +513,7 @@ chooseSolver verbosity preSolver _cinfo =
         info verbosity "Choosing modular solver."
         return Modular
 
-runSolver :: Solver -> SolverConfig -> DependencyResolver
+runSolver :: Solver -> SolverConfig -> DependencyResolver UnresolvedPkgLoc
 runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
 runSolver Modular = modularResolver
 
@@ -619,7 +620,7 @@ interpretPackagesPreference selected defaultPref prefs =
 validateSolverResult :: Platform
                      -> CompilerInfo
                      -> Bool
-                     -> [ResolverPackage]
+                     -> [ResolverPackage UnresolvedPkgLoc]
                      -> InstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
@@ -647,7 +648,7 @@ validateSolverResult platform comp indepGoals pkgs =
 
 
 data PlanPackageProblem =
-       InvalidConfiguredPackage ConfiguredPackage [PackageProblem]
+       InvalidConfiguredPackage (ConfiguredPackage UnresolvedPkgLoc) [PackageProblem]
 
 showPlanPackageProblem :: PlanPackageProblem -> String
 showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
@@ -657,7 +658,7 @@ showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
              | problem <- packageProblems ]
 
 planPackagesProblems :: Platform -> CompilerInfo
-                     -> [ResolverPackage]
+                     -> [ResolverPackage UnresolvedPkgLoc]
                      -> [PlanPackageProblem]
 planPackagesProblems platform cinfo pkgs =
      [ InvalidConfiguredPackage pkg packageProblems
@@ -706,7 +707,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- dependencies are satisfied by the specified packages.
 --
 configuredPackageProblems :: Platform -> CompilerInfo
-                          -> ConfiguredPackage -> [PackageProblem]
+                          -> ConfiguredPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
   (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
@@ -787,14 +788,14 @@ configuredPackageProblems platform cinfo
 -- It simply means preferences for installed packages will be ignored.
 --
 resolveWithoutDependencies :: DepResolverParams
-                           -> Either [ResolveNoDepsError] [SourcePackage]
+                           -> Either [ResolveNoDepsError] [SourcePackage UnresolvedPkgLoc]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps) =
     collectEithers (map selectPackage targets)
   where
-    selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage
+    selectPackage :: PackageName -> Either ResolveNoDepsError (SourcePackage UnresolvedPkgLoc)
     selectPackage pkgname
       | null choices = Left  $! ResolveUnsatisfiable pkgname requiredVersions
       | otherwise    = Right $! maximumBy bestByPrefs choices

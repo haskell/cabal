@@ -113,23 +113,23 @@ instance Text PreSolver where
 -- solving the package dependency problem and we want to make it easy to swap
 -- in alternatives.
 --
-type DependencyResolver = Platform
-                       -> CompilerInfo
-                       -> InstalledPackageIndex
-                       ->          PackageIndex.PackageIndex SourcePackage
-                       -> PkgConfigDb
-                       -> (PackageName -> PackagePreferences)
-                       -> [LabeledPackageConstraint]
-                       -> [PackageName]
-                       -> Progress String String [ResolverPackage]
+type DependencyResolver loc = Platform
+                           -> CompilerInfo
+                           -> InstalledPackageIndex
+                           -> PackageIndex.PackageIndex (SourcePackage loc)
+                           -> PkgConfigDb
+                           -> (PackageName -> PackagePreferences)
+                           -> [LabeledPackageConstraint]
+                           -> [PackageName]
+                           -> Progress String String [ResolverPackage loc]
 
 -- | The dependency resolver picks either pre-existing installed packages
 -- or it picks source packages along with package configuration.
 --
 -- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
 --
-data ResolverPackage = PreExisting InstalledPackageInfo
-                     | Configured  ConfiguredPackage
+data ResolverPackage loc = PreExisting InstalledPackageInfo
+                         | Configured  (ConfiguredPackage loc)
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously

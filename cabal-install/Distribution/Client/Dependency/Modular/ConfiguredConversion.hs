@@ -21,8 +21,8 @@ import Distribution.Client.ComponentDeps (ComponentDeps)
 -- a 'ResolverPackage', which can then be converted into
 -- the install plan.
 convCP :: SI.InstalledPackageIndex ->
-          CI.PackageIndex SourcePackage ->
-          CP QPN -> ResolverPackage
+          CI.PackageIndex (SourcePackage loc) ->
+          CP QPN -> ResolverPackage loc
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting

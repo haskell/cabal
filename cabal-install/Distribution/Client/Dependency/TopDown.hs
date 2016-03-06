@@ -21,6 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
+         , UnresolvedPkgLoc
          , enableStanzas, ConfiguredId(..), fakeUnitId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
@@ -250,7 +251,7 @@ search configure pref constraints =
 -- | The main exported resolver, with string logging and failure types to fit
 -- the standard 'DependencyResolver' interface.
 --
-topDownResolver :: DependencyResolver
+topDownResolver :: DependencyResolver UnresolvedPkgLoc
 topDownResolver platform cinfo installedPkgIndex sourcePkgIndex _pkgConfigDB
                 preferences constraints targets =
     mapMessages $ topDownResolver'
@@ -268,11 +269,11 @@ topDownResolver platform cinfo installedPkgIndex sourcePkgIndex _pkgConfigDB
 --
 topDownResolver' :: Platform -> CompilerInfo
                  -> PackageIndex InstalledPackage
-                 -> PackageIndex SourcePackage
+                 -> PackageIndex (SourcePackage UnresolvedPkgLoc)
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
-                 -> Progress Log Failure [ResolverPackage]
+                 -> Progress Log Failure [ResolverPackage UnresolvedPkgLoc]
 topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
@@ -300,7 +301,7 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
       . PackageIndex.fromList
       $ finaliseSelectedPackages preferences selected' constraints'
 
-    toResolverPackage :: FinalSelectedPackage -> ResolverPackage
+    toResolverPackage :: FinalSelectedPackage -> ResolverPackage UnresolvedPkgLoc
     toResolverPackage (SelectedInstalled (InstalledPackage pkg _))
                                               = PreExisting pkg
     toResolverPackage (SelectedSource    pkg) = Configured  pkg
@@ -446,7 +447,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
 --
 annotateSourcePackages :: [PackageConstraint]
                        -> (PackageName -> TopologicalSortNumber)
-                       -> PackageIndex SourcePackage
+                       -> PackageIndex (SourcePackage UnresolvedPkgLoc)
                        -> PackageIndex UnconfiguredPackage
 annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     PackageIndex.fromList
@@ -483,7 +484,7 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
 -- heuristic.
 --
 topologicalSortNumbering :: PackageIndex InstalledPackage
-                         -> PackageIndex SourcePackage
+                         -> PackageIndex (SourcePackage UnresolvedPkgLoc)
                          -> (PackageName -> TopologicalSortNumber)
 topologicalSortNumbering installedPkgIndex sourcePkgIndex =
     \pkgname -> let Just vertex = toVertex pkgname
@@ -510,17 +511,17 @@ topologicalSortNumbering installedPkgIndex sourcePkgIndex =
 -- and looking at the names of all possible dependencies.
 --
 selectNeededSubset :: PackageIndex InstalledPackage
-                   -> PackageIndex SourcePackage
+                   -> PackageIndex (SourcePackage UnresolvedPkgLoc)
                    -> Set PackageName
                    -> (PackageIndex InstalledPackage
-                      ,PackageIndex SourcePackage)
+                      ,PackageIndex (SourcePackage UnresolvedPkgLoc))
 selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
   where
     select :: PackageIndex InstalledPackage
-           -> PackageIndex SourcePackage
+           -> PackageIndex (SourcePackage UnresolvedPkgLoc)
            -> Set PackageName
            -> (PackageIndex InstalledPackage
-              ,PackageIndex SourcePackage)
+              ,PackageIndex (SourcePackage UnresolvedPkgLoc))
     select installedPkgIndex' sourcePkgIndex' remaining
       | Set.null remaining = (installedPkgIndex', sourcePkgIndex')
       | otherwise = select installedPkgIndex'' sourcePkgIndex'' remaining''
