@@ -8,6 +8,7 @@ env:
  - GHCVER=7.6.3
  - GHCVER=7.8.4
  - GHCVER=7.10.3
+ - GHCVER=8.0.1
  # TODO add PARSEC_BUNDLED=YES when it's so
  - GHCVER=head
 
@@ -15,8 +16,8 @@ env:
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
- - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
+ - travis_retry sudo apt-get install cabal-install-1.24 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
+ - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.24/bin:$PATH
  - git version
 
 install:
