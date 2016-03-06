@@ -83,7 +83,8 @@ data GhcOptions = GhcOptions {
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
 
-  -- | The GHC packages to use, the @ghc -package-id@ flags.
+  -- | The GHC packages to bring into scope when compiling,
+  -- the @ghc -package-id@ flags.
   ghcOptPackages      ::
     NubListR (UnitId, ModuleRenaming),
 
