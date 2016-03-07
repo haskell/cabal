@@ -43,7 +43,8 @@ import Distribution.Text
          ( Text(disp), display )
 
 import Distribution.Client.Types
-         ( SourcePackage(..), SourcePackageDb(..), UnresolvedPkgLoc )
+         ( SourcePackage(..), SourcePackageDb(..)
+         , UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
 import Distribution.Client.Targets
@@ -90,7 +91,7 @@ getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
         pkgsInfo ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage UnresolvedPkgLoc])]
+          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfo
             -- gather info for all packages
           | null pats = mergePackages
@@ -101,7 +102,7 @@ getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
           | otherwise = pkgsInfoMatching
 
         pkgsInfoMatching ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage UnresolvedPkgLoc])]
+          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfoMatching =
           let matchingInstalled = matchingPackages
                                   InstalledPackageIndex.searchByNameSubstring
@@ -206,8 +207,8 @@ info verbosity packageDBs repoCtxt comp conf
   where
     gatherPkgInfo :: (PackageName -> VersionRange) ->
                      InstalledPackageIndex ->
-                     PackageIndex.PackageIndex (SourcePackage UnresolvedPkgLoc) ->
-                     PackageSpecifier (SourcePackage UnresolvedPkgLoc) ->
+                     PackageIndex.PackageIndex UnresolvedSourcePackage ->
+                     PackageSpecifier UnresolvedSourcePackage ->
                      Either String PackageDisplayInfo
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (NamedPackage name constraints)
@@ -251,8 +252,8 @@ sourcePkgsInfo ::
   (PackageName -> VersionRange)
   -> PackageName
   -> InstalledPackageIndex
-  -> PackageIndex.PackageIndex (SourcePackage UnresolvedPkgLoc)
-  -> (VersionRange, [Installed.InstalledPackageInfo], [SourcePackage UnresolvedPkgLoc])
+  -> PackageIndex.PackageIndex UnresolvedSourcePackage
+  -> (VersionRange, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])
 sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
   (pref, installedPkgs, sourcePkgs)
   where
@@ -268,7 +269,7 @@ sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgName           :: PackageName,
     selectedVersion   :: Maybe Version,
-    selectedSourcePkg :: Maybe (SourcePackage UnresolvedPkgLoc),
+    selectedSourcePkg :: Maybe UnresolvedSourcePackage,
     installedVersions :: [Version],
     sourceVersions    :: [Version],
     preferredVersions :: VersionRange,
@@ -417,8 +418,8 @@ reflowLines = vcat . map text . lines
 --
 mergePackageInfo :: VersionRange
                  -> [Installed.InstalledPackageInfo]
-                 -> [SourcePackage UnresolvedPkgLoc]
-                 -> Maybe (SourcePackage UnresolvedPkgLoc)
+                 -> [UnresolvedSourcePackage]
+                 -> Maybe UnresolvedSourcePackage
                  -> Bool
                  -> PackageDisplayInfo
 mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
@@ -520,10 +521,10 @@ latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
 -- both be empty.
 --
 mergePackages :: [Installed.InstalledPackageInfo]
-              -> [SourcePackage UnresolvedPkgLoc]
+              -> [UnresolvedSourcePackage]
               -> [( PackageName
                   , [Installed.InstalledPackageInfo]
-                  , [SourcePackage UnresolvedPkgLoc] )]
+                  , [UnresolvedSourcePackage] )]
 mergePackages installedPkgs sourcePkgs =
     map collect
   $ mergeBy (\i a -> fst i `compare` fst a)

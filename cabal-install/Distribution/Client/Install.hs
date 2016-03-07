@@ -237,7 +237,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
                       , PkgConfigDb
-                      , [UserTarget], [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+                      , [UserTarget], [PackageSpecifier UnresolvedSourcePackage]
                       , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -342,7 +342,7 @@ planPackages :: Compiler
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+             -> [PackageSpecifier UnresolvedSourcePackage]
              -> Progress String String InstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
@@ -467,7 +467,7 @@ checkPrintPlan :: Verbosity
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
-               -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+               -> [PackageSpecifier UnresolvedSourcePackage]
                -> IO ()
 checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do

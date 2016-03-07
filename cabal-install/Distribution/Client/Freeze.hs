@@ -131,7 +131,7 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
-             -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+             -> [PackageSpecifier UnresolvedSourcePackage]
              -> IO [PlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
@@ -196,7 +196,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
 pruneInstallPlan :: InstallPlan
-                 -> [PackageSpecifier (SourcePackage UnresolvedPkgLoc)]
+                 -> [PackageSpecifier UnresolvedSourcePackage]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $

@@ -53,7 +53,7 @@ newtype Password = Password { unPassword :: String }
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
 data SourcePackageDb = SourcePackageDb {
-  packageIndex       :: PackageIndex (SourcePackage UnresolvedPkgLoc),
+  packageIndex       :: PackageIndex UnresolvedSourcePackage,
   packagePreferences :: Map PackageName VersionRange
 }
   deriving (Eq, Generic)
@@ -175,6 +175,9 @@ data SourcePackage loc = SourcePackage {
   deriving (Eq, Show, Generic)
 
 instance (Binary loc) => Binary (SourcePackage loc)
+
+-- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
+type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
 
 -- | We sometimes need to override the .cabal file in the tarball with
 -- the newer one from the package index.

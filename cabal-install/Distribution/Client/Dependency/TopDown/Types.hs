@@ -14,8 +14,8 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..)
-         , UnresolvedPkgLoc
+         ( ConfiguredPackage(..)
+         , UnresolvedPkgLoc, UnresolvedSourcePackage
          , OptionalStanza, ConfiguredId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -63,14 +63,14 @@ data InstalledPackageEx
 
 data UnconfiguredPackage
    = UnconfiguredPackage
-       (SourcePackage UnresolvedPkgLoc)
+       UnresolvedSourcePackage
        !TopologicalSortNumber
        FlagAssignment
        [OptionalStanza]
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
-       (SourcePackage UnresolvedPkgLoc)  -- package info
+       UnresolvedSourcePackage           -- package info
        FlagAssignment                    -- total flag assignment for the package
        [OptionalStanza]                  -- enabled optional stanzas
        [Dependency]                      -- dependencies we end up with when we apply
