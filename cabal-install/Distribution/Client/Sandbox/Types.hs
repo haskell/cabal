@@ -14,7 +14,7 @@ module Distribution.Client.Sandbox.Types (
   ) where
 
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import Distribution.Client.Types (SourcePackage, UnresolvedPkgLoc)
+import Distribution.Client.Types (UnresolvedSourcePackage)
 import Distribution.Compat.Semigroup (Semigroup((<>)))
 
 #if !MIN_VERSION_base(4,8,0)
@@ -49,11 +49,11 @@ whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
 -- | Data about the packages installed in the sandbox that is passed from
 -- 'reinstallAddSourceDeps' to the solver.
 data SandboxPackageInfo = SandboxPackageInfo {
-  modifiedAddSourceDependencies :: ![SourcePackage UnresolvedPkgLoc],
+  modifiedAddSourceDependencies :: ![UnresolvedSourcePackage],
   -- ^ Modified add-source deps that we want to reinstall. These are guaranteed
   -- to be already installed in the sandbox.
 
-  otherAddSourceDependencies    :: ![SourcePackage UnresolvedPkgLoc],
+  otherAddSourceDependencies    :: ![UnresolvedSourcePackage],
   -- ^ Remaining add-source deps. Some of these may be not installed in the
   -- sandbox.
 

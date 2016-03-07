@@ -21,7 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
-         , UnresolvedPkgLoc
+         , UnresolvedPkgLoc, UnresolvedSourcePackage
          , enableStanzas, ConfiguredId(..), fakeUnitId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
@@ -269,7 +269,7 @@ topDownResolver platform cinfo installedPkgIndex sourcePkgIndex _pkgConfigDB
 --
 topDownResolver' :: Platform -> CompilerInfo
                  -> PackageIndex InstalledPackage
-                 -> PackageIndex (SourcePackage UnresolvedPkgLoc)
+                 -> PackageIndex UnresolvedSourcePackage
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
@@ -447,7 +447,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
 --
 annotateSourcePackages :: [PackageConstraint]
                        -> (PackageName -> TopologicalSortNumber)
-                       -> PackageIndex (SourcePackage UnresolvedPkgLoc)
+                       -> PackageIndex UnresolvedSourcePackage
                        -> PackageIndex UnconfiguredPackage
 annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     PackageIndex.fromList
@@ -484,7 +484,7 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
 -- heuristic.
 --
 topologicalSortNumbering :: PackageIndex InstalledPackage
-                         -> PackageIndex (SourcePackage UnresolvedPkgLoc)
+                         -> PackageIndex UnresolvedSourcePackage
                          -> (PackageName -> TopologicalSortNumber)
 topologicalSortNumbering installedPkgIndex sourcePkgIndex =
     \pkgname -> let Just vertex = toVertex pkgname
@@ -511,17 +511,17 @@ topologicalSortNumbering installedPkgIndex sourcePkgIndex =
 -- and looking at the names of all possible dependencies.
 --
 selectNeededSubset :: PackageIndex InstalledPackage
-                   -> PackageIndex (SourcePackage UnresolvedPkgLoc)
+                   -> PackageIndex UnresolvedSourcePackage
                    -> Set PackageName
                    -> (PackageIndex InstalledPackage
-                      ,PackageIndex (SourcePackage UnresolvedPkgLoc))
+                      ,PackageIndex UnresolvedSourcePackage)
 selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
   where
     select :: PackageIndex InstalledPackage
-           -> PackageIndex (SourcePackage UnresolvedPkgLoc)
+           -> PackageIndex UnresolvedSourcePackage
            -> Set PackageName
            -> (PackageIndex InstalledPackage
-              ,PackageIndex (SourcePackage UnresolvedPkgLoc))
+              ,PackageIndex UnresolvedSourcePackage)
     select installedPkgIndex' sourcePkgIndex' remaining
       | Set.null remaining = (installedPkgIndex', sourcePkgIndex')
       | otherwise = select installedPkgIndex'' sourcePkgIndex'' remaining''

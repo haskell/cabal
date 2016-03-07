@@ -113,13 +113,13 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
 
-    fork :: [SourcePackage UnresolvedPkgLoc] -> IO ()
+    fork :: [UnresolvedSourcePackage] -> IO ()
     fork pkgs = do
       let kind = fromFlag . getSourceRepository $ getFlags
       branchers <- findUsableBranchers
       mapM_ (forkPackage verbosity branchers prefix kind) pkgs
 
-    unpack :: [SourcePackage UnresolvedPkgLoc] -> IO ()
+    unpack :: [UnresolvedSourcePackage] -> IO ()
     unpack pkgs = do
       forM_ pkgs $ \pkg -> do
         location <- fetchPackage verbosity repoCtxt (packageSource pkg)
