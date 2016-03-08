@@ -580,7 +580,7 @@ checkGhcOptions pkg =
       PackageBuildWarning $
            "'ghc-options: -prof' is not necessary and will lead to problems "
         ++ "when used on a library. Use the configure flag "
-        ++ "--enable-library-profiling and/or --enable-executable-profiling."
+        ++ "--enable-library-profiling and/or --enable-profiling."
 
   , checkFlags ["-o"] $
       PackageBuildWarning $
