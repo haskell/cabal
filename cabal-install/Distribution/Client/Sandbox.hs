@@ -371,10 +371,9 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
         ++ "'.\nAssuming a shared sandbox. Please delete '"
         ++ sandboxDir ++ "' manually."
 
-      notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
-      removeDirectoryRecursive sandboxDir
-
       absSandboxDir <- canonicalizePath sandboxDir
+      notice verbosity $ "Deleting the sandbox located at " ++ absSandboxDir
+      removeDirectoryRecursive absSandboxDir
 
       let
         pathInsideSandbox = isPrefixOf absSandboxDir
