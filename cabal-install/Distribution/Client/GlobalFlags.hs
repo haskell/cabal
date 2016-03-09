@@ -9,13 +9,14 @@ module Distribution.Client.GlobalFlags (
   , defaultGlobalFlags
   , RepoContext(..)
   , withRepoContext
+  , withRepoContext'
   ) where
 
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..) )
 import Distribution.Compat.Semigroup
 import Distribution.Simple.Setup
-         ( Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+         ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
          ( NubList, fromNubList )
 import Distribution.Client.HttpUtils
@@ -25,6 +26,8 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( info )
 
+import Data.Maybe
+         ( fromMaybe )
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
 import Control.Exception
@@ -132,42 +135,49 @@ data RepoContext = RepoContext {
 data SecureRepo = forall down. SecureRepo (Sec.Repository down)
 
 withRepoContext :: Verbosity -> GlobalFlags -> (RepoContext -> IO a) -> IO a
-withRepoContext verbosity globalFlags = \callback -> do
+withRepoContext verbosity globalFlags =
+    withRepoContext'
+      verbosity
+      (fromNubList (globalRemoteRepos   globalFlags))
+      (fromNubList (globalLocalRepos    globalFlags))
+      (fromFlag    (globalCacheDir      globalFlags))
+      (flagToMaybe (globalHttpTransport globalFlags))
+      (flagToMaybe (globalIgnoreExpiry  globalFlags))
+
+withRepoContext' :: Verbosity -> [RemoteRepo] -> [FilePath]
+                 -> FilePath  -> Maybe String -> Maybe Bool
+                 -> (RepoContext -> IO a)
+                 -> IO a
+withRepoContext' verbosity remoteRepos localRepos
+                 sharedCacheDir httpTransport ignoreExpiry = \callback -> do
     transportRef <- newMVar Nothing
     let httpLib = Sec.HTTP.transportAdapter
                     verbosity
                     (getTransport transportRef)
     initSecureRepos verbosity httpLib secureRemoteRepos $ \secureRepos' ->
       callback RepoContext {
-          repoContextRepos          = allRemoteRepos ++ localRepos
+          repoContextRepos          = allRemoteRepos
+                                   ++ map RepoLocal localRepos
         , repoContextGetTransport   = getTransport transportRef
         , repoContextWithSecureRepo = withSecureRepo secureRepos'
-        , repoContextIgnoreExpiry   = fromFlagOrDefault False
-                                        (globalIgnoreExpiry globalFlags)
+        , repoContextIgnoreExpiry   = fromMaybe False ignoreExpiry
         }
   where
     secureRemoteRepos =
-      [ (remote, cacheDir)
-      | RepoSecure remote cacheDir <- allRemoteRepos ]
+      [ (remote, cacheDir) | RepoSecure remote cacheDir <- allRemoteRepos ]
     allRemoteRepos =
-      [ case remoteRepoSecure remote of
-          Just True  -> RepoSecure remote cacheDir
-          _otherwise -> RepoRemote remote cacheDir
-      | remote <- fromNubList $ globalRemoteRepos globalFlags
-      , let cacheDir = fromFlag (globalCacheDir globalFlags)
-                   </> remoteRepoName remote ]
-    localRepos =
-      [ RepoLocal local
-      | local <- fromNubList $ globalLocalRepos globalFlags ]
+      [ (if isSecure then RepoSecure else RepoRemote) remote cacheDir
+      | remote <- remoteRepos
+      , let cacheDir = sharedCacheDir </> remoteRepoName remote
+            isSecure = remoteRepoSecure remote == Just True
+      ]
 
     getTransport :: MVar (Maybe HttpTransport) -> IO HttpTransport
     getTransport transportRef =
       modifyMVar transportRef $ \mTransport -> do
         transport <- case mTransport of
           Just tr -> return tr
-          Nothing -> configureTransport
-                       verbosity
-                       (flagToMaybe (globalHttpTransport globalFlags))
+          Nothing -> configureTransport verbosity httpTransport
         return (Just transport, transport)
 
     withSecureRepo :: Map Repo SecureRepo
