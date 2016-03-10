@@ -232,12 +232,8 @@ data QualifyOptions = QO {
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps QO{..} (Q pp' pn) = go
+qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
   where
-    -- The Base qualifier does not get inherited
-    pp :: PP
-    pp = (if qoBaseShim then stripBase else id) pp'
-
     go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
     go = map go1
 
@@ -259,9 +255,22 @@ qualifyDeps QO{..} (Q pp' pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
-      | qBase  dep  = Dep (Q (Base  pn pp) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep (Q (Setup pn pp) dep) (fmap (Q pp) ci)
-      | otherwise   = Dep (Q           pp  dep) (fmap (Q pp) ci)
+      | qBase  dep  = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
+      | qSetup comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
+      | otherwise   = Dep (Q (PP ns inheritedQ) dep) (fmap (Q pp) ci)
+
+    -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
+    -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
+    -- dependency on R. We do not do this for the base qualifier however.
+    --
+    -- The inherited qualifier is only used for regular dependencies; for setup
+    -- and base deppendencies we override the existing qualifier. See #3160 for
+    -- a detailed discussion.
+    inheritedQ :: Qualifier
+    inheritedQ = case q of
+                   Setup _     -> q
+                   Unqualified -> q
+                   Base _      -> Unqualified
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool

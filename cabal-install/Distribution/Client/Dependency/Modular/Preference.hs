@@ -308,8 +308,8 @@ deferSetupChoices = trav go
     go x                = x
 
     noSetup :: OpenGoal comp -> Bool
-    noSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = False
-    noSetup _                                                 = True
+    noSetup (OpenGoal (Simple (Dep (Q (PP _ns (Setup _)) _) _) _) _) = False
+    noSetup _                                                        = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such

@@ -79,8 +79,8 @@ tests = [
         , runTest $ mkTest db14 "cycleWithFlagChoice1"  ["C"]      (Just [("C", 1), ("E", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep1" ["A"]      Nothing
         , runTest $ mkTest db15 "cycleThroughSetupDep2" ["B"]      Nothing
---        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      Nothing -- TODO
---        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      Nothing -- TODO
+        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (Just [("C", 2), ("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (Just [("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (Just [("C", 2), ("D", 1), ("E", 1)])
         ]
     , testGroup "Extensions" [
