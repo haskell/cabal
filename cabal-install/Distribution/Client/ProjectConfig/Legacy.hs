@@ -51,7 +51,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Utils
          ( lowercase )
 import Distribution.Utils.NubList
-         ( fromNubList, overNubList )
+         ( toNubList, fromNubList, overNubList )
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
@@ -64,7 +64,8 @@ import Text.PrettyPrint
 import qualified Distribution.ParseUtils as ParseUtils (field)
 import Distribution.ParseUtils
          ( ParseResult(..), PError(..), syntaxError, PWarning(..), warning
-         , simpleField, commaNewLineListField )
+         , simpleField, commaNewLineListField
+         , showToken )
 import Distribution.Client.ParseUtils
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
@@ -709,15 +710,6 @@ parsePackageLocationTokenQ :: ReadP r String
 parsePackageLocationTokenQ = parseHaskellString
                    Parse.<++ parsePackageLocationToken
   where
-    --TODO: [code cleanup] use this to replace the parseHaskellString in
-    -- Distribution.ParseUtils. It turns out Read instance for String accepts
-    -- the ['a', 'b'] syntax, which we do not want. In particular it messes
-    -- up any token starting with [].
-    parseHaskellString :: ReadP r String
-    parseHaskellString =
-      Parse.readS_to_P $
-        Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
-
     parsePackageLocationToken :: ReadP r String
     parsePackageLocationToken = fmap fst (Parse.gather outerTerm)
       where
@@ -764,8 +756,14 @@ legacySharedConfigFieldDescrs =
   ( liftFields
       legacyGlobalFlags
       (\flags conf -> conf { legacyGlobalFlags = flags })
+  . addFields
+      [ newLineListField "local-repo"
+          showTokenQ parseTokenQ
+          (fromNubList . globalLocalRepos)
+          (\v conf -> conf { globalLocalRepos = toNubList v })
+      ]
   . filterFields
-      [ "remote-repo-cache", "local-repo"
+      [ "remote-repo-cache"
       , "logs-dir", "world-file", "ignore-expiry", "http-transport"
       ]
   . commandOptionsToFields
@@ -818,7 +816,6 @@ legacySharedConfigFieldDescrs =
   ) (installOptions ParseArgs)
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO"
-    addFields     = (++)
 
 parseAllowNewer :: ReadP r AllowNewer
 parseAllowNewer =
@@ -838,6 +835,24 @@ legacyPackageConfigFieldDescrs =
   ( liftFields
       legacyConfigureFlags
       (\flags conf -> conf { legacyConfigureFlags = flags })
+  . addFields
+      [ newLineListField "extra-include-dirs"
+          showTokenQ parseTokenQ
+          configExtraIncludeDirs
+          (\v conf -> conf { configExtraIncludeDirs = v })
+      , newLineListField "extra-lib-dirs"
+          showTokenQ parseTokenQ
+          configExtraLibDirs
+          (\v conf -> conf { configExtraLibDirs = v })
+      , newLineListField "extra-framework-dirs"
+          showTokenQ parseTokenQ
+          configExtraFrameworkDirs
+          (\v conf -> conf { configExtraFrameworkDirs = v })
+      , newLineListField "extra-prog-path"
+          showTokenQ parseTokenQ
+          (fromNubList . configProgramPathExtra)
+          (\v conf -> conf { configProgramPathExtra = toNubList v })
+      ]
   . filterFields
       [ "compiler", "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
@@ -848,11 +863,12 @@ legacyPackageConfigFieldDescrs =
       , "optimization", "debug-info", "library-for-ghci", "split-objs"
       , "executable-stripping", "library-stripping"
       , "configure-option", "flags"
-      , "extra-include-dirs", "extra-lib-dirs"
-      , "extra-framework-dirs", "extra-prog-path"
       , "tests", "benchmarks"
       , "coverage", "library-coverage"
       , "relocatable"
+        -- not "extra-include-dirs", "extra-lib-dirs", "extra-framework-dirs"
+        -- or "extra-prog-path". We use corrected ones above that parse
+        -- as list fields.
       ]
   . commandOptionsToFields
   ) (configureOptions ParseArgs)
@@ -1182,3 +1198,30 @@ parseOptCommaList p = Parse.sepBy p sep
     sep = (Parse.skipSpaces >> Parse.char ',' >> Parse.skipSpaces)
       +++ (Parse.satisfy isSpace >> Parse.skipSpaces)
 
+--TODO: [code cleanup] local redefinition that should replace the version in
+-- D.ParseUtils called showFilePath. This version escapes "." and "--" which
+-- otherwise are special syntax.
+showTokenQ :: String -> Doc
+showTokenQ ""            = Disp.empty
+showTokenQ x@('-':'-':_) = Disp.text (show x)
+showTokenQ x@('.':[])    = Disp.text (show x)
+showTokenQ x             = showToken x
+
+-- This is just a copy of parseTokenQ, using the fixed parseHaskellString
+parseTokenQ :: ReadP r String
+parseTokenQ = parseHaskellString
+          <++ Parse.munch1 (\x -> not (isSpace x) && x /= ',')
+
+--TODO: [code cleanup] use this to replace the parseHaskellString in
+-- Distribution.ParseUtils. It turns out Read instance for String accepts
+-- the ['a', 'b'] syntax, which we do not want. In particular it messes
+-- up any token starting with [].
+parseHaskellString :: ReadP r String
+parseHaskellString =
+  Parse.readS_to_P $
+    Read.readPrec_to_S (do Read.String s <- Read.lexP; return s) 0
+
+-- Handy util
+addFields :: [FieldDescr a]
+          -> ([FieldDescr a] -> [FieldDescr a])
+addFields = (++)

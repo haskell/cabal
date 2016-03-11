@@ -203,11 +203,6 @@ hackProjectConfigShared config =
         -- Ths sorting is just to canonicalise, this is ok.
         sortBy (compare `on` fst) (projectConfigProgramArgs config)
 
-      --TODO: [required eventually] lists longer than 1 fail to round trip
-      -- because of a limitation in viewAsFieldDescr
-    , projectConfigProgramPathExtra =
-        overNubList (take 1) (projectConfigProgramPathExtra config)
-
     , projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
@@ -216,11 +211,6 @@ hackProjectConfigShared config =
                                 , "any" `isPrefixOf` name ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)
-
-      --TODO: [required eventually] lists longer than 1 fail to round trip
-      -- because of a limitation in viewAsFieldDescr
-    , projectConfigLocalRepos =
-        overNubList (take 1) (projectConfigLocalRepos config)
 
       --TODO: [required eventually] lists longer than 1 fail to round trip
       -- because of a limitation in viewAsFieldDescr
@@ -252,12 +242,6 @@ hackPackageConfig config =
       -- because of a limitation in viewAsFieldDescr
       packageConfigConfigureArgs =
         take 1 (packageConfigConfigureArgs config)
-    , packageConfigExtraIncludeDirs =
-        take 1 (packageConfigExtraIncludeDirs config)
-    , packageConfigExtraLibDirs =
-        take 1 (packageConfigExtraLibDirs config)
-    , packageConfigExtraFrameworkDirs =
-        take 1 (packageConfigExtraFrameworkDirs config)
     }
 
 
