@@ -263,12 +263,12 @@ globalCommand commands = CommandUI {
 
       ,option [] ["sandbox-config-file"]
          "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
-         globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
+         globalSandboxConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
 
       ,option [] ["default-user-config"]
          "Set a location for a cabal.config file for projects without their own cabal.config freeze file."
-         globalConfigFile (\v flags -> flags {globalConstraintsFile = v})
+         globalConstraintsFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
       ,option [] ["require-sandbox"]
@@ -288,7 +288,7 @@ globalCommand commands = CommandUI {
 
       ,option [] ["http-transport"]
          "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
-         globalConfigFile (\v flags -> flags { globalHttpTransport = v })
+         globalHttpTransport (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
       ]
 
