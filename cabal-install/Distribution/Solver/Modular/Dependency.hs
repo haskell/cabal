@@ -45,6 +45,7 @@ module Distribution.Solver.Modular.Dependency (
 
 import Prelude hiding (pi)
 
+import Data.Maybe (mapMaybe)
 import Data.Map (Map)
 import qualified Data.List as L
 
@@ -197,8 +198,12 @@ data QualifyOptions = QO {
     -- | Do we have a version of base relying on another version of base?
     qoBaseShim :: Bool
 
-    -- Should dependencies of the setup script be treated as independent?
+    -- | Should dependencies of the setup script be treated as independent?
   , qoSetupIndependent :: Bool
+
+    -- | Should dependencies of a test suite, which are not shared with the
+    -- main library, be considered independent?
+  , qoTestsIndependent :: Bool
   }
   deriving Show
 
@@ -212,8 +217,13 @@ data QualifyOptions = QO {
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
+--
+-- NOTE 2: This should be called on _all_ dependencies of a package. If it gets
+-- called on a subset of the dependencies, we might construct invalid
+-- quantifiers. In particular, we might conclude that a dependency of a test
+-- suite is not shared with the library and hence is independent.
 qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
+qualifyDeps QO{..} (Q pp@(PP ns q) pn) allDeps = go allDeps
   where
     go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
     go = map go1
@@ -236,9 +246,10 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
-      | qBase  dep  = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
-      | otherwise   = Dep (Q (PP ns inheritedQ) dep) (fmap (Q pp) ci)
+      | qBase  dep      = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
+      | qSetup     comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
+      | qTest  dep comp = Dep (Q (PP ns (Test  pn)) dep) (fmap (Q pp) ci)
+      | otherwise       = Dep (Q (PP ns inheritedQ) dep) (fmap (Q pp) ci)
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -249,9 +260,10 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     -- a detailed discussion.
     inheritedQ :: Qualifier
     inheritedQ = case q of
-                   Setup _     -> q
                    Unqualified -> q
-                   Base _      -> Unqualified
+                   Setup _     -> q
+                   Test  _     -> q
+                   Base  _     -> Unqualified
 
     -- Should we qualify this goal with the 'Base' package path?
     qBase :: PN -> Bool
@@ -259,7 +271,28 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
 
     -- Should we qualify this goal with the 'Setup' package path?
     qSetup :: Component -> Bool
-    qSetup comp = qoSetupIndependent && comp == ComponentSetup
+    qSetup ComponentSetup = qoSetupIndependent
+    qSetup _ = False
+
+    -- Should we qualify this goal with the 'Test' package path?
+    qTest :: PN -> Component -> Bool
+    qTest dep (ComponentTest _) = and [ qoTestsIndependent
+                                      , not $ isInternalDep dep
+                                      , dep `S.notMember` libDeps
+                                      ]
+    qTest _ _ = False
+
+    -- The dependencies of the main library only
+    libDeps :: Set PN
+    libDeps = S.fromList $ mapMaybe maybeLibDep $ flattenFlaggedDeps allDeps
+
+    -- Is this an internal dependency? (Say, from a test suite on the lib)
+    isInternalDep :: PN -> Bool
+    isInternalDep dep = dep == pn
+
+    maybeLibDep :: (Dep PN, Component) -> Maybe PN
+    maybeLibDep (Dep qpn _ci, ComponentLib) = Just qpn
+    maybeLibDep _otherwise                  = Nothing
 
 -- | Remove qualifiers from set of dependencies
 --

@@ -120,10 +120,16 @@ data Qualifier =
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
   | Setup PN
+
+    -- | (Private) dependency of a test suite
+    --
+    -- We use this qualifier only for test suite dependencies that are not
+    -- shared with the main library.
+  | Test PN
   deriving (Eq, Ord, Show)
 
 -- | Is the package in the primary group of packages. In particular this
--- does not include packages pulled in as setup deps.
+-- does not include packages pulled in as setup deps or private test suite deps.
 --
 primaryPP :: PP -> Bool
 primaryPP (PP _ns q) = go q
@@ -131,6 +137,7 @@ primaryPP (PP _ns q) = go q
     go Unqualified = True
     go (Base  _)   = True
     go (Setup _)   = False
+    go (Test  _)   = False
 
 -- | String representation of a package path.
 --
@@ -151,6 +158,7 @@ showPP (PP ns q) =
     -- 'Base' qualifier, will always be @base@).
     go Unqualified = ""
     go (Setup pn)  = display pn ++ "-setup."
+    go (Test  pn)  = display pn ++ "-test."
     go (Base  pn)  = display pn ++ "."
 
 -- | A qualified entity. Pairs a package path with the entity.
