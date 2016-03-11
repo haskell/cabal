@@ -2,11 +2,18 @@
 
 module UnitTests.Distribution.Client.ArbitraryInstances (
     adjustSize,
+    shortListOf,
     shortListOf1,
+    arbitraryFlag,
+    ShortToken(..),
     arbitraryShortToken,
-    arbitraryFlag
+    NonMEmpty(..),
+    NoShrink(..),
   ) where
 
+import Data.Char
+import Data.List
+import Data.Monoid
 import Control.Monad
 import Control.Applicative
 
@@ -20,23 +27,46 @@ import Distribution.Simple.InstallDirs
 
 import Distribution.Utils.NubList
 
-
 import Test.QuickCheck
 
 
 adjustSize :: (Int -> Int) -> Gen a -> Gen a
 adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
 
-shortListOf1 :: Gen a -> Gen [a]
-shortListOf1 = adjustSize (\n -> min 5 (n `div` 3)) . listOf1
+shortListOf :: Int -> Gen a -> Gen [a]
+shortListOf bound gen =
+    sized $ \n -> do
+      k <- choose (0, (n `div` 2) `min` bound)
+      vectorOf k gen
+
+shortListOf1 :: Int -> Gen a -> Gen [a]
+shortListOf1 bound gen =
+    sized $ \n -> do
+      k <- choose (1, 1 `max` ((n `div` 2) `min` bound))
+      vectorOf k gen
+
+newtype ShortToken = ShortToken { getShortToken :: String }
+  deriving Show
+
+instance Arbitrary ShortToken where
+  arbitrary =
+    ShortToken <$>
+      (shortListOf1 5 (choose ('#', '~'))
+       `suchThat` (not . ("[]" `isPrefixOf`)))
+    --TODO: [code cleanup] need to replace parseHaskellString impl to stop
+    -- accepting Haskell list syntax [], ['a'] etc, just allow String syntax.
+    -- Workaround, don't generate [] as this does not round trip.
+
+
+  shrink (ShortToken cs) =
+    [ ShortToken cs' | cs' <- shrink cs, not (null cs') ]
 
 arbitraryShortToken :: Gen String
-arbitraryShortToken = shortListOf1 (choose ('#', '~'))
-
+arbitraryShortToken = getShortToken <$> arbitrary
 
 instance Arbitrary Version where
   arbitrary = do
-    branch <- shortListOf1 $
+    branch <- shortListOf1 4 $
                 frequency [(3, return 0)
                           ,(3, return 1)
                           ,(2, return 2)
@@ -50,7 +80,7 @@ instance Arbitrary Version where
     [ Version branch [] ]
 
 instance Arbitrary VersionRange where
-  arbitrary = sized verRangeExp
+  arbitrary = canonicaliseVersionRange <$> sized verRangeExp
     where
       verRangeExp n = frequency $
         [ (2, return anyVersion)
@@ -75,8 +105,14 @@ instance Arbitrary VersionRange where
       orEarlierVersion' v =
         unionVersionRanges (earlierVersion v) (thisVersion v)
 
+      canonicaliseVersionRange = fromVersionIntervals . toVersionIntervals
+
 instance Arbitrary PackageName where
-    arbitrary = PackageName <$> arbitraryShortToken
+    arbitrary = PackageName . intercalate "-" <$> shortListOf1 2 nameComponent
+      where
+        nameComponent = shortListOf1 5 (elements packageChars)
+                        `suchThat` (not . all isDigit)
+        packageChars  = filter isAlphaNum ['\0'..'\127']
 
 instance Arbitrary Dependency where
     arbitrary = Dependency <$> arbitrary <*> arbitrary
@@ -106,7 +142,8 @@ arbitraryFlag genA =
 
 instance (Arbitrary a, Ord a) => Arbitrary (NubList a) where
     arbitrary = toNubList <$> arbitrary
-    shrink xs = [ toNubList xs' | xs' <- shrink (fromNubList xs) ]
+    shrink xs = [ toNubList [] | (not . null) (fromNubList xs) ]
+    -- try empty, otherwise don't shrink as it can loop
 
 instance Arbitrary Verbosity where
     arbitrary = elements [minBound..maxBound]
@@ -114,4 +151,18 @@ instance Arbitrary Verbosity where
 instance Arbitrary PathTemplate where
     arbitrary = toPathTemplate <$> arbitraryShortToken
     shrink t  = [ toPathTemplate s | s <- shrink (show t), not (null s) ]
+
+
+newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }
+  deriving Show
+
+instance (Arbitrary a, Monoid a, Eq a) => Arbitrary (NonMEmpty a) where
+  arbitrary = NonMEmpty <$> (arbitrary `suchThat` (/= mempty))
+  shrink (NonMEmpty x) = [ NonMEmpty x' | x' <- shrink x, x' /= mempty ]
+
+newtype NoShrink a = NoShrink { getNoShrink :: a }
+
+instance Arbitrary a => Arbitrary (NoShrink a) where
+    arbitrary = NoShrink <$> arbitrary
+    shrink _  = []
 

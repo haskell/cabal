@@ -5,7 +5,9 @@ module UnitTests.Distribution.Client.ProjectConfig (tests) where
 import Data.Monoid
 import Control.Applicative
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.List
+import Data.Function
 
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
@@ -15,11 +17,15 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Simple.Utils
+import Distribution.Simple.Program.Types
+import Distribution.Simple.Program.Db
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
 import Distribution.Client.BuildReports.Types
 import Distribution.Client.Targets
+import Distribution.Utils.NubList
 import Network.URI
 
 import Distribution.Client.ProjectConfig
@@ -78,8 +84,6 @@ prop_roundtrip_legacytypes_packages :: ProjectConfig -> Bool
 prop_roundtrip_legacytypes_packages config =
     roundtrip_legacytypes
       config {
-        projectPackagesRepo          = mempty,
-        projectPackagesNamed         = mempty,
         projectConfigBuildOnly       = mempty,
         projectConfigShared          = mempty,
         projectConfigLocalPackages   = mempty,
@@ -118,57 +122,154 @@ roundtrip_printparse config =
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk  [] x -> x == config
-      _             -> False
+      ParseOk _ x -> x == config
+      _           -> False
 
 
 prop_roundtrip_printparse_all :: ProjectConfig -> Bool
-prop_roundtrip_printparse_all =
-    roundtrip_printparse
+prop_roundtrip_printparse_all config =
+    roundtrip_printparse config {
+      projectConfigBuildOnly =
+        hackProjectConfigBuildOnly (projectConfigBuildOnly config),
 
-prop_roundtrip_printparse_packages :: ProjectConfig -> Bool
-prop_roundtrip_printparse_packages config =
+      projectConfigShared =
+        hackProjectConfigShared (projectConfigShared config),
+
+      projectConfigLocalPackages =
+        hackPackageConfig (projectConfigLocalPackages config),
+
+      projectConfigSpecificPackage =
+        fmap hackPackageConfig (projectConfigSpecificPackage config)
+    }
+
+prop_roundtrip_printparse_packages :: [PackageLocationString]
+                                   -> [PackageLocationString]
+                                   -> [SourceRepo]
+                                   -> [Dependency]
+                                   -> Bool
+prop_roundtrip_printparse_packages pkglocstrs1 pkglocstrs2 repos named =
     roundtrip_printparse
-      config {
-        projectPackagesRepo          = mempty,
-        projectPackagesNamed         = mempty,
-        projectConfigBuildOnly       = mempty,
-        projectConfigShared          = mempty,
-        projectConfigLocalPackages   = mempty,
-        projectConfigSpecificPackage = mempty
+      mempty {
+        projectPackages         = map getPackageLocationString pkglocstrs1,
+        projectPackagesOptional = map getPackageLocationString pkglocstrs2,
+        projectPackagesRepo     = repos,
+        projectPackagesNamed    = named
       }
 
 prop_roundtrip_printparse_buildonly :: ProjectConfigBuildOnly -> Bool
 prop_roundtrip_printparse_buildonly config =
     roundtrip_printparse
-      mempty { projectConfigBuildOnly = config }
+      mempty {
+        projectConfigBuildOnly = hackProjectConfigBuildOnly config
+      }
+
+hackProjectConfigBuildOnly :: ProjectConfigBuildOnly -> ProjectConfigBuildOnly
+hackProjectConfigBuildOnly config =
+    config {
+      -- These two fields are only command line transitory things, not
+      -- something to be recorded persistently in a config file
+      projectConfigOnlyDeps = mempty,
+      projectConfigDryRun   = mempty,
+
+      --TODO: [required eventually] lists longer than 1 fail to round trip
+      -- because of a limitation in viewAsFieldDescr
+      projectConfigSummaryFile =
+        overNubList (take 1) (projectConfigSummaryFile config)
+    }
 
 prop_roundtrip_printparse_shared :: ProjectConfigShared -> Bool
 prop_roundtrip_printparse_shared config =
     roundtrip_printparse
-      mempty { projectConfigShared = config }
+      mempty {
+        projectConfigShared = hackProjectConfigShared config
+      }
+
+hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
+hackProjectConfigShared config =
+    config {
+      projectConfigProgramPaths =
+        --TODO: [required eventually] use nubBy to avoid path lists for a
+        -- single program longer than 1. These fail to round trip because
+        -- of a limitation in viewAsFieldDescr
+        nubBy  ((==) `on` fst) $
+        -- Ths sorting is just to canonicalise, this is ok.
+        sortBy (compare `on` fst) (projectConfigProgramPaths config)
+
+    , projectConfigProgramArgs =
+        --TODO: [required eventually] use nubBy to avoid arg lists for a
+        -- single program longer than 1. These fail to round trip because
+        -- of a limitation in viewAsFieldDescr
+        nubBy  ((==) `on` fst) $
+        -- Ths sorting is just to canonicalise, this is ok.
+        sortBy (compare `on` fst) (projectConfigProgramArgs config)
+
+      --TODO: [required eventually] lists longer than 1 fail to round trip
+      -- because of a limitation in viewAsFieldDescr
+    , projectConfigProgramPathExtra =
+        overNubList (take 1) (projectConfigProgramPathExtra config)
+
+    , projectConfigConstraints =
+      --TODO: [required eventually] parse ambiguity in constraint
+      -- "pkgname -any" as either any version or disabled flag "any".
+        let ambiguous ((UserConstraintFlags _pkg flags), _) =
+              (not . null) [ () | (FlagName name, False) <- flags
+                                , "any" `isPrefixOf` name ]
+            ambiguous _ = False
+         in filter (not . ambiguous) (projectConfigConstraints config)
+
+      --TODO: [required eventually] lists longer than 1 fail to round trip
+      -- because of a limitation in viewAsFieldDescr
+    , projectConfigLocalRepos =
+        overNubList (take 1) (projectConfigLocalRepos config)
+
+      --TODO: [required eventually] lists longer than 1 fail to round trip
+      -- because of a limitation in viewAsFieldDescr
+    , projectConfigFlagAssignment =
+        take 1 (projectConfigFlagAssignment config)
+    }
+
 
 prop_roundtrip_printparse_local :: PackageConfig -> Bool
 prop_roundtrip_printparse_local config =
     roundtrip_printparse
-      mempty { projectConfigLocalPackages = config }
+      mempty {
+        projectConfigLocalPackages = hackPackageConfig config
+      }
 
-prop_roundtrip_printparse_specific :: Map PackageName PackageConfig -> Bool
+prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
+                                   -> Bool
 prop_roundtrip_printparse_specific config =
     roundtrip_printparse
-      mempty { projectConfigSpecificPackage = config }
+      mempty {
+        projectConfigSpecificPackage =
+          fmap (hackPackageConfig . getNonMEmpty) config
+      }
+
+hackPackageConfig :: PackageConfig -> PackageConfig
+hackPackageConfig config =
+    config {
+      --TODO: [required eventually] lists longer than 1 fail to round trip
+      -- because of a limitation in viewAsFieldDescr
+      packageConfigConfigureArgs =
+        take 1 (packageConfigConfigureArgs config)
+    , packageConfigExtraIncludeDirs =
+        take 1 (packageConfigExtraIncludeDirs config)
+    , packageConfigExtraLibDirs =
+        take 1 (packageConfigExtraLibDirs config)
+    , packageConfigExtraFrameworkDirs =
+        take 1 (packageConfigExtraFrameworkDirs config)
+    }
 
 
 ----------------------------
 -- Individual Parser tests 
 --
 
-prop_parsePackageLocationTokenQ :: Property
-prop_parsePackageLocationTokenQ =
-    forAll arbitraryPackageLocationString $ \str ->
-      case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ str ] of
-        [str'] -> str' == str
-        _      -> False
+prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
+prop_parsePackageLocationTokenQ (PackageLocationString str) =
+    case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ str ] of
+      [str'] -> str' == str
+      _      -> False
 
 
 ------------------------
@@ -178,55 +279,71 @@ prop_parsePackageLocationTokenQ =
 instance Arbitrary ProjectConfig where
     arbitrary =
       ProjectConfig
-        <$> listOf arbitraryPackageLocationString
-        <*> listOf arbitraryPackageLocationString
+        <$> (map getPackageLocationString <$> arbitrary)
+        <*> (map getPackageLocationString <$> arbitrary)
+        <*> shortListOf 3 arbitrary
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary
+        <*> arbitrary
+        <*> (fmap getNonMEmpty . Map.fromList <$> shortListOf 3 arbitrary)
+        -- package entries with no content are equivalent to
+        -- the entry not existing at all, so exclude empty
 
     shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7) =
-      [ ProjectConfig x0 x1 x2' x3' x4' x5' x6' x7'
-      | ((x2', x3'), (x4', x5', x6', x7'))
-          <- shrink ((x2, x3), (x4, x5, x6, x7))
-      ] ++
-      [ ProjectConfig x0' x1 x2 x3 x4 x5 x6 x7
-      | x0' <- shrinkList (const []) x0
-      ] ++
-      [ ProjectConfig x0 x1' x2 x3 x4 x5 x6 x7
-      | x1' <- shrinkList (const []) x1
+      [ ProjectConfig x0' x1' x2' x3' x4' x5' x6' (fmap getNonMEmpty x7')
+      | ((x0', x1', x2', x3'), (x4', x5', x6', x7'))
+          <- shrink ((x0, x1, x2, x3), (x4, x5, x6, fmap NonMEmpty x7))
       ]
 
-arbitraryPackageLocationString :: Gen String
-arbitraryPackageLocationString =
+newtype PackageLocationString
+      = PackageLocationString { getPackageLocationString :: String }
+  deriving Show
+
+instance Arbitrary PackageLocationString where
+  arbitrary =
+    PackageLocationString <$>
     oneof
       [ --show <$> (arbitrary :: Gen String)
         arbitraryGlobLikeStr
       , show <$> (arbitrary :: Gen URI)
       ]
-  where
 
 arbitraryGlobLikeStr :: Gen String
 arbitraryGlobLikeStr = outerTerm
   where
-    outerTerm  = concat <$> shortListOf1
+    outerTerm  = concat <$> shortListOf1 4
                   (frequency [ (2, token)
                              , (1, braces <$> innerTerm) ])
-    innerTerm  = intercalate "," <$> listOf1
+    innerTerm  = intercalate "," <$> shortListOf1 3
                   (frequency [ (3, token)
                              , (1, braces <$> innerTerm) ])
-    token      = listOf1 (elements (['#'..'~'] \\ "{,}"))
+    token      = shortListOf1 4 (elements (['#'..'~'] \\ "{,}"))
     braces s   = "{" ++ s ++ "}"
 
 
 instance Arbitrary ProjectConfigBuildOnly where
     arbitrary =
       ProjectConfigBuildOnly
-        <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitraryFlag arbitraryShortToken
-        <*> arbitrary <*> arbitrary <*> arbitrary -- 16
-        <*> arbitrary <*> arbitrary
+        <$> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> (toNubList <$> shortListOf 2 arbitrary)             --  4
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> (fmap getShortToken <$> arbitrary)                  --  8
+        <*> arbitrary
+        <*> arbitraryNumJobs
+        <*> arbitrary
+        <*> arbitrary                                           -- 12
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> arbitrary
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)                  -- 16
+        <*> (fmap getShortToken <$> arbitrary)
+        <*> (fmap getShortToken <$> arbitrary)
+      where
+        arbitraryNumJobs = fmap (fmap getPositive) <$> arbitrary
 
     shrink (ProjectConfigBuildOnly
               x00 x01 x02 x03 x04 x05 x06 x07
@@ -234,33 +351,46 @@ instance Arbitrary ProjectConfigBuildOnly where
               x16 x17) =
       [ ProjectConfigBuildOnly
           x00' x01' x02' x03' x04'
-          x05' x06' x07' x08' x09'
-          x10' x11' x12  x13' x14'
-          x15' x16' x17'
+          x05' x06' x07' x08' (postShrink_NumJobs x09')
+          x10' x11' x12  x13' x14
+          x15 x16 x17
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11',       x13', x14'),
-         (x15', x16', x17'))
+         (x10', x11',       x13'))
           <- shrink
                ((x00, x01, x02, x03, x04),
-                (x05, x06, x07, x08, x09),
-                (x10, x11,      x13, x14),
-                (x15, x16, x17))
+                (x05, x06, x07, x08, preShrink_NumJobs x09),
+                (x10, x11,      x13))
       ]
+      where
+        preShrink_NumJobs  = fmap (fmap Positive)
+        postShrink_NumJobs = fmap (fmap getPositive)
 
 instance Arbitrary ProjectConfigShared where
     arbitrary =
       ProjectConfigShared
-        <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitraryConstraints
-                                    <*> arbitrary              -- 16
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 20
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 24
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 28
+        <$> shortListOf 2 ((,) <$> arbitraryProgramName
+                               <*> arbitraryShortToken)
+        <*> shortListOf 2 ((,) <$> arbitraryProgramName
+                               <*> listOf arbitraryShortToken)
+        <*> (toNubList <$> listOf arbitraryShortToken)
+        <*> arbitrary                                           --  4
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+        <*> arbitrary                                           --  8
+        <*> (toNubList <$> listOf arbitraryShortToken)
+        <*> arbitraryConstraints
+        <*> arbitrary <*> shortListOf 2 arbitrary               -- 12
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 16
+        <*> arbitrary <*> arbitrary
       where
+        arbitraryProgramName :: Gen String
+        arbitraryProgramName =
+          elements [ programName prog
+                   | (prog, _) <- knownPrograms (defaultProgramDb) ]
+
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
             map (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
@@ -269,48 +399,69 @@ instance Arbitrary ProjectConfigShared where
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
               x10 x11 x12 x13 x14
-              x15 x16 x17 x18 x19
-              x20 x21 x22 x23 x24
-              x25 x26 x27 x28) =
+              x15 x16 x17) =
       [ ProjectConfigShared
-          x00' x01' x02' x03' x04'
-          x05' x06' x07' x08' x09'
-          x10' x11' x12' x13'
-          (map (\uc -> (uc, projectConfigConstraintSource)) x14')
-          x15' x16' x17' x18' x19'
-          x20' x21' x22' x23' x24'
-          x25' x26' x27' x28'
-      | (((x00', x01', x02', x03', x04'),
-          (x05', x06', x07', x08', x09'),
-          (x10', x11', x12', x13', x14'),
-          (x15', x16', x17', x18', x19')),
-         ((x20', x21', x22', x23', x24'),
-          (x25', x26', x27', x28')))
+          (postShrink_Paths x00')
+          (postShrink_Args  x01')
+          x02' x03'
+          (fmap getNonEmpty x04')
+          (fmap getNonEmpty x05')
+               x06' x07' x08'
+          (postShrink_Constraints x09')
+          x10' x11' x12' x13' x14'
+          x15' x16' x17'
+      | ((x00', x01', x02', x03', x04'),
+         (x05', x06', x07', x08', x09'),
+         (x10', x11', x12', x13', x14'),
+         (x15', x16', x17'))
           <- shrink
-               (((x00, x01, x02, x03, x04),
-                 (x05, x06, x07, x08, x09),
-                 (x10, x11, x12, x13, map fst x14),
-                 (x15, x16, x17, x18, x19)),
-                ((x20, x21, x22, x23, x24),
-                 (x25, x26, x27, x28)))
+               ((preShrink_Paths x00,
+                 preShrink_Args  x01,
+                 x02, x03, fmap NonEmpty x04),
+                (fmap NonEmpty x05, x06, x07, x08, preShrink_Constraints x09),
+                (x10, x11, x12, x13, x14),
+                (x15, x16, x17))
       ]
+      where
+        preShrink_Paths  = map (\(x,y) -> (NoShrink x, NonEmpty y))
+        postShrink_Paths = map (\(x,y) -> (getNoShrink x, getNonEmpty y))
+        preShrink_Args   = map (\(x,ys) -> (NoShrink x, NonEmpty (map NonEmpty ys)))
+        postShrink_Args  = map (\(x,ys) -> (getNoShrink x, map getNonEmpty (getNonEmpty ys)))
+        preShrink_Constraints  = map fst
+        postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = 
-    ConstraintSourceProjectConfig "???"
+    ConstraintSourceProjectConfig "TODO"
 
 instance Arbitrary PackageConfig where
     arbitrary =
       PackageConfig
-        <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 16
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 20
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 24
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 28
-        <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 32
-        <*> arbitrary <*> arbitrary                             -- 34
+        <$> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             --  4
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             --  8
+        <*> shortListOf 5 arbitraryShortToken
+        <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 12
+        <*> shortListOf 5 arbitraryShortToken
+        <*> shortListOf 5 arbitraryShortToken
+        <*> shortListOf 5 arbitraryShortToken
+        <*> arbitrary                                           -- 16
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 20
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 24
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 28
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
+        <*> arbitrary <*> arbitrary                             -- 32
+        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken
+        <*> arbitrary
+        <*> arbitraryFlag arbitraryShortToken                   -- 36
+        <*> arbitrary
 
     shrink (PackageConfig
               x00 x01 x02 x03 x04
@@ -319,46 +470,74 @@ instance Arbitrary PackageConfig where
               x15 x16 x17 x18 x19
               x20 x21 x22 x23 x24
               x25 x26 x27 x28 x29
-              x30 x31 x32 x33) =
+              x30 x31 x32 x33 x34
+              x35 x36) =
       [ PackageConfig
           x00' x01' x02' x03' x04'
-          x05' x06' x07' x08' x09'
-          x10' x11' x12' x13' x14'
+          x05' x06' x07' (map getNonEmpty x08') x09'
+          x10' x11'
+          (map getNonEmpty x12')
+          (map getNonEmpty x13')
+          (map getNonEmpty x14')
           x15' x16' x17' x18' x19'
           x20' x21' x22' x23' x24'
           x25' x26' x27' x28' x29'
-          x30' x31' x32' x33'
+          x30' x31' x32' (fmap getNonEmpty x33') x34'
+          (fmap getNonEmpty x35') x36'
       | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
-          (x30', x31', x32', x33')))
+          (x30', x31', x32', x33', x34'),
+          (x35', x36')))
           <- shrink
                (((x00, x01, x02, x03, x04),
-                 (x05, x06, x07, x08, x09),
-                 (x10, x11, x12, x13, x14),
+                 (x05, x06, x07, map NonEmpty x08, x09),
+                 (x10, x11,
+                  map NonEmpty x12,
+                  map NonEmpty x13,
+                  map NonEmpty x14),
                  (x15, x16, x17, x18, x19)),
                 ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
-                 (x30, x31, x32, x33)))
+                 (x30, x31, x32, fmap NonEmpty x33, x34),
+                 (fmap NonEmpty x35, x36)))
       ]
 
 
 instance Arbitrary SourceRepo where
-    arbitrary = SourceRepo RepoThis
+    arbitrary = (SourceRepo RepoThis
                            <$> arbitrary
-                           <*> arbitrary
-                           <*> arbitrary
-                           <*> arbitrary
-                           <*> arbitrary
-                           <*> arbitrary
+                           <*> (fmap getShortToken <$> arbitrary)
+                           <*> (fmap getShortToken <$> arbitrary)
+                           <*> (fmap getShortToken <$> arbitrary)
+                           <*> (fmap getShortToken <$> arbitrary)
+                           <*> (fmap getShortToken <$> arbitrary))
+                `suchThat` (/= emptySourceRepo)
+
     shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
-      [ SourceRepo RepoThis x1' x2' x3' x4' x5' x6'
+      [ repo
       | ((x1', x2', x3'), (x4', x5', x6'))
-          <- shrink ((x1, x2, x3), (x4, x5, x6))
+          <- shrink ((x1,
+                      fmap ShortToken x2,
+                      fmap ShortToken x3),
+                     (fmap ShortToken x4,
+                      fmap ShortToken x5,
+                      fmap ShortToken x6))
+      , let repo = SourceRepo RepoThis x1'
+                              (fmap getShortToken x2')
+                              (fmap getShortToken x3')
+                              (fmap getShortToken x4')
+                              (fmap getShortToken x5')
+                              (fmap getShortToken x6')
+      , repo /= emptySourceRepo
       ]
+
+emptySourceRepo :: SourceRepo
+emptySourceRepo = SourceRepo RepoThis Nothing Nothing Nothing
+                                      Nothing Nothing Nothing
 
 
 instance Arbitrary RepoType where
@@ -386,39 +565,49 @@ instance Arbitrary a => Arbitrary (InstallDirs a) where
 instance Arbitrary PackageDB where
     arbitrary = oneof [ pure GlobalPackageDB
                       , pure UserPackageDB
-                      , SpecificPackageDB <$> arbitraryShortToken
+                      , SpecificPackageDB . getShortToken <$> arbitrary
                       ]
 
 instance Arbitrary RemoteRepo where
     arbitrary =
       RemoteRepo
-        <$> arbitraryShortToken
+        <$> arbitraryShortToken `suchThat` (not . (":" `isPrefixOf`))
         <*> arbitrary  -- URI
         <*> arbitrary
-        <*> listOf arbitraryShortToken -- root keys
-        <*> arbitrary
+        <*> listOf arbitraryRootKey
+        <*> (fmap getNonNegative arbitrary)
         <*> pure False
+      where
+        arbitraryRootKey =
+          shortListOf1 5 (oneof [ choose ('0', '9')
+                                , choose ('a', 'f') ])
 
 instance Arbitrary UserConstraint where
-    arbitrary = oneof [ UserConstraintVersion   <$> arbitrary <*> arbitrary
-                      , UserConstraintInstalled <$> arbitrary
-                      , UserConstraintSource    <$> arbitrary
-                      , UserConstraintFlags     <$> arbitrary <*> arbitrary
-                      , UserConstraintStanzas   <$> arbitrary <*> arbitrary
-                      ]
+    arbitrary =
+      oneof
+        [ UserConstraintVersion   <$> arbitrary <*> arbitrary
+        , UserConstraintInstalled <$> arbitrary
+        , UserConstraintSource    <$> arbitrary
+        , UserConstraintFlags     <$> arbitrary <*> shortListOf1 3 arbitrary
+        , UserConstraintStanzas   <$> arbitrary <*> ((\x->[x]) <$> arbitrary)
+        ]
 
 instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary FlagName where
-    arbitrary = FlagName <$> arbitraryShortToken
+    arbitrary = FlagName <$> flagident
+      where
+        flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
+                      `suchThat` (("-" /=) . take 1)
+        flagChars   = "-_" ++ ['a'..'z']
 
 instance Arbitrary PreSolver where
     arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary AllowNewer where
     arbitrary = oneof [ pure AllowNewerNone
-                      , AllowNewerSome <$> arbitrary
+                      , AllowNewerSome <$> shortListOf1 3 arbitrary
                       , pure AllowNewerAll
                       ]
 
@@ -452,9 +641,9 @@ instance Arbitrary URIAuth where
 
 arbitraryURIToken :: Gen String
 arbitraryURIToken =
-    shortListOf1 (elements (filter isUnreserved ['\0'..'\255']))
+    shortListOf1 6 (elements (filter isUnreserved ['\0'..'\255']))
 
 arbitraryURIPort :: Gen String
 arbitraryURIPort =
-    oneof [ pure "", (':':) <$> shortListOf1 (choose ('0','9')) ]
+    oneof [ pure "", (':':) <$> shortListOf1 4 (choose ('0','9')) ]
 

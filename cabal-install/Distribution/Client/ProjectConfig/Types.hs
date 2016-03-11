@@ -34,7 +34,7 @@ import Distribution.System
 import Distribution.PackageDescription
          ( FlagAssignment, SourceRepo(..) )
 import Distribution.Simple.Compiler
-         ( Compiler, CompilerFlavor, PackageDB
+         ( Compiler, CompilerFlavor
          , OptimisationLevel(..), ProfDetailLevel, DebugInfoLevel(..) )
 import Distribution.Simple.Setup
          ( Flag, AllowNewer(..) )
@@ -139,18 +139,15 @@ data ProjectConfigShared
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,
-       projectConfigVanillaLib        :: Flag Bool,
-       projectConfigSharedLib         :: Flag Bool,
        projectConfigHaddockIndex      :: Flag PathTemplate,
 
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
-       projectConfigUserInstall       :: Flag Bool,
+     --projectConfigUserInstall       :: Flag Bool,
      --projectConfigInstallDirs       :: InstallDirs (Flag PathTemplate),
      --TODO: [required eventually] decide what to do with InstallDirs
      -- currently we don't allow it to be specified in the config file
-       projectConfigPackageDBs        :: [Maybe PackageDB],
-       projectConfigRelocatable       :: Flag Bool,
+     --projectConfigPackageDBs        :: [Maybe PackageDB],
 
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
@@ -162,19 +159,19 @@ data ProjectConfigShared
        projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
-       projectConfigAllowNewer        :: Flag AllowNewer,
+       projectConfigAllowNewer        :: Maybe AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag Bool,
-       projectConfigStrongFlags       :: Flag Bool,
+       projectConfigStrongFlags       :: Flag Bool
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
-       projectConfigIndependentGoals  :: Flag Bool,
-       projectConfigShadowPkgs        :: Flag Bool,
-       projectConfigReinstall         :: Flag Bool,
-       projectConfigAvoidReinstalls   :: Flag Bool,
-       projectConfigOverrideReinstall :: Flag Bool,
-       projectConfigUpgradeDeps       :: Flag Bool
+     --projectConfigIndependentGoals  :: Flag Bool,
+     --projectConfigShadowPkgs        :: Flag Bool,
+     --projectConfigReinstall         :: Flag Bool,
+     --projectConfigAvoidReinstalls   :: Flag Bool,
+     --projectConfigOverrideReinstall :: Flag Bool,
+     --projectConfigUpgradeDeps       :: Flag Bool
      }
   deriving (Eq, Show, Generic)
 
@@ -185,6 +182,8 @@ data ProjectConfigShared
 --
 data PackageConfig
    = PackageConfig {
+       packageConfigVanillaLib          :: Flag Bool,
+       packageConfigSharedLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
        packageConfigProf                :: Flag Bool, --TODO: [code cleanup] sort out
        packageConfigProfLib             :: Flag Bool, --      this duplication
@@ -205,6 +204,7 @@ data PackageConfig
        packageConfigTests               :: Flag Bool,
        packageConfigBenchmarks          :: Flag Bool,
        packageConfigCoverage            :: Flag Bool,
+       packageConfigRelocatable         :: Flag Bool,
        packageConfigDebugInfo           :: Flag DebugInfoLevel,
        packageConfigRunTests            :: Flag Bool, --TODO: [required eventually] use this
        packageConfigDocumentation       :: Flag Bool, --TODO: [required eventually] use this
@@ -283,15 +283,15 @@ data SolverSettings
        solverSettingAllowNewer        :: AllowNewer,
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: Bool,
-       solverSettingStrongFlags       :: Bool,
+       solverSettingStrongFlags       :: Bool
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
-       solverSettingIndependentGoals  :: Bool,
-       solverSettingShadowPkgs        :: Bool,
-       solverSettingReinstall         :: Bool,
-       solverSettingAvoidReinstalls   :: Bool,
-       solverSettingOverrideReinstall :: Bool,
-       solverSettingUpgradeDeps       :: Bool
+     --solverSettingIndependentGoals  :: Bool,
+     --solverSettingShadowPkgs        :: Bool,
+     --solverSettingReinstall         :: Bool,
+     --solverSettingAvoidReinstalls   :: Bool,
+     --solverSettingOverrideReinstall :: Bool,
+     --solverSettingUpgradeDeps       :: Bool
      }
   deriving (Eq, Show, Generic)
 

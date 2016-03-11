@@ -75,7 +75,7 @@ import Distribution.Simple.Utils
 import Distribution.Client.Utils
          ( determineNumJobs )
 import Distribution.Utils.NubList
-         ( NubList, fromNubList )
+         ( fromNubList )
 import Distribution.Verbosity
          ( Verbosity, verbose )
 import Distribution.Text
@@ -167,33 +167,33 @@ resolveSolverSettings projectConfig =
     solverSettingFlagAssignment    = projectConfigFlagAssignment
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
-    solverSettingAllowNewer        = fromFlag projectConfigAllowNewer
+    solverSettingAllowNewer        = fromJust projectConfigAllowNewer
     solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
                                        n | n < 0     -> Nothing
                                          | otherwise -> Just n
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
-    solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
-    solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
-    solverSettingReinstall         = fromFlag projectConfigReinstall
-    solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
-    solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
-    solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
+  --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
+  --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
+  --solverSettingReinstall         = fromFlag projectConfigReinstall
+  --solverSettingAvoidReinstalls   = fromFlag projectConfigAvoidReinstalls
+  --solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
+  --solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
 
     ProjectConfigShared {..} = defaults <> projectConfig
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
-       projectConfigAllowNewer        = Flag AllowNewerNone,
+       projectConfigAllowNewer        = Just AllowNewerNone,
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag False,
-       projectConfigStrongFlags       = Flag False,
-       projectConfigIndependentGoals  = Flag False,
-       projectConfigShadowPkgs        = Flag False,
-       projectConfigReinstall         = Flag False,
-       projectConfigAvoidReinstalls   = Flag False,
-       projectConfigOverrideReinstall = Flag False,
-       projectConfigUpgradeDeps       = Flag False
+       projectConfigStrongFlags       = Flag False
+     --projectConfigIndependentGoals  = Flag False,
+     --projectConfigShadowPkgs        = Flag False,
+     --projectConfigReinstall         = Flag False,
+     --projectConfigAvoidReinstalls   = Flag False,
+     --projectConfigOverrideReinstall = Flag False,
+     --projectConfigUpgradeDeps       = Flag False
     }
 
 

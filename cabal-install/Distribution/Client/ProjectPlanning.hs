@@ -871,22 +871,26 @@ planPackages comp platform solver SolverSettings{..}
 
         setMaxBackjumps solverSettingMaxBackjumps
 
-      . setIndependentGoals solverSettingIndependentGoals
+        --TODO: [required eventually] should only be configurable for custom installs
+   -- . setIndependentGoals solverSettingIndependentGoals
 
       . setReorderGoals solverSettingReorderGoals
 
         --TODO: [required eventually] should only be configurable for custom installs
-      . setAvoidReinstalls solverSettingAvoidReinstalls
+   -- . setAvoidReinstalls solverSettingAvoidReinstalls
 
         --TODO: [required eventually] should only be configurable for custom installs
-      . setShadowPkgs solverSettingShadowPkgs
+   -- . setShadowPkgs solverSettingShadowPkgs
 
       . setStrongFlags solverSettingStrongFlags
 
-        --TODO: [required eventually] decide if we need to prefer installed for global packages?
-      . setPreferenceDefault (if solverSettingUpgradeDeps
+        --TODO: [required eventually] decide if we need to prefer installed for
+        -- global packages, or prefer latest even for global packages. Perhaps
+        -- should be configurable but with a different name than "upgrade-dependencies".
+      . setPreferenceDefault PreferLatestForSelected
+                           {-(if solverSettingUpgradeDeps
                                 then PreferAllLatest
-                                else PreferLatestForSelected)
+                                else PreferLatestForSelected)-}
 
       . removeUpperBounds solverSettingAllowNewer
 
@@ -996,7 +1000,7 @@ elaborateInstallPlan platform compiler progdb
                      solverPlan pkgsImplicitSetupDeps localPackages
                      sourcePackageHashes
                      defaultInstallDirs
-                     sharedPackageConfig
+                     _sharedPackageConfig
                      localPackagesConfig
                      perPackageConfig =
     (elaboratedInstallPlan, elaboratedSharedConfig)
@@ -1105,7 +1109,7 @@ elaborateInstallPlan platform compiler progdb
 
         pkgDescriptionOverride    = descOverride
 
-        pkgVanillaLib    = sharedOptionFlag True  projectConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
+        pkgVanillaLib    = perPkgOptionFlag pkgid True packageConfigVanillaLib --TODO: [required feature]: also needs to be handled recursively
         pkgSharedLib     = pkgid `Set.member` pkgsUseSharedLibrary
         pkgDynExe        = perPkgOptionFlag pkgid False packageConfigDynExe
         pkgGHCiLib       = perPkgOptionFlag pkgid False packageConfigGHCiLib --TODO: [required feature] needs to default to enabled on windows still
@@ -1166,14 +1170,9 @@ elaborateInstallPlan platform compiler progdb
         pkgHaddockHscolourCss  = perPkgOptionMaybe pkgid packageConfigHaddockHscolourCss
         pkgHaddockContents     = perPkgOptionMaybe pkgid packageConfigHaddockContents
 
-    sharedOptionFlag  :: a         -> (ProjectConfigShared -> Flag a) -> a
     perPkgOptionFlag  :: PackageId -> a ->  (PackageConfig -> Flag a) -> a
     perPkgOptionMaybe :: PackageId ->       (PackageConfig -> Flag a) -> Maybe a
     perPkgOptionList  :: PackageId ->       (PackageConfig -> [a])    -> [a]
-
-    sharedOptionFlag def f = fromFlagOrDefault def shared
-      where
-        shared = f sharedPackageConfig
 
     perPkgOptionFlag  pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
     perPkgOptionMaybe pkgid     f = flagToMaybe (lookupPerPkgOption pkgid f)
@@ -1238,7 +1237,7 @@ elaborateInstallPlan platform compiler progdb
                       (liftM2 (||) pkgSharedLib pkgDynExe)
           where
             pkgid        = packageId pkg
-            pkgSharedLib = flagToMaybe (projectConfigSharedLib sharedPackageConfig)
+            pkgSharedLib = perPkgOptionMaybe pkgid packageConfigSharedLib
             pkgDynExe    = perPkgOptionMaybe pkgid packageConfigDynExe
 
     --TODO: [code cleanup] move this into the Cabal lib. It's currently open
