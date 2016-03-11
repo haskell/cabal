@@ -89,6 +89,10 @@ tests = [
         , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (SolverSuccess [("C", 2), ("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (SolverSuccess [("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (SolverSuccess [("C", 2), ("D", 1), ("E", 1)])
+        , runTest $ mkTest db25 "cycleThroughTests1a"   ["B"]      (Just [           ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db26 "cycleThroughTests1b"   ["B"]      (Just [("A" , 1), ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db25 "cycleThroughTests2a"   ["B'"]     (Just [           ("A'", 2), ("B'", 1), ("T'", 1)])
+        , runTest $ mkTest db26 "cycleThroughTests2b"   ["B'"]     (Just [("A'", 1), ("A'", 2), ("B'", 1), ("T'", 1)])
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] anySolverFailure
@@ -757,6 +761,100 @@ db24 = [
   , Right $ exAv "B" 1 []
   , Right $ exAv "B" 2 []
   ]
+
+-- | Cycles through test cycles that can be broken if test suites dependencies
+-- are independent from dependencies of the library proper
+--
+-- This models situations such as the following:
+--
+-- * optparse-applicative (A) has a test suite that depends on tasty (T)
+-- * tasty (T) has a (regular) dependency on optparse-applicative
+--
+-- We can resolve this by linking optparse-applicative's test suite against an
+-- older version of itself.
+--
+-- Test suites can be written in two different ways:
+--
+-- * The test suite declares an explicit, internal, dependency on the library
+-- * The test suite compiles the library in directly (by adding the @/src@
+--   to the test suite's list of source directories, or whatever)
+--
+-- Whichever option is chosen, it is of course very important that the test
+-- suite gets compiled against /this/ version of the library. It would be
+-- terribly confusing if tests started failing because the test suite got built
+-- against an old version of the library from Hackage, rather than the version
+-- in the current directory. This happens by default if option (B) is chosen,
+-- but in the case of option (A) we need to make sure that the solver picks the
+-- right version (that is, /this/ version) for the internal dependency.
+--
+-- In the case of optparse-applicative's test suite, the tests should be
+-- linked against /this/ version of optparse-applicative; however, it is not
+-- essential that its transitive dependency on itself through tasty is also
+-- linked against the same version. Indeed, the only way to break the cycle is
+-- to link tasty against a /different/ version (typically an older, perhaps
+-- already installed, version).
+--
+-- This means that (again whichever method we chose) we will end up with two
+-- versions of the library in a single executable (the test suite): in the
+-- example, we will have both the version of optparse-applicative that we are
+-- testing as well as the older version that we linked tasty against. This does
+-- have the unfortunate consequence that if tasty does not re-export all
+-- functionality from optparse-applicative, it might mean that
+-- optparse-applicative cannot use tasty's full functionality because it cannot
+-- construct elements of types defined in the older version of
+-- optparse-applicative (as it can only import the newer version). What this
+-- means in practice is that if this feature becomes more popular, packages like
+-- tasty will have become more careful with their "private" dependencies,
+-- re-exporting the bits of optparse-applicative that it requires for its API.
+--
+-- Normally when we compile a library, we conservatively assume that all its
+-- transitive dependencies should be able to be used together. For test suites
+-- however we optimistically assume that any of the transitive dependencies
+-- of the "private" test suite dependencies are not used by the library and
+-- can therefore be different versions.
+--
+-- In this database we test both scenarios: A, T, B models the scenario where
+-- the test suite compiles in the library directly; A', T', B' models the
+-- scenario where the test suite declares the internal lib dependency.
+-- (B/B' is just there to force the version of A.) We expect the same
+-- solution in either case.
+db25 :: ExampleDb
+db25 = [
+    -- No internal dependency
+    Left  $ exInst "A" 1 "A-1" []
+  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "T" 1 [ExAny "A"]
+  , Right $ exAv "B" 1 [ExFix "A" 2]
+    -- With internal dependency
+  , Left  $ exInst "A'" 1 "A'-1" []
+  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "T'" 1 [ExAny "A'"]
+  , Right $ exAv "B'" 1 [ExFix "A'" 2]
+  ]
+
+-- | Like 'db16', but now with the older version of optparse-applicative (A)
+-- not yet installed
+--
+-- In this test we declare the older version of optparse-applicative (A) not
+-- to have any test suite dependencies. In reality, it might well have such
+-- dependencies, including a dependency on tasty and hence a recursive
+-- dependency on itself, but we simply wouldn't enable the test suite.
+-- We cannot test that here right now because the solver DSL requires all
+-- test suites to be built.
+db26 :: ExampleDb
+db26 = [
+    -- No internal dependency
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "T" 1 [ExAny "A"]
+  , Right $ exAv "B" 1 [ExFix "A" 2]
+    -- With internal dependency
+  , Right $ exAv "A'" 1 []
+  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "T'" 1 [ExAny "A'"]
+  , Right $ exAv "B'" 1 [ExFix "A'" 2]
+  ]
+
 
 dbExts1 :: ExampleDb
 dbExts1 = [
