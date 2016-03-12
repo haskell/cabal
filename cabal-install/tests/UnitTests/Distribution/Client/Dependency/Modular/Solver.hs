@@ -570,17 +570,30 @@ db17 = [
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
 
--- | When A and B are installed as independent goals, the single instance
+-- | Check that the solver can backtrack after encountering the SIR
+--
+-- When A and B are installed as independent goals, the single instance
 -- restriction prevents B from depending on C.  This database tests that the
 -- solver can backtrack after encountering the single instance restriction and
--- choose the only valid flag assignment (-flagA +flagB).
+-- choose the only valid flag assignment (-flagA +flagB):
+--
+-- > flagA flagB  B depends on
+-- >  On    _     C-*
+-- >  Off   On    E-*               <-- only valid flag assignment
+-- >  Off   Off   D-2.0, C-*
+--
+-- Since A depends on C-* and D-1.0, and C-1.0 depends on any version of D,
+-- we must build C-1.0 against D-1.0. Since B depends on D-2.0, we cannot have
+-- C in the transitive closure of B's dependencies, because that would mean we
+-- would need two instances of C: one built against D-1.0 and one built against
+-- D-2.0.
 db19 :: ExampleDb
 db19 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
   , Right $ exAv "B" 1 [ ExFix "D" 2
-                       , ExFlag "flagA"
+                       , exFlag "flagA"
                              [ExAny "C"]
-                             [ExFlag "flagB"
+                             [exFlag "flagB"
                                  [ExAny "E"]
                                  [ExAny "C"]]]
   , Right $ exAv "C" 1 [ExAny "D"]
