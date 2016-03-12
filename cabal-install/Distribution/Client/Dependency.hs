@@ -62,14 +62,14 @@ module Distribution.Client.Dependency (
 
 import Distribution.Client.Dependency.TopDown
          ( topDownResolver )
-import Distribution.Client.Dependency.Modular
+import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
-import Distribution.Client.PkgConfigDb (PkgConfigDb)
+import Distribution.Solver.PkgConfigDb (PkgConfigDb)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
          , ConfiguredPackage(..), ConfiguredId(..)
@@ -86,8 +86,8 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Solver.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
@@ -99,7 +99,7 @@ import qualified Distribution.PackageDescription as PD
          , Flag(flagName), FlagName(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.Client.PackageUtils
+import Distribution.Solver.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
          ( VersionRange, anyVersion, thisVersion, withinRange

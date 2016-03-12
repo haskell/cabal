@@ -60,8 +60,8 @@ import Distribution.Client.Types
          , GenericReadyPackage(..), fakeUnitId )
 import Distribution.Version
          ( Version )
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Solver.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.ComponentDeps as CD
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex

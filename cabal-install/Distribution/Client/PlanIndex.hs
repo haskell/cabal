@@ -35,8 +35,8 @@ import Distribution.Package
 import Distribution.Version
          ( Version )
 
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Solver.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.ComponentDeps as CD
 import Distribution.Client.Types
          ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex

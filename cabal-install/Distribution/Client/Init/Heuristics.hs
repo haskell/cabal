@@ -24,7 +24,7 @@ import Distribution.Text         (simpleParse)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
-import Distribution.Client.PackageIndex
+import Distribution.Solver.PackageIndex
     ( allPackagesByName )
 import qualified Distribution.Package as P
 import qualified Distribution.PackageDescription as PD

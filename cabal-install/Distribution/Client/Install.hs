@@ -102,13 +102,13 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
-import qualified Distribution.Client.PackageIndex as SourcePackageIndex
+import qualified Distribution.Solver.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
 
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
@@ -149,7 +149,7 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.Client.PkgConfigDb
+import Distribution.Solver.PkgConfigDb
          ( PkgConfigDb, readPkgConfigDb )
 import Distribution.ParseUtils
          ( showPWarning )

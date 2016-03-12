@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 -- | DSL for testing the modular solver
-module UnitTests.Distribution.Client.Dependency.Modular.DSL (
+module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)
   , Dependencies(..)
   , ExPreference(..)
@@ -35,14 +35,14 @@ import qualified Distribution.Version              as C
 import Language.Haskell.Extension (Extension(..), Language)
 
 -- cabal-install
-import Distribution.Client.ComponentDeps (ComponentDeps)
+import Distribution.Solver.ComponentDeps (ComponentDeps)
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan   as CI.InstallPlan
-import qualified Distribution.Client.PackageIndex  as CI.PackageIndex
-import qualified Distribution.Client.PkgConfigDb   as PC
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.PackageIndex  as CI.PackageIndex
+import qualified Distribution.Solver.PkgConfigDb   as PC
+import qualified Distribution.Solver.ComponentDeps as CD
 
 {-------------------------------------------------------------------------------
   Example package database DSL

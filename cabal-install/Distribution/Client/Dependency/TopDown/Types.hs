@@ -19,7 +19,7 @@ import Distribution.Client.Types
          , OptionalStanza, ConfiguredId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
 
 import Distribution.Package
          ( PackageId, PackageIdentifier, Dependency

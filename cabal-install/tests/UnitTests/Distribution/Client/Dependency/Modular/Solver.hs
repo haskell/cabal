@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module UnitTests.Distribution.Client.Dependency.Modular.Solver (tests)
+module UnitTests.Distribution.Solver.Modular.Solver (tests)
        where
 
 -- base
@@ -18,8 +18,8 @@ import Language.Haskell.Extension ( Extension(..)
                                   , KnownExtension(..), Language(..))
 
 -- cabal-install
-import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
-import UnitTests.Distribution.Client.Dependency.Modular.DSL
+import Distribution.Solver.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
+import UnitTests.Distribution.Solver.Modular.DSL
 import UnitTests.Options
 
 tests :: [TF.TestTree]

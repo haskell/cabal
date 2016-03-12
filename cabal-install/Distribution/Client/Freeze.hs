@@ -27,7 +27,7 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.PkgConfigDb
+import Distribution.Solver.PkgConfigDb
          ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..)

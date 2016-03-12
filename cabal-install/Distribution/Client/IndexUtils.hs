@@ -41,8 +41,8 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency) )
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex      as PackageIndex
+import Distribution.Solver.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.PackageIndex      as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription

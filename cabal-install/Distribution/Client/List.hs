@@ -34,7 +34,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import Distribution.Version
          ( Version(..), VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )

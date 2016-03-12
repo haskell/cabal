@@ -26,8 +26,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
-import Distribution.Client.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
+import Distribution.Solver.PackageIndex ( PackageIndex, elemByPackageName )
+import Distribution.Solver.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags
          , RepoContext(..) )
@@ -36,7 +36,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
          ( userToPackageConstraint, userConstraintPackageName )
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
 import Distribution.Package (PackageId)
 import Distribution.Client.JobControl (Lock)
 
