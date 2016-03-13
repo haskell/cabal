@@ -48,10 +48,14 @@ import Distribution.Simple.Program
          ( programName, knownPrograms )
 import Distribution.Simple.Program.Db
          ( ProgramDb, defaultProgramDb )
+import Distribution.Client.Targets
+         ( dispFlagAssignment, parseFlagAssignment )
 import Distribution.Simple.Utils
          ( lowercase )
 import Distribution.Utils.NubList
          ( toNubList, fromNubList, overNubList )
+import Distribution.Simple.LocalBuildInfo
+         ( toPathTemplate, fromPathTemplate )
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
@@ -273,8 +277,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = globalFlags
 
     ConfigFlags {
-      configProgramPaths        = projectConfigProgramPaths,
-      configProgramArgs         = projectConfigProgramArgs,
+      configProgramPaths,
+      configProgramArgs,
       configProgramPathExtra    = projectConfigProgramPathExtra,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
@@ -285,6 +289,8 @@ convertLegacyAllPackageFlags globalFlags configFlags
       configConfigurationsFlags = projectConfigFlagAssignment,
       configAllowNewer          = projectConfigAllowNewer
     } = configFlags
+    projectConfigProgramPaths   = Map.fromList configProgramPaths
+    projectConfigProgramArgs    = Map.fromList configProgramArgs
 
     ConfigExFlags {
       configCabalVersion        = projectConfigCabalVersion,
@@ -520,8 +526,8 @@ convertToLegacyAllPackageConfig
   where
     configFlags = ConfigFlags {
       configPrograms_           = mempty,
-      configProgramPaths        = projectConfigProgramPaths,
-      configProgramArgs         = projectConfigProgramArgs,
+      configProgramPaths        = Map.toList projectConfigProgramPaths,
+      configProgramArgs         = Map.toList projectConfigProgramArgs,
       configProgramPathExtra    = projectConfigProgramPathExtra,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
@@ -803,10 +809,16 @@ legacySharedConfigFieldDescrs =
   ( liftFields
       legacyInstallFlags
       (\flags conf -> conf { legacyInstallFlags = flags })
+  . addFields
+      [ newLineListField "build-summary"
+          (showTokenQ . fromPathTemplate) (fmap toPathTemplate parseTokenQ)
+          (fromNubList . installSummaryFile)
+          (\v conf -> conf { installSummaryFile = toNubList v })
+      ]
   . filterFields
       [ "doc-index-file"
       , "root-cmd", "symlink-bindir"
-      , "build-summary", "build-log"
+      , "build-log"
       , "remote-build-reporting", "report-planning-failure"
       , "one-shot", "jobs", "offline"
         -- solver flags:
@@ -852,6 +864,14 @@ legacyPackageConfigFieldDescrs =
           showTokenQ parseTokenQ
           (fromNubList . configProgramPathExtra)
           (\v conf -> conf { configProgramPathExtra = toNubList v })
+      , newLineListField "configure-options"
+          showTokenQ parseTokenQ
+          configConfigureArgs
+          (\v conf -> conf { configConfigureArgs = v })
+      , simpleField "flags"
+          dispFlagAssignment parseFlagAssignment
+          configConfigurationsFlags
+          (\v conf -> conf { configConfigurationsFlags = v })
       ]
   . filterFields
       [ "compiler", "with-compiler", "with-hc-pkg"
@@ -862,7 +882,6 @@ legacyPackageConfigFieldDescrs =
       , "profiling-detail", "library-profiling-detail"
       , "optimization", "debug-info", "library-for-ghci", "split-objs"
       , "executable-stripping", "library-stripping"
-      , "configure-option", "flags"
       , "tests", "benchmarks"
       , "coverage", "library-coverage"
       , "relocatable"

@@ -133,8 +133,8 @@ data ProjectConfigBuildOnly
 --
 data ProjectConfigShared
    = ProjectConfigShared {
-       projectConfigProgramPaths      :: [(String, FilePath)],
-       projectConfigProgramArgs       :: [(String, [String])],
+       projectConfigProgramPaths      :: Map String FilePath,
+       projectConfigProgramArgs       :: Map String [String],
        projectConfigProgramPathExtra  :: NubList FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,

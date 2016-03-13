@@ -7,7 +7,6 @@ import Control.Applicative
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
-import Data.Function
 
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
@@ -133,13 +132,7 @@ prop_roundtrip_printparse_all config =
         hackProjectConfigBuildOnly (projectConfigBuildOnly config),
 
       projectConfigShared =
-        hackProjectConfigShared (projectConfigShared config),
-
-      projectConfigLocalPackages =
-        hackPackageConfig (projectConfigLocalPackages config),
-
-      projectConfigSpecificPackage =
-        fmap hackPackageConfig (projectConfigSpecificPackage config)
+        hackProjectConfigShared (projectConfigShared config)
     }
 
 prop_roundtrip_printparse_packages :: [PackageLocationString]
@@ -169,12 +162,7 @@ hackProjectConfigBuildOnly config =
       -- These two fields are only command line transitory things, not
       -- something to be recorded persistently in a config file
       projectConfigOnlyDeps = mempty,
-      projectConfigDryRun   = mempty,
-
-      --TODO: [required eventually] lists longer than 1 fail to round trip
-      -- because of a limitation in viewAsFieldDescr
-      projectConfigSummaryFile =
-        overNubList (take 1) (projectConfigSummaryFile config)
+      projectConfigDryRun   = mempty
     }
 
 prop_roundtrip_printparse_shared :: ProjectConfigShared -> Bool
@@ -187,23 +175,7 @@ prop_roundtrip_printparse_shared config =
 hackProjectConfigShared :: ProjectConfigShared -> ProjectConfigShared
 hackProjectConfigShared config =
     config {
-      projectConfigProgramPaths =
-        --TODO: [required eventually] use nubBy to avoid path lists for a
-        -- single program longer than 1. These fail to round trip because
-        -- of a limitation in viewAsFieldDescr
-        nubBy  ((==) `on` fst) $
-        -- Ths sorting is just to canonicalise, this is ok.
-        sortBy (compare `on` fst) (projectConfigProgramPaths config)
-
-    , projectConfigProgramArgs =
-        --TODO: [required eventually] use nubBy to avoid arg lists for a
-        -- single program longer than 1. These fail to round trip because
-        -- of a limitation in viewAsFieldDescr
-        nubBy  ((==) `on` fst) $
-        -- Ths sorting is just to canonicalise, this is ok.
-        sortBy (compare `on` fst) (projectConfigProgramArgs config)
-
-    , projectConfigConstraints =
+      projectConfigConstraints =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
         let ambiguous ((UserConstraintFlags _pkg flags), _) =
@@ -211,11 +183,6 @@ hackProjectConfigShared config =
                                 , "any" `isPrefixOf` name ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)
-
-      --TODO: [required eventually] lists longer than 1 fail to round trip
-      -- because of a limitation in viewAsFieldDescr
-    , projectConfigFlagAssignment =
-        take 1 (projectConfigFlagAssignment config)
     }
 
 
@@ -223,7 +190,7 @@ prop_roundtrip_printparse_local :: PackageConfig -> Bool
 prop_roundtrip_printparse_local config =
     roundtrip_printparse
       mempty {
-        projectConfigLocalPackages = hackPackageConfig config
+        projectConfigLocalPackages = config
       }
 
 prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
@@ -231,18 +198,8 @@ prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
 prop_roundtrip_printparse_specific config =
     roundtrip_printparse
       mempty {
-        projectConfigSpecificPackage =
-          fmap (hackPackageConfig . getNonMEmpty) config
+        projectConfigSpecificPackage = fmap getNonMEmpty config
       }
-
-hackPackageConfig :: PackageConfig -> PackageConfig
-hackPackageConfig config =
-    config {
-      --TODO: [required eventually] lists longer than 1 fail to round trip
-      -- because of a limitation in viewAsFieldDescr
-      packageConfigConfigureArgs =
-        take 1 (packageConfigConfigureArgs config)
-    }
 
 
 ----------------------------
@@ -353,10 +310,12 @@ instance Arbitrary ProjectConfigBuildOnly where
 instance Arbitrary ProjectConfigShared where
     arbitrary =
       ProjectConfigShared
-        <$> shortListOf 2 ((,) <$> arbitraryProgramName
-                               <*> arbitraryShortToken)
-        <*> shortListOf 2 ((,) <$> arbitraryProgramName
-                               <*> listOf arbitraryShortToken)
+        <$> (Map.fromList <$> shortListOf 10 
+              ((,) <$> arbitraryProgramName
+                   <*> arbitraryShortToken))
+        <*> (Map.fromList <$> shortListOf 10 
+              ((,) <$> arbitraryProgramName
+                   <*> listOf arbitraryShortToken))
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitrary                                           --  4
         <*> arbitraryFlag arbitraryShortToken
@@ -407,10 +366,12 @@ instance Arbitrary ProjectConfigShared where
                 (x15, x16, x17))
       ]
       where
-        preShrink_Paths  = map (\(x,y) -> (NoShrink x, NonEmpty y))
-        postShrink_Paths = map (\(x,y) -> (getNoShrink x, getNonEmpty y))
-        preShrink_Args   = map (\(x,ys) -> (NoShrink x, NonEmpty (map NonEmpty ys)))
-        postShrink_Args  = map (\(x,ys) -> (getNoShrink x, map getNonEmpty (getNonEmpty ys)))
+        preShrink_Paths  = Map.map NonEmpty . Map.mapKeys NoShrink
+        postShrink_Paths = Map.map getNonEmpty . Map.mapKeys getNoShrink
+        preShrink_Args   = Map.map (NonEmpty . map NonEmpty)
+                         . Map.mapKeys NoShrink
+        postShrink_Args  = Map.map (map getNonEmpty . getNonEmpty)
+                         . Map.mapKeys getNoShrink
         preShrink_Constraints  = map fst
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 

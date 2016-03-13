@@ -154,13 +154,14 @@ instance Arbitrary PathTemplate where
 
 
 newtype NonMEmpty a = NonMEmpty { getNonMEmpty :: a }
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 instance (Arbitrary a, Monoid a, Eq a) => Arbitrary (NonMEmpty a) where
   arbitrary = NonMEmpty <$> (arbitrary `suchThat` (/= mempty))
   shrink (NonMEmpty x) = [ NonMEmpty x' | x' <- shrink x, x' /= mempty ]
 
 newtype NoShrink a = NoShrink { getNoShrink :: a }
+  deriving (Eq, Ord, Show)
 
 instance Arbitrary a => Arbitrary (NoShrink a) where
     arbitrary = NoShrink <$> arbitrary
