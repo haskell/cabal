@@ -24,6 +24,7 @@ module Distribution.Client.FileMonitor (
   beginUpdateFileMonitor,
 
   matchFileGlob,
+  isTrivialFilePathGlob,
   ) where
 
 
@@ -804,6 +805,14 @@ matchFileGlob root glob0 = go glob0 ""
       concat <$> mapM (\subdir -> go globPath (dir </> subdir)) subdirs
 --TODO: [code cleanup] plausibly FilePathGlob and matchFileGlob should be
 -- moved into D.C.Glob and/or merged with similar functionality in Cabal.
+
+
+isTrivialFilePathGlob :: FilePathGlob -> Maybe FilePath
+isTrivialFilePathGlob = go []
+  where
+    go paths (GlobDir  (Glob [Literal path]) globs) = go (path:paths) globs
+    go paths (GlobFile (Glob [Literal path])) = Just (joinPath (reverse (path:paths)))
+    go _ _ = Nothing
 
 -- | We really want to avoid re-hashing files all the time. We already make
 -- the assumption that if a file mtime has not changed then we don't need to

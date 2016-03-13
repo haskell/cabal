@@ -29,7 +29,8 @@ module Distribution.Client.RebuildMonad (
     matchFileGlob,
   ) where
 
-import Distribution.Client.FileMonitor
+import Distribution.Client.FileMonitor hiding (matchFileGlob)
+import qualified Distribution.Client.FileMonitor as FileMonitor (matchFileGlob)
 
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
@@ -106,4 +107,16 @@ rerunIfChanged verbosity rootDir monitor key action = do
     showReason (MonitoredValueChanged _)   = "monitor value changed"
     showReason  MonitorFirstRun            = "first run"
     showReason  MonitorCorruptCache        = "invalid cache file"
+
+
+-- | Utility to match a file glob against the file system, starting from a
+-- given root directory. The results are all relative to the given root.
+--
+-- Since this operates in the 'Rebuild' monad, it also monitrs the given glob
+-- for changes.
+--
+matchFileGlob :: FilePath -> FilePathGlob -> Rebuild [FilePath]
+matchFileGlob root glob = do
+    monitorFiles [MonitorFileGlob glob]
+    liftIO $ FileMonitor.matchFileGlob root glob
 
