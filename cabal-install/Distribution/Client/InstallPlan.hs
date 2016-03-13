@@ -22,11 +22,15 @@ module Distribution.Client.InstallPlan (
   -- * Operations on 'InstallPlan's
   new,
   toList,
+  mapPreservingGraph,
+
   ready,
   processing,
   completed,
   failed,
   remove,
+  preexisting,
+
   showPlanIndex,
   showInstallPlan,
 
@@ -72,7 +76,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( intercalate )
+         ( foldl', intercalate )
 import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
@@ -486,6 +490,79 @@ checkConfiguredPackage (Configured pkg) = Just pkg
 checkConfiguredPackage (Failed     _ _) = Nothing
 checkConfiguredPackage pkg                =
   internalError $ "not configured or no such pkg " ++ display (packageId pkg)
+
+-- | Replace a ready package with a pre-existing one. The pre-existing one
+-- must have exactly the same dependencies as the source one was configured
+-- with.
+--
+preexisting :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                HasUnitId srcpkg, PackageFixedDeps srcpkg)
+            => UnitId
+            -> ipkg
+            -> GenericInstallPlan ipkg srcpkg iresult ifailure
+            -> GenericInstallPlan ipkg srcpkg iresult ifailure
+preexisting pkgid ipkg plan = assert (invariant plan') plan'
+  where
+    plan' = plan {
+                    -- NB: installation can change the IPID, so better
+                    -- record it in the fake mapping...
+      planFakeMap = Map.insert pkgid
+                               (installedUnitId ipkg)
+                               (planFakeMap plan),
+      planIndex   = PackageIndex.insert (PreExisting ipkg)
+                    -- ...but be sure to use the *old* IPID for the lookup for
+                    -- the preexisting record
+                  . PackageIndex.deleteUnitId pkgid
+                  $ planIndex plan
+    }
+
+-- | Transform an install plan by mapping a function over all the packages in
+-- the plan. It can consistently change the 'UnitId' of all the packages,
+-- while preserving the same overall graph structure.
+--
+-- The mapping function has a few constraints on it for correct operation.
+-- The mapping function /may/ change the 'UnitId' of the package, but it
+-- /must/ also remap the 'UnitId's of its dependencies using ths supplied
+-- remapping function. Apart from this consistent remapping it /may not/
+-- change the structure of the dependencies.
+--
+mapPreservingGraph :: (HasUnitId ipkg,
+                       HasUnitId srcpkg,
+                       HasUnitId ipkg',   PackageFixedDeps ipkg',
+                       HasUnitId srcpkg', PackageFixedDeps srcpkg')
+                   => (  (UnitId -> UnitId)
+                      -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
+                      -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
+                   -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
+                   -> GenericInstallPlan ipkg' srcpkg' iresult' ifailure'
+mapPreservingGraph f plan =
+    mkInstallPlan (PackageIndex.fromList pkgs')
+                  Map.empty -- empty fakeMap
+                  (planIndepGoals plan)
+  where
+    -- The package mapping function may change the UnitId. So we
+    -- walk over the packages in dependency order keeping track of these
+    -- package id changes and use it to supply the correct set of package
+    -- dependencies as an extra input to the package mapping function.
+    --
+    -- Having fully remapped all the deps this also means we can use an empty
+    -- FakeMap for the resulting install plan.
+
+    (_, pkgs') = foldl' f' (Map.empty, []) (reverseTopologicalOrder plan)
+
+    f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
+      where
+       pkg' = f (mapDep ipkgidMap) pkg
+
+       ipkgidMap'
+         | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
+         | otherwise         =                           ipkgidMap
+         where
+           ipkgid  = installedUnitId pkg
+           ipkgid' = installedUnitId pkg'
+
+    mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
+
 
 -- ------------------------------------------------------------
 -- * Checking validity of plans

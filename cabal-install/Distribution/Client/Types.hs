@@ -147,6 +147,12 @@ instance Binary ConfiguredId
 instance Show ConfiguredId where
   show = show . confSrcId
 
+instance Package ConfiguredId where
+  packageId = confSrcId
+
+instance HasUnitId ConfiguredId where
+  installedUnitId = confInstId
+
 instance Package (ConfiguredPackage loc) where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
