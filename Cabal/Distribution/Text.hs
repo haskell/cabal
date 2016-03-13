@@ -13,6 +13,7 @@
 --
 module Distribution.Text (
   Text(..),
+  defaultStyle,
   display,
   simpleParse,
   ) where
@@ -27,13 +28,15 @@ class Text a where
   disp  :: a -> Disp.Doc
   parse :: Parse.ReadP r a
 
+-- | The default rendering style used in Cabal for console output.
+defaultStyle :: Disp.Style
+defaultStyle = Disp.Style { Disp.mode           = Disp.PageMode
+                          , Disp.lineLength     = 79
+                          , Disp.ribbonsPerLine = 1.0
+                          }
+
 display :: Text a => a -> String
-display = Disp.renderStyle style . disp
-  where style = Disp.Style {
-          Disp.mode            = Disp.PageMode,
-          Disp.lineLength      = 79,
-          Disp.ribbonsPerLine  = 1.0
-        }
+display = Disp.renderStyle defaultStyle . disp
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str

@@ -119,10 +119,10 @@ import qualified System.Info
 import System.IO
     ( hPutStrLn, hClose )
 import Distribution.Text
-    ( Text(disp), display, simpleParse )
+    ( Text(disp), defaultStyle, display, simpleParse )
 import Text.PrettyPrint
-    ( render, (<>), ($+$), char, text, comma
-    , quotes, punctuate, nest, sep, hsep )
+    ( Doc, (<>), (<+>), ($+$), char, comma, empty, hsep, nest
+    , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
@@ -136,31 +136,35 @@ data ConfigStateFileError
       (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
   deriving (Typeable)
 
+-- | Format a 'ConfigStateFileError' as a user-facing error message.
+dispConfigStateFileError :: ConfigStateFileError -> Doc
+dispConfigStateFileError ConfigStateFileNoHeader =
+    text "Saved package config file header is missing."
+    <+> text "Re-run the 'configure' command."
+dispConfigStateFileError ConfigStateFileBadHeader =
+    text "Saved package config file header is corrupt."
+    <+> text "Re-run the 'configure' command."
+dispConfigStateFileError ConfigStateFileNoParse =
+    text "Saved package config file is corrupt."
+    <+> text "Re-run the 'configure' command."
+dispConfigStateFileError ConfigStateFileMissing =
+    text "Run the 'configure' command first."
+dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
+    text "Saved package config file is outdated:"
+    $+$ badCabal $+$ badCompiler
+    $+$ text "Re-run the 'configure' command."
+    where
+      badCabal =
+          text "• the Cabal version changed from"
+          <+> disp oldCabal <+> "to" <+> disp currentCabalId
+      badCompiler
+        | oldCompiler == currentCompilerId = empty
+        | otherwise =
+            text "• the compiler changed from"
+            <+> disp oldCompiler <+> "to" <+> disp currentCompilerId
+
 instance Show ConfigStateFileError where
-    show ConfigStateFileNoHeader =
-        "Saved package config file header is missing. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileBadHeader =
-        "Saved package config file header is corrupt. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileNoParse =
-        "Saved package config file body is corrupt. "
-        ++ "Try re-running the 'configure' command."
-    show ConfigStateFileMissing = "Run the 'configure' command first."
-    show (ConfigStateFileBadVersion oldCabal oldCompiler _) =
-        "You need to re-run the 'configure' command. "
-        ++ "The version of Cabal being used has changed (was "
-        ++ display oldCabal ++ ", now "
-        ++ display currentCabalId ++ ")."
-        ++ badCompiler
-      where
-        badCompiler
-          | oldCompiler == currentCompilerId = ""
-          | otherwise =
-              " Additionally the compiler is different (was "
-              ++ display oldCompiler ++ ", now "
-              ++ display currentCompilerId
-              ++ ") which is probably the cause of the problem."
+    show = renderStyle defaultStyle . dispConfigStateFileError
 
 instance Exception ConfigStateFileError
 

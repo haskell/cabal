@@ -8,6 +8,7 @@ env:
  - GHCVER=7.6.3
  - GHCVER=7.8.4
  - GHCVER=7.10.3
+ - GHCVER=8.0.1
  # TODO add PARSEC_BUNDLED=YES when it's so
  - GHCVER=head NOTEST=1
 
@@ -15,8 +16,8 @@ env:
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
- - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
+ - travis_retry sudo apt-get install cabal-install-1.24 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
+ - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.24/bin:$PATH
  - if [ "x$NOTEST" = "x" ]; then export CABFLAGS="--enable-tests"; else export CABFLAGS=""; fi
  - git version
 
@@ -75,18 +76,13 @@ script:
  - cd ../cabal-install
  - ../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
  - ../Cabal/misc/travis-diff-files.sh
- - mkdir -p ./dist/setup
- - cp Setup.hs ./dist/setup/setup.hs
- - ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
-# nix-branch HACK:
-# - cabal install --only-dependencies --enable-tests --enable-benchmarks
-# drop --ghc-option=-Werror
- - ./dist/setup/setup configure --user $CABFLAGS -v2 # -v2 provides useful information for debugging
- - ./dist/setup/setup build
- - ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
+ - cabal install --only-dependencies --enable-tests --enable-benchmarks
+ - cabal configure --user --ghc-option=-Werror --enable-tests --enable-benchmarks -v2 # -v2 provides useful information for debugging
+ - cabal build
+ - cabal haddock # see https://github.com/haskell/cabal/issues/2198
  - if [ "x$NOTEST" = "x" ]; then
-   ./dist/setup/setup test --show-details=streaming;
+   cabal test --show-details=streaming --test-option=--hide-successes
    fi
  - cabal check
  - cabal sdist
