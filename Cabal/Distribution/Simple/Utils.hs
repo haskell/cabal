@@ -268,7 +268,7 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (message pname se)
+      hPutStr stderr (wrapText (message pname se))
       cont se
 
     message :: String -> Exception.SomeException -> String
@@ -282,7 +282,7 @@ topHandlerWith cont prog =
                                l@(n:_) | Char.isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in wrapText (pname ++ ": " ++ file ++ detail)
+          in pname ++ ": " ++ file ++ detail
         Nothing ->
 #if __GLASGOW_HASKELL__ < 710
           show se
