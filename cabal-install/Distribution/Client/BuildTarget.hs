@@ -1350,18 +1350,46 @@ data MatchError = MatchErrorExpected String String            -- thing got
   deriving (Show, Eq)
 
 
+instance Functor Match where
+    fmap _ (NoMatch      d ms) = NoMatch      d ms
+    fmap f (ExactMatch   d xs) = ExactMatch   d (fmap f xs)
+    fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
+
+instance Applicative Match where
+    pure a = ExactMatch 0 [a]
+    (<*>)  = ap
+
 instance Alternative Match where
-      empty = mzero
-      (<|>) = mplus
+    empty = NoMatch 0 []
+    (<|>) = matchPlus
+
+instance Monad Match where
+    return                  = pure
+    NoMatch      d ms >>= _ = NoMatch d ms
+    ExactMatch   d xs >>= f = addDepth d
+                            $ msum (map f xs)
+    InexactMatch d xs >>= f = addDepth d . forceInexact
+                            $ msum (map f xs)
+
+    fail _                  = empty
 
 instance MonadPlus Match where
-  mzero = NoMatch 0 []
-  mplus = matchPlus
+    mzero = empty
+    mplus = matchPlus
 
 (<//>) :: Match a -> Match a -> Match a
 (<//>) = matchPlusShadowing
 
 infixl 3 <//>
+
+addDepth :: Confidence -> Match a -> Match a
+addDepth d' (NoMatch      d msgs) = NoMatch      (d'+d) msgs
+addDepth d' (ExactMatch   d xs)   = ExactMatch   (d'+d) xs
+addDepth d' (InexactMatch d xs)   = InexactMatch (d'+d) xs
+
+forceInexact :: Match a -> Match a
+forceInexact (ExactMatch d ys) = InexactMatch d ys
+forceInexact m                 = m
 
 -- | Combine two matchers. Exact matches are used over inexact matches
 -- but if we have multiple exact, or inexact then the we collect all the
@@ -1391,36 +1419,6 @@ matchPlusShadowing :: Match a -> Match a -> Match a
 matchPlusShadowing a@(ExactMatch _ _) (ExactMatch _ _) = a
 matchPlusShadowing a                   b               = matchPlus a b
 
-instance Functor Match where
-  fmap _ (NoMatch      d ms) = NoMatch      d ms
-  fmap f (ExactMatch   d xs) = ExactMatch   d (fmap f xs)
-  fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
-
-instance Applicative Match where
-  pure a = ExactMatch 0 [a]
-  (<*>)  = ap
-
-instance Monad Match where
-  NoMatch      d ms >>= _ = NoMatch d ms
-  ExactMatch   d xs >>= f = addDepth d
-                          $ msum (map f xs)
-  InexactMatch d xs >>= f = addDepth d . forceInexact
-                          $ msum (map f xs)
-
-  return                  = pure
-  fail                    = Fail.fail
-
-instance Fail.MonadFail Match where
-  fail _msg               = mzero
-
-addDepth :: Confidence -> Match a -> Match a
-addDepth d' (NoMatch      d msgs) = NoMatch      (d'+d) msgs
-addDepth d' (ExactMatch   d xs)   = ExactMatch   (d'+d) xs
-addDepth d' (InexactMatch d xs)   = InexactMatch (d'+d) xs
-
-forceInexact :: Match a -> Match a
-forceInexact (ExactMatch d ys) = InexactMatch d ys
-forceInexact m                 = m
 
 ------------------------------
 -- Various match primitives
