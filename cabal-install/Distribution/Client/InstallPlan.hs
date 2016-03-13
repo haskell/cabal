@@ -538,8 +538,8 @@ preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
       rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
-mapPreservingGraph :: (HasUnitId ipkg,    PackageFixedDeps ipkg,
-                       HasUnitId srcpkg,  PackageFixedDeps srcpkg,
+mapPreservingGraph :: (HasUnitId ipkg,
+                       HasUnitId srcpkg,
                        HasUnitId ipkg',   PackageFixedDeps ipkg',
                        HasUnitId srcpkg', PackageFixedDeps srcpkg')
                    => (  (UnitId -> UnitId)

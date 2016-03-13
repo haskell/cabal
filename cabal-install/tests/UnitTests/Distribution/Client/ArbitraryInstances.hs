@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.ArbitraryInstances (
@@ -13,9 +14,11 @@ module UnitTests.Distribution.Client.ArbitraryInstances (
 
 import Data.Char
 import Data.List
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
-import Control.Monad
 import Control.Applicative
+#endif
+import Control.Monad
 
 import Distribution.Version
 import Distribution.Package
