@@ -79,7 +79,6 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 #endif
 import Control.Monad
-import qualified Distribution.Compat.MonadFail as Fail
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))
 #endif
@@ -1370,8 +1369,6 @@ instance Monad Match where
                             $ msum (map f xs)
     InexactMatch d xs >>= f = addDepth d . forceInexact
                             $ msum (map f xs)
-
-    fail _                  = empty
 
 instance MonadPlus Match where
     mzero = empty
