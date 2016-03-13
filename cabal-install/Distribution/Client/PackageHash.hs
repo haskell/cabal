@@ -25,7 +25,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, InstalledPackageId, mkUnitId )
+         ( PackageId, mkUnitId )
 import Distribution.System
          ( Platform )
 import Distribution.PackageDescription
@@ -37,6 +37,8 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
 import Distribution.Text
          ( display )
+import Distribution.Client.Types
+         ( InstalledPackageId )
 
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS

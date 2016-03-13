@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveDataTypeable #-}
 
 -- | Handling project configuration.
 --
@@ -82,7 +82,9 @@ import Distribution.Text
 import Distribution.ParseUtils
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
@@ -638,7 +640,6 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                       && takeExtension (dropExtension f) == ".tar"
 
 
--- | The glob @$dir/*.cabal@
 globStarDotCabal :: FilePath -> FilePathGlob
 globStarDotCabal =
     foldr (\dirpart -> GlobDir (Glob [Literal dirpart]))

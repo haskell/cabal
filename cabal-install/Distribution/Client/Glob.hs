@@ -105,6 +105,8 @@ isGlobEscapedChar '\\' = True
 isGlobEscapedChar '/'  = True
 isGlobEscapedChar _    = False
 
+{-
+--TODO: [code cleanup] decide if this is useful
 -- | Simplify a glob pattern
 simplify :: [GlobAtom] -> [GlobAtom]
 simplify []                             = []
@@ -113,4 +115,4 @@ simplify (Literal x : Literal y : rest) = simplify (Literal (x++y) : rest)
 simplify (Union globs : rest)           = 
     Union (map (\(Glob glob) -> Glob $ simplify glob) globs) : simplify rest
 simplify (x : rest)                     = x : simplify rest
-
+-}

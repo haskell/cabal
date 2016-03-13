@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, RecordWildCards, NamedFieldPuns,
+{-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns,
              DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
 
@@ -60,7 +60,9 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
 
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
+#endif
 import           Control.Monad
 import           Control.Exception
 import           Control.Concurrent.Async

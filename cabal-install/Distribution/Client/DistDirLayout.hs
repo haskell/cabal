@@ -9,9 +9,12 @@ module Distribution.Client.DistDirLayout where
 
 import System.FilePath
 import Distribution.Package
+         ( PackageId )
 import Distribution.Compiler
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Text
+import Distribution.Client.Types
+         ( InstalledPackageId )
 
 
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
@@ -75,7 +75,9 @@ import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import Control.Monad
 import Data.Map (Map)
 import qualified Data.Map as Map

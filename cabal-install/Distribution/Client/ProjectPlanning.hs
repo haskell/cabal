@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns,
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns,
              DeriveGeneric, DeriveDataTypeable, 
              RankNTypes, ScopedTypeVariables #-}
 
@@ -117,7 +117,9 @@ import qualified Data.Graph as Graph
 import qualified Data.Tree  as Tree
 import qualified Data.ByteString.Lazy as LBS
 
+#if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
+#endif
 import           Control.Monad
 import           Control.Monad.State as State
 import           Control.Exception
