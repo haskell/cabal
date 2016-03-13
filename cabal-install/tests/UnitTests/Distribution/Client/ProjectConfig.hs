@@ -41,14 +41,14 @@ tests =
   [ testGroup "ProjectConfig <-> LegacyProjectConfig round trip" $
     [ testProperty "packages"  prop_roundtrip_legacytypes_packages
     , testProperty "buildonly" prop_roundtrip_legacytypes_buildonly
-    , testProperty "local"     prop_roundtrip_legacytypes_local
     , testProperty "specific"  prop_roundtrip_legacytypes_specific
     ] ++
     -- a couple tests seem to trigger a RTS fault in ghc-7.6 and older
     -- unclear why as of yet
     concat
-    [ [ testProperty "shared"  prop_roundtrip_legacytypes_shared
-      , testProperty "all"     prop_roundtrip_legacytypes_all
+    [ [ testProperty "shared"    prop_roundtrip_legacytypes_shared
+      , testProperty "local"     prop_roundtrip_legacytypes_local
+      , testProperty "all"       prop_roundtrip_legacytypes_all
       ]
     | not usingGhc76orOlder
     ]
@@ -69,7 +69,7 @@ tests =
   where
     usingGhc76orOlder =
       case buildCompilerId of
-        CompilerId GHC v -> v <= Version [7,6] []
+        CompilerId GHC v -> v < Version [7,7] []
         _                -> False
 
 
