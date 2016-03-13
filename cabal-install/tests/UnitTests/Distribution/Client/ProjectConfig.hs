@@ -2,8 +2,10 @@
 
 module UnitTests.Distribution.Client.ProjectConfig (tests) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
 import Control.Applicative
+#endif
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
