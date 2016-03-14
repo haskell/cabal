@@ -78,7 +78,7 @@ import Distribution.Text
 import Data.List
          ( foldl', intercalate )
 import Data.Maybe
-         ( fromMaybe, maybeToList )
+         ( fromMaybe, catMaybes )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import qualified Data.Tree as Tree
@@ -86,7 +86,6 @@ import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Exception
          ( assert )
-import Data.Maybe (catMaybes)
 import qualified Data.Map as Map
 import qualified Data.Traversable as T
 
@@ -358,12 +357,17 @@ ready plan = assert check readyPackages
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
     readyPackages :: [GenericReadyPackage srcpkg ipkg]
-    readyPackages =
-      [ ReadyPackage srcpkg deps
-      | srcpkg <- configuredPackages
-        -- select only the package that have all of their deps installed:
-      , deps <- maybeToList (hasAllInstalledDeps srcpkg)
-      ]
+    readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
+
+lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
+                      PackageFixedDeps srcpkg
+                   => GenericInstallPlan ipkg srcpkg iresult ifailure
+                   -> srcpkg
+                   -> Maybe (GenericReadyPackage srcpkg ipkg)
+lookupReadyPackage plan pkg = do
+    deps <- hasAllInstalledDeps pkg
+    return (ReadyPackage pkg deps)
+  where
 
     hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
     hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
