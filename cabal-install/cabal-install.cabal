@@ -183,6 +183,7 @@ executable cabal
         Distribution.Client.ParseUtils
         Distribution.Client.PkgConfigDb
         Distribution.Client.PlanIndex
+        Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectConfig.Legacy
@@ -217,6 +218,7 @@ executable cabal
     -- NOTE: when updating build-depends, don't forget to update version regexps
     -- in bootstrap.sh.
     build-depends:
+        async      >= 2.0      && < 3,
         array      >= 0.4      && < 0.6,
         base       >= 4.5      && < 5,
         binary     >= 0.5      && < 0.9,
