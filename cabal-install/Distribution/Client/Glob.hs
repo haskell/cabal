@@ -1,50 +1,95 @@
 {-# LANGUAGE DeriveGeneric #-}
 
+--TODO: [code cleanup] plausibly much of this module should be merged with
+-- similar functionality in Cabal.
 module Distribution.Client.Glob
-    ( GlobAtom(..)
-    , Glob (..)
-    , globMatches
+    ( FilePathGlob(..)
+    , Glob
+    , GlobPiece(..)
+    , matchFileGlob
+    , matchGlob
+    , isTrivialFilePathGlob
     ) where
 
-import Data.List (stripPrefix)
-import Control.Monad (liftM2)
-import Distribution.Compat.Binary
-import GHC.Generics (Generic)
+import           Data.List (stripPrefix)
+import           Control.Monad
+import           Distribution.Compat.Binary
+import           GHC.Generics (Generic)
 
-import Distribution.Text
-import Distribution.Compat.ReadP
+import           Distribution.Text
+import           Distribution.Compat.ReadP (ReadP, (<++), (+++))
+import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
+import           System.FilePath
+import           System.Directory
 
--- | A piece of a globbing pattern
-data GlobAtom = WildCard
-              | Literal String
-              | Union [Glob]
+
+-- | A file path specified by globbing
+--
+data FilePathGlob
+   = GlobDir  !Glob !FilePathGlob
+   | GlobFile !Glob
   deriving (Eq, Show, Generic)
-
-instance Binary GlobAtom
 
 -- | A single directory or file component of a globbed path
-newtype Glob = Glob [GlobAtom]
+type Glob = [GlobPiece]
+
+-- | A piece of a globbing pattern
+data GlobPiece = WildCard
+               | Literal String
+               | Union [Glob]
   deriving (Eq, Show, Generic)
 
-instance Binary Glob
+instance Binary FilePathGlob
+instance Binary GlobPiece
 
 
--- | Test whether a file path component matches a globbing pattern
+isTrivialFilePathGlob :: FilePathGlob -> Maybe FilePath
+isTrivialFilePathGlob = go []
+  where
+    go paths (GlobDir  [Literal path] globs) = go (path:paths) globs
+    go paths (GlobFile [Literal path]) = Just (joinPath (reverse (path:paths)))
+    go _ _ = Nothing
+
+
+------------------------------------------------------------------------------
+-- Matching
 --
-globMatches :: Glob -> String -> Bool
-globMatches (Glob atoms) = goStart atoms
+
+-- | Match a 'FilePathGlob' against the file system, starting from a
+-- given root directory. The results are all relative to the given root.
+--
+matchFileGlob :: FilePath -> FilePathGlob -> IO [FilePath]
+matchFileGlob root glob0 = go glob0 ""
+  where
+    go (GlobFile glob) dir = do
+      entries <- getDirectoryContents (root </> dir)
+      let files = filter (matchGlob glob) entries
+      return (map (dir </>) files)
+
+    go (GlobDir glob globPath) dir = do
+      entries <- getDirectoryContents (root </> dir)
+      subdirs <- filterM (\subdir -> doesDirectoryExist
+                                       (root </> dir </> subdir))
+               $ filter (matchGlob glob) entries
+      concat <$> mapM (\subdir -> go globPath (dir </> subdir)) subdirs
+
+
+-- | Match a globbing pattern against a file path component
+--
+matchGlob :: Glob -> String -> Bool
+matchGlob = goStart
   where
     -- From the man page, glob(7):
     --   "If a filename starts with a '.', this character must be
     --    matched explicitly."
-    
-    go, goStart :: [GlobAtom] -> String -> Bool
+
+    go, goStart :: [GlobPiece] -> String -> Bool
 
     goStart (WildCard:_) ('.':_)  = False
-    goStart (Union globs:rest) cs = any (\(Glob glob) ->
-                                            goStart (glob ++ rest) cs) globs
+    goStart (Union globs:rest) cs = any (\glob -> goStart (glob ++ rest) cs)
+                                        globs
     goStart rest               cs = go rest cs
 
     go []                 ""    = True
@@ -54,47 +99,67 @@ globMatches (Glob atoms) = goStart atoms
       | otherwise               = False
     go [WildCard]         ""    = True
     go (WildCard:rest)   (c:cs) = go rest (c:cs) || go (WildCard:rest) cs
-    go (Union globs:rest)   cs  = any (\(Glob glob) ->
-                                          go (glob ++ rest) cs) globs
+    go (Union globs:rest)   cs  = any (\glob -> go (glob ++ rest) cs) globs
     go []                (_:_)  = False
     go (_:_)              ""    = False
 
-instance Text Glob where
-  disp (Glob atoms) = Disp.hcat (map dispAtom atoms) 
+
+------------------------------------------------------------------------------
+-- Parsing & printing
+--
+
+instance Text FilePathGlob where
+  disp (GlobDir  glob pathglob) = dispGlob glob
+                          Disp.<> Disp.char '/'
+                          Disp.<> disp pathglob
+  disp (GlobFile glob)          = dispGlob glob
+
+  parse =
+      parseGlob >>= \globpieces ->
+      (asDir globpieces <++ asFile globpieces)
     where
-      dispAtom WildCard      = Disp.char '*'
-      dispAtom (Literal str) = Disp.text (escape str)
-      dispAtom (Union globs) = Disp.braces
-                                 (Disp.hcat (Disp.punctuate (Disp.char ',')
-                                                            (map disp globs)))
+      asDir  glob = do _ <- Parse.char '/'
+                       globs <- parse
+                       return (GlobDir glob globs)
+      asFile glob = return (GlobFile glob)
 
-      escape []               = []
-      escape (c:cs)
-        | isGlobEscapedChar c = '\\' : c : escape cs
-        | otherwise           =        c : escape cs
 
-  parse = Glob `fmap` many1 globAtom
-    where
-      globAtom :: ReadP r GlobAtom
-      globAtom = literal +++ wildcard +++ union
+dispGlob :: Glob -> Disp.Doc
+dispGlob = Disp.hcat . map dispPiece
+  where
+    dispPiece WildCard      = Disp.char '*'
+    dispPiece (Literal str) = Disp.text (escape str)
+    dispPiece (Union globs) = Disp.braces
+                                (Disp.hcat (Disp.punctuate
+                                             (Disp.char ',')
+                                             (map dispGlob globs)))
+    escape []               = []
+    escape (c:cs)
+      | isGlobEscapedChar c = '\\' : c : escape cs
+      | otherwise           =        c : escape cs
 
-      wildcard = char '*' >> return WildCard
+parseGlob :: ReadP r Glob
+parseGlob = Parse.many1 parsePiece
+  where
+    parsePiece = literal +++ wildcard +++ union
 
-      union = between (char '{') (char '}')
-              (fmap (Union . map Glob) $ sepBy1 (many1 globAtom) (char ','))
+    wildcard = Parse.char '*' >> return WildCard
 
-      literal = Literal `fmap` many1'
-        where
-          litchar = normal +++ escape
-          
-          normal  = satisfy (not . isGlobEscapedChar)
-          escape  = char '\\' >> satisfy isGlobEscapedChar
+    union = Parse.between (Parse.char '{') (Parse.char '}') $
+              fmap Union (Parse.sepBy1 parseGlob (Parse.char ','))
 
-          many1' :: ReadP r [Char]
-          many1' = liftM2 (:) litchar many'
+    literal = Literal `fmap` litchars1
 
-          many' :: ReadP r [Char]
-          many' = many1' <++ return []
+    litchar = normal +++ escape
+
+    normal  = Parse.satisfy (not . isGlobEscapedChar)
+    escape  = Parse.char '\\' >> Parse.satisfy isGlobEscapedChar
+
+    litchars1 :: ReadP r [Char]
+    litchars1 = liftM2 (:) litchar litchars
+
+    litchars :: ReadP r [Char]
+    litchars = litchars1 <++ return []
 
 isGlobEscapedChar :: Char -> Bool
 isGlobEscapedChar '*'  = True
@@ -105,14 +170,3 @@ isGlobEscapedChar '\\' = True
 isGlobEscapedChar '/'  = True
 isGlobEscapedChar _    = False
 
-{-
---TODO: [code cleanup] decide if this is useful
--- | Simplify a glob pattern
-simplify :: [GlobAtom] -> [GlobAtom]
-simplify []                             = []
-simplify (WildCard : WildCard : rest)   = simplify (WildCard : rest)
-simplify (Literal x : Literal y : rest) = simplify (Literal (x++y) : rest)
-simplify (Union globs : rest)           = 
-    Union (map (\(Glob glob) -> Glob $ simplify glob) globs) : simplify rest
-simplify (x : rest)                     = x : simplify rest
--}

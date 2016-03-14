@@ -29,8 +29,8 @@ module Distribution.Client.RebuildMonad (
     matchFileGlob,
   ) where
 
-import Distribution.Client.FileMonitor hiding (matchFileGlob)
-import qualified Distribution.Client.FileMonitor as FileMonitor (matchFileGlob)
+import Distribution.Client.FileMonitor
+import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
@@ -118,5 +118,5 @@ rerunIfChanged verbosity rootDir monitor key action = do
 matchFileGlob :: FilePath -> FilePathGlob -> Rebuild [FilePath]
 matchFileGlob root glob = do
     monitorFiles [MonitorFileGlob glob]
-    liftIO $ FileMonitor.matchFileGlob root glob
+    liftIO $ Glob.matchFileGlob root glob
 

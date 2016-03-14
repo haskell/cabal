@@ -22,9 +22,6 @@ module Distribution.Client.FileMonitor (
   updateFileMonitor,
   MonitorTimestamp,
   beginUpdateFileMonitor,
-
-  matchFileGlob,
-  isTrivialFilePathGlob,
   ) where
 
 
@@ -53,11 +50,6 @@ import           Control.Monad.State (StateT)
 import qualified Control.Monad.State as State
 import           Control.Monad.Except (ExceptT, runExceptT, throwError)
 import           Control.Exception
-
-import           Distribution.Text
-import           Distribution.Compat.ReadP ((<++))
-import qualified Distribution.Compat.ReadP as ReadP
-import qualified Text.PrettyPrint as Disp
 
 import           Distribution.Client.Compat.Time
 import           Distribution.Client.Glob
@@ -112,15 +104,6 @@ data MonitorFilePath =
   deriving (Eq, Show, Generic)
 
 instance Binary MonitorFilePath
-
--- | A file path specified by globbing
---
-data FilePathGlob
-   = GlobDir  !Glob !FilePathGlob
-   | GlobFile !Glob
-  deriving (Eq, Show, Generic)
-
-instance Binary FilePathGlob
 
 -- | Creates a list of files to monitor when you search for a file which
 -- unsuccessfully looked in @notFoundAtPaths@ before finding it at
@@ -537,7 +520,7 @@ probeGlobStatus root dirName
         -- a matching subdir may have been added or deleted
         matches <- filterM (\entry -> let subdir = root </> dirName </> entry
                                        in liftIO $ doesDirectoryExist subdir)
-                 . filter (globMatches glob)
+                 . filter (matchGlob glob)
                =<< liftIO (getDirectoryContents (root </> dirName))
 
         children' <- mapM probeMergeResult $
@@ -601,7 +584,7 @@ probeGlobStatus root dirName (MonitorStateGlobFiles glob mtime children) = do
         -- a matching file may have been added or deleted
         matches <- filterM (\entry -> let file = root </> dirName </> entry
                                        in liftIO $ doesFileExist file)
-                 . filter (globMatches glob)
+                 . filter (matchGlob glob)
                =<< liftIO (getDirectoryContents (root </> dirName))
 
         mapM_ probeMergeResult $
@@ -764,7 +747,7 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
     case globPath of
       GlobDir glob globPath' -> do
         subdirs <- filterM (\subdir -> doesDirectoryExist (absdir </> subdir))
-                 $ filter (globMatches glob) dirEntries
+                 $ filter (matchGlob glob) dirEntries
         subdirStates <-
           forM (sort subdirs) $ \subdir -> do
             fstate <- buildMonitorStateGlob mstartTime hashcache root
@@ -774,7 +757,7 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
 
       GlobFile glob -> do
         files <- filterM (\fname -> doesFileExist (absdir </> fname))
-               $ filter (globMatches glob) dirEntries
+               $ filter (matchGlob glob) dirEntries
         filesStates <-
           forM (sort files) $ \file -> do
             let absfile = absdir </> file
@@ -785,34 +768,6 @@ buildMonitorStateGlob mstartTime hashcache root dir globPath = do
             hash <- getFileHash hashcache (dir </> file) absfile mtime
             return (file, mtime', hash)
         return $! MonitorStateGlobFiles glob dirMTime filesStates
-
--- | Utility to match a file glob against the file system, starting from a
--- given root directory. The results are all relative to the given root.
---
-matchFileGlob :: FilePath -> FilePathGlob -> IO [FilePath]
-matchFileGlob root glob0 = go glob0 ""
-  where
-    go (GlobFile glob) dir = do
-      entries <- getDirectoryContents (root </> dir)
-      let files = filter (globMatches glob) entries
-      return (map (dir </>) files)
-
-    go (GlobDir glob globPath) dir = do
-      entries <- getDirectoryContents (root </> dir)
-      subdirs <- filterM (\subdir -> doesDirectoryExist
-                                       (root </> dir </> subdir))
-               $ filter (globMatches glob) entries
-      concat <$> mapM (\subdir -> go globPath (dir </> subdir)) subdirs
---TODO: [code cleanup] plausibly FilePathGlob and matchFileGlob should be
--- moved into D.C.Glob and/or merged with similar functionality in Cabal.
-
-
-isTrivialFilePathGlob :: FilePathGlob -> Maybe FilePath
-isTrivialFilePathGlob = go []
-  where
-    go paths (GlobDir  (Glob [Literal path]) globs) = go (path:paths) globs
-    go paths (GlobFile (Glob [Literal path])) = Just (joinPath (reverse (path:paths)))
-    go _ _ = Nothing
 
 -- | We really want to avoid re-hashing files all the time. We already make
 -- the assumption that if a file mtime has not changed then we don't need to
@@ -951,18 +906,6 @@ handleErrorCall e =
 ------------------------------------------------------------------------------
 -- Instances
 --
-
-instance Text FilePathGlob where
-  disp (GlobDir  glob pathglob) = disp glob Disp.<> Disp.char '/'
-                                            Disp.<> disp pathglob
-  disp (GlobFile glob)          = disp glob
-
-  parse = parse >>= \glob -> (asDir glob <++ asFile glob)
-    where
-      asDir  glob = do _ <- ReadP.char '/'
-                       globs <- parse
-                       return (GlobDir glob globs)
-      asFile glob = return (GlobFile glob)
 
 instance Binary MonitorStateFileSet where
   put (MonitorStateFileSet singlePaths globPaths) = do
