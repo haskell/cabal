@@ -30,6 +30,7 @@ module Distribution.Client.InstallPlan (
   failed,
   remove,
   preexisting,
+  preinstalled,
 
   showPlanIndex,
   showInstallPlan,
@@ -519,6 +520,24 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                   . PackageIndex.deleteUnitId pkgid
                   $ planIndex plan
     }
+
+-- | Replace a ready package with an installed one. The installed one
+-- must have exactly the same dependencies as the source one was configured
+-- with.
+--
+preinstalled :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                 HasUnitId srcpkg, PackageFixedDeps srcpkg)
+             => UnitId
+             -> Maybe ipkg -> iresult
+             -> GenericInstallPlan ipkg srcpkg iresult ifailure
+             -> GenericInstallPlan ipkg srcpkg iresult ifailure
+preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
+  where
+    plan' = plan { planIndex = PackageIndex.insert installed (planIndex plan) }
+    Just installed = do
+      Configured pkg <- PackageIndex.lookupUnitId (planIndex plan) pkgid
+      rpkg <- lookupReadyPackage plan pkg
+      return (Installed rpkg mipkg buildResult)
 
 -- | Transform an install plan by mapping a function over all the packages in
 -- the plan. It can consistently change the 'UnitId' of all the packages,
