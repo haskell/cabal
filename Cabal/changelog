@@ -9,7 +9,7 @@
 	* Include cabal_macros.h when running c2hs (#2600).
 	* Don't recompile C sources unless needed (#2601).
 	* Read 'builddir' option from 'CABAL_BUILDDIR' environment variable
-	* Add '--profiling-defail=$level' flag with a default for libraries
+	* Add '--profiling-detail=$level' flag with a default for libraries
 	  and executables of 'exported-functions' and 'toplevel-functions'
 	  respetively (GHC's '-fprof-auto-{exported,top}' flags) (#193).
 	* New 'custom-setup' stanza to specify setup deps. Setup is also built
