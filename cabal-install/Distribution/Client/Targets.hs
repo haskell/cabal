@@ -60,8 +60,8 @@ import Distribution.Client.Dependency.Types
          , LabeledPackageConstraint(..) )
 
 import qualified Distribution.Client.World as World
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Solver.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.Tar as Tar

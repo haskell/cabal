@@ -22,7 +22,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.PkgConfigDb
+import Distribution.Solver.PkgConfigDb
          ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )

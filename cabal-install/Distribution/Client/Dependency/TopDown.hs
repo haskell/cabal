@@ -29,14 +29,14 @@ import Distribution.Client.Dependency.Types
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Solver.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-import Distribution.Client.ComponentDeps
+import Distribution.Solver.ComponentDeps
          ( ComponentDeps )
-import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
+import qualified Distribution.Solver.ComponentDeps as CD
+import Distribution.Solver.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
@@ -45,7 +45,7 @@ import Distribution.Package
          , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
-import Distribution.Client.PackageUtils
+import Distribution.Solver.PackageUtils
          ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )

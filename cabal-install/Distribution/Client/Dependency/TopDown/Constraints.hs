@@ -25,8 +25,8 @@ module Distribution.Client.Dependency.TopDown.Constraints (
   ) where
 
 import Distribution.Client.Dependency.TopDown.Types
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex
+import qualified Distribution.Solver.PackageIndex as PackageIndex
+import Distribution.Solver.PackageIndex
         ( PackageIndex )
 import Distribution.Package
          ( PackageName, PackageId, PackageIdentifier(..)

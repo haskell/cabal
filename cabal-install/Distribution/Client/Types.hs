@@ -16,31 +16,51 @@
 --
 -- Various common data types for the entire cabal-install system
 -----------------------------------------------------------------------------
-module Distribution.Client.Types where
+module Distribution.Client.Types
+    ( PackageFixedDeps(..)
+    , ReadyPackage
+    , ConfiguredPackage(..)
+    , ConfiguredId(..)
+    , SourcePackage(..)
+    , SourcePackageDb(..)
+    , GenericReadyPackage(..)
+    , UnresolvedSourcePackage
+    , UnresolvedPkgLoc
+    , ResolvedPkgLoc
+    , PackageLocation(..)
+    , PackageDescriptionOverride
+    , enableStanzas
+    , maybeRepoRemote
+    , emptyRemoteRepo
+    , fakeUnitId
+    , OptionalStanza(..)
+    , Repo(..)
+    , Username(..)
+    , Password(..)
+    , RemoteRepo(..)
+    , BuildResult
+    , BuildFailure(..)
+    , BuildSuccess(..)
+    , DocsResult(..)
+    , TestsResult(..)
+    ) where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), mkUnitId
-         , HasUnitId(..), PackageInstalled(..) )
+         , UnitId(..), HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
-import Distribution.PackageDescription
-         ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
-         , TestSuite(..) )
-import Distribution.PackageDescription.Configuration
-         ( mapTreeData )
-import Distribution.Client.PackageIndex
+import Distribution.Solver.PackageIndex
          ( PackageIndex )
-import Distribution.Client.ComponentDeps
+import Distribution.Solver.ComponentDeps
          ( ComponentDeps )
-import qualified Distribution.Client.ComponentDeps as CD
+import qualified Distribution.Solver.ComponentDeps as CD
+import Distribution.Solver.Types
 import Distribution.Version
          ( VersionRange )
-import Distribution.Text (display)
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
-import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
 import GHC.Generics (Generic)
@@ -77,68 +97,8 @@ class Package pkg => PackageFixedDeps pkg where
 instance PackageFixedDeps InstalledPackageInfo where
   depends = CD.fromInstalled . installedDepends
 
-
--- | In order to reuse the implementation of PackageIndex which relies on
--- 'UnitId', we need to be able to synthesize these IDs prior
--- to installation.  Eventually, we'll move to a representation of
--- 'UnitId' which can be properly computed before compilation
--- (of course, it's a bit of a misnomer since the packages are not actually
--- installed yet.)  In any case, we'll synthesize temporary installed package
--- IDs to use as keys during install planning.  These should never be written
--- out!  Additionally, they need to be guaranteed unique within the install
--- plan.
-fakeUnitId :: PackageId -> UnitId
-fakeUnitId = mkUnitId . (".fake."++) . display
-
--- | A 'ConfiguredPackage' is a not-yet-installed package along with the
--- total configuration information. The configuration information is total in
--- the sense that it provides all the configuration information and so the
--- final configure process will be independent of the environment.
---
-data ConfiguredPackage loc = ConfiguredPackage
-       (SourcePackage loc)     -- package info, including repo
-       FlagAssignment          -- complete flag assignment for the package
-       [OptionalStanza]        -- list of enabled optional stanzas for the package
-       (ComponentDeps [ConfiguredId])
-                               -- set of exact dependencies (installed or source).
-                               -- These must be consistent with the 'buildDepends'
-                               -- in the 'PackageDescription' that you'd get by
-                               -- applying the flag assignment and optional stanzas.
-  deriving (Eq, Show, Generic)
-
-instance Binary loc => Binary (ConfiguredPackage loc)
-
--- | A ConfiguredId is a package ID for a configured package.
---
--- Once we configure a source package we know it's UnitId
--- (at least, in principle, even if we have to fake it currently). It is still
--- however useful in lots of places to also know the source ID for the package.
--- We therefore bundle the two.
---
--- An already installed package of course is also "configured" (all it's
--- configuration parameters and dependencies have been specified).
---
--- TODO: I wonder if it would make sense to promote this datatype to Cabal
--- and use it consistently instead of UnitIds?
-data ConfiguredId = ConfiguredId {
-    confSrcId  :: PackageId
-  , confInstId :: UnitId
-  }
-  deriving (Eq, Generic)
-
-instance Binary ConfiguredId
-
-instance Show ConfiguredId where
-  show = show . confSrcId
-
-instance Package (ConfiguredPackage loc) where
-  packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
-
 instance PackageFixedDeps (ConfiguredPackage loc) where
   depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
-
-instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId = fakeUnitId . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -164,47 +124,8 @@ instance HasUnitId srcpkg =>
 instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg)
 
 
--- | A package description along with the location of the package sources.
---
-data SourcePackage loc = SourcePackage {
-    packageInfoId        :: PackageId,
-    packageDescription   :: GenericPackageDescription,
-    packageSource        :: loc,
-    packageDescrOverride :: PackageDescriptionOverride
-  }
-  deriving (Eq, Show, Generic)
-
-instance (Binary loc) => Binary (SourcePackage loc)
-
 -- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
 type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
-
--- | We sometimes need to override the .cabal file in the tarball with
--- the newer one from the package index.
-type PackageDescriptionOverride = Maybe ByteString
-
-instance Package (SourcePackage a) where packageId = packageInfoId
-
-data OptionalStanza
-    = TestStanzas
-    | BenchStanzas
-  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
-
-instance Binary OptionalStanza
-
-enableStanzas
-    :: [OptionalStanza]
-    -> GenericPackageDescription
-    -> GenericPackageDescription
-enableStanzas stanzas gpkg = gpkg
-    { condBenchmarks = flagBenchmarks $ condBenchmarks gpkg
-    , condTestSuites = flagTests $ condTestSuites gpkg
-    }
-  where
-    enableTest t = t { testEnabled = TestStanzas `elem` stanzas }
-    enableBenchmark bm = bm { benchmarkEnabled = BenchStanzas `elem` stanzas }
-    flagBenchmarks = map (\(n, bm) -> (n, mapTreeData enableBenchmark bm))
-    flagTests = map (\(n, t) -> (n, mapTreeData enableTest t))
 
 -- ------------------------------------------------------------
 -- * Package locations and repositories

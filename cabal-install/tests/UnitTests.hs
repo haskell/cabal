@@ -15,8 +15,7 @@ import Distribution.Verbosity
 import Distribution.Client.Compat.Time
 
 import qualified UnitTests.Distribution.Client.Compat.Time
-import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
-import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
+import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Client.FileMonitor
 import qualified UnitTests.Distribution.Client.GZipUtils
 import qualified UnitTests.Distribution.Client.Sandbox
@@ -38,10 +37,8 @@ tests mtimeChangeCalibrated =
   testGroup "Unit Tests"
   [ testGroup "UnitTests.Distribution.Client.Compat.Time" $
         UnitTests.Distribution.Client.Compat.Time.tests mtimeChange
-  , testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
-        UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
-  , testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
-        UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
+  , testGroup "UnitTests.Distribution.Solver.Modular.Solver"
+        UnitTests.Distribution.Solver.Modular.Solver.tests
   , testGroup "UnitTests.Distribution.Client.FileMonitor" $
         UnitTests.Distribution.Client.FileMonitor.tests mtimeChange
   , testGroup "Distribution.Client.GZipUtils"
