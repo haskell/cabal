@@ -304,6 +304,14 @@ tests config = do
       runExe' "macros-b" []
           >>= assertOutputContains "macros-b.exe"
 
+  -- Test for 'build-type: Configure' example from the Cabal manual.
+  -- Disabled on Windows since MingW doesn't ship with autoreconf by
+  -- default.
+  unlessWindows $ do
+      tc "Configure" $ do
+          _ <- shell "autoreconf" ["-i"]
+          cabal_build []
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir

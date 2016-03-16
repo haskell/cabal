@@ -1,0 +1,6 @@
+X11.buildinfo
+autom4te.cache/
+*.log
+*.status
+include/HsX11Config.h
+configure

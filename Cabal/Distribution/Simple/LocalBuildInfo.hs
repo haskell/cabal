@@ -283,6 +283,7 @@ componentDisabledReason (CBench bm)
 componentDisabledReason _                   = Nothing
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
+lookupComponent pkg (CLibName "") = lookupComponent pkg (defaultLibName (package pkg))
 lookupComponent pkg (CLibName name) =
     fmap CLib $ find ((name ==) . libName) (libraries pkg)
 lookupComponent pkg (CExeName name) =

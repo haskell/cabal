@@ -25,6 +25,7 @@ module PackageTests.PackageTester
     , ghcPkg
     , ghcPkg'
     , compileSetup
+    , shell
     , run
     , runExe
     , runExe'
@@ -474,6 +475,11 @@ runInstalledExe' exe_name args = do
     let exe = usr </> "bin" </> exe_name
     run Nothing exe args
 
+shell :: String -> [String] -> TestM Result
+shell exe args = do
+    pkg_dir <- packageDir
+    run (Just pkg_dir) exe args
+
 run :: Maybe FilePath -> String -> [String] -> TestM Result
 run mb_cwd path args = do
     verbosity <- getVerbosity
@@ -487,8 +493,11 @@ rawRun verbosity mb_cwd path envOverrides args = do
     -- path is relative to the current directory; canonicalizePath makes it
     -- absolute, so that runProcess will find it even when changing directory.
     path' <- do pathExists <- doesFileExist path
-                canonicalizePath (if pathExists then path
-                                                else path <.> exeExtension)
+                exePathExists <- doesFileExist (path <.> exeExtension)
+                case () of
+                 _ | pathExists    -> canonicalizePath path
+                   | exePathExists -> canonicalizePath (path <.> exeExtension)
+                   | otherwise     -> return path
     menv <- getEffectiveEnvironment envOverrides
 
     printRawCommandAndArgsAndEnv verbosity path' args menv
