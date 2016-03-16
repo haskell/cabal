@@ -807,6 +807,13 @@ matchFileGlob root glob0 = go glob0 ""
 -- moved into D.C.Glob and/or merged with similar functionality in Cabal.
 
 
+-- | Check if a 'FilePathGlob' doesn't actually make use of any globbing and
+-- is in fact equivalent to a non-glob 'FilePath'.
+--
+-- If it is trivial in this sense then the result is the equivalent constant
+-- 'FilePath'. On the other hand if it is not trivial (so could in principle
+-- match more than one file) then the result is @Nothing@.
+--
 isTrivialFilePathGlob :: FilePathGlob -> Maybe FilePath
 isTrivialFilePathGlob = go []
   where
