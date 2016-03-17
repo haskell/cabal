@@ -16,6 +16,8 @@ module Distribution.Client.GenBounds (
 
 import Data.Version
          ( Version(..), showVersion )
+import Distribution.Client.Init
+         ( incVersion )
 import Distribution.Client.Freeze
          ( getFreezePkgs )
 import Distribution.Client.Sandbox.Types
@@ -47,16 +49,21 @@ import Distribution.Version
 import System.Directory
          ( getCurrentDirectory )
 
+-- | Does this version range have an upper bound?
 hasUpperBound :: VersionRange -> Bool
 hasUpperBound vr =
     case asVersionIntervals vr of
       [] -> False
       is -> if snd (last is) == NoUpperBound then False else True
 
+-- | Given a version, return an API-compatible (according to PVP) version range.
+--
+-- Example: @0.4.1.2@ produces the version range @>= 0.4.1 && < 0.5@.
+--
 -- This version is slightly different than the one in
--- Distribution.Client.Init.  This one uses a.b.c as the lower bound because
--- the user could be using a new function introduced in a.b.c which would
--- make "> a.b" incorrect.
+-- 'Distribution.Client.Init'.  This one uses a.b.c as the lower bound because
+-- the user could be using a new function introduced in a.b.c which would make
+-- ">= a.b" incorrect.
 pvpize :: Version -> VersionRange
 pvpize v = orLaterVersion (vn 3)
            `intersectVersionRanges`
@@ -64,28 +71,23 @@ pvpize v = orLaterVersion (vn 3)
   where
     vn n = (v { versionBranch = take n (versionBranch v) })
 
-incVersion :: Int -> Version -> Version
-incVersion n (Version vlist tags) = Version (incVersion' n vlist) tags
-  where
-    incVersion' 0 []     = [1]
-    incVersion' 0 (v:_)  = [v+1]
-    incVersion' m []     = replicate m 0 ++ [1]
-    incVersion' m (v:vs) = v : incVersion' (m-1) vs
-
-showInterval :: (LowerBound, UpperBound) -> String
-showInterval (LowerBound _ _, NoUpperBound) =
-    error "Error: expected upper bound...this should never happen!"
-showInterval (LowerBound l _, UpperBound u _) =
-    unwords [">=", showVersion l, "&& <", showVersion u]
-
-padAfter :: Int -> String -> String
-padAfter n str = str ++ replicate (n - length str) ' '
-
+-- | Show the PVP-mandated version range for this package. The @padTo@ parameter
+-- specifies the width of the package name column.
 showBounds :: Package pkg => Int -> pkg -> String
 showBounds padTo p = unwords $
     (padAfter padTo $ unPackageName $ packageName p) :
     map showInterval (asVersionIntervals $ pvpize $ packageVersion p)
+  where
+    padAfter :: Int -> String -> String
+    padAfter n str = str ++ replicate (n - length str) ' '
 
+    showInterval :: (LowerBound, UpperBound) -> String
+    showInterval (LowerBound _ _, NoUpperBound) =
+      error "Error: expected upper bound...this should never happen!"
+    showInterval (LowerBound l _, UpperBound u _) =
+      unwords [">=", showVersion l, "&& <", showVersion u]
+
+-- | Entry point for the @gen-bounds@ command.
 genBounds
     :: Verbosity
     -> PackageDBStack
@@ -142,8 +144,8 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
        mapM_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
-depName :: Dependency -> String
-depName (Dependency (PackageName nm) _) = nm
+     depName :: Dependency -> String
+     depName (Dependency (PackageName nm) _) = nm
 
-depVersion :: Dependency -> VersionRange
-depVersion (Dependency _ vr) = vr
+     depVersion :: Dependency -> VersionRange
+     depVersion (Dependency _ vr) = vr
