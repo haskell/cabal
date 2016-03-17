@@ -105,6 +105,8 @@ freeze verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
 
+-- | Get the list of packages whose versions would be frozen by the @freeze@
+-- command.
 getFreezePkgs :: Verbosity
               -> PackageDBStack
               -> RepoContext
