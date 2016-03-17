@@ -657,7 +657,7 @@ mplusMaybeT ma mb = do
 
 
 readSourcePackage :: Verbosity -> ProjectPackageLocation
-                  -> Rebuild SourcePackage
+                  -> Rebuild UnresolvedSourcePackage
 readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
     readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
   where
