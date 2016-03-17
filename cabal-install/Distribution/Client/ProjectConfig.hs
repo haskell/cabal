@@ -224,7 +224,7 @@ resolveBuildTimeSettings verbosity
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
-    --buildSettingLogFile       -- defined below, more complicated 
+    --buildSettingLogFile       -- defined below, more complicated
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
@@ -500,7 +500,7 @@ data BadPackageLocationMatch
   deriving Show
 
 
--- | Given the project config, 
+-- | Given the project config,
 --
 -- Throws 'BadPackageLocations'.
 --
@@ -577,7 +577,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
           matches <- matchFileGlob projectRootDir glob
           case matches of
             [] | isJust (isTrivialFilePathGlob glob)
-               -> return (Left (BadPackageLocationFile 
+               -> return (Left (BadPackageLocationFile
                                   (BadLocNonexistantFile pkglocstr)))
 
             [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
@@ -675,4 +675,3 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
 readSourcePackage _verbosity _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
-
