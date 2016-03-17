@@ -1003,6 +1003,32 @@ The command writes the selected version for all dependencies to the
 `cabal.config` file.  All environments which share this file will use the
 dependency versions specified in it.
 
+#### Generating dependency version bounds ####
+
+Cabal also has the ability to suggest dependency version bounds that conform to
+[Package Versioning Policy][PVP], which is a recommended versioning system for
+publicly released Cabal packages. This is done by running the `gen-bounds`
+command:
+
+~~~~~~~~~~~~~~~~
+cabal gen-bounds
+~~~~~~~~~~~~~~~~
+
+For example, given the following dependencies specified in `build-depends`:
+
+~~~~~~~~~~~~~~~~
+foo == 0.5.2
+bar == 1.1
+~~~~~~~~~~~~~~~~
+
+`gen-bounds` will suggest changing them to the following:
+
+~~~~~~~~~~~~~~~~
+foo >= 0.5.2 && < 0.6
+bar >= 1.1 && < 1.2
+~~~~~~~~~~~~~~~~
+
+
 ### Executables ###
 
 Executable sections (if present) describe executable programs contained
@@ -2187,3 +2213,4 @@ a few options:
 [Hackage]:    http://hackage.haskell.org/
 [pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/
 [REPL]:       http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
+[PVP]:        https://wiki.haskell.org/Package_versioning_policy
