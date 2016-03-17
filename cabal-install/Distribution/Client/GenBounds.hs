@@ -111,34 +111,23 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
     case epd of
       Left _ -> putStrLn "finalizePackageDescription failed"
       Right (pd,_) -> do
-        let needBounds = filter (not . hasUpperBound . depVersion) $ buildDepends pd
+        let needBounds = filter (not . hasUpperBound . depVersion) $
+                         buildDepends pd
 
         if (null needBounds)
-          then putStrLn "Congratulations, all your dependencies have upper bounds!"
+          then putStrLn
+               "Congratulations, all your dependencies have upper bounds!"
           else go needBounds
   where
      go needBounds = do
        pkgs  <- getFreezePkgs
-                  verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
-                  globalFlags freezeFlags
+                  verbosity packageDBs repoCtxt comp platform conf
+                  mSandboxPkgInfo globalFlags freezeFlags
 
-       putStrLn $ unlines
-         [ ""
-         , "The following packages need bounds and here is a suggested starting point."
-         , "You can copy and paste this into the build-depends section in your .cabal"
-         , "file and it should work (with the appropriate removal of commas)."
-         , ""
-         , "Note that version bounds are a statement that you've successfully built and"
-         , "tested your package and expect it to work with any of the specified package"
-         , "versions (PROVIDED that those packages continue to conform with the PVP)."
-         , "Therefore, the version bounds generated here are the most conservative"
-         , "based on the versions that you are currently building with.  If you know"
-         , "your package will work with versions outside the ranges generated here,"
-         , "feel free to widen them."
-         , ""
-         ]
+       putStrLn boundsNeededMsg
 
-       let isNeeded pkg = unPackageName (packageName pkg) `elem` map depName needBounds
+       let isNeeded pkg = unPackageName (packageName pkg)
+                          `elem` map depName needBounds
        let thePkgs = filter isNeeded pkgs
 
        let padTo = maximum $ map (length . unPackageName . packageName) pkgs
@@ -149,3 +138,22 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
 
      depVersion :: Dependency -> VersionRange
      depVersion (Dependency _ vr) = vr
+
+-- | The message printed when some dependencies are found to be lacking proper
+-- PVP-mandated bounds.
+boundsNeededMsg :: String
+boundsNeededMsg = unlines
+  [ ""
+  , "The following packages need bounds and here is a suggested starting point."
+  , "You can copy and paste this into the build-depends section in your .cabal"
+  , "file and it should work (with the appropriate removal of commas)."
+  , ""
+  , "Note that version bounds are a statement that you've successfully built and"
+  , "tested your package and expect it to work with any of the specified package"
+  , "versions (PROVIDED that those packages continue to conform with the PVP)."
+  , "Therefore, the version bounds generated here are the most conservative"
+  , "based on the versions that you are currently building with.  If you know"
+  , "your package will work with versions outside the ranges generated here,"
+  , "feel free to widen them."
+  , ""
+  ]
