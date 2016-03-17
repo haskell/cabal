@@ -64,6 +64,22 @@ instance Binary SourcePackageDb
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
 
+-- | Within Cabal the library we no longer have a @InstalledPackageId@ type.
+-- That's because it deals with the compilers' notion of a registered library,
+-- and those really are libraries not packages. Those are now named units.
+--
+-- The package management layer does however deal with installed packages, as
+-- whole packages not just as libraries. So we do still need a type for
+-- installed package ids. At the moment however we track instaled packages via
+-- their primary library, which is a unit id. In future this may change
+-- slightly and we may distinguish these two types and have an explicit
+-- conversion when we register units with the compiler.
+--
+type InstalledPackageId = UnitId
+
+installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
+installedPackageId = installedUnitId
+
 -- | Subclass of packages that have specific versioned dependencies.
 --
 -- So for example a not-yet-configured package has dependencies on version

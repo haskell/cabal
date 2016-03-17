@@ -153,6 +153,7 @@ executable cabal
         Distribution.Client.Dependency.Modular.Tree
         Distribution.Client.Dependency.Modular.Validate
         Distribution.Client.Dependency.Modular.Version
+        Distribution.Client.DistDirLayout
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
@@ -179,6 +180,9 @@ executable cabal
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
         Distribution.Client.PlanIndex
+        Distribution.Client.ProjectConfig
+        Distribution.Client.ProjectConfig.Types
+        Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.Run
         Distribution.Client.RebuildMonad
         Distribution.Client.Sandbox
@@ -267,6 +271,7 @@ Test-Suite unit-tests
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs
   other-modules:
+    UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.Compat.Time
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
@@ -278,6 +283,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Sandbox.Timestamp
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
+    UnitTests.Distribution.Client.ProjectConfig
     UnitTests.Options
   build-depends:
         base,

@@ -39,7 +39,9 @@ module Distribution.Client.Config (
     withProgramOptionsFields,
     userConfigDiff,
     userConfigUpdate,
-    createDefaultConfigFile
+    createDefaultConfigFile,
+
+    remoteRepoFields
   ) where
 
 import Distribution.Client.Types
