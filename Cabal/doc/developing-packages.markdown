@@ -1480,7 +1480,7 @@ for these fields.
     parameters](#system-dependent-parameters)>.
 
 `pkgconfig-depends:` _package list_
-:   A list of [pkg-config][] packages, needed to build this package.
+:   A list of [pkg-config] packages, needed to build this package.
     They can be annotated with versions, e.g. `gtk+-2.0 >= 2.10, cairo
     >= 1.0`. If no version constraint is specified, any version is
     assumed to be acceptable. Cabal uses `pkg-config` to find if the
