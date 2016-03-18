@@ -13,7 +13,7 @@
 -- The cabal freeze command
 -----------------------------------------------------------------------------
 module Distribution.Client.Freeze (
-    freeze,
+    freeze, getFreezePkgs
   ) where
 
 import Distribution.Client.Config ( SavedConfig(..) )
@@ -88,6 +88,38 @@ freeze :: Verbosity
 freeze verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
       globalFlags freezeFlags = do
 
+    pkgs  <- getFreezePkgs
+               verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+               globalFlags freezeFlags
+
+    if null pkgs
+      then notice verbosity $ "No packages to be frozen. "
+                           ++ "As this package has no dependencies."
+      else if dryRun
+             then notice verbosity $ unlines $
+                     "The following packages would be frozen:"
+                   : formatPkgs pkgs
+
+             else freezePackages verbosity globalFlags pkgs
+
+  where
+    dryRun = fromFlag (freezeDryRun freezeFlags)
+
+-- | Get the list of packages whose versions would be frozen by the @freeze@
+-- command.
+getFreezePkgs :: Verbosity
+              -> PackageDBStack
+              -> RepoContext
+              -> Compiler
+              -> Platform
+              -> ProgramConfiguration
+              -> Maybe SandboxPackageInfo
+              -> GlobalFlags
+              -> FreezeFlags
+              -> IO [PlanPackage]
+getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+      globalFlags freezeFlags = do
+
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
     pkgConfigDb       <- readPkgConfigDb      verbosity conf
@@ -98,23 +130,10 @@ freeze verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
                        [UserTargetLocalDir "."]
 
     sanityCheck pkgSpecifiers
-    pkgs  <- planPackages
+    planPackages
                verbosity comp platform mSandboxPkgInfo freezeFlags
                installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
-
-    if null pkgs
-      then notice verbosity $ "No packages to be frozen. "
-                           ++ "As this package has no dependencies."
-      else if dryRun
-             then notice verbosity $ unlines $
-                     "The following packages would be frozen:"
-                   : formatPkgs pkgs
-
-             else freezePackages globalFlags verbosity pkgs
-
   where
-    dryRun = fromFlag (freezeDryRun freezeFlags)
-
     sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
         die $ "internal error: 'resolveUserTargets' returned "
@@ -209,8 +228,8 @@ pruneInstallPlan installPlan pkgSpecifiers =
                          ++ "unexpected package specifiers!"
 
 
-freezePackages :: Package pkg => GlobalFlags -> Verbosity -> [pkg] -> IO ()
-freezePackages globalFlags verbosity pkgs = do
+freezePackages :: Package pkg => Verbosity -> GlobalFlags -> [pkg] -> IO ()
+freezePackages verbosity globalFlags pkgs = do
 
     pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
                    loadUserConfig verbosity ""  (flagToMaybe . globalConstraintsFile $ globalFlags)
