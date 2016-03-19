@@ -28,6 +28,8 @@
 	* Added a way to specify extra locations to find OS X frameworks
 	in ('extra-framework-dirs'). Can be used both in .cabal files and
 	as an argument to './Setup configure' (#3158).
+	* Macros 'VERSION_$pkgname' and 'MIN_VERSION_$pkgname' are now
+	also generated for the current package. (#3235).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
