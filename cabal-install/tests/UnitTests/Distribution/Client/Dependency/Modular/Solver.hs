@@ -527,6 +527,7 @@ db18 = [
   , Right $ exAv "G" 1 []
   ]
 
+
 dbExts1 :: ExampleDb
 dbExts1 = [
     Right $ exAv "A" 1 [ExExt (EnableExtension RankNTypes)]

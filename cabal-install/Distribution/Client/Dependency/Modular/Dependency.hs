@@ -7,7 +7,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , varPI
     -- * Conflict sets
   , ConflictSet
-  , showCS
+  , CS.showCS
     -- * Constrained instances
   , CI(..)
   , merge
@@ -30,7 +30,6 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
-  , extendConflictSet
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -40,17 +39,17 @@ import Prelude hiding (pi)
 
 import Data.Map (Map)
 import qualified Data.List as L
-import qualified Data.Set  as S
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
 import Distribution.Text
 
-import Distribution.Client.Dependency.Modular.ConflictSet
+import Distribution.Client.Dependency.Modular.ConflictSet (ConflictSet)
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Var
 import Distribution.Client.Dependency.Modular.Version
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.ComponentDeps (Component(..))
 
@@ -86,13 +85,13 @@ showCI (Constrained vr) = showVR (collapse vr)
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
-  | otherwise                                 = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
+  | otherwise                                 = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, d))
 merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
+      | otherwise      = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
@@ -305,20 +304,16 @@ instance ResetGoal Goal where
 -- | Compute a conflict set from a goal. The conflict set contains the closure
 -- of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
-
--- | Add another variable into a conflict set
-extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
-extendConflictSet = S.insert . simplifyVar
+toConflictSet (Goal g grs) = CS.insert g (goalReasonChainToVars grs)
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
-goalReasonToVars UserGoal                 = S.empty
-goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = S.singleton (simplifyVar (F qfn))
-goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
+goalReasonToVars UserGoal                 = CS.empty
+goalReasonToVars (PDependency (PI qpn _)) = CS.singleton (P qpn)
+goalReasonToVars (FDependency qfn _)      = CS.singleton (F qfn)
+goalReasonToVars (SDependency qsn)        = CS.singleton (S qsn)
 
 goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
-goalReasonChainToVars = S.unions . L.map goalReasonToVars
+goalReasonChainToVars = CS.unions . L.map goalReasonToVars
 
 {-------------------------------------------------------------------------------
   Open goals
