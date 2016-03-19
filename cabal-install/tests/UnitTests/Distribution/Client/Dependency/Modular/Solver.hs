@@ -548,6 +548,16 @@ db16 = [
 -- A and B's dependencies on D is -flagA +flagB. This database tests that the
 -- solver can backtrack to find the right combination of flags (requiring F, but
 -- not E or G) and apply it to both 0.C and 1.C.
+--
+-- > flagA flagB  C depends on
+-- >  On    _     D-1, E-*
+-- >  Off   On    F-*        <-- Only valid choice
+-- >  Off   Off   D-2, G-*
+--
+-- The single instance restriction means we cannot have one instance of C
+-- built against D-1 and one instance built against D-2; since A depends on
+-- D-1, and B depends on C-2, it is therefore important that C cannot depend
+-- on any version of D.
 db18 :: ExampleDb
 db18 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
