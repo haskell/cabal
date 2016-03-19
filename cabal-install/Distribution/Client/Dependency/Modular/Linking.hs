@@ -28,6 +28,7 @@ import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.Types (OptionalStanza(..))
 import Distribution.Client.ComponentDeps (Component)
@@ -246,7 +247,7 @@ makeCanonical lg qpn@(Q pp _) i =
     case lgCanon lg of
       -- There is already a canonical member. Fail.
       Just _ ->
-        conflict ( S.fromList (P qpn : lgBlame lg)
+        conflict ( CS.insert (P qpn) (lgBlame lg)
                  ,    "cannot make " ++ showQPN qpn
                    ++ " canonical member of " ++ showLinkGroup lg
                  )
@@ -401,7 +402,7 @@ verifyFlag' (FN (PI pn i) fn) lg = do
         vals  = map (`M.lookup` vsFlags vs) flags
     if allEqual (catMaybes vals) -- We ignore not-yet assigned flags
       then return ()
-      else conflict ( S.fromList (map F flags) `S.union` lgConflictSet lg
+      else conflict ( CS.fromList (map F flags) `CS.union` lgConflictSet lg
                     , "flag " ++ show fn ++ " incompatible"
                     )
 
@@ -419,7 +420,7 @@ verifyStanza' (SN (PI pn i) sn) lg = do
         vals    = map (`M.lookup` vsStanzas vs) stanzas
     if allEqual (catMaybes vals) -- We ignore not-yet assigned stanzas
       then return ()
-      else conflict ( S.fromList (map S stanzas) `S.union` lgConflictSet lg
+      else conflict ( CS.fromList (map S stanzas) `CS.union` lgConflictSet lg
                     , "stanza " ++ show sn ++ " incompatible"
                     )
 
@@ -452,7 +453,7 @@ data LinkGroup = LinkGroup {
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
       -- of the link group itself)
-    , lgBlame :: [Var QPN]
+    , lgBlame :: ConflictSet QPN
     }
     deriving Show
 
@@ -483,7 +484,7 @@ lgSingleton (Q pp pn) canon = LinkGroup {
       lgPackage = pn
     , lgCanon   = canon
     , lgMembers = S.singleton pp
-    , lgBlame   = []
+    , lgBlame   = CS.empty
     }
 
 lgMerge :: [Var QPN] -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
@@ -493,7 +494,7 @@ lgMerge blame lg lg' = do
         lgPackage = lgPackage lg
       , lgCanon   = canon
       , lgMembers = lgMembers lg `S.union` lgMembers lg'
-      , lgBlame   = blame ++ lgBlame lg ++ lgBlame lg'
+      , lgBlame   = CS.unions [CS.fromList blame, lgBlame lg, lgBlame lg']
       }
   where
     pick :: Eq a => Maybe a -> Maybe a -> Either Conflict (Maybe a)
@@ -502,8 +503,8 @@ lgMerge blame lg lg' = do
     pick Nothing  (Just y) = Right $ Just y
     pick (Just x) (Just y) =
       if x == y then Right $ Just x
-                else Left ( S.unions [
-                               S.fromList blame
+                else Left ( CS.unions [
+                               CS.fromList blame
                              , lgConflictSet lg
                              , lgConflictSet lg'
                              ]
@@ -512,7 +513,9 @@ lgMerge blame lg lg' = do
                           )
 
 lgConflictSet :: LinkGroup -> ConflictSet QPN
-lgConflictSet lg = S.fromList (map aux (S.toList (lgMembers lg)) ++ lgBlame lg)
+lgConflictSet lg =
+               CS.fromList (map aux (S.toList (lgMembers lg)))
+    `CS.union` lgBlame lg
   where
     aux pp = P (Q pp (lgPackage lg))
 
