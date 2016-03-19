@@ -152,6 +152,7 @@ executable cabal
         Distribution.Client.Dependency.Modular.Builder
         Distribution.Client.Dependency.Modular.Configured
         Distribution.Client.Dependency.Modular.ConfiguredConversion
+        Distribution.Client.Dependency.Modular.ConflictSet
         Distribution.Client.Dependency.Modular.Cycles
         Distribution.Client.Dependency.Modular.Dependency
         Distribution.Client.Dependency.Modular.Explore
@@ -167,6 +168,7 @@ executable cabal
         Distribution.Client.Dependency.Modular.Solver
         Distribution.Client.Dependency.Modular.Tree
         Distribution.Client.Dependency.Modular.Validate
+        Distribution.Client.Dependency.Modular.Var
         Distribution.Client.Dependency.Modular.Version
         Distribution.Client.DistDirLayout
         Distribution.Client.Exec

@@ -23,7 +23,6 @@ import qualified Data.Map as M
 import Data.Monoid
 import Control.Applicative
 #endif
-import qualified Data.Set as S
 import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
 import Data.Map (Map)
@@ -41,6 +40,7 @@ import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 -- | Generic abstraction for strategies that just rearrange the package order.
 -- Only packages that match the given predicate are reordered.
@@ -391,4 +391,4 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
           local (M.insert inst qpn) r
         (Nothing, Just qpn') -> do
           -- Not linked, already used. This is an error
-          return $ Fail (S.fromList [P qpn, P qpn']) MultipleInstances
+          return $ Fail (CS.fromList [P qpn, P qpn']) MultipleInstances
