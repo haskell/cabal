@@ -359,7 +359,7 @@ ready plan = assert check readyPackages
     readyPackages :: [GenericReadyPackage srcpkg ipkg]
     readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
-lookupReadyPackage :: forall ipkg srcpkg iresult ifailure. 
+lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
                       PackageFixedDeps srcpkg
                    => GenericInstallPlan ipkg srcpkg iresult ifailure
                    -> srcpkg
@@ -572,9 +572,9 @@ mapPreservingGraph f plan =
          where
            ipkgid  = installedUnitId pkg
            ipkgid' = installedUnitId pkg'
-   
+
     mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
- 
+
 
 -- ------------------------------------------------------------
 -- * Checking validity of plans
