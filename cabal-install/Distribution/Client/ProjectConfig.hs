@@ -38,7 +38,7 @@ import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
 import Distribution.Client.Glob
-         ( GlobPiece(..), isTrivialFilePathGlob )
+         ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
@@ -640,7 +640,8 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
 
 globStarDotCabal :: FilePath -> FilePathGlob
 globStarDotCabal =
-    foldr (\dirpart -> GlobDir [Literal dirpart])
+    FilePathGlob FilePathRelative
+  . foldr (\dirpart -> GlobDir [Literal dirpart])
           (GlobFile [WildCard, Literal ".cabal"])
   . splitDirectories
 

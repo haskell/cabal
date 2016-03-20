@@ -19,6 +19,9 @@ module Distribution.Client.RebuildMonad (
     MonitorFilePath(..),
     monitorFileSearchPath,
     FilePathGlob(..),
+    FilePathRoot(..),
+    FilePathGlobRel(..),
+    GlobPiece(..),
 
     -- * Using a file monitor
     FileMonitor(..),
@@ -30,6 +33,7 @@ module Distribution.Client.RebuildMonad (
   ) where
 
 import Distribution.Client.FileMonitor
+import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 
 import Distribution.Simple.Utils (debug)
