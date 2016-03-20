@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Distribution.Client.Dependency.Modular.Linking (
     addLinking
   , validateLinking
@@ -188,7 +189,13 @@ type Conflict = (ConflictSet QPN, String)
 newtype UpdateState a = UpdateState {
     unUpdateState :: StateT ValidateState (Either Conflict) a
   }
-  deriving (Functor, Applicative, Monad, MonadState ValidateState)
+  deriving (Functor, Applicative, Monad)
+
+instance MonadState ValidateState UpdateState where
+  get    = UpdateState $ get
+  put st = UpdateState $ do
+             assert (lgInvariant $ vsLinks st) $ return ()
+             put st
 
 lift' :: Either Conflict a -> UpdateState a
 lift' = UpdateState . lift
@@ -218,30 +225,37 @@ pickConcrete qpn@(Q pp _) i = do
         makeCanonical lg qpn i
 
 pickLink :: QPN -> I -> PP -> FlaggedDeps Component QPN -> UpdateState ()
-pickLink qpn@(Q pp pn) i pp' deps = do
+pickLink qpn@(Q _pp pn) i pp' deps = do
     vs <- get
-    -- Find the link group for the package we are linking to, and add this package
+
+    -- The package might already be in a link group
+    -- (because one of its reverse dependencies is)
+    let lgSource = case M.lookup qpn (vsLinks vs) of
+                     Nothing -> lgSingleton qpn Nothing
+                     Just lg -> lg
+
+    -- Find the link group for the package we are linking to
     --
     -- Since the builder never links to a package without having first picked a
     -- concrete instance for that package, and since we create singleton link
     -- groups for concrete instances, this link group must exist (and must
     -- in fact already have a canonical member).
-    let target = Q pp' pn
-        lg     = vsLinks vs ! target
+    let target   = Q pp' pn
+        lgTarget = vsLinks vs ! Q pp' pn
 
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
     -- these checks would indicate a bug in the linker, not a true conflict.
     let sanityCheck :: Maybe (PI PP) -> Bool
         sanityCheck Nothing              = False
-        sanityCheck (Just (PI _ canonI)) = pn == lgPackage lg && i == canonI
-    assert (sanityCheck (lgCanon lg)) $ return ()
+        sanityCheck (Just (PI _ canonI)) = pn == lgPackage lgTarget && i == canonI
+    assert (sanityCheck (lgCanon lgTarget)) $ return ()
 
-    -- Since we already have a canonical member, we just need to add the new
-    -- member into the group
-    let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
-    -- TODO: Can it not be that *we* are already in a different link group?
-    updateLinkGroup lg'
+    -- Merge the two link groups (updateLinkGroup will propagate the change)
+    lgTarget' <- lift' $ lgMerge [] lgSource lgTarget
+    updateLinkGroup lgTarget'
+
+    -- Make sure all dependencies are linked as well
     linkDeps target [P qpn] deps
 
 makeCanonical :: LinkGroup -> QPN -> I -> UpdateState ()
@@ -467,7 +481,18 @@ data LinkGroup = LinkGroup {
       -- of the link group itself)
     , lgBlame :: ConflictSet QPN
     }
-    deriving Show
+    deriving (Show, Eq)
+
+-- | Invariant for the set of link groups: every element in the link group
+-- must be pointing to the /same/ link group
+lgInvariant :: Map QPN LinkGroup -> Bool
+lgInvariant links = all invGroup (M.elems links)
+  where
+    invGroup :: LinkGroup -> Bool
+    invGroup lg = allEqual $ map (`M.lookup` links) members
+      where
+        members :: [QPN]
+        members = map (`Q` lgPackage lg) $ S.toList (lgMembers lg)
 
 -- | Package version of this group
 --
