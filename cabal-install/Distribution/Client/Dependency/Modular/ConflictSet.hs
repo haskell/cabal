@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- | Conflict sets
 --
 -- Intended for double import
@@ -62,7 +63,11 @@ singleton = CS . S.singleton . simplifyVar
 member :: Ord qpn => Var qpn -> ConflictSet qpn -> Bool
 member var (CS set) = S.member (simplifyVar var) set
 
+#if MIN_VERSION_containers(0,5,0)
+filter :: (Var qpn -> Bool) -> ConflictSet qpn -> ConflictSet qpn
+#else
 filter :: Ord qpn => (Var qpn -> Bool) -> ConflictSet qpn -> ConflictSet qpn
+#endif
 filter p (CS set) = CS $ S.filter p set
 
 fromList :: Ord qpn => [Var qpn] -> ConflictSet qpn
