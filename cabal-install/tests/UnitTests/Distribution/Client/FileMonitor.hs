@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module UnitTests.Distribution.Client.FileMonitor (tests) where
 
 import Control.Monad
@@ -34,27 +31,34 @@ tests mtimeChange =
   , testCase "update during action"  $ testUpdateDuringAction mtimeChange
   , testCase "remove file"           testRemoveFile
   , testCase "non-existent file"     testNonExistentFile
+  , testCase "changed file type"     testChangedFileType
 
   , testGroup "glob matches"
     [ testCase "no change"           testGlobNoChange
     , testCase "add match"           $ testGlobAddMatch mtimeChange
-    , testCase "remove match"        testGlobRemoveMatch
+    , testCase "remove match"        $ testGlobRemoveMatch mtimeChange
     , testCase "change match"        $ testGlobChangeMatch mtimeChange
 
     , testCase "add match subdir"    $ testGlobAddMatchSubdir mtimeChange
-    , testCase "remove match subdir" testGlobRemoveMatchSubdir
+    , testCase "remove match subdir" $ testGlobRemoveMatchSubdir mtimeChange
     , testCase "change match subdir" $ testGlobChangeMatchSubdir mtimeChange
 
+    , testCase "match toplevel dir"  $ testGlobMatchTopDir mtimeChange
     , testCase "add non-match"       $ testGlobAddNonMatch mtimeChange
-    , testCase "remove non-match"    testGlobRemoveNonMatch
+    , testCase "remove non-match"    $ testGlobRemoveNonMatch mtimeChange
 
     , testCase "add non-match"       $ testGlobAddNonMatchSubdir mtimeChange
-    , testCase "remove non-match"    testGlobRemoveNonMatchSubdir
+    , testCase "remove non-match"    $ testGlobRemoveNonMatchSubdir mtimeChange
 
     , testCase "invariant sorted 1"  $ testInvariantMonitorStateGlobFiles
-      mtimeChange
+                                         mtimeChange
     , testCase "invariant sorted 2"  $ testInvariantMonitorStateGlobDirs
-      mtimeChange
+                                         mtimeChange
+
+    , testCase "match dirs"          $ testGlobMatchDir mtimeChange
+    , testCase "match dirs only"     $ testGlobMatchDirOnly mtimeChange
+    , testCase "change file type"    $ testGlobChangeFileType mtimeChange
+    , testCase "absolute paths"      $ testGlobAbsolutePath mtimeChange
     ]
 
   , testCase "value unchanged"       testValueUnchanged
@@ -267,6 +271,21 @@ testNonExistentFile =
     files2 @?= [MonitorNonExistentFile "a"]
 
 
+testChangedFileType :: Assertion
+testChangedFileType = do
+    test MonitorFile
+    test MonitorFileHashed
+  where
+    test monitorKind =
+      withFileMonitor $ \root monitor -> do
+        touch root "a"
+        updateMonitor root monitor [monitorKind "a"] () ()
+        remove    root "a"
+        createDir root "a"
+        reason <- expectMonitorChanged root monitor ()
+        reason @?= MonitoredFileChanged "a"
+
+
 ------------------
 -- globs
 --
@@ -289,18 +308,18 @@ testGlobAddMatch mtimeChange =
     (res, files) <- expectMonitorUnchanged root monitor ()
     res   @?= ()
     files @?= [monitorFileGlob "dir/good-*"]
-
     threadDelay mtimeChange
     touch root ("dir" </> "good-b")
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "good-b")
 
-testGlobRemoveMatch :: Assertion
-testGlobRemoveMatch =
+testGlobRemoveMatch :: Int -> Assertion
+testGlobRemoveMatch mtimeChange =
   withFileMonitor $ \root monitor -> do
     touch root ("dir" </> "good-a")
     touch root ("dir" </> "good-b")
     updateMonitor root monitor [monitorFileGlob "dir/good-*"] () ()
+    threadDelay mtimeChange
     remove root "dir/good-a"
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "good-a")
@@ -331,12 +350,13 @@ testGlobAddMatchSubdir mtimeChange =
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "b" </> "good-b")
 
-testGlobRemoveMatchSubdir :: Assertion
-testGlobRemoveMatchSubdir =
+testGlobRemoveMatchSubdir :: Int -> Assertion
+testGlobRemoveMatchSubdir mtimeChange =
   withFileMonitor $ \root monitor -> do
     touch root ("dir" </> "a" </> "good-a")
     touch root ("dir" </> "b" </> "good-b")
     updateMonitor root monitor [monitorFileGlob "dir/*/good-*"] () ()
+    threadDelay mtimeChange
     removeDir root ("dir" </> "a")
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "a" </> "good-a")
@@ -357,6 +377,16 @@ testGlobChangeMatchSubdir mtimeChange =
     reason <- expectMonitorChanged root monitor ()
     reason @?= MonitoredFileChanged ("dir" </> "b" </> "good-b")
 
+-- check nothing goes squiffy with matching in the top dir
+testGlobMatchTopDir :: Int -> Assertion
+testGlobMatchTopDir mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    updateMonitor root monitor [monitorFileGlob "*"] () ()
+    threadDelay mtimeChange
+    touch root "a"
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged "a"
+
 testGlobAddNonMatch :: Int -> Assertion
 testGlobAddNonMatch mtimeChange =
   withFileMonitor $ \root monitor -> do
@@ -368,12 +398,13 @@ testGlobAddNonMatch mtimeChange =
     res   @?= ()
     files @?= [monitorFileGlob "dir/good-*"]
 
-testGlobRemoveNonMatch :: Assertion
-testGlobRemoveNonMatch =
+testGlobRemoveNonMatch :: Int -> Assertion
+testGlobRemoveNonMatch mtimeChange =
   withFileMonitor $ \root monitor -> do
     touch root ("dir" </> "good-a")
     touch root ("dir" </> "bad")
     updateMonitor root monitor [monitorFileGlob "dir/good-*"] () ()
+    threadDelay mtimeChange
     remove root "dir/bad"
     (res, files) <- expectMonitorUnchanged root monitor ()
     res   @?= ()
@@ -390,12 +421,13 @@ testGlobAddNonMatchSubdir mtimeChange =
     res   @?= ()
     files @?= [monitorFileGlob "dir/*/good-*"]
 
-testGlobRemoveNonMatchSubdir :: Assertion
-testGlobRemoveNonMatchSubdir =
+testGlobRemoveNonMatchSubdir :: Int -> Assertion
+testGlobRemoveNonMatchSubdir mtimeChange =
   withFileMonitor $ \root monitor -> do
     touch root ("dir" </> "a" </> "good-a")
     touch root ("dir" </> "b" </> "bad")
     updateMonitor root monitor [monitorFileGlob "dir/*/good-*"] () ()
+    threadDelay mtimeChange
     removeDir root ("dir" </> "b")
     (res, files) <- expectMonitorUnchanged root monitor ()
     res   @?= ()
@@ -450,6 +482,91 @@ testInvariantMonitorStateGlobDirs mtimeChange =
     (res, files) <- expectMonitorUnchanged root monitor ()
     res   @?= ()
     files @?= [monitorFileGlob "dir/*/file"]
+
+-- ensure that a glob can match a directory as well as a file
+testGlobMatchDir :: Int -> Assertion
+testGlobMatchDir mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    createDir root ("dir" </> "a")
+    updateMonitor root monitor [monitorFileGlob "dir/*"] () ()
+    threadDelay mtimeChange
+    -- nothing changed yet
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res   @?= ()
+    files @?= [monitorFileGlob "dir/*"]
+    -- expect dir/b to match and be detected as changed
+    createDir root ("dir" </> "b")
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "b")
+    -- now remove dir/a and expect it to be detected as changed
+    updateMonitor root monitor [monitorFileGlob "dir/*"] () ()
+    threadDelay mtimeChange
+    removeDir root ("dir" </> "a")
+    reason2 <- expectMonitorChanged root monitor ()
+    reason2 @?= MonitoredFileChanged ("dir" </> "a")
+
+testGlobMatchDirOnly :: Int -> Assertion
+testGlobMatchDirOnly mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    updateMonitor root monitor [monitorFileGlob "dir/*/"] () ()
+    threadDelay mtimeChange
+    -- expect file dir/a to not match, so not detected as changed
+    touch root ("dir" </> "a")
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res   @?= ()
+    files @?= [monitorFileGlob "dir/*/"]
+    -- note that checking the file monitor for changes can updates the
+    -- cached dir mtimes (when it has to record that there's new matches)
+    -- so we need an extra mtime delay
+    threadDelay mtimeChange
+    -- but expect dir/b to match
+    createDir root ("dir" </> "b")
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "b")
+
+testGlobChangeFileType :: Int -> Assertion
+testGlobChangeFileType mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    -- change file to dir
+    touch root ("dir" </> "a")
+    updateMonitor root monitor [monitorFileGlob "dir/*"] () ()
+    threadDelay mtimeChange
+    remove    root ("dir" </> "a")
+    createDir root ("dir" </> "a")
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged ("dir" </> "a")
+    -- change dir to file
+    updateMonitor root monitor [monitorFileGlob "dir/*"] () ()
+    threadDelay mtimeChange
+    removeDir root ("dir" </> "a")
+    touch     root ("dir" </> "a")
+    reason2 <- expectMonitorChanged root monitor ()
+    reason2 @?= MonitoredFileChanged ("dir" </> "a")
+
+testGlobAbsolutePath :: Int -> Assertion
+testGlobAbsolutePath mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    root' <- absoluteRoot root
+    -- absolute glob, removing a file
+    touch root ("dir/good-a")
+    touch root ("dir/good-b")
+    updateMonitor root monitor [monitorFileGlob (root' </> "dir/good-*")] () ()
+    threadDelay mtimeChange
+    remove root "dir/good-a"
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged (root' </> "dir/good-a")
+    -- absolute glob, adding a file
+    updateMonitor root monitor [monitorFileGlob (root' </> "dir/good-*")] () ()
+    threadDelay mtimeChange
+    touch root ("dir/good-a")
+    reason2 <- expectMonitorChanged root monitor ()
+    reason2 @?= MonitoredFileChanged (root' </> "dir/good-a")
+    -- absolute glob, changing a file
+    updateMonitor root monitor [monitorFileGlob (root' </> "dir/good-*")] () ()
+    threadDelay mtimeChange
+    write root "dir/good-b" "different"
+    reason3 <- expectMonitorChanged root monitor ()
+    reason3 @?= MonitoredFileChanged (root' </> "dir/good-b")
 
 
 ------------------
@@ -536,8 +653,17 @@ touch root fname = write root fname "hello"
 remove :: RootPath -> FilePath -> IO ()
 remove (RootPath root) fname = removeFile (root </> fname)
 
+createDir :: RootPath -> FilePath -> IO ()
+createDir (RootPath root) dname = do
+  let path = root </> dname
+  createDirectoryIfMissing True (takeDirectory path)
+  createDirectory path
+
 removeDir :: RootPath -> FilePath -> IO ()
 removeDir (RootPath root) dname = removeDirectoryRecursive (root </> dname)
+
+absoluteRoot :: RootPath -> IO FilePath
+absoluteRoot (RootPath root) = canonicalizePath root
 
 monitorFileGlob :: String -> MonitorFilePath
 monitorFileGlob globstr
