@@ -260,13 +260,8 @@ instance Arbitrary PackageLocationString where
   arbitrary =
     PackageLocationString <$>
     oneof
-<<<<<<< HEAD
       [ show . getNonEmpty <$> (arbitrary :: Gen (NonEmptyList String))
       , arbitraryGlobLikeStr
-=======
-      [ --show <$> (arbitrary :: Gen String)
-        arbitraryGlobLikeStr
->>>>>>> 1.24
       , show <$> (arbitrary :: Gen URI)
       ]
 
