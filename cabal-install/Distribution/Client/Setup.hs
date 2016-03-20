@@ -31,6 +31,7 @@ module Distribution.Client.Setup
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
+    , genBoundsCommand
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
@@ -162,6 +163,7 @@ globalCommand commands = CommandUI {
           , "upload"
           , "report"
           , "freeze"
+          , "gen-bounds"
           , "haddock"
           , "hscolour"
           , "copy"
@@ -212,6 +214,7 @@ globalCommand commands = CommandUI {
         , addCmd "report"
         , par
         , addCmd "freeze"
+        , addCmd "gen-bounds"
         , addCmd "haddock"
         , addCmd "hscolour"
         , addCmd "copy"
@@ -740,6 +743,22 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
 
+  }
+
+genBoundsCommand :: CommandUI FreezeFlags
+genBoundsCommand = CommandUI {
+    commandName         = "gen-bounds",
+    commandSynopsis     = "Generate dependency bounds.",
+    commandDescription  = Just $ \_ -> wrapText $
+         "Generates bounds for all dependencies that do not currently have them. "
+      ++ "Generated bounds are printed to stdout.  You can then paste them into your .cabal file.\n"
+      ++ "\n",
+    commandNotes        = Nothing,
+    commandUsage        = usageFlags "gen-bounds",
+    commandDefaultFlags = defaultFreezeFlags,
+    commandOptions      = \ _ -> [
+     optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
+     ]
   }
 
 -- ------------------------------------------------------------
