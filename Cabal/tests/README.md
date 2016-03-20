@@ -21,11 +21,20 @@ the following environment variables:
 * `CABAL_PACKAGETESTS_GHC_PKG` is the path to the ghc-pkg associated with this GHC
 * `CABAL_PACKAGETESTS_HADDOCK` is the path to the haddock associated with this GHC
 * `CABAL_PACKAGETESTS_GHC_VERSION` is the version of your GHC
+* `CABAL_PACKAGETESTS_WITH_GHC` is the path for the GHC you want to have
+  Cabal use when running tests; i.e., you can change this to a different
+  version of GHC to see how Cabal handles that version.
 * `CABAL_PACKAGETESTS_DB_STACK` is a PATH-style list of package database paths,
   `clear`, `global` and `user`.  Each component of the list is
   interpreted the same way as Cabal's `-package-db` flag.  This list
   must contain the copy of Cabal you are planning to test against
-  (as well as its transitive dependencies).
+  (as well as its transitive dependencies).  A simple choice
+  is "clear:global" but you may also need to add another entry
+  for the local database that your development copy of Cabal
+  is being registered into; usually dist/package.conf.inplace
+  (if you are using old fashioned 'cabal configure; cabal build')
+  or dist-newstyle/packagedb/ghc-VERSION (if you are using
+  'cabal new-build')
 
 If you can successfully run the test suite, we'll print out examples
 of all of these values for you under "Environment".
