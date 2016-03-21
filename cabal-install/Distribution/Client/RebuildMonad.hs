@@ -16,8 +16,16 @@ module Distribution.Client.RebuildMonad (
 
     -- * Setting up file monitoring
     monitorFiles,
-    MonitorFilePath(..),
+    MonitorFilePath,
+    monitorFile,
+    monitorFileHashed,
+    monitorNonExistentFile,
+    monitorDirectory,
+    monitorFileOrDirectory,
     monitorFileSearchPath,
+    monitorFileHashedSearchPath,
+    -- ** Monitoring file globs
+    monitorFileGlob,
     FilePathGlob(..),
     FilePathRoot(..),
     FilePathGlobRel(..),
@@ -121,6 +129,6 @@ rerunIfChanged verbosity rootDir monitor key action = do
 --
 matchFileGlob :: FilePath -> FilePathGlob -> Rebuild [FilePath]
 matchFileGlob root glob = do
-    monitorFiles [MonitorFileGlob glob]
+    monitorFiles [monitorFileGlob glob]
     liftIO $ Glob.matchFileGlob root glob
 
