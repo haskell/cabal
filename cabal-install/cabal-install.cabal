@@ -311,7 +311,7 @@ Test-Suite unit-tests
         tasty-hunit,
         tasty-quickcheck,
         tagged,
-        QuickCheck >= 2.7
+        QuickCheck >= 2.8.2
 
   if flag(old-directory)
     build-depends: old-time
