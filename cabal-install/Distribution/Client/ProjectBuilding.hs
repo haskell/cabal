@@ -519,7 +519,7 @@ updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
                               srcdir timestamp pkg pkgBuildStatus
                               allSrcFiles buildSuccess =
     updateFileMonitor pkgFileMonitorBuild srcdir (Just timestamp)
-                      (map MonitorFileHashed allSrcFiles)
+                      (map monitorFileHashed allSrcFiles)
                       buildComponents' buildSuccess
   where
     (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
