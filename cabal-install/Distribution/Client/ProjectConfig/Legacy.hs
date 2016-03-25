@@ -17,6 +17,7 @@ module Distribution.Client.ProjectConfig.Legacy (
 
     -- * Internals, just for tests
     parsePackageLocationTokenQ,
+    renderPackageLocationToken,
   ) where
 
 import Distribution.Client.ProjectConfig.Types
@@ -755,6 +756,8 @@ renderPackageLocationToken s | needsQuoting = show s
     ok n ('{':cs) = ok (n+1) cs
     ok n ('}':cs) = ok (n-1) cs
     ok n (',':cs) = (n > 0) && ok n cs
+    ok _ (c:_)
+      | isSpace c = False
     ok n (_  :cs) = ok n cs
 
 
