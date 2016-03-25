@@ -222,7 +222,7 @@ rebuildTargetsDryRun :: DistDirLayout
 rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
 
     -- Do the various checks to work out the 'BuildStatus' of each package
-    pkgsBuildStatus <- traverseInstallPlan installPlan dryRunPkg
+    pkgsBuildStatus <- foldMInstallPlanDepOrder installPlan dryRunPkg
 
     -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
     -- 'InstallPlan.Installed'.
@@ -303,15 +303,24 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
           newPackageFileMonitor distDirLayout (packageId pkg)
 
 
-traverseInstallPlan :: forall m ipkg srcpkg iresult ifailure b.
-                       (Monad m,
-                        HasUnitId ipkg,   PackageFixedDeps ipkg,
-                        HasUnitId srcpkg, PackageFixedDeps srcpkg)
-                    => GenericInstallPlan ipkg srcpkg iresult ifailure
-                    -> (GenericPlanPackage ipkg srcpkg iresult ifailure ->
-                        ComponentDeps [b] -> m b)
-                    -> m (Map InstalledPackageId b)
-traverseInstallPlan plan0 visit =
+-- | A specialised traversal over the packages in an install plan.
+--
+-- The packages are visited in dependency order, starting with packages with no
+-- depencencies. The result for each package is accumulated into a 'Map' and
+-- returned as the final result. In addition, when visting a package, the
+-- visiting function is passed the results for all the immediate package
+-- depencencies. This can be used to propagate information from depencencies.
+--
+foldMInstallPlanDepOrder
+  :: forall m ipkg srcpkg iresult ifailure b.
+     (Monad m,
+      HasUnitId ipkg,   PackageFixedDeps ipkg,
+      HasUnitId srcpkg, PackageFixedDeps srcpkg)
+  => GenericInstallPlan ipkg srcpkg iresult ifailure
+  -> (GenericPlanPackage ipkg srcpkg iresult ifailure ->
+      ComponentDeps [b] -> m b)
+  -> m (Map InstalledPackageId b)
+foldMInstallPlanDepOrder plan0 visit =
     go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
   where
     go :: Map InstalledPackageId b
@@ -322,7 +331,10 @@ traverseInstallPlan plan0 visit =
     go !results (pkg : pkgs) = do
       -- we go in the right order so the results map has entries for all deps
       let depresults :: ComponentDeps [b]
-          depresults = fmap (map (results Map.!)) (depends pkg)
+          depresults =
+            fmap (map (\ipkgid -> let Just result = Map.lookup ipkgid results
+                                   in result))
+                 (depends pkg)
       result <- visit pkg depresults
       let results' = Map.insert (installedPackageId pkg) result results
       go results' pkgs
@@ -336,7 +348,8 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
-      , BuildStatusUpToDate mipkg buildSuccess <- [pkgsBuildStatus Map.! ipkgid]
+            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
+      , BuildStatusUpToDate mipkg buildSuccess <- [pkgBuildStatus]
       ]
   where
     replaceWithPreInstalled =
@@ -393,12 +406,23 @@ packageFileMonitorKeyValues :: ElaboratedConfiguredPackage
 packageFileMonitorKeyValues pkg =
     (pkgconfig, buildComponents)
   where
+    -- The first part is the value used to guard (re)configuring the package.
+    -- That is, if this value changes then we will reconfigure.
+    -- The ElaboratedConfiguredPackage consists mostly (but not entirely) of
+    -- information that affects the (re)configure step. But those parts that
+    -- do not affect the configure step need to be nulled out. Those parts are
+    -- the specific targets that we're going to build.
+    --
     pkgconfig = pkg {
       pkgBuildTargets  = [],
       pkgReplTarget    = Nothing,
       pkgBuildHaddocks = False
     }
 
+    -- The second part is the value used to guard the build step. So this is
+    -- more or less the opposite of the first part, as it's just the info about
+    -- what targets we're going to build.
+    --
     buildComponents = pkgBuildTargetWholeComponents pkg
 
 -- | Do all the checks on whether a package has changed and thus needs either
@@ -571,8 +595,8 @@ rebuildTargets verbosity
       executeInstallPlan verbosity jobControl installPlan $ \pkg ->
         handle (return . BuildFailure) $ --TODO: review exception handling
 
-        let ipkgid         = installedPackageId pkg
-            pkgBuildStatus = pkgsBuildStatus Map.! ipkgid in
+        let ipkgid = installedPackageId pkg
+            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus in
 
         rebuildTarget
           verbosity
@@ -725,7 +749,9 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
       [ pkgSourceLocation pkg
       | InstallPlan.Configured pkg
          <- InstallPlan.reverseTopologicalOrder installPlan
-      , BuildStatusDownload <- [pkgsBuildStatus Map.! installedPackageId pkg]
+      , let ipkgid = installedPackageId pkg
+            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
+      , BuildStatusDownload <- [pkgBuildStatus]
       ]
 
 

@@ -538,6 +538,16 @@ preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
       rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
+-- | Transform an install plan by mapping a function over all the packages in
+-- the plan. It can consistently change the 'UnitId' of all the packages,
+-- while preserving the same overall graph structure.
+--
+-- The mapping function has a few constraints on it for correct operation.
+-- The mapping function /may/ change the 'UnitId' of the package, but it
+-- /must/ also remap the 'UnitId's of its dependencies using ths supplied
+-- remapping function. Apart from this consistent remapping it /may not/
+-- change the structure of the dependencies.
+--
 mapPreservingGraph :: (HasUnitId ipkg,
                        HasUnitId srcpkg,
                        HasUnitId ipkg',   PackageFixedDeps ipkg',
