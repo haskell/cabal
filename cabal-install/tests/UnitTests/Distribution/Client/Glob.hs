@@ -1,7 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Client.Glob (tests) where
 
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative
+#endif
 import Data.Char
 import Data.List
 import Distribution.Text (display, parse, simpleParse)

@@ -44,9 +44,6 @@ import qualified Data.Map        as Map
 import qualified Data.ByteString.Lazy as BS
 import           Distribution.Compat.Binary
 import qualified Distribution.Compat.Binary as Binary
-#if !MIN_VERSION_base(4,8,0)
-import           Data.Traversable (traverse)
-#endif
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)
 
@@ -537,7 +534,6 @@ mapChangedFile adjust (ChangedM a) =
     ChangedM (mapStateT (withExceptT adjust) a)
 
 data CacheChanged = CacheChanged | CacheUnchanged
-  deriving Show
 
 whenCacheChanged :: Monad m => CacheChanged -> m () -> m ()
 whenCacheChanged CacheChanged action = action

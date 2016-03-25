@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE CPP, DeriveGeneric #-}
 
 --TODO: [code cleanup] plausibly much of this module should be merged with
 -- similar functionality in Cabal.
@@ -17,6 +17,9 @@ module Distribution.Client.Glob
 
 import           Data.Char (toUpper)
 import           Data.List (stripPrefix)
+#if !MIN_VERSION_base(4,8,0)
+import           Control.Applicative
+#endif
 import           Control.Monad
 import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
@@ -271,4 +274,3 @@ isGlobEscapedChar '{'  = True
 isGlobEscapedChar '}'  = True
 isGlobEscapedChar ','  = True
 isGlobEscapedChar _    = False
-
