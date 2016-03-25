@@ -782,7 +782,7 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
 recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
 recreateDirectory verbosity createParents dir = do
     liftIO $ createDirectoryIfMissingVerbose verbosity createParents dir
-    monitorFiles [monitorDirectory dir]
+    monitorFiles [monitorDirectoryExistence dir]
 
 
 -- | Get the 'HashValue' for all the source packages where we use hashes,
