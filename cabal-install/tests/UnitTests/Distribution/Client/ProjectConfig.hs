@@ -223,7 +223,8 @@ prop_roundtrip_printparse_specific config =
 
 prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
 prop_parsePackageLocationTokenQ (PackageLocationString str) =
-    case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ str ] of
+    case [ x | (x,"") <- Parse.readP_to_S parsePackageLocationTokenQ
+                                         (renderPackageLocationToken str) ] of
       [str'] -> str' == str
       _      -> False
 
@@ -259,8 +260,8 @@ instance Arbitrary PackageLocationString where
   arbitrary =
     PackageLocationString <$>
     oneof
-      [ --show <$> (arbitrary :: Gen String)
-        arbitraryGlobLikeStr
+      [ show . getNonEmpty <$> (arbitrary :: Gen (NonEmptyList String))
+      , arbitraryGlobLikeStr
       , show <$> (arbitrary :: Gen URI)
       ]
 
