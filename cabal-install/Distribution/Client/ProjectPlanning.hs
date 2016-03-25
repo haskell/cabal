@@ -733,7 +733,7 @@ getInstalledPackages :: Verbosity
                      -> PackageDBStack 
                      -> Rebuild InstalledPackageIndex
 getInstalledPackages verbosity compiler progdb platform packagedbs = do
-    monitorFiles . map MonitorFile
+    monitorFiles . map monitorFileOrDirectory
       =<< liftIO (IndexUtils.getInstalledPackagesMonitorFiles
                     verbosity compiler
                     packagedbs progdb platform)
@@ -746,7 +746,7 @@ getPackageDBContents :: Verbosity
                      -> PackageDB
                      -> Rebuild InstalledPackageIndex
 getPackageDBContents verbosity compiler progdb platform packagedb = do
-    monitorFiles . map MonitorFile
+    monitorFiles . map monitorFileOrDirectory
       =<< liftIO (IndexUtils.getInstalledPackagesMonitorFiles
                     verbosity compiler
                     [packagedb] progdb platform)
@@ -765,7 +765,7 @@ getSourcePackages verbosity withRepoCtx = do
           sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
           return (sourcePkgDb, repoContextRepos repoctx)
 
-    monitorFiles . map MonitorFile
+    monitorFiles . map monitorFile
                  . IndexUtils.getSourcePackagesMonitorFiles
                  $ repos
     return sourcePkgDb
@@ -785,7 +785,7 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
 recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
 recreateDirectory verbosity createParents dir = do
     liftIO $ createDirectoryIfMissingVerbose verbosity createParents dir
-    monitorFiles [MonitorFile dir]
+    monitorFiles [monitorDirectoryExistence dir]
 
 
 -- | Get the 'HashValue' for all the source packages where we use hashes,
@@ -830,7 +830,7 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
           | (pkg, srcloc) <- newlyDownloaded ++ alreadyDownloaded
           , tarball <- maybeToList (tarballFileLocation srcloc) ]
 
-    monitorFiles [ MonitorFile tarball | (_pkgid, tarball) <- pkgsTarballs ]
+    monitorFiles [ monitorFile tarball | (_pkgid, tarball) <- pkgsTarballs ]
 
     liftM Map.fromList $ liftIO $
       sequence
