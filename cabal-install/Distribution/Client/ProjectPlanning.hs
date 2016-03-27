@@ -60,7 +60,9 @@ import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
 
-import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
+import           Distribution.Client.Types hiding
+  (BuildResult,BuildSuccess(..), BuildFailure(..), DocsResult(..)
+  ,TestsResult(..))
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -79,7 +81,8 @@ import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList (toNubList)
 
-import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import           Distribution.Package hiding
+  (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
@@ -95,7 +98,8 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
+import           Distribution.Simple.Setup
+  (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import           Distribution.ModuleName (ModuleName)
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
