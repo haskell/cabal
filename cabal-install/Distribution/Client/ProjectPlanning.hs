@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable, 
+             DeriveGeneric, DeriveDataTypeable,
              RankNTypes, ScopedTypeVariables #-}
 
 -- | Planning how to build everything in a project.
@@ -377,7 +377,7 @@ data GenericBuildResult ipkg iresult ifailure
 instance (Binary ipkg, Binary iresult, Binary ifailure) =>
          Binary (GenericBuildResult ipkg iresult ifailure)
 
-type BuildResult  = GenericBuildResult InstalledPackageInfo 
+type BuildResult  = GenericBuildResult InstalledPackageInfo
                                        BuildSuccess BuildFailure
 
 data BuildSuccess = BuildOk DocsResult TestsResult
@@ -670,7 +670,7 @@ rebuildInstallPlan verbosity
             projectConfigLocalPackages
             projectConfigSpecificPackage
       where
-        withRepoCtx = projectConfigWithSolverRepoContext verbosity 
+        withRepoCtx = projectConfigWithSolverRepoContext verbosity
                         cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
@@ -730,7 +730,7 @@ programsDbSignature progdb =
 
 getInstalledPackages :: Verbosity
                      -> Compiler -> ProgramDb -> Platform
-                     -> PackageDBStack 
+                     -> PackageDBStack
                      -> Rebuild InstalledPackageIndex
 getInstalledPackages verbosity compiler progdb platform packagedbs = do
     monitorFiles . map monitorFileOrDirectory
@@ -760,7 +760,7 @@ getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Rebuild SourcePackageDb
 getSourcePackages verbosity withRepoCtx = do
     (sourcePkgDb, repos) <-
-      liftIO $ 
+      liftIO $
         withRepoCtx $ \repoctx -> do
           sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
           return (sourcePkgDb, repoContextRepos repoctx)
@@ -1055,7 +1055,7 @@ elaborateInstallPlan platform compiler progdb
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
           = mkUnitId (display pkgid ++ "-inplace")
-          
+
           | otherwise
           = assert (isJust pkgSourceHash) $
             hashedInstalledPackageId
@@ -1330,7 +1330,7 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
         --TODO: instead of listToMaybe we should be reporting an error here
         replTargets   = listToMaybe
                       . nubComponentTargets
-                      . map compatSubComponentTargets 
+                      . map compatSubComponentTargets
                       . concatMap elaborateReplTarget
                       $ targets
         buildHaddocks = HaddockDefaultComponents `elem` targets
@@ -1473,7 +1473,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- The testsuite and benchmark targets are somewhat special in that we need
     -- to configure the packages with them enabled, and we need to do that even
     -- if we only want to build one of several testsuites.
-    -- 
+    --
     -- There are two cases in which we will enable the testsuites (or
     -- benchmarks): if one of the targets is a testsuite, or if all of the
     -- testsuite depencencies are already cached in the store. The rationale
@@ -1531,7 +1531,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
         | InstallPlan.PreExisting pkg <- pkgs ]
 
 optionalStanzasWithDepsAvailable :: Set InstalledPackageId
-                                 -> ElaboratedConfiguredPackage 
+                                 -> ElaboratedConfiguredPackage
                                  -> Set OptionalStanza
 optionalStanzasWithDepsAvailable availablePkgs pkg =
     Set.fromList
@@ -1648,7 +1648,7 @@ dependencyGraph pkgid deps pkgs =
     (graph, vertexToPkg', pkgidToVertex')
   where
     (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg ) 
+      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
                            | pkg <- pkgs ]
     vertexToPkg'   = (\(pkg,_,_) -> pkg)
                    . vertexToPkg
@@ -1760,7 +1760,7 @@ defaultSetupDeps platform pkg =
         --             install-plan (as GHC8 requires Cabal-1.24+). So let's
         --             set an implicit upper bound `Cabal < 2` instead.
           cabalCompatMaxVer = Version [2] []
- 
+
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
       -- on Cabal and base.
@@ -1769,7 +1769,7 @@ defaultSetupDeps platform pkg =
         , Dependency basePkgname  anyVersion ]
         where
           cabalConstraint = orLaterVersion (PD.specVersion pkg)
-  
+
       -- The internal setup wrapper method has no deps at all.
       SetupNonCustomInternalLib -> []
 
@@ -2305,7 +2305,7 @@ packageHashConfigInputs
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
 -- 'ElaboratedInstallPlan', replace configured source packages by pre-existing
 -- installed packages whenever they exist.
--- 
+--
 improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
                                           -> ElaboratedInstallPlan
                                           -> ElaboratedInstallPlan
@@ -2330,4 +2330,3 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     replaceWithPreExisting =
       foldl' (\plan ipkg -> InstallPlan.preexisting
                               (installedPackageId ipkg) ipkg plan)
-
