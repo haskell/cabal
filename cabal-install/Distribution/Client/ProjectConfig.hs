@@ -37,14 +37,12 @@ module Distribution.Client.ProjectConfig (
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
-import Distribution.Client.FileMonitor
+import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
 import Distribution.Client.DistDirLayout
          ( CabalDirLayout(..) )
-import Distribution.Client.Glob
-         ( Glob(..), GlobAtom(..) )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..), withRepoContext' )
 import Distribution.Client.BuildReports.Types
@@ -353,10 +351,10 @@ readProjectLocalConfig verbosity projectRootDir = do
   usesExplicitProjectRoot <- liftIO $ doesFileExist projectFile
   if usesExplicitProjectRoot
     then do
-      monitorFiles [MonitorFileHashed projectFile]
+      monitorFiles [monitorFileHashed projectFile]
       liftIO readProjectFile
     else do
-      monitorFiles [MonitorNonExistentFile projectFile]
+      monitorFiles [monitorNonExistentFile projectFile]
       return defaultImplicitProjectConfig
 
   where
@@ -385,9 +383,9 @@ readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
 readProjectLocalExtraConfig verbosity projectRootDir = do
     hasExtraConfig <- liftIO $ doesFileExist projectExtraConfigFile
     if hasExtraConfig
-      then do monitorFiles [MonitorFileHashed projectExtraConfigFile]
+      then do monitorFiles [monitorFileHashed projectExtraConfigFile]
               liftIO readProjectExtraConfigFile
-      else do monitorFiles [MonitorNonExistentFile projectExtraConfigFile]
+      else do monitorFiles [monitorNonExistentFile projectExtraConfigFile]
               return mempty
   where
     projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
@@ -442,7 +440,7 @@ readGlobalConfig :: Verbosity -> Rebuild ProjectConfig
 readGlobalConfig verbosity = do
     config     <- liftIO (loadConfig verbosity mempty)
     configFile <- liftIO defaultConfigFile
-    monitorFiles [MonitorFileHashed configFile]
+    monitorFiles [monitorFileHashed configFile]
     return (convertLegacyGlobalConfig config)
     --TODO: do this properly, there's several possible locations
     -- and env vars, and flags for selecting the global config
@@ -642,8 +640,9 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
 
 globStarDotCabal :: FilePath -> FilePathGlob
 globStarDotCabal =
-    foldr (\dirpart -> GlobDir (Glob [Literal dirpart]))
-          (GlobFile (Glob [WildCard, Literal ".cabal"]))
+    FilePathGlob FilePathRelative
+  . foldr (\dirpart -> GlobDir [Literal dirpart])
+          (GlobFile [WildCard, Literal ".cabal"])
   . splitDirectories
 
 
