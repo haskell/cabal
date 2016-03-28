@@ -1,1 +1,1 @@
-packages: {Cabal,cabal-install}/*.cabal
+packages: {Cabal,cabal-install}/
