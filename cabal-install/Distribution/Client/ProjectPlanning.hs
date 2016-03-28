@@ -935,8 +935,16 @@ planPackages comp platform solver SolverSettings{..}
           ]
 
       . addConstraints
-          --TODO: [nice to have] this just applies all flags to all targets which
-          -- is silly. We should check if the flags are appropriate
+          [ LabeledPackageConstraint
+              (PackageConstraintFlags pkgname flags)
+              ConstraintSourceConfigFlagOrTarget
+          | (pkgname, flags) <- Map.toList solverSettingFlagAssignments ]
+
+      . addConstraints
+          --TODO: [nice to have] we have user-supplied flags for unspecified
+          -- local packages (as well as specific per-package flags). For the
+          -- former we just apply all these flags to all local targets which
+          -- is silly. We should check if the flags are appropriate.
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget
