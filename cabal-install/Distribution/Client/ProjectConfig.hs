@@ -156,15 +156,20 @@ projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'SolverSettings' with no optional fields (by applying defaults).
 --
-resolveSolverSettings :: ProjectConfigShared -> SolverSettings
-resolveSolverSettings projectConfig =
+resolveSolverSettings :: ProjectConfig -> SolverSettings
+resolveSolverSettings ProjectConfig{
+                        projectConfigShared,
+                        projectConfigLocalPackages,
+                        projectConfigSpecificPackage
+                      } =
     SolverSettings {..}
   where
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
-    solverSettingFlagAssignment    = projectConfigFlagAssignment
+    solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
+    solverSettingFlagAssignments   = fmap packageConfigFlagAssignment projectConfigSpecificPackage
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
     solverSettingAllowNewer        = fromJust projectConfigAllowNewer
@@ -180,7 +185,7 @@ resolveSolverSettings projectConfig =
   --solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
   --solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
 
-    ProjectConfigShared {..} = defaults <> projectConfig
+    ProjectConfigShared {..} = defaults <> projectConfigShared
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,

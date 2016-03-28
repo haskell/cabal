@@ -604,7 +604,7 @@ rebuildInstallPlan verbosity
                            cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
-        solverSettings = resolveSolverSettings projectConfigShared
+        solverSettings = resolveSolverSettings projectConfig
         logMsg message rest = debugNoWrap verbosity message >> rest
 
         localPackagesEnabledStanzas =
