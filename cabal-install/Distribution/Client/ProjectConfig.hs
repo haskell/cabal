@@ -610,8 +610,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       case () of
         _ | isDir
          -> do let dirname = filename -- now we know its a dir
-                   glob    = globStarDotCabal pkglocstr
-               matches <- matchFileGlob projectRootDir glob
+               matches <- matchFileGlob dirname globStarDotCabal
                case matches of
                  [match]
                      -> return (Right (ProjectPackageLocalDirectory
@@ -638,12 +637,9 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                       && takeExtension (dropExtension f) == ".tar"
 
 
-globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal :: FilePathGlob
 globStarDotCabal =
-    FilePathGlob FilePathRelative
-  . foldr (\dirpart -> GlobDir [Literal dirpart])
-          (GlobFile [WildCard, Literal ".cabal"])
-  . splitDirectories
+    FilePathGlob FilePathRelative (GlobFile [WildCard, Literal ".cabal"])
 
 
 --TODO: [code cleanup] use sufficiently recent transformers package
