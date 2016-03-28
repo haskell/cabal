@@ -388,10 +388,10 @@ readProjectLocalExtraConfig verbosity projectRootDir = do
       else do monitorFiles [monitorNonExistentFile projectExtraConfigFile]
               return mempty
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
 
     readProjectExtraConfigFile =
-          reportParseResult verbosity "project extra configuration file"
+          reportParseResult verbosity "project local configuration file"
                             projectExtraConfigFile
         . parseProjectConfig
       =<< readFile projectExtraConfigFile
@@ -424,7 +424,7 @@ writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir =
     writeProjectConfigFile projectExtraConfigFile
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
 
 
 -- | Write in the @cabal.project@ format to the given file.
