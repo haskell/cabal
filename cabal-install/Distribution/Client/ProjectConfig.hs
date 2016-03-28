@@ -622,7 +622,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                      -> return (Right (ProjectPackageLocalDirectory
                                          dirname cabalFile))
                    where
-                     cabalFile = dirname </> match
+                     cabalFile = projectRootDir </> match
                  []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
                  _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
 
