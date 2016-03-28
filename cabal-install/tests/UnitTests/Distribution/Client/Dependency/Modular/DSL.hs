@@ -7,6 +7,11 @@ module UnitTests.Distribution.Client.Dependency.Modular.DSL (
   , ExampleDb
   , ExampleVersionRange
   , ExamplePkgVersion
+  , ExamplePkgName
+  , ExampleAvailable(..)
+  , ExampleInstalled(..)
+  , IndepGoals(..)
+  , ReorderGoals(..)
   , exAv
   , exInst
   , exFlag
@@ -92,7 +97,9 @@ type ExamplePkgHash    = String  -- for example "installed" packages
 type ExampleFlagName   = String
 type ExampleTestName   = String
 type ExampleVersionRange = C.VersionRange
+
 data Dependencies = NotBuildable | Buildable [ExampleDependency]
+  deriving Show
 
 data ExampleDependency =
     -- | Simple dependency on any version
@@ -115,6 +122,7 @@ data ExampleDependency =
 
     -- | Dependency on a pkg-config package
   | ExPkg (ExamplePkgName, ExamplePkgVersion)
+  deriving Show
 
 exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
        -> ExampleDependency
@@ -126,7 +134,7 @@ data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
   , exAvVersion :: ExamplePkgVersion
   , exAvDeps    :: ComponentDeps [ExampleDependency]
-  }
+  } deriving Show
 
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
@@ -142,16 +150,22 @@ data ExampleInstalled = ExInst {
     exInstName         :: ExamplePkgName
   , exInstVersion      :: ExamplePkgVersion
   , exInstHash         :: ExamplePkgHash
-  , exInstBuildAgainst :: [ExampleInstalled]
-  }
+  , exInstBuildAgainst :: [ExamplePkgHash]
+  } deriving Show
 
 exInst :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgHash
        -> [ExampleInstalled] -> ExampleInstalled
-exInst = ExInst
+exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
 type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
+
+newtype IndepGoals = IndepGoals Bool
+  deriving Show
+
+newtype ReorderGoals = ReorderGoals Bool
+  deriving Show
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -329,8 +343,7 @@ exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
 exInstInfo ex = C.emptyInstalledPackageInfo {
       C.installedUnitId    = C.mkUnitId (exInstHash ex)
     , C.sourcePackageId    = exInstPkgId ex
-    , C.depends            = map (C.mkUnitId . exInstHash)
-                                 (exInstBuildAgainst ex)
+    , C.depends            = map C.mkUnitId (exInstBuildAgainst ex)
     }
 
 exInstPkgId :: ExampleInstalled -> C.PackageIdentifier
@@ -352,13 +365,15 @@ exResolve :: ExampleDb
           -> Maybe [Language]
           -> PC.PkgConfigDb
           -> [ExamplePkgName]
-          -> Bool
+          -> Solver
+          -> IndepGoals
+          -> ReorderGoals
           -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.InstallPlan)
-exResolve db exts langs pkgConfigDb targets indepGoals prefs = runProgress $
+exResolve db exts langs pkgConfigDb targets solver (IndepGoals indepGoals) (ReorderGoals reorder) prefs = runProgress $
     resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
-                        Modular
+                        solver
                         params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -377,9 +392,9 @@ exResolve db exts langs pkgConfigDb targets indepGoals prefs = runProgress $
     targets'     = fmap (\p -> NamedPackage (C.PackageName p) []) targets
     params       =   addPreferences (fmap toPref prefs)
                    $ addConstraints (fmap toLpc enableTests)
-                   $ (standardInstallPolicy instIdx avaiIdx targets') {
-                     depResolverIndependentGoals = indepGoals
-                     }
+                   $ setIndependentGoals indepGoals
+                   $ setReorderGoals reorder
+                   $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
     toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v
 

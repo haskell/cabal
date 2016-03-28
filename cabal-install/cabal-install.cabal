@@ -335,6 +335,62 @@ Test-Suite unit-tests
     ghc-options: -threaded
   default-language: Haskell2010
 
+-- Slow solver tests
+Test-Suite solver-quickcheck
+  type: exitcode-stdio-1.0
+  main-is: SolverQuickCheck.hs
+  hs-source-dirs: tests, .
+  ghc-options: -Wall -fwarn-tabs
+  other-modules:
+    UnitTests.Distribution.Client.Dependency.Modular.DSL
+    UnitTests.Distribution.Client.Dependency.Modular.QuickCheck
+  build-depends:
+        base,
+        array,
+        bytestring,
+        Cabal,
+        containers,
+        mtl,
+        pretty,
+        process,
+        directory,
+        filepath,
+        hashable,
+        stm,
+        tar,
+        time,
+        HTTP,
+        zlib,
+        binary,
+        random,
+        hackage-security,
+        tasty,
+        tasty-quickcheck,
+        QuickCheck >= 2.8.2,
+        pretty-show
+
+  if flag(old-directory)
+    build-depends: old-time
+
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6, network >= 2.6
+  else
+    build-depends: network-uri < 2.6, network < 2.6
+
+  if impl(ghc < 7.6)
+    build-depends: ghc-prim >= 0.2 && < 0.3
+
+  if os(windows)
+    build-depends: Win32
+  else
+    build-depends: unix
+
+  if arch(arm)
+    cc-options:  -DCABAL_NO_THREADED
+  else
+    ghc-options: -threaded
+  default-language: Haskell2010
+
 test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests

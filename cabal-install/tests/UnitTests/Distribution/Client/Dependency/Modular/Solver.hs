@@ -19,6 +19,7 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
+import Distribution.Client.Dependency.Types (Solver(Modular))
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 import UnitTests.Options
 
@@ -121,7 +122,7 @@ tests = [
         ]
     ]
   where
-    indep test      = test { testIndepGoals = True }
+    indep test      = test { testIndepGoals = IndepGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
@@ -135,7 +136,7 @@ data SolverTest = SolverTest {
     testLabel          :: String
   , testTargets        :: [String]
   , testResult         :: Maybe [(String, Int)]
-  , testIndepGoals     :: Bool
+  , testIndepGoals     :: IndepGoals
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
@@ -186,7 +187,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
     testLabel          = label
   , testTargets        = targets
   , testResult         = result
-  , testIndepGoals     = False
+  , testIndepGoals     = IndepGoals False
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
@@ -197,8 +198,10 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let (_msgs, result) = exResolve testDb testSupportedExts testSupportedLangs
-                            testPkgConfigDb testTargets testIndepGoals testSoftConstraints
+      let (_msgs, result) = exResolve testDb testSupportedExts
+                            testSupportedLangs testPkgConfigDb testTargets
+                            Modular testIndepGoals (ReorderGoals False)
+                            testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (isNothing testResult)
