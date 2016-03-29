@@ -40,10 +40,12 @@ tests config = do
       (PackageTests.TestSuiteTests.ExeV10.Check.tests config)
 
   -- Test if detailed-0.9 builds correctly
-  tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
+  testWhen (hasCabalForGhc config)
+   . tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
 
   -- Tests for #2489, stdio deadlock
-  mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
+  testWhen (hasCabalForGhc config)
+   . mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
    . tcs "TestSuiteTests/LibV09" "Deadlock" $ do
       cabal_build ["--enable-tests"]
       shouldFail $ cabal "test" []
@@ -203,7 +205,8 @@ tests config = do
 
   -- Test that if two components have the same module name, they do not
   -- clobber each other.
-  tc "DuplicateModuleName" $ do
+  testWhen (hasCabalForGhc config) $ -- uses library test suite
+    tc "DuplicateModuleName" $ do
       cabal_build ["--enable-tests"]
       r1 <- shouldFail $ cabal' "test" ["foo"]
       assertOutputContains "test B" r1

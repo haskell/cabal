@@ -64,6 +64,7 @@ module PackageTests.PackageTester
     , testUnless
     , unlessWindows
     , hasSharedLibraries
+    , hasCabalForGhc
 
     , getPersistBuildConfig
 
@@ -689,6 +690,10 @@ unlessWindows = testUnless (buildOS == Windows)
 hasSharedLibraries :: SuiteConfig -> Bool
 hasSharedLibraries config =
     buildOS /= Windows || withGhcVersion config < Version [7,8] []
+
+hasCabalForGhc :: SuiteConfig -> Bool
+hasCabalForGhc config =
+    withGhcPath config == ghcPath config
 
 ------------------------------------------------------------------------
 -- Verbosity
