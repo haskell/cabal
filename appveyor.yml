@@ -20,6 +20,7 @@ build_script:
   - Setup install
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
+  - echo "" | ..\cabal install happy
   - echo "" | ..\cabal install --only-dependencies --enable-tests
   - ..\cabal configure --user --ghc-option=-Werror --enable-tests
   - ..\cabal build
