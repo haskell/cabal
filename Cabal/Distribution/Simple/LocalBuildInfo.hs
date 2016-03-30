@@ -90,7 +90,6 @@ import Data.List (nub, find, stripPrefix)
 import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
-import Data.Map (Map)
 import System.FilePath
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
