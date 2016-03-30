@@ -63,7 +63,7 @@ import qualified Hackage.Security.Client as Sec
 -- | Returns @True@ if the package has already been fetched
 -- or does not need fetching.
 --
-isFetched :: PackageLocation (Maybe FilePath) -> IO Bool
+isFetched :: UnresolvedPkgLoc -> IO Bool
 isFetched loc = case loc of
     LocalUnpackedPackage _dir       -> return True
     LocalTarballPackage  _file      -> return True
@@ -71,8 +71,8 @@ isFetched loc = case loc of
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
 
 
-checkFetched :: PackageLocation (Maybe FilePath)
-             -> IO (Maybe (PackageLocation FilePath))
+checkFetched :: UnresolvedPkgLoc
+             -> IO (Maybe ResolvedPkgLoc)
 checkFetched loc = case loc of
     LocalUnpackedPackage dir  ->
       return (Just $ LocalUnpackedPackage dir)
@@ -96,8 +96,8 @@ checkFetched loc = case loc of
 --
 fetchPackage :: Verbosity
              -> RepoContext
-             -> PackageLocation (Maybe FilePath)
-             -> IO (PackageLocation FilePath)
+             -> UnresolvedPkgLoc
+             -> IO ResolvedPkgLoc
 fetchPackage verbosity repoCtxt loc = case loc of
     LocalUnpackedPackage dir  ->
       return (LocalUnpackedPackage dir)

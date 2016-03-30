@@ -966,6 +966,43 @@ The library section should contain the following fields:
 The library section may also contain build information fields (see the
 section on [build information](#build-information)).
 
+Cabal 1.23 and later support "internal libraries", which are extra named
+libraries (as opposed to the usual unnamed library section).  For
+example, suppose that your test suite needs access to some internal
+modules in your library, which you do not otherwise want to export.  You
+could put these modules in an internal library, which the main library
+and the test suite `build-depends` upon.  Then your Cabal file might
+look something like this:
+
+~~~~~~~~~~~~~~~~
+name:           foo
+version:        1.0
+license:        BSD3
+cabal-version:  >= 1.23
+build-type:     Simple
+
+library foo-internal
+    exposed-modules: Foo.Internal
+    build-depends: base
+
+library
+    exposed-modules: Foo.Public
+    build-depends: foo-internal, base
+
+test-suite test-foo
+    type:       exitcode-stdio-1.0
+    main-is:    test-foo.hs
+    build-depends: foo-internal, base
+~~~~~~~~~~~~~~~~
+
+Internal libraries are also useful for packages that define multiple
+executables, but do not define a publically accessible library.
+Internal libraries are only visible internally in the package (so they
+can only be added to the `build-depends` of same-package libraries,
+executables, test suites, etc.)  Internal libraries locally shadow any
+packages which have the same name (so don't name an internal library
+with the same name as an external dependency.)
+
 #### Opening an interpreter session ####
 
 While developing a package, it is often useful to make its code available inside

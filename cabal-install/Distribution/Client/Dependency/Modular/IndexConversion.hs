@@ -38,7 +38,7 @@ import Distribution.Client.Dependency.Modular.Version
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
 convPIs :: OS -> Arch -> CompilerInfo -> Bool -> Bool ->
-           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage -> Index
+           SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc) -> Index
 convPIs os arch comp sip strfl iidx sidx =
   mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sidx)
 
@@ -60,15 +60,15 @@ convIPI' sip idx =
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  let ipid = IPI.installedUnitId ipi
-      i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
-      pn = pkgName (sourcePackageId ipi)
-  in  case mapM (convIPId pn idx) (IPI.depends ipi) of
+  case mapM (convIPId pn idx) (IPI.depends ipi) of
         Nothing  -> (pn, i, PInfo []            M.empty (Just Broken))
         Just fds -> (pn, i, PInfo (setComp fds) M.empty Nothing)
  where
   -- We assume that all dependencies of installed packages are _library_ deps
-  setComp = setCompFlaggedDeps ComponentLib
+  ipid = IPI.installedUnitId ipi
+  i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
+  pn = pkgName (sourcePackageId ipi)
+  setComp = setCompFlaggedDeps (ComponentLib (unPackageName pn))
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -88,11 +88,11 @@ convIPId pn' idx ipid =
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
 convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
-            CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
+            CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
 convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage -> (PN, I, PInfo)
+convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage loc -> (PN, I, PInfo)
 convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
   in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
@@ -115,7 +115,7 @@ convGPD os arch cinfo strfl pi
                         PDC.addBuildableCondition getInfo
   in
     PInfo
-      (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
+      (concatMap   (\(nm, ds) -> conv (ComponentLib nm)   libBuildInfo       ds) libs    ++
        maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
        concatMap   (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
@@ -143,6 +143,7 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
                  L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
+              ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch os arch cinfo pi fds comp getInfo) branches
   where
     bi = getInfo info

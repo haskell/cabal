@@ -156,20 +156,15 @@ projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'SolverSettings' with no optional fields (by applying defaults).
 --
-resolveSolverSettings :: ProjectConfig -> SolverSettings
-resolveSolverSettings ProjectConfig{
-                        projectConfigShared,
-                        projectConfigLocalPackages,
-                        projectConfigSpecificPackage
-                      } =
+resolveSolverSettings :: ProjectConfigShared -> SolverSettings
+resolveSolverSettings projectConfig =
     SolverSettings {..}
   where
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
-    solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
-    solverSettingFlagAssignments   = fmap packageConfigFlagAssignment projectConfigSpecificPackage
+    solverSettingFlagAssignment    = projectConfigFlagAssignment
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
     solverSettingAllowNewer        = fromJust projectConfigAllowNewer
@@ -185,7 +180,7 @@ resolveSolverSettings ProjectConfig{
   --solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
   --solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
 
-    ProjectConfigShared {..} = defaults <> projectConfigShared
+    ProjectConfigShared {..} = defaults <> projectConfig
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
@@ -227,7 +222,7 @@ resolveBuildTimeSettings verbosity
     buildSettingDryRun        = fromFlag    projectConfigDryRun
     buildSettingOnlyDeps      = fromFlag    projectConfigOnlyDeps
     buildSettingSummaryFile   = fromNubList projectConfigSummaryFile
-    --buildSettingLogFile       -- defined below, more complicated 
+    --buildSettingLogFile       -- defined below, more complicated
     --buildSettingLogVerbosity  -- defined below, more complicated
     buildSettingBuildReports  = fromFlag    projectConfigBuildReports
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
@@ -393,10 +388,10 @@ readProjectLocalExtraConfig verbosity projectRootDir = do
       else do monitorFiles [monitorNonExistentFile projectExtraConfigFile]
               return mempty
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
 
     readProjectExtraConfigFile =
-          reportParseResult verbosity "project local configuration file"
+          reportParseResult verbosity "project extra configuration file"
                             projectExtraConfigFile
         . parseProjectConfig
       =<< readFile projectExtraConfigFile
@@ -429,7 +424,7 @@ writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir =
     writeProjectConfigFile projectExtraConfigFile
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
 
 
 -- | Write in the @cabal.project@ format to the given file.
@@ -503,7 +498,7 @@ data BadPackageLocationMatch
   deriving Show
 
 
--- | Given the project config, 
+-- | Given the project config,
 --
 -- Throws 'BadPackageLocations'.
 --
@@ -580,7 +575,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
           matches <- matchFileGlob projectRootDir glob
           case matches of
             [] | isJust (isTrivialFilePathGlob glob)
-               -> return (Left (BadPackageLocationFile 
+               -> return (Left (BadPackageLocationFile
                                   (BadLocNonexistantFile pkglocstr)))
 
             [] -> return (Left (BadLocGlobEmptyMatch pkglocstr))
@@ -622,7 +617,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                      -> return (Right (ProjectPackageLocalDirectory
                                          dirname cabalFile))
                    where
-                     cabalFile = projectRootDir </> match
+                     cabalFile = dirname </> match
                  []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
                  _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
 
@@ -661,7 +656,7 @@ mplusMaybeT ma mb = do
 
 
 readSourcePackage :: Verbosity -> ProjectPackageLocation
-                  -> Rebuild SourcePackage
+                  -> Rebuild UnresolvedSourcePackage
 readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
     readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile)
   where
@@ -679,4 +674,3 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
 readSourcePackage _verbosity _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
-

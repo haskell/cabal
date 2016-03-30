@@ -27,6 +27,16 @@ import System.IO ( openFile
 import System.Process ( runProcess )
 import System.FilePath ( (</>) )
 
+-- WARNING to editors of this file:
+-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-- At this moment (Cabal 1.23), whatever you write here must be
+-- compatible with ALL Cabal libraries which we support bootstrapping
+-- with.  This is because pre-setup-depends versions of cabal-install will
+-- build Setup.hs against the version of Cabal which MATCHES the library
+-- that cabal-install was built against.  There is no way of overriding
+-- this behavior without bumping the required 'cabal-version' in our
+-- Cabal file.  Travis will let you know if we fail to install from
+-- tarball!
 
 main :: IO ()
 main = defaultMainWithHooks $ simpleUserHooks

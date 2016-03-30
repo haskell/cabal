@@ -31,10 +31,10 @@ detectCyclesPhase = (`runReader` CS.empty) .  cata go
   where
     -- Most cases are simple; we just need to remember which choices we made
     go :: TreeF QGoalReasonChain (DetectCycles (Tree QGoalReasonChain)) -> DetectCycles (Tree QGoalReasonChain)
-    go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (CS.insert $ P qpn) (T.sequence cs)
-    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> local (CS.insert $ F qfn) (T.sequence cs)
-    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> local (CS.insert $ S qsn) (T.sequence cs)
-    go (GoalChoiceF         cs) = GoalChoice         <$>                           (T.sequence cs)
+    go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (extendConflictSet $ P qpn) (T.sequence cs)
+    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> local (extendConflictSet $ F qfn) (T.sequence cs)
+    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> local (extendConflictSet $ S qsn) (T.sequence cs)
+    go (GoalChoiceF         cs) = GoalChoice         <$>                                   (T.sequence cs)
     go (FailF cs reason)        = return $ Fail cs reason
 
     -- We check for cycles only if we have actually found a solution

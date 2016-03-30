@@ -274,7 +274,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     env flags flag = (maybe (Left flag) Right . lookup flag) flags
 
     pdTaggedBuildInfo :: PDTagged -> BuildInfo
-    pdTaggedBuildInfo (Lib l) = libBuildInfo l
+    pdTaggedBuildInfo (Lib _ l) = libBuildInfo l
     pdTaggedBuildInfo (Exe _ e) = buildInfo e
     pdTaggedBuildInfo (Test _ t) = testBuildInfo t
     pdTaggedBuildInfo (Bench _ b) = benchmarkBuildInfo b
@@ -410,7 +410,7 @@ overallDependencies (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
     removeDisabledSections :: PDTagged -> Bool
-    removeDisabledSections (Lib l)     = buildable (libBuildInfo l)
+    removeDisabledSections (Lib _ l)     = buildable (libBuildInfo l)
     removeDisabledSections (Exe _ e)   = buildable (buildInfo e)
     removeDisabledSections (Test _ t)  = testEnabled t && buildable (testBuildInfo t)
     removeDisabledSections (Bench _ b) = benchmarkEnabled b && buildable (benchmarkBuildInfo b)
@@ -435,50 +435,53 @@ constrainBy left extra =
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged ->
-        (Maybe Library, [(String, Executable)], [(String, TestSuite)]
+        ([(String, Library)], [(String, Executable)], [(String, TestSuite)]
         , [(String, Benchmark)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) targets
+flattenTaggedTargets (TargetSet targets) = foldr untag ([], [], [], []) targets
   where
-    untag (_, Lib _) (Just _, _, _, _) = userBug "Only one library expected"
-    untag (deps, Lib l) (Nothing, exes, tests, bms) =
-        (Just l', exes, tests, bms)
+    untag (deps, Lib n l) (libs, exes, tests, bms)
+        | any ((== n) . fst) libs =
+          userBug $ "There exist several libs with the same name: '" ++ n ++ "'"
+        -- NB: libraries live in a different namespace than everything else
+        -- TODO: no, (new-style) TESTS live in same namespace!!
+        | otherwise = ((n, l'):libs, exes, tests, bms)
       where
         l' = l {
                 libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Exe n e) (mlib, exes, tests, bms)
+    untag (deps, Exe n e) (libs, exes, tests, bms)
         | any ((== n) . fst) exes =
           userBug $ "There exist several exes with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
-        | otherwise = (mlib, (n, e'):exes, tests, bms)
+        | otherwise = (libs, (n, e'):exes, tests, bms)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Test n t) (mlib, exes, tests, bms)
+    untag (deps, Test n t) (libs, exes, tests, bms)
         | any ((== n) . fst) tests =
           userBug $ "There exist several tests with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) exes =
           userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, (n, t'):tests, bms)
+        | otherwise = (libs, exes, (n, t'):tests, bms)
       where
         t' = t {
             testBuildInfo = (testBuildInfo t)
                 { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Bench n b) (mlib, exes, tests, bms)
+    untag (deps, Bench n b) (libs, exes, tests, bms)
         | any ((== n) . fst) bms =
           userBug $ "There exist several benchmarks with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) exes =
           userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, tests, (n, b'):bms)
+        | otherwise = (libs, exes, tests, (n, b'):bms)
       where
         b' = b {
             benchmarkBuildInfo = (benchmarkBuildInfo b)
@@ -491,7 +494,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
 -- Convert GenericPackageDescription to PackageDescription
 --
 
-data PDTagged = Lib Library
+data PDTagged = Lib String Library
               | Exe String Executable
               | Test String TestSuite
               | Bench String Benchmark
@@ -505,7 +508,7 @@ instance Monoid PDTagged where
 instance Semigroup PDTagged where
     PDNull    <> x      = x
     x         <> PDNull = x
-    Lib l     <> Lib l' = Lib (l <> l')
+    Lib n l   <> Lib   n' l' | n == n' = Lib n (l <> l')
     Exe n e   <> Exe   n' e' | n == n' = Exe n (e <> e')
     Test n t  <> Test  n' t' | n == n' = Test n (t <> t')
     Bench n b <> Bench n' b' | n == n' = Bench n (b <> b')
@@ -548,10 +551,10 @@ finalizePackageDescription ::
              -- description along with the flag assignments chosen.
 finalizePackageDescription userflags satisfyDep
         (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mlib0 exes0 tests0 bms0) =
+        (GenericPackageDescription pkg flags libs0 exes0 tests0 bms0) =
     case resolveFlags of
-      Right ((mlib, exes', tests', bms'), targetSet, flagVals) ->
-        Right ( pkg { library = mlib
+      Right ((libs', exes', tests', bms'), targetSet, flagVals) ->
+        Right ( pkg { libraries = libs'
                     , executables = exes'
                     , testSuites = tests'
                     , benchmarks = bms'
@@ -562,7 +565,7 @@ finalizePackageDescription userflags satisfyDep
       Left missing -> Left missing
   where
     -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
-    condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
+    condTrees =    map (\(name,tree) -> mapTreeData (Lib name) tree) libs0
                 ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
                 ++ map (\(name,tree) -> mapTreeData (Test name) tree) tests0
                 ++ map (\(name,tree) -> mapTreeData (Bench name) tree) bms0
@@ -570,8 +573,8 @@ finalizePackageDescription userflags satisfyDep
     resolveFlags =
         case resolveWithFlags flagChoices os arch impl constraints condTrees check of
           Right (targetSet, fs) ->
-              let (mlib, exes, tests, bms) = flattenTaggedTargets targetSet in
-              Right ( (fmap libFillInDefaults mlib,
+              let (libs, exes, tests, bms) = flattenTaggedTargets targetSet in
+              Right ( (map (\(n,l) -> (libFillInDefaults l) { libName = n }) libs,
                        map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes,
                        map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests,
                        map (\(n,b) -> (benchFillInDefaults b) { benchmarkName = n }) bms),
@@ -614,21 +617,21 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- default path will be missing from the package description returned by this
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
-flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0 bms0) =
-    pkg { library = mlib
+flattenPackageDescription (GenericPackageDescription pkg _ libs0 exes0 tests0 bms0) =
+    pkg { libraries = reverse libs
         , executables = reverse exes
         , testSuites = reverse tests
         , benchmarks = reverse bms
-        , buildDepends = ldeps ++ reverse edeps ++ reverse tdeps ++ reverse bdeps
+        , buildDepends = reverse ldeps ++ reverse edeps ++ reverse tdeps ++ reverse bdeps
         }
   where
-    (mlib, ldeps) = case mlib0 of
-        Just lib -> let (l,ds) = ignoreConditions lib in
-                    (Just (libFillInDefaults l), ds)
-        Nothing -> (Nothing, [])
+    (libs, ldeps) = foldr flattenLib ([],[]) libs0
     (exes, edeps) = foldr flattenExe ([],[]) exes0
     (tests, tdeps) = foldr flattenTst ([],[]) tests0
     (bms, bdeps) = foldr flattenBm ([],[]) bms0
+    flattenLib (n, t) (es, ds) =
+        let (e, ds') = ignoreConditions t in
+        ( (libFillInDefaults $ e { libName = n }) : es, ds' ++ ds )
     flattenExe (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
@@ -684,7 +687,7 @@ transformAllBuildInfos onBuildInfo onSetupBuildInfo gpd = gpd'
 
     pd = packageDescription gpd
     pd'  = pd {
-      library        = fmap onLibrary        (library pd),
+      libraries      = map  onLibrary        (libraries pd),
       executables    = map  onExecutable     (executables pd),
       testSuites     = map  onTestSuite      (testSuites pd),
       benchmarks     = map  onBenchmark      (benchmarks pd),
@@ -724,18 +727,18 @@ transformAllCondTrees onLibrary onExecutable
   onTestSuite onBenchmark onDepends gpd = gpd'
   where
     gpd'    = gpd {
-      condLibrary        = condLib',
+      condLibraries      = condLibs',
       condExecutables    = condExes',
       condTestSuites     = condTests',
       condBenchmarks     = condBenchs'
       }
 
-    condLib    = condLibrary        gpd
+    condLibs   = condLibraries      gpd
     condExes   = condExecutables    gpd
     condTests  = condTestSuites     gpd
     condBenchs = condBenchmarks     gpd
 
-    condLib'    = fmap (onCondTree onLibrary)             condLib
+    condLibs'   = map  (mapSnd $ onCondTree onLibrary)    condLibs
     condExes'   = map  (mapSnd $ onCondTree onExecutable) condExes
     condTests'  = map  (mapSnd $ onCondTree onTestSuite)  condTests
     condBenchs' = map  (mapSnd $ onCondTree onBenchmark)  condBenchs

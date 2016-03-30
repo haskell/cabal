@@ -133,6 +133,9 @@ data ProjectConfigBuildOnly
 --
 data ProjectConfigShared
    = ProjectConfigShared {
+       projectConfigProgramPaths      :: Map String FilePath,
+       projectConfigProgramArgs       :: Map String [String],
+       projectConfigProgramPathExtra  :: NubList FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,
@@ -153,6 +156,7 @@ data ProjectConfigShared
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
        projectConfigPreferences       :: [Dependency],
+       projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowNewer        :: Maybe AllowNewer,
@@ -178,10 +182,6 @@ data ProjectConfigShared
 --
 data PackageConfig
    = PackageConfig {
-       packageConfigProgramPaths        :: Map String FilePath,
-       packageConfigProgramArgs         :: Map String [String],
-       packageConfigProgramPathExtra    :: NubList FilePath,
-       packageConfigFlagAssignment      :: FlagAssignment,
        packageConfigVanillaLib          :: Flag Bool,
        packageConfigSharedLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
@@ -277,8 +277,7 @@ data SolverSettings
        solverSettingLocalRepos        :: [FilePath],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
        solverSettingPreferences       :: [Dependency],
-       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] eliminate this global one
-       solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
+       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
        solverSettingSolver            :: PreSolver,
        solverSettingAllowNewer        :: AllowNewer,

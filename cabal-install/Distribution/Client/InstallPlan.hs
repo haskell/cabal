@@ -61,6 +61,7 @@ import Distribution.Package
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
          , PackageFixedDeps(..), ConfiguredPackage
+         , UnresolvedPkgLoc
          , GenericReadyPackage(..), fakeUnitId )
 import Distribution.Version
          ( Version )
@@ -155,7 +156,7 @@ instance (Binary ipkg, Binary srcpkg, Binary  iresult, Binary  ifailure)
       => Binary (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
 type PlanPackage = GenericPlanPackage
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
                    BuildSuccess BuildFailure
 
 instance (Package ipkg, Package srcpkg) =>
@@ -217,7 +218,7 @@ planPkgOf plan v =
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
                    BuildSuccess BuildFailure
 
 type PlanIndex ipkg srcpkg iresult ifailure =

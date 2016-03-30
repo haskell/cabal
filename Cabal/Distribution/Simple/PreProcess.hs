@@ -132,26 +132,27 @@ runSimplePreProcessor pp inFile outFile verbosity =
 -- |A preprocessor for turning non-Haskell files with the given extension
 -- into plain Haskell source files.
 type PPSuffixHandler
-    = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
+    = (String, BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor)
 
 -- | Apply preprocessors to the sources from 'hsSourceDirs' for a given
 -- component (lib, exe, or test suite).
 preprocessComponent :: PackageDescription
                     -> Component
                     -> LocalBuildInfo
+                    -> ComponentLocalBuildInfo
                     -> Bool
                     -> Verbosity
                     -> [PPSuffixHandler]
                     -> IO ()
-preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
+preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = hsSourceDirs bi ++ [autogenModulesDir lbi]
+    let dirs = hsSourceDirs bi ++ [autogenModulesDir lbi clbi]
     setupMessage verbosity "Preprocessing library" (packageId pd)
     forM_ (map ModuleName.toFilePath $ libModules lib) $
       pre dirs (buildDir lbi) (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
-        dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi]
+        dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi clbi]
     setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
     forM_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
@@ -182,7 +183,7 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
     builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
-    localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
+    localHandlers bi = [(ext, h bi lbi clbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
       preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
     preProcessTest test = preProcessComponent (testBuildInfo test)
@@ -191,7 +192,7 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
                          (benchmarkModules bm)
     preProcessComponent bi modules exePath dir = do
         let biHandlers = localHandlers bi
-            sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
+            sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi clbi ]
         sequence_ [ preprocessFile sourceDirs dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
@@ -294,8 +295,8 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
 -- * known preprocessors
 -- ------------------------------------------------------------
 
-ppGreenCard :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppGreenCard _ lbi
+ppGreenCard :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppGreenCard _ lbi _
     = PreProcessor {
         platformIndependent = False,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
@@ -314,21 +315,21 @@ ppUnlit =
         either (writeUTF8File outFile) die (unlit inFile contents)
   }
 
-ppCpp :: BuildInfo -> LocalBuildInfo -> PreProcessor
+ppCpp :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp = ppCpp' []
 
-ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpp' extraArgs bi lbi =
+ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC   -> ppGhcCpp ghcProgram   (>= Version [6,6] []) args bi lbi
-    GHCJS -> ppGhcCpp ghcjsProgram (const True)          args bi lbi
-    _     -> ppCpphs  args bi lbi
+    GHC   -> ppGhcCpp ghcProgram   (>= Version [6,6] []) args bi lbi clbi
+    GHCJS -> ppGhcCpp ghcjsProgram (const True)          args bi lbi clbi
+    _     -> ppCpphs  args bi lbi clbi
   where cppArgs = getCppOptions bi lbi
         args    = cppArgs ++ extraArgs
 
 ppGhcCpp :: Program -> (Version -> Bool)
-         -> [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppGhcCpp program xHs extraArgs _bi lbi =
+         -> [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppGhcCpp program xHs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
@@ -342,13 +343,13 @@ ppGhcCpp program xHs extraArgs _bi lbi =
           -- double-unlitted. In the future we might switch to
           -- using cpphs --unlit instead.
        ++ (if xHs version then ["-x", "hs"] else [])
-       ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
+       ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi clbi </> cppHeaderName) ]
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
 
-ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
-ppCpphs extraArgs _bi lbi =
+ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppCpphs extraArgs _bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
@@ -358,13 +359,13 @@ ppCpphs extraArgs _bi lbi =
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
         : (if cpphsVersion >= Version [1,6] []
-             then ["--include="++ (autogenModulesDir lbi </> cppHeaderName)]
+             then ["--include="++ (autogenModulesDir lbi clbi </> cppHeaderName)]
              else [])
         ++ extraArgs
   }
 
-ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHsc2hs bi lbi =
+ppHsc2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppHsc2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
@@ -401,8 +402,8 @@ ppHsc2hs bi lbi =
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                       ++ PD.cppOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-
-               [ "-I" ++ autogenModulesDir lbi,
-                 "-include", autogenModulesDir lbi </> cppHeaderName ] ]
+               [ "-I" ++ autogenModulesDir lbi clbi,
+                 "-include", autogenModulesDir lbi clbi </> cppHeaderName ] ]
        ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
        ++ [ "--lflag=-Wl,-R," ++ opt | isELF
                                 , opt <- PD.extraLibDirs bi ]
@@ -427,9 +428,9 @@ ppHsc2hs bi lbi =
     -- TODO: installedPkgs contains ALL dependencies associated with
     -- the package, but we really only want to look at packages for the
     -- *current* dependency.  We should use PackageIndex.dependencyClosure
-    -- on the direct depends of the component.  Can't easily do that,
-    -- because the signature of this function is wrong.  Tracked with
-    -- #2971 (which has a test case.)
+    -- on the direct depends of the component.  The signature of this
+    -- function was recently refactored, so this should be fixable
+    -- now.  Tracked with #2971 (which has a test case.)
     pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
     isOSX = case buildOS of OSX -> True; _ -> False
     isELF = case buildOS of OSX -> False; Windows -> False; AIX -> False; _ -> True;
@@ -451,8 +452,8 @@ ppHsc2hsExtras :: PreProcessorExtras
 ppHsc2hsExtras buildBaseDir = filter ("_hsc.c" `isSuffixOf`) `fmap`
                               getDirectoryContentsRecursive buildBaseDir
 
-ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppC2hs bi lbi =
+ppC2hs :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppC2hs bi lbi clbi =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = \(inBaseDir, inRelativeFile)
@@ -466,7 +467,7 @@ ppC2hs bi lbi =
           -- Options from the current package:
            [ "--cpp=" ++ programPath gccProg, "--cppopts=-E" ]
         ++ [ "--cppopts=" ++ opt | opt <- getCppOptions bi lbi ]
-        ++ [ "--cppopts=-include" ++ (autogenModulesDir lbi </> cppHeaderName) ]
+        ++ [ "--cppopts=-include" ++ (autogenModulesDir lbi clbi </> cppHeaderName) ]
         ++ [ "--include=" ++ outBaseDir ]
 
           -- Options from dependent packages
@@ -580,16 +581,16 @@ platformDefines lbi =
       JavaScript  -> ["javascript"]
       OtherArch _ -> []
 
-ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHappy _ lbi = pp { platformIndependent = True }
+ppHappy :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppHappy _ lbi _ = pp { platformIndependent = True }
   where pp = standardPP lbi happyProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
         hcFlags GHC = ["-agc"]
         hcFlags GHCJS = ["-agc"]
         hcFlags _ = []
 
-ppAlex :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppAlex _ lbi = pp { platformIndependent = True }
+ppAlex :: BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
+ppAlex _ lbi _ = pp { platformIndependent = True }
   where pp = standardPP lbi alexProgram (hcFlags hc)
         hc = compilerFlavor (compiler lbi)
         hcFlags GHC = ["-g"]

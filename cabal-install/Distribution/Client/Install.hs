@@ -149,6 +149,8 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
@@ -234,7 +236,8 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
-                      , [UserTarget], [PackageSpecifier SourcePackage]
+                      , PkgConfigDb
+                      , [UserTarget], [PackageSpecifier UnresolvedSourcePackage]
                       , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -262,6 +265,8 @@ makeInstallContext verbosity
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    pkgConfigDb       <- readPkgConfigDb      verbosity conf
+
     checkConfigExFlags verbosity installedPkgIndex
                        (packageIndex sourcePkgDb) configExFlags
     transport <- repoContextGetTransport repoCtxt
@@ -284,7 +289,7 @@ makeInstallContext verbosity
                          userTargets
         return (userTargets, pkgSpecifiers)
 
-    return (installedPkgIndex, sourcePkgDb, userTargets
+    return (installedPkgIndex, sourcePkgDb, pkgConfigDb, userTargets
            ,pkgSpecifiers, transport)
 
 -- | Make an install plan given install context and install arguments.
@@ -294,7 +299,7 @@ makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
-  (installedPkgIndex, sourcePkgDb,
+  (installedPkgIndex, sourcePkgDb, pkgConfigDb,
    _, pkgSpecifiers, _) = do
 
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
@@ -302,7 +307,7 @@ makeInstallPlan verbosity
     notice verbosity "Resolving dependencies..."
     return $ planPackages comp platform mSandboxPkgInfo solver
       configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgSpecifiers
+      installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
@@ -310,7 +315,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> IO ()
 processInstallPlan verbosity
   args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
-  (installedPkgIndex, sourcePkgDb,
+  (installedPkgIndex, sourcePkgDb, _,
    userTargets, pkgSpecifiers, _) installPlan = do
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
@@ -336,14 +341,15 @@ planPackages :: Compiler
              -> InstallFlags
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [PackageSpecifier SourcePackage]
+             -> PkgConfigDb
+             -> [PackageSpecifier UnresolvedSourcePackage]
              -> Progress String String InstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
-             installedPkgIndex sourcePkgDb pkgSpecifiers =
+             installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
 
         resolveDependencies
-          platform (compilerInfo comp)
+          platform (compilerInfo comp) pkgConfigDb
           solver
           resolverParams
 
@@ -461,7 +467,7 @@ checkPrintPlan :: Verbosity
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
-               -> [PackageSpecifier SourcePackage]
+               -> [PackageSpecifier UnresolvedSourcePackage]
                -> IO ()
 checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
@@ -674,14 +680,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
-    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
+    nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
     nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
-    stanzas :: ConfiguredPackage -> [OptionalStanza]
+    stanzas :: ConfiguredPackage loc -> [OptionalStanza]
     stanzas (ConfiguredPackage _ _ sts _) = sts
 
     showStanzas :: [OptionalStanza] -> String
@@ -723,7 +729,7 @@ reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
   ,_, configFlags, _, installFlags, _)
-  (_, sourcePkgDb, _, pkgSpecifiers, _)
+  (_, sourcePkgDb, _, _, pkgSpecifiers, _)
   message = do
 
   when reportFailure $ do
@@ -1241,7 +1247,7 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
 installReadyPackage :: Platform -> CompilerInfo
                     -> ConfigFlags
                     -> ReadyPackage
-                    -> (ConfigFlags -> PackageLocation (Maybe FilePath)
+                    -> (ConfigFlags -> UnresolvedPkgLoc
                                     -> PackageDescription
                                     -> PackageDescriptionOverride
                                     -> a)
@@ -1278,8 +1284,8 @@ fetchSourcePackage
   :: Verbosity
   -> RepoContext
   -> JobLimit
-  -> PackageLocation (Maybe FilePath)
-  -> (PackageLocation FilePath -> IO BuildResult)
+  -> UnresolvedPkgLoc
+  -> (ResolvedPkgLoc -> IO BuildResult)
   -> IO BuildResult
 fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
   fetched <- checkFetched src
@@ -1294,7 +1300,7 @@ fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
 installLocalPackage
   :: Verbosity
   -> JobLimit
-  -> PackageIdentifier -> PackageLocation FilePath -> FilePath
+  -> PackageIdentifier -> ResolvedPkgLoc -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
@@ -1407,7 +1413,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   -- Compute the IPID
   let flags (ReadyPackage (ConfiguredPackage _ x _ _) _) = x
-      cid = Configure.computeComponentId (PackageDescription.package pkg) CLibName
+      pkg_name = pkgName (PackageDescription.package pkg)
+      cid = Configure.computeComponentId Cabal.NoFlag
+                (PackageDescription.package pkg) (CLibName (display pkg_name))
                 (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg))) (flags rpkg)
       ipid = SimpleUnitId cid
 

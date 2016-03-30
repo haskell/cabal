@@ -27,6 +27,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
+import Distribution.Client.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags
          , RepoContext(..) )
@@ -110,11 +111,13 @@ configure verbosity packageDBs repoCtxt comp platform conf
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+  pkgConfigDb       <- readPkgConfigDb      verbosity conf
+
   checkConfigExFlags verbosity installedPkgIndex
                      (packageIndex sourcePkgDb) configExFlags
 
   progress <- planLocalPackage verbosity comp platform configFlags configExFlags
-                               installedPkgIndex sourcePkgDb
+                               installedPkgIndex sourcePkgDb pkgConfigDb
 
   notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress logMsg (return . Left) (return . Right)
@@ -269,10 +272,10 @@ planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
                  -> InstalledPackageIndex
                  -> SourcePackageDb
+                 -> PkgConfigDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags
-  installedPkgIndex
-  (SourcePackageDb _ packagePrefs) = do
+  installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
             (compilerInfo comp)
@@ -326,7 +329,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies platform (compilerInfo comp) solver resolverParams)
+  return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

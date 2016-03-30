@@ -55,7 +55,8 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
+         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..)
+         , ResolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ConstraintSource(..)
          , LabeledPackageConstraint(..) )
@@ -374,7 +375,7 @@ resolveUserTargets :: Package pkg
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier SourcePackage]
+                   -> IO [PackageSpecifier UnresolvedSourcePackage]
 resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -469,7 +470,7 @@ localPackageError dir =
 fetchPackageTarget :: Verbosity
                    -> RepoContext
                    -> PackageTarget (PackageLocation ())
-                   -> IO (PackageTarget (PackageLocation FilePath))
+                   -> IO (PackageTarget ResolvedPkgLoc)
 fetchPackageTarget verbosity repoCtxt target = case target of
     PackageTargetNamed      n cs ut -> return (PackageTargetNamed      n cs ut)
     PackageTargetNamedFuzzy n cs ut -> return (PackageTargetNamedFuzzy n cs ut)
@@ -483,8 +484,8 @@ fetchPackageTarget verbosity repoCtxt target = case target of
 -- This only affects targets given by location, named targets are unaffected.
 --
 readPackageTarget :: Verbosity
-                  -> PackageTarget (PackageLocation FilePath)
-                  -> IO (PackageTarget SourcePackage)
+                  -> PackageTarget ResolvedPkgLoc
+                  -> IO (PackageTarget UnresolvedSourcePackage)
 readPackageTarget verbosity target = case target of
 
     PackageTargetNamed pkgname constraints userTarget ->

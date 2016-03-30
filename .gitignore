@@ -28,6 +28,7 @@ dist-*
 .#*
 *~
 .*.swp
+*.bak
 
 # GHC build
 

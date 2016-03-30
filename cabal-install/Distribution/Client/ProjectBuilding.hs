@@ -47,6 +47,7 @@ import           Distribution.Simple.Command (CommandUI)
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.LocalBuildInfo (ComponentName)
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -1016,7 +1017,7 @@ buildAndInstallUnpackedPackage verbosity
           -- the installed package id is, not the build system.
           let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
           Cabal.registerPackage verbosity compiler progdb
-                                True -- multi-instance, nix style
+                                HcPkg.MultiInstance
                                 (pkgRegisterPackageDBStack pkg) ipkg'
           return (Just ipkg')
         else return Nothing
@@ -1152,7 +1153,7 @@ buildInplaceUnpackedPackage verbosity
                 -- grab and modify the InstalledPackageInfo. We decide what
                 -- the installed package id is, not the build system.
                 let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
-                Cabal.registerPackage verbosity compiler progdb False
+                Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
                                       (pkgRegisterPackageDBStack pkg)
                                       ipkg'
                 return (Just ipkg')

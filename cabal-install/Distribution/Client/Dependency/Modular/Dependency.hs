@@ -30,6 +30,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
+  , extendConflictSet
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -155,6 +156,7 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
              | Ext  Extension     -- dependency on a language extension
              | Lang Language      -- dependency on a language version
+             | Pkg  PN VR         -- dependency on a pkg-config package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
@@ -167,6 +169,9 @@ showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
 showDep (Ext ext)   = "requires " ++ display ext
 showDep (Lang lang) = "requires " ++ display lang
+showDep (Pkg pn vr) = "requires pkg-config package "
+                      ++ display pn ++ display vr
+                      ++ ", not found in the pkg-config database"
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -215,6 +220,7 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) allDeps = go allDeps
     goD :: Dep PN -> Component -> Dep QPN
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
+    goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
       | qBase  dep      = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
       | qSetup     comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
@@ -257,12 +263,16 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) allDeps = go allDeps
     libDeps = S.fromList $ mapMaybe maybeLibDep $ flattenFlaggedDeps allDeps
 
     -- Is this an internal dependency? (Say, from a test suite on the lib)
+    -- TODO: This incorrectly reports 'False' for convenience libraries,
+    -- need to probably build this information into the dependency
+    -- information.
     isInternalDep :: PN -> Bool
     isInternalDep dep = dep == pn
 
     maybeLibDep :: (Dep PN, Component) -> Maybe PN
-    maybeLibDep (Dep qpn _ci, ComponentLib) = Just qpn
-    maybeLibDep _otherwise                  = Nothing
+    maybeLibDep (Dep qpn _ci, ComponentLib str)
+        | unPackageName pn == str = Just qpn
+    maybeLibDep _otherwise = Nothing
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
@@ -335,6 +345,7 @@ instance ResetGoal Dep where
   resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
   resetGoal _ (Ext ext)    = Ext ext
   resetGoal _ (Lang lang)  = Lang lang
+  resetGoal _ (Pkg pn vr)  = Pkg pn vr
 
 instance ResetGoal Goal where
   resetGoal = const
@@ -343,6 +354,10 @@ instance ResetGoal Goal where
 -- of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
 toConflictSet (Goal g grs) = CS.insert g (goalReasonChainToVars grs)
+
+-- | Add another variable into a conflict set
+extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
+extendConflictSet = CS.insert . simplifyVar
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = CS.empty
@@ -370,6 +385,8 @@ close (OpenGoal (Simple (Ext     _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Ext goal"
 close (OpenGoal (Simple (Lang    _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Lang goal"
+close (OpenGoal (Simple (Pkg   _ _) _) _ ) =
+  error "Distribution.Client.Dependency.Modular.Dependency.close: called on Pkg goal"
 close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
 close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 

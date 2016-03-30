@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable, 
+             DeriveGeneric, DeriveDataTypeable,
              RankNTypes, ScopedTypeVariables #-}
 
 -- | Planning how to build everything in a project.
@@ -60,7 +60,9 @@ import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
 
-import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
+import           Distribution.Client.Types hiding
+  (BuildResult,BuildSuccess(..), BuildFailure(..), DocsResult(..)
+  ,TestsResult(..))
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -75,10 +77,12 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
+import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList (toNubList)
 
-import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import           Distribution.Package hiding
+  (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
@@ -94,7 +98,8 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
+import           Distribution.Simple.Setup
+  (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import           Distribution.ModuleName (ModuleName)
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
@@ -376,7 +381,7 @@ data GenericBuildResult ipkg iresult ifailure
 instance (Binary ipkg, Binary iresult, Binary ifailure) =>
          Binary (GenericBuildResult ipkg iresult ifailure)
 
-type BuildResult  = GenericBuildResult InstalledPackageInfo 
+type BuildResult  = GenericBuildResult InstalledPackageInfo
                                        BuildSuccess BuildFailure
 
 data BuildSuccess = BuildOk DocsResult TestsResult
@@ -526,7 +531,7 @@ rebuildInstallPlan verbosity
     -- some of which may be local src dirs, tarballs etc
     --
     phaseReadLocalPackages :: ProjectConfig
-                           -> Rebuild [SourcePackage]
+                           -> Rebuild [UnresolvedSourcePackage]
     phaseReadLocalPackages projectConfig = do
 
       localCabalFiles <- findProjectPackages projectRootDir projectConfig
@@ -570,7 +575,7 @@ rebuildInstallPlan verbosity
     --
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
-                   -> [SourcePackage]
+                   -> [UnresolvedSourcePackage]
                    -> Rebuild (SolverInstallPlan, PackagesImplicitSetupDeps)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
@@ -587,6 +592,8 @@ rebuildInstallPlan verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
+          pkgConfigDB       <- liftIO $
+                               readPkgConfigDb      verbosity progdb
 
           liftIO $ do
             solver <- chooseSolver verbosity
@@ -596,7 +603,7 @@ rebuildInstallPlan verbosity
             notice verbosity "Resolving dependencies..."
             foldProgress logMsg die return $
               planPackages compiler platform solver solverSettings
-                           installedPkgIndex sourcePkgDb
+                           installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
       where
         corePackageDbs = [GlobalPackageDB]
@@ -604,7 +611,7 @@ rebuildInstallPlan verbosity
                            cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
-        solverSettings = resolveSolverSettings projectConfig
+        solverSettings = resolveSolverSettings projectConfigShared
         logMsg message rest = debugNoWrap verbosity message >> rest
 
         localPackagesEnabledStanzas =
@@ -632,7 +639,7 @@ rebuildInstallPlan verbosity
     phaseElaboratePlan :: ProjectConfig
                        -> (Compiler, Platform, ProgramDb)
                        -> (SolverInstallPlan, PackagesImplicitSetupDeps)
-                       -> [SourcePackage]
+                       -> [SourcePackage loc]
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
     phaseElaboratePlan ProjectConfig {
@@ -667,7 +674,7 @@ rebuildInstallPlan verbosity
             projectConfigLocalPackages
             projectConfigSpecificPackage
       where
-        withRepoCtx = projectConfigWithSolverRepoContext verbosity 
+        withRepoCtx = projectConfigWithSolverRepoContext verbosity
                         cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
@@ -727,7 +734,7 @@ programsDbSignature progdb =
 
 getInstalledPackages :: Verbosity
                      -> Compiler -> ProgramDb -> Platform
-                     -> PackageDBStack 
+                     -> PackageDBStack
                      -> Rebuild InstalledPackageIndex
 getInstalledPackages verbosity compiler progdb platform packagedbs = do
     monitorFiles . map monitorFileOrDirectory
@@ -757,7 +764,7 @@ getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Rebuild SourcePackageDb
 getSourcePackages verbosity withRepoCtx = do
     (sourcePkgDb, repos) <-
-      liftIO $ 
+      liftIO $
         withRepoCtx $ \repoctx -> do
           sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
           return (sourcePkgDb, repoContextRepos repoctx)
@@ -850,19 +857,20 @@ planPackages :: Compiler
              -> Solver -> SolverSettings
              -> InstalledPackageIndex
              -> SourcePackageDb
-             -> [SourcePackage]
+             -> PkgConfigDb
+             -> [UnresolvedSourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String
                          (SolverInstallPlan, PackagesImplicitSetupDeps)
 planPackages comp platform solver SolverSettings{..}
-             installedPkgIndex sourcePkgDb
+             installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
 
     rememberImplicitSetupDeps (depResolverSourcePkgIndex stdResolverParams) <$>
 
     resolveDependencies
       platform (compilerInfo comp)
-      solver
+      pkgConfigDB solver
       resolverParams
 
   where
@@ -935,16 +943,8 @@ planPackages comp platform solver SolverSettings{..}
           ]
 
       . addConstraints
-          [ LabeledPackageConstraint
-              (PackageConstraintFlags pkgname flags)
-              ConstraintSourceConfigFlagOrTarget
-          | (pkgname, flags) <- Map.toList solverSettingFlagAssignments ]
-
-      . addConstraints
-          --TODO: [nice to have] we have user-supplied flags for unspecified
-          -- local packages (as well as specific per-package flags). For the
-          -- former we just apply all these flags to all local targets which
-          -- is silly. We should check if the flags are appropriate.
+          --TODO: [nice to have] this just applies all flags to all targets which
+          -- is silly. We should check if the flags are appropriate
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget
@@ -997,7 +997,7 @@ elaborateInstallPlan
   -> CabalDirLayout
   -> SolverInstallPlan
   -> PackagesImplicitSetupDeps
-  -> [SourcePackage]
+  -> [SourcePackage loc]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
   -> ProjectConfigShared
@@ -1043,7 +1043,7 @@ elaborateInstallPlan platform compiler progdb
       where
         deps' = fmap (map (\d -> d { confInstId = mapDep (confInstId d) })) deps
 
-    elaborateConfiguredPackage :: ConfiguredPackage
+    elaborateConfiguredPackage :: ConfiguredPackage UnresolvedPkgLoc
                                -> ElaboratedConfiguredPackage
     elaborateConfiguredPackage
         pkg@(ConfiguredPackage (SourcePackage pkgid gdesc srcloc descOverride)
@@ -1059,7 +1059,7 @@ elaborateInstallPlan platform compiler progdb
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
           = mkUnitId (display pkgid ++ "-inplace")
-          
+
           | otherwise
           = assert (isJust pkgSourceHash) $
             hashedInstalledPackageId
@@ -1105,7 +1105,7 @@ elaborateInstallPlan platform compiler progdb
                                 then BuildInplaceOnly else BuildAndInstall
         pkgBuildPackageDBStack    = buildAndRegisterDbs
         pkgRegisterPackageDBStack = buildAndRegisterDbs
-        pkgRequiresRegistration   = isJust (Cabal.condLibrary gdesc)
+        pkgRequiresRegistration   = PD.hasPublicLib (PD.packageDescription gdesc)
 
         pkgSetupScriptStyle       = packageSetupScriptStylePostSolver
                                       pkgsImplicitSetupDeps pkg pkgDescription
@@ -1334,7 +1334,7 @@ elaboratePackageTargets ElaboratedConfiguredPackage{..} targets =
         --TODO: instead of listToMaybe we should be reporting an error here
         replTargets   = listToMaybe
                       . nubComponentTargets
-                      . map compatSubComponentTargets 
+                      . map compatSubComponentTargets
                       . concatMap elaborateReplTarget
                       $ targets
         buildHaddocks = HaddockDefaultComponents `elem` targets
@@ -1477,7 +1477,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- The testsuite and benchmark targets are somewhat special in that we need
     -- to configure the packages with them enabled, and we need to do that even
     -- if we only want to build one of several testsuites.
-    -- 
+    --
     -- There are two cases in which we will enable the testsuites (or
     -- benchmarks): if one of the targets is a testsuite, or if all of the
     -- testsuite depencencies are already cached in the store. The rationale
@@ -1535,7 +1535,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
         | InstallPlan.PreExisting pkg <- pkgs ]
 
 optionalStanzasWithDepsAvailable :: Set InstalledPackageId
-                                 -> ElaboratedConfiguredPackage 
+                                 -> ElaboratedConfiguredPackage
                                  -> Set OptionalStanza
 optionalStanzasWithDepsAvailable availablePkgs pkg =
     Set.fromList
@@ -1601,7 +1601,7 @@ pruneInstallPlanPass2 pkgs =
         keepNeeded _                     _ = True
 
         targetsRequiredForRevDeps =
-          [ ComponentTarget CLibName WholeComponent
+          [ ComponentTarget (Cabal.defaultLibName (pkgSourceId pkg)) WholeComponent
           -- if anything needs this pkg, build the library component
           | installedPackageId pkg `Set.member` hasReverseLibDeps
           ]
@@ -1652,7 +1652,7 @@ dependencyGraph pkgid deps pkgs =
     (graph, vertexToPkg', pkgidToVertex')
   where
     (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg ) 
+      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
                            | pkg <- pkgs ]
     vertexToPkg'   = (\(pkg,_,_) -> pkg)
                    . vertexToPkg
@@ -1764,7 +1764,7 @@ defaultSetupDeps platform pkg =
         --             install-plan (as GHC8 requires Cabal-1.24+). So let's
         --             set an implicit upper bound `Cabal < 2` instead.
           cabalCompatMaxVer = Version [2] []
- 
+
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
       -- on Cabal and base.
@@ -1773,7 +1773,7 @@ defaultSetupDeps platform pkg =
         , Dependency basePkgname  anyVersion ]
         where
           cabalConstraint = orLaterVersion (PD.specVersion pkg)
-  
+
       -- The internal setup wrapper method has no deps at all.
       SetupNonCustomInternalLib -> []
 
@@ -1794,7 +1794,7 @@ type PackagesImplicitSetupDeps = Set InstalledPackageId
 -- So we remember the necessary information in an auxilliary set and use it
 -- in 'packageSetupScriptStylePreSolver' to recover the full info.
 --
-rememberImplicitSetupDeps :: SourcePackageIndex.PackageIndex SourcePackage
+rememberImplicitSetupDeps :: SourcePackageIndex.PackageIndex (SourcePackage loc)
                           -> SolverInstallPlan
                           -> (SolverInstallPlan, PackagesImplicitSetupDeps)
 rememberImplicitSetupDeps sourcePkgIndex plan =
@@ -1825,7 +1825,7 @@ rememberImplicitSetupDeps sourcePkgIndex plan =
 -- through the solver.
 --
 packageSetupScriptStylePostSolver :: Set InstalledPackageId
-                                  -> ConfiguredPackage
+                                  -> ConfiguredPackage loc
                                   -> PD.PackageDescription
                                   -> SetupScriptStyle
 packageSetupScriptStylePostSolver pkgsImplicitSetupDeps pkg pkgDescription =
@@ -2087,11 +2087,11 @@ setupHsBuildArgs pkg =
 
 
 showComponentTarget :: ElaboratedConfiguredPackage -> ComponentTarget -> String
-showComponentTarget pkg =
+showComponentTarget _pkg =
     showBuildTarget . toBuildTarget
   where
     showBuildTarget t =
-      Cabal.showBuildTarget (qlBuildTarget t) (packageId pkg) t
+      Cabal.showBuildTarget (qlBuildTarget t) t
 
     qlBuildTarget Cabal.BuildTargetComponent{} = Cabal.QL2
     qlBuildTarget _                            = Cabal.QL3
@@ -2135,6 +2135,7 @@ setupHsCopyFlags _ _ verbosity builddir =
       --TODO: [nice to have] we currently just rely on Setup.hs copy to always do the right
       -- thing, but perhaps we ought really to copy into an image dir and do
       -- some sanity checks and move into the final location ourselves
+      copyArgs      = [], -- TODO: could use this to only copy what we enabled
       copyDest      = toFlag InstallDirs.NoCopyDest,
       copyDistPref  = toFlag builddir,
       copyVerbosity = toFlag verbosity
@@ -2259,7 +2260,7 @@ packageHashInputs
     }
   where
     -- Obviously the main deps are relevant
-    relevantDeps  CD.ComponentLib      = True
+    relevantDeps (CD.ComponentLib _)   = True
     relevantDeps (CD.ComponentExe _)   = True
     -- Setup deps can affect the Setup.hs behaviour and thus what is built
     relevantDeps  CD.ComponentSetup    = True
@@ -2309,7 +2310,7 @@ packageHashConfigInputs
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
 -- 'ElaboratedInstallPlan', replace configured source packages by pre-existing
 -- installed packages whenever they exist.
--- 
+--
 improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
                                           -> ElaboratedInstallPlan
                                           -> ElaboratedInstallPlan
@@ -2334,4 +2335,3 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     replaceWithPreExisting =
       foldl' (\plan ipkg -> InstallPlan.preexisting
                               (installedPackageId ipkg) ipkg plan)
-
