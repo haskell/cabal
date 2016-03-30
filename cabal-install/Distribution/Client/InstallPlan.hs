@@ -195,7 +195,7 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
 
     -- | Cached (lazily) graph
     --
-    -- The 'Graph' representaion works in terms of integer node ids, so we
+    -- The 'Graph' representation works in terms of integer node ids, so we
     -- have to keep mapping to and from our meaningful nodes, which of course
     -- are package ids.
     --
