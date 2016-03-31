@@ -122,6 +122,9 @@ tests = [
         ]
     ]
   where
+    -- | Combinator to turn on --independent-goals behavior, i.e. solve
+    -- for the goals as if we were solving for each goal independently.
+    -- (This doesn't really work well at the moment, see #2842)
     indep test      = test { testIndepGoals = IndepGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
@@ -144,6 +147,19 @@ data SolverTest = SolverTest {
   , testPkgConfigDb    :: PkgConfigDb
   }
 
+-- | Makes a solver test case, consisting of the following components:
+--
+--      1. An 'ExampleDb', representing the package database (both
+--         installed and remote) we are doing dependency solving over,
+--      2. A 'String' name for the test,
+--      3. A list '[String]' of package names to solve for
+--      4. The expected result, either 'Nothing' if there is no
+--         satisfying solution, or a list '[(String, Int)]' of
+--         packages to install, at which versions.
+--
+-- See 'UnitTests.Distribution.Client.Dependency.Modular.DSL' for how
+-- to construct an 'ExampleDb', as well as definitions of 'db1' etc.
+-- in this file.
 mkTest :: ExampleDb
        -> String
        -> [String]

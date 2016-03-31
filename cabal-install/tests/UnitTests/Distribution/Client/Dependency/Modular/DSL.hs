@@ -136,6 +136,15 @@ data ExampleAvailable = ExAv {
   , exAvDeps    :: ComponentDeps [ExampleDependency]
   } deriving Show
 
+-- | Constructs an 'ExampleAvailable' package for the 'ExampleDb',
+-- given:
+--
+--      1. The name 'ExamplePkgName' of the available package,
+--      2. The version 'ExamplePkgVersion' available
+--      3. The list of dependency constraints 'ExampleDependency'
+--         that this package has.  'ExampleDependency' provides
+--         a number of pre-canned dependency types to look at.
+--
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
 exAv n v ds = ExAv { exAvName = n, exAvVersion = v
@@ -146,6 +155,7 @@ withSetupDeps ex setupDeps = ex {
       exAvDeps = exAvDeps ex <> CD.fromSetupDeps setupDeps
     }
 
+-- | An installed package in 'ExampleDb'; construct me with 'exInst'.
 data ExampleInstalled = ExInst {
     exInstName         :: ExamplePkgName
   , exInstVersion      :: ExamplePkgVersion
@@ -153,10 +163,23 @@ data ExampleInstalled = ExInst {
   , exInstBuildAgainst :: [ExamplePkgHash]
   } deriving Show
 
+-- | Constructs an example installed package given:
+--
+--      1. The name of the package 'ExamplePkgName', i.e., 'String'
+--      2. The version of the package 'ExamplePkgVersion', i.e., 'Int'
+--      3. The IPID for the package 'ExamplePkgHash', i.e., 'String'
+--         (just some unique identifier for the package.)
+--      4. The 'ExampleInstalled' packages which this package was
+--         compiled against.)
+--
 exInst :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgHash
        -> [ExampleInstalled] -> ExampleInstalled
 exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 
+-- | An example package database is a list of installed packages
+-- 'ExampleInstalled' and available packages 'ExampleAvailable'.
+-- Generally, you want to use 'exInst' and 'exAv' to construct
+-- these packages.
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
 type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
