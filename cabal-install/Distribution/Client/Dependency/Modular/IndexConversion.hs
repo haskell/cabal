@@ -126,7 +126,11 @@ convGPD os arch cinfo strfl pi
   in
     PInfo flagged_deps fds Nothing
 
-prefix :: (FlaggedDeps comp qpn -> FlaggedDep comp' qpn) -> [FlaggedDeps comp qpn] -> FlaggedDeps comp' qpn
+-- | Create a flagged dependency tree from a list @fds@ of flagged
+-- dependencies, using @f@ to form the tree node (@f@ will be
+-- something like @Stanza sn@).
+prefix :: (FlaggedDeps comp qpn -> FlaggedDep comp' qpn)
+       -> [FlaggedDeps comp qpn] -> FlaggedDeps comp' qpn
 prefix _ []  = []
 prefix f fds = [f (concat fds)]
 
