@@ -88,7 +88,10 @@ register pkg lbi regFlags =
     -- usefully (they're not public.)  If we start supporting scoped
     -- packages, we'll have to relax this.
     when (hasPublicLib pkg) $
-        withLib pkg (registerOne pkg lbi regFlags)
+        let maybeRegister (CLib lib) _clbi =
+                registerOne pkg lbi regFlags lib
+            maybeRegister _comp _clbi = return ()
+        in withAllComponentsInBuildOrder pkg lbi maybeRegister
 
 registerOne :: PackageDescription -> LocalBuildInfo -> RegisterFlags
             -> Library
