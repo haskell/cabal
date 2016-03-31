@@ -108,6 +108,8 @@ brokenPackages fakeMap index =
 -- | Compute all roots of the install plan, and verify that the transitive
 -- plans from those roots are all consistent.
 --
+-- NOTE: We check the consistency of libraries only (see note on 'rootSets').
+--
 -- NOTE: This does not check for dependency cycles. Moreover, dependency cycles
 -- may be absent from the subplans even if the larger plan contains a dependency
 -- cycle. Such cycles may or may not be an issue; either way, we don't check
@@ -122,20 +124,23 @@ dependencyInconsistencies fakeMap indepGoals index  =
   where
     subplans :: [PackageIndex pkg]
     subplans = rights $
-                 map (dependencyClosure fakeMap index)
+                 map (dependencyClosure CD.libraryDeps fakeMap index)
                      (rootSets fakeMap indepGoals index)
 
 -- | Compute the root sets of a plan
 --
 -- A root set is a set of packages whose dependency closure must be consistent.
 -- This is the set of all top-level library roots (taken together normally, or
--- as singletons sets if we are considering them as independent goals), along
--- with all setup dependencies of all packages.
+-- as singletons sets if we are considering them as independent goals).
+--
+-- We do not consider executables/testsuites/setup scripts/etc here, because
+-- we want to allow them to have inconsistent package choices (we might want
+-- to link two versions of a library into an executable undercertain
+-- circumstances). We insist on consistency only for libraries.
 rootSets :: (PackageFixedDeps pkg, HasUnitId pkg)
          => FakeMap -> Bool -> PackageIndex pkg -> [[UnitId]]
 rootSets fakeMap indepGoals index =
        if indepGoals then map (:[]) libRoots else [libRoots]
-    ++ setupRoots index
   where
     libRoots = libraryRoots fakeMap index
 
@@ -152,12 +157,6 @@ libraryRoots fakeMap index =
     indegree = Graph.indegree graph
     roots    = filter isRoot (Graph.vertices graph)
     isRoot v = indegree ! v == 0
-
--- | The setup dependencies of each package in the plan
-setupRoots :: PackageFixedDeps pkg => PackageIndex pkg -> [[UnitId]]
-setupRoots = filter (not . null)
-           . map (CD.setupDeps . depends)
-           . allPackages
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
@@ -234,20 +233,25 @@ dependencyCycles fakeMap index =
 
 -- | Tries to take the transitive closure of the package dependencies.
 --
+-- The function is parameterized by the kind of dependencies we should be
+-- considering.
+--
 -- If the transitive closure is complete then it returns that subset of the
 -- index. Otherwise it returns the broken packages as in 'brokenPackages'.
 --
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 dependencyClosure :: (PackageFixedDeps pkg, HasUnitId pkg)
-                  => FakeMap
+                  => (ComponentDeps [UnitId] -> [UnitId])
+                  -> FakeMap
                   -> PackageIndex pkg
                   -> [UnitId]
                   -> Either [(pkg, [UnitId])]
                             (PackageIndex pkg)
-dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
-  (completed, []) -> Right completed
-  (completed, _)  -> Left (brokenPackages fakeMap completed)
+dependencyClosure selectDeps fakeMap index pkgids0 =
+  case closure mempty [] pkgids0 of
+    (completed, []) -> Right completed
+    (completed, _)  -> Left (brokenPackages fakeMap completed)
  where
     closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) =
@@ -259,7 +263,7 @@ dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
             Just _  -> closure completed  failed pkgids
             Nothing -> closure completed' failed pkgids'
               where completed' = insert pkg completed
-                    pkgids'    = CD.nonSetupDeps (depends pkg) ++ pkgids
+                    pkgids'    = selectDeps (depends pkg) ++ pkgids
 
 
 -- | Builds a graph of the package dependencies.

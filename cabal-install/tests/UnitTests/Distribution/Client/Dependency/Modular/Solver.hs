@@ -44,6 +44,7 @@ tests = [
         , runTest $         mkTest db3 "forceFlagOff" ["D"]      (Just [("A", 2), ("B", 1), ("D", 1)])
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] Nothing
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] Nothing
+        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
           runTest $         mkTest db5 "simpleTest1" ["C"]      (Just [("A", 2), ("C", 1)])
@@ -75,9 +76,18 @@ tests = [
         , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
         ]
     , testGroup "Cycles" [
-          runTest $ mkTest db14 "simpleCycle1"         ["A"]      Nothing
-        , runTest $ mkTest db14 "simpleCycle2"         ["A", "B"] Nothing
-        , runTest $ mkTest db14 "cycleWithFlagChoice1" ["C"]      (Just [("C", 1), ("E", 1)])
+          runTest $ mkTest db14 "simpleCycle1"          ["A"]      Nothing
+        , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] Nothing
+        , runTest $ mkTest db14 "cycleWithFlagChoice1"  ["C"]      (Just [("C", 1), ("E", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep1" ["A"]      Nothing
+        , runTest $ mkTest db15 "cycleThroughSetupDep2" ["B"]      Nothing
+        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (Just [("C", 2), ("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (Just [("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (Just [("C", 2), ("D", 1), ("E", 1)])
+        , runTest $ mkTest db16 "cycleThroughTests1a"   ["B"]      (Just [           ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db17 "cycleThroughTests1b"   ["B"]      (Just [("A" , 1), ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db16 "cycleThroughTests2a"   ["B'"]     (Just [           ("A'", 2), ("B'", 1), ("T'", 1)])
+        , runTest $ mkTest db17 "cycleThroughTests2b"   ["B'"]     (Just [("A'", 1), ("A'", 2), ("B'", 1), ("T'", 1)])
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] Nothing
@@ -119,6 +129,10 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "0")] dbPC1 "tooOld" ["A"] Nothing
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
+        ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db19 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        , runTest $ indep $ mkTest db20 "indepGoals" ["D", "E", "F"] Nothing -- The target
         ]
     ]
   where
@@ -461,6 +475,220 @@ db14 = [
   , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
   , Right $ exAv "D" 1 [ExAny "C"]
   , Right $ exAv "E" 1 []
+  ]
+
+-- | Cycles through setup dependencies
+--
+-- The first cycle is unsolvable: package A has a setup dependency on B,
+-- B has a regular dependency on A, and we only have a single version available
+-- for both.
+--
+-- The second cycle can be broken by picking different versions: package C-2.0
+-- has a setup dependency on D, and D has a regular dependency on C-*. However,
+-- version C-1.0 is already available (perhaps it didn't have this setup dep).
+-- Thus, we should be able to break this cycle even if we are installing package
+-- E, which explictly depends on C-2.0.
+db15 :: ExampleDb
+db15 = [
+    -- First example (real cycle, no solution)
+    Right $ exAv   "A" 1            []            `withSetupDeps` [ExAny "B"]
+  , Right $ exAv   "B" 1            [ExAny "A"]
+    -- Second example (cycle can be broken by picking versions carefully)
+  , Left  $ exInst "C" 1 "C-1-inst" []
+  , Right $ exAv   "C" 2            []            `withSetupDeps` [ExAny "D"]
+  , Right $ exAv   "D" 1            [ExAny "C"  ]
+  , Right $ exAv   "E" 1            [ExFix "C" 2]
+  ]
+
+-- | Cycles through test cycles that can be broken if test suites dependencies
+-- are independent from dependencies of the library proper
+--
+-- This models situations such as the following:
+--
+-- * optparse-applicative (A) has a test suite that depends on tasty (T)
+-- * tasty (T) has a (regular) dependency on optparse-applicative
+--
+-- We can resolve this by linking optparse-applicative's test suite against an
+-- older version of itself.
+--
+-- Test suites can be written in two different ways:
+--
+-- * The test suite declares an explicit, internal, dependency on the library
+-- * The test suite compiles the library in directly (by adding the @/src@
+--   to the test suite's list of source directories, or whatever)
+--
+-- Whichever option is chosen, it is of course very important that the test
+-- suite gets compiled against /this/ version of the library. It would be
+-- terribly confusing if tests started failing because the test suite got built
+-- against an old version of the library from Hackage, rather than the version
+-- in the current directory. This happens by default if option (B) is chosen,
+-- but in the case of option (A) we need to make sure that the solver picks the
+-- right version (that is, /this/ version) for the internal dependency.
+--
+-- In the case of optparse-applicative's test suite, the tests should be
+-- linked against /this/ version of optparse-applicative; however, it is not
+-- essential that its transitive dependency on itself through tasty is also
+-- linked against the same version. Indeed, the only way to break the cycle is
+-- to link tasty against a /different/ version (typically an older, perhaps
+-- already installed, version).
+--
+-- This means that (again whichever method we chose) we will end up with two
+-- versions of the library in a single executable (the test suite): in the
+-- example, we will have both the version of optparse-applicative that we are
+-- testing as well as the older version that we linked tasty against. This does
+-- have the unfortunate consequence that if tasty does not re-export all
+-- functionality from optparse-applicative, it might mean that
+-- optparse-applicative cannot use tasty's full functionality because it cannot
+-- construct elements of types defined in the older version of
+-- optparse-applicative (as it can only import the newer version). What this
+-- means in practice is that if this feature becomes more popular, packages like
+-- tasty will have become more careful with their "private" dependencies,
+-- re-exporting the bits of optparse-applicative that it requires for its API.
+--
+-- Normally when we compile a library, we conservatively assume that all its
+-- transitive dependencies should be able to be used together. For test suites
+-- however we optimistically assume that any of the transitive dependencies
+-- of the "private" test suite dependencies are not used by the library and
+-- can therefore be different versions.
+--
+-- In this database we test both scenarios: A, T, B models the scenario where
+-- the test suite compiles in the library directly; A', T', B' models the
+-- scenario where the test suite declares the internal lib dependency.
+-- (B/B' is just there to force the version of A.) We expect the same
+-- solution in either case.
+db16 :: ExampleDb
+db16 = [
+    -- No internal dependency
+    Left  $ exInst "A" 1 "A-1" []
+  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "T" 1 [ExAny "A"]
+  , Right $ exAv "B" 1 [ExFix "A" 2]
+    -- With internal dependency
+  , Left  $ exInst "A'" 1 "A'-1" []
+  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "T'" 1 [ExAny "A'"]
+  , Right $ exAv "B'" 1 [ExFix "A'" 2]
+  ]
+
+-- | Like 'db16', but now with the older version of optparse-applicative (A)
+-- not yet installed
+--
+-- In this test we declare the older version of optparse-applicative (A) not
+-- to have any test suite dependencies. In reality, it might well have such
+-- dependencies, including a dependency on tasty and hence a recursive
+-- dependency on itself, but we simply wouldn't enable the test suite.
+-- We cannot test that here right now because the solver DSL requires all
+-- test suites to be built.
+db17 :: ExampleDb
+db17 = [
+    -- No internal dependency
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "T" 1 [ExAny "A"]
+  , Right $ exAv "B" 1 [ExFix "A" 2]
+    -- With internal dependency
+  , Right $ exAv "A'" 1 []
+  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "T'" 1 [ExAny "A'"]
+  , Right $ exAv "B'" 1 [ExFix "A'" 2]
+  ]
+
+-- | Check that the solver can backtrack after encountering the SIR
+--
+-- When A and B are installed as independent goals, the single instance
+-- restriction prevents B from depending on C.  This database tests that the
+-- solver can backtrack after encountering the single instance restriction and
+-- choose the only valid flag assignment (-flagA +flagB):
+--
+-- > flagA flagB  B depends on
+-- >  On    _     C-*
+-- >  Off   On    E-*               <-- only valid flag assignment
+-- >  Off   Off   D-2.0, C-*
+--
+-- Since A depends on C-* and D-1.0, and C-1.0 depends on any version of D,
+-- we must build C-1.0 against D-1.0. Since B depends on D-2.0, we cannot have
+-- C in the transitive closure of B's dependencies, because that would mean we
+-- would need two instances of C: one built against D-1.0 and one built against
+-- D-2.0.
+db19 :: ExampleDb
+db19 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ ExFix "D" 2
+                       , exFlag "flagA"
+                             [ExAny "C"]
+                             [exFlag "flagB"
+                                 [ExAny "E"]
+                                 [ExAny "C"]]]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  ]
+
+-- | When both A and B are installed as independent goals, their dependencies on
+-- C must be linked. The only combination of C's flags that is consistent with
+-- A and B's dependencies on D is -flagA +flagB. This database tests that the
+-- solver can backtrack to find the right combination of flags (requiring F, but
+-- not E or G) and apply it to both 0.C and 1.C.
+--
+-- > flagA flagB  C depends on
+-- >  On    _     D-1, E-*
+-- >  Off   On    F-*        <-- Only valid choice
+-- >  Off   Off   D-2, G-*
+--
+-- The single instance restriction means we cannot have one instance of C
+-- built against D-1 and one instance built against D-2; since A depends on
+-- D-1, and B depends on C-2, it is therefore important that C cannot depend
+-- on any version of D.
+db18 :: ExampleDb
+db18 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C", ExFix "D" 2]
+  , Right $ exAv "C" 1 [exFlag "flagA"
+                           [ExFix "D" 1, ExAny "E"]
+                           [exFlag "flagB"
+                               [ExAny "F"]
+                               [ExFix "D" 2, ExAny "G"]]]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  , Right $ exAv "F" 1 []
+  , Right $ exAv "G" 1 []
+  ]
+
+-- | Tricky test case with independent goals
+--
+-- Suppose we are installing D, E, and F as independent goals:
+--
+-- * D depends on A-* and C-1, requiring A-1 to be built against C-1
+-- * E depends on B-* and C-2, requiring B-1 to be built against C-2
+-- * F depends on A-* and B-*; this means we need A-1 and B-1 both to be built
+--     against the same version of C, violating the single instance restriction.
+--
+-- We can visualize this DB as:
+--
+-- >    C-1   C-2
+-- >    /|\   /|\
+-- >   / | \ / | \
+-- >  /  |  X  |  \
+-- > |   | / \ |   |
+-- > |   |/   \|   |
+-- > |   +     +   |
+-- > |   |     |   |
+-- > |   A     B   |
+-- >  \  |\   /|  /
+-- >   \ | \ / | /
+-- >    \|  V  |/
+-- >     D  F  E
+db20 :: ExampleDb
+db20 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
   ]
 
 dbExts1 :: ExampleDb

@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Distribution.Client.Dependency.Modular.Linking (
     addLinking
   , validateLinking
@@ -28,6 +29,7 @@ import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.Types (OptionalStanza(..))
 import Distribution.Client.ComponentDeps (Component)
@@ -187,7 +189,13 @@ type Conflict = (ConflictSet QPN, String)
 newtype UpdateState a = UpdateState {
     unUpdateState :: StateT ValidateState (Either Conflict) a
   }
-  deriving (Functor, Applicative, Monad, MonadState ValidateState)
+  deriving (Functor, Applicative, Monad)
+
+instance MonadState ValidateState UpdateState where
+  get    = UpdateState $ get
+  put st = UpdateState $ do
+             assert (lgInvariant $ vsLinks st) $ return ()
+             put st
 
 lift' :: Either Conflict a -> UpdateState a
 lift' = UpdateState . lift
@@ -217,28 +225,36 @@ pickConcrete qpn@(Q pp _) i = do
         makeCanonical lg qpn i
 
 pickLink :: QPN -> I -> PP -> FlaggedDeps comp QPN -> UpdateState ()
-pickLink qpn@(Q pp pn) i pp' deps = do
+pickLink qpn@(Q _pp pn) i pp' deps = do
     vs <- get
-    -- Find the link group for the package we are linking to, and add this package
+
+    -- The package might already be in a link group
+    -- (because one of its reverse dependencies is)
+    let lgSource = case M.lookup qpn (vsLinks vs) of
+                     Nothing -> lgSingleton qpn Nothing
+                     Just lg -> lg
+
+    -- Find the link group for the package we are linking to
     --
     -- Since the builder never links to a package without having first picked a
     -- concrete instance for that package, and since we create singleton link
     -- groups for concrete instances, this link group must exist (and must
     -- in fact already have a canonical member).
-    let lg = vsLinks vs ! Q pp' pn
+    let lgTarget = vsLinks vs ! Q pp' pn
 
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
     -- these checks would indicate a bug in the linker, not a true conflict.
     let sanityCheck :: Maybe (PI PP) -> Bool
         sanityCheck Nothing              = False
-        sanityCheck (Just (PI _ canonI)) = pn == lgPackage lg && i == canonI
-    assert (sanityCheck (lgCanon lg)) $ return ()
+        sanityCheck (Just (PI _ canonI)) = pn == lgPackage lgTarget && i == canonI
+    assert (sanityCheck (lgCanon lgTarget)) $ return ()
 
-    -- Since we already have a canonical member, we just need to add the new
-    -- member into the group
-    let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
-    updateLinkGroup lg'
+    -- Merge the two link groups (updateLinkGroup will propagate the change)
+    lgTarget' <- lift' $ lgMerge [] lgSource lgTarget
+    updateLinkGroup lgTarget'
+
+    -- Make sure all dependencies are linked as well
     linkDeps [P qpn] pp' deps
 
 makeCanonical :: LinkGroup -> QPN -> I -> UpdateState ()
@@ -246,7 +262,7 @@ makeCanonical lg qpn@(Q pp _) i =
     case lgCanon lg of
       -- There is already a canonical member. Fail.
       Just _ ->
-        conflict ( S.fromList (P qpn : lgBlame lg)
+        conflict ( CS.insert (P qpn) (lgBlame lg)
                  ,    "cannot make " ++ showQPN qpn
                    ++ " canonical member of " ++ showLinkGroup lg
                  )
@@ -401,7 +417,7 @@ verifyFlag' (FN (PI pn i) fn) lg = do
         vals  = map (`M.lookup` vsFlags vs) flags
     if allEqual (catMaybes vals) -- We ignore not-yet assigned flags
       then return ()
-      else conflict ( S.fromList (map F flags) `S.union` lgConflictSet lg
+      else conflict ( CS.fromList (map F flags) `CS.union` lgConflictSet lg
                     , "flag " ++ show fn ++ " incompatible"
                     )
 
@@ -419,7 +435,7 @@ verifyStanza' (SN (PI pn i) sn) lg = do
         vals    = map (`M.lookup` vsStanzas vs) stanzas
     if allEqual (catMaybes vals) -- We ignore not-yet assigned stanzas
       then return ()
-      else conflict ( S.fromList (map S stanzas) `S.union` lgConflictSet lg
+      else conflict ( CS.fromList (map S stanzas) `CS.union` lgConflictSet lg
                     , "stanza " ++ show sn ++ " incompatible"
                     )
 
@@ -452,9 +468,20 @@ data LinkGroup = LinkGroup {
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
       -- of the link group itself)
-    , lgBlame :: [Var QPN]
+    , lgBlame :: ConflictSet QPN
     }
-    deriving Show
+    deriving (Show, Eq)
+
+-- | Invariant for the set of link groups: every element in the link group
+-- must be pointing to the /same/ link group
+lgInvariant :: Map QPN LinkGroup -> Bool
+lgInvariant links = all invGroup (M.elems links)
+  where
+    invGroup :: LinkGroup -> Bool
+    invGroup lg = allEqual $ map (`M.lookup` links) members
+      where
+        members :: [QPN]
+        members = map (`Q` lgPackage lg) $ S.toList (lgMembers lg)
 
 -- | Package version of this group
 --
@@ -483,7 +510,7 @@ lgSingleton (Q pp pn) canon = LinkGroup {
       lgPackage = pn
     , lgCanon   = canon
     , lgMembers = S.singleton pp
-    , lgBlame   = []
+    , lgBlame   = CS.empty
     }
 
 lgMerge :: [Var QPN] -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
@@ -493,7 +520,7 @@ lgMerge blame lg lg' = do
         lgPackage = lgPackage lg
       , lgCanon   = canon
       , lgMembers = lgMembers lg `S.union` lgMembers lg'
-      , lgBlame   = blame ++ lgBlame lg ++ lgBlame lg'
+      , lgBlame   = CS.unions [CS.fromList blame, lgBlame lg, lgBlame lg']
       }
   where
     pick :: Eq a => Maybe a -> Maybe a -> Either Conflict (Maybe a)
@@ -502,8 +529,8 @@ lgMerge blame lg lg' = do
     pick Nothing  (Just y) = Right $ Just y
     pick (Just x) (Just y) =
       if x == y then Right $ Just x
-                else Left ( S.unions [
-                               S.fromList blame
+                else Left ( CS.unions [
+                               CS.fromList blame
                              , lgConflictSet lg
                              , lgConflictSet lg'
                              ]
@@ -512,7 +539,9 @@ lgMerge blame lg lg' = do
                           )
 
 lgConflictSet :: LinkGroup -> ConflictSet QPN
-lgConflictSet lg = S.fromList (map aux (S.toList (lgMembers lg)) ++ lgBlame lg)
+lgConflictSet lg =
+               CS.fromList (map aux (S.toList (lgMembers lg)))
+    `CS.union` lgBlame lg
   where
     aux pp = P (Q pp (lgPackage lg))
 

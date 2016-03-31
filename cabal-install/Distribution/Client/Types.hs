@@ -91,6 +91,8 @@ class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> ComponentDeps [UnitId]
 
 instance PackageFixedDeps InstalledPackageInfo where
+  -- TODO: This is wrong, it will ascribe the wrong package name to
+  -- an internal component.
   depends pkg = CD.fromInstalled (display (pkgName (packageId pkg)))
                                  (installedDepends pkg)
 

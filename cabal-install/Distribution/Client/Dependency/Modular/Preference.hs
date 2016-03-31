@@ -23,7 +23,6 @@ import qualified Data.Map as M
 import Data.Monoid
 import Control.Applicative
 #endif
-import qualified Data.Set as S
 import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
 import Data.Map (Map)
@@ -308,8 +307,8 @@ deferSetupChoices = trav go
     go x                = x
 
     noSetup :: OpenGoal comp -> Bool
-    noSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = False
-    noSetup _                                                 = True
+    noSetup (OpenGoal (Simple (Dep (Q (PP _ns (Setup _)) _) _) _) _) = False
+    noSetup _                                                        = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
@@ -373,13 +372,13 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
-      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
+      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) cs)
     go _otherwise =
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
-    goP qpn@(Q _ pn) (POption i linkedTo) r = do
+    goP :: QPN -> QGoalReasonChain -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP qpn@(Q _ pn) gr (POption i linkedTo) r = do
       let inst = PI pn i
       env <- ask
       case (linkedTo, M.lookup inst env) of
@@ -389,6 +388,6 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
         (Nothing, Nothing) ->
           -- Not linked, not already used
           local (M.insert inst qpn) r
-        (Nothing, Just qpn') -> do
+        (Nothing, Just _) -> do
           -- Not linked, already used. This is an error
-          return $ Fail (S.fromList [P qpn, P qpn']) MultipleInstances
+          return $ Fail (toConflictSet (Goal (P qpn) gr)) MultipleInstances

@@ -21,12 +21,13 @@ import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 type DetectCycles = Reader (ConflictSet QPN)
 
 -- | Find and reject any solutions that are cyclic
 detectCyclesPhase :: Tree QGoalReasonChain -> Tree QGoalReasonChain
-detectCyclesPhase = (`runReader` Set.empty) .  cata go
+detectCyclesPhase = (`runReader` CS.empty) .  cata go
   where
     -- Most cases are simple; we just need to remember which choices we made
     go :: TreeF QGoalReasonChain (DetectCycles (Tree QGoalReasonChain)) -> DetectCycles (Tree QGoalReasonChain)
@@ -65,7 +66,7 @@ findCycles fullSet revDeps = do
 -- | Construct the relevant conflict set given the full conflict set that
 -- lead to this decision and the set of packages involved in the cycle
 relevantConflictSet :: Set QPN -> ConflictSet QPN -> ConflictSet QPN
-relevantConflictSet cycle = Set.filter isRelevant
+relevantConflictSet cycle = CS.filter isRelevant
   where
     isRelevant :: Var QPN -> Bool
     isRelevant (P qpn)                  = qpn `Set.member` cycle

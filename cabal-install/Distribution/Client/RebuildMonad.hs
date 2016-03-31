@@ -125,7 +125,7 @@ rerunIfChanged verbosity rootDir monitor key action = do
 -- | Utility to match a file glob against the file system, starting from a
 -- given root directory. The results are all relative to the given root.
 --
--- Since this operates in the 'Rebuild' monad, it also monitrs the given glob
+-- Since this operates in the 'Rebuild' monad, it also monitors the given glob
 -- for changes.
 --
 matchFileGlob :: FilePath -> FilePathGlob -> Rebuild [FilePath]

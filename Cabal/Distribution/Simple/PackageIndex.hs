@@ -237,7 +237,7 @@ insert pkg (PackageIndex pids pnames) =
       pkg : deleteBy (equating installedUnitId) pkg pkgs
 
 
--- | Removes a single installed package from the index.
+-- | Removes a single component id from the index.
 --
 deleteUnitId :: HasUnitId a
              => UnitId -> PackageIndex a
