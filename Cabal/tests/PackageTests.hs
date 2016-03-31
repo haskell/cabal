@@ -187,10 +187,6 @@ main = do
                     (showPackageDbList (uninterpretPackageDBFlags
                                         packageDBStack0)))
 
-    -- Create a shared Setup executable to speed up Simple tests
-    putStrLn $ "Building shared ./Setup executable"
-    rawCompileSetup verbosity suite [] "tests"
-
     defaultMainWithIngredients options $
         runTestTree "Package Tests" (tests suite)
 
