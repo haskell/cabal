@@ -453,8 +453,7 @@ rawCompileSetup verbosity suite e path = do
     r <- rawRun verbosity (Just path) (ghcPath suite) e $
         [ "--make"] ++
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
-        [ "-hide-all-packages"
-        , "-package base"
+        [ "-hide-package Cabal"
 #ifdef LOCAL_COMPONENT_ID
         -- This is best, but we don't necessarily have it
         -- if we're bootstrapping with old Cabal.

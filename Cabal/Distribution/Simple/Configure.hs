@@ -127,6 +127,8 @@ import Text.PrettyPrint
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
+import Data.Graph (graphFromEdges, topSort)
+
 -- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
     = ConfigStateFileNoHeader -- ^ No header found.
@@ -1436,7 +1438,7 @@ mkComponentsGraph pkg_descr internalPkgDeps =
                 | c <- pkgEnabledComponents pkg_descr ]
      in case checkComponentsCyclic graph of
           Just ccycle -> Left  [ cname | (_,cname,_) <- ccycle ]
-          Nothing     -> Right [ (c, cdeps) | (c, _, cdeps) <- graph ]
+          Nothing     -> Right [ (c, cdeps) | (c, _, cdeps) <- topSortFromEdges graph ]
   where
     -- The dependencies for the given component
     componentDeps component =
@@ -1620,6 +1622,12 @@ computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId (ComponentId str
     | otherwise = str
 
 
+topSortFromEdges :: Ord key => [(node, key, [key])]
+                            -> [(node, key, [key])]
+topSortFromEdges es =
+    let (graph, vertexToNode, _) = graphFromEdges es
+    in reverse (map vertexToNode (topSort graph))
+
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> Compiler
                            -> InstalledPackageIndex
@@ -1635,14 +1643,15 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            graph flagAssignment =
     foldM go [] graph
   where
-    go :: [(ComponentLocalBuildInfo, [UnitId])]
-       -> (Component, [ComponentName])
-       -> IO [(ComponentLocalBuildInfo, [UnitId])]
-    go z (component, _) = do
+    go z (component, dep_cnames) = do
         clbi <- componentLocalBuildInfo z component
-        -- TODO: Maybe just store the internal deps in the clbi?
-        let dep_uids = map fst (filter (\(_,e) -> e `elem` internalPkgDeps)
-                                       (componentPackageDeps clbi))
+        -- NB: We want to preserve cdeps because it contains extra
+        -- information like build-tools ordering
+        let dep_uids = [ componentUnitId dep_clbi
+                       | cname <- dep_cnames
+                       -- Being in z relies on topsort!
+                       , (dep_clbi, _) <- z
+                       , componentLocalName dep_clbi == cname ]
         return ((clbi, dep_uids):z)
 
     -- The allPkgDeps contains all the package deps for the whole package

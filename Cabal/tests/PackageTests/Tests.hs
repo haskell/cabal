@@ -338,6 +338,12 @@ tests config = do
           cabal "build" ["myprog"]
           cabal "copy" ["myprog"]
 
+  -- Test internal custom preprocessor
+  tc "CustomPreProcess" $ do
+      cabal_build []
+      runExe' "hello-world" []
+        >>= assertOutputContains "hello from A"
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
