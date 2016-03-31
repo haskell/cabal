@@ -349,7 +349,7 @@ instance Monoid ModuleRenaming where
 
 instance Semigroup ModuleRenaming where
     ModuleRenaming b rns <> ModuleRenaming b' rns'
-        = ModuleRenaming (b || b') (rns ++ rns') -- ToDo: dedupe?
+        = ModuleRenaming (b || b') (rns ++ rns') -- TODO: dedupe?
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.

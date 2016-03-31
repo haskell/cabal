@@ -448,11 +448,11 @@ configure (pkg_descr0', pbi) cfg = do
     -- used in several ways:
     --
     --      * We'll use it to do a consistency check so we're not depending
-    --        on multiple versions of the same package (ToDo: someday relax
+    --        on multiple versions of the same package (TODO: someday relax
     --        this for private dependencies.)  See right below.
     --
     --      * We feed it in when configuring the components to resolve
-    --        module reexports.  (ToDo: axe this.)
+    --        module reexports.  (TODO: axe this.)
     --
     --      * We'll pass it on in the LocalBuildInfo, where preprocessors
     --        and other things will incorrectly use it to determine what
@@ -481,9 +481,9 @@ configure (pkg_descr0', pbi) cfg = do
     -- in the very original commit which introduced checking for
     -- inconsistencies 5115bb2be4e13841ea07dc9166b9d9afa5f0d012,
     -- and then moved out of PackageIndex and put here later.
-    -- ToDo: Try this code without it...
+    -- TODO: Try this code without it...
     --
-    -- ToDo: Move this into a helper function
+    -- TODO: Move this into a helper function
     let pseudoTopPkg :: InstalledPackageInfo
         pseudoTopPkg = emptyInstalledPackageInfo {
             Installed.installedUnitId =
@@ -508,7 +508,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- Compute installation directory templates, based on user
     -- configuration.
     --
-    -- ToDo: Move this into a helper function.
+    -- TODO: Move this into a helper function.
     defaultDirs :: InstallDirTemplates
         <- defaultInstallDirs (compilerFlavor comp)
                               (fromFlag (configUserInstall cfg))
@@ -518,7 +518,7 @@ configure (pkg_descr0', pbi) cfg = do
                         defaultDirs (configInstallDirs cfg)
 
     -- Check languages and extensions
-    -- ToDo: Move this into a helper function.
+    -- TODO: Move this into a helper function.
     let langlist = nub $ catMaybes $ map defaultLanguage
                    (allBuildInfo pkg_descr)
     let langs = unsupportedLanguages comp langlist
@@ -538,7 +538,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- Configure known/required programs & external build tools.
     -- Exclude build-tool deps on "internal" exes in the same package
     --
-    -- ToDo: Factor this into a helper package.
+    -- TODO: Factor this into a helper package.
     let requiredBuildTools =
           [ buildTool
           | let exeNames = map exeName (executables pkg_descr)
