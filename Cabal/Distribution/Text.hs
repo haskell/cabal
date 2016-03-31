@@ -13,6 +13,7 @@
 --
 module Distribution.Text (
   Text(..),
+  defaultStyle,
   display,
   simpleParse,
   render,

@@ -183,15 +183,15 @@ DEEPSEQ_VER="1.4.1.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
 BINARY_VER="0.8.2.1";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
-TEXT_VER="1.2.2.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
+TEXT_VER="1.2.2.1";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
-NETWORK_URI_VER="2.6.0.3"; NETWORK_URI_VER_REGEXP="2\.6\."
+NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
 CABAL_VER="1.25.0.0";  CABAL_VER_REGEXP="1\.25\.[0-9]"
                        # >= 1.25 && < 1.26
-TRANS_VER="0.5.1.0";   TRANS_VER_REGEXP="0\.[45]\."
+TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
                        #  >= 2.0 && < 3
@@ -205,13 +205,15 @@ RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
 STM_VER="2.4.4.1";     STM_VER_REGEXP="2\."
                        # == 2.*
+ASYNC_VER="2.1.0";     ASYNC_VER_REGEXP="2\."
+                       # 2.*
 OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
                        # >=1.0.0.0 && <1.2
 OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
 BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
                        # 0.1.1
-CRYPTOHASH_VER="0.11.6"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
+CRYPTOHASH_VER="0.11.7"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
                        # 0.11.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
@@ -399,18 +401,21 @@ info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 info_pkg "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-info_pkg "old-time"     ${OLD_TIME_VER} ${OLD_TIME_VER_REGEXP}
+info_pkg "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
-info_pkg "byteable"         ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
-info_pkg "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
-info_pkg "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
-info_pkg "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
-info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
+info_pkg "async"        ${ASYNC_VER}   ${ASYNC_VER_REGEXP}
+info_pkg "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+info_pkg "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
+info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
+info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
+    ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "hashable"          ${HASHABLE_VER}          ${HASHABLE_VER_REGEXP}
-info_pkg "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
+info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
+    ${HACKAGE_SECURITY_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
@@ -426,18 +431,21 @@ do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 do_network_uri_pkg
 
 do_pkg   "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
-do_pkg   "old-time"     ${OLD_TIME_VER} ${OLD_TIME_VER_REGEXP}
-do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
-do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
-do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
-do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
-do_pkg   "byteable"         ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
-do_pkg   "cryptohash"       ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
-do_pkg   "ed25519"          ${ED25519_VER}          ${ED25519_VER_REGEXP}
-do_pkg   "tar"              ${TAR_VER}              ${TAR_VER_REGEXP}
-do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} ${BASE64_BYTESTRING_VER_REGEXP}
-do_pkg   "hashable"         ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
-do_pkg   "hackage-security" ${HACKAGE_SECURITY_VER} ${HACKAGE_SECURITY_VER_REGEXP}
+do_pkg   "old-time"     ${OLD_TIME_VER}   ${OLD_TIME_VER_REGEXP}
+do_pkg   "HTTP"         ${HTTP_VER}       ${HTTP_VER_REGEXP}
+do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
+do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}
+do_pkg   "stm"          ${STM_VER}        ${STM_VER_REGEXP}
+do_pkg   "async"        ${ASYNC_VER}      ${ASYNC_VER_REGEXP}
+do_pkg   "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+do_pkg   "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
+do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
+do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
+    ${BASE64_BYTESTRING_VER_REGEXP}
+do_pkg   "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
+do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
+    ${HACKAGE_SECURITY_VER_REGEXP}
 
 
 install_pkg "cabal-install"

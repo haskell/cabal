@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -55,7 +56,6 @@ import Distribution.Text
 import Distribution.Compat.ReadP hiding (get)
 
 import Data.Char     (isSpace)
-import Data.Foldable (traverse_)
 import Data.Maybe    (listToMaybe, isJust)
 import Data.List     (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
@@ -741,14 +741,14 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (repos, flags, mcsetup, mlib, exes, tests, bms) <- getBody
+        (repos, flags, mcsetup, libs, exes, tests, bms) <- getBody pkg
         warnIfRest  -- warn if getBody did not parse up to the last field.
           -- warn about using old/new syntax with wrong cabal-version:
         maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
-        checkForUndefinedFlags flags mlib exes tests
+        checkForUndefinedFlags flags libs exes tests
         return $ GenericPackageDescription
                    pkg { sourceRepos = repos, setupBuildInfo = mcsetup }
-                   flags mlib exes tests bms
+                   flags libs exes tests bms
 
   where
     oldSyntax = all isSimpleField
@@ -848,17 +848,18 @@ parsePackageDescription file = do
         _ -> return (reverse acc)
 
     --
-    -- body ::= { repo | flag | library | executable | test }+   -- at most one lib
+    -- body ::= { repo | flag | library | executable | test }+
     --
     -- The body consists of an optional sequence of declarations of flags and
-    -- an arbitrary number of executables and at most one library.
-    getBody :: PM ([SourceRepo], [Flag]
+    -- an arbitrary number of libraries/executables/tests.
+    getBody :: PackageDescription
+            -> PM ([SourceRepo], [Flag]
                   ,Maybe SetupBuildInfo
-                  ,Maybe (CondTree ConfVar [Dependency] Library)
+                  ,[(String, CondTree ConfVar [Dependency] Library)]
                   ,[(String, CondTree ConfVar [Dependency] Executable)]
                   ,[(String, CondTree ConfVar [Dependency] TestSuite)]
                   ,[(String, CondTree ConfVar [Dependency] Benchmark)])
-    getBody = peekField >>= \mf -> case mf of
+    getBody pkg = peekField >>= \mf -> case mf of
       Just (Section line_no sec_type sec_label sec_fields)
         | sec_type == "executable" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -866,7 +867,7 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
             return (repos, flags, csetup, lib, (exename, flds): exes, tests, bms)
 
         | sec_type == "test-suite" -> do
@@ -907,7 +908,7 @@ parsePackageDescription file = do
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
-                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
                     return (repos, flags, csetup, lib, exes,
                             (testname, flds) : tests, bms)
                 else lift $ syntaxError line_no $
@@ -955,7 +956,7 @@ parsePackageDescription file = do
             if checkBenchmarkType emptyBenchmark flds
                 then do
                     skipField
-                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
                     return (repos, flags, csetup, lib, exes,
                             tests, (benchname, flds) : bms)
                 else lift $ syntaxError line_no $
@@ -966,14 +967,15 @@ parsePackageDescription file = do
                       ++ intercalate ", " (map display knownBenchmarkTypes)
 
         | sec_type == "library" -> do
-            unless (null sec_label) $ lift $
-              syntaxError line_no "'library' expects no argument"
+            libname <- if null sec_label
+                        then return (unPackageName (packageName pkg))
+                        -- TODO: relax this parsing so that scoping is handled
+                        -- correctly
+                        else lift $ runP line_no "library" parseTokenQ sec_label
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
-            when (isJust lib) $ lift $ syntaxError line_no
-              "There can only be one library section in a package description."
-            return (repos, flags, csetup, Just flds, exes, tests, bms)
+            (repos, flags, csetup, libs, exes, tests, bms) <- getBody pkg
+            return (repos, flags, csetup, (libname, flds) : libs, exes, tests, bms)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -984,7 +986,7 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
             return (repos, flag:flags, csetup, lib, exes, tests, bms)
 
         | sec_type == "source-repository" -> do
@@ -1009,7 +1011,7 @@ parsePackageDescription file = do
                     }
                     sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
             return (repo:repos, flags, csetup, lib, exes, tests, bms)
 
         | sec_type == "custom-setup" -> do
@@ -1021,7 +1023,7 @@ parsePackageDescription file = do
                              mempty
                              sec_fields
             skipField
-            (repos, flags, csetup0, lib, exes, tests, bms) <- getBody
+            (repos, flags, csetup0, lib, exes, tests, bms) <- getBody pkg
             when (isJust csetup0) $ lift $ syntaxError line_no
               "There can only be one 'custom-setup' section in a package description."
             return (repos, flags, Just flds, lib, exes, tests, bms)
@@ -1029,18 +1031,18 @@ parsePackageDescription file = do
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
             skipField
-            getBody
+            getBody pkg
       Just f@(F {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "Plain fields are not allowed in between stanzas: " ++ show f
             skipField
-            getBody
+            getBody pkg
       Just f@(IfBlock {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
-            getBody
-      Nothing -> return ([], [], Nothing, Nothing, [], [], [])
+            getBody pkg
+      Nothing -> return ([], [], Nothing, [], [], [], [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
@@ -1117,13 +1119,13 @@ parsePackageDescription file = do
 
     checkForUndefinedFlags ::
         [Flag] ->
-        Maybe (CondTree ConfVar [Dependency] Library) ->
+        [(String, CondTree ConfVar [Dependency] Library)] ->
         [(String, CondTree ConfVar [Dependency] Executable)] ->
         [(String, CondTree ConfVar [Dependency] TestSuite)] ->
         PM ()
-    checkForUndefinedFlags flags mlib exes tests = do
+    checkForUndefinedFlags flags libs exes tests = do
         let definedFlags = map flagName flags
-        traverse_ (checkCondTreeFlags definedFlags) mlib
+        mapM_ (checkCondTreeFlags definedFlags . snd) libs
         mapM_ (checkCondTreeFlags definedFlags . snd) exes
         mapM_ (checkCondTreeFlags definedFlags . snd) tests
 
@@ -1200,24 +1202,39 @@ deprecField _ = cabalBug "'deprecField' called on a non-field"
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   fields <- readFields inp
-  let ss@(mLibFields:exes) = stanzas fields
+  let (mLibFields:rest) = stanzas fields
   mLib <- parseLib mLibFields
-  biExes <- mapM parseExe (maybe ss (const exes) mLib)
-  return (mLib, biExes)
+  foldM parseStanza mLib rest
   where
-    parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
+    -- For backwards compatibility, if you have a bare stanza,
+    -- we assume it's part of the public library.  We don't
+    -- know what the name is, so the people using the HookedBuildInfo
+    -- have to handle this carefully.
+    parseLib :: [Field] -> ParseResult [(ComponentName, BuildInfo)]
     parseLib (bi@(F _ inFieldName _:_))
-        | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
-    parseLib _ = return Nothing
+        | lowercase inFieldName /= "executable" &&
+          lowercase inFieldName /= "library" &&
+          lowercase inFieldName /= "benchmark" &&
+          lowercase inFieldName /= "test-suite"
+            = liftM (\bis -> [(CLibName "", bis)]) (parseBI bi)
+    parseLib _ = return []
 
-    parseExe :: [Field] -> ParseResult (String, BuildInfo)
-    parseExe (F line inFieldName mName:bi)
-        | lowercase inFieldName == "executable"
-            = do bis <- parseBI bi
-                 return (mName, bis)
-        | otherwise = syntaxError line "expecting 'executable' at top of stanza"
-    parseExe (_:_) = cabalBug "`parseExe' called on a non-field"
-    parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
+    parseStanza :: HookedBuildInfo -> [Field] -> ParseResult HookedBuildInfo
+    parseStanza bis (F line inFieldName mName:bi)
+        | Just k <- case lowercase inFieldName of
+                        "executable" -> Just CExeName
+                        "library"    -> Just CLibName
+                        "benchmark"  -> Just CBenchName
+                        "test-suite" -> Just CTestName
+                        _ -> Nothing
+            = do bi' <- parseBI bi
+                 return ((k mName, bi'):bis)
+        | otherwise
+            = syntaxError line $
+                "expecting 'executable', 'library', 'benchmark' or 'test-suite' " ++
+                "at top of stanza, but got '" ++ inFieldName ++ "'"
+    parseStanza _ (_:_) = cabalBug "`parseStanza' called on a non-field"
+    parseStanza _ [] = syntaxError 0 "error in parsing buildinfo file. Expected stanza"
 
     parseBI st = parseFields binfoFieldDescrs storeXFieldsBI emptyBuildInfo st
 
@@ -1233,9 +1250,7 @@ showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
      ppPackage pkg
   $$ ppCustomFields (customFieldsPD pkg)
-  $$ (case library pkg of
-        Nothing  -> empty
-        Just lib -> ppLibrary lib)
+  $$ vcat [ space $$ ppLibrary lib | lib <- libraries pkg ]
   $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
   where
     ppPackage    = ppFields pkgDescrFieldDescrs
@@ -1253,15 +1268,16 @@ writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
                              . showHookedBuildInfo
 
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
-     (case mb_lib_bi of
-        Nothing -> empty
-        Just bi -> ppBuildInfo bi)
-  $$ vcat [    space
-            $$ text "executable:" <+> text name
+showHookedBuildInfo bis = render $
+     vcat [    space
+            $$ ppName name
             $$ ppBuildInfo bi
-          | (name, bi) <- ex_bis ]
+          | (name, bi) <- bis ]
   where
+    ppName (CLibName name) = text "library:" <+> text name
+    ppName (CExeName name) = text "executable:" <+> text name
+    ppName (CTestName name) = text "test-suite:" <+> text name
+    ppName (CBenchName name) = text "benchmark:" <+> text name
     ppBuildInfo bi = ppFields binfoFieldDescrs bi
                   $$ ppCustomFields (customFieldsBI bi)
 

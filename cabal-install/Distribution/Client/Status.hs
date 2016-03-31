@@ -73,6 +73,7 @@ import Distribution.PackageDescription        ( GenericPackageDescription(..)
 import Distribution.InstalledPackageInfo      ( InstalledPackageInfo(..) )
 import Distribution.Package
 import Distribution.Verbosity
+import Distribution.Client.PkgConfigDb        ( readPkgConfigDb )
 
 import qualified Distribution.Simple.Setup as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as LBI
@@ -94,8 +95,6 @@ import Control.Monad                          ( when
                                               , forM_
                                               )
 import Data.Version                           ( showVersion
-                                              )
-import Data.Maybe                             ( isJust
                                               )
 import Data.List                              ( groupBy
                                               , sortBy
@@ -286,8 +285,8 @@ status verbosity globalFlags statusFlags = do
             packName = unPackageName $ pkgName $ package $ packageDesc
         let components :: [String]
             components =
-              (  [ "Library \"" ++ packName ++ "\""
-                 | isJust (condLibrary ppd) ]
+              (  [ "Library \"" ++ fst l ++ "\""
+                 | l <- condLibraries ppd]
               ++ [ "Executable \"" ++ fst e ++ "\""
                  | e <- condExecutables ppd]
               ++ [ "Testsuite \"" ++ fst t ++ "\""
@@ -324,6 +323,7 @@ status verbosity globalFlags statusFlags = do
                              (Cabal.fromFlag $ globalWorldFile globalFlags')
                              (packageIndex sourcePkgDb)
                              [UserTargetLocalDir "."]
+    pkgConfigDb       <- readPkgConfigDb      verbosity conf
     maybeWithSandboxPackageInfo
       (lessVerbose verbosity)
       (savedConfigureFlags config)
@@ -341,6 +341,7 @@ status verbosity globalFlags statusFlags = do
             defaultFreezeFlags
             installedPkgIndex
             sourcePkgDb
+            pkgConfigDb
             pkgSpecifiers
           planPkgs `forM_` \pkg -> 
             let pid = (packageId pkg)

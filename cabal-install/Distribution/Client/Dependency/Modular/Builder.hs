@@ -61,6 +61,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
           -- code above is correct; insert/adjust have different arg order
     go g o (   (OpenGoal (Simple (Ext _ext ) _) _gr) : ngs) = go g o ngs
     go g o (   (OpenGoal (Simple (Lang _lang)_) _gr) : ngs) = go g o ngs
+    go g o (   (OpenGoal (Simple (Pkg _pn _vr)_) _gr) : ngs)= go g o ngs
 
     cons' = P.cons . forgetCompOpenGoal
 
@@ -121,6 +122,8 @@ build = ana go
       error "Distribution.Client.Dependency.Modular.Builder: build.go called with Ext goal"
     go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Lang _            ) _) _ ) }) =
       error "Distribution.Client.Dependency.Modular.Builder: build.go called with Lang goal"
+    go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
+      error "Distribution.Client.Dependency.Modular.Builder: build.go called with Pkg goal"
     go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _) _) gr) }) =
       case M.lookup pn idx of
         Nothing  -> FailF (toConflictSet (Goal (P qpn) gr)) (BuildFailureNotInIndex pn)

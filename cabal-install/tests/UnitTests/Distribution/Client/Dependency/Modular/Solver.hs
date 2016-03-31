@@ -18,6 +18,8 @@ import Language.Haskell.Extension ( Extension(..)
                                   , KnownExtension(..), Language(..))
 
 -- cabal-install
+import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
+import Distribution.Client.Dependency.Types (Solver(Modular))
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 import UnitTests.Options
 
@@ -72,6 +74,11 @@ tests = [
         , runTest $ mkTest db12 "baseShim5" ["D"] Nothing
         , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
         ]
+    , testGroup "Cycles" [
+          runTest $ mkTest db14 "simpleCycle1"         ["A"]      Nothing
+        , runTest $ mkTest db14 "simpleCycle2"         ["A", "B"] Nothing
+        , runTest $ mkTest db14 "cycleWithFlagChoice1" ["C"]      (Just [("C", 1), ("E", 1)])
+        ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] Nothing
         , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupportedIndirect" ["B"] Nothing
@@ -106,10 +113,16 @@ tests = [
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
         , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (Just [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (Just [("A", 1), ("B", 2)])
+         ]
+    , testGroup "Pkg-config dependencies" [
+          runTest $ mkTestPCDepends [] dbPC1 "noPkgs" ["A"] Nothing
+        , runTest $ mkTestPCDepends [("pkgA", "0")] dbPC1 "tooOld" ["A"] Nothing
+        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
     ]
   where
-    indep test      = test { testIndepGoals = True }
+    indep test      = test { testIndepGoals = IndepGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
@@ -123,11 +136,12 @@ data SolverTest = SolverTest {
     testLabel          :: String
   , testTargets        :: [String]
   , testResult         :: Maybe [(String, Int)]
-  , testIndepGoals     :: Bool
+  , testIndepGoals     :: IndepGoals
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
+  , testPkgConfigDb    :: PkgConfigDb
   }
 
 mkTest :: ExampleDb
@@ -135,7 +149,7 @@ mkTest :: ExampleDb
        -> [String]
        -> Maybe [(String, Int)]
        -> SolverTest
-mkTest = mkTestExtLang Nothing Nothing
+mkTest = mkTestExtLangPC Nothing Nothing []
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -143,7 +157,7 @@ mkTestExts :: [Extension]
            -> [String]
            -> Maybe [(String, Int)]
            -> SolverTest
-mkTestExts exts = mkTestExtLang (Just exts) Nothing
+mkTestExts exts = mkTestExtLangPC (Just exts) Nothing []
 
 mkTestLangs :: [Language]
             -> ExampleDb
@@ -151,31 +165,43 @@ mkTestLangs :: [Language]
             -> [String]
             -> Maybe [(String, Int)]
             -> SolverTest
-mkTestLangs = mkTestExtLang Nothing . Just
+mkTestLangs langs = mkTestExtLangPC Nothing (Just langs) []
 
-mkTestExtLang :: Maybe [Extension]
-              -> Maybe [Language]
-              -> ExampleDb
-              -> String
-              -> [String]
-              -> Maybe [(String, Int)]
-              -> SolverTest
-mkTestExtLang exts langs db label targets result = SolverTest {
+mkTestPCDepends :: [(String, String)]
+                -> ExampleDb
+                -> String
+                -> [String]
+                -> Maybe [(String, Int)]
+                -> SolverTest
+mkTestPCDepends pkgConfigDb = mkTestExtLangPC Nothing Nothing pkgConfigDb
+
+mkTestExtLangPC :: Maybe [Extension]
+                -> Maybe [Language]
+                -> [(String, String)]
+                -> ExampleDb
+                -> String
+                -> [String]
+                -> Maybe [(String, Int)]
+                -> SolverTest
+mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
     testLabel          = label
   , testTargets        = targets
   , testResult         = result
-  , testIndepGoals     = False
+  , testIndepGoals     = IndepGoals False
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
   , testSupportedLangs = langs
+  , testPkgConfigDb    = pkgConfigDbFromList pkgConfigDb
   }
 
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let (_msgs, result) = exResolve testDb testSupportedExts testSupportedLangs
-                            testTargets testIndepGoals testSoftConstraints
+      let (_msgs, result) = exResolve testDb testSupportedExts
+                            testSupportedLangs testPkgConfigDb testTargets
+                            Modular testIndepGoals (ReorderGoals False)
+                            testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (isNothing testResult)
@@ -423,6 +449,20 @@ db13 = [
   , Right $ exAv "A" 3 []
   ]
 
+-- | Database with some cycles
+--
+-- * Simplest non-trivial cycle: A -> B and B -> A
+-- * There is a cycle C -> D -> C, but it can be broken by picking the
+--   right flag assignment.
+db14 :: ExampleDb
+db14 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "A"]
+  , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
+  , Right $ exAv "D" 1 [ExAny "C"]
+  , Right $ exAv "E" 1 []
+  ]
+
 dbExts1 :: ExampleDb
 dbExts1 = [
     Right $ exAv "A" 1 [ExExt (EnableExtension RankNTypes)]
@@ -444,7 +484,7 @@ dbLangs1 = [
 -- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
-    runTest $ mkTestExtLang (Just []) (Just []) db testName ["pkg"] expected
+    runTest $ mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
   where
     expected = Just [("false-dep", 1), ("pkg", 1)]
     db = [
@@ -479,6 +519,15 @@ dbBuildable1 = [
   , Right $ exAv "flag1-false" 1 []
   , Right $ exAv "flag2-true" 1 []
   , Right $ exAv "flag2-false" 1 []
+  ]
+
+-- | Package databases for testing @pkg-config@ dependencies.
+dbPC1 :: ExampleDb
+dbPC1 = [
+    Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
+  , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
+  , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
 -- | cabal must pick B-2 to avoid the unknown dependency.

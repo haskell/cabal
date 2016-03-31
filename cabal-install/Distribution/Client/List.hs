@@ -43,7 +43,8 @@ import Distribution.Text
          ( Text(disp), display )
 
 import Distribution.Client.Types
-         ( SourcePackage(..), SourcePackageDb(..) )
+         ( SourcePackage(..), SourcePackageDb(..)
+         , UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
 import Distribution.Client.Targets
@@ -90,7 +91,7 @@ getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
         pkgsInfo ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfo
             -- gather info for all packages
           | null pats = mergePackages
@@ -101,7 +102,7 @@ getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
           | otherwise = pkgsInfoMatching
 
         pkgsInfoMatching ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+          [(PackageName, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])]
         pkgsInfoMatching =
           let matchingInstalled = matchingPackages
                                   InstalledPackageIndex.searchByNameSubstring
@@ -206,8 +207,8 @@ info verbosity packageDBs repoCtxt comp conf
   where
     gatherPkgInfo :: (PackageName -> VersionRange) ->
                      InstalledPackageIndex ->
-                     PackageIndex.PackageIndex SourcePackage ->
-                     PackageSpecifier SourcePackage ->
+                     PackageIndex.PackageIndex UnresolvedSourcePackage ->
+                     PackageSpecifier UnresolvedSourcePackage ->
                      Either String PackageDisplayInfo
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
       (NamedPackage name constraints)
@@ -251,8 +252,8 @@ sourcePkgsInfo ::
   (PackageName -> VersionRange)
   -> PackageName
   -> InstalledPackageIndex
-  -> PackageIndex.PackageIndex SourcePackage
-  -> (VersionRange, [Installed.InstalledPackageInfo], [SourcePackage])
+  -> PackageIndex.PackageIndex UnresolvedSourcePackage
+  -> (VersionRange, [Installed.InstalledPackageInfo], [UnresolvedSourcePackage])
 sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
   (pref, installedPkgs, sourcePkgs)
   where
@@ -268,7 +269,7 @@ sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgName           :: PackageName,
     selectedVersion   :: Maybe Version,
-    selectedSourcePkg :: Maybe SourcePackage,
+    selectedSourcePkg :: Maybe UnresolvedSourcePackage,
     installedVersions :: [Version],
     sourceVersions    :: [Version],
     preferredVersions :: VersionRange,
@@ -417,8 +418,8 @@ reflowLines = vcat . map text . lines
 --
 mergePackageInfo :: VersionRange
                  -> [Installed.InstalledPackageInfo]
-                 -> [SourcePackage]
-                 -> Maybe SourcePackage
+                 -> [UnresolvedSourcePackage]
+                 -> Maybe UnresolvedSourcePackage
                  -> Bool
                  -> PackageDisplayInfo
 mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
@@ -456,13 +457,13 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     flags        = maybe [] Source.genPackageFlags sourceGeneric,
     hasLib       = isJust installed
                 || fromMaybe False
-                   (fmap (isJust . Source.condLibrary) sourceGeneric),
+                   (fmap (not . null . Source.condLibraries) sourceGeneric),
     hasExe       = fromMaybe False
                    (fmap (not . null . Source.condExecutables) sourceGeneric),
     executables  = map fst (maybe [] Source.condExecutables sourceGeneric),
     modules      = combine (map Installed.exposedName . Installed.exposedModules)
                            installed
-                           (maybe [] getListOfExposedModules . Source.library)
+                           (concatMap getListOfExposedModules . Source.libraries)
                            source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)
@@ -520,10 +521,10 @@ latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
 -- both be empty.
 --
 mergePackages :: [Installed.InstalledPackageInfo]
-              -> [SourcePackage]
+              -> [UnresolvedSourcePackage]
               -> [( PackageName
                   , [Installed.InstalledPackageInfo]
-                  , [SourcePackage] )]
+                  , [UnresolvedSourcePackage] )]
 mergePackages installedPkgs sourcePkgs =
     map collect
   $ mergeBy (\i a -> fst i `compare` fst a)

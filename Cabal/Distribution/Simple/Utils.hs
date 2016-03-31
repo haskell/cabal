@@ -269,7 +269,7 @@ topHandlerWith cont prog =
     handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (message pname se)
+      hPutStr stderr (wrapText (message pname se))
       cont se
 
     message :: String -> Exception.SomeException -> String
@@ -283,7 +283,7 @@ topHandlerWith cont prog =
                                l@(n:_) | Char.isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
-          in wrapText (pname ++ ": " ++ file ++ detail)
+          in pname ++ ": " ++ file ++ detail
         Nothing ->
 #if __GLASGOW_HASKELL__ < 710
           show se
@@ -738,12 +738,12 @@ findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
                -> [String]    -- ^ search suffixes
                -> ModuleName  -- ^ module
                -> IO (FilePath, FilePath)
-findModuleFile searchPath extensions moduleName =
+findModuleFile searchPath extensions mod_name =
       maybe notFound return
   =<< findFileWithExtension' extensions searchPath
-                             (ModuleName.toFilePath moduleName)
+                             (ModuleName.toFilePath mod_name)
   where
-    notFound = die $ "Error: Could not find module: " ++ display moduleName
+    notFound = die $ "Error: Could not find module: " ++ display mod_name
                   ++ " with any suffix: " ++ show extensions
                   ++ " in the search path: " ++ show searchPath
 

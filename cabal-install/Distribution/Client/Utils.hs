@@ -63,7 +63,7 @@ import GHC.IO.Encoding.Failure
          ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
 #endif
 
-#if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import Prelude hiding (ioError)
 import Control.Monad (liftM2, unless)
 import System.Directory (doesDirectoryExist)
@@ -225,13 +225,12 @@ byteStringToFilePath bs | bslen `mod` 4 /= 0 = unexpected
         b2 = fromIntegral $ BS.index bs (i + 2)
         b3 = fromIntegral $ BS.index bs (i + 3)
 
--- | Workaround for the inconsistent behaviour of 'canonicalizePath'. It throws
--- an error if the path refers to a non-existent file on *nix, but not on
--- Windows.
+-- | Workaround for the inconsistent behaviour of 'canonicalizePath'. Always
+-- throws an error if the path refers to a non-existent file.
 tryCanonicalizePath :: FilePath -> IO FilePath
 tryCanonicalizePath path = do
   ret <- canonicalizePath path
-#if defined(mingw32_HOST_OS)
+#if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
   exists <- liftM2 (||) (doesFileExist ret) (doesDirectoryExist ret)
   unless exists $
     ioError $ mkIOError doesNotExistErrorType "canonicalizePath"

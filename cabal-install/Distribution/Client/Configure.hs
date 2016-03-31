@@ -27,6 +27,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
+import Distribution.Client.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags
          , RepoContext(..) )
@@ -62,7 +63,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( warn, notice, info, debug, die )
+         ( warn, notice, debug, die )
 import Distribution.Simple.Setup
          ( isAllowNewer )
 import Distribution.System
@@ -110,19 +111,21 @@ configure verbosity packageDBs repoCtxt comp platform conf
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+  pkgConfigDb       <- readPkgConfigDb      verbosity conf
+
   checkConfigExFlags verbosity installedPkgIndex
                      (packageIndex sourcePkgDb) configExFlags
 
   progress <- planLocalPackage verbosity comp platform configFlags configExFlags
-                               installedPkgIndex sourcePkgDb
+                               installedPkgIndex sourcePkgDb pkgConfigDb
 
   notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress logMsg (return . Left) (return . Right)
                             progress
   case maybePlan of
     Left message -> do
-      info verbosity $
-           "Warning: solver failed to find a solution:\n"
+      warn verbosity $
+           "solver failed to find a solution:\n"
         ++ message
         ++ "Trying configure anyway."
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
@@ -269,10 +272,10 @@ planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
                  -> InstalledPackageIndex
                  -> SourcePackageDb
+                 -> PkgConfigDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags
-  installedPkgIndex
-  (SourcePackageDb _ packagePrefs) = do
+  installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
             (compilerInfo comp)
@@ -326,7 +329,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies platform (compilerInfo comp) solver resolverParams)
+  return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

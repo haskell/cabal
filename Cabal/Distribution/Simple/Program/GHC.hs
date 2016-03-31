@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
@@ -27,6 +29,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
+import GHC.Generics (Generic)
 import qualified Data.Map as M
 
 -- | A structured set of GHC options/flags
@@ -80,11 +83,10 @@ data GhcOptions = GhcOptions {
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
 
-  -- | The GHC packages to use. For compatability with old and new ghc, this
-  -- requires both the short and long form of the package id;
-  -- the @ghc -package@ or @ghc -package-id@ flags.
+  -- | The GHC packages to bring into scope when compiling,
+  -- the @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (UnitId, PackageId, ModuleRenaming),
+    NubListR (UnitId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -211,7 +213,7 @@ data GhcOptions = GhcOptions {
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
 
-} deriving Show
+} deriving (Show, Generic)
 
 
 data GhcMode = GhcModeCompile     -- ^ @ghc -c@
@@ -276,8 +278,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
   , maybe [] verbosityOpts (flagToMaybe (ghcOptVerbosity opts))
 
-  , [ "-fbuilding-cabal-package" | flagBool ghcOptCabal
-                                 , flagBuildingCabalPkg implInfo ]
+  , [ "-fbuilding-cabal-package" | flagBool ghcOptCabal ]
 
   ----------------
   -- Compilation
@@ -339,12 +340,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , concat [ ["-hisuf",   suf] | suf <- flag ghcOptHiSuffix  ]
   , concat [ ["-dynosuf", suf] | suf <- flag ghcOptDynObjSuffix ]
   , concat [ ["-dynhisuf",suf] | suf <- flag ghcOptDynHiSuffix  ]
-  , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir
-                                 , flagOutputDir implInfo ]
+  , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir ]
   , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
   , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
-  , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir
-                               , flagStubdir implInfo ]
+  , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir ]
 
   -----------------------
   -- Source search path
@@ -359,8 +358,6 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
   , concat [ [ "-optP-include", "-optP" ++ inc]
            | inc <- flags ghcOptCppIncludes ]
-  , [ "-#include \"" ++ inc ++ "\""
-    | inc <- flags ghcOptFfiIncludes, flagFfiIncludes implInfo ]
   , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
 
   -----------------
@@ -397,13 +394,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
 
   , packageDbArgs implInfo (ghcOptPackageDBs opts)
 
-  , concat $ if flagPackageId implInfo
-      then let space "" = ""
-               space xs = ' ' : xs
-           in [ ["-package-id", display ipkgid ++ space (display rns)]
-              | (ipkgid,_,rns) <- flags ghcOptPackages ]
-      else [ ["-package",    display  pkgid]
-           | (_,pkgid,_)  <- flags ghcOptPackages ]
+  , concat $ let space "" = ""
+                 space xs = ' ' : xs
+             in [ ["-package-id", display ipkgid ++ space (display rns)]
+                | (ipkgid,rns) <- flags ghcOptPackages ]
 
   ----------------------------
   -- Language and extensions
@@ -496,116 +490,8 @@ packageDbArgs implInfo
 -- Boilerplate Monoid instance for GhcOptions
 
 instance Monoid GhcOptions where
-  mempty = GhcOptions {
-    ghcOptMode               = mempty,
-    ghcOptExtra              = mempty,
-    ghcOptExtraDefault       = mempty,
-    ghcOptInputFiles         = mempty,
-    ghcOptInputModules       = mempty,
-    ghcOptOutputFile         = mempty,
-    ghcOptOutputDynFile      = mempty,
-    ghcOptSourcePathClear    = mempty,
-    ghcOptSourcePath         = mempty,
-    ghcOptThisUnitId         = mempty,
-    ghcOptPackageDBs         = mempty,
-    ghcOptPackages           = mempty,
-    ghcOptHideAllPackages    = mempty,
-    ghcOptNoAutoLinkPackages = mempty,
-    ghcOptLinkLibs           = mempty,
-    ghcOptLinkLibPath        = mempty,
-    ghcOptLinkOptions        = mempty,
-    ghcOptLinkFrameworks     = mempty,
-    ghcOptLinkFrameworkDirs  = mempty,
-    ghcOptNoLink             = mempty,
-    ghcOptLinkNoHsMain       = mempty,
-    ghcOptCcOptions          = mempty,
-    ghcOptCppOptions         = mempty,
-    ghcOptCppIncludePath     = mempty,
-    ghcOptCppIncludes        = mempty,
-    ghcOptFfiIncludes        = mempty,
-    ghcOptLanguage           = mempty,
-    ghcOptExtensions         = mempty,
-    ghcOptExtensionMap       = mempty,
-    ghcOptOptimisation       = mempty,
-    ghcOptDebugInfo          = mempty,
-    ghcOptProfilingMode      = mempty,
-    ghcOptProfilingAuto      = mempty,
-    ghcOptSplitObjs          = mempty,
-    ghcOptNumJobs            = mempty,
-    ghcOptHPCDir             = mempty,
-    ghcOptGHCiScripts        = mempty,
-    ghcOptHiSuffix           = mempty,
-    ghcOptObjSuffix          = mempty,
-    ghcOptDynHiSuffix        = mempty,
-    ghcOptDynObjSuffix       = mempty,
-    ghcOptHiDir              = mempty,
-    ghcOptObjDir             = mempty,
-    ghcOptOutputDir          = mempty,
-    ghcOptStubDir            = mempty,
-    ghcOptDynLinkMode        = mempty,
-    ghcOptShared             = mempty,
-    ghcOptFPic               = mempty,
-    ghcOptDylibName          = mempty,
-    ghcOptRPaths             = mempty,
-    ghcOptVerbosity          = mempty,
-    ghcOptCabal              = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup GhcOptions where
-  a <> b = GhcOptions {
-    ghcOptMode               = combine ghcOptMode,
-    ghcOptExtra              = combine ghcOptExtra,
-    ghcOptExtraDefault       = combine ghcOptExtraDefault,
-    ghcOptInputFiles         = combine ghcOptInputFiles,
-    ghcOptInputModules       = combine ghcOptInputModules,
-    ghcOptOutputFile         = combine ghcOptOutputFile,
-    ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
-    ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
-    ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptThisUnitId         = combine ghcOptThisUnitId,
-    ghcOptPackageDBs         = combine ghcOptPackageDBs,
-    ghcOptPackages           = combine ghcOptPackages,
-    ghcOptHideAllPackages    = combine ghcOptHideAllPackages,
-    ghcOptNoAutoLinkPackages = combine ghcOptNoAutoLinkPackages,
-    ghcOptLinkLibs           = combine ghcOptLinkLibs,
-    ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
-    ghcOptLinkOptions        = combine ghcOptLinkOptions,
-    ghcOptLinkFrameworks     = combine ghcOptLinkFrameworks,
-    ghcOptLinkFrameworkDirs  = combine ghcOptLinkFrameworkDirs,
-    ghcOptNoLink             = combine ghcOptNoLink,
-    ghcOptLinkNoHsMain       = combine ghcOptLinkNoHsMain,
-    ghcOptCcOptions          = combine ghcOptCcOptions,
-    ghcOptCppOptions         = combine ghcOptCppOptions,
-    ghcOptCppIncludePath     = combine ghcOptCppIncludePath,
-    ghcOptCppIncludes        = combine ghcOptCppIncludes,
-    ghcOptFfiIncludes        = combine ghcOptFfiIncludes,
-    ghcOptLanguage           = combine ghcOptLanguage,
-    ghcOptExtensions         = combine ghcOptExtensions,
-    ghcOptExtensionMap       = combine ghcOptExtensionMap,
-    ghcOptOptimisation       = combine ghcOptOptimisation,
-    ghcOptDebugInfo          = combine ghcOptDebugInfo,
-    ghcOptProfilingMode      = combine ghcOptProfilingMode,
-    ghcOptProfilingAuto      = combine ghcOptProfilingAuto,
-    ghcOptSplitObjs          = combine ghcOptSplitObjs,
-    ghcOptNumJobs            = combine ghcOptNumJobs,
-    ghcOptHPCDir             = combine ghcOptHPCDir,
-    ghcOptGHCiScripts        = combine ghcOptGHCiScripts,
-    ghcOptHiSuffix           = combine ghcOptHiSuffix,
-    ghcOptObjSuffix          = combine ghcOptObjSuffix,
-    ghcOptDynHiSuffix        = combine ghcOptDynHiSuffix,
-    ghcOptDynObjSuffix       = combine ghcOptDynObjSuffix,
-    ghcOptHiDir              = combine ghcOptHiDir,
-    ghcOptObjDir             = combine ghcOptObjDir,
-    ghcOptOutputDir          = combine ghcOptOutputDir,
-    ghcOptStubDir            = combine ghcOptStubDir,
-    ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
-    ghcOptShared             = combine ghcOptShared,
-    ghcOptFPic               = combine ghcOptFPic,
-    ghcOptDylibName          = combine ghcOptDylibName,
-    ghcOptRPaths             = combine ghcOptRPaths,
-    ghcOptVerbosity          = combine ghcOptVerbosity,
-    ghcOptCabal              = combine ghcOptCabal
-  }
-    where
-      combine field = field a `mappend` field b
+  (<>) = gmappend

@@ -34,6 +34,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
+  configPrograms,
   AllowNewer(..),    AllowNewerDep(..),  isAllowNewer,
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
@@ -188,7 +189,7 @@ allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
 data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool
-  }
+  } deriving (Generic)
 
 defaultGlobalFlags :: GlobalFlags
 defaultGlobalFlags  = GlobalFlags {
@@ -239,18 +240,11 @@ emptyGlobalFlags :: GlobalFlags
 emptyGlobalFlags = mempty
 
 instance Monoid GlobalFlags where
-  mempty = GlobalFlags {
-    globalVersion        = mempty,
-    globalNumericVersion = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup GlobalFlags where
-  a <> b = GlobalFlags {
-    globalVersion        = combine globalVersion,
-    globalNumericVersion = combine globalNumericVersion
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Config flags
@@ -271,13 +265,13 @@ data AllowNewer =
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
-  deriving (Read, Show, Generic)
+  deriving (Eq, Read, Show, Generic)
 
 -- | Dependencies can be relaxed either for all packages in the install plan, or
 -- only for some packages.
 data AllowNewerDep = AllowNewerDep PackageName
                    | AllowNewerDepScoped PackageName PackageName
-                   deriving (Read, Show, Generic)
+                   deriving (Eq, Read, Show, Generic)
 
 instance Text AllowNewerDep where
   disp (AllowNewerDep p0)          = disp p0
@@ -327,8 +321,8 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramConfiguration directly and not via ConfigFlags
-    configPrograms      :: ProgramConfiguration, -- ^All programs that cabal may
-                                                 -- run
+    configPrograms_     :: Last' ProgramConfiguration, -- ^All programs that
+                                                       -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -396,6 +390,11 @@ data ConfigFlags = ConfigFlags {
 
 instance Binary ConfigFlags
 
+-- | More convenient version of 'configPrograms'. Results in an
+-- 'error' if internal invariant is violated.
+configPrograms :: ConfigFlags -> ProgramConfiguration
+configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
@@ -404,7 +403,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
-    configPrograms     = progConf,
+    configPrograms_    = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
@@ -811,104 +810,11 @@ emptyConfigFlags :: ConfigFlags
 emptyConfigFlags = mempty
 
 instance Monoid ConfigFlags where
-  mempty = ConfigFlags {
-    configPrograms      = error "FIXME: remove configPrograms",
-    configProgramPaths  = mempty,
-    configProgramArgs   = mempty,
-    configProgramPathExtra = mempty,
-    configHcFlavor      = mempty,
-    configHcPath        = mempty,
-    configHcPkg         = mempty,
-    configVanillaLib    = mempty,
-    configProfLib       = mempty,
-    configSharedLib     = mempty,
-    configDynExe        = mempty,
-    configProfExe       = mempty,
-    configProf          = mempty,
-    configProfDetail    = mempty,
-    configProfLibDetail = mempty,
-    configConfigureArgs = mempty,
-    configOptimization  = mempty,
-    configProgPrefix    = mempty,
-    configProgSuffix    = mempty,
-    configInstallDirs   = mempty,
-    configScratchDir    = mempty,
-    configDistPref      = mempty,
-    configVerbosity     = mempty,
-    configUserInstall   = mempty,
-    configPackageDBs    = mempty,
-    configGHCiLib       = mempty,
-    configSplitObjs     = mempty,
-    configStripExes     = mempty,
-    configStripLibs     = mempty,
-    configExtraLibDirs  = mempty,
-    configExtraFrameworkDirs = mempty,
-    configConstraints   = mempty,
-    configDependencies  = mempty,
-    configExtraIncludeDirs    = mempty,
-    configIPID          = mempty,
-    configConfigurationsFlags = mempty,
-    configTests               = mempty,
-    configCoverage         = mempty,
-    configLibCoverage   = mempty,
-    configExactConfiguration  = mempty,
-    configBenchmarks          = mempty,
-    configFlagError     = mempty,
-    configRelocatable   = mempty,
-    configDebugInfo     = mempty,
-    configAllowNewer    = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup ConfigFlags where
-  a <> b =  ConfigFlags {
-    configPrograms      = configPrograms b,
-    configProgramPaths  = combine configProgramPaths,
-    configProgramArgs   = combine configProgramArgs,
-    configProgramPathExtra = combine configProgramPathExtra,
-    configHcFlavor      = combine configHcFlavor,
-    configHcPath        = combine configHcPath,
-    configHcPkg         = combine configHcPkg,
-    configVanillaLib    = combine configVanillaLib,
-    configProfLib       = combine configProfLib,
-    configSharedLib     = combine configSharedLib,
-    configDynExe        = combine configDynExe,
-    configProfExe       = combine configProfExe,
-    configProf          = combine configProf,
-    configProfDetail    = combine configProfDetail,
-    configProfLibDetail = combine configProfLibDetail,
-    configConfigureArgs = combine configConfigureArgs,
-    configOptimization  = combine configOptimization,
-    configProgPrefix    = combine configProgPrefix,
-    configProgSuffix    = combine configProgSuffix,
-    configInstallDirs   = combine configInstallDirs,
-    configScratchDir    = combine configScratchDir,
-    configDistPref      = combine configDistPref,
-    configVerbosity     = combine configVerbosity,
-    configUserInstall   = combine configUserInstall,
-    configPackageDBs    = combine configPackageDBs,
-    configGHCiLib       = combine configGHCiLib,
-    configSplitObjs     = combine configSplitObjs,
-    configStripExes     = combine configStripExes,
-    configStripLibs     = combine configStripLibs,
-    configExtraLibDirs  = combine configExtraLibDirs,
-    configExtraFrameworkDirs = combine configExtraFrameworkDirs,
-    configConstraints   = combine configConstraints,
-    configDependencies  = combine configDependencies,
-    configExtraIncludeDirs    = combine configExtraIncludeDirs,
-    configIPID          = combine configIPID,
-    configConfigurationsFlags = combine configConfigurationsFlags,
-    configTests               = combine configTests,
-    configCoverage         = combine configCoverage,
-    configLibCoverage         = combine configLibCoverage,
-    configExactConfiguration  = combine configExactConfiguration,
-    configBenchmarks          = combine configBenchmarks,
-    configFlagError     = combine configFlagError,
-    configRelocatable   = combine configRelocatable,
-    configDebugInfo     = combine configDebugInfo,
-    configAllowNewer    = combine configAllowNewer
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Copy flags
@@ -918,27 +824,39 @@ instance Semigroup ConfigFlags where
 data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
-    copyVerbosity :: Flag Verbosity
+    copyVerbosity :: Flag Verbosity,
+    -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
+    -- think it's a hack, it's the right way to make hooks more robust
+    copyArgs :: [String]
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
-    copyVerbosity = Flag normal
+    copyVerbosity = Flag normal,
+    copyArgs      = []
   }
 
 copyCommand :: CommandUI CopyFlags
 copyCommand = CommandUI
   { commandName         = "copy"
-  , commandSynopsis     = "Copy the files into the install locations."
+  , commandSynopsis     = "Copy the files of all/specific components to install locations."
   , commandDescription  = Just $ \_ -> wrapText $
-          "Does not call register, and allows a prefix at install time. "
+          "Components encompass executables and libraries."
+       ++ "Does not call register, and allows a prefix at install time. "
        ++ "Without the --destdir flag, configure determines location.\n"
-  , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " copy [FLAGS]\n"
+  , commandNotes        = Just $ \pname ->
+       "Examples:\n"
+        ++ "  " ++ pname ++ " build           "
+        ++ "    All the components in the package\n"
+        ++ "  " ++ pname ++ " build foo       "
+        ++ "    A component (i.e. lib, exe, test suite)"
+  , commandUsage        = usageAlternatives "copy" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultCopyFlags
   , commandOptions      = \showOrParseArgs ->
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
@@ -959,20 +877,11 @@ emptyCopyFlags :: CopyFlags
 emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
-  mempty = CopyFlags {
-    copyDest      = mempty,
-    copyDistPref  = mempty,
-    copyVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup CopyFlags where
-  a <> b = CopyFlags {
-    copyDest      = combine copyDest,
-    copyDistPref  = combine copyDistPref,
-    copyVerbosity = combine copyVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Install flags
@@ -986,7 +895,7 @@ data InstallFlags = InstallFlags {
     installInPlace    :: Flag Bool,
     installVerbosity :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
@@ -1039,24 +948,11 @@ emptyInstallFlags :: InstallFlags
 emptyInstallFlags = mempty
 
 instance Monoid InstallFlags where
-  mempty = InstallFlags{
-    installPackageDB = mempty,
-    installDistPref  = mempty,
-    installUseWrapper = mempty,
-    installInPlace    = mempty,
-    installVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup InstallFlags where
-  a <> b = InstallFlags{
-    installPackageDB = combine installPackageDB,
-    installDistPref  = combine installDistPref,
-    installUseWrapper = combine installUseWrapper,
-    installInPlace    = combine installInPlace,
-    installVerbosity = combine installVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * SDist flags
@@ -1070,7 +966,7 @@ data SDistFlags = SDistFlags {
     sDistListSources :: Flag FilePath,
     sDistVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
@@ -1119,24 +1015,11 @@ emptySDistFlags :: SDistFlags
 emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
-  mempty = SDistFlags {
-    sDistSnapshot    = mempty,
-    sDistDirectory   = mempty,
-    sDistDistPref    = mempty,
-    sDistListSources = mempty,
-    sDistVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup SDistFlags where
-  a <> b = SDistFlags {
-    sDistSnapshot    = combine sDistSnapshot,
-    sDistDirectory   = combine sDistDirectory,
-    sDistDistPref    = combine sDistDistPref,
-    sDistListSources = combine sDistListSources,
-    sDistVerbosity   = combine sDistVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Register flags
@@ -1153,7 +1036,7 @@ data RegisterFlags = RegisterFlags {
     regPrintId     :: Flag Bool,
     regVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultRegisterFlags :: RegisterFlags
 defaultRegisterFlags = RegisterFlags {
@@ -1245,28 +1128,11 @@ emptyRegisterFlags :: RegisterFlags
 emptyRegisterFlags = mempty
 
 instance Monoid RegisterFlags where
-  mempty = RegisterFlags {
-    regPackageDB   = mempty,
-    regGenScript   = mempty,
-    regGenPkgConf  = mempty,
-    regInPlace     = mempty,
-    regPrintId     = mempty,
-    regDistPref    = mempty,
-    regVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup RegisterFlags where
-  a <> b = RegisterFlags {
-    regPackageDB   = combine regPackageDB,
-    regGenScript   = combine regGenScript,
-    regGenPkgConf  = combine regGenPkgConf,
-    regInPlace     = combine regInPlace,
-    regPrintId     = combine regPrintId,
-    regDistPref    = combine regDistPref,
-    regVerbosity   = combine regVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * HsColour flags
@@ -1280,7 +1146,7 @@ data HscolourFlags = HscolourFlags {
     hscolourDistPref    :: Flag FilePath,
     hscolourVerbosity   :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 emptyHscolourFlags :: HscolourFlags
 emptyHscolourFlags = mempty
@@ -1296,26 +1162,11 @@ defaultHscolourFlags = HscolourFlags {
   }
 
 instance Monoid HscolourFlags where
-  mempty = HscolourFlags {
-    hscolourCSS         = mempty,
-    hscolourExecutables = mempty,
-    hscolourTestSuites  = mempty,
-    hscolourBenchmarks  = mempty,
-    hscolourDistPref    = mempty,
-    hscolourVerbosity   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup HscolourFlags where
-  a <> b = HscolourFlags {
-    hscolourCSS         = combine hscolourCSS,
-    hscolourExecutables = combine hscolourExecutables,
-    hscolourTestSuites  = combine hscolourTestSuites,
-    hscolourBenchmarks  = combine hscolourBenchmarks,
-    hscolourDistPref    = combine hscolourDistPref,
-    hscolourVerbosity   = combine hscolourVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 hscolourCommand :: CommandUI HscolourFlags
 hscolourCommand = CommandUI
@@ -1389,7 +1240,7 @@ data HaddockFlags = HaddockFlags {
     haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultHaddockFlags :: HaddockFlags
 defaultHaddockFlags  = HaddockFlags {
@@ -1526,48 +1377,11 @@ emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
 
 instance Monoid HaddockFlags where
-  mempty = HaddockFlags {
-    haddockProgramPaths = mempty,
-    haddockProgramArgs  = mempty,
-    haddockHoogle       = mempty,
-    haddockHtml         = mempty,
-    haddockHtmlLocation = mempty,
-    haddockForHackage   = mempty,
-    haddockExecutables  = mempty,
-    haddockTestSuites   = mempty,
-    haddockBenchmarks   = mempty,
-    haddockInternal     = mempty,
-    haddockCss          = mempty,
-    haddockHscolour     = mempty,
-    haddockHscolourCss  = mempty,
-    haddockContents     = mempty,
-    haddockDistPref     = mempty,
-    haddockKeepTempFiles= mempty,
-    haddockVerbosity    = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup HaddockFlags where
-  a <> b = HaddockFlags {
-    haddockProgramPaths = combine haddockProgramPaths,
-    haddockProgramArgs  = combine haddockProgramArgs,
-    haddockHoogle       = combine haddockHoogle,
-    haddockHtml         = combine haddockHtml,
-    haddockHtmlLocation = combine haddockHtmlLocation,
-    haddockForHackage   = combine haddockForHackage,
-    haddockExecutables  = combine haddockExecutables,
-    haddockTestSuites   = combine haddockTestSuites,
-    haddockBenchmarks   = combine haddockBenchmarks,
-    haddockInternal     = combine haddockInternal,
-    haddockCss          = combine haddockCss,
-    haddockHscolour     = combine haddockHscolour,
-    haddockHscolourCss  = combine haddockHscolourCss,
-    haddockContents     = combine haddockContents,
-    haddockDistPref     = combine haddockDistPref,
-    haddockKeepTempFiles= combine haddockKeepTempFiles,
-    haddockVerbosity    = combine haddockVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Clean flags
@@ -1578,7 +1392,7 @@ data CleanFlags = CleanFlags {
     cleanDistPref  :: Flag FilePath,
     cleanVerbosity :: Flag Verbosity
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
@@ -1614,20 +1428,11 @@ emptyCleanFlags :: CleanFlags
 emptyCleanFlags = mempty
 
 instance Monoid CleanFlags where
-  mempty = CleanFlags {
-    cleanSaveConf  = mempty,
-    cleanDistPref  = mempty,
-    cleanVerbosity = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup CleanFlags where
-  a <> b = CleanFlags {
-    cleanSaveConf  = combine cleanSaveConf,
-    cleanDistPref  = combine cleanDistPref,
-    cleanVerbosity = combine cleanVerbosity
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Build flags
@@ -1643,7 +1448,7 @@ data BuildFlags = BuildFlags {
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
   }
-  deriving Show
+  deriving (Show, Generic)
 
 {-# DEPRECATED buildVerbose "Use buildVerbosity instead" #-}
 buildVerbose :: BuildFlags -> Verbosity
@@ -1718,26 +1523,11 @@ emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
-  mempty = BuildFlags {
-    buildProgramPaths = mempty,
-    buildProgramArgs = mempty,
-    buildVerbosity   = mempty,
-    buildDistPref    = mempty,
-    buildNumJobs     = mempty,
-    buildArgs        = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup BuildFlags where
-  a <> b = BuildFlags {
-    buildProgramPaths = combine buildProgramPaths,
-    buildProgramArgs = combine buildProgramArgs,
-    buildVerbosity   = combine buildVerbosity,
-    buildDistPref    = combine buildDistPref,
-    buildNumJobs     = combine buildNumJobs,
-    buildArgs        = combine buildArgs
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * REPL Flags
@@ -1750,7 +1540,7 @@ data ReplFlags = ReplFlags {
     replVerbosity   :: Flag Verbosity,
     replReload      :: Flag Bool
   }
-  deriving Show
+  deriving (Show, Generic)
 
 defaultReplFlags :: ReplFlags
 defaultReplFlags  = ReplFlags {
@@ -1762,24 +1552,11 @@ defaultReplFlags  = ReplFlags {
   }
 
 instance Monoid ReplFlags where
-  mempty = ReplFlags {
-    replProgramPaths = mempty,
-    replProgramArgs = mempty,
-    replVerbosity   = mempty,
-    replDistPref    = mempty,
-    replReload      = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup ReplFlags where
-  a <> b = ReplFlags {
-    replProgramPaths = combine replProgramPaths,
-    replProgramArgs = combine replProgramArgs,
-    replVerbosity   = combine replVerbosity,
-    replDistPref    = combine replDistPref,
-    replReload      = combine replReload
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 replCommand :: ProgramConfiguration -> CommandUI ReplFlags
 replCommand progConf = CommandUI
@@ -1887,7 +1664,7 @@ data TestFlags = TestFlags {
     testKeepTix     :: Flag Bool,
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
-  }
+  } deriving (Generic)
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -1979,28 +1756,11 @@ emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
 
 instance Monoid TestFlags where
-  mempty = TestFlags {
-    testDistPref    = mempty,
-    testVerbosity   = mempty,
-    testHumanLog    = mempty,
-    testMachineLog  = mempty,
-    testShowDetails = mempty,
-    testKeepTix     = mempty,
-    testOptions     = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup TestFlags where
-  a <> b = TestFlags {
-    testDistPref    = combine testDistPref,
-    testVerbosity   = combine testVerbosity,
-    testHumanLog    = combine testHumanLog,
-    testMachineLog  = combine testMachineLog,
-    testShowDetails = combine testShowDetails,
-    testKeepTix     = combine testKeepTix,
-    testOptions     = combine testOptions
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Benchmark flags
@@ -2010,7 +1770,7 @@ data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
     benchmarkOptions   :: [PathTemplate]
-  }
+  } deriving (Generic)
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
@@ -2069,20 +1829,11 @@ emptyBenchmarkFlags :: BenchmarkFlags
 emptyBenchmarkFlags = mempty
 
 instance Monoid BenchmarkFlags where
-  mempty = BenchmarkFlags {
-    benchmarkDistPref  = mempty,
-    benchmarkVerbosity = mempty,
-    benchmarkOptions   = mempty
-  }
+  mempty = gmempty
   mappend = (Semi.<>)
 
 instance Semigroup BenchmarkFlags where
-  a <> b = BenchmarkFlags {
-    benchmarkDistPref  = combine benchmarkDistPref,
-    benchmarkVerbosity = combine benchmarkVerbosity,
-    benchmarkOptions   = combine benchmarkOptions
-  }
-    where combine field = field a `mappend` field b
+  (<>) = gmappend
 
 -- ------------------------------------------------------------
 -- * Shared options utils
@@ -2237,7 +1988,6 @@ optionNumJobs get set =
         _        -> case reads s of
           [(n, "")]
             | n < 1     -> Left "The number of jobs should be 1 or more."
-            | n > 64    -> Left "You probably don't want that many jobs."
             | otherwise -> Right (Just n)
           _             -> Left "The jobs value should be a number or '$ncpus'"
 

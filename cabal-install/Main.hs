@@ -26,6 +26,7 @@ import Distribution.Client.Setup
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , StatusFlags(..), statusCommand
+         , genBoundsCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , formatCommand
@@ -69,7 +70,8 @@ import qualified Distribution.Client.List as List
 
 --TODO: temporary import, just to force these modules to be built.
 -- It will be replaced by import of new build command once merged.
-import Distribution.Client.RebuildMonad ()
+import Distribution.Client.ProjectPlanning ()
+import Distribution.Client.ProjectBuilding ()
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
@@ -77,6 +79,7 @@ import Distribution.Client.Update             (update)
 import Distribution.Client.Exec               (exec)
 import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Freeze             (freeze)
+import Distribution.Client.GenBounds          (genBounds)
 import Distribution.Client.Check as Check     (check)
 import Distribution.Client.Status as Status   (status)
 --import Distribution.Client.Clean            (clean)
@@ -264,6 +267,7 @@ mainWorker args = topHandler $
       , regularCmd execCommand execAction
       , regularCmd userConfigCommand userConfigAction
       , regularCmd cleanCommand cleanAction
+      , regularCmd genBoundsCommand genBoundsAction
       , wrapperCmd copyCommand copyVerbosity copyDistPref
       , wrapperCmd hscolourCommand hscolourVerbosity hscolourDistPref
       , wrapperCmd registerCommand regVerbosity regDistPref
@@ -1020,6 +1024,24 @@ statusAction :: StatusFlags -> [String] -> Action
 statusAction statusFlags _extraArgs globalFlags =
   Status.status (fromFlag $ statusVerbosity statusFlags) globalFlags statusFlags
 
+genBoundsAction :: FreezeFlags -> [String] -> GlobalFlags -> IO ()
+genBoundsAction freezeFlags _extraArgs globalFlags = do
+  let verbosity = fromFlag (freezeVerbosity freezeFlags)
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  (comp, platform, conf) <- configCompilerAux' configFlags
+
+  maybeWithSandboxPackageInfo verbosity configFlags globalFlags'
+                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              maybeWithSandboxDirOnSearchPath useSandbox $
+    withRepoContext verbosity globalFlags' $ \repoContext ->
+      genBounds verbosity
+            (configPackageDB' configFlags)
+            repoContext
+            comp platform conf
+            mSandboxPkgInfo
+            globalFlags' freezeFlags
 
 uploadAction :: UploadFlags -> [String] -> Action
 uploadAction uploadFlags extraArgs globalFlags = do

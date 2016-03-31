@@ -20,7 +20,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), mkUnitId
+         , UnitId(..), mkUnitId, pkgName
          , HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -53,7 +53,7 @@ newtype Password = Password { unPassword :: String }
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
 data SourcePackageDb = SourcePackageDb {
-  packageIndex       :: PackageIndex SourcePackage,
+  packageIndex       :: PackageIndex UnresolvedSourcePackage,
   packagePreferences :: Map PackageName VersionRange
 }
   deriving (Eq, Generic)
@@ -63,6 +63,22 @@ instance Binary SourcePackageDb
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
+
+-- | Within Cabal the library we no longer have a @InstalledPackageId@ type.
+-- That's because it deals with the compilers' notion of a registered library,
+-- and those really are libraries not packages. Those are now named units.
+--
+-- The package management layer does however deal with installed packages, as
+-- whole packages not just as libraries. So we do still need a type for
+-- installed package ids. At the moment however we track instaled packages via
+-- their primary library, which is a unit id. In future this may change
+-- slightly and we may distinguish these two types and have an explicit
+-- conversion when we register units with the compiler.
+--
+type InstalledPackageId = UnitId
+
+installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
+installedPackageId = installedUnitId
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
@@ -75,7 +91,8 @@ class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> ComponentDeps [UnitId]
 
 instance PackageFixedDeps InstalledPackageInfo where
-  depends = CD.fromInstalled . installedDepends
+  depends pkg = CD.fromInstalled (display (pkgName (packageId pkg)))
+                                 (installedDepends pkg)
 
 
 -- | In order to reuse the implementation of PackageIndex which relies on
@@ -95,18 +112,18 @@ fakeUnitId = mkUnitId . (".fake."++) . display
 -- the sense that it provides all the configuration information and so the
 -- final configure process will be independent of the environment.
 --
-data ConfiguredPackage = ConfiguredPackage
-       SourcePackage       -- package info, including repo
-       FlagAssignment      -- complete flag assignment for the package
-       [OptionalStanza]    -- list of enabled optional stanzas for the package
+data ConfiguredPackage loc = ConfiguredPackage
+       (SourcePackage loc)     -- package info, including repo
+       FlagAssignment          -- complete flag assignment for the package
+       [OptionalStanza]        -- list of enabled optional stanzas for the package
        (ComponentDeps [ConfiguredId])
-                           -- set of exact dependencies (installed or source).
-                           -- These must be consistent with the 'buildDepends'
-                           -- in the 'PackageDescription' that you'd get by
-                           -- applying the flag assignment and optional stanzas.
+                               -- set of exact dependencies (installed or source).
+                               -- These must be consistent with the 'buildDepends'
+                               -- in the 'PackageDescription' that you'd get by
+                               -- applying the flag assignment and optional stanzas.
   deriving (Eq, Show, Generic)
 
-instance Binary ConfiguredPackage
+instance Binary loc => Binary (ConfiguredPackage loc)
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
@@ -131,13 +148,19 @@ instance Binary ConfiguredId
 instance Show ConfiguredId where
   show = show . confSrcId
 
-instance Package ConfiguredPackage where
+instance Package ConfiguredId where
+  packageId = confSrcId
+
+instance HasUnitId ConfiguredId where
+  installedUnitId = confInstId
+
+instance Package (ConfiguredPackage loc) where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
-instance PackageFixedDeps ConfiguredPackage where
+instance PackageFixedDeps (ConfiguredPackage loc) where
   depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
-instance HasUnitId ConfiguredPackage where
+instance HasUnitId (ConfiguredPackage loc) where
   installedUnitId = fakeUnitId . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
@@ -148,7 +171,7 @@ data GenericReadyPackage srcpkg ipkg
        (ComponentDeps [ipkg])  -- Installed dependencies.
   deriving (Eq, Show, Generic)
 
-type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
+type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc) InstalledPackageInfo
 
 instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
@@ -166,21 +189,24 @@ instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg
 
 -- | A package description along with the location of the package sources.
 --
-data SourcePackage = SourcePackage {
+data SourcePackage loc = SourcePackage {
     packageInfoId        :: PackageId,
     packageDescription   :: GenericPackageDescription,
-    packageSource        :: PackageLocation (Maybe FilePath),
+    packageSource        :: loc,
     packageDescrOverride :: PackageDescriptionOverride
   }
   deriving (Eq, Show, Generic)
 
-instance Binary SourcePackage
+instance (Binary loc) => Binary (SourcePackage loc)
+
+-- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
+type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
 
 -- | We sometimes need to override the .cabal file in the tarball with
 -- the newer one from the package index.
 type PackageDescriptionOverride = Maybe ByteString
 
-instance Package SourcePackage where packageId = packageInfoId
+instance Package (SourcePackage a) where packageId = packageInfoId
 
 data OptionalStanza
     = TestStanzas
@@ -206,6 +232,10 @@ enableStanzas stanzas gpkg = gpkg
 -- ------------------------------------------------------------
 -- * Package locations and repositories
 -- ------------------------------------------------------------
+
+type UnresolvedPkgLoc = PackageLocation (Maybe FilePath)
+
+type ResolvedPkgLoc = PackageLocation FilePath
 
 data PackageLocation local =
 

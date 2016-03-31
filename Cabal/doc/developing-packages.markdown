@@ -676,10 +676,11 @@ message headers.
 The syntax of the value depends on the field.  Field types include:
 
 _token_, _filename_, _directory_
-:   Either a sequence of one or more non-space non-comma characters, or
-    a quoted string in Haskell 98 lexical syntax. Unless otherwise
-    stated, relative filenames and directories are interpreted from the
-    package root directory.
+:   Either a sequence of one or more non-space non-comma characters, or a quoted
+    string in Haskell 98 lexical syntax. The latter can be used for escaping
+    whitespace, for example: `ghc-options: -Wall "-with-rtsopts=-T -I1"`.
+    Unless otherwise stated, relative filenames and directories are interpreted
+    from the package root directory.
 
 _freeform_, _URL_, _address_
 :   An arbitrary, uninterpreted string.
@@ -965,6 +966,43 @@ The library section should contain the following fields:
 The library section may also contain build information fields (see the
 section on [build information](#build-information)).
 
+Cabal 1.23 and later support "internal libraries", which are extra named
+libraries (as opposed to the usual unnamed library section).  For
+example, suppose that your test suite needs access to some internal
+modules in your library, which you do not otherwise want to export.  You
+could put these modules in an internal library, which the main library
+and the test suite `build-depends` upon.  Then your Cabal file might
+look something like this:
+
+~~~~~~~~~~~~~~~~
+name:           foo
+version:        1.0
+license:        BSD3
+cabal-version:  >= 1.23
+build-type:     Simple
+
+library foo-internal
+    exposed-modules: Foo.Internal
+    build-depends: base
+
+library
+    exposed-modules: Foo.Public
+    build-depends: foo-internal, base
+
+test-suite test-foo
+    type:       exitcode-stdio-1.0
+    main-is:    test-foo.hs
+    build-depends: foo-internal, base
+~~~~~~~~~~~~~~~~
+
+Internal libraries are also useful for packages that define multiple
+executables, but do not define a publically accessible library.
+Internal libraries are only visible internally in the package (so they
+can only be added to the `build-depends` of same-package libraries,
+executables, test suites, etc.)  Internal libraries locally shadow any
+packages which have the same name (so don't name an internal library
+with the same name as an external dependency.)
+
 #### Opening an interpreter session ####
 
 While developing a package, it is often useful to make its code available inside
@@ -1001,6 +1039,32 @@ cabal freeze
 The command writes the selected version for all dependencies to the
 `cabal.config` file.  All environments which share this file will use the
 dependency versions specified in it.
+
+#### Generating dependency version bounds ####
+
+Cabal also has the ability to suggest dependency version bounds that conform to
+[Package Versioning Policy][PVP], which is a recommended versioning system for
+publicly released Cabal packages. This is done by running the `gen-bounds`
+command:
+
+~~~~~~~~~~~~~~~~
+cabal gen-bounds
+~~~~~~~~~~~~~~~~
+
+For example, given the following dependencies specified in `build-depends`:
+
+~~~~~~~~~~~~~~~~
+foo == 0.5.2
+bar == 1.1
+~~~~~~~~~~~~~~~~
+
+`gen-bounds` will suggest changing them to the following:
+
+~~~~~~~~~~~~~~~~
+foo >= 0.5.2 && < 0.6
+bar >= 1.1 && < 1.2
+~~~~~~~~~~~~~~~~
+
 
 ### Executables ###
 
@@ -1365,6 +1429,9 @@ for these fields.
     Options required only by one module may be specified by placing an
     `OPTIONS_GHC` pragma in the source file affected.
 
+    As with many other fields, whitespace can be escaped by using Haskell string
+    syntax. Example: `ghc-options: -Wcompat "-with-rtsopts=-T -I1" -Wall`.
+
 `ghc-prof-options:` _token list_
 :   Additional options for GHC when the package is built with profiling
     enabled.
@@ -1450,7 +1517,7 @@ for these fields.
     parameters](#system-dependent-parameters)>.
 
 `pkgconfig-depends:` _package list_
-:   A list of [pkg-config][] packages, needed to build this package.
+:   A list of [pkg-config] packages, needed to build this package.
     They can be annotated with versions, e.g. `gtk+-2.0 >= 2.10, cairo
     >= 1.0`. If no version constraint is specified, any version is
     assumed to be acceptable. Cabal uses `pkg-config` to find if the
@@ -2183,3 +2250,4 @@ a few options:
 [Hackage]:    http://hackage.haskell.org/
 [pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/
 [REPL]:       http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
+[PVP]:        https://wiki.haskell.org/Package_versioning_policy

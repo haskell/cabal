@@ -44,7 +44,9 @@ module Distribution.Client.Targets (
   UserConstraint(..),
   userConstraintPackageName,
   readUserConstraint,
-  userToPackageConstraint
+  userToPackageConstraint,
+  dispFlagAssignment,
+  parseFlagAssignment,
 
   ) where
 
@@ -53,7 +55,8 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
+         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..)
+         , ResolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ConstraintSource(..)
          , LabeledPackageConstraint(..) )
@@ -372,7 +375,7 @@ resolveUserTargets :: Package pkg
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier SourcePackage]
+                   -> IO [PackageSpecifier UnresolvedSourcePackage]
 resolveUserTargets verbosity repoCtxt worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -467,7 +470,7 @@ localPackageError dir =
 fetchPackageTarget :: Verbosity
                    -> RepoContext
                    -> PackageTarget (PackageLocation ())
-                   -> IO (PackageTarget (PackageLocation FilePath))
+                   -> IO (PackageTarget ResolvedPkgLoc)
 fetchPackageTarget verbosity repoCtxt target = case target of
     PackageTargetNamed      n cs ut -> return (PackageTargetNamed      n cs ut)
     PackageTargetNamedFuzzy n cs ut -> return (PackageTargetNamedFuzzy n cs ut)
@@ -481,8 +484,8 @@ fetchPackageTarget verbosity repoCtxt target = case target of
 -- This only affects targets given by location, named targets are unaffected.
 --
 readPackageTarget :: Verbosity
-                  -> PackageTarget (PackageLocation FilePath)
-                  -> IO (PackageTarget SourcePackage)
+                  -> PackageTarget ResolvedPkgLoc
+                  -> IO (PackageTarget UnresolvedSourcePackage)
 readPackageTarget verbosity target = case target of
 
     PackageTargetNamed pkgname constraints userTarget ->
@@ -757,12 +760,6 @@ instance Text UserConstraint where
                                                     <+> Disp.text "source"
   disp (UserConstraintFlags     pkgname flags)    = disp pkgname
                                                     <+> dispFlagAssignment flags
-    where
-      dispFlagAssignment = Disp.hsep . map dispFlagValue
-      dispFlagValue (f, True)   = Disp.char '+' <> dispFlagName f
-      dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
-      dispFlagName (FlagName f) = Disp.text f
-
   disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
                                                     <+> dispStanzas stanzas
     where
@@ -772,37 +769,51 @@ instance Text UserConstraint where
 
   parse = parse >>= parseConstraint
     where
-      spaces = Parse.satisfy isSpace >> Parse.skipSpaces
-
       parseConstraint pkgname =
             ((parse >>= return . UserConstraintVersion pkgname)
-        +++ (do spaces
+        +++ (do skipSpaces1
                 _ <- Parse.string "installed"
                 return (UserConstraintInstalled pkgname))
-        +++ (do spaces
+        +++ (do skipSpaces1
                 _ <- Parse.string "source"
                 return (UserConstraintSource pkgname))
-        +++ (do spaces
+        +++ (do skipSpaces1
                 _ <- Parse.string "test"
                 return (UserConstraintStanzas pkgname [TestStanzas]))
-        +++ (do spaces
+        +++ (do skipSpaces1
                 _ <- Parse.string "bench"
                 return (UserConstraintStanzas pkgname [BenchStanzas])))
-        <++ (parseFlagAssignment >>= (return . UserConstraintFlags pkgname))
+        <++ (do skipSpaces1
+                flags <- parseFlagAssignment
+                return (UserConstraintFlags pkgname flags))
 
-      parseFlagAssignment = Parse.many1 (spaces >> parseFlagValue)
-      parseFlagValue =
-            (do Parse.optional (Parse.char '+')
-                f <- parseFlagName
-                return (f, True))
-        +++ (do _ <- Parse.char '-'
-                f <- parseFlagName
-                return (f, False))
-      parseFlagName = liftM FlagName ident
+--TODO: [code cleanup] move these somewhere else
+dispFlagAssignment :: FlagAssignment -> Disp.Doc
+dispFlagAssignment = Disp.hsep . map dispFlagValue
+  where
+    dispFlagValue (f, True)   = Disp.char '+' <> dispFlagName f
+    dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
+    dispFlagName (FlagName f) = Disp.text f
 
-      ident :: Parse.ReadP r String
-      ident = Parse.munch1 identChar >>= \s -> check s >> return s
-        where
-          identChar c   = isAlphaNum c || c == '_' || c == '-'
-          check ('-':_) = Parse.pfail
-          check _       = return ()
+parseFlagAssignment :: Parse.ReadP r FlagAssignment
+parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
+  where
+    parseFlagValue =
+          (do Parse.optional (Parse.char '+')
+              f <- parseFlagName
+              return (f, True))
+      +++ (do _ <- Parse.char '-'
+              f <- parseFlagName
+              return (f, False))
+    parseFlagName = liftM (FlagName . lowercase) ident
+
+    ident :: Parse.ReadP r String
+    ident = Parse.munch1 identChar >>= \s -> check s >> return s
+      where
+        identChar c   = isAlphaNum c || c == '_' || c == '-'
+        check ('-':_) = Parse.pfail
+        check _       = return ()
+
+skipSpaces1 :: Parse.ReadP r ()
+skipSpaces1 = Parse.satisfy isSpace >> Parse.skipSpaces
+
