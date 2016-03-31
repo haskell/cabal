@@ -113,17 +113,18 @@ convGPD os arch cinfo strfl pi
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
     conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo .
                         PDC.addBuildableCondition getInfo
+
+    flagged_deps
+        = concatMap (\(nm, ds) -> conv (ComponentLib nm)   libBuildInfo       ds) libs
+       ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes
+       ++ prefix (Stanza (SN pi TestStanzas))
+            (L.map  (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)
+       ++ prefix (Stanza (SN pi BenchStanzas))
+            (L.map  (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo ds) benchs)
+       ++ maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)
+
   in
-    PInfo
-      (concatMap   (\(nm, ds) -> conv (ComponentLib nm)   libBuildInfo       ds) libs    ++
-       maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
-       concatMap   (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes    ++
-      prefix (Stanza (SN pi TestStanzas))
-        (L.map     (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)  ++
-      prefix (Stanza (SN pi BenchStanzas))
-        (L.map     (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo ds) benchs))
-      fds
-      Nothing
+    PInfo flagged_deps fds Nothing
 
 prefix :: (FlaggedDeps comp qpn -> FlaggedDep comp' qpn) -> [FlaggedDeps comp qpn] -> FlaggedDeps comp' qpn
 prefix _ []  = []

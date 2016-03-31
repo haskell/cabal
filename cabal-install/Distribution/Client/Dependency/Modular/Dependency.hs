@@ -169,8 +169,13 @@ type FlaggedDeps comp qpn = [FlaggedDep comp qpn]
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
 data FlaggedDep comp qpn =
+    -- | Dependencies which are conditional on a flag choice.
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
+    -- | Dependencies which are conditional on whether or not a stanza
+    -- (e.g., a test suite or benchmark) is enabled.
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
+    -- | Dependencies for which are always enabled, for the component
+    -- 'comp' (or requested for the user, if comp is @()@).
   | Simple (Dep qpn) comp
   deriving (Eq, Show)
 
