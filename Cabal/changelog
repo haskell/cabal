@@ -2,6 +2,20 @@
 
 1.25.x.x (current development version)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
+	* Convenience/internal libraries are now supported (#269).
+	  An internal library is declared using the stanza "library
+	  'libname'".
+	* Backwards incompatible change to preprocessor interface:
+	  the function in 'PPSuffixHandler' now takes an additional
+	  'ComponentLocalBuildInfo' specifying the build information
+	  of the component being preprocessed.
+	* Backwards incompatible change to 'cabal_macros.h' (#1893): we now
+	  generate a macro file for each component which contains only
+	  information about the direct dependencies of that component.
+	  Consequently, 'dist/build/autogen/cabal_macros.h' contains
+	  only the macros for the library, and is not generated if a
+	  package has no library; to find the macros for an executable
+	  named 'foobar', look in 'dist/build/foobar/autogen/cabal_macros.h'.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
