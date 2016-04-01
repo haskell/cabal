@@ -15,11 +15,11 @@ module Distribution.Client.PackageUtils (
   ) where
 
 import Distribution.Package
-         ( packageVersion, packageName, Dependency(..) )
+         ( packageVersion, packageName, Dependency(..), PackageName(..) )
 import Distribution.PackageDescription
-         ( PackageDescription(..) )
+         ( PackageDescription(..), libName )
 import Distribution.Version
-         ( withinRange )
+         ( withinRange, isAnyVersion )
 
 -- | The list of dependencies that refer to external packages
 -- rather than internal package components.
@@ -30,5 +30,7 @@ externalBuildDepends pkg = filter (not . internal) (buildDepends pkg)
     -- True if this dependency is an internal one (depends on a library
     -- defined in the same package).
     internal (Dependency depName versionRange) =
-            depName == packageName pkg &&
-            packageVersion pkg `withinRange` versionRange
+           (depName == packageName pkg &&
+            packageVersion pkg `withinRange` versionRange) ||
+           (unPackageName depName `elem` map libName (libraries pkg) &&
+            isAnyVersion versionRange)
