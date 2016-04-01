@@ -28,7 +28,7 @@ import Data.Monoid as Mon (Monoid(mempty))
 import Data.Maybe (isJust)
 import Text.PrettyPrint
        (hsep, parens, char, nest, empty, isEmpty, ($$), (<+>),
-        colon, (<>), text, vcat, ($+$), Doc, render)
+        colon, (<>), text, vcat, ($+$), Doc)
 
 -- | Recompile with false for regression testing
 simplifiedPrinting :: Bool

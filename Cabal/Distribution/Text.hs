@@ -16,6 +16,8 @@ module Distribution.Text (
   defaultStyle,
   display,
   simpleParse,
+  render,
+  brokenString
   ) where
 
 import qualified Distribution.Compat.ReadP as Parse
@@ -28,15 +30,27 @@ class Text a where
   disp  :: a -> Disp.Doc
   parse :: Parse.ReadP r a
 
--- | The default rendering style used in Cabal for console output.
-defaultStyle :: Disp.Style
-defaultStyle = Disp.Style { Disp.mode           = Disp.PageMode
-                          , Disp.lineLength     = 79
-                          , Disp.ribbonsPerLine = 1.0
-                          }
-
+-- | Display a 'Text' value with the Cabal default style.
 display :: Text a => a -> String
 display = Disp.renderStyle defaultStyle . disp
+
+-- | similar to Disp.render, but using the Cabal default style
+--   (which is different from Text.Prettyprint default).
+render :: Disp.Doc -> String
+render = Disp.renderStyle defaultStyle
+
+-- | Takes a string, and turns it into a paragraph-like
+--   Doc, i.e. an fsep of the words in it. Main purpose is
+--   to produce indented paragraphs.
+brokenString :: String -> Disp.Doc
+brokenString s = Disp.fsep $ fmap Disp.text $ words s
+
+defaultStyle :: Disp.Style
+defaultStyle = Disp.Style
+  { Disp.mode            = Disp.PageMode
+  , Disp.lineLength      = 79  -- Disp default: 100
+  , Disp.ribbonsPerLine  = 1.0 -- Disp default: 1.5
+  }
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str

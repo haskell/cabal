@@ -24,6 +24,7 @@ module Distribution.Simple.Program.HcPkg (
     hide,
     dump,
     describe,
+    check,
     list,
 
     -- * Program invocations
@@ -269,6 +270,14 @@ splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
                        _:ws -> splitWith p ws
       where (ys,zs) = break p xs
 
+-- | Call @hc-pkg@ to check the consistency of the specified package db.
+check :: HcPkgInfo -> Verbosity -> PackageDB -> IO [String]
+check hpi verbosity packagedb = do
+  fmap lines $ getProgramInvocationOutput
+    verbosity
+    (checkInvocation hpi verbosity packagedb)
+    `catchExit` \_ -> die $ programId (hcPkgProgram hpi) ++ " dump failed"
+
 mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
 -- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec
 -- (http://www.haskell.org/pipermail/libraries/2009-May/011772.html)
@@ -433,6 +442,17 @@ dumpInvocation hpi _verbosity packagedb =
     }
   where
     args = ["dump", packageDbOpts hpi packagedb]
+        ++ verbosityOpts hpi silent
+           -- We use verbosity level 'silent' because it is important that we
+           -- do not contaminate the output with info/debug messages.
+
+checkInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> ProgramInvocation
+checkInvocation hpi _verbosity packagedb =
+    (programInvocation (hcPkgProgram hpi) args) {
+      progInvokeOutputEncoding = IOEncodingUTF8
+    }
+  where
+    args = ["check", packageDbOpts hpi packagedb]
         ++ verbosityOpts hpi silent
            -- We use verbosity level 'silent' because it is important that we
            -- do not contaminate the output with info/debug messages.

@@ -349,6 +349,33 @@ $ cabal --ignore-sandbox install text
 # Installs 'text' in the user package database ('~/.cabal').
 ~~~~~~~~~~~~~~~
 
+## Displaying cabal environment information ##
+
+A cabal environment (the directory containing a package) has a certain state.
+One example are the flags of the last (successful) configuration. The
+`cabal status` command will print a summary over several
+aspects of the environment, such as
+
+* the cabal version;
+
+* the (configured) versions of the compiler and other build-time dependencies;
+
+* the package, its components and the install-plan;
+
+* the (contents of) package-databases, the sandbox etc.
+
+Just `cabal status` will display a default selection of information.
+Flags can be used to print specific items only; `cabal status --all` will
+print the full summary.
+
+Example:
+
+~~~~~~~~~~~~~~~
+$ cabal status --compiler
+Configured compiler:
+  ghc-7.10.3
+~~~~~~~~~~~~~~~
+
 ## Creating a binary package ##
 
 When creating binary packages (e.g. for Red Hat or Debian) one needs to

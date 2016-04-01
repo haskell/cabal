@@ -13,7 +13,9 @@
 -- The cabal freeze command
 -----------------------------------------------------------------------------
 module Distribution.Client.Freeze (
-    freeze, getFreezePkgs
+    freeze,
+    planPackages,
+    getFreezePkgs
   ) where
 
 import Distribution.Client.Config ( SavedConfig(..) )
