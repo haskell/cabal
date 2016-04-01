@@ -6,6 +6,7 @@ import Data.List as L
 import Data.Map as M
 import Data.Maybe
 import Data.Monoid as Mon
+import Data.Set as S
 import Prelude hiding (pi)
 
 import qualified Distribution.Client.PackageIndex as CI
@@ -104,14 +105,27 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- | Convert a generic package description to a solver-specific 'PInfo'.
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cinfo strfl pi
+convGPD os arch cinfo strfl pi@(PI pn _)
         (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
+    -- | We have to be careful to filter out dependencies on
+    -- internal libraries, since they don't refer to real packages
+    -- and thus cannot actually be solved over.  We'll do this
+    -- by creating a set of package names which are "internal"
+    -- and dropping them as we convert.
+    ipns = S.fromList [ PackageName nm
+                      | (nm, _) <- libs
+                      -- Don't include the true package name;
+                      -- qualification could make this relevant.
+                      -- TODO: Can we qualify over internal
+                      -- dependencies? Not for now!
+                      , PackageName nm /= pn ]
+
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo .
+    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns .
                         PDC.addBuildableCondition getInfo
 
     flagged_deps
@@ -177,19 +191,33 @@ prefix f fds = [f (concat fds)]
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
+-- | Internal package names, which should not be interpreted as true
+-- dependencies.
+type IPNs = Set PN
+
+-- | Convenience function to delete a 'FlaggedDep' if it's
+-- for a 'PN' that isn't actually real.
+filterIPNs :: IPNs -> Dependency -> FlaggedDep Component PN -> FlaggedDeps Component PN
+filterIPNs ipns (Dependency pn _) fd
+    | S.notMember pn ipns = [fd]
+    | otherwise           = []
+
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
+                IPNs ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branches) =
-                 L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
+convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns (CondNode info ds branches) =
+                 concatMap
+                    (\d -> filterIPNs ipns d (D.Simple (convDep pn d) comp))
+                    ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo) branches
+              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns) branches
   where
     bi = getInfo info
 
@@ -221,16 +249,20 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
 --      5. A selector to extract the 'BuildInfo' from the leaves of
 --         the 'CondTree' (which actually contains the needed
 --         dependency information.)
+--
+--      6. The set of package names which should be considered internal
+--         dependencies, and thus not handled as dependencies.
 convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               Component ->
               (a -> BuildInfo) ->
+              IPNs ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds comp getInfo (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds comp getInfo   t')
-        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo) mf')
+convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns   t')
+        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
