@@ -139,7 +139,9 @@ prefix f fds = [f (concat fds)]
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
--- | Convert condition trees to flagged dependencies.
+-- | Convert condition trees to flagged dependencies.  Mutually
+-- recursive with 'convBranch'.  See 'convBranch' for an explanation
+-- of all arguments preceeding the input 'CondTree'.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
@@ -153,7 +155,7 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
   where
     bi = getInfo info
 
--- | Branch interpreter.
+-- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
 -- Here, we try to simplify one of Cabal's condition tree branches into the
 -- solver's flagged dependency format, which is weaker. Condition trees can
@@ -161,6 +163,26 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
 -- flags (such as architecture, or compiler flavour). We try to evaluate the
 -- special flags and subsequently simplify to a tree that only depends on
 -- simple flag choices.
+--
+-- This function takes a number of arguments:
+--
+--      1. Some pre dependency-solving known information ('OS', 'Arch',
+--         'CompilerInfo') for @os()@, @arch()@ and @impl()@ variables,
+--
+--      2. The package instance @'PI' 'PN'@ which this condition tree
+--         came from, so that we can correctly associate @flag()@
+--         variables with the correct package name qualifier,
+--
+--      3. The flag defaults 'FlagInfo' so that we can populate
+--         'Flagged' dependencies with 'FInfo',
+--
+--      4. The name of the component 'Component' so we can record where
+--         the fine-grained information about where the component came
+--         from (see 'convCondTree'), and
+--
+--      5. A selector to extract the 'BuildInfo' from the leaves of
+--         the 'CondTree' (which actually contains the needed
+--         dependency information.)
 convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               Component ->
