@@ -59,14 +59,16 @@ tests = [
         , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         ]
     , testGroup "Setup dependencies" [
-          runTest $ mkTest db7  "setupDeps1" ["B"] (Just [("A", 2), ("B", 1)])
-        , runTest $ mkTest db7  "setupDeps2" ["C"] (Just [("A", 2), ("C", 1)])
-        , runTest $ mkTest db7  "setupDeps3" ["D"] (Just [("A", 1), ("D", 1)])
-        , runTest $ mkTest db7  "setupDeps4" ["E"] (Just [("A", 1), ("A", 2), ("E", 1)])
-        , runTest $ mkTest db7  "setupDeps5" ["F"] (Just [("A", 1), ("A", 2), ("F", 1)])
-        , runTest $ mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $ mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
-        , runTest $ mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
+          runTest $         mkTest db7  "setupDeps1" ["B"] (Just [("A", 2), ("B", 1)])
+        , runTest $         mkTest db7  "setupDeps2" ["C"] (Just [("A", 2), ("C", 1)])
+        , runTest $         mkTest db7  "setupDeps3" ["D"] (Just [("A", 1), ("D", 1)])
+        , runTest $         mkTest db7  "setupDeps4" ["E"] (Just [("A", 1), ("A", 2), ("E", 1)])
+        , runTest $         mkTest db7  "setupDeps5" ["F"] (Just [("A", 1), ("A", 2), ("F", 1)])
+        , runTest $         mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $         mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
+        , runTest $         mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
+        , expectFail $
+          runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
     , testGroup "Base shim" [
           runTest $ mkTest db11 "baseShim1" ["A"] (Just [("A", 1)])
@@ -431,6 +433,24 @@ db10 =
     , Left a2
     , Right $ exAv "C" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
     ]
+
+-- | This database tests that a package's setup dependencies are correctly
+-- linked when the package is linked.
+--
+-- When A and B are installed as independent goals, their dependencies on C must
+-- be linked, due to the single instance restriction. Since C depends on D, 0.D
+-- and 1.D must be linked. C also has a setup dependency on D, so 0.C-setup.D
+-- and 1.C-setup.D must be linked. However, D's two link groups must remain
+-- independent. The solver should be able to choose D-1 for C's library and D-2
+-- for C's setup script.
+dbSetupDeps :: ExampleDb
+dbSetupDeps = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 [ExFix "D" 1] `withSetupDeps` [ExFix "D" 2]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  ]
 
 -- | Tests for dealing with base shims
 db11 :: ExampleDb
