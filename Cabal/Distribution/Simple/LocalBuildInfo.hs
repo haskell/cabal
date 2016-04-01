@@ -90,7 +90,6 @@ import Data.List (nub, find, stripPrefix)
 import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
-import Data.Map (Map)
 import System.FilePath
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
@@ -320,30 +319,43 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(UnitId, PackageId)],
+    -- | The computed 'UnitId' which uniquely identifies this
+    -- component.
     componentUnitId :: UnitId,
+    -- | Compatibility "package key" that we pass to older versions of GHC.
     componentCompatPackageKey :: String,
+    -- | Compatability "package name" that we register this component as.
     componentCompatPackageName :: PackageName,
+    -- | A list of exposed modules (either defined in this component,
+    -- or reexported from another component.)
     componentExposedModules :: [Installed.ExposedModule],
+    -- | Convenience field, specifying whether or not this is the
+    -- "public library" that has the same name as the package.
     componentIsPublic :: Bool,
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    -- | The set of packages that are brought into scope during
+    -- compilation, including a 'ModuleRenaming' which may used
+    -- to hide or rename modules.  This is what gets translated into
+    -- @-package-id@ arguments.  This is a modernized version of
+    -- 'componentPackageDeps', which is kept around for BC purposes.
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | ExeComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | TestComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   | BenchComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentPackageRenaming :: Map PackageName ModuleRenaming
+    componentIncludes :: [(UnitId, ModuleRenaming)]
   }
   deriving (Generic, Read, Show)
 

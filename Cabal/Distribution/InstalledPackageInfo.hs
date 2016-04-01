@@ -30,7 +30,7 @@ module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
         installedComponentId,
         installedPackageId,
-        OriginalModule(..), ExposedModule(..),
+        ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
         parseInstalledPackageInfo,
@@ -162,28 +162,12 @@ emptyInstalledPackageInfo
 -- -----------------------------------------------------------------------------
 -- Exposed modules
 
-data OriginalModule
-   = OriginalModule {
-       originalPackageId  :: UnitId,
-       originalModuleName :: ModuleName
-     }
-  deriving (Generic, Eq, Read, Show)
-
 data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
-       exposedReexport  :: Maybe OriginalModule
+       exposedReexport  :: Maybe Module
      }
   deriving (Eq, Generic, Read, Show)
-
-instance Text OriginalModule where
-    disp (OriginalModule ipi m) =
-        disp ipi <> Disp.char ':' <> disp m
-    parse = do
-        ipi <- parse
-        _ <- Parse.char ':'
-        m <- parse
-        return (OriginalModule ipi m)
 
 instance Text ExposedModule where
     disp (ExposedModule m reexport) =
@@ -201,8 +185,6 @@ instance Text ExposedModule where
             fmap Just parse
         return (ExposedModule m reexport)
 
-
-instance Binary OriginalModule
 
 instance Binary ExposedModule
 

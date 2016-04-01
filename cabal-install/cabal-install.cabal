@@ -277,13 +277,9 @@ executable cabal
     else
       build-depends: unix >= 2.5 && < 2.8
 
-    if arch(arm) && impl(ghc < 7.6)
-       -- older ghc on arm does not support -threaded
-       cc-options:  -DCABAL_NO_THREADED
-    else
-       ghc-options: -threaded
+    if !(arch(arm) && impl(ghc < 7.6))
+      ghc-options: -threaded
 
-    c-sources: cbits/getnumcores.c
     default-language: Haskell2010
 
 -- Small, fast running tests.
@@ -350,9 +346,7 @@ Test-Suite unit-tests
   else
     build-depends: unix
 
-  if arch(arm)
-    cc-options:  -DCABAL_NO_THREADED
-  else
+  if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
   default-language: Haskell2010
 
@@ -406,9 +400,7 @@ Test-Suite solver-quickcheck
   else
     build-depends: unix
 
-  if arch(arm)
-    cc-options:  -DCABAL_NO_THREADED
-  else
+  if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
   default-language: Haskell2010
 
@@ -433,9 +425,7 @@ test-suite integration-tests
   else
     build-depends: unix >= 2.5 && < 2.8
 
-  if arch(arm)
-    cc-options:  -DCABAL_NO_THREADED
-  else
+  if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
   ghc-options: -Wall

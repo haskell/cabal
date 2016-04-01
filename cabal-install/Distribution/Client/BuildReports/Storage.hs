@@ -103,7 +103,7 @@ storeLocal cinfo templates reports platform = sequence_
         fromPathTemplate (substPathTemplate env template)
       where env = initialPathTemplateEnv
                     (BuildReport.package  report)
-                    -- ToDo: In principle, we can support $pkgkey, but only
+                    -- TODO: In principle, we can support $pkgkey, but only
                     -- if the configure step succeeds.  So add a Maybe field
                     -- to the build report, and either use that or make up
                     -- a fake identifier if it's not available.

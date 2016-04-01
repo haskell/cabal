@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 module C where
-#ifdef VERSION_deepseq
+#ifdef VERSION_directory
 #error "Should not see macro from executable macros-a"
 #endif
 #ifdef VERSION_containers
