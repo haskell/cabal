@@ -51,7 +51,7 @@ script:
  - ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
 # Redo the package tests with different versions of GHC
  - if [ "$TEST_OLDER" == "YES" ]; then CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc ./dist/setup/setup test package-tests --show-details=streaming; fi
- - if [ "$TEST_OLDER" == "YES" ]; CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc ./dist/setup/setup test package-tests --show-details=streaming; fi
+ - if [ "$TEST_OLDER" == "YES" ]; then CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc ./dist/setup/setup test package-tests --show-details=streaming; fi
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
 
