@@ -129,6 +129,9 @@ withTempFileName tmpDir template action =
     (\(name, h) -> hClose h >> action name)
 
 -- | Executes the action in the specified directory.
+--
+-- Warning: This operation is NOT thread-safe, because current
+-- working directory is a process-global concept.
 inDir :: Maybe FilePath -> IO a -> IO a
 inDir Nothing m = m
 inDir (Just d) m = do
