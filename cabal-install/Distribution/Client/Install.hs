@@ -1462,9 +1462,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
         -- Install phase
           onFailure InstallFailed $ criticalSection installLock $ do
-            -- Capture installed package configuration file
-            maybePkgConf <- maybeGenPkgConf mLogPath
-
             -- Actual installation
             withWin32SelfUpgrade verbosity ipid configFlags
                                  cinfo platform pkg $ do
@@ -1474,6 +1471,11 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                   setup Cabal.copyCommand copyFlags mLogPath
                   when shouldRegister $ do
                     setup Cabal.registerCommand registerFlags mLogPath
+
+            -- Capture installed package configuration file
+            -- TODO: Why do we need this?
+            maybePkgConf <- maybeGenPkgConf mLogPath
+
             return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
