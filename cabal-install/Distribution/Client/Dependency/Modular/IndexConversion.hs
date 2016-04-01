@@ -126,6 +126,44 @@ convGPD os arch cinfo strfl pi
   in
     PInfo flagged_deps fds Nothing
 
+-- With convenience libraries, we have to do some work.  Imagine you
+-- have the following Cabal file:
+--
+--      name: foo
+--      library foo-internal
+--          build-depends: external-a
+--      library
+--          build-depends: foo-internal, external-b
+--      library foo-helper
+--          build-depends: foo, external-c
+--      test-suite foo-tests
+--          build-depends: foo-helper, external-d
+--
+-- What should the final flagged dependency tree be?  Ideally, it
+-- should look like this:
+--
+--      [ Simple (Dep external-a) (Library foo-internal)
+--      , Simple (Dep external-b) (Library foo)
+--      , Stanza (SN foo TestStanzas) $
+--          [ Simple (Dep external-c) (Library foo-helper)
+--          , Simple (Dep external-d) (TestSuite foo-tests) ]
+--      ]
+--
+-- There are two things to note:
+--
+--      1. First, we eliminated the "local" dependencies foo-internal
+--      and foo-helper.  This are implicitly assumed to refer to "foo"
+--      so we don't need to have them around.  If you forget this,
+--      Cabal will then try to pick a version for "foo-helper" but
+--      no such package exists (this is the cost of overloading
+--      build-depends to refer to both packages and components.)
+--
+--      2. Second, it is more precise to have external-c be qualified
+--      by a test stanza, since foo-helper only needs to be built if
+--      your are building the test suite (and not the main library).
+--      If you omit it, Cabal will always attempt to depsolve for
+--      foo-helper even if you aren't building the test suite.
+
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
 -- something like @Stanza sn@).
