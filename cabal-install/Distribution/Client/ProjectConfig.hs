@@ -9,6 +9,8 @@ module Distribution.Client.ProjectConfig (
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
     PackageConfig(..),
+    MapLast(..),
+    MapMappend(..),
 
     -- * Project config files
     findProjectRoot,
@@ -32,6 +34,10 @@ module Distribution.Client.ProjectConfig (
     resolveSolverSettings,
     BuildTimeSettings(..),
     resolveBuildTimeSettings,
+
+    -- * Checking configuration
+    checkBadPerPackageCompilerPaths,
+    BadPerPackageCompilerPaths(..)
   ) where
 
 import Distribution.Client.ProjectConfig.Types
@@ -60,6 +66,8 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
+import Distribution.Simple.Program
+         ( ConfiguredProgram(..) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, AllowNewer(..) )
@@ -90,6 +98,8 @@ import Data.Typeable
 import Data.Maybe
 import Data.Either
 import qualified Data.Map as Map
+import Data.Map (Map)
+import qualified Data.Set as Set
 import Distribution.Compat.Semigroup
 import System.FilePath hiding (combine)
 import System.Directory
@@ -113,7 +123,8 @@ lookupLocalPackageConfig field ProjectConfig {
                            projectConfigSpecificPackage
                          } pkgname =
     field projectConfigLocalPackages
- <> maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
+ <> maybe mempty field
+          (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
@@ -169,7 +180,8 @@ resolveSolverSettings ProjectConfig{
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
     solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
-    solverSettingFlagAssignments   = fmap packageConfigFlagAssignment projectConfigSpecificPackage
+    solverSettingFlagAssignments   = fmap packageConfigFlagAssignment
+                                          (getMapMappend projectConfigSpecificPackage)
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
     solverSettingAllowNewer        = fromJust projectConfigAllowNewer
@@ -679,4 +691,38 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
 readSourcePackage _verbosity _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
+
+
+---------------------------------------------
+-- Checking configuration sanity
+--
+
+data BadPerPackageCompilerPaths
+   = BadPerPackageCompilerPaths [(PackageName, String)]
+  deriving (Show, Typeable)
+
+instance Exception BadPerPackageCompilerPaths
+--TODO: [required eventually] displayException for nice rendering
+--TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+-- | The project configuration is not allowed to specify program locations for
+-- programs used by the compiler as these have to be the same for each set of
+-- packages.
+--
+-- We cannot check this until we know which programs the compiler uses, which
+-- in principle is not until we've configured the compiler.
+--
+-- Throws 'BadPerPackageCompilerPaths'
+--
+checkBadPerPackageCompilerPaths :: [ConfiguredProgram]
+                                -> Map PackageName PackageConfig
+                                -> IO ()
+checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
+    case [ (pkgname, progname)
+         | let compProgNames = Set.fromList (map programId compilerPrograms)
+         ,  (pkgname, pkgconf) <- Map.toList packagesConfig
+         , progname <- Map.keys (getMapLast (packageConfigProgramPaths pkgconf))
+         , progname `Set.member` compProgNames ] of
+      [] -> return ()
+      ps -> throwIO (BadPerPackageCompilerPaths ps)
 

@@ -2,6 +2,10 @@
              DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
 
+--TODO: issues hit by users recently:
+-- * failure to find .cabal file in default project glob error messages
+-- * exceptions in build in configure step not reported
+
 -- | 
 --
 module Distribution.Client.ProjectBuilding (
@@ -945,9 +949,9 @@ buildAndInstallUnpackedPackage verbosity
                                }
                                installLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
-                                 pkgConfigCompiler  = compiler,
-                                 pkgConfigPlatform  = platform,
-                                 pkgConfigProgramDb = progdb
+                                 pkgConfigPlatform      = platform,
+                                 pkgConfigCompiler      = compiler,
+                                 pkgConfigCompilerProgs = progdb
                                }
                                rpkg@(ReadyPackage pkg _deps)
                                srcdir builddir = do
@@ -1102,8 +1106,8 @@ buildInplaceUnpackedPackage verbosity
                             BuildTimeSettings{buildSettingNumJobs}
                             cacheLock
                             pkgshared@ElaboratedSharedConfig {
-                              pkgConfigCompiler  = compiler,
-                              pkgConfigProgramDb = progdb
+                              pkgConfigCompiler      = compiler,
+                              pkgConfigCompilerProgs = progdb
                             }
                             rpkg@(ReadyPackage pkg _deps)
                             buildStatus
