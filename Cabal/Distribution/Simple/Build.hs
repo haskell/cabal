@@ -465,12 +465,10 @@ createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
 createInternalPackageDB verbosity lbi distPref = do
     existsAlready <- doesPackageDBExist dbPath
     when existsAlready $ deletePackageDB dbPath
-    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath 
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
     return (SpecificPackageDB dbPath)
   where
-      dbPath = case compilerFlavor (compiler lbi) of
-        UHC -> UHC.inplacePackageDbPath lbi
-        _   -> distPref </> "package.conf.inplace"
+    dbPath = internalPackageDBPath lbi distPref
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb

@@ -11,6 +11,7 @@ cabal-dev/
 cabal.config
 dist
 dist-*
+register.sh
 
 /Cabal/dist/
 /Cabal/tests/Setup
