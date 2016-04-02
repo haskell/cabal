@@ -55,11 +55,16 @@ _cabal_subcommands()
 
 __cabal_has_doubledash ()
 {
-    for w in "${COMP_WORDS[@]}"
-    do
-        if [ "--" == "$w" ]; then
+    local c=1
+    # Ignore the last word, because it is replaced anyways.
+    # This allows expansion for flags on "cabal foo --",
+    # but does not try to complete after "cabal foo -- ".
+    local n=$((${#COMP_WORDS[@]} - 1))
+    while [ $c -lt $n ]; do
+        if [ "--" = "${COMP_WORDS[c]}" ]; then
             return 0
         fi
+        ((c++))
     done
     return 1
 }
