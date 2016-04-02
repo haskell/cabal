@@ -57,7 +57,7 @@ data Tree a =
 --
 -- Linking is an essential part of this story. In addition to picking a specific
 -- version for @1.P@, the solver can also decide to link @1.P@ to @0.P@ (or
--- vice versa). Teans that @1.P@ and @0.P@ really must be the very same package
+-- vice versa). It means that @1.P@ and @0.P@ really must be the very same package
 -- (and hence must have the same build time configuration, and their
 -- dependencies must also be the exact same).
 --
