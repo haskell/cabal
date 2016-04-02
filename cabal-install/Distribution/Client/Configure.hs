@@ -228,8 +228,8 @@ configureSetupScript packageDBs
 
     explicitSetupDeps :: Maybe [(UnitId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
-                 <- mpkg
+      ReadyPackage cpkg deps <- mpkg
+      let gpkg = packageDescription (confPkgSource cpkg)
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
       -- Return the setup dependencies computed by the solver
@@ -348,8 +348,7 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-                 (ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _)
-                                                  flags stanzas _)
+                 (ReadyPackage (ConfiguredPackage spkg flags stanzas _)
                                deps)
                  extraArgs =
 
@@ -357,6 +356,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs
 
   where
+    gpkg = packageDescription spkg
     configureFlags   = filterConfigureFlags configFlags {
       configConfigurationsFlags = flags,
       -- We generate the legacy constraints as well as the new style precise

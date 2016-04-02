@@ -537,9 +537,8 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   -- are already fetched.
   let offline = fromFlagOrDefault False (installOfflineMode installFlags)
   when offline $ do
-    let pkgs = [ sourcePkg
-               | InstallPlan.Configured (ConfiguredPackage sourcePkg _ _ _)
-                 <- InstallPlan.toList installPlan ]
+    let pkgs = [ confPkgSource cpkg
+               | InstallPlan.Configured cpkg <- InstallPlan.toList installPlan ]
     notFetched <- fmap (map packageInfoId)
                   . filterM (fmap isNothing . checkFetched . packageSource)
                   $ pkgs
@@ -652,7 +651,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkgAndReason (ReadyPackage pkg' _, pr) = display (packageId pkg') ++
           showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
-          showStanzas (stanzas pkg') ++
+          showStanzas (confPkgStanzas pkg') ++
           showDep pkg' ++
           case pr of
             NewPackage     -> " (new package)"
@@ -681,14 +680,11 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
-    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
+    nonDefaultFlags cpkg =
       let defaultAssignment =
             toFlagAssignment
-             (genPackageFlags (Source.packageDescription spkg))
-      in  fa \\ defaultAssignment
-
-    stanzas :: ConfiguredPackage loc -> [OptionalStanza]
-    stanzas (ConfiguredPackage _ _ sts _) = sts
+             (genPackageFlags (Source.packageDescription (confPkgSource cpkg)))
+      in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((' ' :) . showStanza)
@@ -1025,7 +1021,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg | InstallPlan.Installed pkg _ _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ pkg | ReadyPackage (ConfiguredPackage pkg _ _ _) _
+        allSrcPkgs   = [ confPkgSource cpkg | ReadyPackage cpkg _
                             <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
@@ -1412,7 +1408,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       writeFileAtomic descFilePath pkgtxt
 
   -- Compute the IPID
-  let flags (ReadyPackage (ConfiguredPackage _ x _ _) _) = x
+  let flags (ReadyPackage cpkg _) = confPkgFlags cpkg
       pkg_name = pkgName (PackageDescription.package pkg)
       cid = Configure.computeComponentId Cabal.NoFlag
                 (PackageDescription.package pkg) (CLibName (display pkg_name))
