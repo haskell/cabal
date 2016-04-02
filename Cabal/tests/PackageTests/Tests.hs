@@ -14,6 +14,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
 import Distribution.Simple.Compiler    ( compilerId )
+import Distribution.System (buildOS, OS(Windows))
 
 import Control.Monad
 
@@ -300,6 +301,39 @@ tests config = do
               cabal "clean" []
               r <- runInstalledExe' "foo" []
               assertOutputContains "I AM THE ONE" r
+
+  -- Test to see if --gen-script works.
+  tcs "InternalLibraries" "gen-script" $ do
+    withPackageDb $ do
+      withPackage "p" $ do
+        cabal_build []
+        cabal "copy" []
+        cabal "register" ["--gen-script"]
+        _ <- if buildOS == Windows
+                then shell "cmd" ["/C", "register.bat"]
+                else shell "./register.sh" []
+        return ()
+      -- Make sure we can see p
+      withPackage "r" $ cabal_install []
+
+  -- Test to see if --gen-pkg-config works.
+  tcs "InternalLibraries" "gen-pkg-config" $ do
+    withPackageDb $ do
+      withPackage "p" $ do
+        cabal_build []
+        cabal "copy" []
+        let dir = "pkg-config.bak"
+        cabal "register" ["--gen-pkg-config=" ++ dir]
+        -- Infelicity! Does not respect CWD.
+        pkg_dir <- packageDir
+        let notHidden = not . isHidden
+            isHidden name = "." `isPrefixOf` name
+        confs <- fmap (sort . filter notHidden)
+               . liftIO $ getDirectoryContents (pkg_dir </> dir)
+        forM_ confs $ \conf -> ghcPkg "register" [pkg_dir </> dir </> conf]
+
+      -- Make sure we can see p
+      withPackage "r" $ cabal_install []
 
   -- Internal libraries used by a statically linked executable:
   -- no libraries should get installed or registered.  (Note,

@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Register
@@ -26,6 +27,8 @@
 module Distribution.Simple.Register (
     register,
     unregister,
+
+    internalPackageDBPath,
 
     initPackageDB,
     doesPackageDBExist,
@@ -65,15 +68,11 @@ import Distribution.Verbosity as Verbosity
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
-         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
-         , doesDirectoryExist, doesFileExist )
 
 import Data.Version
-import Control.Monad (when)
+import Control.Monad
 import Data.Maybe
-         ( isJust, fromMaybe, maybeToList )
 import Data.List
-         ( partition, nub )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- -----------------------------------------------------------------------------
@@ -87,46 +86,30 @@ register pkg lbi regFlags =
     -- if there is no public library, since no one else can use it
     -- usefully (they're not public.)  If we start supporting scoped
     -- packages, we'll have to relax this.
-    when (hasPublicLib pkg) $
-        let maybeRegister (CLib lib) _clbi =
-                registerOne pkg lbi regFlags lib
-            maybeRegister _comp _clbi = return ()
-        in withAllComponentsInBuildOrder pkg lbi maybeRegister
+    when (hasPublicLib pkg) $ do
+        -- It's important to register in build order, because ghc-pkg
+        -- will complain if a dependency is not registered.
+        let maybeGenerateOne clbi
+                | CLib lib <- getLocalComponent pkg clbi
+                = fmap Just (generateOne pkg lib lbi clbi regFlags)
+                | otherwise = return Nothing
+        ipis <- fmap catMaybes
+              $ mapM maybeGenerateOne (allComponentsInBuildOrder lbi)
+        registerAll pkg lbi regFlags ipis
+        return ()
 
-registerOne :: PackageDescription -> LocalBuildInfo -> RegisterFlags
-            -> Library
-            -> IO ()
-registerOne pkg lbi regFlags lib
+generateOne :: PackageDescription -> Library -> LocalBuildInfo -> ComponentLocalBuildInfo
+            -> RegisterFlags
+            -> IO InstalledPackageInfo
+generateOne pkg lib lbi clbi regFlags
   = do
-    let clbi = getComponentLocalBuildInfo lbi (CLibName (libName lib))
-
     absPackageDBs    <- absolutePackageDBPaths packageDbs
-    -- TODO: registration info named base on LIBNAME!!!
     installedPkgInfo <- generateRegistrationInfo
                            verbosity pkg lib lbi clbi inplace reloc distPref
                            (registrationPackageDB absPackageDBs)
-
     info verbosity (IPI.showInstalledPackageInfo installedPkgInfo)
-
-    when (fromFlag (regPrintId regFlags)) $ do
-      putStrLn (display (IPI.installedUnitId installedPkgInfo))
-
-     -- Three different modes:
-    case () of
-     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
-       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
-       | otherwise             -> do
-           setupMessage verbosity "Registering" (packageId pkg)
-           registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.NoMultiInstance
-                           packageDbs installedPkgInfo
-
+    return installedPkgInfo
   where
-    modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
-    regFile             = fromMaybe (display (packageId pkg) <.> "conf")
-                                    (fromFlag (regGenPkgConf regFlags))
-
-    modeGenerateRegScript = fromFlag (regGenScript regFlags)
-
     inplace   = fromFlag (regInPlace regFlags)
     reloc     = relocatable lbi
     -- FIXME: there's really no guarantee this will work.
@@ -137,18 +120,68 @@ registerOne pkg lbi regFlags lib
     distPref  = fromFlag (regDistPref regFlags)
     verbosity = fromFlag (regVerbosity regFlags)
 
-    writeRegistrationFile installedPkgInfo = do
-      notice verbosity ("Creating package registration file: " ++ regFile)
-      writeUTF8File regFile (IPI.showInstalledPackageInfo installedPkgInfo)
+registerAll :: PackageDescription -> LocalBuildInfo -> RegisterFlags
+            -> [InstalledPackageInfo]
+            -> IO ()
+registerAll pkg lbi regFlags ipis
+  = do
+    when (fromFlag (regPrintId regFlags)) $ do
+      forM_ ipis $ \installedPkgInfo ->
+        -- Only print the public library's IPI
+        when (IPI.sourcePackageId installedPkgInfo == packageId pkg) $
+          putStrLn (display (IPI.installedUnitId installedPkgInfo))
 
-    writeRegisterScript installedPkgInfo =
+     -- Three different modes:
+    case () of
+     _ | modeGenerateRegFile   -> writeRegistrationFileOrDirectory
+       | modeGenerateRegScript -> writeRegisterScript
+       | otherwise             -> do
+           setupMessage verbosity "Registering" (packageId pkg)
+           forM_ ipis $ \installedPkgInfo ->
+               registerPackage verbosity (compiler lbi) (withPrograms lbi)
+                               HcPkg.NoMultiInstance packageDbs installedPkgInfo
+
+  where
+    modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
+    regFile             = fromMaybe (display (packageId pkg) <.> "conf")
+                                    (fromFlag (regGenPkgConf regFlags))
+
+    modeGenerateRegScript = fromFlag (regGenScript regFlags)
+
+    -- FIXME: there's really no guarantee this will work.
+    -- registering into a totally different db stack can
+    -- fail if dependencies cannot be satisfied.
+    packageDbs = nub $ withPackageDB lbi
+                    ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
+    verbosity = fromFlag (regVerbosity regFlags)
+
+    writeRegistrationFileOrDirectory = do
+      -- Handles overwriting both directory and file
+      deletePackageDB regFile
+      case ipis of
+        [installedPkgInfo] -> do
+          notice verbosity ("Creating package registration file: " ++ regFile)
+          writeUTF8File regFile (IPI.showInstalledPackageInfo installedPkgInfo)
+        _ -> do
+          notice verbosity ("Creating package registration directory: " ++ regFile)
+          createDirectory regFile
+          let num_ipis = length ipis
+              lpad m xs = replicate (m - length ys) '0' ++ ys
+                  where ys = take m xs
+              number i = lpad (length (show num_ipis)) (show i)
+          forM_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
+            -- TODO: This will need a hashUnitId when Backpack comes.
+            writeUTF8File (regFile </> (number i ++ "-" ++ display (IPI.installedUnitId installedPkgInfo)))
+                          (IPI.showInstalledPackageInfo installedPkgInfo)
+
+    writeRegisterScript =
       case compilerFlavor (compiler lbi) of
         JHC -> notice verbosity "Registration scripts not needed for jhc"
         UHC -> notice verbosity "Registration scripts not needed for uhc"
         _   -> withHcPkg
                "Registration scripts are not implemented for this compiler"
                (compiler lbi) (withPrograms lbi)
-               (writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs)
+               (writeHcPkgRegisterScript verbosity ipis packageDbs)
 
 
 generateRegistrationInfo :: Verbosity
@@ -168,12 +201,16 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: the method of setting the UnitId is compiler specific
   --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
+      lbi' = lbi {
+                withPackageDB = withPackageDB lbi
+                    ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)]
+             }
   abi_hash <-
     case compilerFlavor comp of
      GHC | compilerVersion comp >= Version [6,11] [] -> do
-            fmap AbiHash $ GHC.libAbiHash verbosity pkg lbi lib clbi
+            fmap AbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
      GHCJS -> do
-            fmap AbiHash $ GHCJS.libAbiHash verbosity pkg lbi lib clbi
+            fmap AbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
      _ -> return (AbiHash "")
 
   installedPkgInfo <-
@@ -278,14 +315,18 @@ registerPackage verbosity comp progdb multiInstance packageDbs installedPkgInfo 
     _    -> die "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
-                         -> InstalledPackageInfo
+                         -> [InstalledPackageInfo]
                          -> PackageDBStack
                          -> HcPkg.HcPkgInfo
                          -> IO ()
-writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs hpi = do
-  let invocation  = HcPkg.reregisterInvocation hpi Verbosity.normal
-                      packageDbs (Right installedPkgInfo)
-      regScript   = invocationAsSystemScript buildOS invocation
+writeHcPkgRegisterScript verbosity ipis packageDbs hpi = do
+  let genScript installedPkgInfo =
+          let invocation  = HcPkg.reregisterInvocation hpi Verbosity.normal
+                              packageDbs (Right installedPkgInfo)
+          in invocationAsSystemScript buildOS invocation
+      scripts = map genScript ipis
+      -- TODO: Do something more robust here
+      regScript = unlines scripts
 
   notice verbosity ("Creating package registration script: " ++ regScriptFileName)
   writeUTF8File regScriptFileName regScript
@@ -469,3 +510,9 @@ unregScriptFileName :: FilePath
 unregScriptFileName = case buildOS of
                           Windows -> "unregister.bat"
                           _       -> "unregister.sh"
+
+internalPackageDBPath :: LocalBuildInfo -> FilePath -> FilePath
+internalPackageDBPath lbi distPref =
+      case compilerFlavor (compiler lbi) of
+        UHC -> UHC.inplacePackageDbPath lbi
+        _   -> distPref </> "package.conf.inplace"

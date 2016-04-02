@@ -146,6 +146,8 @@ extra-source-files:
   tests/PackageTests/InternalLibraries/p/q/Q.hs
   tests/PackageTests/InternalLibraries/q/Q.hs
   tests/PackageTests/InternalLibraries/q/q.cabal
+  tests/PackageTests/InternalLibraries/r/R.hs
+  tests/PackageTests/InternalLibraries/r/r.cabal
   tests/PackageTests/Macros/A.hs
   tests/PackageTests/Macros/B.hs
   tests/PackageTests/Macros/Main.hs
