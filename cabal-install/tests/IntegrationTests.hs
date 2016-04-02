@@ -20,7 +20,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Setup ( Flag(..) )
-import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive )
+import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive, installOrdinaryFile )
 import Distribution.Verbosity (normal)
 
 -- Third party modules.
@@ -56,19 +56,20 @@ import System.Environment ( getExecutablePath )
 -- | Test case.
 data TestCase = TestCase
     { tcName :: String -- ^ Name of the shell script
-    , tcBaseDirectory :: FilePath
-    , tcCategory :: String
-    , tcShouldX :: String
-    , tcStdOutPath :: Maybe FilePath -- ^ File path of "golden standard output"
-    , tcStdErrPath :: Maybe FilePath -- ^ File path of "golden standard error"
+    , tcBaseDirectory :: FilePath -- ^ The base directory where tests are found
+                                  --   e.g., cabal-install/tests/IntegrationTests
+    , tcCategory :: String -- ^ Category of test; e.g., custom, exec, freeze, ...
+    , tcStdOutPath :: Maybe FilePath -- ^ File path of expected standard output
+    , tcStdErrPath :: Maybe FilePath -- ^ File path of expected standard error
     }
 
 -- | Test result.
 data TestResult = TestResult
-    { trExitCode :: ExitCode
-    , trStdOut :: ByteString
-    , trStdErr :: ByteString
-    , trWorkingDirectory :: FilePath
+    { trExitCode :: ExitCode -- ^ Exit code of test script
+    , trStdOut :: ByteString -- ^ Actual standard output
+    , trStdErr :: ByteString -- ^ Actual standard error
+    , trWorkingDirectory :: FilePath -- ^ Temporary working directory test was
+                                     --   executed in.
     }
 
 -- | Cabal executable
@@ -77,7 +78,7 @@ cabalProgram = (simpleProgram "cabal") {
     programFindVersion = findProgramVersion "--numeric-version" id
   }
 
--- | Convert test result to string.
+-- | Convert test result to user-friendly string message.
 testResultToString :: TestResult -> String
 testResultToString testResult =
     exitStatus ++ "\n" ++ workingDirectory ++ "\n\n" ++ stdOut ++ "\n\n" ++ stdErr
@@ -136,6 +137,8 @@ listDirectoryLax directory = do
   else
     return [ ]
 
+-- | @pathIfExists p == return (Just p)@ if @p@ exists, and
+-- @return Nothing@ otherwise.
 pathIfExists :: FilePath -> IO (Maybe FilePath)
 pathIfExists p = do
   e <- doesFileExist p
@@ -144,6 +147,9 @@ pathIfExists p = do
     else
       return Nothing
 
+-- | Checks if file @p@ matches a 'ByteString' @s@, subject
+-- to line-break normalization.  Lines in the file which are
+-- prefixed with @RE:@ are treated specially as a regular expression.
 fileMatchesString :: FilePath -> ByteString -> IO Bool
 fileMatchesString p s = do
   withBinaryFile p ReadMode $ \h -> do
@@ -159,8 +165,12 @@ fileMatchesString p s = do
 
     -- This is a bit of a hack, but since we're comparing
     -- *text* output, we should be OK.
-    normalizeLinebreaks = B.filter (not . ((==) 13))
+    normalizeLinebreaks = B.filter (not . ((==) 13)) -- carriage return
 
+-- | Check if the @actual@ 'ByteString' matches the contents of
+-- @expected@ (always succeeds if the expectation is 'Nothing').
+-- Also takes the 'TestResult' and a label @handleName@ describing
+-- what text the string values correspond to.
 mustMatch :: TestResult -> String -> ByteString -> Maybe FilePath -> Assertion
 mustMatch _          _          _      Nothing         =  return ()
 mustMatch testResult handleName actual (Just expected) = do
@@ -169,13 +179,17 @@ mustMatch testResult handleName actual (Just expected) = do
       "<" ++ handleName ++ "> did not match file '"
       ++ expected ++ "'.\n" ++ testResultToString testResult
 
+-- | Given a @directory@, return its subdirectories.  This is
+-- run on @cabal-install/tests/IntegrationTests@ to get the
+-- list of test categories which can be run.
 discoverTestCategories :: FilePath -> IO [String]
 discoverTestCategories directory = do
   names <- listDirectory directory
   fmap sort $ filterM (\name -> doesDirectoryExist $ directory </> name) names
 
-discoverTestCases :: FilePath -> String -> String -> IO [TestCase]
-discoverTestCases baseDirectory category shouldX = do
+-- | Find all shell scripts in @baseDirectory </> category@.
+discoverTestCases :: FilePath -> String -> IO [TestCase]
+discoverTestCases baseDirectory category = do
   -- Find the names of the shell scripts
   names <- fmap (filter isTestCase) $ listDirectoryLax directory
   -- Fill in TestCase for each script
@@ -185,14 +199,16 @@ discoverTestCases baseDirectory category shouldX = do
     return $ TestCase { tcName = name
                       , tcBaseDirectory = baseDirectory
                       , tcCategory = category
-                      , tcShouldX = shouldX
                       , tcStdOutPath = stdOutPath
                       , tcStdErrPath = stdErrPath
                       }
   where
-    directory = baseDirectory </> category </> shouldX
+    directory = baseDirectory </> category
     isTestCase name = ".sh" `isSuffixOf` name
 
+-- | Given a list of 'TestCase's (describing a shell script for a
+-- single test case), run @mk@ on each of them to form a runnable
+-- 'TestTree'.
 createTestCases :: [TestCase] -> (TestCase -> Assertion) -> IO [TestTree]
 createTestCases testCases mk =
   return $ (flip map) testCases $ \tc -> testCase (tcName tc ++ suffix tc) $ mk tc
@@ -203,16 +219,31 @@ createTestCases testCases mk =
       (Nothing, Just _ ) -> " (ignoring stdout)"
       (Just _ , Just _ ) -> ""
 
-runTestCase :: (TestResult -> Assertion) -> TestCase -> IO ()
-runTestCase assertResult tc = do
+-- | Given a 'TestCase', run it.
+--
+-- A test case of the form @category/testname.sh@ is
+-- run in the following way
+--
+--      1. We make a full copy all of @category@ into a temporary
+--         directory.
+--      2. In the temporary directory, run @testname.sh@.
+--      3. Test that the exit code is zero, and that stdout/stderr
+--         match the expected results.
+--
+runTestCase :: TestCase -> IO ()
+runTestCase tc = do
   doRemove <- newIORef False
   bracket createWorkDirectory (removeWorkDirectory doRemove) $ \workDirectory -> do
     -- Run
-    let scriptDirectory = workDirectory </> tcShouldX tc
+    let scriptDirectory = workDirectory
     sh <- fmap (fromMaybe $ error "Cannot find 'sh' executable") $ findExecutable "sh"
     testResult <- run scriptDirectory sh [ "-e", tcName tc]
     -- Assert that we got what we expected
-    assertResult testResult
+    case trExitCode testResult of
+      ExitSuccess ->
+        return () -- We're good
+      ExitFailure _ ->
+        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
     mustMatch testResult "stdout" (trStdOut testResult) (tcStdOutPath tc)
     mustMatch testResult "stderr" (trStdErr testResult) (tcStdErrPath tc)
     -- Only remove working directory if test succeeded
@@ -226,43 +257,21 @@ runTestCase assertResult tc = do
       copyDirectoryRecursive normal
         (tcBaseDirectory tc </> tcCategory tc)
         workDirectory
+      -- Copy in the common.sh stub
+      let commonDest = workDirectory </> "common.sh"
+      e <- doesFileExist commonDest
+      unless e $
+        installOrdinaryFile normal (tcBaseDirectory tc </> "common.sh") commonDest
       -- Done
       return workDirectory
     removeWorkDirectory doRemove workDirectory = do
         remove <- readIORef doRemove
         when remove $ removeDirectoryRecursive workDirectory
 
-makeShouldXTests :: FilePath -> String -> String -> (TestResult -> Assertion) -> IO [TestTree]
-makeShouldXTests baseDirectory category shouldX assertResult = do
-  testCases <- discoverTestCases baseDirectory category shouldX
-  createTestCases testCases $ \tc ->
-      runTestCase assertResult tc
-
-makeShouldRunTests :: FilePath -> String -> IO [TestTree]
-makeShouldRunTests baseDirectory category = do
-  makeShouldXTests baseDirectory category "should_run" $ \testResult -> do
-    case trExitCode testResult of
-      ExitSuccess ->
-        return () -- We're good
-      ExitFailure _ ->
-        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
-
-makeShouldFailTests :: FilePath -> String -> IO [TestTree]
-makeShouldFailTests baseDirectory category = do
-  makeShouldXTests baseDirectory category "should_fail" $ \testResult -> do
-    case trExitCode testResult of
-      ExitSuccess ->
-        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
-      ExitFailure _ ->
-        return () -- We're good
-
 discoverCategoryTests :: FilePath -> String -> IO [TestTree]
 discoverCategoryTests baseDirectory category = do
-  srTests <- makeShouldRunTests baseDirectory category
-  sfTests <- makeShouldFailTests baseDirectory category
-  return [ testGroup "should_run" srTests
-         , testGroup "should_fail" sfTests
-         ]
+  testCases <- discoverTestCases baseDirectory category
+  createTestCases testCases runTestCase
 
 main :: IO ()
 main = do
@@ -279,7 +288,7 @@ main = do
   -- Define default arguments
   setEnv "CABAL_ARGS" $ "--config-file=config-file"
   setEnv "CABAL_ARGS_NO_CONFIG_FILE" " "
-  -- Discover all the test caregories
+  -- Discover all the test categories
   categories <- discoverTestCategories baseDirectory
   -- Discover tests in each category
   tests <- forM categories $ \category -> do
