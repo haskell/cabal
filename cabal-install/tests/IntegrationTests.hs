@@ -56,19 +56,21 @@ import System.Environment ( getExecutablePath )
 -- | Test case.
 data TestCase = TestCase
     { tcName :: String -- ^ Name of the shell script
-    , tcBaseDirectory :: FilePath
-    , tcCategory :: String
-    , tcShouldX :: String
-    , tcStdOutPath :: Maybe FilePath -- ^ File path of "golden standard output"
-    , tcStdErrPath :: Maybe FilePath -- ^ File path of "golden standard error"
+    , tcBaseDirectory :: FilePath -- ^ The base directory where tests are found
+                                  --   e.g., cabal-install/tests/IntegrationTests
+    , tcCategory :: String -- ^ Category of test; e.g., custom, exec, freeze, ...
+    , tcShouldX :: String  -- ^ "should_run" or "should_fail"
+    , tcStdOutPath :: Maybe FilePath -- ^ File path of expected standard output
+    , tcStdErrPath :: Maybe FilePath -- ^ File path of expected standard error
     }
 
 -- | Test result.
 data TestResult = TestResult
-    { trExitCode :: ExitCode
-    , trStdOut :: ByteString
-    , trStdErr :: ByteString
-    , trWorkingDirectory :: FilePath
+    { trExitCode :: ExitCode -- ^ Exit code of test script
+    , trStdOut :: ByteString -- ^ Actual standard output
+    , trStdErr :: ByteString -- ^ Actual standard error
+    , trWorkingDirectory :: FilePath -- ^ Temporary working directory test was
+                                     --   executed in.
     }
 
 -- | Cabal executable
@@ -77,7 +79,7 @@ cabalProgram = (simpleProgram "cabal") {
     programFindVersion = findProgramVersion "--numeric-version" id
   }
 
--- | Convert test result to string.
+-- | Convert test result to user-friendly string message.
 testResultToString :: TestResult -> String
 testResultToString testResult =
     exitStatus ++ "\n" ++ workingDirectory ++ "\n\n" ++ stdOut ++ "\n\n" ++ stdErr
@@ -136,6 +138,8 @@ listDirectoryLax directory = do
   else
     return [ ]
 
+-- | @pathIfExists p == return (Just p)@ if @p@ exists, and
+-- @return Nothing@ otherwise.
 pathIfExists :: FilePath -> IO (Maybe FilePath)
 pathIfExists p = do
   e <- doesFileExist p
@@ -144,6 +148,9 @@ pathIfExists p = do
     else
       return Nothing
 
+-- | Checks if file @p@ matches a 'ByteString' @s@, subject
+-- to line-break normalization.  Lines in the file which are
+-- prefixed with @RE:@ are treated specially as a regular expression.
 fileMatchesString :: FilePath -> ByteString -> IO Bool
 fileMatchesString p s = do
   withBinaryFile p ReadMode $ \h -> do
@@ -159,8 +166,12 @@ fileMatchesString p s = do
 
     -- This is a bit of a hack, but since we're comparing
     -- *text* output, we should be OK.
-    normalizeLinebreaks = B.filter (not . ((==) 13))
+    normalizeLinebreaks = B.filter (not . ((==) 13)) -- carriage return
 
+-- | Check if the @actual@ 'ByteString' matches the contents of
+-- @expected@ (always succeeds if the expectation is 'Nothing').
+-- Also takes the 'TestResult' and a label @handleName@ describing
+-- what text the string values correspond to.
 mustMatch :: TestResult -> String -> ByteString -> Maybe FilePath -> Assertion
 mustMatch _          _          _      Nothing         =  return ()
 mustMatch testResult handleName actual (Just expected) = do
@@ -169,11 +180,16 @@ mustMatch testResult handleName actual (Just expected) = do
       "<" ++ handleName ++ "> did not match file '"
       ++ expected ++ "'.\n" ++ testResultToString testResult
 
+-- | Given a @directory@, return its subdirectories.  This is
+-- run on @cabal-install/tests/IntegrationTests@ to get the
+-- list of test categories which can be run.
 discoverTestCategories :: FilePath -> IO [String]
 discoverTestCategories directory = do
   names <- listDirectory directory
   fmap sort $ filterM (\name -> doesDirectoryExist $ directory </> name) names
 
+-- | Find all shell scripts in @baseDirectory </> category </> shouldX@;
+-- i.e., all of the @shouldX@ test-cases under @category@.
 discoverTestCases :: FilePath -> String -> String -> IO [TestCase]
 discoverTestCases baseDirectory category shouldX = do
   -- Find the names of the shell scripts
@@ -193,6 +209,9 @@ discoverTestCases baseDirectory category shouldX = do
     directory = baseDirectory </> category </> shouldX
     isTestCase name = ".sh" `isSuffixOf` name
 
+-- | Given a list of 'TestCase's (describing a shell script for a
+-- single test case), run @mk@ on each of them to form a runnable
+-- 'TestTree'.
 createTestCases :: [TestCase] -> (TestCase -> Assertion) -> IO [TestTree]
 createTestCases testCases mk =
   return $ (flip map) testCases $ \tc -> testCase (tcName tc ++ suffix tc) $ mk tc
@@ -203,6 +222,19 @@ createTestCases testCases mk =
       (Nothing, Just _ ) -> " (ignoring stdout)"
       (Just _ , Just _ ) -> ""
 
+-- | Given a 'TestCase', run it, and then test that the result
+-- satisfies the predicate @assertResult@.
+--
+-- A test case of the form @category/shouldX/testname.sh@ is
+-- run in the following way
+--
+--      1. We make a full copy all of @category@ into a temporary
+--         directory.
+--      2. With the working directory @shouldX@ in the temporary
+--         directory, run @testname.sh@.
+--      3. Test that the result of the exit code, stdout and stderr
+--         match the expected results.
+--
 runTestCase :: (TestResult -> Assertion) -> TestCase -> IO ()
 runTestCase assertResult tc = do
   doRemove <- newIORef False
@@ -279,7 +311,7 @@ main = do
   -- Define default arguments
   setEnv "CABAL_ARGS" $ "--config-file=config-file"
   setEnv "CABAL_ARGS_NO_CONFIG_FILE" " "
-  -- Discover all the test caregories
+  -- Discover all the test categories
   categories <- discoverTestCategories baseDirectory
   -- Discover tests in each category
   tests <- forM categories $ \category -> do
