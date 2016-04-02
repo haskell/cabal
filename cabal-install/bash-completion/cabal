@@ -53,8 +53,22 @@ _cabal_subcommands()
     done
 }
 
+__cabal_has_doubledash ()
+{
+    for w in "${COMP_WORDS[@]}"
+    do
+        if [ "--" == "$w" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 _cabal()
 {
+    # no completion past cabal arguments.
+    __cabal_has_doubledash && return
+
     # get the word currently being completed
     local cur
     cur=${COMP_WORDS[$COMP_CWORD]}
