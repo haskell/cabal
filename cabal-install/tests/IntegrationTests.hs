@@ -59,7 +59,6 @@ data TestCase = TestCase
     , tcBaseDirectory :: FilePath -- ^ The base directory where tests are found
                                   --   e.g., cabal-install/tests/IntegrationTests
     , tcCategory :: String -- ^ Category of test; e.g., custom, exec, freeze, ...
-    , tcShouldX :: String  -- ^ "should_run" or "should_fail"
     , tcStdOutPath :: Maybe FilePath -- ^ File path of expected standard output
     , tcStdErrPath :: Maybe FilePath -- ^ File path of expected standard error
     }
@@ -188,10 +187,9 @@ discoverTestCategories directory = do
   names <- listDirectory directory
   fmap sort $ filterM (\name -> doesDirectoryExist $ directory </> name) names
 
--- | Find all shell scripts in @baseDirectory </> category </> shouldX@;
--- i.e., all of the @shouldX@ test-cases under @category@.
-discoverTestCases :: FilePath -> String -> String -> IO [TestCase]
-discoverTestCases baseDirectory category shouldX = do
+-- | Find all shell scripts in @baseDirectory </> category@.
+discoverTestCases :: FilePath -> String -> IO [TestCase]
+discoverTestCases baseDirectory category = do
   -- Find the names of the shell scripts
   names <- fmap (filter isTestCase) $ listDirectoryLax directory
   -- Fill in TestCase for each script
@@ -201,12 +199,11 @@ discoverTestCases baseDirectory category shouldX = do
     return $ TestCase { tcName = name
                       , tcBaseDirectory = baseDirectory
                       , tcCategory = category
-                      , tcShouldX = shouldX
                       , tcStdOutPath = stdOutPath
                       , tcStdErrPath = stdErrPath
                       }
   where
-    directory = baseDirectory </> category </> shouldX
+    directory = baseDirectory </> category
     isTestCase name = ".sh" `isSuffixOf` name
 
 -- | Given a list of 'TestCase's (describing a shell script for a
@@ -222,29 +219,31 @@ createTestCases testCases mk =
       (Nothing, Just _ ) -> " (ignoring stdout)"
       (Just _ , Just _ ) -> ""
 
--- | Given a 'TestCase', run it, and then test that the result
--- satisfies the predicate @assertResult@.
+-- | Given a 'TestCase', run it.
 --
--- A test case of the form @category/shouldX/testname.sh@ is
+-- A test case of the form @category/testname.sh@ is
 -- run in the following way
 --
 --      1. We make a full copy all of @category@ into a temporary
 --         directory.
---      2. With the working directory @shouldX@ in the temporary
---         directory, run @testname.sh@.
---      3. Test that the result of the exit code, stdout and stderr
+--      2. In the temporary directory, run @testname.sh@.
+--      3. Test that the exit code is zero, and that stdout/stderr
 --         match the expected results.
 --
-runTestCase :: (TestResult -> Assertion) -> TestCase -> IO ()
-runTestCase assertResult tc = do
+runTestCase :: TestCase -> IO ()
+runTestCase tc = do
   doRemove <- newIORef False
   bracket createWorkDirectory (removeWorkDirectory doRemove) $ \workDirectory -> do
     -- Run
-    let scriptDirectory = workDirectory </> tcShouldX tc
+    let scriptDirectory = workDirectory
     sh <- fmap (fromMaybe $ error "Cannot find 'sh' executable") $ findExecutable "sh"
     testResult <- run scriptDirectory sh [ "-e", tcName tc]
     -- Assert that we got what we expected
-    assertResult testResult
+    case trExitCode testResult of
+      ExitSuccess ->
+        return () -- We're good
+      ExitFailure _ ->
+        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
     mustMatch testResult "stdout" (trStdOut testResult) (tcStdOutPath tc)
     mustMatch testResult "stderr" (trStdErr testResult) (tcStdErrPath tc)
     -- Only remove working directory if test succeeded
@@ -264,37 +263,10 @@ runTestCase assertResult tc = do
         remove <- readIORef doRemove
         when remove $ removeDirectoryRecursive workDirectory
 
-makeShouldXTests :: FilePath -> String -> String -> (TestResult -> Assertion) -> IO [TestTree]
-makeShouldXTests baseDirectory category shouldX assertResult = do
-  testCases <- discoverTestCases baseDirectory category shouldX
-  createTestCases testCases $ \tc ->
-      runTestCase assertResult tc
-
-makeShouldRunTests :: FilePath -> String -> IO [TestTree]
-makeShouldRunTests baseDirectory category = do
-  makeShouldXTests baseDirectory category "should_run" $ \testResult -> do
-    case trExitCode testResult of
-      ExitSuccess ->
-        return () -- We're good
-      ExitFailure _ ->
-        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
-
-makeShouldFailTests :: FilePath -> String -> IO [TestTree]
-makeShouldFailTests baseDirectory category = do
-  makeShouldXTests baseDirectory category "should_fail" $ \testResult -> do
-    case trExitCode testResult of
-      ExitSuccess ->
-        assertFailure $ "Unexpected exit status.\n\n" ++ testResultToString testResult
-      ExitFailure _ ->
-        return () -- We're good
-
 discoverCategoryTests :: FilePath -> String -> IO [TestTree]
 discoverCategoryTests baseDirectory category = do
-  srTests <- makeShouldRunTests baseDirectory category
-  sfTests <- makeShouldFailTests baseDirectory category
-  return [ testGroup "should_run" srTests
-         , testGroup "should_fail" sfTests
-         ]
+  testCases <- discoverTestCases baseDirectory category
+  createTestCases testCases runTestCase
 
 main :: IO ()
 main = do
