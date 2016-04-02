@@ -2,7 +2,8 @@
 -- distribution for this package.  That is, packs up the source code
 -- into a tarball, making use of the corresponding Cabal module.
 module Distribution.Client.SrcDist (
-         sdist
+         sdist,
+         allPackageSourceFiles
   )  where
 
 
@@ -11,7 +12,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Tar (createTarGzFile)
 
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), packageName )
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
@@ -20,23 +21,29 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
-         , die, notice, withTempDirectory )
+         , warn, die, notice, withTempDirectory )
 import Distribution.Client.Setup
          ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
-         ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault )
+         ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault
+         , defaultSDistFlags )
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text ( display )
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity, normal, lessVerbose)
 import Distribution.Version   (Version(..), orLaterVersion)
+
+import Distribution.Client.Utils
+  (removeExistingFile, tryFindAddSourcePackageDesc)
+import Distribution.Compat.Exception                 (catchIO)
 
 import System.FilePath ((</>), (<.>))
 import Control.Monad (when, unless, liftM)
 import System.Directory (doesFileExist, removeFile, canonicalizePath)
 import System.Process (runProcess, waitForProcess)
 import System.Exit    (ExitCode(..))
+import Control.Exception                             (IOException)
 
 -- |Create a source distribution.
 sdist :: SDistFlags -> SDistExFlags -> IO ()
@@ -136,3 +143,42 @@ createZipArchive verbosity pkg tmpDir targetPref = do
     notice verbosity $ "Source zip archive created: " ++ zipfile
   where
     zipProgram = simpleProgram "zip"
+
+-- | List all source files of a given add-source dependency. Exits with error if
+-- something is wrong (e.g. there is no .cabal file in the given directory).
+allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
+allPackageSourceFiles verbosity packageDir = do
+  pkg <- do
+    let err = "Error reading source files of package."
+    desc <- tryFindAddSourcePackageDesc packageDir err
+    flattenPackageDescription `fmap` readPackageDescription verbosity desc
+  let -- TODO: allocate a temporary directory for this, more thread safe.
+      file      = packageDir </> "cabal-sdist-list-sources"
+      flags     = defaultSDistFlags {
+        sDistVerbosity   = Flag $ if verbosity == normal
+                                  then lessVerbose verbosity else verbosity,
+        sDistListSources = Flag file
+        }
+      setupOpts = defaultSetupScriptOptions {
+        -- 'sdist --list-sources' was introduced in Cabal 1.18.
+        useCabalVersion = orLaterVersion $ Version [1,18,0] [],
+        useWorkingDir = Just packageDir
+        }
+
+      doListSources :: IO [FilePath]
+      doListSources = do
+        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+        fmap lines . readFile $ file
+
+      onFailedListSources :: IOException -> IO ()
+      onFailedListSources e = do
+        warn verbosity $
+          "Could not list sources of the package '"
+          ++ display (packageName pkg) ++ "'."
+        warn verbosity $
+          "Exception was: " ++ show e
+
+  -- Run setup sdist --list-sources=TMPFILE
+  ret <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
+  removeExistingFile file
+  return ret
