@@ -20,7 +20,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Setup ( Flag(..) )
-import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive )
+import Distribution.Simple.Utils ( findProgramVersion, copyDirectoryRecursive, installOrdinaryFile )
 import Distribution.Verbosity (normal)
 
 -- Third party modules.
@@ -257,6 +257,11 @@ runTestCase tc = do
       copyDirectoryRecursive normal
         (tcBaseDirectory tc </> tcCategory tc)
         workDirectory
+      -- Copy in the common.sh stub
+      let commonDest = workDirectory </> "common.sh"
+      e <- doesFileExist commonDest
+      unless e $
+        installOrdinaryFile normal (tcBaseDirectory tc </> "common.sh") commonDest
       -- Done
       return workDirectory
     removeWorkDirectory doRemove workDirectory = do
