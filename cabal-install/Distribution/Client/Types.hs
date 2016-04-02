@@ -112,23 +112,23 @@ fakeUnitId = mkUnitId . (".fake."++) . display
 -- the sense that it provides all the configuration information and so the
 -- final configure process will be independent of the environment.
 --
-data ConfiguredPackage loc = ConfiguredPackage
-       (SourcePackage loc)     -- package info, including repo
-       FlagAssignment          -- complete flag assignment for the package
-       [OptionalStanza]        -- list of enabled optional stanzas for the package
-       (ComponentDeps [ConfiguredId])
+data ConfiguredPackage loc = ConfiguredPackage {
+       confPkgSource :: SourcePackage loc, -- package info, including repo
+       confPkgFlags :: FlagAssignment,     -- complete flag assignment for the package
+       confPkgStanzas :: [OptionalStanza], -- list of enabled optional stanzas for the package
+       confPkgDeps :: ComponentDeps [ConfiguredId]
                                -- set of exact dependencies (installed or source).
                                -- These must be consistent with the 'buildDepends'
                                -- in the 'PackageDescription' that you'd get by
                                -- applying the flag assignment and optional stanzas.
+    }
   deriving (Eq, Show, Generic)
 
-instance Binary loc => Binary (ConfiguredPackage loc)
+instance (Binary loc) => Binary (ConfiguredPackage loc)
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
--- Once we configure a source package we know it's UnitId
--- (at least, in principle, even if we have to fake it currently). It is still
+-- Once we configure a source package we know it's UnitId. It is still
 -- however useful in lots of places to also know the source ID for the package.
 -- We therefore bundle the two.
 --
@@ -155,13 +155,13 @@ instance HasUnitId ConfiguredId where
   installedUnitId = confInstId
 
 instance Package (ConfiguredPackage loc) where
-  packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
+  packageId cpkg = packageId (confPkgSource cpkg)
 
 instance PackageFixedDeps (ConfiguredPackage loc) where
-  depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
+  depends cpkg = fmap (map installedUnitId) (confPkgDeps cpkg)
 
 instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId = fakeUnitId . packageId
+  installedUnitId cpkg = fakeUnitId (packageId cpkg)
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.

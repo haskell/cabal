@@ -123,7 +123,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage (ConfiguredPackage _ _flags _ _) _, pkg, exe) <- exes
+        | (ReadyPackage _cpkg _, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               -- This is a bit dodgy; probably won't work for Backpack packages
               ipid = fakeUnitId pkgid
