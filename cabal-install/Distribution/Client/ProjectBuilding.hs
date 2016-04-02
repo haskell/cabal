@@ -36,6 +36,7 @@ import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
+import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
@@ -1135,10 +1136,10 @@ buildInplaceUnpackedPackage verbosity
           timestamp <- beginUpdateFileMonitor
           setup buildCommand buildFlags buildArgs
 
-          --TODO: [required eventually] temporary hack. We need to look at the package description
-          -- and work out the exact file monitors to use
-          allSrcFiles <- filter (not . ("dist-newstyle" `isPrefixOf`))
-                     <$> getDirectoryContentsRecursive srcdir
+          --TODO: [required eventually] this doesn't track file
+          --non-existence, so we could fail to rebuild if someone
+          --adds a new file which changes behavior.
+          allSrcFiles <- allPackageSourceFiles verbosity srcdir
 
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus

@@ -21,7 +21,6 @@ module Distribution.Client.Sandbox.Timestamp (
   writeTimestampFile
   ) where
 
-import Control.Exception                             (IOException)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
@@ -30,29 +29,15 @@ import System.FilePath                               ((<.>), (</>))
 import qualified Data.Map as M
 
 import Distribution.Compiler                         (CompilerId)
-import Distribution.Package                          (packageName)
-import Distribution.PackageDescription.Configuration (flattenPackageDescription)
-import Distribution.PackageDescription.Parse         (readPackageDescription)
-import Distribution.Simple.Setup                     (Flag (..),
-                                                      SDistFlags (..),
-                                                      defaultSDistFlags,
-                                                      sdistCommand)
 import Distribution.Simple.Utils                     (debug, die, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
-import Distribution.Verbosity                        (Verbosity, lessVerbose,
-                                                      normal)
-import Distribution.Version                          (Version (..),
-                                                      orLaterVersion)
+import Distribution.Verbosity                        (Verbosity)
 
+import Distribution.Client.SrcDist (allPackageSourceFiles)
 import Distribution.Client.Sandbox.Index
   (ListIgnoredBuildTreeRefs (ListIgnored), RefTypesToList(OnlyLinks)
   ,listBuildTreeRefs)
-import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
-                                                      defaultSetupScriptOptions,
-                                                      setupWrapper)
-import Distribution.Client.Utils
-  (inDir, removeExistingFile, tryCanonicalizePath, tryFindAddSourcePackageDesc)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Compat.Time               (ModTime, getCurTime,
@@ -238,45 +223,6 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
       else return r
     return timestampRecords'
 
--- | List all source files of a given add-source dependency. Exits with error if
--- something is wrong (e.g. there is no .cabal file in the given directory).
--- FIXME: This function is not thread-safe because of 'inDir'.
-allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
-allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
-  pkg <- do
-    let err = "Error reading source files of add-source dependency."
-    desc <- tryFindAddSourcePackageDesc packageDir err
-    flattenPackageDescription `fmap` readPackageDescription verbosity desc
-  let file      = "cabal-sdist-list-sources"
-      flags     = defaultSDistFlags {
-        sDistVerbosity   = Flag $ if verbosity == normal
-                                  then lessVerbose verbosity else verbosity,
-        sDistListSources = Flag file
-        }
-      setupOpts = defaultSetupScriptOptions {
-        -- 'sdist --list-sources' was introduced in Cabal 1.18.
-        useCabalVersion = orLaterVersion $ Version [1,18,0] []
-        }
-
-      doListSources :: IO [FilePath]
-      doListSources = do
-        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
-        srcs <- fmap lines . readFile $ file
-        mapM tryCanonicalizePath srcs
-
-      onFailedListSources :: IOException -> IO ()
-      onFailedListSources e = do
-        warn verbosity $
-          "Could not list sources of the add-source dependency '"
-          ++ display (packageName pkg) ++ "'. Skipping the timestamp check."
-        debug verbosity $
-          "Exception was: " ++ show e
-
-  -- Run setup sdist --list-sources=TMPFILE
-  ret <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
-  removeExistingFile file
-  return ret
-
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> ModTime -> AddSourceTimestamp -> IO Bool
 isDepModified verbosity now (packageDir, timestamp) = do
@@ -286,9 +232,10 @@ isDepModified verbosity now (packageDir, timestamp) = do
 
   where
     go []         = return False
-    go (dep:rest) = do
+    go (dep0:rest) = do
       -- FIXME: What if the clock jumps backwards at any point? For now we only
       -- print a warning.
+      let dep = packageDir </> dep0
       modTime <- getModTime dep
       when (modTime > now) $
         warn verbosity $ "File '" ++ dep
