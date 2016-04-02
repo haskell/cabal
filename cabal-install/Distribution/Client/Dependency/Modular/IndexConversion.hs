@@ -6,6 +6,7 @@ import Data.List as L
 import Data.Map as M
 import Data.Maybe
 import Data.Monoid as Mon
+import Data.Set as S
 import Prelude hiding (pi)
 
 import qualified Distribution.Client.PackageIndex as CI
@@ -104,14 +105,27 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- | Convert a generic package description to a solver-specific 'PInfo'.
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cinfo strfl pi
+convGPD os arch cinfo strfl pi@(PI pn _)
         (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
+    -- | We have to be careful to filter out dependencies on
+    -- internal libraries, since they don't refer to real packages
+    -- and thus cannot actually be solved over.  We'll do this
+    -- by creating a set of package names which are "internal"
+    -- and dropping them as we convert.
+    ipns = S.fromList [ PackageName nm
+                      | (nm, _) <- libs
+                      -- Don't include the true package name;
+                      -- qualification could make this relevant.
+                      -- TODO: Can we qualify over internal
+                      -- dependencies? Not for now!
+                      , PackageName nm /= pn ]
+
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo .
+    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns .
                         PDC.addBuildableCondition getInfo
 
     flagged_deps
@@ -126,6 +140,44 @@ convGPD os arch cinfo strfl pi
   in
     PInfo flagged_deps fds Nothing
 
+-- With convenience libraries, we have to do some work.  Imagine you
+-- have the following Cabal file:
+--
+--      name: foo
+--      library foo-internal
+--          build-depends: external-a
+--      library
+--          build-depends: foo-internal, external-b
+--      library foo-helper
+--          build-depends: foo, external-c
+--      test-suite foo-tests
+--          build-depends: foo-helper, external-d
+--
+-- What should the final flagged dependency tree be?  Ideally, it
+-- should look like this:
+--
+--      [ Simple (Dep external-a) (Library foo-internal)
+--      , Simple (Dep external-b) (Library foo)
+--      , Stanza (SN foo TestStanzas) $
+--          [ Simple (Dep external-c) (Library foo-helper)
+--          , Simple (Dep external-d) (TestSuite foo-tests) ]
+--      ]
+--
+-- There are two things to note:
+--
+--      1. First, we eliminated the "local" dependencies foo-internal
+--      and foo-helper.  This are implicitly assumed to refer to "foo"
+--      so we don't need to have them around.  If you forget this,
+--      Cabal will then try to pick a version for "foo-helper" but
+--      no such package exists (this is the cost of overloading
+--      build-depends to refer to both packages and components.)
+--
+--      2. Second, it is more precise to have external-c be qualified
+--      by a test stanza, since foo-helper only needs to be built if
+--      your are building the test suite (and not the main library).
+--      If you omit it, Cabal will always attempt to depsolve for
+--      foo-helper even if you aren't building the test suite.
+
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
 -- something like @Stanza sn@).
@@ -139,19 +191,33 @@ prefix f fds = [f (concat fds)]
 flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
+-- | Internal package names, which should not be interpreted as true
+-- dependencies.
+type IPNs = Set PN
+
+-- | Convenience function to delete a 'FlaggedDep' if it's
+-- for a 'PN' that isn't actually real.
+filterIPNs :: IPNs -> Dependency -> FlaggedDep Component PN -> FlaggedDeps Component PN
+filterIPNs ipns (Dependency pn _) fd
+    | S.notMember pn ipns = [fd]
+    | otherwise           = []
+
 -- | Convert condition trees to flagged dependencies.  Mutually
 -- recursive with 'convBranch'.  See 'convBranch' for an explanation
 -- of all arguments preceeding the input 'CondTree'.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
+                IPNs ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branches) =
-                 L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
+convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns (CondNode info ds branches) =
+                 concatMap
+                    (\d -> filterIPNs ipns d (D.Simple (convDep pn d) comp))
+                    ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo) branches
+              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns) branches
   where
     bi = getInfo info
 
@@ -183,16 +249,20 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo (CondNode info ds branc
 --      5. A selector to extract the 'BuildInfo' from the leaves of
 --         the 'CondTree' (which actually contains the needed
 --         dependency information.)
+--
+--      6. The set of package names which should be considered internal
+--         dependencies, and thus not handled as dependencies.
 convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               Component ->
               (a -> BuildInfo) ->
+              IPNs ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds comp getInfo (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds comp getInfo   t')
-        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo) mf')
+convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns   t')
+        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
