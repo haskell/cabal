@@ -160,7 +160,7 @@ arbitraryExAv pn v db =
 
 arbitraryExInst :: PN -> PV -> [ExampleInstalled] -> Gen ExampleInstalled
 arbitraryExInst pn v pkgs = do
-  hash <- vectorOf 10 $ elements $ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
+  hash <- vectorOf 10 letter
   numDeps <- min 3 <$> arbitrary
   deps <- randomSubset numDeps pkgs
   return $ ExInst (unPN pn) (unPV v) hash (map exInstHash deps)
@@ -211,13 +211,13 @@ arbitraryDeps db = frequency
     ]
 
 arbitraryTestName :: Gen String
-arbitraryTestName = (:[]) <$> elements ['A'..'E']
+arbitraryTestName = vectorOf 10 letter
 
 arbitraryFlagName :: Gen String
 arbitraryFlagName = (:[]) <$> elements ['A'..'E']
 
 arbitraryComponentName :: Gen String
-arbitraryComponentName = (:[]) <$> elements "ABC"
+arbitraryComponentName = vectorOf 10 letter
 
 instance Arbitrary ReorderGoals where
   arbitrary = ReorderGoals <$> arbitrary
@@ -296,3 +296,6 @@ smallListOf :: Gen a -> Gen [a]
 smallListOf gen =
     frequency [ (fr, vectorOf n gen)
               | (fr, n) <- [(3, 0), (5, 1), (2, 2)]]
+
+letter :: Gen Char
+letter = elements $ ['a'..'z'] ++ ['A'..'Z']
