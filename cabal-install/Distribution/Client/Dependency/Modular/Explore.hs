@@ -5,7 +5,6 @@ module Distribution.Client.Dependency.Modular.Explore
 
 import Data.Foldable as F
 import Data.Map as M
-import Data.Set as S
 
 import Distribution.Client.Dependency.Modular.Assignment
 import Distribution.Client.Dependency.Modular.Dependency
@@ -13,6 +12,7 @@ import Distribution.Client.Dependency.Modular.Log
 import Distribution.Client.Dependency.Modular.Message
 import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Types as T
 
@@ -32,16 +32,16 @@ import qualified Distribution.Client.Dependency.Types as T
 -- return it immediately. If all children contain conflict sets, we can
 -- take the union as the combined conflict set.
 backjump :: F.Foldable t => Var QPN -> t (ConflictSetLog a) -> ConflictSetLog a
-backjump var xs = F.foldr combine logBackjump xs S.empty
+backjump var xs = F.foldr combine logBackjump xs CS.empty
   where
     combine :: ConflictSetLog a
             -> (ConflictSet QPN -> ConflictSetLog a)
             ->  ConflictSet QPN -> ConflictSetLog a
     combine (T.Done x)    _ _               = T.Done x
     combine (T.Fail cs)   f csAcc
-      | not (simplifyVar var `S.member` cs) = logBackjump cs
-      | otherwise                           = f (csAcc `S.union` cs)
-    combine (T.Step m ms) f cs              = T.Step m (combine ms f cs)
+      | not (var `CS.member` cs) = logBackjump cs
+      | otherwise                = f (csAcc `CS.union` cs)
+    combine (T.Step m ms) f cs   = T.Step m (combine ms f cs)
 
     logBackjump :: ConflictSet QPN -> ConflictSetLog a
     logBackjump cs = failWith (Failure cs Backjump) cs
@@ -77,8 +77,8 @@ exploreLog = cata go
       ts
     go (GoalChoiceF        ts) a           =
       P.casePSQ ts
-        (failWith (Failure S.empty EmptyGoalChoice) S.empty) -- empty goal choice is an internal error
-        (\ k v _xs -> continueWith (Next (close k)) (v a))   -- commit to the first goal choice
+        (failWith (Failure CS.empty EmptyGoalChoice) CS.empty) -- empty goal choice is an internal error
+        (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
 
 -- | Interface.
 backjumpAndExplore :: Tree a -> Log Message (Assignment, RevDepMap)

@@ -44,6 +44,7 @@ tests = [
         , runTest $         mkTest db3 "forceFlagOff" ["D"]      (Just [("A", 2), ("B", 1), ("D", 1)])
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] Nothing
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] Nothing
+        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
           runTest $         mkTest db5 "simpleTest1" ["C"]      (Just [("A", 2), ("C", 1)])
@@ -119,6 +120,9 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "0")] dbPC1 "tooOld" ["A"] Nothing
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
+        ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db16 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
         ]
     ]
   where
@@ -478,6 +482,70 @@ db14 = [
   , Right $ exAv "D" 1 [ExAny "C"]
   , Right $ exAv "E" 1 []
   ]
+
+-- | Check that the solver can backtrack after encountering the SIR
+--
+-- When A and B are installed as independent goals, the single instance
+-- restriction prevents B from depending on C.  This database tests that the
+-- solver can backtrack after encountering the single instance restriction and
+-- choose the only valid flag assignment (-flagA +flagB):
+--
+-- > flagA flagB  B depends on
+-- >  On    _     C-*
+-- >  Off   On    E-*               <-- only valid flag assignment
+-- >  Off   Off   D-2.0, C-*
+--
+-- Since A depends on C-* and D-1.0, and C-1.0 depends on any version of D,
+-- we must build C-1.0 against D-1.0. Since B depends on D-2.0, we cannot have
+-- C in the transitive closure of B's dependencies, because that would mean we
+-- would need two instances of C: one built against D-1.0 and one built against
+-- D-2.0.
+db16 :: ExampleDb
+db16 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ ExFix "D" 2
+                       , exFlag "flagA"
+                             [ExAny "C"]
+                             [exFlag "flagB"
+                                 [ExAny "E"]
+                                 [ExAny "C"]]]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  ]
+
+-- | When both A and B are installed as independent goals, their dependencies on
+-- C must be linked. The only combination of C's flags that is consistent with
+-- A and B's dependencies on D is -flagA +flagB. This database tests that the
+-- solver can backtrack to find the right combination of flags (requiring F, but
+-- not E or G) and apply it to both 0.C and 1.C.
+--
+-- > flagA flagB  C depends on
+-- >  On    _     D-1, E-*
+-- >  Off   On    F-*        <-- Only valid choice
+-- >  Off   Off   D-2, G-*
+--
+-- The single instance restriction means we cannot have one instance of C
+-- built against D-1 and one instance built against D-2; since A depends on
+-- D-1, and B depends on C-2, it is therefore important that C cannot depend
+-- on any version of D.
+db18 :: ExampleDb
+db18 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C", ExFix "D" 2]
+  , Right $ exAv "C" 1 [exFlag "flagA"
+                           [ExFix "D" 1, ExAny "E"]
+                           [exFlag "flagB"
+                               [ExAny "F"]
+                               [ExFix "D" 2, ExAny "G"]]]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  , Right $ exAv "F" 1 []
+  , Right $ exAv "G" 1 []
+  ]
+
 
 dbExts1 :: ExampleDb
 dbExts1 = [

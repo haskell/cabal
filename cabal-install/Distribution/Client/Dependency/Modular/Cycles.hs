@@ -21,19 +21,20 @@ import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 type DetectCycles = Reader (ConflictSet QPN)
 
 -- | Find and reject any solutions that are cyclic
 detectCyclesPhase :: Tree QGoalReasonChain -> Tree QGoalReasonChain
-detectCyclesPhase = (`runReader` Set.empty) .  cata go
+detectCyclesPhase = (`runReader` CS.empty) .  cata go
   where
     -- Most cases are simple; we just need to remember which choices we made
     go :: TreeF QGoalReasonChain (DetectCycles (Tree QGoalReasonChain)) -> DetectCycles (Tree QGoalReasonChain)
-    go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (extendConflictSet $ P qpn) (T.sequence cs)
-    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> local (extendConflictSet $ F qfn) (T.sequence cs)
-    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> local (extendConflictSet $ S qsn) (T.sequence cs)
-    go (GoalChoiceF         cs) = GoalChoice         <$>                                   (T.sequence cs)
+    go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (CS.insert $ P qpn) (T.sequence cs)
+    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> local (CS.insert $ F qfn) (T.sequence cs)
+    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> local (CS.insert $ S qsn) (T.sequence cs)
+    go (GoalChoiceF         cs) = GoalChoice         <$>                           (T.sequence cs)
     go (FailF cs reason)        = return $ Fail cs reason
 
     -- We check for cycles only if we have actually found a solution
@@ -65,7 +66,7 @@ findCycles fullSet revDeps = do
 -- | Construct the relevant conflict set given the full conflict set that
 -- lead to this decision and the set of packages involved in the cycle
 relevantConflictSet :: Set QPN -> ConflictSet QPN -> ConflictSet QPN
-relevantConflictSet cycle = Set.filter isRelevant
+relevantConflictSet cycle = CS.filter isRelevant
   where
     isRelevant :: Var QPN -> Bool
     isRelevant (P qpn)                  = qpn `Set.member` cycle
