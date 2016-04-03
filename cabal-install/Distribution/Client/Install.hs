@@ -554,7 +554,14 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
---TODO: this type is too specific
+-- | Given an 'InstallPlan', perform a dry run, producing the sequence
+-- of 'ReadyPackage's which would be compiled in order to carry
+-- out this plan.  This function is not actually used to execute a plan;
+-- presently, it is used only to (1) determine if the installation
+-- plan would cause reinstalls and (2) to print out what would be
+-- installed.
+--
+-- TODO: this type is too specific
 linearizeInstallPlan :: InstalledPackageIndex
                      -> InstallPlan
                      -> [(ReadyPackage, PackageStatus)]
@@ -568,7 +575,7 @@ linearizeInstallPlan installedPkgIndex plan =
           pkgid  = installedUnitId pkg
           status = packageStatus installedPkgIndex pkg
           ipkg   = Installed.emptyInstalledPackageInfo {
-                     Installed.sourcePackageId    = packageId pkg,
+                     Installed.sourcePackageId = packageId pkg,
                      Installed.installedUnitId = pkgid
                    }
           plan'' = InstallPlan.completed pkgid (Just ipkg)
@@ -577,7 +584,8 @@ linearizeInstallPlan installedPkgIndex plan =
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
           -- It's doubly a hack because the installed package ID
-          -- didn't get updated...
+          -- didn't get updated.  But it doesn't really matter
+          -- because we're not going to use this for anything real.
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
