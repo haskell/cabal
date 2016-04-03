@@ -168,6 +168,7 @@ arbitraryExInst pn v pkgs = do
 arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
 arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
 arbitraryComponentDeps db =
+    -- CD.fromList combines duplicate components.
     CD.fromList <$> boundedListOf 3 (arbitraryComponentDep db)
 
 arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
@@ -175,20 +176,18 @@ arbitraryComponentDep db = do
   comp <- arbitrary
   deps <- case comp of
             ComponentSetup -> smallListOf (arbitraryExDep db Setup)
-            _              -> boundedListOf 5 (arbitraryExDep db TopLevel)
+            _              -> boundedListOf 5 (arbitraryExDep db NonSetup)
   return (comp, deps)
 
 -- | Location of an 'ExampleDependency'. It determines which values are valid.
-data ExDepLocation = TopLevel | Nested | Setup
+data ExDepLocation = Setup | NonSetup
 
 arbitraryExDep :: TestDb -> ExDepLocation -> Gen ExampleDependency
 arbitraryExDep db@(TestDb pkgs) level =
-  let test = ExTest <$> arbitraryTestName
-                    <*> smallListOf (arbitraryExDep db Nested)
-      flag = ExFlag <$> arbitraryFlagName
+  let flag = ExFlag <$> arbitraryFlagName
                     <*> arbitraryDeps db
                     <*> arbitraryDeps db
-      nonNested = [
+      other = [
             ExAny . unPN <$> elements (map getName pkgs)
 
           -- existing version
@@ -200,18 +199,14 @@ arbitraryExDep db@(TestDb pkgs) level =
           ]
   in oneof $
       case level of
-        TopLevel -> test : flag : nonNested
-        Nested -> flag : nonNested
-        Setup -> nonNested
+        NonSetup -> flag : other
+        Setup -> other
 
 arbitraryDeps :: TestDb -> Gen Dependencies
 arbitraryDeps db = frequency
     [ (1, return NotBuildable)
-    , (20, Buildable <$> smallListOf (arbitraryExDep db Nested))
+    , (20, Buildable <$> smallListOf (arbitraryExDep db NonSetup))
     ]
-
-arbitraryTestName :: Gen String
-arbitraryTestName = (:[]) <$> elements ['A'..'E']
 
 arbitraryFlagName :: Gen String
 arbitraryFlagName = (:[]) <$> elements ['A'..'E']
@@ -268,8 +263,6 @@ instance Arbitrary ExampleDependency where
 
   shrink (ExAny _) = []
   shrink (ExFix pn _) = [ExAny pn]
-  shrink (ExTest testName deps) =
-      deps ++ [ExTest testName deps' | deps' <- shrink deps]
   shrink (ExFlag flag th el) =
          deps th ++ deps el
       ++ [ExFlag flag th' el | th' <- shrink th]
