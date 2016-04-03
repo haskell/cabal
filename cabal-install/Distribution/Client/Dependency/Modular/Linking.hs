@@ -246,7 +246,7 @@ makeCanonical lg qpn@(Q pp _) i =
     case lgCanon lg of
       -- There is already a canonical member. Fail.
       Just _ ->
-        conflict ( S.fromList (P qpn : lgBlame lg)
+        conflict ( P qpn `S.insert` lgBlame lg
                  ,    "cannot make " ++ showQPN qpn
                    ++ " canonical member of " ++ showLinkGroup lg
                  )
@@ -452,7 +452,7 @@ data LinkGroup = LinkGroup {
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
       -- of the link group itself)
-    , lgBlame :: [Var QPN]
+    , lgBlame :: Set (Var QPN)
     }
     deriving Show
 
@@ -483,7 +483,7 @@ lgSingleton (Q pp pn) canon = LinkGroup {
       lgPackage = pn
     , lgCanon   = canon
     , lgMembers = S.singleton pp
-    , lgBlame   = []
+    , lgBlame   = S.empty
     }
 
 lgMerge :: [Var QPN] -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
@@ -493,7 +493,7 @@ lgMerge blame lg lg' = do
         lgPackage = lgPackage lg
       , lgCanon   = canon
       , lgMembers = lgMembers lg `S.union` lgMembers lg'
-      , lgBlame   = blame ++ lgBlame lg ++ lgBlame lg'
+      , lgBlame   = S.fromList blame `S.union` lgBlame lg `S.union` lgBlame lg'
       }
   where
     pick :: Eq a => Maybe a -> Maybe a -> Either Conflict (Maybe a)
@@ -512,7 +512,7 @@ lgMerge blame lg lg' = do
                           )
 
 lgConflictSet :: LinkGroup -> ConflictSet QPN
-lgConflictSet lg = S.fromList (map aux (S.toList (lgMembers lg)) ++ lgBlame lg)
+lgConflictSet lg = S.map aux (lgMembers lg) `S.union` lgBlame lg
   where
     aux pp = P (Q pp (lgPackage lg))
 
