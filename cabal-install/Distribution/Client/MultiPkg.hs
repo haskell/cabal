@@ -21,9 +21,6 @@ import           Distribution.Client.BuildTarget hiding (BuildTargetProblem, rep
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
-import qualified Distribution.Client.Utils.Json as J
-
-import qualified Distribution.Client.ComponentDeps as ComponentDeps
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
@@ -34,19 +31,15 @@ import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Verbosity
 import           Distribution.Text
-import qualified Paths_cabal_install (version)
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
-import qualified Data.ByteString.Builder as BB
 
-import           Control.Exception (bracket)
 import           Control.Monad
 import           Data.Monoid
 import           Data.List
 import           Data.Either
-import           System.IO (hClose, openBinaryFile, IOMode(WriteMode))
 
 
 ------------------------------------------------------------------------------
@@ -135,11 +128,6 @@ build verbosity
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
-
-    --TODO [code cleanup] move this inside the caching performed by
-    -- rebuildInstallPlan so that we do not need to write it out every time
-    writeFileBB (distProjectCacheFile distDirLayout "plan.json") $
-               encodePlanToJson sharedPackageConfig elaboratedInstallPlan
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
@@ -239,11 +227,6 @@ repl verbosity
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
-
-    --TODO [code cleanup] move this inside the caching performed by
-    -- rebuildInstallPlan so that we do not need to write it out every time
-    writeFileBB (distProjectCacheFile distDirLayout "plan.json") $
-               encodePlanToJson sharedPackageConfig elaboratedInstallPlan
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
@@ -682,64 +665,3 @@ printPlan verbosity dryRun pkgsBuildStatus pkgs
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
--- | For the benefit of debugging and some external tools, write out a
--- representation of the install plan.
---
-encodePlanToJson :: ElaboratedSharedConfig -> ElaboratedInstallPlan -> BB.Builder
-encodePlanToJson _sharedPackageConfig elaboratedInstallPlan =
-    --TODO: [nice to have] include all of the sharedPackageConfig and all of
-    --      the parts of the elaboratedInstallPlan
-    J.encodeToBuilder $
-      J.object [ "cabal-version"     J..= jdisplay Paths_cabal_install.version
-               , "cabal-lib-version" J..= jdisplay cabalVersion
-               , "install-plan"      J..= jsonIPlan
-               ]
-  where
-    jsonIPlan = map toJ (InstallPlan.toList elaboratedInstallPlan)
-
-    -- ipi :: InstalledPackageInfo
-    toJ (InstallPlan.PreExisting ipi) =
-      -- installed packages currently lack configuration information
-      -- such as their flag settings or non-lib components.
-      --
-      -- TODO: how to find out whether package is "local"?
-      J.object
-        [ "type"       J..= J.String "pre-existing"
-        , "id"         J..= jdisplay (installedUnitId ipi)
-        , "components" J..= J.object
-          [ "lib" J..= J.object [ "depends" J..= map jdisplay (installedDepends ipi) ] ]
-        ]
-
-    -- ecp :: ElaboratedConfiguredPackage
-    toJ (InstallPlan.Configured ecp) =
-      J.object
-        [ "type"       J..= J.String "configured"
-        , "id"         J..= (jdisplay . installedUnitId) ecp
-        , "components" J..= components
-        , "flags"      J..= J.object [ fn J..= v
-                                     | (PD.FlagName fn,v) <- pkgFlagAssignment ecp ]
-        ]
-      where
-        components = J.object
-          [ comp2str c J..= J.object
-            [ "depends" J..= map (jdisplay . installedUnitId) v ]
-          | (c,v) <- ComponentDeps.toList (pkgDependencies ecp) ]
-
-    toJ _ = error "encodePlanToJson: only expecting PreExisting and Configured"
-
-    -- TODO: maybe move this helper to "ComponentDeps" module?
-    --       Or maybe define a 'Text' instance?
-    comp2str c = case c of
-        ComponentDeps.ComponentLib     -> "lib"
-        ComponentDeps.ComponentExe s   -> "exe:"   <> s
-        ComponentDeps.ComponentTest s  -> "test:"  <> s
-        ComponentDeps.ComponentBench s -> "bench:" <> s
-        ComponentDeps.ComponentSetup   -> "setup"
-
-    jdisplay :: Text a => a -> J.Value
-    jdisplay = J.String . display
-
--- | Write a 'BB.Builder' to a file
-writeFileBB :: FilePath -> BB.Builder -> IO ()
-writeFileBB f bb =
-    bracket (openBinaryFile f WriteMode) hClose (`BB.hPutBuilder` bb)
