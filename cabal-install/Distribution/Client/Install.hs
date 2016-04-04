@@ -79,7 +79,7 @@ import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.InstallPlan (SolverInstallPlan, InstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
@@ -294,7 +294,7 @@ makeInstallContext verbosity
 
 -- | Make an install plan given install context and install arguments.
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                -> IO (Progress String String InstallPlan)
+                -> IO (Progress String String SolverInstallPlan)
 makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
@@ -306,17 +306,18 @@ makeInstallPlan verbosity
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
     return $ planPackages comp platform mSandboxPkgInfo solver
-      configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
+          configFlags configExFlags installFlags
+          installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                   -> InstallPlan
+                   -> SolverInstallPlan
                    -> IO ()
 processInstallPlan verbosity
   args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb, _,
-   userTargets, pkgSpecifiers, _) installPlan = do
+   userTargets, pkgSpecifiers, _) installPlan0 = do
+
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
@@ -325,6 +326,7 @@ processInstallPlan verbosity
                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan'
   where
+    installPlan = InstallPlan.configureInstallPlan installPlan0
     dryRun = fromFlag (installDryRun installFlags)
     nothingToInstall = null (InstallPlan.ready installPlan)
 
@@ -343,7 +345,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
-             -> Progress String String InstallPlan
+             -> Progress String String SolverInstallPlan
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
@@ -429,8 +431,8 @@ planPackages comp platform mSandboxPkgInfo solver
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg
                  => [PackageSpecifier targetpkg]
-                 -> InstallPlan
-                 -> Progress String String InstallPlan
+                 -> SolverInstallPlan
+                 -> Progress String String SolverInstallPlan
 pruneInstallPlan pkgSpecifiers =
   -- TODO: this is a general feature and should be moved to D.C.Dependency
   -- Also, the InstallPlan.remove should return info more precise to the

@@ -172,6 +172,58 @@ newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPacka
 type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
 
+-- | A 'SolverPackage' is a package specified by the dependency solver.
+-- It will get elaborated into a 'ConfiguredPackage' or even an
+-- 'ElaboratedConfiguredPackage'.
+--
+-- NB: 'SolverPackage's are essentially always with 'UnresolvedPkgLoc',
+-- but for symmetry we have the parameter.  (Maybe it can be removed.)
+--
+data SolverPackage loc = SolverPackage {
+        solverPkgSource :: SourcePackage loc,
+        solverPkgFlags :: FlagAssignment,
+        solverPkgStanzas :: [OptionalStanza],
+        solverPkgDeps :: ComponentDeps [SolverId]
+    }
+  deriving (Eq, Show, Generic)
+
+instance Binary loc => Binary (SolverPackage loc)
+
+instance Package (SolverPackage loc) where
+  packageId = packageId . solverPkgSource
+
+-- | This is a minor hack as 'PackageIndex' assumes keys are
+-- 'UnitId's but prior to computing 'UnitId's (i.e., immediately
+-- after running the solver, we don't have this information.)
+-- But this is strictly temporary: once we convert to a
+-- 'ConfiguredPackage' we'll record 'UnitId's for everything.
+instance HasUnitId (SolverPackage loc) where
+  installedUnitId = fakeUnitId . packageId . solverPkgSource
+
+instance PackageFixedDeps (SolverPackage loc) where
+  depends pkg = fmap (map installedUnitId) (solverPkgDeps pkg)
+
+-- | The solver can produce references to existing packages or
+-- packages we plan to install.  Unlike 'ConfiguredId' we don't
+-- yet know the 'UnitId' for planned packages, because it's
+-- not the solver's job to compute them.
+--
+data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
+              | PlannedId     { solverSrcId :: PackageId }
+  deriving (Eq, Generic)
+
+instance Binary SolverId
+
+instance Show SolverId where
+    show = show . solverSrcId
+
+instance Package SolverId where
+  packageId = solverSrcId
+
+instance HasUnitId SolverId where
+  installedUnitId (PreExistingId _ instId) = instId
+  installedUnitId (PlannedId pid) = fakeUnitId pid
+
 -- | A package description along with the location of the package sources.
 --
 data SourcePackage loc = SourcePackage {

@@ -68,11 +68,11 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.InstallPlan (SolverInstallPlan)
 import Distribution.Client.PkgConfigDb (PkgConfigDb)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , ConfiguredPackage(..), ConfiguredId(..)
+         , SolverPackage(..), SolverId(..)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
@@ -528,7 +528,7 @@ resolveDependencies :: Platform
                     -> PkgConfigDb
                     -> Solver
                     -> DepResolverParams
-                    -> Progress String String InstallPlan
+                    -> Progress String String SolverInstallPlan
 
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _pkgConfigDB _solver params
@@ -621,7 +621,7 @@ validateSolverResult :: Platform
                      -> CompilerInfo
                      -> Bool
                      -> [ResolverPackage UnresolvedPkgLoc]
-                     -> InstallPlan
+                     -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
       [] -> case InstallPlan.new indepGoals index of
@@ -648,7 +648,7 @@ validateSolverResult platform comp indepGoals pkgs =
 
 
 data PlanPackageProblem =
-       InvalidConfiguredPackage (ConfiguredPackage UnresolvedPkgLoc) [PackageProblem]
+       InvalidConfiguredPackage (SolverPackage UnresolvedPkgLoc) [PackageProblem]
 
 showPlanPackageProblem :: PlanPackageProblem -> String
 showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
@@ -707,9 +707,9 @@ showPackageProblem (InvalidDep dep pkgid) =
 -- dependencies are satisfied by the specified packages.
 --
 configuredPackageProblems :: Platform -> CompilerInfo
-                          -> ConfiguredPackage UnresolvedPkgLoc -> [PackageProblem]
+                          -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
+  (SolverPackage pkg specifiedFlags stanzas specifiedDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -722,7 +722,7 @@ configuredPackageProblems platform cinfo
                             , not (packageSatisfiesDependency pkgid dep) ]
   where
     specifiedDeps :: ComponentDeps [PackageId]
-    specifiedDeps = fmap (map confSrcId) specifiedDeps'
+    specifiedDeps = fmap (map solverSrcId) specifiedDeps'
 
     mergedFlags = mergeBy compare
       (sort $ map PD.flagName (PD.genPackageFlags (packageDescription pkg)))
