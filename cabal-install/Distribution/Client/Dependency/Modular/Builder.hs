@@ -180,4 +180,4 @@ buildTree idx ind igs =
     topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) [UserGoal]
 
     qpns | ind       = makeIndependent igs
-         | otherwise = L.map (Q None) igs
+         | otherwise = L.map (Q (PP DefaultNamespace Unqualified)) igs

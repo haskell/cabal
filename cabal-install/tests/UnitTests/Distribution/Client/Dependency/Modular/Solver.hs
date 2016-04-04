@@ -75,9 +75,14 @@ tests = [
         , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
         ]
     , testGroup "Cycles" [
-          runTest $ mkTest db14 "simpleCycle1"         ["A"]      Nothing
-        , runTest $ mkTest db14 "simpleCycle2"         ["A", "B"] Nothing
-        , runTest $ mkTest db14 "cycleWithFlagChoice1" ["C"]      (Just [("C", 1), ("E", 1)])
+          runTest $ mkTest db14 "simpleCycle1"          ["A"]      Nothing
+        , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] Nothing
+        , runTest $ mkTest db14 "cycleWithFlagChoice1"  ["C"]      (Just [("C", 1), ("E", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep1" ["A"]      Nothing
+        , runTest $ mkTest db15 "cycleThroughSetupDep2" ["B"]      Nothing
+        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (Just [("C", 2), ("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (Just [("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (Just [("C", 2), ("D", 1), ("E", 1)])
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] Nothing
@@ -477,6 +482,29 @@ db14 = [
   , Right $ exAv "C" 1 [exFlag "flagC" [ExAny "D"] [ExAny "E"]]
   , Right $ exAv "D" 1 [ExAny "C"]
   , Right $ exAv "E" 1 []
+  ]
+
+-- | Cycles through setup dependencies
+--
+-- The first cycle is unsolvable: package A has a setup dependency on B,
+-- B has a regular dependency on A, and we only have a single version available
+-- for both.
+--
+-- The second cycle can be broken by picking different versions: package C-2.0
+-- has a setup dependency on D, and D has a regular dependency on C-*. However,
+-- version C-1.0 is already available (perhaps it didn't have this setup dep).
+-- Thus, we should be able to break this cycle even if we are installing package
+-- E, which explictly depends on C-2.0.
+db15 :: ExampleDb
+db15 = [
+    -- First example (real cycle, no solution)
+    Right $ exAv   "A" 1            []            `withSetupDeps` [ExAny "B"]
+  , Right $ exAv   "B" 1            [ExAny "A"]
+    -- Second example (cycle can be broken by picking versions carefully)
+  , Left  $ exInst "C" 1 "C-1-inst" []
+  , Right $ exAv   "C" 2            []            `withSetupDeps` [ExAny "D"]
+  , Right $ exAv   "D" 1            [ExAny "C"  ]
+  , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
 
 dbExts1 :: ExampleDb

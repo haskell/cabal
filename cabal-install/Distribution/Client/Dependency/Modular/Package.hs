@@ -8,6 +8,8 @@ module Distribution.Client.Dependency.Modular.Package
   , PI(..)
   , PN
   , PP(..)
+  , Namespace(..)
+  , Qualifier(..)
   , QPN
   , QPV
   , Q(..)
@@ -17,7 +19,6 @@ module Distribution.Client.Dependency.Modular.Package
   , showI
   , showPI
   , showQPN
-  , stripBase
   , unPN
   ) where
 
@@ -81,46 +82,75 @@ instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
 
--- | Package path.
---
--- Stored in reverse order
-data PP =
-    -- User-specified independent goal
-    Independent Int PP
-    -- Setup dependencies are always considered independent from their package
-  | Setup PN PP
-    -- Any dependency on base is considered independent (allows for base shims)
-  | Base PN PP
-    -- Unqualified
-  | None
+-- | A package path consists of a namespace and a package path inside that
+-- namespace.
+data PP = PP Namespace Qualifier
   deriving (Eq, Ord, Show)
 
--- | Strip any 'Base' qualifiers from a PP
+-- | Top-level namespace
 --
--- (the Base qualifier does not get inherited)
-stripBase :: PP -> PP
-stripBase (Independent i pp) = Independent i (stripBase pp)
-stripBase (Setup pn      pp) = Setup pn      (stripBase pp)
-stripBase (Base _pn      pp) =                stripBase pp
-stripBase None               = None
+-- Package choices in different namespaces are considered completely independent
+-- by the solver.
+data Namespace =
+    -- | The default namespace
+    DefaultNamespace
+
+    -- | Independent namespace
+    --
+    -- For now we just number these (rather than giving them more structure).
+  | Independent Int
+  deriving (Eq, Ord, Show)
+
+-- | Qualifier of a package within a namespace (see 'PP')
+data Qualifier =
+    -- | Top-level dependency in this namespace
+    Unqualified
+
+    -- | Any dependency on base is considered independent
+    --
+    -- This makes it possible to have base shims.
+  | Base PN
+
+    -- | Setup dependency
+    --
+    -- By rights setup dependencies ought to be nestable; after all, the setup
+    -- dependencies of a package might themselves have setup dependencies, which
+    -- are independent from everything else. However, this very quickly leads to
+    -- infinite search trees in the solver. Therefore we limit ourselves to
+    -- a single qualifier (within a given namespace).
+  | Setup PN
+  deriving (Eq, Ord, Show)
 
 -- | Is the package in the primary group of packages. In particular this
 -- does not include packages pulled in as setup deps.
 --
 primaryPP :: PP -> Bool
-primaryPP (Independent _ pp) = primaryPP pp
-primaryPP (Setup       _ _ ) = False
-primaryPP (Base        _ pp) = primaryPP pp
-primaryPP  None              = True
+primaryPP (PP _ns q) = go q
+  where
+    go Unqualified = True
+    go (Base  _)   = True
+    go (Setup _)   = False
 
 -- | String representation of a package path.
 --
--- NOTE: This always ends in a period
+-- NOTE: The result of 'showPP' is either empty or results in a period, so that
+-- it can be prepended to a package name.
 showPP :: PP -> String
-showPP (Independent i pp) = show i                 ++ "." ++ showPP pp
-showPP (Setup pn      pp) = display pn ++ "-setup" ++ "." ++ showPP pp
-showPP (Base  pn      pp) = display pn             ++ "." ++ showPP pp
-showPP None               = ""
+showPP (PP ns q) =
+    case ns of
+      DefaultNamespace -> go q
+      Independent i    -> show i ++ "." ++ go q
+  where
+    -- Print the qualifier
+    --
+    -- NOTE: the base qualifier is for a dependency _on_ base; the qualifier is
+    -- there to make sure different dependencies on base are all independent.
+    -- So we want to print something like @"A.base"@, where the @"A."@ part
+    -- is the qualifier and @"base"@ is the actual dependency (which, for the
+    -- 'Base' qualifier, will always be @base@).
+    go Unqualified = ""
+    go (Setup pn)  = display pn ++ "-setup."
+    go (Base  pn)  = display pn ++ "."
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Q a = Q PP a
@@ -128,8 +158,7 @@ data Q a = Q PP a
 
 -- | Standard string representation of a qualified entity.
 showQ :: (a -> String) -> (Q a -> String)
-showQ showa (Q None x) = showa x
-showQ showa (Q pp   x) = showPP pp ++ showa x
+showQ showa (Q pp x) = showPP pp ++ showa x
 
 -- | Qualified package name.
 type QPN = Q PN
@@ -142,5 +171,5 @@ showQPN = showQ display
 -- them all independent.
 makeIndependent :: [PN] -> [QPN]
 makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
-                               , let pp = Independent i None
+                               , let pp = PP (Independent i) Unqualified
                      ]
