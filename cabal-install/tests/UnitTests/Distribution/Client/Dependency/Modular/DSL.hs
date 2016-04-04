@@ -397,7 +397,7 @@ exResolve :: ExampleDb
           -> IndepGoals
           -> ReorderGoals
           -> [ExPreference]
-          -> ([String], Either String CI.InstallPlan.InstallPlan)
+          -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
 exResolve db exts langs pkgConfigDb targets solver (IndepGoals indepGoals) (ReorderGoals reorder) prefs = runProgress $
     resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
@@ -426,18 +426,18 @@ exResolve db exts langs pkgConfigDb targets solver (IndepGoals indepGoals) (Reor
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
     toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v
 
-extractInstallPlan :: CI.InstallPlan.InstallPlan
+extractInstallPlan :: CI.InstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
 extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
   where
-    confPkg :: CI.InstallPlan.PlanPackage -> Maybe (String, Int)
+    confPkg :: CI.InstallPlan.SolverPlanPackage -> Maybe (String, Int)
     confPkg (CI.InstallPlan.Configured pkg) = Just $ srcPkg pkg
     confPkg _                               = Nothing
 
-    srcPkg :: ConfiguredPackage UnresolvedPkgLoc -> (String, Int)
+    srcPkg :: SolverPackage UnresolvedPkgLoc -> (String, Int)
     srcPkg cpkg =
       let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) =
-            packageInfoId (confPkgSource cpkg)
+            packageInfoId (solverPkgSource cpkg)
       in (p, n)
 
 {-------------------------------------------------------------------------------

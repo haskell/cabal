@@ -138,7 +138,7 @@ planPackages verbosity comp platform fetchFlags
       -- The packages we want to fetch are those packages the 'InstallPlan'
       -- that are in the 'InstallPlan.Configured' state.
       return
-        [ confPkgSource cpkg
+        [ solverPkgSource cpkg
         | (InstallPlan.Configured cpkg)
             <- InstallPlan.toList installPlan ]
 
