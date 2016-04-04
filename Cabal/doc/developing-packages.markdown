@@ -1237,6 +1237,47 @@ $ cabal test
 See the output of `cabal help test` for a list of options you can pass
 to `cabal test`.
 
+#### Package cycles through test suites ####
+
+A lot of test suites depend on the `tasty` test infrastructure. However, `tasty`
+has a bunch of dependencies of its own; for example, `tasty` depends both on the
+`containers` package and the `optparse-applicative` package. Take `containers`
+as an example: we might like to be able to use `tasty` in the test-suite for
+containers, but is that possible? It seems to create a cyclic dependency with
+`tasty` depending on `containers` and `containers` in turn depending on `tasty`.
+
+In one sense, it can be argued that this cycle is not actually real. After all,
+we can first build `containers` without its test suite, then `tasty`,
+and finally the `containers` test suite. Right now this is only possible to do
+by hand; `cabal` cannot currently "split" packages in that way.
+
+But perhaps this isn't the right solution anyway. Suppose that we are working
+on the `containers` package; let's say for the sake of the discussion that we
+are experimenting with changing the internal representation of a `Map` (one
+of the datatypes provided by `containers`). Do we really want to build
+`containers`, then rebuild `tasty`, and finally rebuild the `containers` test
+suite for every change to `containers` that we make? Probably not. Not only
+would it be annoyingly slow, but do we really want to build `tasty` against
+a possible broken version of `containers`? Far better to build `tasty` against a
+known stable version of `containers` while we experiment.
+
+If we want to do that, however, it means that the `containers` test suite
+executable now uses _two_ versions of `containers`: the version-under-test
+and the older, stable version that we have linked `tasty` against.
+
+As of  version 1.24, this scenario is supported. The `cabal` solver can make
+independent choices for the dependencies of test suites which do not appear
+as (direct) dependencies of any other component in the package. In other words,
+if the test suite for `containers` _directly_ depends on `containers` (as it
+typically will), then _this_ version of containers _must_ be equal to the
+current version. It would be terribly confusing if the test suite got built
+against an older version after all! However, any dependencies of the test suite
+that do _not_ appear as dependencies elsewhere (such as `tasty`) will be
+considered independent; in our example, this means that the solver will be able
+to make independent choices for the dependency on `tasty`, _including all its
+transitive dependencies_, thus allowing it to pick a different version of
+`containers` to satisfy `tasty`'s dependency.
+
 ### Benchmarks ###
 
 Benchmark sections (if present) describe benchmarks contained in the package and
