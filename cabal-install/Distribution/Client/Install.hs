@@ -1415,12 +1415,15 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                     ++ " with the latest revision from the index."
       writeFileAtomic descFilePath pkgtxt
 
-  -- Compute the IPID
+  -- Compute the IPID of the *library*
   let flags (ReadyPackage cpkg _) = confPkgFlags cpkg
       pkg_name = pkgName (PackageDescription.package pkg)
-      cid = Configure.computeComponentId Cabal.NoFlag
-                (PackageDescription.package pkg) (CLibName (display pkg_name))
-                (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg))) (flags rpkg)
+      cid = Configure.computeComponentId
+                Cabal.NoFlag -- This would let us override the computation
+                (PackageDescription.package pkg)
+                (CLibName (display pkg_name))
+                (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg)))
+                (flags rpkg)
       ipid = SimpleUnitId cid
 
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
