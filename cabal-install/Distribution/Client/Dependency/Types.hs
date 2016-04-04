@@ -52,7 +52,7 @@ import Data.Monoid
 import Distribution.Client.PkgConfigDb
          ( PkgConfigDb )
 import Distribution.Client.Types
-         ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
+         ( OptionalStanza(..), SourcePackage(..), SolverPackage )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
@@ -129,7 +129,7 @@ type DependencyResolver loc = Platform
 -- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
 --
 data ResolverPackage loc = PreExisting InstalledPackageInfo
-                         | Configured  (ConfiguredPackage loc)
+                         | Configured  (SolverPackage loc)
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously

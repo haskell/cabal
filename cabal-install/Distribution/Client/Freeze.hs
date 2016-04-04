@@ -25,7 +25,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
-         ( InstallPlan, PlanPackage )
+         ( SolverInstallPlan, SolverPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.PkgConfigDb
          ( PkgConfigDb, readPkgConfigDb )
@@ -116,7 +116,7 @@ getFreezePkgs :: Verbosity
               -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags
-              -> IO [PlanPackage]
+              -> IO [SolverPlanPackage]
 getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
       globalFlags freezeFlags = do
 
@@ -151,7 +151,7 @@ planPackages :: Verbosity
              -> SourcePackageDb
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [PlanPackage]
+             -> IO [SolverPlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
 
@@ -214,9 +214,9 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
-pruneInstallPlan :: InstallPlan
+pruneInstallPlan :: SolverInstallPlan
                  -> [PackageSpecifier UnresolvedSourcePackage]
-                 -> [PlanPackage]
+                 -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
     InstallPlan.dependencyClosure installPlan (map fakeUnitId pkgIds)
