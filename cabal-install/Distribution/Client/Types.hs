@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -165,26 +166,10 @@ instance HasUnitId (ConfiguredPackage loc) where
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
-data GenericReadyPackage srcpkg ipkg
-   = ReadyPackage
-       srcpkg                  -- see 'ConfiguredPackage'.
-       (ComponentDeps [ipkg])  -- Installed dependencies.
-  deriving (Eq, Show, Generic)
+newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPackage'.
+  deriving (Eq, Show, Generic, Package, PackageFixedDeps, HasUnitId, Binary)
 
-type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc) InstalledPackageInfo
-
-instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
-  packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
-
-instance (Package srcpkg, HasUnitId ipkg) =>
-         PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
-  depends (ReadyPackage _ deps) = fmap (map installedUnitId) deps
-
-instance HasUnitId srcpkg =>
-         HasUnitId (GenericReadyPackage srcpkg ipkg) where
-  installedUnitId (ReadyPackage pkg _) = installedUnitId pkg
-
-instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg)
+type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
 
 -- | A package description along with the location of the package sources.

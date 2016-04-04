@@ -147,8 +147,8 @@ import qualified Data.Traversable as T
 data GenericPlanPackage ipkg srcpkg iresult ifailure
    = PreExisting ipkg
    | Configured  srcpkg
-   | Processing  (GenericReadyPackage srcpkg ipkg)
-   | Installed   (GenericReadyPackage srcpkg ipkg) (Maybe ipkg) iresult
+   | Processing  (GenericReadyPackage srcpkg)
+   | Installed   (GenericReadyPackage srcpkg) (Maybe ipkg) iresult
    | Failed      srcpkg ifailure
   deriving (Eq, Show, Generic)
 
@@ -168,7 +168,7 @@ instance (Package ipkg, Package srcpkg) =>
   packageId (Failed      spkg   _) = packageId spkg
 
 instance (PackageFixedDeps srcpkg,
-          PackageFixedDeps ipkg, HasUnitId ipkg) =>
+          PackageFixedDeps ipkg) =>
          PackageFixedDeps (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   depends (PreExisting pkg)     = depends pkg
   depends (Configured  pkg)     = depends pkg
@@ -348,7 +348,7 @@ remove shouldRemove plan =
 --
 ready :: forall ipkg srcpkg iresult ifailure. PackageFixedDeps srcpkg
       => GenericInstallPlan ipkg srcpkg iresult ifailure
-      -> [GenericReadyPackage srcpkg ipkg]
+      -> [GenericReadyPackage srcpkg]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -357,17 +357,17 @@ ready plan = assert check readyPackages
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
-    readyPackages :: [GenericReadyPackage srcpkg ipkg]
+    readyPackages :: [GenericReadyPackage srcpkg]
     readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
 lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
                       PackageFixedDeps srcpkg
                    => GenericInstallPlan ipkg srcpkg iresult ifailure
                    -> srcpkg
-                   -> Maybe (GenericReadyPackage srcpkg ipkg)
+                   -> Maybe (GenericReadyPackage srcpkg)
 lookupReadyPackage plan pkg = do
-    deps <- hasAllInstalledDeps pkg
-    return (ReadyPackage pkg deps)
+    _ <- hasAllInstalledDeps pkg
+    return (ReadyPackage pkg)
   where
 
     hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
@@ -397,7 +397,7 @@ lookupReadyPackage plan pkg = do
 --
 processing :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                HasUnitId srcpkg, PackageFixedDeps srcpkg)
-           => [GenericReadyPackage srcpkg ipkg]
+           => [GenericReadyPackage srcpkg]
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
 processing pkgs plan = assert (invariant plan') plan'
@@ -455,7 +455,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
     plan'    = plan {
                  planIndex = PackageIndex.merge (planIndex plan) failures
                }
-    ReadyPackage srcpkg _deps = lookupProcessingPackage plan pkgid
+    ReadyPackage srcpkg = lookupProcessingPackage plan pkgid
     failures = PackageIndex.fromList
              $ Failed srcpkg buildResult
              : [ Failed pkg' buildResult'
@@ -477,7 +477,7 @@ packagesThatDependOn plan pkgid = map (planPkgOf plan)
 --
 lookupProcessingPackage :: GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> UnitId
-                        -> GenericReadyPackage srcpkg ipkg
+                        -> GenericReadyPackage srcpkg
 lookupProcessingPackage plan pkgid =
   -- NB: processing packages are guaranteed to not indirect through
   -- planFakeMap
@@ -693,7 +693,7 @@ acyclic fakeMap = null . PlanIndex.dependencyCycles fakeMap
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: (HasUnitId ipkg, PackageFixedDeps ipkg,
+closed :: (PackageFixedDeps ipkg,
            PackageFixedDeps srcpkg)
        => FakeMap -> PlanIndex ipkg srcpkg iresult ifailure -> Bool
 closed fakeMap = null . PlanIndex.brokenPackages fakeMap
