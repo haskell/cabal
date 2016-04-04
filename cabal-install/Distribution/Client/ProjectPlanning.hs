@@ -88,7 +88,6 @@ import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
@@ -366,7 +365,6 @@ instance Binary BuildStyle
 type CabalFileText = LBS.ByteString
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
-                                                  InstalledPackageInfo
 
 --TODO: [code cleanup] this duplicates the InstalledPackageInfo quite a bit in an install plan
 -- because the same ipkg is used by many packages. So the binary file will be big.
@@ -1901,7 +1899,7 @@ setupHsScriptOptions :: ElaboratedReadyPackage
                      -> Bool
                      -> Lock
                      -> SetupScriptOptions
-setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
+setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..})
                      ElaboratedSharedConfig{..} srcdir builddir
                      isParallelBuild cacheLock =
     SetupScriptOptions {
@@ -1911,8 +1909,8 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
       usePlatform              = Just pkgConfigPlatform,
       usePackageDB             = pkgSetupPackageDBStack,
       usePackageIndex          = Nothing,
-      useDependencies          = [ (installedPackageId ipkg, packageId ipkg)
-                                 | ipkg <- CD.setupDeps deps ],
+      useDependencies          = [ (uid, srcid)
+                                 | ConfiguredId srcid uid <- CD.setupDeps pkgDependencies ],
       useDependenciesExclusive = True,
       useVersionMacros         = pkgSetupScriptStyle == SetupCustomExplicitDeps,
       useProgramConfig         = pkgConfigProgramDb,
@@ -1972,8 +1970,7 @@ setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> FilePath
                       -> Cabal.ConfigFlags
 setupHsConfigureFlags (ReadyPackage
-                         pkg@ElaboratedConfiguredPackage{..}
-                         pkgdeps)
+                         pkg@ElaboratedConfiguredPackage{..})
                       sharedConfig@ElaboratedSharedConfig{..}
                       verbosity builddir =
     assert (sanityCheckElaboratedConfiguredPackage sharedConfig pkg)
@@ -2027,11 +2024,10 @@ setupHsConfigureFlags (ReadyPackage
 
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
-    configDependencies        = [ (packageName (Installed.sourcePackageId deppkg),
-                                  Installed.installedUnitId deppkg)
-                                | deppkg <- CD.nonSetupDeps pkgdeps ]
-    configConstraints         = [ thisPackageVersion (packageId deppkg)
-                                | deppkg <- CD.nonSetupDeps pkgdeps ]
+    configDependencies        = [ (packageName srcid, uid)
+                                | ConfiguredId srcid uid <- CD.nonSetupDeps pkgDependencies ]
+    configConstraints         = [ thisPackageVersion srcid
+                                | ConfiguredId srcid _uid <- CD.nonSetupDeps pkgDependencies ]
 
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions

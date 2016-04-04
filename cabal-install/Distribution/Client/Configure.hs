@@ -50,7 +50,6 @@ import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
-import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( Package(..), UnitId, packageName
          , Dependency(..), thisPackageVersion
@@ -134,8 +133,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
              (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
-                                 _ _ _)
-             _)] -> do
+                                 _ _ _))] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
           (setupScriptOptions installedPkgIndex (Just pkg))
@@ -228,15 +226,13 @@ configureSetupScript packageDBs
 
     explicitSetupDeps :: Maybe [(UnitId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage cpkg deps <- mpkg
+      ReadyPackage cpkg <- mpkg
       let gpkg = packageDescription (confPkgSource cpkg)
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
       -- Return the setup dependencies computed by the solver
-      return [ ( Installed.installedUnitId deppkg
-               , Installed.sourcePackageId    deppkg
-               )
-             | deppkg <- CD.setupDeps deps
+      return [ ( uid, srcid )
+             | ConfiguredId srcid uid <- CD.setupDeps (confPkgDeps cpkg)
              ]
 
 -- | Warn if any constraints or preferences name packages that are not in the
@@ -348,8 +344,7 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-                 (ReadyPackage (ConfiguredPackage spkg flags stanzas _)
-                               deps)
+                 (ReadyPackage (ConfiguredPackage spkg flags stanzas deps))
                  extraArgs =
 
   setupWrapper verbosity
@@ -362,11 +357,10 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- We generate the legacy constraints as well as the new style precise
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
-      configConstraints  = [ thisPackageVersion (packageId deppkg)
-                           | deppkg <- CD.nonSetupDeps deps ],
-      configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                              Installed.installedUnitId deppkg)
-                           | deppkg <- CD.nonSetupDeps deps ],
+      configConstraints  = [ thisPackageVersion srcid
+                           | ConfiguredId srcid _uid <- CD.nonSetupDeps deps ],
+      configDependencies = [ (packageName srcid, uid)
+                           | ConfiguredId srcid uid <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

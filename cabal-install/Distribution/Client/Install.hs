@@ -656,7 +656,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkg (pkg, _) = display (packageId pkg) ++
                        showLatest (pkg)
 
-    showPkgAndReason (ReadyPackage pkg' _, pr) = display (packageId pkg') ++
+    showPkgAndReason (ReadyPackage pkg', pr) = display (packageId pkg') ++
           showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
           showStanzas (confPkgStanzas pkg') ++
@@ -715,9 +715,9 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 | otherwise = ""
 
     revDepGraphEdges :: [(PackageId, PackageId)]
-    revDepGraphEdges = [ (rpid, packageId pkg)
-                       | (pkg@(ReadyPackage _ deps), _) <- plan
-                       , rpid <- Installed.sourcePackageId <$> CD.flatDeps deps ]
+    revDepGraphEdges = [ (rpid, packageId cpkg)
+                       | (ReadyPackage cpkg, _) <- plan
+                       , ConfiguredId rpid _ <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
     revDeps = Map.fromListWith (++) (map (fmap (:[])) revDepGraphEdges)
@@ -1029,7 +1029,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg | InstallPlan.Installed pkg _ _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ confPkgSource cpkg | ReadyPackage cpkg _
+        allSrcPkgs   = [ confPkgSource cpkg | ReadyPackage cpkg
                             <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
@@ -1259,19 +1259,17 @@ installReadyPackage :: Platform -> CompilerInfo
 installReadyPackage platform cinfo configFlags
                     (ReadyPackage (ConfiguredPackage
                                     (SourcePackage _ gpkg source pkgoverride)
-                                    flags stanzas _)
-                                   deps)
+                                    flags stanzas deps))
                     installPkg =
   installPkg configFlags {
     configConfigurationsFlags = flags,
     -- We generate the legacy constraints as well as the new style precise deps.
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
-    configConstraints  = [ thisPackageVersion (packageId deppkg)
-                         | deppkg <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                            Installed.installedUnitId deppkg)
-                         | deppkg <- CD.nonSetupDeps deps ],
+    configConstraints  = [ thisPackageVersion srcid
+                         | ConfiguredId srcid _uid <- CD.nonSetupDeps deps ],
+    configDependencies = [ (packageName srcid, uid)
+                         | ConfiguredId srcid uid <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
@@ -1416,7 +1414,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       writeFileAtomic descFilePath pkgtxt
 
   -- Compute the IPID of the *library*
-  let flags (ReadyPackage cpkg _) = confPkgFlags cpkg
+  let flags (ReadyPackage cpkg) = confPkgFlags cpkg
       pkg_name = pkgName (PackageDescription.package pkg)
       cid = Configure.computeComponentId
                 Cabal.NoFlag -- This would let us override the computation
