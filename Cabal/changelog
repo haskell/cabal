@@ -4,7 +4,10 @@
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
 	* Convenience/internal libraries are now supported (#269).
 	  An internal library is declared using the stanza "library
-	  'libname'".
+	  'libname'".  Packages which use internal libraries can
+	  result in multiple registrations; thus '--gen-pkg-config'
+	  can now output a directory of registration scripts rather than
+	  a single file.
 	* Backwards incompatible change to preprocessor interface:
 	  the function in 'PPSuffixHandler' now takes an additional
 	  'ComponentLocalBuildInfo' specifying the build information
