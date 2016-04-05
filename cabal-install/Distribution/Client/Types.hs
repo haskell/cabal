@@ -397,7 +397,7 @@ data BuildFailure = PlanningFailed
                   | InstallFailed   SomeException
   deriving (Show, Generic)
 data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    (Maybe InstalledPackageInfo)
+                                    [InstalledPackageInfo]
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
