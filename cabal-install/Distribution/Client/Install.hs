@@ -537,9 +537,8 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   -- are already fetched.
   let offline = fromFlagOrDefault False (installOfflineMode installFlags)
   when offline $ do
-    let pkgs = [ sourcePkg
-               | InstallPlan.Configured (ConfiguredPackage sourcePkg _ _ _)
-                 <- InstallPlan.toList installPlan ]
+    let pkgs = [ confPkgSource cpkg
+               | InstallPlan.Configured cpkg <- InstallPlan.toList installPlan ]
     notFetched <- fmap (map packageInfoId)
                   . filterM (fmap isNothing . checkFetched . packageSource)
                   $ pkgs
@@ -555,7 +554,14 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
---TODO: this type is too specific
+-- | Given an 'InstallPlan', perform a dry run, producing the sequence
+-- of 'ReadyPackage's which would be compiled in order to carry
+-- out this plan.  This function is not actually used to execute a plan;
+-- presently, it is used only to (1) determine if the installation
+-- plan would cause reinstalls and (2) to print out what would be
+-- installed.
+--
+-- TODO: this type is too specific
 linearizeInstallPlan :: InstalledPackageIndex
                      -> InstallPlan
                      -> [(ReadyPackage, PackageStatus)]
@@ -569,7 +575,7 @@ linearizeInstallPlan installedPkgIndex plan =
           pkgid  = installedUnitId pkg
           status = packageStatus installedPkgIndex pkg
           ipkg   = Installed.emptyInstalledPackageInfo {
-                     Installed.sourcePackageId    = packageId pkg,
+                     Installed.sourcePackageId = packageId pkg,
                      Installed.installedUnitId = pkgid
                    }
           plan'' = InstallPlan.completed pkgid (Just ipkg)
@@ -578,7 +584,8 @@ linearizeInstallPlan installedPkgIndex plan =
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
           -- It's doubly a hack because the installed package ID
-          -- didn't get updated...
+          -- didn't get updated.  But it doesn't really matter
+          -- because we're not going to use this for anything real.
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
@@ -649,10 +656,10 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkg (pkg, _) = display (packageId pkg) ++
                        showLatest (pkg)
 
-    showPkgAndReason (ReadyPackage pkg' _, pr) = display (packageId pkg') ++
+    showPkgAndReason (ReadyPackage pkg', pr) = display (packageId pkg') ++
           showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
-          showStanzas (stanzas pkg') ++
+          showStanzas (confPkgStanzas pkg') ++
           showDep pkg' ++
           case pr of
             NewPackage     -> " (new package)"
@@ -681,14 +688,11 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage loc -> FlagAssignment
-    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
+    nonDefaultFlags cpkg =
       let defaultAssignment =
             toFlagAssignment
-             (genPackageFlags (Source.packageDescription spkg))
-      in  fa \\ defaultAssignment
-
-    stanzas :: ConfiguredPackage loc -> [OptionalStanza]
-    stanzas (ConfiguredPackage _ _ sts _) = sts
+             (genPackageFlags (Source.packageDescription (confPkgSource cpkg)))
+      in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((' ' :) . showStanza)
@@ -711,9 +715,9 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 | otherwise = ""
 
     revDepGraphEdges :: [(PackageId, PackageId)]
-    revDepGraphEdges = [ (rpid, packageId pkg)
-                       | (pkg@(ReadyPackage _ deps), _) <- plan
-                       , rpid <- Installed.sourcePackageId <$> CD.flatDeps deps ]
+    revDepGraphEdges = [ (rpid, packageId cpkg)
+                       | (ReadyPackage cpkg, _) <- plan
+                       , ConfiguredId rpid _ <- CD.flatDeps (confPkgDeps cpkg) ]
 
     revDeps :: Map.Map PackageId [PackageId]
     revDeps = Map.fromListWith (++) (map (fmap (:[])) revDepGraphEdges)
@@ -1025,7 +1029,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg | InstallPlan.Installed pkg _ _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ pkg | ReadyPackage (ConfiguredPackage pkg _ _ _) _
+        allSrcPkgs   = [ confPkgSource cpkg | ReadyPackage cpkg
                             <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
@@ -1255,19 +1259,17 @@ installReadyPackage :: Platform -> CompilerInfo
 installReadyPackage platform cinfo configFlags
                     (ReadyPackage (ConfiguredPackage
                                     (SourcePackage _ gpkg source pkgoverride)
-                                    flags stanzas _)
-                                   deps)
+                                    flags stanzas deps))
                     installPkg =
   installPkg configFlags {
     configConfigurationsFlags = flags,
     -- We generate the legacy constraints as well as the new style precise deps.
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
-    configConstraints  = [ thisPackageVersion (packageId deppkg)
-                         | deppkg <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                            Installed.installedUnitId deppkg)
-                         | deppkg <- CD.nonSetupDeps deps ],
+    configConstraints  = [ thisPackageVersion srcid
+                         | ConfiguredId srcid _uid <- CD.nonSetupDeps deps ],
+    configDependencies = [ (packageName srcid, uid)
+                         | ConfiguredId srcid uid <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
@@ -1411,12 +1413,15 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                     ++ " with the latest revision from the index."
       writeFileAtomic descFilePath pkgtxt
 
-  -- Compute the IPID
-  let flags (ReadyPackage (ConfiguredPackage _ x _ _) _) = x
+  -- Compute the IPID of the *library*
+  let flags (ReadyPackage cpkg) = confPkgFlags cpkg
       pkg_name = pkgName (PackageDescription.package pkg)
-      cid = Configure.computeComponentId Cabal.NoFlag
-                (PackageDescription.package pkg) (CLibName (display pkg_name))
-                (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg))) (flags rpkg)
+      cid = Configure.computeComponentId
+                Cabal.NoFlag -- This would let us override the computation
+                (PackageDescription.package pkg)
+                (CLibName (display pkg_name))
+                (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg)))
+                (flags rpkg)
       ipid = SimpleUnitId cid
 
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if

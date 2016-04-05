@@ -18,6 +18,12 @@ cd Cabal
 ./misc/gen-extra-source-files.sh Cabal.cabal
 ./misc/travis-diff-files.sh
 
+cd ../cabal-install
+../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
+../Cabal/misc/travis-diff-files.sh
+
+cd ../Cabal
+
 # Build the setup script in the same way that cabal-install would:
 mkdir -p ./dist/setup
 cp Setup.hs ./dist/setup/setup.hs
@@ -67,8 +73,6 @@ install_from_tarball
 # ---------------------------------------------------------------------
 
 cd ../cabal-install
-../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
-../Cabal/misc/travis-diff-files.sh
 
 cabal install happy
 cabal install --only-dependencies --enable-tests --enable-benchmarks

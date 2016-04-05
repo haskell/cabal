@@ -133,7 +133,7 @@ instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
 instance PackageSourceDeps (ConfiguredPackage loc) where
-  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
+  sourceDeps cpkg = map confSrcId $ CD.nonSetupDeps (confPkgDeps cpkg)
 
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps
