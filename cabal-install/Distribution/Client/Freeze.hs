@@ -39,7 +39,7 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion )
+         ( Package, packageId, packageName, packageVersion, installedUnitId )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -214,14 +214,17 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
+--
+-- Invariant: @pkgSpecifiers@ must refer to packages which are not
+-- 'PreExisting' in the 'SolverInstallPlan'.
 pruneInstallPlan :: SolverInstallPlan
                  -> [PackageSpecifier UnresolvedSourcePackage]
                  -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    InstallPlan.dependencyClosure installPlan (map fakeUnitId pkgIds)
+    InstallPlan.dependencyClosure installPlan (map installedUnitId pkgIds)
   where
-    pkgIds = [ packageId pkg
+    pkgIds = [ PlannedId (packageId pkg)
              | SpecificSourcePackage pkg <- pkgSpecifiers ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)
     removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
