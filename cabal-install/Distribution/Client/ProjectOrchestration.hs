@@ -444,7 +444,7 @@ printPlan verbosity
         BuildStatusBuild _ buildreason -> case buildreason of
           BuildReasonDepsRebuilt      -> "dependency rebuilt"
           BuildReasonFilesChanged
-            (MonitoredFileChanged _)  -> "files changed"
+            (MonitoredFileChanged f)  -> "files changed: " ++ f
           BuildReasonFilesChanged
             mreason                   -> showMonitorChangedReason mreason
           BuildReasonExtraTargets _   -> "additional components to build"
