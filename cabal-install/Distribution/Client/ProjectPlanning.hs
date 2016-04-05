@@ -64,7 +64,7 @@ import           Distribution.Client.Types hiding
   (BuildResult,BuildSuccess(..), BuildFailure(..), DocsResult(..)
   ,TestsResult(..))
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
+                   ( GenericInstallPlan, GenericPlanPackage, SolverInstallPlan )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
@@ -88,7 +88,6 @@ import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
-import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
@@ -197,9 +196,6 @@ type ElaboratedPlanPackage
    = GenericPlanPackage InstalledPackageInfo
                         ElaboratedConfiguredPackage
                         BuildSuccess BuildFailure
-
-type SolverInstallPlan
-   = InstallPlan --TODO: [code cleanup] redefine locally or move def to solver interface
 
 --TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
@@ -366,7 +362,6 @@ instance Binary BuildStyle
 type CabalFileText = LBS.ByteString
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
-                                                  InstalledPackageInfo
 
 --TODO: [code cleanup] this duplicates the InstalledPackageInfo quite a bit in an install plan
 -- because the same ipkg is used by many packages. So the binary file will be big.
@@ -810,7 +805,7 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
            mloc <- checkFetched locm
            return (pkg, locm, mloc)
       | InstallPlan.Configured
-          (ConfiguredPackage pkg _ _ _) <- InstallPlan.toList installPlan ]
+          SolverPackage { solverPkgSource = pkg } <- InstallPlan.toList installPlan ]
 
     let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
         alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
@@ -1030,24 +1025,17 @@ elaborateInstallPlan platform compiler progdb
 
           InstallPlan.Configured  pkg ->
             InstallPlan.Configured
-              (elaborateConfiguredPackage (fixupDependencies mapDep pkg))
+              (elaborateSolverPackage mapDep pkg)
 
           _ -> error "elaborateInstallPlan: unexpected package state"
 
-    -- remap the installed package ids of the direct deps, since we're
-    -- changing the installed package ids of all the packages to use the
-    -- final nix-style hashed ids.
-    fixupDependencies mapDep
-       (ConfiguredPackage pkg flags stanzas deps) =
-        ConfiguredPackage pkg flags stanzas deps'
-      where
-        deps' = fmap (map (\d -> d { confInstId = mapDep (confInstId d) })) deps
-
-    elaborateConfiguredPackage :: ConfiguredPackage UnresolvedPkgLoc
-                               -> ElaboratedConfiguredPackage
-    elaborateConfiguredPackage
-        pkg@(ConfiguredPackage (SourcePackage pkgid gdesc srcloc descOverride)
-                               flags stanzas deps) =
+    elaborateSolverPackage :: (UnitId -> UnitId)
+                           -> SolverPackage UnresolvedPkgLoc
+                           -> ElaboratedConfiguredPackage
+    elaborateSolverPackage
+        mapDep
+        pkg@(SolverPackage (SourcePackage pkgid gdesc srcloc descOverride)
+                           flags stanzas deps0) =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the
@@ -1055,6 +1043,15 @@ elaborateInstallPlan platform compiler progdb
         -- of the other fields of the elaboratedPackage.
         --
         elaboratedPackage = ElaboratedConfiguredPackage {..}
+
+        deps = fmap (map elaborateSolverId) deps0
+
+        elaborateSolverId sid =
+            ConfiguredId {
+                confSrcId  = packageId sid,
+                -- Update the 'UnitId' to the final nix-style hashed ID
+                confInstId = mapDep (installedPackageId sid)
+            }
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
@@ -1804,7 +1801,7 @@ rememberImplicitSetupDeps sourcePkgIndex plan =
       Set.fromList
         [ installedPackageId pkg
         | InstallPlan.Configured
-            pkg@(ConfiguredPackage newpkg _ _ _) <- InstallPlan.toList plan
+            pkg@(SolverPackage newpkg _ _ _) <- InstallPlan.toList plan
           -- has explicit setup deps now
         , hasExplicitSetupDeps newpkg
           -- but originally had no setup deps
@@ -1825,7 +1822,7 @@ rememberImplicitSetupDeps sourcePkgIndex plan =
 -- through the solver.
 --
 packageSetupScriptStylePostSolver :: Set InstalledPackageId
-                                  -> ConfiguredPackage loc
+                                  -> SolverPackage loc
                                   -> PD.PackageDescription
                                   -> SetupScriptStyle
 packageSetupScriptStylePostSolver pkgsImplicitSetupDeps pkg pkgDescription =
@@ -1901,7 +1898,7 @@ setupHsScriptOptions :: ElaboratedReadyPackage
                      -> Bool
                      -> Lock
                      -> SetupScriptOptions
-setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
+setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..})
                      ElaboratedSharedConfig{..} srcdir builddir
                      isParallelBuild cacheLock =
     SetupScriptOptions {
@@ -1911,8 +1908,8 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
       usePlatform              = Just pkgConfigPlatform,
       usePackageDB             = pkgSetupPackageDBStack,
       usePackageIndex          = Nothing,
-      useDependencies          = [ (installedPackageId ipkg, packageId ipkg)
-                                 | ipkg <- CD.setupDeps deps ],
+      useDependencies          = [ (uid, srcid)
+                                 | ConfiguredId srcid uid <- CD.setupDeps pkgDependencies ],
       useDependenciesExclusive = True,
       useVersionMacros         = pkgSetupScriptStyle == SetupCustomExplicitDeps,
       useProgramConfig         = pkgConfigProgramDb,
@@ -1972,8 +1969,7 @@ setupHsConfigureFlags :: ElaboratedReadyPackage
                       -> FilePath
                       -> Cabal.ConfigFlags
 setupHsConfigureFlags (ReadyPackage
-                         pkg@ElaboratedConfiguredPackage{..}
-                         pkgdeps)
+                         pkg@ElaboratedConfiguredPackage{..})
                       sharedConfig@ElaboratedSharedConfig{..}
                       verbosity builddir =
     assert (sanityCheckElaboratedConfiguredPackage sharedConfig pkg)
@@ -2027,11 +2023,10 @@ setupHsConfigureFlags (ReadyPackage
 
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
-    configDependencies        = [ (packageName (Installed.sourcePackageId deppkg),
-                                  Installed.installedUnitId deppkg)
-                                | deppkg <- CD.nonSetupDeps pkgdeps ]
-    configConstraints         = [ thisPackageVersion (packageId deppkg)
-                                | deppkg <- CD.nonSetupDeps pkgdeps ]
+    configDependencies        = [ (packageName srcid, uid)
+                                | ConfiguredId srcid uid <- CD.nonSetupDeps pkgDependencies ]
+    configConstraints         = [ thisPackageVersion srcid
+                                | ConfiguredId srcid _uid <- CD.nonSetupDeps pkgDependencies ]
 
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions

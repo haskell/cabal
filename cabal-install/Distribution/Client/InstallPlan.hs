@@ -15,14 +15,17 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.InstallPlan (
   InstallPlan,
+  SolverInstallPlan,
   GenericInstallPlan,
   PlanPackage,
+  SolverPlanPackage,
   GenericPlanPackage(..),
 
   -- * Operations on 'InstallPlan's
   new,
   toList,
   mapPreservingGraph,
+  configureInstallPlan,
 
   ready,
   processing,
@@ -60,8 +63,9 @@ import Distribution.Package
          , HasUnitId(..), UnitId(..) )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
-         , PackageFixedDeps(..), ConfiguredPackage
-         , UnresolvedPkgLoc
+         , PackageFixedDeps(..)
+         , ConfiguredPackage(..), ConfiguredId(..)
+         , UnresolvedPkgLoc, SolverPackage(..)
          , GenericReadyPackage(..), fakeUnitId )
 import Distribution.Version
          ( Version )
@@ -75,6 +79,8 @@ import Distribution.Client.PlanIndex
 import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
+-- TODO: Need this when we compute final UnitIds
+-- import qualified Distribution.Simple.Configure as Configure
 
 import Data.List
          ( foldl', intercalate )
@@ -147,8 +153,8 @@ import qualified Data.Traversable as T
 data GenericPlanPackage ipkg srcpkg iresult ifailure
    = PreExisting ipkg
    | Configured  srcpkg
-   | Processing  (GenericReadyPackage srcpkg ipkg)
-   | Installed   (GenericReadyPackage srcpkg ipkg) (Maybe ipkg) iresult
+   | Processing  (GenericReadyPackage srcpkg)
+   | Installed   (GenericReadyPackage srcpkg) (Maybe ipkg) iresult
    | Failed      srcpkg ifailure
   deriving (Eq, Show, Generic)
 
@@ -159,6 +165,10 @@ type PlanPackage = GenericPlanPackage
                    InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
                    BuildSuccess BuildFailure
 
+type SolverPlanPackage = GenericPlanPackage
+                         InstalledPackageInfo (SolverPackage UnresolvedPkgLoc)
+                         BuildSuccess BuildFailure
+
 instance (Package ipkg, Package srcpkg) =>
          Package (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   packageId (PreExisting ipkg)     = packageId ipkg
@@ -168,7 +178,7 @@ instance (Package ipkg, Package srcpkg) =>
   packageId (Failed      spkg   _) = packageId spkg
 
 instance (PackageFixedDeps srcpkg,
-          PackageFixedDeps ipkg, HasUnitId ipkg) =>
+          PackageFixedDeps ipkg) =>
          PackageFixedDeps (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   depends (PreExisting pkg)     = depends pkg
   depends (Configured  pkg)     = depends pkg
@@ -215,6 +225,45 @@ planPkgOf plan v =
       Just pkg -> pkg
       Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
 
+-- | 'GenericInstallPlan' that the solver produces.  We'll "run this" in
+-- order to compute the 'UnitId's for everything we want to build.
+type SolverInstallPlan = GenericInstallPlan
+                         InstalledPackageInfo (SolverPackage UnresolvedPkgLoc)
+                         -- Technically, these are not used here, but
+                         -- setting the type this way makes it easier
+                         -- to run some operations.
+                         BuildSuccess BuildFailure
+
+-- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
+-- Similar to 'elaboratedInstallPlan'
+configureInstallPlan :: SolverInstallPlan -> InstallPlan
+configureInstallPlan solverPlan =
+    flip mapPreservingGraph solverPlan $ \mapDep planpkg ->
+      case planpkg of
+        PreExisting pkg ->
+          PreExisting pkg
+
+        Configured  pkg ->
+          Configured (configureSolverPackage mapDep pkg)
+
+        _ -> error "configureInstallPlan: unexpected package state"
+  where
+    configureSolverPackage :: (UnitId -> UnitId)
+                           -> SolverPackage UnresolvedPkgLoc
+                           -> ConfiguredPackage UnresolvedPkgLoc
+    configureSolverPackage mapDep spkg =
+      ConfiguredPackage {
+        confPkgSource = solverPkgSource spkg,
+        confPkgFlags  = solverPkgFlags spkg,
+        confPkgStanzas = solverPkgStanzas spkg,
+        confPkgDeps   = fmap (map (configureSolverId mapDep)) (solverPkgDeps spkg)
+      }
+
+    configureSolverId mapDep sid =
+      ConfiguredId {
+        confSrcId  = packageId sid, -- accurate!
+        confInstId = mapDep (installedUnitId sid)
+      }
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
@@ -348,7 +397,7 @@ remove shouldRemove plan =
 --
 ready :: forall ipkg srcpkg iresult ifailure. PackageFixedDeps srcpkg
       => GenericInstallPlan ipkg srcpkg iresult ifailure
-      -> [GenericReadyPackage srcpkg ipkg]
+      -> [GenericReadyPackage srcpkg]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -357,17 +406,17 @@ ready plan = assert check readyPackages
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
-    readyPackages :: [GenericReadyPackage srcpkg ipkg]
+    readyPackages :: [GenericReadyPackage srcpkg]
     readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
 lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
                       PackageFixedDeps srcpkg
                    => GenericInstallPlan ipkg srcpkg iresult ifailure
                    -> srcpkg
-                   -> Maybe (GenericReadyPackage srcpkg ipkg)
+                   -> Maybe (GenericReadyPackage srcpkg)
 lookupReadyPackage plan pkg = do
-    deps <- hasAllInstalledDeps pkg
-    return (ReadyPackage pkg deps)
+    _ <- hasAllInstalledDeps pkg
+    return (ReadyPackage pkg)
   where
 
     hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
@@ -397,7 +446,7 @@ lookupReadyPackage plan pkg = do
 --
 processing :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                HasUnitId srcpkg, PackageFixedDeps srcpkg)
-           => [GenericReadyPackage srcpkg ipkg]
+           => [GenericReadyPackage srcpkg]
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
 processing pkgs plan = assert (invariant plan') plan'
@@ -455,7 +504,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
     plan'    = plan {
                  planIndex = PackageIndex.merge (planIndex plan) failures
                }
-    ReadyPackage srcpkg _deps = lookupProcessingPackage plan pkgid
+    ReadyPackage srcpkg = lookupProcessingPackage plan pkgid
     failures = PackageIndex.fromList
              $ Failed srcpkg buildResult
              : [ Failed pkg' buildResult'
@@ -477,7 +526,7 @@ packagesThatDependOn plan pkgid = map (planPkgOf plan)
 --
 lookupProcessingPackage :: GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> UnitId
-                        -> GenericReadyPackage srcpkg ipkg
+                        -> GenericReadyPackage srcpkg
 lookupProcessingPackage plan pkgid =
   -- NB: processing packages are guaranteed to not indirect through
   -- planFakeMap
@@ -693,7 +742,7 @@ acyclic fakeMap = null . PlanIndex.dependencyCycles fakeMap
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: (HasUnitId ipkg, PackageFixedDeps ipkg,
+closed :: (PackageFixedDeps ipkg,
            PackageFixedDeps srcpkg)
        => FakeMap -> PlanIndex ipkg srcpkg iresult ifailure -> Bool
 closed fakeMap = null . PlanIndex.brokenPackages fakeMap

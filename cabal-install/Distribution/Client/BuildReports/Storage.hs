@@ -132,7 +132,7 @@ fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
-  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _) deps)
+  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ deps))
                          _ result
     -> Just $ ( BuildReport.new os arch comp
                                 (packageId srcPkg) flags

@@ -5,7 +5,7 @@ module Distribution.Client.Dependency.Modular.ConfiguredConversion
 import Data.Maybe
 import Prelude hiding (pi)
 
-import Distribution.Package (UnitId)
+import Distribution.Package (UnitId, packageId)
 
 import Distribution.Client.Types
 import Distribution.Client.Dependency.Types (ResolverPackage(..))
@@ -27,7 +27,7 @@ convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting
                   (fromJust $ SI.lookupUnitId iidx pi)
-    Right pi -> Configured $ ConfiguredPackage
+    Right pi -> Configured $ SolverPackage
                   srcpkg
                   fa
                   es
@@ -35,20 +35,17 @@ convCP iidx sidx (CP qpi fa es ds) =
       where
         Just srcpkg = CI.lookupPackageId sidx pi
   where
-    ds' :: ComponentDeps [ConfiguredId]
+    ds' :: ComponentDeps [SolverId]
     ds' = fmap (map convConfId) ds
 
 convPI :: PI QPN -> Either UnitId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi
-convPI qpi                    = Right $ confSrcId $ convConfId qpi
+convPI pi                     = Right (packageId (convConfId pi))
 
-convConfId :: PI QPN -> ConfiguredId
-convConfId (PI (Q _ pn) (I v loc)) = ConfiguredId {
-      confSrcId  = sourceId
-    , confInstId = installedId
-    }
+convConfId :: PI QPN -> SolverId
+convConfId (PI (Q _ pn) (I v loc)) =
+    case loc of
+        Inst pi -> PreExistingId sourceId pi
+        _otherwise -> PlannedId sourceId
   where
     sourceId    = PackageIdentifier pn v
-    installedId = case loc of
-                    Inst pi    -> pi
-                    _otherwise -> fakeUnitId sourceId

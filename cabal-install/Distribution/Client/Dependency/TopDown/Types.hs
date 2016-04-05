@@ -14,9 +14,8 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( ConfiguredPackage(..)
-         , UnresolvedPkgLoc, UnresolvedSourcePackage
-         , OptionalStanza, ConfiguredId(..) )
+         ( UnresolvedPkgLoc, UnresolvedSourcePackage
+         , OptionalStanza, SolverPackage(..), SolverId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.Client.ComponentDeps as CD
@@ -45,7 +44,7 @@ data InstalledOrSource installed source
 
 data FinalSelectedPackage
    = SelectedInstalled InstalledPackage
-   | SelectedSource    (ConfiguredPackage UnresolvedPkgLoc)
+   | SelectedSource    (SolverPackage UnresolvedPkgLoc)
 
 type TopologicalSortNumber = Int
 
@@ -68,6 +67,7 @@ data UnconfiguredPackage
        FlagAssignment
        [OptionalStanza]
 
+-- | This is a minor misnomer: it's more of a 'SemiSolverPackage'.
 data SemiConfiguredPackage
    = SemiConfiguredPackage
        UnresolvedSourcePackage           -- package info
@@ -132,8 +132,8 @@ class Package a => PackageSourceDeps a where
 instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
-instance PackageSourceDeps (ConfiguredPackage loc) where
-  sourceDeps cpkg = map confSrcId $ CD.nonSetupDeps (confPkgDeps cpkg)
+instance PackageSourceDeps (SolverPackage loc) where
+  sourceDeps pkg = map solverSrcId $ CD.nonSetupDeps (solverPkgDeps pkg)
 
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps
