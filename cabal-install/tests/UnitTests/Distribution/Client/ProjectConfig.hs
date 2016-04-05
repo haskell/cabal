@@ -122,7 +122,7 @@ prop_roundtrip_legacytypes_local config =
 prop_roundtrip_legacytypes_specific :: Map PackageName PackageConfig -> Bool
 prop_roundtrip_legacytypes_specific config =
     roundtrip_legacytypes
-      mempty { projectConfigSpecificPackage = config }
+      mempty { projectConfigSpecificPackage = MapMappend config }
 
 
 --------------------------------------------
@@ -213,7 +213,7 @@ prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
 prop_roundtrip_printparse_specific config =
     roundtrip_printparse
       mempty {
-        projectConfigSpecificPackage = fmap getNonMEmpty config
+        projectConfigSpecificPackage = MapMappend (fmap getNonMEmpty config)
       }
 
 
@@ -242,14 +242,17 @@ instance Arbitrary ProjectConfig where
         <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary
-        <*> (fmap getNonMEmpty . Map.fromList <$> shortListOf 3 arbitrary)
+        <*> (MapMappend . fmap getNonMEmpty . Map.fromList
+               <$> shortListOf 3 arbitrary)
         -- package entries with no content are equivalent to
         -- the entry not existing at all, so exclude empty
 
     shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7) =
-      [ ProjectConfig x0' x1' x2' x3' x4' x5' x6' (fmap getNonMEmpty x7')
+      [ ProjectConfig x0' x1' x2' x3'
+                      x4' x5' x6' (MapMappend (fmap getNonMEmpty x7'))
       | ((x0', x1', x2', x3'), (x4', x5', x6', x7'))
-          <- shrink ((x0, x1, x2, x3), (x4, x5, x6, fmap NonMEmpty x7))
+          <- shrink ((x0, x1, x2, x3),
+                     (x4, x5, x6, fmap NonMEmpty (getMapMappend x7)))
       ]
 
 newtype PackageLocationString
@@ -369,10 +372,10 @@ projectConfigConstraintSource =
 instance Arbitrary PackageConfig where
     arbitrary =
       PackageConfig
-        <$> (Map.fromList <$> shortListOf 10
+        <$> (MapLast . Map.fromList <$> shortListOf 10
               ((,) <$> arbitraryProgramName
                    <*> arbitraryShortToken))
-        <*> (Map.fromList <$> shortListOf 10
+        <*> (MapMappend . Map.fromList <$> shortListOf 10
               ((,) <$> arbitraryProgramName
                    <*> listOf arbitraryShortToken))
         <*> (toNubList <$> listOf arbitraryShortToken) <*> arbitrary
@@ -456,11 +459,17 @@ instance Arbitrary PackageConfig where
                  (fmap NonEmpty x35, x36)))
       ]
       where
-        preShrink_Paths  = Map.map NonEmpty . Map.mapKeys NoShrink
-        postShrink_Paths = Map.map getNonEmpty . Map.mapKeys getNoShrink
+        preShrink_Paths  = Map.map NonEmpty
+                         . Map.mapKeys NoShrink
+                         . getMapLast
+        postShrink_Paths = MapLast
+                         . Map.map getNonEmpty
+                         . Map.mapKeys getNoShrink
         preShrink_Args   = Map.map (NonEmpty . map NonEmpty)
                          . Map.mapKeys NoShrink
-        postShrink_Args  = Map.map (map getNonEmpty . getNonEmpty)
+                         . getMapMappend
+        postShrink_Args  = MapMappend
+                         . Map.map (map getNonEmpty . getNonEmpty)
                          . Map.mapKeys getNoShrink
 
 

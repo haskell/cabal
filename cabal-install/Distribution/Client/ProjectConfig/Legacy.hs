@@ -80,7 +80,6 @@ import Distribution.Simple.Command
 import Control.Applicative
 #endif
 import Control.Monad
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
 import Distribution.Compat.Semigroup
@@ -107,7 +106,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
-       legacySpecificConfig    :: Map PackageName LegacyPackageConfig
+       legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
      } deriving Generic
 
 instance Monoid LegacyProjectConfig where
@@ -350,8 +349,8 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configDebugInfo           = packageConfigDebugInfo,
       configRelocatable         = packageConfigRelocatable
     } = configFlags
-    packageConfigProgramPaths   = Map.fromList configProgramPaths
-    packageConfigProgramArgs    = Map.fromList configProgramArgs
+    packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
+    packageConfigProgramArgs    = MapMappend (Map.fromList configProgramArgs)
 
     packageConfigCoverage       = coverage <> libcoverage
     --TODO: defer this merging to the resolve phase
@@ -589,8 +588,8 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
   where
     configFlags = ConfigFlags {
       configPrograms_           = configPrograms_ mempty,
-      configProgramPaths        = Map.toList packageConfigProgramPaths,
-      configProgramArgs         = Map.toList packageConfigProgramArgs,
+      configProgramPaths        = Map.toList (getMapLast packageConfigProgramPaths),
+      configProgramArgs         = Map.toList (getMapMappend packageConfigProgramArgs),
       configProgramPathExtra    = packageConfigProgramPathExtra,
       configHcFlavor            = mempty,
       configHcPath              = mempty,
@@ -1060,7 +1059,9 @@ packageSpecificOptionsSectionDescr =
       sectionSubsections = [],
       sectionGet         = \projconf ->
                              [ (display pkgname, pkgconf)
-                             | (pkgname, pkgconf) <- Map.toList (legacySpecificConfig projconf) ],
+                             | (pkgname, pkgconf) <-
+                                 Map.toList . getMapMappend
+                               . legacySpecificConfig $ projconf ],
       sectionSet         =
         \lineno pkgnamestr pkgconf projconf -> do
           pkgname <- case simpleParse pkgnamestr of
@@ -1070,8 +1071,9 @@ packageSpecificOptionsSectionDescr =
                              ++ "as an argument"
           return projconf {
             legacySpecificConfig =
+              MapMappend $
               Map.insertWith mappend pkgname pkgconf
-                             (legacySpecificConfig projconf)
+                             (getMapMappend $ legacySpecificConfig projconf)
           },
       sectionEmpty       = mempty
     }
