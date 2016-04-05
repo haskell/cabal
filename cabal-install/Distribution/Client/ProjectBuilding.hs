@@ -628,7 +628,7 @@ rebuildTarget verbosity
               buildSettings downloadMap
               buildLimit installLock cacheLock
               sharedPackageConfig
-              rpkg@(ReadyPackage pkg _)
+              rpkg@(ReadyPackage pkg)
               pkgBuildStatus =
 
     -- We rely on the 'BuildStatus' to decide which phase to start from:
@@ -779,10 +779,10 @@ executeInstallPlan
      (HasUnitId ipkg,   PackageFixedDeps ipkg,
       HasUnitId srcpkg, PackageFixedDeps srcpkg)
   => Verbosity
-  -> JobControl IO ( GenericReadyPackage srcpkg ipkg
+  -> JobControl IO ( GenericReadyPackage srcpkg
                    , GenericBuildResult ipkg iresult BuildFailure )
   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-  -> (    GenericReadyPackage srcpkg ipkg
+  -> (    GenericReadyPackage srcpkg
        -> IO (GenericBuildResult ipkg iresult BuildFailure))
   -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
 executeInstallPlan verbosity jobCtl plan0 installPkg =
@@ -813,7 +813,7 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
           plan'      = updatePlan pkg buildResult plan
       tryNewTasks taskCount' plan'
 
-    updatePlan :: GenericReadyPackage srcpkg ipkg
+    updatePlan :: GenericReadyPackage srcpkg
                -> GenericBuildResult ipkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
@@ -950,7 +950,7 @@ buildAndInstallUnpackedPackage verbosity
                                  pkgConfigPlatform  = platform,
                                  pkgConfigProgramDb = progdb
                                }
-                               rpkg@(ReadyPackage pkg _deps)
+                               rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
 
     createDirectoryIfMissingVerbose verbosity False builddir
@@ -1106,7 +1106,7 @@ buildInplaceUnpackedPackage verbosity
                               pkgConfigCompiler  = compiler,
                               pkgConfigProgramDb = progdb
                             }
-                            rpkg@(ReadyPackage pkg _deps)
+                            rpkg@(ReadyPackage pkg)
                             buildStatus
                             srcdir builddir = do
 
