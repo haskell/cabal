@@ -330,11 +330,11 @@ db5 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
   , Right $ exAv "B" 1 []
-  , Right $ exAv "C" 1 [ExTest "testC" [ExAny "A"]]
-  , Right $ exAv "D" 1 [ExTest "testD" [ExFix "B" 2]]
-  , Right $ exAv "E" 1 [ExFix "A" 1, ExTest "testE" [ExAny "A"]]
-  , Right $ exAv "F" 1 [ExFix "A" 1, ExTest "testF" [ExFix "A" 2]]
-  , Right $ exAv "G" 1 [ExFix "A" 2, ExTest "testG" [ExAny "A"]]
+  , Right $ exAv "C" 1 [] `withTest` ExTest "testC" [ExAny "A"]
+  , Right $ exAv "D" 1 [] `withTest` ExTest "testD" [ExFix "B" 2]
+  , Right $ exAv "E" 1 [ExFix "A" 1] `withTest` ExTest "testE" [ExAny "A"]
+  , Right $ exAv "F" 1 [ExFix "A" 1] `withTest` ExTest "testF" [ExFix "A" 2]
+  , Right $ exAv "G" 1 [ExFix "A" 2] `withTest` ExTest "testG" [ExAny "A"]
   ]
 
 -- Now the _dependencies_ have test suites
@@ -349,7 +349,7 @@ db6 :: ExampleDb
 db6 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
-  , Right $ exAv "B" 1 [ExTest "testA" [ExAny "A"]]
+  , Right $ exAv "B" 1 [] `withTest` ExTest "testA" [ExAny "A"]
   , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
   , Right $ exAv "D" 1 [ExAny "B"]
   ]
@@ -532,13 +532,13 @@ testBuildable testName unavailableDep =
   where
     expected = Just [("false-dep", 1), ("pkg", 1)]
     db = [
-        Right $ exAv "pkg" 1 [
-                   unavailableDep
-                 , ExFlag "enable-lib" (Buildable []) NotBuildable
-                 , ExTest "test" [exFlag "enable-lib"
-                                      [ExAny "true-dep"]
-                                      [ExAny "false-dep"]]
-                 ]
+        Right $ exAv "pkg" 1
+            [ unavailableDep
+            , ExFlag "enable-lib" (Buildable []) NotBuildable ]
+         `withTest`
+            ExTest "test" [exFlag "enable-lib"
+                              [ExAny "true-dep"]
+                              [ExAny "false-dep"]]
       , Right $ exAv "true-dep" 1 []
       , Right $ exAv "false-dep" 1 []
       ]
@@ -550,8 +550,9 @@ dbBuildable1 = [
     Right $ exAv "pkg" 1
         [ ExAny "unknown"
         , ExFlag "flag1" (Buildable []) NotBuildable
-        , ExFlag "flag2" (Buildable []) NotBuildable
-        , ExTest "optional-test"
+        , ExFlag "flag2" (Buildable []) NotBuildable]
+     `withTests`
+        [ ExTest "optional-test"
               [ ExAny "unknown"
               , ExFlag "flag1"
                     (Buildable [])
