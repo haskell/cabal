@@ -119,8 +119,6 @@ import Distribution.Simple.Program (ProgramConfiguration,
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import Distribution.Simple.LocalBuildInfo (ComponentName(CLibName))
-import qualified Distribution.Simple.Configure as Configure
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
@@ -1205,18 +1203,17 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
       (pkgid, ipid, buildResult) <- collectJob jobCtl
       printBuildResult pkgid ipid buildResult
       let taskCount' = taskCount-1
-          plan'      = updatePlan pkgid buildResult plan
+          plan'      = updatePlan pkgid ipid buildResult plan
       tryNewTasks taskCount' plan'
 
-    updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan
+    updatePlan :: PackageIdentifier -> InstalledPackageId
+               -> BuildResult -> InstallPlan
                -> InstallPlan
-    updatePlan pkgid (Right buildSuccess@(BuildOk _ _ mipkg)) =
-        InstallPlan.completed (Source.fakeUnitId pkgid)
-                              mipkg buildSuccess
+    updatePlan _pkgid ipid (Right buildSuccess@(BuildOk _ _ mipkg)) =
+        InstallPlan.completed ipid mipkg buildSuccess
 
-    updatePlan pkgid (Left buildFailure) =
-        InstallPlan.failed (Source.fakeUnitId pkgid)
-                           buildFailure depsFailure
+    updatePlan pkgid ipid (Left buildFailure) =
+        InstallPlan.failed ipid buildFailure depsFailure
       where
         depsFailure = DependentFailed pkgid
         -- So this first pkgid failed for whatever reason (buildFailure).
@@ -1259,11 +1256,12 @@ installReadyPackage :: Platform -> CompilerInfo
                                     -> a)
                     -> a
 installReadyPackage platform cinfo configFlags
-                    (ReadyPackage (ConfiguredPackage
+                    (ReadyPackage (ConfiguredPackage ipid
                                     (SourcePackage _ gpkg source pkgoverride)
                                     flags stanzas deps))
                     installPkg =
   installPkg configFlags {
+    configIPID = toFlag (display ipid),
     configConfigurationsFlags = flags,
     -- We generate the legacy constraints as well as the new style precise deps.
     -- In the end only one set gets passed to Setup.hs configure, depending on
@@ -1415,20 +1413,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                     ++ " with the latest revision from the index."
       writeFileAtomic descFilePath pkgtxt
 
-  -- Compute the IPID of the *library*
-  let flags (ReadyPackage cpkg) = confPkgFlags cpkg
-      pkg_name = pkgName (PackageDescription.package pkg)
-      cid = Configure.computeComponentId
-                Cabal.NoFlag -- This would let us override the computation
-                (PackageDescription.package pkg)
-                (CLibName (display pkg_name))
-                (map (\(SimpleUnitId cid0) -> cid0) (CD.libraryDeps (depends rpkg)))
-                (flags rpkg)
-      ipid = SimpleUnitId cid
-
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
   -- the setup script was compiled against an old version of the Cabal lib).
-  configFlags' <- addDefaultInstallDirs ipid configFlags
+  configFlags' <- addDefaultInstallDirs configFlags
   -- Filter out flags not supported by the old versions of the Cabal lib.
   let configureFlags :: Version -> ConfigFlags
       configureFlags  = filterConfigureFlags configFlags' {
@@ -1436,7 +1423,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       }
 
   -- Path to the optional log file.
-  mLogPath <- maybeLogPath ipid
+  mLogPath <- maybeLogPath
 
   logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
     -- Configure phase
@@ -1487,6 +1474,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   where
     pkgid            = packageId pkg
+    ipid             = installedUnitId rpkg
     buildCommand'    = buildCommand defaultProgramConfiguration
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
@@ -1515,8 +1503,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     verbosity' = maybe verbosity snd useLogFile
     tempTemplate name = name ++ "-" ++ display pkgid
 
-    addDefaultInstallDirs :: UnitId -> ConfigFlags -> IO ConfigFlags
-    addDefaultInstallDirs ipid configFlags' = do
+    addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
+    addDefaultInstallDirs configFlags' = do
       defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
       return $ configFlags' {
           configInstallDirs = fmap Cabal.Flag .
@@ -1555,8 +1543,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror
 
-    maybeLogPath :: UnitId -> IO (Maybe FilePath)
-    maybeLogPath ipid =
+    maybeLogPath :: IO (Maybe FilePath)
+    maybeLogPath =
       case useLogFile of
          Nothing                 -> return Nothing
          Just (mkLogFileName, _) -> do
