@@ -5,12 +5,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 module Distribution.Client.PlanIndex (
-    -- * FakeMap and related operations
-    FakeMap
-  , fakeDepends
-  , fakeLookupUnitId
     -- * Graph traversal functions
-  , brokenPackages
+    brokenPackages
   , dependencyCycles
   , dependencyGraph
   , dependencyInconsistencies
@@ -35,7 +31,6 @@ import Distribution.Package
 import Distribution.Version
          ( Version )
 
-import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.Types
          ( PackageFixedDeps(..) )
@@ -44,65 +39,19 @@ import Distribution.Simple.PackageIndex
 import Distribution.Package
          ( HasUnitId(..), PackageId )
 
--- Note [FakeMap]
------------------
--- We'd like to use the PackageIndex defined in this module for cabal-install's
--- InstallPlan.  However, at the moment, this data structure is indexed by
--- UnitId, which we don't know until after we've compiled a package
--- (whereas InstallPlan needs to store not-compiled packages in the index.)
--- Eventually, an UnitId will be calculatable prior to actually building
--- the package, but at the moment, the "fake installed package ID map" is a
--- workaround to solve this problem while reusing PackageIndex.  The basic idea
--- is that, since we don't know what an UnitId is beforehand, we just fake
--- up one based on the package ID (it only needs to be unique for the particular
--- install plan), and fill it out with the actual generated UnitId after
--- the package is successfully compiled.
---
--- However, there is a problem: in the index there may be references using the
--- old package ID, which are now dangling if we update the UnitId.  We
--- could map over the entire index to update these pointers as well (a costly
--- operation), but instead, we've chosen to parametrize a variety of important
--- functions by a FakeMap, which records what a fake installed package ID was
--- actually resolved to post-compilation.  If we do a lookup, we first check and
--- see if it's a fake ID in the FakeMap.
---
--- It's a bit grungy, but we expect this to only be temporary anyway.  (Another
--- possible workaround would have been to *not* update the installed package ID,
--- but I decided this would be hard to understand.)
-
--- | Map from fake package keys to real ones.  See Note [FakeMap]
-type FakeMap = Map UnitId UnitId
-
--- | Variant of `depends` which accepts a `FakeMap`
---
--- Analogous to `fakeInstalledDepends`. See Note [FakeMap].
-fakeDepends :: PackageFixedDeps pkg => FakeMap -> pkg -> ComponentDeps [UnitId]
-fakeDepends fakeMap = fmap (map resolveFakeId) . depends
-  where
-    resolveFakeId :: UnitId -> UnitId
-    resolveFakeId ipid = Map.findWithDefault ipid ipid fakeMap
-
---- | Variant of 'lookupUnitId' which accepts a 'FakeMap'.  See Note
---- [FakeMap].
-fakeLookupUnitId :: FakeMap -> PackageIndex a -> UnitId
-                             -> Maybe a
-fakeLookupUnitId fakeMap index pkg =
-  lookupUnitId index (Map.findWithDefault pkg pkg fakeMap)
-
 -- | All packages that have dependencies that are not in the index.
 --
 -- Returns such packages along with the dependencies that they're missing.
 --
 brokenPackages :: (PackageFixedDeps pkg)
-               => FakeMap
-               -> PackageIndex pkg
+               => PackageIndex pkg
                -> [(pkg, [UnitId])]
-brokenPackages fakeMap index =
+brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing =
           [ pkg' | pkg' <- CD.flatDeps (depends pkg)
-                 , isNothing (fakeLookupUnitId fakeMap index pkg') ]
+                 , isNothing (lookupUnitId index pkg') ]
   , not (null missing) ]
 
 -- | Compute all roots of the install plan, and verify that the transitive
@@ -113,17 +62,16 @@ brokenPackages fakeMap index =
 -- cycle. Such cycles may or may not be an issue; either way, we don't check
 -- for them here.
 dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasUnitId pkg)
-                          => FakeMap
-                          -> Bool
+                          => Bool
                           -> PackageIndex pkg
                           -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies fakeMap indepGoals index  =
-    concatMap (dependencyInconsistencies' fakeMap) subplans
+dependencyInconsistencies indepGoals index  =
+    concatMap dependencyInconsistencies' subplans
   where
     subplans :: [PackageIndex pkg]
     subplans = rights $
-                 map (dependencyClosure fakeMap index)
-                     (rootSets fakeMap indepGoals index)
+                 map (dependencyClosure index)
+                     (rootSets indepGoals index)
 
 -- | Compute the root sets of a plan
 --
@@ -132,23 +80,23 @@ dependencyInconsistencies fakeMap indepGoals index  =
 -- as singletons sets if we are considering them as independent goals), along
 -- with all setup dependencies of all packages.
 rootSets :: (PackageFixedDeps pkg, HasUnitId pkg)
-         => FakeMap -> Bool -> PackageIndex pkg -> [[UnitId]]
-rootSets fakeMap indepGoals index =
+         => Bool -> PackageIndex pkg -> [[UnitId]]
+rootSets indepGoals index =
        if indepGoals then map (:[]) libRoots else [libRoots]
     ++ setupRoots index
   where
-    libRoots = libraryRoots fakeMap index
+    libRoots = libraryRoots index
 
 -- | Compute the library roots of a plan
 --
 -- The library roots are the set of packages with no reverse dependencies
 -- (no reverse library dependencies but also no reverse setup dependencies).
 libraryRoots :: (PackageFixedDeps pkg, HasUnitId pkg)
-             => FakeMap -> PackageIndex pkg -> [UnitId]
-libraryRoots fakeMap index =
+             => PackageIndex pkg -> [UnitId]
+libraryRoots index =
     map toPkgId roots
   where
-    (graph, toPkgId, _) = dependencyGraph fakeMap index
+    (graph, toPkgId, _) = dependencyGraph index
     indegree = Graph.indegree graph
     roots    = filter isRoot (Graph.vertices graph)
     isRoot v = indegree ! v == 0
@@ -171,10 +119,9 @@ setupRoots = filter (not . null)
 --
 dependencyInconsistencies' :: forall pkg.
                               (PackageFixedDeps pkg, HasUnitId pkg)
-                           => FakeMap
-                           -> PackageIndex pkg
+                           => PackageIndex pkg
                            -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies' fakeMap index =
+dependencyInconsistencies' index =
     [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
     | (name, ipid_map) <- Map.toList inverseIndex
     , let uses = Map.elems ipid_map
@@ -191,9 +138,9 @@ dependencyInconsistencies' fakeMap index =
       | -- For each package @pkg@
         pkg <- allPackages index
         -- Find out which @ipid@ @pkg@ depends on
-      , ipid <- CD.nonSetupDeps (fakeDepends fakeMap pkg)
+      , ipid <- CD.nonSetupDeps (depends pkg)
         -- And look up those @ipid@ (i.e., @ipid@ is the ID of @dep@)
-      , Just dep <- [fakeLookupUnitId fakeMap index ipid]
+      , Just dep <- [lookupUnitId index ipid]
       ]
 
     -- If, in a single install plan, we depend on more than one version of a
@@ -207,8 +154,8 @@ dependencyInconsistencies' fakeMap index =
     reallyIsInconsistent [p1, p2] =
       let pid1 = installedUnitId p1
           pid2 = installedUnitId p2
-      in Map.findWithDefault pid1 pid1 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p2)
-      && Map.findWithDefault pid2 pid2 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p1)
+      in pid1 `notElem` CD.nonSetupDeps (depends p2)
+      && pid2 `notElem` CD.nonSetupDeps (depends p1)
     reallyIsInconsistent _ = True
 
 
@@ -221,14 +168,13 @@ dependencyInconsistencies' fakeMap index =
 -- other, directly or indirectly.
 --
 dependencyCycles :: (PackageFixedDeps pkg, HasUnitId pkg)
-                 => FakeMap
-                 -> PackageIndex pkg
+                 => PackageIndex pkg
                  -> [[pkg]]
-dependencyCycles fakeMap index =
+dependencyCycles index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
     adjacencyList = [ (pkg, installedUnitId pkg,
-                            CD.flatDeps (fakeDepends fakeMap pkg))
+                            CD.flatDeps (depends pkg))
                     | pkg <- allPackages index ]
 
 
@@ -240,21 +186,20 @@ dependencyCycles fakeMap index =
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 dependencyClosure :: (PackageFixedDeps pkg, HasUnitId pkg)
-                  => FakeMap
-                  -> PackageIndex pkg
+                  => PackageIndex pkg
                   -> [UnitId]
                   -> Either [(pkg, [UnitId])]
                             (PackageIndex pkg)
-dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
+dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Right completed
-  (completed, _)  -> Left (brokenPackages fakeMap completed)
+  (completed, _)  -> Left (brokenPackages completed)
  where
     closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) =
-      case fakeLookupUnitId fakeMap index pkgid of
+      case lookupUnitId index pkgid of
         Nothing   -> closure completed (pkgid:failed) pkgids
         Just pkg  ->
-          case fakeLookupUnitId fakeMap completed
+          case lookupUnitId completed
                (installedUnitId pkg) of
             Just _  -> closure completed  failed pkgids
             Nothing -> closure completed' failed pkgids'
@@ -268,12 +213,11 @@ dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
 -- You can check if there are any such dependencies with 'brokenPackages'.
 --
 dependencyGraph :: (PackageFixedDeps pkg, HasUnitId pkg)
-                => FakeMap
-                -> PackageIndex pkg
+                => PackageIndex pkg
                 -> (Graph.Graph,
                     Graph.Vertex -> UnitId,
                     UnitId -> Maybe Graph.Vertex)
-dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
+dependencyGraph index = (graph, vertexToPkg, idToVertex)
   where
     (graph, vertexToPkg', idToVertex) = Graph.graphFromEdges edges
     vertexToPkg v = case vertexToPkg' v of
@@ -282,8 +226,8 @@ dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
     pkgs  = allPackages index
     edges = map edgesFrom pkgs
 
-    resolve   pid = Map.findWithDefault pid pid fakeMap
+    resolve   pid = pid
     edgesFrom pkg = ( ()
                     , resolve (installedUnitId pkg)
-                    , CD.flatDeps (fakeDepends fakeMap pkg)
+                    , CD.flatDeps (depends pkg)
                     )

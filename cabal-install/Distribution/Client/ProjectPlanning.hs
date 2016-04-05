@@ -1225,7 +1225,7 @@ elaborateInstallPlan platform compiler progdb
       $ map installedPackageId
       $ InstallPlan.reverseDependencyClosure
           solverPlan
-          [ fakeUnitId (packageId pkg)
+          [ installedPackageId (PlannedId (packageId pkg))
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
