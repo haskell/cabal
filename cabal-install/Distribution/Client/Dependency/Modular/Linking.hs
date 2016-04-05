@@ -264,14 +264,16 @@ makeCanonical lg qpn@(Q pp _) i =
 -- have already made or will make sooner or later a link choice for one of these
 -- as well, and cover their dependencies at that point.
 linkDeps :: [Var QPN] -> PP -> FlaggedDeps Component QPN -> UpdateState ()
-linkDeps parents pp' = mapM_ go
+linkDeps parents pp'@(PP ns' _) = mapM_ go
   where
     go :: FlaggedDep Component QPN -> UpdateState ()
-    -- Skip setup dependencies.
-    go (Simple _ ComponentSetup) = return ()
-    go (Simple (Dep qpn@(Q _ pn) _) _) = do
+    go (Simple (Dep qpn@(Q (PP _ q) pn) _) comp) = do
       vs <- get
-      let qpn' = Q pp' pn
+      let qpn' = case comp of
+                   -- Link setup dependencies to packages with the same
+                   -- setup qualifier.
+                   ComponentSetup -> Q (PP ns' q) pn
+                   _              -> Q pp'        pn
           lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
           lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
       lg'' <- lift' $ lgMerge parents lg lg'
