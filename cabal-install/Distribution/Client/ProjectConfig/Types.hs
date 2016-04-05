@@ -237,11 +237,11 @@ instance Binary PackageConfig
 newtype MapLast k v = MapLast { getMapLast :: Map k v }
   deriving (Eq, Show, Functor, Generic, Binary)
 
-instance (Semigroup v, Ord k) => Monoid (MapLast k v) where
+instance Ord k => Monoid (MapLast k v) where
   mempty  = MapLast Map.empty
   mappend = (<>)
 
-instance (Semigroup v, Ord k) => Semigroup (MapLast k v) where
+instance Ord k => Semigroup (MapLast k v) where
   MapLast a <> MapLast b = MapLast (flip Map.union a b)
   -- rather than Map.union which is the normal Map monoid instance
 
