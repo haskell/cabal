@@ -53,8 +53,27 @@ _cabal_subcommands()
     done
 }
 
+__cabal_has_doubledash ()
+{
+    local c=1
+    # Ignore the last word, because it is replaced anyways.
+    # This allows expansion for flags on "cabal foo --",
+    # but does not try to complete after "cabal foo -- ".
+    local n=$((${#COMP_WORDS[@]} - 1))
+    while [ $c -lt $n ]; do
+        if [ "--" = "${COMP_WORDS[c]}" ]; then
+            return 0
+        fi
+        ((c++))
+    done
+    return 1
+}
+
 _cabal()
 {
+    # no completion past cabal arguments.
+    __cabal_has_doubledash && return
+
     # get the word currently being completed
     local cur
     cur=${COMP_WORDS[$COMP_CWORD]}
