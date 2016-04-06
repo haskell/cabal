@@ -60,7 +60,24 @@ install pkg_descr lbi flags = do
   let distPref  = fromFlag (copyDistPref flags)
       verbosity = fromFlag (copyVerbosity flags)
       copydest  = fromFlag (copyDest flags)
-      -- This is a bit of a hack, to handle files which are not
+
+  unless (hasLibs pkg_descr || hasExes pkg_descr) $
+      die "No executables and no library found. Nothing to do."
+
+  targets <- readBuildTargets pkg_descr (copyArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+
+  copyPackage verbosity pkg_descr lbi distPref copydest
+
+  -- It's not necessary to do these in build-order, but it's harmless
+  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
+    copyComponent verbosity pkg_descr lbi comp clbi copydest
+
+-- | Copy package global files.
+copyPackage :: Verbosity -> PackageDescription
+            -> LocalBuildInfo -> FilePath -> CopyDest -> IO ()
+copyPackage verbosity pkg_descr lbi distPref copydest = do
+  let -- This is a bit of a hack, to handle files which are not
       -- per-component (data files and Haddock files.)
       InstallDirs {
          datadir    = dataPref,
@@ -80,12 +97,6 @@ install pkg_descr lbi flags = do
              -- packages we'll just pick a nondescriptive foo-0.1
              = absoluteInstallDirs pkg_descr lbi copydest
 
-  unless (hasLibs pkg_descr || hasExes pkg_descr) $
-      die "No executables and no library found. Nothing to do."
-
-  targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr targets
-
   -- Install (package-global) data files
   installDataFiles verbosity pkg_descr dataPref
 
@@ -95,6 +106,8 @@ install pkg_descr lbi flags = do
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
 
+  -- TODO: this is a bit questionable, Haddock files really should
+  -- be per library (when there are convenience libraries.)
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       installDirectoryContents verbosity
@@ -122,10 +135,7 @@ install pkg_descr lbi flags = do
       [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
       | lfile <- lfiles ]
 
-  -- It's not necessary to do these in build-order, but it's harmless
-  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
-    copyComponent verbosity pkg_descr lbi comp clbi copydest
-
+-- | Copy files associated with a component.
 copyComponent :: Verbosity -> PackageDescription
               -> LocalBuildInfo -> Component -> ComponentLocalBuildInfo
               -> CopyDest
