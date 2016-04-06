@@ -86,6 +86,19 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
+  tests/IntegrationTests/private-test-deps/A.cabal
+  tests/IntegrationTests/private-test-deps/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/A-1/A.cabal
+  tests/IntegrationTests/private-test-deps/deps/A-1/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/A-1/src/A.hs
+  tests/IntegrationTests/private-test-deps/deps/T/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/T/T.cabal
+  tests/IntegrationTests/private-test-deps/deps/T/src/T.hs
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.err
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.out
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.sh
+  tests/IntegrationTests/private-test-deps/src/A.hs
+  tests/IntegrationTests/private-test-deps/test/Test.hs
   tests/IntegrationTests/regression/t3199.sh
   tests/IntegrationTests/regression/t3199/Main.hs
   tests/IntegrationTests/regression/t3199/Setup.hs
