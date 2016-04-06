@@ -188,7 +188,7 @@ dependencyCycles index =
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
 dependencyClosure :: (PackageFixedDeps pkg, HasUnitId pkg)
-                  => (ComponentDeps [UnitId] -> [UnitId])
+                  => (CD.ComponentDeps [UnitId] -> [UnitId])
                   -> PackageIndex pkg
                   -> [UnitId]
                   -> Either [(pkg, [UnitId])]
