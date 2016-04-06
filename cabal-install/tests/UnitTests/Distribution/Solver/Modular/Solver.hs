@@ -89,10 +89,10 @@ tests = [
         , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (SolverSuccess [("C", 2), ("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (SolverSuccess [("D", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (SolverSuccess [("C", 2), ("D", 1), ("E", 1)])
-        , runTest $ mkTest db25 "cycleThroughTests1a"   ["B"]      (Just [           ("A" , 2), ("B" , 1), ("T" , 1)])
-        , runTest $ mkTest db26 "cycleThroughTests1b"   ["B"]      (Just [("A" , 1), ("A" , 2), ("B" , 1), ("T" , 1)])
-        , runTest $ mkTest db25 "cycleThroughTests2a"   ["B'"]     (Just [           ("A'", 2), ("B'", 1), ("T'", 1)])
-        , runTest $ mkTest db26 "cycleThroughTests2b"   ["B'"]     (Just [("A'", 1), ("A'", 2), ("B'", 1), ("T'", 1)])
+        , runTest $ mkTest db25 "cycleThroughTests1a"   ["B"]      (SolverSuccess [           ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db26 "cycleThroughTests1b"   ["B"]      (SolverSuccess [("A" , 1), ("A" , 2), ("B" , 1), ("T" , 1)])
+        , runTest $ mkTest db25 "cycleThroughTests2a"   ["B'"]     (SolverSuccess [           ("A'", 2), ("B'", 1), ("T'", 1)])
+        , runTest $ mkTest db26 "cycleThroughTests2b"   ["B'"]     (SolverSuccess [("A'", 1), ("A'", 2), ("B'", 1), ("T'", 1)])
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] anySolverFailure
@@ -822,12 +822,12 @@ db25 :: ExampleDb
 db25 = [
     -- No internal dependency
     Left  $ exInst "A" 1 "A-1" []
-  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "A" 2 [] `withTest` ExTest "A-test-suite" [ExAny "T"]
   , Right $ exAv "T" 1 [ExAny "A"]
   , Right $ exAv "B" 1 [ExFix "A" 2]
     -- With internal dependency
   , Left  $ exInst "A'" 1 "A'-1" []
-  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "A'" 2 [] `withTest` ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]
   , Right $ exAv "T'" 1 [ExAny "A'"]
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
@@ -845,12 +845,12 @@ db26 :: ExampleDb
 db26 = [
     -- No internal dependency
     Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "A" 2 [] `withTest` ExTest "A-test-suite" [ExAny "T"]
   , Right $ exAv "T" 1 [ExAny "A"]
   , Right $ exAv "B" 1 [ExFix "A" 2]
     -- With internal dependency
   , Right $ exAv "A'" 1 []
-  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "A'" 2 [] `withTest` ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]
   , Right $ exAv "T'" 1 [ExAny "A'"]
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
