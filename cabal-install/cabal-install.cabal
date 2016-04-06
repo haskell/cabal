@@ -76,6 +76,19 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
+  tests/IntegrationTests/private-test-deps/A.cabal
+  tests/IntegrationTests/private-test-deps/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/A-1/A.cabal
+  tests/IntegrationTests/private-test-deps/deps/A-1/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/A-1/src/A.hs
+  tests/IntegrationTests/private-test-deps/deps/T/Setup.hs
+  tests/IntegrationTests/private-test-deps/deps/T/T.cabal
+  tests/IntegrationTests/private-test-deps/deps/T/src/T.hs
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.err
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.out
+  tests/IntegrationTests/private-test-deps/multiple-versions-of-A.sh
+  tests/IntegrationTests/private-test-deps/src/A.hs
+  tests/IntegrationTests/private-test-deps/test/Test.hs
   tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.err
   tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.sh
   tests/IntegrationTests/sandbox-sources/p/Setup.hs
