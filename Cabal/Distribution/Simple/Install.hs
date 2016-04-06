@@ -56,14 +56,22 @@ install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
-install pkg_descr lbi flags = do
-  let distPref  = fromFlag (copyDistPref flags)
-      verbosity = fromFlag (copyVerbosity flags)
-      copydest  = fromFlag (copyDest flags)
+install pkg_descr lbi flags
+ | fromFlag (copyAssumeDepsUpToDate flags) = do
+  checkHasLibsOrExes
+  targets <- readBuildTargets pkg_descr (copyArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+  case targets' of
+    _ | null (copyArgs flags)
+      -> copyPackage verbosity pkg_descr lbi distPref copydest
+    [(cname, _)] ->
+      let clbi = getComponentLocalBuildInfo lbi cname
+          comp = getComponent pkg_descr cname
+      in copyComponent verbosity pkg_descr lbi comp clbi copydest
+    _ -> die "In --assume-deps-up-to-date mode you can only copy a single target"
 
-  unless (hasLibs pkg_descr || hasExes pkg_descr) $
-      die "No executables and no library found. Nothing to do."
-
+ | otherwise = do
+  checkHasLibsOrExes
   targets <- readBuildTargets pkg_descr (copyArgs flags)
   targets' <- checkBuildTargets verbosity pkg_descr targets
 
@@ -72,6 +80,14 @@ install pkg_descr lbi flags = do
   -- It's not necessary to do these in build-order, but it's harmless
   withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
     copyComponent verbosity pkg_descr lbi comp clbi copydest
+ where
+  distPref  = fromFlag (copyDistPref flags)
+  verbosity = fromFlag (copyVerbosity flags)
+  copydest  = fromFlag (copyDest flags)
+
+  checkHasLibsOrExes =
+    unless (hasLibs pkg_descr || hasExes pkg_descr) $
+      die "No executables and no library found. Nothing to do."
 
 -- | Copy package global files.
 copyPackage :: Verbosity -> PackageDescription

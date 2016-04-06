@@ -825,6 +825,7 @@ data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
     copyVerbosity :: Flag Verbosity,
+    copyAssumeDepsUpToDate   :: Flag Bool,
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
     copyArgs :: [String]
@@ -836,6 +837,7 @@ defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
     copyVerbosity = Flag normal,
+    copyAssumeDepsUpToDate   = Flag False,
     copyArgs      = []
   }
 
@@ -864,6 +866,11 @@ copyCommand = CommandUI
       ,optionDistPref
          copyDistPref (\d flags -> flags { copyDistPref = d })
          showOrParseArgs
+
+      , option "" ["assume-deps-up-to-date"]
+          "One-shot copy"
+          copyAssumeDepsUpToDate (\c flags -> flags { copyAssumeDepsUpToDate = c })
+          trueArg
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
