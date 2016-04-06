@@ -408,6 +408,21 @@ tests config = do
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "bbb"
 
+  -- Test build --assume-deps-up-to-date
+  tc "BuildAssumeDepsUpToDate" $ do
+    pkg_dir <- packageDir
+    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
+    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b1\")"
+    cabal_build []
+    runExe' "myprog" []
+        >>= assertOutputContains "a1 b1"
+    ghcFileModDelay
+    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a2\""
+    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b2\")"
+    cabal "build" ["--assume-deps-up-to-date", "myprog"]
+    runExe' "myprog" []
+        >>= assertOutputContains "a1 b2"
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
