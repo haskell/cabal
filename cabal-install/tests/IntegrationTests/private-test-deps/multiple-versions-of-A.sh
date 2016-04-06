@@ -1,4 +1,4 @@
-. ../common.sh
+. ./common.sh
 
 # Create the sandbox
 cabal sandbox init >/dev/null

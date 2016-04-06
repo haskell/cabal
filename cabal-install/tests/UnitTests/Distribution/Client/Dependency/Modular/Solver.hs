@@ -571,12 +571,12 @@ db16 :: ExampleDb
 db16 = [
     -- No internal dependency
     Left  $ exInst "A" 1 "A-1" []
-  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "A" 2 [] `withTest` ExTest "A-test-suite" [ExAny "T"]
   , Right $ exAv "T" 1 [ExAny "A"]
   , Right $ exAv "B" 1 [ExFix "A" 2]
     -- With internal dependency
   , Left  $ exInst "A'" 1 "A'-1" []
-  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "A'" 2 [] `withTest` ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]
   , Right $ exAv "T'" 1 [ExAny "A'"]
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
@@ -594,12 +594,12 @@ db17 :: ExampleDb
 db17 = [
     -- No internal dependency
     Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExTest "A-test-suite" [ExAny "T"]]
+  , Right $ exAv "A" 2 [] `withTest` ExTest "A-test-suite" [ExAny "T"]
   , Right $ exAv "T" 1 [ExAny "A"]
   , Right $ exAv "B" 1 [ExFix "A" 2]
     -- With internal dependency
   , Right $ exAv "A'" 1 []
-  , Right $ exAv "A'" 2 [ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]]
+  , Right $ exAv "A'" 2 [] `withTest` ExTest "A'-test-suite" [ExAny "A'", ExAny "T'"]
   , Right $ exAv "T'" 1 [ExAny "A'"]
   , Right $ exAv "B'" 1 [ExFix "A'" 2]
   ]
