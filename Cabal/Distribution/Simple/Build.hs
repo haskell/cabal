@@ -75,10 +75,36 @@ build    :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> BuildFlags          -- ^ Flags that the user passed to build
          -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
-build pkg_descr lbi flags suffixes = do
-  let distPref  = fromFlag (buildDistPref flags)
-      verbosity = fromFlag (buildVerbosity flags)
-
+build pkg_descr lbi flags suffixes
+ | fromFlag (buildOneShot flags) = do
+  -- TODO: if checkBuildTargets ignores a target we may accept
+  -- a --one-shot with multiple arguments. Arguably, we should
+  -- error early in this case.
+  targets <- readBuildTargets pkg_descr (buildArgs flags)
+  (cname, _) <- checkBuildTargets verbosity pkg_descr targets >>= \r -> case r of
+              [] -> die "In --one-shot mode you must specify a target"
+              [target'] -> return target'
+              _ -> die "In --one-shot mode you can only build a single target"
+  -- NB: do NOT 'createInternalPackageDB'; we don't want to delete it.
+  -- But this means we have to be careful about unregistering
+  -- ourselves.
+  let dbPath = internalPackageDBPath lbi distPref
+      internalPackageDB = SpecificPackageDB dbPath
+      clbi = getComponentLocalBuildInfo lbi cname
+      comp = getComponent pkg_descr cname
+  -- TODO: do we need to unregister libraries?  In any case, this would
+  -- need to be done in the buildLib functionality.
+  -- Do the build
+  initialBuildSteps distPref pkg_descr lbi clbi verbosity
+  let bi     = componentBuildInfo comp
+      progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+      lbi'   = lbi {
+                 withPrograms  = progs',
+                 withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+               }
+  buildComponent verbosity (buildNumJobs flags) pkg_descr
+                 lbi' suffixes comp clbi distPref
+ | otherwise = do
   targets  <- readBuildTargets pkg_descr (buildArgs flags)
   targets' <- checkBuildTargets verbosity pkg_descr targets
   let componentsToBuild = componentsInBuildOrder lbi (map fst targets')
@@ -102,6 +128,9 @@ build pkg_descr lbi flags suffixes = do
                  }
     buildComponent verbosity (buildNumJobs flags) pkg_descr
                    lbi' suffixes comp clbi distPref
+ where
+  distPref  = fromFlag (buildDistPref flags)
+  verbosity = fromFlag (buildVerbosity flags)
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -188,7 +217,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
                                                        (AbiHash "") lib' lbi clbi
 
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
+    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.NoMultiInstance
                     (withPackageDB lbi) installedPkgInfo
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes

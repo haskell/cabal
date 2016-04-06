@@ -2071,6 +2071,7 @@ setupHsBuildFlags ElaboratedConfiguredPackage{..} _ verbosity builddir =
       buildProgramArgs  = mempty, --unused, set at configure time
       buildVerbosity    = toFlag verbosity,
       buildDistPref     = toFlag builddir,
+      buildOneShot      = toFlag False,
       buildNumJobs      = mempty, --TODO: [nice to have] sometimes want to use toFlag (Just numBuildJobs),
       buildArgs         = mempty  -- unused, passed via args not flags
     }

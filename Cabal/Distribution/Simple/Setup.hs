@@ -1444,6 +1444,9 @@ data BuildFlags = BuildFlags {
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
     buildNumJobs     :: Flag (Maybe Int),
+    -- | If this is true, we don't build the dependencies of
+    -- 'buildArgs': only the directly referenced components.
+    buildOneShot :: Flag Bool,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1461,6 +1464,7 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
+    buildOneShot     = Flag False,
     buildArgs        = []
   }
 
@@ -1508,6 +1512,11 @@ buildOptions :: ProgramConfiguration -> ShowOrParseArgs
 buildOptions progConf showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
+
+  , option "" ["one-shot"]
+      "One-shot build"
+      buildOneShot (\c flags -> flags { buildOneShot = c })
+      trueArg
   ]
 
   ++ programConfigurationPaths progConf showOrParseArgs
