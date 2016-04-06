@@ -47,6 +47,8 @@ import Prelude hiding (pi)
 
 import Data.Maybe (mapMaybe)
 import Data.Map (Map)
+import Data.Set (Set)
+import qualified Data.Set  as S
 import qualified Data.List as L
 
 import Language.Haskell.Extension (Extension(..), Language(..))
@@ -291,8 +293,8 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) allDeps = go allDeps
     isInternalDep dep = dep == pn
 
     maybeLibDep :: (Dep PN, Component) -> Maybe PN
-    maybeLibDep (Dep qpn _ci, ComponentLib) = Just qpn
-    maybeLibDep _otherwise                  = Nothing
+    maybeLibDep (Dep qpn _ci, ComponentLib _) = Just qpn
+    maybeLibDep _otherwise                    = Nothing
 
 -- | Remove qualifiers from set of dependencies
 --
