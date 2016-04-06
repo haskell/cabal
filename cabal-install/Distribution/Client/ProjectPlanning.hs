@@ -2134,6 +2134,7 @@ setupHsCopyFlags _ _ verbosity builddir =
       copyArgs      = [], -- TODO: could use this to only copy what we enabled
       copyDest      = toFlag InstallDirs.NoCopyDest,
       copyDistPref  = toFlag builddir,
+      copyOneShot   = toFlag False,
       copyVerbosity = toFlag verbosity
     }
 
