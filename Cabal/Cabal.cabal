@@ -118,12 +118,15 @@ extra-source-files:
   tests/PackageTests/GhcPkgGuess/Symlink/SameDirectory.cabal
   tests/PackageTests/GhcPkgGuess/Symlink/bin/ghc
   tests/PackageTests/GhcPkgGuess/Symlink/bin/ghc-pkg
+  tests/PackageTests/GhcPkgGuess/Symlink/ghc
   tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/SameDirectory.cabal
   tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/bin/ghc-7.10
   tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/bin/ghc-pkg-7.10
+  tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/ghc
   tests/PackageTests/GhcPkgGuess/SymlinkVersion/SameDirectory.cabal
   tests/PackageTests/GhcPkgGuess/SymlinkVersion/bin/ghc-7.10
   tests/PackageTests/GhcPkgGuess/SymlinkVersion/bin/ghc-pkg-ghc-7.10
+  tests/PackageTests/GhcPkgGuess/SymlinkVersion/ghc
   tests/PackageTests/Haddock/CPP.hs
   tests/PackageTests/Haddock/Literate.lhs
   tests/PackageTests/Haddock/NoCPP.hs
