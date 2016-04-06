@@ -315,8 +315,8 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) allDeps = go allDeps
     isInternalDep dep = dep == pn
 
     maybeLibDep :: (Dep PN, Component) -> Maybe PN
-    maybeLibDep (Dep qpn _ci, ComponentLib) = Just qpn
-    maybeLibDep _otherwise                  = Nothing
+    maybeLibDep (Dep qpn _ci, ComponentLib _) = Just qpn
+    maybeLibDep _otherwise                    = Nothing
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
