@@ -160,7 +160,6 @@ data ProjectConfigShared
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
        projectConfigPreferences       :: [Dependency],
-       projectConfigFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowNewer        :: Maybe AllowNewer,
@@ -186,6 +185,7 @@ data ProjectConfigShared
 --
 data PackageConfig
    = PackageConfig {
+       packageConfigFlagAssignment      :: FlagAssignment,
        packageConfigVanillaLib          :: Flag Bool,
        packageConfigSharedLib           :: Flag Bool,
        packageConfigDynExe              :: Flag Bool,
@@ -309,7 +309,8 @@ data SolverSettings
        solverSettingLocalRepos        :: [FilePath],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
        solverSettingPreferences       :: [Dependency],
-       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] must be per-package, not global
+       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] eliminate this global one
+       solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
        solverSettingSolver            :: PreSolver,
        solverSettingAllowNewer        :: AllowNewer,

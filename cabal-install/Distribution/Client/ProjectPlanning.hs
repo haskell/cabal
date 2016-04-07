@@ -606,7 +606,7 @@ rebuildInstallPlan verbosity
                            cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
-        solverSettings = resolveSolverSettings projectConfigShared
+        solverSettings = resolveSolverSettings projectConfig
         logMsg message rest = debugNoWrap verbosity message >> rest
 
         localPackagesEnabledStanzas =
@@ -938,8 +938,18 @@ planPackages comp platform solver SolverSettings{..}
           ]
 
       . addConstraints
-          --TODO: [nice to have] this just applies all flags to all targets which
-          -- is silly. We should check if the flags are appropriate
+          --TODO: [nice to have] should have checked at some point that the
+          -- package in question actually has these flags.
+          [ LabeledPackageConstraint
+              (PackageConstraintFlags pkgname flags)
+              ConstraintSourceConfigFlagOrTarget
+          | (pkgname, flags) <- Map.toList solverSettingFlagAssignments ]
+
+      . addConstraints
+          --TODO: [nice to have] we have user-supplied flags for unspecified
+          -- local packages (as well as specific per-package flags). For the
+          -- former we just apply all these flags to all local targets which
+          -- is silly. We should check if the flags are appropriate.
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget
