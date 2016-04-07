@@ -137,9 +137,6 @@ data ProjectConfigBuildOnly
 --
 data ProjectConfigShared
    = ProjectConfigShared {
-       projectConfigProgramPaths      :: Map String FilePath,
-       projectConfigProgramArgs       :: Map String [String],
-       projectConfigProgramPathExtra  :: NubList FilePath,
        projectConfigHcFlavor          :: Flag CompilerFlavor,
        projectConfigHcPath            :: Flag FilePath,
        projectConfigHcPkg             :: Flag FilePath,
@@ -185,6 +182,9 @@ data ProjectConfigShared
 --
 data PackageConfig
    = PackageConfig {
+       packageConfigProgramPaths        :: MapLast String FilePath,
+       packageConfigProgramArgs         :: MapMappend String [String],
+       packageConfigProgramPathExtra    :: NubList FilePath,
        packageConfigFlagAssignment      :: FlagAssignment,
        packageConfigVanillaLib          :: Flag Bool,
        packageConfigSharedLib           :: Flag Bool,
