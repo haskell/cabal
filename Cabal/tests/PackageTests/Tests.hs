@@ -344,6 +344,18 @@ tests config = do
       runExe' "hello-world" []
         >>= assertOutputContains "hello from A"
 
+  -- Test that executable recompilation works
+  -- https://github.com/haskell/cabal/issues/3294
+  tc "Regression/T3294" $ do
+    pkg_dir <- packageDir
+    liftIO $ writeFile (pkg_dir </> "Main.hs") "main = putStrLn \"aaa\""
+    cabal "configure" []
+    cabal "build" []
+    runExe' "T3294" [] >>= assertOutputContains "aaa"
+    liftIO $ writeFile (pkg_dir </> "Main.hs") "main = putStrLn \"bbb\""
+    cabal "build" []
+    runExe' "T3294" [] >>= assertOutputContains "bbb"
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
