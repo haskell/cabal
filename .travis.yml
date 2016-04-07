@@ -37,3 +37,9 @@ matrix:
   allow_failures:
    - env: GHCVER=head
   fast_finish: true
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net##haskell-cabal"
+  slack: haskell-cabal:sCq6GLfy9N8MJrInosg871n4
