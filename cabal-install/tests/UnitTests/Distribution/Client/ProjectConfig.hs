@@ -122,7 +122,7 @@ prop_roundtrip_legacytypes_local config =
 prop_roundtrip_legacytypes_specific :: Map PackageName PackageConfig -> Bool
 prop_roundtrip_legacytypes_specific config =
     roundtrip_legacytypes
-      mempty { projectConfigSpecificPackage = config }
+      mempty { projectConfigSpecificPackage = MapMappend config }
 
 
 --------------------------------------------
@@ -213,7 +213,7 @@ prop_roundtrip_printparse_specific :: Map PackageName (NonMEmpty PackageConfig)
 prop_roundtrip_printparse_specific config =
     roundtrip_printparse
       mempty {
-        projectConfigSpecificPackage = fmap getNonMEmpty config
+        projectConfigSpecificPackage = MapMappend (fmap getNonMEmpty config)
       }
 
 
@@ -242,14 +242,17 @@ instance Arbitrary ProjectConfig where
         <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary
-        <*> (fmap getNonMEmpty . Map.fromList <$> shortListOf 3 arbitrary)
+        <*> (MapMappend . fmap getNonMEmpty . Map.fromList
+               <$> shortListOf 3 arbitrary)
         -- package entries with no content are equivalent to
         -- the entry not existing at all, so exclude empty
 
     shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7) =
-      [ ProjectConfig x0' x1' x2' x3' x4' x5' x6' (fmap getNonMEmpty x7')
+      [ ProjectConfig x0' x1' x2' x3'
+                      x4' x5' x6' (MapMappend (fmap getNonMEmpty x7'))
       | ((x0', x1', x2', x3'), (x4', x5', x6', x7'))
-          <- shrink ((x0, x1, x2, x3), (x4, x5, x6, fmap NonMEmpty x7))
+          <- shrink ((x0, x1, x2, x3),
+                     (x4, x5, x6, fmap NonMEmpty (getMapMappend x7)))
       ]
 
 newtype PackageLocationString

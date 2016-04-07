@@ -665,7 +665,7 @@ rebuildInstallPlan verbosity
             defaultInstallDirs
             projectConfigShared
             projectConfigLocalPackages
-            projectConfigSpecificPackage
+            (getMapMappend projectConfigSpecificPackage)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity 
                         cabalPackageCacheDirectory
