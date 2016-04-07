@@ -80,7 +80,6 @@ import Distribution.Simple.Command
 import Control.Applicative
 #endif
 import Control.Monad
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
 import Distribution.Compat.Semigroup
@@ -107,7 +106,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
-       legacySpecificConfig    :: Map PackageName LegacyPackageConfig
+       legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
      } deriving Generic
 
 instance Monoid LegacyProjectConfig where
@@ -1054,7 +1053,9 @@ packageSpecificOptionsSectionDescr =
       sectionSubsections = [],
       sectionGet         = \projconf ->
                              [ (display pkgname, pkgconf)
-                             | (pkgname, pkgconf) <- Map.toList (legacySpecificConfig projconf) ],
+                             | (pkgname, pkgconf) <-
+                                 Map.toList . getMapMappend
+                               . legacySpecificConfig $ projconf ],
       sectionSet         =
         \lineno pkgnamestr pkgconf projconf -> do
           pkgname <- case simpleParse pkgnamestr of
@@ -1064,8 +1065,9 @@ packageSpecificOptionsSectionDescr =
                              ++ "as an argument"
           return projconf {
             legacySpecificConfig =
+              MapMappend $
               Map.insertWith mappend pkgname pkgconf
-                             (legacySpecificConfig projconf)
+                             (getMapMappend $ legacySpecificConfig projconf)
           },
       sectionEmpty       = mempty
     }

@@ -9,6 +9,8 @@ module Distribution.Client.ProjectConfig (
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
     PackageConfig(..),
+    MapLast(..),
+    MapMappend(..),
 
     -- * Project config files
     findProjectRoot,
@@ -113,7 +115,8 @@ lookupLocalPackageConfig field ProjectConfig {
                            projectConfigSpecificPackage
                          } pkgname =
     field projectConfigLocalPackages
- <> maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
+ <> maybe mempty field
+          (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.

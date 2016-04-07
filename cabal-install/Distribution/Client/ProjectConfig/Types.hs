@@ -99,7 +99,7 @@ data ProjectConfig
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
        projectConfigShared          :: ProjectConfigShared,
        projectConfigLocalPackages   :: PackageConfig,
-       projectConfigSpecificPackage :: Map PackageName PackageConfig
+       projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
      }
   deriving (Eq, Show, Generic)
 
