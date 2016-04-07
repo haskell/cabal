@@ -1,8 +1,9 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving #-}
-module Distribution.Client.Compat.Time
+{-# LANGUAGE CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
+module Distribution.Compat.Time
        ( ModTime(..) -- Needed for testing
        , getModTime, getFileAge, getCurTime
-       , posixSecondsToModTime )
+       , posixSecondsToModTime
+       , calibrateMtimeChangeDelay )
        where
 
 import Control.Arrow    ( first )
@@ -11,11 +12,16 @@ import Data.Word        ( Word64 )
 import System.Directory ( getModificationTime )
 
 import Distribution.Compat.Binary ( Binary )
+import Distribution.Simple.Utils ( withTempDirectory )
+import Distribution.Verbosity ( silent )
+
+import System.FilePath
+import Control.Monad
 
 import Data.Time.Clock.POSIX ( POSIXTime, getPOSIXTime )
+import Data.Time             ( diffUTCTime, getCurrentTime )
 #if MIN_VERSION_directory(1,2,0)
 import Data.Time.Clock.POSIX ( posixDayLength )
-import Data.Time             ( diffUTCTime, getCurrentTime )
 #else
 import System.Time ( getClockTime, diffClockTimes
                    , normalizeTimeDiff, tdDay, tdHour )
@@ -73,7 +79,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
   if not res
     then do
       let err = mkIOError doesNotExistErrorType
-                "Distribution.Client.Compat.Time.getModTime"
+                "Distribution.Compat.Time.getModTime"
                 Nothing (Just path)
       ioError err
     else do
@@ -165,3 +171,32 @@ getFileAge file = do
 -- | Return the current time as 'ModTime'.
 getCurTime :: IO ModTime
 getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
+
+-- | Based on code written by Neil Mitchell for Shake. See
+-- 'sleepFileTimeCalibrate' in 'Test.Type'.  Returns a pair
+-- of the maximum delay seen, and the recommended delay to
+-- use before testing for file modification change.
+-- The returned delay is never smaller
+-- than 10 ms, but never larger than 1 second.
+calibrateMtimeChangeDelay :: IO (Int, Int)
+calibrateMtimeChangeDelay = do
+  withTempDirectory silent "." "calibration-" $ \dir -> do
+    let fileName = dir </> "probe"
+    mtimes <- forM [1..25] $ \(i::Int) -> time $ do
+      writeFile fileName $ show i
+      t0 <- getModTime fileName
+      let spin j = do
+            writeFile fileName $ show (i,j)
+            t1 <- getModTime fileName
+            unless (t0 < t1) (spin $ j + 1)
+      spin (0::Int)
+    let mtimeChange  = maximum mtimes
+        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
+    return (mtimeChange, mtimeChange')
+  where
+    time :: IO () -> IO Int
+    time act = do
+      t0 <- getCurrentTime
+      act
+      t1 <- getCurrentTime
+      return . ceiling $! (t1 `diffUTCTime` t0) * 1e6 -- microseconds

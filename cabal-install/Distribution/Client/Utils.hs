@@ -19,7 +19,7 @@ module Distribution.Client.Utils ( MergeResult(..)
        where
 
 import Distribution.Compat.Exception   ( catchIO )
-import Distribution.Client.Compat.Time ( getModTime )
+import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
