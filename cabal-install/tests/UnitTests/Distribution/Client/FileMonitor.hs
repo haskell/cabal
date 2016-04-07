@@ -15,7 +15,7 @@ import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity (silent)
 
 import Distribution.Client.FileMonitor
-import Distribution.Client.Compat.Time
+import Distribution.Compat.Time
 
 import Test.Tasty
 import Test.Tasty.HUnit

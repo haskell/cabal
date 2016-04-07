@@ -1,4 +1,4 @@
-module UnitTests.Distribution.Client.Compat.Time (tests) where
+module UnitTests.Distribution.Compat.Time (tests) where
 
 import Control.Concurrent (threadDelay)
 import System.FilePath
@@ -6,7 +6,7 @@ import System.FilePath
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity
 
-import Distribution.Client.Compat.Time
+import Distribution.Compat.Time
 
 import Test.Tasty
 import Test.Tasty.HUnit

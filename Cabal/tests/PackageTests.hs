@@ -21,6 +21,7 @@ import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (normal, flagToVerbosity, lessVerbose)
 import Distribution.ReadE (readEOrFail)
+import Distribution.Compat.Time (calibrateMtimeChangeDelay)
 
 import Control.Exception
 import Data.Proxy                      ( Proxy(..) )
@@ -197,6 +198,9 @@ main = do
     -- the install directories, so we don't clobber anything in the
     -- default install paths.  VERY IMPORTANT.
 
+    -- Figure out how long we need to delay for recompilation tests
+    (mtimeChange, mtimeChange') <- calibrateMtimeChangeDelay
+
     let suite = SuiteConfig
                  { cabalDistPref = dist_dir
                  , bootProgramsConfig = boot_programs
@@ -205,12 +209,18 @@ main = do
                  , withGhcDBStack = with_ghc_db_stack
                  , suiteVerbosity = verbosity
                  , absoluteCWD = cabal_dir
+                 , mtimeChangeDelay = mtimeChange'
                  }
+
+    let toMillis :: Int -> Double
+        toMillis x = fromIntegral x / 1000.0
 
     putStrLn $ "Cabal test suite - testing cabal version "
       ++ display cabalVersion
     putStrLn $ "Cabal build directory: " ++ dist_dir
     putStrLn $ "Cabal source directory: " ++ cabal_dir
+    putStrLn $ "File modtime calibration: " ++ show (toMillis mtimeChange')
+            ++ " (maximum observed: " ++ show (toMillis mtimeChange) ++ ")"
     -- TODO: it might be useful to factor this out so that ./Setup
     -- configure dumps this file, so we can read it without in a version
     -- stable way.
