@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving #-}
 
 -- | Handling project configuration, types.
 --
@@ -14,6 +14,9 @@ module Distribution.Client.ProjectConfig.Types (
     SolverSettings(..),
     BuildTimeSettings(..),
 
+    -- * Extra useful Monoids
+    MapLast(..),
+    MapMappend(..),
   ) where
 
 import Distribution.Client.Types
@@ -46,6 +49,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup
 import GHC.Generics (Generic)
@@ -226,6 +230,34 @@ instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
 instance Binary PackageConfig
+
+
+-- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that takes
+-- the last value rather than the first value for overlapping keys.
+newtype MapLast k v = MapLast { getMapLast :: Map k v }
+  deriving (Eq, Show, Functor, Generic, Binary)
+
+instance Ord k => Monoid (MapLast k v) where
+  mempty  = MapLast Map.empty
+  mappend = (<>)
+
+instance Ord k => Semigroup (MapLast k v) where
+  MapLast a <> MapLast b = MapLast (flip Map.union a b)
+  -- rather than Map.union which is the normal Map monoid instance
+
+
+-- | Newtype wrapper for 'Map' that provides a 'Monoid' instance that
+-- 'mappend's values of overlapping keys rather than taking the first.
+newtype MapMappend k v = MapMappend { getMapMappend :: Map k v }
+  deriving (Eq, Show, Functor, Generic, Binary)
+
+instance (Semigroup v, Ord k) => Monoid (MapMappend k v) where
+  mempty  = MapMappend Map.empty
+  mappend = (<>)
+
+instance (Semigroup v, Ord k) => Semigroup (MapMappend k v) where
+  MapMappend a <> MapMappend b = MapMappend (Map.unionWith (<>) a b)
+  -- rather than Map.union which is the normal Map monoid instance
 
 
 instance Monoid ProjectConfig where
