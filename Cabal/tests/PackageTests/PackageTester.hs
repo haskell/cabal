@@ -56,6 +56,7 @@ module PackageTests.PackageTester
     , assertOutputDoesNotContain
     , assertFindInFile
     , concatOutput
+    , ghcFileModDelay
 
     -- * Test trees
     , TestTreeM
@@ -122,6 +123,7 @@ import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess, showCommandForUser)
+import Control.Concurrent (threadDelay)
 import Test.Tasty (TestTree, askOption, testGroup)
 
 -- | Our test monad maintains an environment recording the global test
@@ -191,6 +193,9 @@ data SuiteConfig = SuiteConfig
     , suiteVerbosity :: Verbosity
     -- | The absolute current working directory
     , absoluteCWD :: FilePath
+    -- | How long we should 'threadDelay' to make sure the file timestamp is
+    -- updated correctly for recompilation tests.
+    , mtimeChangeDelay :: Int
     }
 
 getProgram :: ProgramDb -> Program -> ConfiguredProgram
@@ -718,6 +723,23 @@ assertFindInFile needle path =
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+
+-- | Delay a sufficient period of time to permit file timestamp
+-- to be updated.
+ghcFileModDelay :: TestM ()
+ghcFileModDelay = do
+    (suite, _) <- ask
+    -- For old versions of GHC, we only had second-level precision,
+    -- so we need to sleep a full second.  Newer versions use
+    -- millisecond level precision, so we only have to wait
+    -- the granularity of the underlying filesystem.
+    -- TODO: cite commit when GHC got better precision; this
+    -- version bound was empirically generated.
+    let delay | withGhcVersion suite < Version [7,7] []
+              = 1000000 -- 1s
+              | otherwise
+              = mtimeChangeDelay suite
+    liftIO $ threadDelay delay
 
 ------------------------------------------------------------------------
 -- * Test trees

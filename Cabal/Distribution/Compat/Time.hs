@@ -174,8 +174,8 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 
 -- | Based on code written by Neil Mitchell for Shake. See
 -- 'sleepFileTimeCalibrate' in 'Test.Type'.  Returns a pair
--- of the maximum delay seen, and the recommended delay to
--- use before testing for file modification change.
+-- of microsecond values: first, the maximum delay seen, and the
+-- recommended delay to use before testing for file modification change.
 -- The returned delay is never smaller
 -- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO (Int, Int)

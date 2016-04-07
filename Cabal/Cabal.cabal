@@ -405,6 +405,7 @@ test-suite package-tests
     tasty,
     tasty-hunit,
     transformers,
+    time,
     Cabal,
     process,
     directory,

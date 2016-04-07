@@ -352,6 +352,7 @@ tests config = do
     cabal "configure" []
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "aaa"
+    ghcFileModDelay
     liftIO $ writeFile (pkg_dir </> "Main.hs") "main = putStrLn \"bbb\""
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "bbb"
