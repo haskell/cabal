@@ -5,16 +5,11 @@ module Main
 
 import Test.Tasty
 
-import Control.Monad
-import Data.Time.Clock
-import System.FilePath
-
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
-import Distribution.Client.Compat.Time
+import Distribution.Compat.Time
 
-import qualified UnitTests.Distribution.Client.Compat.Time
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
 import qualified UnitTests.Distribution.Client.FileMonitor
@@ -38,9 +33,7 @@ tests mtimeChangeCalibrated =
                     else mtimeChangeCalibrated
   in
   testGroup "Unit Tests"
-  [ testGroup "UnitTests.Distribution.Client.Compat.Time" $
-        UnitTests.Distribution.Client.Compat.Time.tests mtimeChange
-  , testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
+  [ testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
         UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
   , testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
         UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
@@ -66,41 +59,15 @@ tests mtimeChangeCalibrated =
 
 main :: IO ()
 main = do
-  mtimeChangeDelay <- calibrateMtimeChangeDelay
+  (mtimeChange, mtimeChange') <- calibrateMtimeChangeDelay
+  let toMillis :: Int -> Double
+      toMillis x = fromIntegral x / 1000.0
+  notice normal $ "File modification time resolution calibration completed, "
+    ++ "maximum delay observed: "
+    ++ (show . toMillis $ mtimeChange ) ++ " ms. "
+    ++ "Will be using delay of " ++ (show . toMillis $ mtimeChange')
+    ++ " for test runs."
   defaultMainWithIngredients
          (includingOptions extraOptions : defaultIngredients)
-         (tests mtimeChangeDelay)
+         (tests mtimeChange')
 
--- Based on code written by Neill Mitchell for Shake. See
--- 'sleepFileTimeCalibrate' in 'Test.Type'. The returned delay is never smaller
--- than 10 ms, but never larger than 1 second.
-calibrateMtimeChangeDelay :: IO Int
-calibrateMtimeChangeDelay = do
-  withTempDirectory silent "." "calibration-" $ \dir -> do
-    let fileName = dir </> "probe"
-    mtimes <- forM [1..25] $ \(i::Int) -> time $ do
-      writeFile fileName $ show i
-      t0 <- getModTime fileName
-      let spin j = do
-            writeFile fileName $ show (i,j)
-            t1 <- getModTime fileName
-            unless (t0 < t1) (spin $ j + 1)
-      spin (0::Int)
-    let mtimeChange  = maximum mtimes
-        mtimeChange' = min 1000000 $ (max 10000 mtimeChange) * 2
-    notice normal $ "File modification time resolution calibration completed, "
-      ++ "maximum delay observed: "
-      ++ (show . toMillis $ mtimeChange ) ++ " ms. "
-      ++ "Will be using delay of " ++ (show . toMillis $ mtimeChange')
-      ++ " for test runs."
-    return mtimeChange'
-  where
-    toMillis :: Int -> Double
-    toMillis x = fromIntegral x / 1000.0
-
-    time :: IO () -> IO Int
-    time act = do
-      t0 <- getCurrentTime
-      act
-      t1 <- getCurrentTime
-      return . ceiling $! (t1 `diffUTCTime` t0) * 1e6 -- microseconds

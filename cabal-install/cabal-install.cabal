@@ -211,7 +211,6 @@ executable cabal
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
-        Distribution.Client.Compat.Time
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
@@ -276,7 +275,6 @@ Test-Suite unit-tests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
-    UnitTests.Distribution.Client.Compat.Time
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
