@@ -343,9 +343,9 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary                                           --  8
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitraryConstraints
-        <*> arbitrary <*> shortListOf 2 arbitrary               -- 12
+        <*> shortListOf 2 arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 16
+        <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
       where
         arbitraryProgramName :: Gen String
@@ -361,7 +361,7 @@ instance Arbitrary ProjectConfigShared where
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
               x10 x11 x12 x13 x14
-              x15 x16 x17) =
+              x15 x16) =
       [ ProjectConfigShared
           (postShrink_Paths x00')
           (postShrink_Args  x01')
@@ -371,18 +371,18 @@ instance Arbitrary ProjectConfigShared where
                x06' x07' x08'
           (postShrink_Constraints x09')
           x10' x11' x12' x13' x14'
-          x15' x16' x17'
+          x15' x16'
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
          (x10', x11', x12', x13', x14'),
-         (x15', x16', x17'))
+         (x15', x16'))
           <- shrink
                ((preShrink_Paths x00,
                  preShrink_Args  x01,
                  x02, x03, fmap NonEmpty x04),
                 (fmap NonEmpty x05, x06, x07, x08, preShrink_Constraints x09),
                 (x10, x11, x12, x13, x14),
-                (x15, x16, x17))
+                (x15, x16))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty . Map.mapKeys NoShrink
@@ -401,30 +401,31 @@ projectConfigConstraintSource =
 instance Arbitrary PackageConfig where
     arbitrary =
       PackageConfig
-        <$> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             --  4
+        <$> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             --  8
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary
         <*> shortListOf 5 arbitraryShortToken
         <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 12
+        <*> arbitrary <*> arbitrary
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
         <*> shortListOf 5 arbitraryShortToken
-        <*> arbitrary                                           -- 16
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 20
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 24
         <*> arbitrary <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 28
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary
+        <*> arbitrary <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
-        <*> arbitrary <*> arbitrary                             -- 32
+        <*> arbitrary <*> arbitrary
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
-        <*> arbitraryFlag arbitraryShortToken                   -- 36
+        <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
 
     shrink (PackageConfig
@@ -435,19 +436,19 @@ instance Arbitrary PackageConfig where
               x20 x21 x22 x23 x24
               x25 x26 x27 x28 x29
               x30 x31 x32 x33 x34
-              x35 x36) =
+              x35 x36 x37) =
       [ PackageConfig
           x00' x01' x02' x03' x04'
-          x05' x06' x07' (map getNonEmpty x08') x09'
-          x10' x11'
-          (map getNonEmpty x12')
+          x05' x06' x07' x08' (map getNonEmpty x09')
+          x10' x11' x12'
           (map getNonEmpty x13')
           (map getNonEmpty x14')
-          x15' x16' x17' x18' x19'
+          (map getNonEmpty x15')
+               x16' x17' x18' x19'
           x20' x21' x22' x23' x24'
           x25' x26' x27' x28' x29'
-          x30' x31' x32' (fmap getNonEmpty x33') x34'
-          (fmap getNonEmpty x35') x36'
+          x30' x31' x32' x33' (fmap getNonEmpty x34')
+          x35' (fmap getNonEmpty x36') x37'
       | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -455,19 +456,19 @@ instance Arbitrary PackageConfig where
          ((x20', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', x33', x34'),
-          (x35', x36')))
+          (x35', x36', x37')))
           <- shrink
                (((x00, x01, x02, x03, x04),
-                 (x05, x06, x07, map NonEmpty x08, x09),
-                 (x10, x11,
-                  map NonEmpty x12,
+                 (x05, x06, x07, x08, map NonEmpty x09),
+                 (x10, x11, x12,
                   map NonEmpty x13,
                   map NonEmpty x14),
-                 (x15, x16, x17, x18, x19)),
+                 (map NonEmpty x15,
+                       x16, x17, x18, x19)),
                 ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
-                 (x30, x31, x32, fmap NonEmpty x33, x34),
-                 (fmap NonEmpty x35, x36)))
+                 (x30, x31, x32, x33, fmap NonEmpty x34),
+                 (x35, fmap NonEmpty x36, x37)))
       ]
 
 
