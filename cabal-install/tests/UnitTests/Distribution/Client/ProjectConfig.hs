@@ -329,18 +329,11 @@ instance Arbitrary ProjectConfigBuildOnly where
 instance Arbitrary ProjectConfigShared where
     arbitrary =
       ProjectConfigShared
-        <$> (Map.fromList <$> shortListOf 10 
-              ((,) <$> arbitraryProgramName
-                   <*> arbitraryShortToken))
-        <*> (Map.fromList <$> shortListOf 10 
-              ((,) <$> arbitraryProgramName
-                   <*> listOf arbitraryShortToken))
-        <*> (toNubList <$> listOf arbitraryShortToken)
-        <*> arbitrary                                           --  4
+        <$> arbitrary                                           --  4
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
-        <*> arbitrary                                           --  8
+        <*> arbitrary
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitraryConstraints
         <*> shortListOf 2 arbitrary
@@ -348,11 +341,6 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
       where
-        arbitraryProgramName :: Gen String
-        arbitraryProgramName =
-          elements [ programName prog
-                   | (prog, _) <- knownPrograms (defaultProgramDb) ]
-
         arbitraryConstraints :: Gen [(UserConstraint, ConstraintSource)]
         arbitraryConstraints =
             map (\uc -> (uc, projectConfigConstraintSource)) <$> arbitrary
@@ -360,37 +348,20 @@ instance Arbitrary ProjectConfigShared where
     shrink (ProjectConfigShared
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
-              x10 x11 x12 x13 x14
-              x15 x16) =
+              x10 x11 x12 x13) =
       [ ProjectConfigShared
-          (postShrink_Paths x00')
-          (postShrink_Args  x01')
-          x02' x03'
-          (fmap getNonEmpty x04')
-          (fmap getNonEmpty x05')
-               x06' x07' x08'
-          (postShrink_Constraints x09')
-          x10' x11' x12' x13' x14'
-          x15' x16'
+          x00' (fmap getNonEmpty x01') (fmap getNonEmpty x02') x03' x04'
+          x05' (postShrink_Constraints x06') x07' x08' x09'
+          x10' x11' x12' x13'
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12', x13', x14'),
-         (x15', x16'))
+         (x10', x11', x12', x13'))
           <- shrink
-               ((preShrink_Paths x00,
-                 preShrink_Args  x01,
-                 x02, x03, fmap NonEmpty x04),
-                (fmap NonEmpty x05, x06, x07, x08, preShrink_Constraints x09),
-                (x10, x11, x12, x13, x14),
-                (x15, x16))
+               ((x00, fmap NonEmpty x01, fmap NonEmpty x02, x03, x04),
+                (x05, preShrink_Constraints x06, x07, x08, x09),
+                (x10, x11, x12, x13))
       ]
       where
-        preShrink_Paths  = Map.map NonEmpty . Map.mapKeys NoShrink
-        postShrink_Paths = Map.map getNonEmpty . Map.mapKeys getNoShrink
-        preShrink_Args   = Map.map (NonEmpty . map NonEmpty)
-                         . Map.mapKeys NoShrink
-        postShrink_Args  = Map.map (map getNonEmpty . getNonEmpty)
-                         . Map.mapKeys getNoShrink
         preShrink_Constraints  = map fst
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
@@ -401,7 +372,14 @@ projectConfigConstraintSource =
 instance Arbitrary PackageConfig where
     arbitrary =
       PackageConfig
-        <$> arbitrary
+        <$> (MapLast . Map.fromList <$> shortListOf 10
+              ((,) <$> arbitraryProgramName
+                   <*> arbitraryShortToken))
+        <*> (MapMappend . Map.fromList <$> shortListOf 10
+              ((,) <$> arbitraryProgramName
+                   <*> listOf arbitraryShortToken))
+        <*> (toNubList <$> listOf arbitraryShortToken)
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -427,6 +405,11 @@ instance Arbitrary PackageConfig where
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+      where
+        arbitraryProgramName :: Gen String
+        arbitraryProgramName =
+          elements [ programName prog
+                   | (prog, _) <- knownPrograms (defaultProgramDb) ]
 
     shrink (PackageConfig
               x00 x01 x02 x03 x04
@@ -436,19 +419,23 @@ instance Arbitrary PackageConfig where
               x20 x21 x22 x23 x24
               x25 x26 x27 x28 x29
               x30 x31 x32 x33 x34
-              x35 x36 x37) =
+              x35 x36 x37 x38 x39
+              x40) =
       [ PackageConfig
-          x00' x01' x02' x03' x04'
-          x05' x06' x07' x08' (map getNonEmpty x09')
-          x10' x11' x12'
-          (map getNonEmpty x13')
-          (map getNonEmpty x14')
-          (map getNonEmpty x15')
-               x16' x17' x18' x19'
+          (postShrink_Paths x00')
+          (postShrink_Args  x01') x02' x03' x04'
+          x05' x06' x07' x08' x09'
+          x10' x11' (map getNonEmpty x12') x13' x14'
+          x15' (map getNonEmpty x16')
+               (map getNonEmpty x17')
+               (map getNonEmpty x18')
+                              x19'
           x20' x21' x22' x23' x24'
           x25' x26' x27' x28' x29'
-          x30' x31' x32' x33' (fmap getNonEmpty x34')
-          x35' (fmap getNonEmpty x36') x37'
+          x30' x31' x32' x33' x34'
+          x35' x36' (fmap getNonEmpty x37') x38'
+                    (fmap getNonEmpty x39')
+          x40'
       | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
@@ -456,20 +443,35 @@ instance Arbitrary PackageConfig where
          ((x20', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', x33', x34'),
-          (x35', x36', x37')))
+          (x35', x36', x37', x38', x39'),
+          (x40')))
           <- shrink
-               (((x00, x01, x02, x03, x04),
-                 (x05, x06, x07, x08, map NonEmpty x09),
-                 (x10, x11, x12,
-                  map NonEmpty x13,
-                  map NonEmpty x14),
-                 (map NonEmpty x15,
-                       x16, x17, x18, x19)),
+               (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
+                 (x05, x06, x07, x08, x09),
+                 (x10, x11, map NonEmpty x12, x13, x14),
+                 (x15, map NonEmpty x16,
+                       map NonEmpty x17,
+                       map NonEmpty x18,
+                       x19)),
                 ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
-                 (x30, x31, x32, x33, fmap NonEmpty x34),
-                 (x35, fmap NonEmpty x36, x37)))
+                 (x30, x31, x32, x33, x34),
+                 (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
+                 (x40)))
       ]
+      where
+        preShrink_Paths  = Map.map NonEmpty
+                         . Map.mapKeys NoShrink
+                         . getMapLast
+        postShrink_Paths = MapLast
+                         . Map.map getNonEmpty
+                         . Map.mapKeys getNoShrink
+        preShrink_Args   = Map.map (NonEmpty . map NonEmpty)
+                         . Map.mapKeys NoShrink
+                         . getMapMappend
+        postShrink_Args  = MapMappend
+                         . Map.map (map getNonEmpty . getNonEmpty)
+                         . Map.mapKeys getNoShrink
 
 
 instance Arbitrary SourceRepo where
