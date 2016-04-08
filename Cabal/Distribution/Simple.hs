@@ -87,12 +87,13 @@ import Distribution.License
 import Distribution.Text
 
 -- Base
-import System.Environment(getArgs, getProgName)
-import System.Directory(removeFile, doesFileExist,
-                        doesDirectoryExist, removeDirectoryRecursive)
-import System.Exit       (exitWith,ExitCode(..))
-import System.FilePath(searchPathSeparator)
-import Distribution.Compat.Environment (getEnvironment)
+import System.Environment (getArgs, getProgName)
+import System.Directory   (removeFile, doesFileExist
+                          ,doesDirectoryExist, removeDirectoryRecursive)
+import System.Exit                          (exitWith,ExitCode(..))
+import System.FilePath                      (searchPathSeparator)
+import Distribution.Compat.Environment      (getEnvironment)
+import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Control.Monad   (when)
 import Data.Foldable   (traverse_)
@@ -611,6 +612,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   env <- getEnvironment
   let programConfig = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programConfig
+  ccProgShort <- getShortPathName ccProg
   -- The C compiler's compilation and linker flags (e.g.
   -- "C compiler flags" and "Gcc Linker flags" from GHC) have already
   -- been merged into ccFlags, so we set both CFLAGS and LDFLAGS
@@ -622,7 +624,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       spSep = [searchPathSeparator]
       pathEnv = maybe (intercalate spSep extraPath) ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
       overEnv = ("CFLAGS", Just cflagsEnv) : [("PATH", Just pathEnv) | not (null extraPath)]
-      args' = args ++ ["CC=" ++ ccProg]
+      args' = args ++ ["CC=" ++ ccProgShort]
       shProg = simpleProgram "sh"
       progDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
   shConfiguredProg <- lookupProgram shProg `fmap` configureProgram  verbosity shProg progDb

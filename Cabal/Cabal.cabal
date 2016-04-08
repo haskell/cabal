@@ -339,6 +339,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
     Distribution.GetOpt
     Distribution.Lex
