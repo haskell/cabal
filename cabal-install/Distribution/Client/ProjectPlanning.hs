@@ -241,6 +241,7 @@ rebuildInstallPlan verbosity
           (projectConfig, projectConfigTransient) <- phaseReadProjectConfig
           localPackages <- phaseReadLocalPackages projectConfig
           compilerEtc   <- phaseConfigureCompiler projectConfig
+          _             <- phaseConfigurePrograms projectConfig compilerEtc
           solverPlan    <- phaseRunSolver         projectConfigTransient
                                                   compilerEtc localPackages
           (elaboratedPlan,
@@ -355,6 +356,37 @@ rebuildInstallPlan verbosity
               (++ [ ProgramSearchPathDir dir
                   | dir <- fromNubList packageConfigProgramPathExtra ])
           $ defaultProgramDb
+
+
+    -- Configuring other programs.
+    --
+    -- Having configred the compiler, now we configure all the remaining
+    -- programs. This is to check we can find them, and to monitor them for
+    -- changes.
+    --
+    -- TODO: [required eventually] we don't actually do this yet.
+    --
+    -- We rely on the fact that the previous phase added the program config for
+    -- all local packages, but that all the programs configured so far are the
+    -- compiler program or related util programs.
+    --
+    phaseConfigurePrograms :: ProjectConfig
+                           -> (Compiler, Platform, ProgramDb)
+                           -> Rebuild ()
+    phaseConfigurePrograms projectConfig (_, _, compilerprogdb) = do
+        -- Users are allowed to specify program locations independently for
+        -- each package (e.g. to use a particular version of a pre-processor
+        -- for some packages). However they cannot do this for the compiler
+        -- itself as that's just not going to work. So we check for this.
+        liftIO $ checkBadPerPackageCompilerPaths
+          (configuredPrograms compilerprogdb)
+          (getMapMappend (projectConfigSpecificPackage projectConfig))
+
+        --TODO: [required eventually] find/configure other programs that the
+        -- user specifies.
+
+        --TODO: [required eventually] find/configure all build-tools
+        -- but note that some of them may be built as part of the plan.
 
 
     -- Run the solver to get the initial install plan.
