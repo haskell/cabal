@@ -19,6 +19,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , flattenFlaggedDeps
   , QualifyOptions(..)
   , qualifyDeps
+  , unqualifyDeps
     -- ** Setting/forgetting components
   , forgetCompOpenGoal
   , setCompFlaggedDeps
@@ -238,6 +239,26 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     -- Should we qualify this goal with the 'Setup' package path?
     qSetup :: Component -> Bool
     qSetup comp = qoSetupIndependent && comp == ComponentSetup
+
+unqualifyDeps :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+unqualifyDeps = go
+  where
+    go :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+    go = map go1
+
+    go1 :: FlaggedDep comp QPN -> FlaggedDep comp PN
+    go1 (Flagged fn nfo t f) = Flagged (fmap unq fn) nfo (go t) (go f)
+    go1 (Stanza  sn     t)   = Stanza  (fmap unq sn)     (go t)
+    go1 (Simple dep comp)    = Simple (goD dep) comp
+
+    goD :: Dep QPN -> Dep PN
+    goD (Dep qpn ci) = Dep (unq qpn) (fmap unq ci)
+    goD (Ext  ext)   = Ext ext
+    goD (Lang lang)  = Lang lang
+    goD (Pkg pn vr)  = Pkg pn vr
+
+    unq :: QPN -> PN
+    unq (Q _ pn) = pn
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
