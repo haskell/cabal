@@ -36,7 +36,6 @@ script:
 matrix:
   allow_failures:
    - env: GHCVER=head
-  fast_finish: true
 
 notifications:
   irc:
