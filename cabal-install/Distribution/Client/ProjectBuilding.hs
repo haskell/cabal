@@ -946,9 +946,9 @@ buildAndInstallUnpackedPackage verbosity
                                }
                                installLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
-                                 pkgConfigCompiler  = compiler,
-                                 pkgConfigPlatform  = platform,
-                                 pkgConfigProgramDb = progdb
+                                 pkgConfigPlatform      = platform,
+                                 pkgConfigCompiler      = compiler,
+                                 pkgConfigCompilerProgs = progdb
                                }
                                rpkg@(ReadyPackage pkg)
                                srcdir builddir = do
@@ -1103,8 +1103,8 @@ buildInplaceUnpackedPackage verbosity
                             BuildTimeSettings{buildSettingNumJobs}
                             cacheLock
                             pkgshared@ElaboratedSharedConfig {
-                              pkgConfigCompiler  = compiler,
-                              pkgConfigProgramDb = progdb
+                              pkgConfigCompiler      = compiler,
+                              pkgConfigCompilerProgs = progdb
                             }
                             rpkg@(ReadyPackage pkg)
                             buildStatus
