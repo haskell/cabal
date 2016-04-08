@@ -187,6 +187,7 @@ executable cabal
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectConfig.Legacy
         Distribution.Client.ProjectPlanning
+        Distribution.Client.ProjectPlanning.Types
         Distribution.Client.Run
         Distribution.Client.RebuildMonad
         Distribution.Client.Sandbox
