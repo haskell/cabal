@@ -90,6 +90,8 @@ extra-source-files:
   tests/PackageTests/Configure/A.hs
   tests/PackageTests/Configure/Setup.hs
   tests/PackageTests/Configure/X11.cabal
+  tests/PackageTests/CopyAssumeDepsUpToDate/CopyAssumeDepsUpToDate.cabal
+  tests/PackageTests/CopyAssumeDepsUpToDate/Main.hs
   tests/PackageTests/CopyComponent/Exe/Main.hs
   tests/PackageTests/CopyComponent/Exe/Main2.hs
   tests/PackageTests/CopyComponent/Exe/myprog.cabal

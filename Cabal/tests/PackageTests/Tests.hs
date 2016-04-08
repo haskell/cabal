@@ -423,6 +423,25 @@ tests config = do
     runExe' "myprog" []
         >>= assertOutputContains "a1 b2"
 
+  -- Test copy --assume-deps-up-to-date
+  tc "CopyAssumeDepsUpToDate" $ do
+    withPackageDb $ do
+      cabal_build []
+      pkg_dir <- packageDir
+      shouldFail (runExe' "myprog" [])
+        >>= assertOutputContains "does not exist"
+      prefix_dir <- prefixDir
+      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
+      liftIO $ writeFile (pkg_dir </> "data") "aaa"
+      cabal "copy" ["--assume-deps-up-to-date"]
+      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
+      runExe' "myprog" []
+        >>= assertOutputContains "aaa"
+      liftIO $ writeFile (pkg_dir </> "data") "bbb"
+      cabal "copy" ["--assume-deps-up-to-date", "myprog"]
+      runInstalledExe' "myprog" []
+        >>= assertOutputContains "aaa"
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
