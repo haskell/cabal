@@ -42,5 +42,4 @@ notifications:
   irc:
     channels:
       - "chat.freenode.net##haskell-cabal"
-      - "chat.freenode.net#hackage"
   slack: haskell-cabal:sCq6GLfy9N8MJrInosg871n4
