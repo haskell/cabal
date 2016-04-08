@@ -339,6 +339,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
     Distribution.GetOpt
     Distribution.Lex
@@ -354,9 +355,6 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
-  -- starting with GHC 7.0, rely on {-# LANGUAGE CPP #-} instead
-  if !impl(ghc >= 7.0)
-    default-extensions: CPP
 
 -- Small, fast running tests.
 test-suite unit-tests
