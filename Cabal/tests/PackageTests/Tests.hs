@@ -7,10 +7,13 @@ import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(localPkgDescr, compiler), absoluteComponentInstallDirs, InstallDirs(libdir), maybeGetComponentLocalBuildInfo, ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName))
-import Distribution.Simple.InstallDirs (CopyDest(NoCopyDest))
-import Distribution.Simple.BuildPaths (mkLibName, mkSharedLibName)
-import Distribution.Simple.Compiler (compilerId)
+import Distribution.Simple.LocalBuildInfo
+  ( LocalBuildInfo(localPkgDescr, compiler), absoluteComponentInstallDirs
+  , InstallDirs(libdir), maybeGetComponentLocalBuildInfo
+  , ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName) )
+import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
+import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
+import Distribution.Simple.Compiler    ( compilerId )
 
 import Control.Monad
 
@@ -270,9 +273,21 @@ tests config = do
       tc "GhcPkgGuess/SameDirectoryGhcVersion" $ ghc_pkg_guess "ghc-7.10"
 
   unlessWindows $ do
-      tc "GhcPkgGuess/Symlink" $ ghc_pkg_guess "ghc"
-      tc "GhcPkgGuess/SymlinkVersion" $ ghc_pkg_guess "ghc"
-      tc "GhcPkgGuess/SymlinkGhcVersion" $ ghc_pkg_guess "ghc"
+      tc "GhcPkgGuess/Symlink" $ do
+        -- We don't want to distribute a tarball with symlinks. See #3190.
+        withSymlink "bin/ghc"
+                    "tests/PackageTests/GhcPkgGuess/Symlink/ghc" $
+                    ghc_pkg_guess "ghc"
+
+      tc "GhcPkgGuess/SymlinkVersion" $ do
+        withSymlink "bin/ghc-7.10"
+                    "tests/PackageTests/GhcPkgGuess/SymlinkVersion/ghc" $
+                    ghc_pkg_guess "ghc"
+
+      tc "GhcPkgGuess/SymlinkGhcVersion" $ do
+        withSymlink "bin/ghc-7.10"
+                    "tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/ghc" $
+                    ghc_pkg_guess "ghc"
 
   -- Basic test for internal libraries (in p); package q is to make
   -- sure that the internal library correctly is used, not the
@@ -291,12 +306,14 @@ tests config = do
   -- this does build shared libraries just to make sure they
   -- don't get installed, so this test doesn't work on Windows.)
   testWhen (hasSharedLibraries config) $
-    tcs "InternalLibraries/Executable" "Static" $ multiple_libraries_executable False
+    tcs "InternalLibraries/Executable" "Static" $
+      multiple_libraries_executable False
 
   -- Internal libraries used by a dynamically linked executable:
   -- ONLY the dynamic library should be installed, no registration
   testWhen (hasSharedLibraries config) $
-    tcs "InternalLibraries/Executable" "Dynamic" $ multiple_libraries_executable True
+    tcs "InternalLibraries/Executable" "Dynamic" $
+      multiple_libraries_executable True
 
   -- Internal library used by public library; it must be installed and
   -- registered.
@@ -393,7 +410,8 @@ tests config = do
                 cname = (CLibName "foo-internal")
                 Just clbi = maybeGetComponentLocalBuildInfo lbi cname
                 uid = componentUnitId clbi
-                dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest)
+                dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
+                              NoCopyDest)
             assertBool "interface files should NOT be installed" . not
                 =<< liftIO (doesFileExist (dir </> "Foo.hi"))
             assertBool "static library should NOT be installed" . not
@@ -401,10 +419,12 @@ tests config = do
             if is_dynamic
               then
                 assertBool "dynamic library MUST be installed"
-                    =<< liftIO (doesFileExist (dir </> mkSharedLibName compiler_id uid))
+                    =<< liftIO (doesFileExist (dir </> mkSharedLibName
+                                               compiler_id uid))
               else
                 assertBool "dynamic library should NOT be installed" . not
-                    =<< liftIO (doesFileExist (dir </> mkSharedLibName compiler_id uid))
+                    =<< liftIO (doesFileExist (dir </> mkSharedLibName
+                                               compiler_id uid))
             shouldFail $ ghcPkg "describe" ["foo"]
             -- clean away the dist directory so that we catch accidental
             -- dependence on the inplace files
