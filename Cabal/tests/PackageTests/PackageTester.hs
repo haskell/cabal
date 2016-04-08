@@ -21,6 +21,7 @@ module PackageTests.PackageTester
     , relativeDistDir
     , sharedDBPath
     , getWithGhcPath
+    , prefixDir
 
     -- * Running cabal commands
     , cabal
