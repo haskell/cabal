@@ -414,7 +414,7 @@ test-suite package-tests
     regex-posix,
     old-time
   if !os(windows)
-    build-depends: unix
+    build-depends: unix, exceptions
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell98

@@ -57,6 +57,7 @@ module PackageTests.PackageTester
     , assertFindInFile
     , concatOutput
     , ghcFileModDelay
+    , withSymlink
 
     -- * Test trees
     , TestTreeM
@@ -125,6 +126,12 @@ import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess, showCommandForUser)
 import Control.Concurrent (threadDelay)
 import Test.Tasty (TestTree, askOption, testGroup)
+
+#ifndef mingw32_HOST_OS
+import Control.Monad.Catch ( bracket_ )
+import System.Directory    ( removeFile )
+import System.Posix.Files  ( createSymbolicLink )
+#endif
 
 -- | Our test monad maintains an environment recording the global test
 -- suite configuration 'SuiteConfig', and the local per-test
@@ -740,6 +747,20 @@ ghcFileModDelay = do
               | otherwise
               = mtimeChangeDelay suite
     liftIO $ threadDelay delay
+
+-- | Create a symlink for the duration of the provided action. If the symlink
+-- already exists, it is deleted. Does not work on Windows.
+withSymlink :: FilePath -> FilePath -> TestM a -> TestM a
+#ifdef mingw32_HOST_OS
+withSymlink _oldpath _newpath _act =
+  error "PackageTests.PackageTester.withSymlink: does not work on Windows!"
+#else
+withSymlink oldpath newpath act = do
+  symlinkExists <- liftIO $ doesFileExist newpath
+  when symlinkExists $ liftIO $ removeFile newpath
+  bracket_ (liftIO $ createSymbolicLink oldpath newpath)
+           (liftIO $ removeFile newpath) act
+#endif
 
 ------------------------------------------------------------------------
 -- * Test trees
