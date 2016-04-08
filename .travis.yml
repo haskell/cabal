@@ -10,7 +10,8 @@ env:
  - GHCVER=7.10.3
  - GHCVER=8.0.1 TEST_OLDER=YES
  # TODO add PARSEC_BUNDLED=YES when it's so
- - GHCVER=head
+ # It seems pointless to run head if we're going to ignore the results.
+ #- GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
