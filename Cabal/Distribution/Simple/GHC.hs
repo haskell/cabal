@@ -95,7 +95,7 @@ import Data.Monoid as Mon       ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
-         , canonicalizePath )
+         , canonicalizePath, removeFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
                                 , isRelative )
@@ -958,7 +958,13 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- link:
   unless forRepl $ do
     info verbosity "Linking..."
-    runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+    -- Work around old GHCs not relinking in this
+    -- situation, see #3294
+    let target = targetDir </> exeNameReal
+    when (compilerVersion comp < Version [7,7] []) $ do
+      e <- doesFileExist target
+      when e (removeFile target)
+    runGhcProg linkOpts { ghcOptOutputFile = toFlag target }
 
 -- | Returns True if the modification date of the given source file is newer than
 -- the object file we last compiled for it, or if no object file exists yet.
