@@ -165,7 +165,7 @@ import Distribution.Version
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
-import System.Exit              (exitFailure)
+import System.Exit              (exitFailure, exitSuccess)
 import System.FilePath          ( dropExtension, splitExtension
                                 , takeExtension, (</>), (<.>))
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
@@ -797,7 +797,7 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
       testFlags'     = testFlags { testDistPref = toFlag distPref }
 
   -- The package was just configured, so the LBI must be available.
-  names <- componentNamesFromLBI distPref "test suites"
+  names <- componentNamesFromLBI verbosity distPref "test suites"
              (\c -> case c of { LBI.CTest{} -> True; _ -> False })
   let extraArgs'
         | null extraArgs = case names of
@@ -816,9 +816,10 @@ data ComponentNames = ComponentNamesUnknown
                     | ComponentNames [LBI.ComponentName]
 
 -- | Return the names of all buildable components matching a given predicate.
-componentNamesFromLBI :: FilePath -> String -> (LBI.Component -> Bool)
+componentNamesFromLBI :: Verbosity -> FilePath -> String
+                         -> (LBI.Component -> Bool)
                          -> IO ComponentNames
-componentNamesFromLBI distPref targetsDescr compPred = do
+componentNamesFromLBI verbosity distPref targetsDescr compPred = do
   eLBI <- tryGetPersistBuildConfig distPref
   case eLBI of
     Left err -> case err of
@@ -834,7 +835,10 @@ componentNamesFromLBI distPref targetsDescr compPred = do
                      . filter compPred $
                      LBI.pkgComponents pkgDescr
       if null names
-        then die $ "Package has no buildable " ++ targetsDescr ++ "."
+        then do notice verbosity $ "Package has no buildable "
+                  ++ targetsDescr ++ "."
+                exitSuccess -- See #3215.
+
         else return $! (ComponentNames names)
 
 benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
@@ -863,7 +867,7 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
       benchmarkFlags'= benchmarkFlags { benchmarkDistPref = toFlag distPref }
 
   -- The package was just configured, so the LBI must be available.
-  names <- componentNamesFromLBI distPref "benchmarks"
+  names <- componentNamesFromLBI verbosity distPref "benchmarks"
            (\c -> case c of { LBI.CBench{} -> True; _ -> False; })
   let extraArgs'
         | null extraArgs = case names of
