@@ -76,7 +76,7 @@ import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
-import           Distribution.Utils.NubList (toNubList)
+import           Distribution.Utils.NubList
 
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
@@ -310,29 +310,51 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler ProjectConfig{projectConfigShared} = do
+    phaseConfigureCompiler ProjectConfig {
+                             projectConfigShared = ProjectConfigShared {
+                               projectConfigHcFlavor,
+                               projectConfigHcPath,
+                               projectConfigHcPkg
+                             },
+                             projectConfigLocalPackages = PackageConfig {
+                               packageConfigProgramPaths,
+                               packageConfigProgramArgs,
+                               packageConfigProgramPathExtra
+                             }
+                           } = do
         progsearchpath <- liftIO $ getSystemSearchPath
         rerunIfChanged verbosity projectRootDir fileMonitorCompiler
-                       (hcFlavor, hcPath, hcPkg, progsearchpath) $ do
+                       (hcFlavor, hcPath, hcPkg, progsearchpath,
+                        packageConfigProgramPaths,
+                        packageConfigProgramArgs,
+                        packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          result@(_, _, progdb) <- liftIO $
+          result@(_, _, progdb') <- liftIO $
             Cabal.configCompilerEx
               hcFlavor hcPath hcPkg
-              defaultProgramDb verbosity
+              progdb verbosity
 
-          monitorFiles (programsMonitorFiles progdb)
+        -- Note that we added the user-supplied program locations and args
+        -- for /all/ programs, not just those for the compiler prog and
+        -- compiler-related utils. In principle we don't know which programs
+        -- the compiler will configure (and it does vary between compilers).
+        -- We do know however that the compiler will only configure the
+        -- programs it cares about, and those are the ones we monitor here.
+          monitorFiles (programsMonitorFiles progdb')
 
           return result
       where
         hcFlavor = flagToMaybe projectConfigHcFlavor
         hcPath   = flagToMaybe projectConfigHcPath
         hcPkg    = flagToMaybe projectConfigHcPkg
-        ProjectConfigShared {
-          projectConfigHcFlavor,
-          projectConfigHcPath,
-          projectConfigHcPkg
-        }        = projectConfigShared
+        progdb   =
+            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
+          . modifyProgramSearchPath
+              (++ [ ProgramSearchPathDir dir
+                  | dir <- fromNubList packageConfigProgramPathExtra ])
+          $ defaultProgramDb
 
 
     -- Run the solver to get the initial install plan.
@@ -359,6 +381,11 @@ rebuildInstallPlan verbosity
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
           pkgConfigDB       <- liftIO $
                                readPkgConfigDb      verbosity progdb
+
+          --TODO: [code cleanup] it'd be better if the Compiler contained the
+          -- ConfiguredPrograms that it needs, rather than relying on the progdb
+          -- since we don't need to depend on all the programs here, just the
+          -- ones relevant for the compiler.
 
           liftIO $ do
             solver <- chooseSolver verbosity
@@ -916,6 +943,23 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgStripExes     = perPkgOptionFlag pkgid False packageConfigStripExes
         pkgDebugInfo     = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
 
+        -- Combine the configured compiler prog settings with the user-supplied
+        -- config. For the compiler progs any user-supplied config was taken
+        -- into account earlier when configuring the compiler so its ok that
+        -- our configured settings for the compiler override the user-supplied
+        -- config here.
+        pkgProgramPaths  = Map.fromList
+                             [ (programId prog, programPath prog)
+                             | prog <- configuredPrograms compilerprogdb ]
+                        <> perPkgOptionMapLast pkgid packageConfigProgramPaths
+        pkgProgramArgs   = Map.fromList
+                             [ (programId prog, args)
+                             | prog <- configuredPrograms compilerprogdb
+                             , let args = programOverrideArgs prog
+                             , not (null args)
+                             ]
+                        <> perPkgOptionMapMappend pkgid packageConfigProgramArgs
+        pkgProgramPathExtra    = perPkgOptionNubList pkgid packageConfigProgramPathExtra
         pkgConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
         pkgExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
         pkgExtraFrameworkDirs  = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
@@ -964,6 +1008,9 @@ elaborateInstallPlan platform compiler compilerprogdb
     perPkgOptionFlag  pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
     perPkgOptionMaybe pkgid     f = flagToMaybe (lookupPerPkgOption pkgid f)
     perPkgOptionList  pkgid     f = lookupPerPkgOption pkgid f
+    perPkgOptionNubList    pkgid f = fromNubList   (lookupPerPkgOption pkgid f)
+    perPkgOptionMapLast    pkgid f = getMapLast    (lookupPerPkgOption pkgid f)
+    perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption pkgid f)
 
     perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
       where
@@ -1732,12 +1779,12 @@ setupHsConfigureFlags (ReadyPackage
 
     configIPID                = toFlag (display (installedUnitId pkg))
 
-    configProgramPaths        = programDbProgramPaths pkgConfigCompilerProgs
-    configProgramArgs         = programDbProgramArgs  pkgConfigCompilerProgs
-    configProgramPathExtra    = programDbPathExtra    pkgConfigCompilerProgs
+    configProgramPaths        = Map.toList pkgProgramPaths
+    configProgramArgs         = Map.toList pkgProgramArgs
+    configProgramPathExtra    = toNubList pkgProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
-    configHcPath              = mempty -- use configProgramPaths instead
-    configHcPkg               = mempty -- use configProgramPaths instead
+    configHcPath              = mempty -- we use configProgramPaths instead
+    configHcPkg               = mempty -- we use configProgramPaths instead
 
     configVanillaLib          = toFlag pkgVanillaLib
     configSharedLib           = toFlag pkgSharedLib
@@ -1793,23 +1840,6 @@ setupHsConfigureFlags (ReadyPackage
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
-
-    programDbProgramPaths db =
-      [ (programId prog, programPath prog)
-      | prog <- configuredPrograms db ]
-
-    programDbProgramArgs db =
-      [ (programId prog, programOverrideArgs prog)
-      | prog <- configuredPrograms db ]
-
-    programDbPathExtra db =
-      case getProgramSearchPath db of
-        ProgramSearchPathDefault : extra ->
-          toNubList [ dir | ProgramSearchPathDir dir <- extra ]
-        _ -> error $ "setupHsConfigureFlags: we cannot currently cope with a "
-                  ++ "search path that does not start with the system path"
-                  -- the Setup.hs interface only has --extra-prog-path
-                  -- so we cannot put things before the $PATH, only after
 
 
 setupHsBuildFlags :: ElaboratedConfiguredPackage

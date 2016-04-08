@@ -173,6 +173,9 @@ data ElaboratedConfiguredPackage
        pkgStripExes            :: Bool,
        pkgDebugInfo            :: DebugInfoLevel,
 
+       pkgProgramPaths          :: Map String FilePath,
+       pkgProgramArgs           :: Map String [String],
+       pkgProgramPathExtra      :: [FilePath],
        pkgConfigureScriptArgs   :: [String],
        pkgExtraLibDirs          :: [FilePath],
        pkgExtraFrameworkDirs    :: [FilePath],
