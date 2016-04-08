@@ -204,7 +204,7 @@ data ElaboratedSharedConfig
 
        pkgConfigPlatform         :: Platform,
        pkgConfigCompiler         :: Compiler, --TODO: [code cleanup] replace with CompilerInfo
-       pkgConfigProgramDb        :: ProgramDb --TODO: [code cleanup] no Eq instance
+       pkgConfigCompilerProgs    :: ProgramDb --TODO: [code cleanup] no Eq instance
        --TODO: [code cleanup] binary instance does not preserve the prog paths
        --      perhaps should keep the configured progs separately
      }
@@ -701,9 +701,9 @@ rebuildInstallPlan verbosity
         storeDirectory  = cabalStoreDirectory (compilerId compiler)
         storePackageDb  = cabalStorePackageDB (compilerId compiler)
         ElaboratedSharedConfig {
-          pkgConfigCompiler  = compiler,
-          pkgConfigPlatform  = platform,
-          pkgConfigProgramDb = progdb
+          pkgConfigPlatform      = platform,
+          pkgConfigCompiler      = compiler,
+          pkgConfigCompilerProgs = progdb
         } = elaboratedShared
 
 
@@ -1006,7 +1006,7 @@ elaborateInstallPlan
   -> PackageConfig
   -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
-elaborateInstallPlan platform compiler progdb
+elaborateInstallPlan platform compiler compilerprogdb
                      DistDirLayout{..}
                      cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
                      solverPlan pkgsImplicitSetupDeps localPackages
@@ -1019,9 +1019,9 @@ elaborateInstallPlan platform compiler progdb
   where
     elaboratedSharedConfig =
       ElaboratedSharedConfig {
-        pkgConfigPlatform         = platform,
-        pkgConfigCompiler         = compiler,
-        pkgConfigProgramDb        = progdb
+        pkgConfigPlatform      = platform,
+        pkgConfigCompiler      = compiler,
+        pkgConfigCompilerProgs = compilerprogdb
       }
 
     elaboratedInstallPlan =
@@ -1917,7 +1917,7 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
                                  | ipkg <- CD.setupDeps deps ],
       useDependenciesExclusive = True,
       useVersionMacros         = pkgSetupScriptStyle == SetupCustomExplicitDeps,
-      useProgramConfig         = pkgConfigProgramDb,
+      useProgramConfig         = pkgConfigCompilerProgs,
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
@@ -1986,9 +1986,9 @@ setupHsConfigureFlags (ReadyPackage
 
     configIPID                = toFlag (display (installedUnitId pkg))
 
-    configProgramPaths        = programDbProgramPaths pkgConfigProgramDb
-    configProgramArgs         = programDbProgramArgs  pkgConfigProgramDb
-    configProgramPathExtra    = programDbPathExtra    pkgConfigProgramDb
+    configProgramPaths        = programDbProgramPaths pkgConfigCompilerProgs
+    configProgramArgs         = programDbProgramArgs  pkgConfigCompilerProgs
+    configProgramPathExtra    = programDbPathExtra    pkgConfigCompilerProgs
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
     configHcPath              = mempty -- use configProgramPaths instead
     configHcPkg               = mempty -- use configProgramPaths instead
