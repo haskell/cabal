@@ -25,7 +25,7 @@ build-type: Simple
 
 extra-source-files:
   README.md tests/README.md changelog
-  doc/developing-packages.markdown doc/index.markdown
+  doc/Cabal.css doc/developing-packages.markdown doc/index.markdown
   doc/installing-packages.markdown
   doc/misc.markdown
 
@@ -367,6 +367,7 @@ test-suite unit-tests
     Test.QuickCheck.Utils
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
