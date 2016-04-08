@@ -309,7 +309,7 @@ data SolverSettings
        solverSettingLocalRepos        :: [FilePath],
        solverSettingConstraints       :: [(UserConstraint, ConstraintSource)],
        solverSettingPreferences       :: [Dependency],
-       solverSettingFlagAssignment    :: FlagAssignment, --TODO: [required eventually] eliminate this global one
+       solverSettingFlagAssignment    :: FlagAssignment, -- ^ For all local packages
        solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
        solverSettingSolver            :: PreSolver,

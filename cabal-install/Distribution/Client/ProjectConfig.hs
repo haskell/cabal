@@ -167,6 +167,8 @@ resolveSolverSettings ProjectConfig{
                       } =
     SolverSettings {..}
   where
+    --TODO: [required eventually] some of these settings need validation, e.g.
+    -- the flag assignments need checking.
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
     solverSettingConstraints       = projectConfigConstraints
