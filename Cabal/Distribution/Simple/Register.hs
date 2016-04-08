@@ -53,6 +53,7 @@ import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
+import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
@@ -82,22 +83,41 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg lbi regFlags =
-    -- We do NOT register libraries outside of the inplace database
-    -- if there is no public library, since no one else can use it
-    -- usefully (they're not public.)  If we start supporting scoped
-    -- packages, we'll have to relax this.
-    when (hasPublicLib pkg) $ do
-        -- It's important to register in build order, because ghc-pkg
-        -- will complain if a dependency is not registered.
-        let maybeGenerateOne clbi
-                | CLib lib <- getLocalComponent pkg clbi
-                = fmap Just (generateOne pkg lib lbi clbi regFlags)
-                | otherwise = return Nothing
-        ipis <- fmap catMaybes
-              $ mapM maybeGenerateOne (allComponentsInBuildOrder lbi)
-        registerAll pkg lbi regFlags ipis
-        return ()
+register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
+ where
+  -- We do NOT register libraries outside of the inplace database
+  -- if there is no public library, since no one else can use it
+  -- usefully (they're not public.)  If we start supporting scoped
+  -- packages, we'll have to relax this.
+  doRegister = do
+    targets <- readBuildTargets pkg_descr (regArgs flags)
+    targets' <- checkBuildTargets verbosity pkg_descr targets
+
+    -- It's important to register in build order, because ghc-pkg
+    -- will complain if a dependency is not registered.
+    let maybeGenerateOne clbi
+            | CLib lib <- getLocalComponent pkg_descr clbi
+            = fmap Just (generateOne pkg_descr lib lbi clbi flags)
+            | otherwise = return Nothing
+
+    ipis <-
+      if fromFlag (regAssumeDepsUpToDate flags)
+        then
+          case targets' of
+            [(cname, _)] -> do
+                mb_ipi <- maybeGenerateOne (getComponentLocalBuildInfo lbi cname)
+                case mb_ipi of
+                    Nothing -> die "Cannot --assume-deps-up-to-date register non-library target"
+                    Just ipi -> return [ipi]
+            [] -> die "In --assume-deps-up-to-date mode you must specify a target"
+            _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
+        else fmap catMaybes
+           . mapM maybeGenerateOne
+           $ componentsInBuildOrder lbi (map fst targets')
+    registerAll pkg_descr lbi flags ipis
+    return ()
+   where
+    verbosity = fromFlag (regVerbosity flags)
 
 generateOne :: PackageDescription -> Library -> LocalBuildInfo -> ComponentLocalBuildInfo
             -> RegisterFlags

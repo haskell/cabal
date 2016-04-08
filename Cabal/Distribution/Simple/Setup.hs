@@ -1041,7 +1041,12 @@ data RegisterFlags = RegisterFlags {
     regInPlace     :: Flag Bool,
     regDistPref    :: Flag FilePath,
     regPrintId     :: Flag Bool,
-    regVerbosity   :: Flag Verbosity
+    regVerbosity   :: Flag Verbosity,
+    -- | If this is true, we don't register all libraries,
+    -- only directly referenced library in 'regArgs'.
+    regAssumeDepsUpToDate     :: Flag Bool,
+    -- Same as in 'buildArgs' and 'copyArgs'
+    regArgs        :: [String]
   }
   deriving (Show, Generic)
 
@@ -1053,7 +1058,9 @@ defaultRegisterFlags = RegisterFlags {
     regInPlace     = Flag False,
     regDistPref    = NoFlag,
     regPrintId     = Flag False,
-    regVerbosity   = Flag normal
+    regVerbosity   = Flag normal,
+    regAssumeDepsUpToDate     = Flag False,
+    regArgs        = []
   }
 
 registerCommand :: CommandUI RegisterFlags
@@ -1082,6 +1089,11 @@ registerCommand = CommandUI
       ,option "" ["inplace"]
          "register the package in the build location, so it can be used without being installed"
          regInPlace (\v flags -> flags { regInPlace = v })
+         trueArg
+
+      ,option "" ["assume-deps-up-to-date"]
+         "One-shot registration"
+         regAssumeDepsUpToDate (\c flags -> flags { regAssumeDepsUpToDate = c })
          trueArg
 
       ,option "" ["gen-script"]

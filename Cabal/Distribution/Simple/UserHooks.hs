@@ -182,7 +182,7 @@ emptyUserHooks
       preSDist  = rn,
       sDistHook = ru,
       postSDist = ru,
-      preReg    = rn,
+      preReg    = rn',
       regHook   = ru,
       postReg   = ru,
       preUnreg  = rn,

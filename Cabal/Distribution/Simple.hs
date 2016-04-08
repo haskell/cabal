@@ -367,7 +367,7 @@ registerAction hooks flags args = do
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preReg regHook postReg
                  (getBuildConfig hooks verbosity distPref)
-                 hooks flags' args
+                 hooks flags' { regArgs = args } args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 unregisterAction hooks flags args = do
