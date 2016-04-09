@@ -56,11 +56,43 @@ install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
-install pkg_descr lbi flags = do
-  let distPref  = fromFlag (copyDistPref flags)
-      verbosity = fromFlag (copyVerbosity flags)
-      copydest  = fromFlag (copyDest flags)
-      -- This is a bit of a hack, to handle files which are not
+install pkg_descr lbi flags
+ | fromFlag (copyOneShot flags) = do
+  checkHasLibsOrExes
+  targets <- readBuildTargets pkg_descr (copyArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+  case targets' of
+    [] -> copyPackage verbosity pkg_descr lbi distPref copydest
+    [(cname, _)] ->
+      let clbi = getComponentLocalBuildInfo lbi cname
+          comp = getComponent pkg_descr cname
+      in copyComponent verbosity pkg_descr lbi comp clbi copydest
+    _ -> die "In --one-shot mode you can only copy a single target"
+
+ | otherwise = do
+  checkHasLibsOrExes
+  targets <- readBuildTargets pkg_descr (copyArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+
+  copyPackage verbosity pkg_descr lbi distPref copydest
+
+  -- It's not necessary to do these in build-order, but it's harmless
+  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
+    copyComponent verbosity pkg_descr lbi comp clbi copydest
+ where
+  distPref  = fromFlag (copyDistPref flags)
+  verbosity = fromFlag (copyVerbosity flags)
+  copydest  = fromFlag (copyDest flags)
+
+  checkHasLibsOrExes =
+    unless (hasLibs pkg_descr || hasExes pkg_descr) $
+      die "No executables and no library found. Nothing to do."
+
+-- | Copy package global files.
+copyPackage :: Verbosity -> PackageDescription
+            -> LocalBuildInfo -> FilePath -> CopyDest -> IO ()
+copyPackage verbosity pkg_descr lbi distPref copydest = do
+  let -- This is a bit of a hack, to handle files which are not
       -- per-component (data files and Haddock files.)
       InstallDirs {
          datadir    = dataPref,
@@ -80,12 +112,6 @@ install pkg_descr lbi flags = do
              -- packages we'll just pick a nondescriptive foo-0.1
              = absoluteInstallDirs pkg_descr lbi copydest
 
-  unless (hasLibs pkg_descr || hasExes pkg_descr) $
-      die "No executables and no library found. Nothing to do."
-
-  targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr targets
-
   -- Install (package-global) data files
   installDataFiles verbosity pkg_descr dataPref
 
@@ -95,6 +121,8 @@ install pkg_descr lbi flags = do
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
 
+  -- TODO: this is a bit questionable, Haddock files really should
+  -- be per library (when there are convenience libraries.)
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       installDirectoryContents verbosity
@@ -122,10 +150,7 @@ install pkg_descr lbi flags = do
       [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
       | lfile <- lfiles ]
 
-  -- It's not necessary to do these in build-order, but it's harmless
-  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
-    copyComponent verbosity pkg_descr lbi comp clbi copydest
-
+-- | Copy files associated with a component.
 copyComponent :: Verbosity -> PackageDescription
               -> LocalBuildInfo -> Component -> ComponentLocalBuildInfo
               -> CopyDest

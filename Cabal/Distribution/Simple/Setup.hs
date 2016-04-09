@@ -825,6 +825,7 @@ data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
     copyVerbosity :: Flag Verbosity,
+    copyOneShot   :: Flag Bool,
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
     copyArgs :: [String]
@@ -836,6 +837,7 @@ defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
     copyVerbosity = Flag normal,
+    copyOneShot   = Flag False,
     copyArgs      = []
   }
 
@@ -864,6 +866,11 @@ copyCommand = CommandUI
       ,optionDistPref
          copyDistPref (\d flags -> flags { copyDistPref = d })
          showOrParseArgs
+
+      , option "" ["one-shot"]
+          "One-shot copy"
+          copyOneShot (\c flags -> flags { copyOneShot = c })
+          trueArg
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
@@ -1444,6 +1451,9 @@ data BuildFlags = BuildFlags {
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
     buildNumJobs     :: Flag (Maybe Int),
+    -- | If this is true, we don't build the dependencies of
+    -- 'buildArgs': only the directly referenced components.
+    buildOneShot :: Flag Bool,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1461,6 +1471,7 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
+    buildOneShot     = Flag False,
     buildArgs        = []
   }
 
@@ -1508,6 +1519,11 @@ buildOptions :: ProgramConfiguration -> ShowOrParseArgs
 buildOptions progConf showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
+
+  , option "" ["one-shot"]
+      "One-shot build"
+      buildOneShot (\c flags -> flags { buildOneShot = c })
+      trueArg
   ]
 
   ++ programConfigurationPaths progConf showOrParseArgs

@@ -408,6 +408,21 @@ tests config = do
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "bbb"
 
+  -- Test build --one-shot
+  tc "BuildOneShot" $ do
+    pkg_dir <- packageDir
+    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
+    liftIO $ writeFile (pkg_dir </> "one-shot/Main.hs") "import A\nmain = print (a ++ \" b1\")"
+    cabal_build []
+    runExe' "one-shot" []
+        >>= assertOutputContains "a1 b1"
+    ghcFileModDelay
+    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a2\""
+    liftIO $ writeFile (pkg_dir </> "one-shot/Main.hs") "import A\nmain = print (a ++ \" b2\")"
+    cabal "build" ["--one-shot", "one-shot"]
+    runExe' "one-shot" []
+        >>= assertOutputContains "a1 b2"
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
