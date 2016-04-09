@@ -122,11 +122,15 @@ executable cabal
                      -Wnoncanonical-monadfail-instances
 
     other-modules:
+        Distribution.Client.BuildTarget
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
+        Distribution.Client.CmdBuild
+        Distribution.Client.CmdConfigure
+        Distribution.Client.CmdRepl
         Distribution.Client.ComponentDeps
         Distribution.Client.Config
         Distribution.Client.Configure
@@ -190,6 +194,7 @@ executable cabal
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectConfig.Legacy
+        Distribution.Client.ProjectOrchestration
         Distribution.Client.ProjectPlanning
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.ProjectPlanOutput
