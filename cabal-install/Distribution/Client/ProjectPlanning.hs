@@ -58,6 +58,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
+import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
@@ -248,6 +249,7 @@ rebuildInstallPlan verbosity
            elaboratedShared) <- phaseElaboratePlan projectConfigTransient
                                                    compilerEtc
                                                    solverPlan localPackages
+          phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
 
           return (elaboratedPlan, elaboratedShared,
                   projectConfig)
@@ -502,6 +504,24 @@ rebuildInstallPlan verbosity
                         cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
+
+
+    -- Update the files we maintain that reflect our current build environment.
+    -- In particular we maintain a JSON representation of the elaborated
+    -- install plan.
+    --
+    -- TODO: [required eventually] maintain the ghc environment file reflecting
+    -- the libs available. This will need to be after plan improvement phase.
+    --
+    phaseMaintainPlanOutputs :: ElaboratedInstallPlan
+                             -> ElaboratedSharedConfig
+                             -> Rebuild ()
+    phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = do
+        liftIO $ debug verbosity "Updating plan.json"
+        liftIO $ writePlanExternalRepresentation
+                   distDirLayout
+                   elaboratedPlan
+                   elaboratedShared
 
 
     -- Improve the elaborated install plan. The elaborated plan consists
