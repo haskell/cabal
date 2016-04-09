@@ -409,13 +409,16 @@ tests config = do
     runExe' "T3294" [] >>= assertOutputContains "bbb"
 
   -- Test build --assume-deps-up-to-date
-  tc "BuildAssumeDepsUpToDate" $ do
+  mtc "BuildAssumeDepsUpToDate" $ \step -> do
+    step "Initial build"
     pkg_dir <- packageDir
     liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
     liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b1\")"
     cabal_build []
     runExe' "myprog" []
         >>= assertOutputContains "a1 b1"
+
+    step "Rebuild executable only"
     ghcFileModDelay
     liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a2\""
     liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b2\")"
@@ -424,35 +427,47 @@ tests config = do
         >>= assertOutputContains "a1 b2"
 
   -- Test copy --assume-deps-up-to-date
-  tc "CopyAssumeDepsUpToDate" $ do
+  mtc "CopyAssumeDepsUpToDate" $ \step -> do
     withPackageDb $ do
+      step "Initial build"
       cabal_build []
+
+      step "Executable cannot find data file"
       pkg_dir <- packageDir
       shouldFail (runExe' "myprog" [])
         >>= assertOutputContains "does not exist"
       prefix_dir <- prefixDir
       shouldNotExist $ prefix_dir </> "bin" </> "myprog"
+
+      step "Install data file"
       liftIO $ writeFile (pkg_dir </> "data") "aaa"
       cabal "copy" ["--assume-deps-up-to-date"]
       shouldNotExist $ prefix_dir </> "bin" </> "myprog"
       runExe' "myprog" []
         >>= assertOutputContains "aaa"
+
+      step "Install executable"
       liftIO $ writeFile (pkg_dir </> "data") "bbb"
       cabal "copy" ["--assume-deps-up-to-date", "myprog"]
       runInstalledExe' "myprog" []
         >>= assertOutputContains "aaa"
 
   -- Test register --assume-deps-up-to-date
-  tc "RegisterAssumeDepsUpToDate" $ do
+  mtc "RegisterAssumeDepsUpToDate" $ \step -> do
     withPackageDb $ do
       -- We'll test this by generating registration files and verifying
       -- that they are indeed files (and not directories)
+      step "Initial build and copy"
       cabal_build []
       cabal "copy" []
+
+      step "Register q"
       let q_reg = "pkg-config-q"
       cabal "register" ["--assume-deps-up-to-date", "q", "--gen-pkg-config=" ++ q_reg]
       pkg_dir <- packageDir
       ghcPkg "register" [pkg_dir </> q_reg]
+
+      step "Register p"
       let main_reg = "pkg-config-p"
       cabal "register" ["--assume-deps-up-to-date", "RegisterAssumeDepsUpToDate", "--gen-pkg-config=" ++ main_reg]
       ghcPkg "register" [pkg_dir </> main_reg]
@@ -516,6 +531,9 @@ tests config = do
 
     tc :: FilePath -> TestM a -> TestTreeM ()
     tc name = testTree config name
+
+    mtc :: FilePath -> ((String -> TestM ()) -> TestM a) -> TestTreeM ()
+    mtc name = testTreeSteps config name
 
     tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
     tcs name sub_name m
