@@ -169,6 +169,9 @@ extra-source-files:
   tests/PackageTests/PreProcessExtraSources/Main.hs
   tests/PackageTests/PreProcessExtraSources/my.cabal
   tests/PackageTests/ReexportedModules/ReexportedModules.cabal
+  tests/PackageTests/RegisterAssumeDepsUpToDate/P.hs
+  tests/PackageTests/RegisterAssumeDepsUpToDate/RegisterOneShot.cabal
+  tests/PackageTests/RegisterAssumeDepsUpToDate/q/Q.hs
   tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs

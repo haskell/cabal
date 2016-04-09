@@ -442,6 +442,21 @@ tests config = do
       runInstalledExe' "myprog" []
         >>= assertOutputContains "aaa"
 
+  -- Test register --assume-deps-up-to-date
+  tc "RegisterAssumeDepsUpToDate" $ do
+    withPackageDb $ do
+      -- We'll test this by generating registration files and verifying
+      -- that they are indeed files (and not directories)
+      cabal_build []
+      cabal "copy" []
+      let q_reg = "pkg-config-q"
+      cabal "register" ["--assume-deps-up-to-date", "q", "--gen-pkg-config=" ++ q_reg]
+      pkg_dir <- packageDir
+      ghcPkg "register" [pkg_dir </> q_reg]
+      let main_reg = "pkg-config-p"
+      cabal "register" ["--assume-deps-up-to-date", "RegisterAssumeDepsUpToDate", "--gen-pkg-config=" ++ main_reg]
+      ghcPkg "register" [pkg_dir </> main_reg]
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
