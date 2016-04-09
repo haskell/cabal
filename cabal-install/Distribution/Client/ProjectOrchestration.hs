@@ -1,8 +1,41 @@
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 
--- | Putting everything together: orchestration of the planning and executing
--- of the build. This module forms the core of the top level commands like
--- configure, build, repl etc.
+-- | This module deals with building and incrementally rebuilding a collection
+-- of packages. It is what backs the @cabal build@ and @configure@ commands,
+-- as well as being a core part of @run@, @test@, @bench@ and others. 
+--
+-- The primary thing is in fact rebuilding (and trying to make that quick by
+-- not redoing unnecessary work), so building from scratch is just a special
+-- case.
+--
+-- The build process and the code can be understood by breaking it down into
+-- three major parts:
+--
+-- * The 'ElaboratedInstallPlan' type
+--
+-- * The \"what to do\" phase, where we look at the all input configuration
+--   (project files, .cabal files, command line etc) and produce a detailed
+--   plan of what to do -- the 'ElaboratedInstallPlan'.
+--
+-- * The \"do it\" phase, where we take the 'ElaboratedInstallPlan' and we
+-- re-execute it.
+--
+-- As far as possible, the \"what to do\" phase embodies all the policy, leaving
+-- the \"do it\" phase policy free. The first phase contains more of the
+-- complicated logic, but it is contained in code that is either pure or just
+-- has read effects (except cache updates). Then the second phase does all the
+-- actions to build packages, but as far as possible it just follows the
+-- instructions and avoids any logic for deciding what to do (apart from
+-- recompilation avoidance in executing the plan).
+--
+-- This division helps us keep the code under control, making it easier to
+-- understand, test and debug. So when you are extending these modules, please
+-- think about which parts of your change belong in which part. It is
+-- perfectly ok to extend the description of what to do (i.e. the 
+-- 'ElaboratedInstallPlan') if that helps keep the policy decisions in the
+-- first phase. Also, the second phase does not have direct access to any of
+-- the input configuration anyway; all the information has to flow via the
+-- 'ElaboratedInstallPlan'.
 --
 module Distribution.Client.ProjectOrchestration (
     -- * Pre-build phase: decide what to do.
@@ -11,7 +44,7 @@ module Distribution.Client.ProjectOrchestration (
     PreBuildHooks(..),
     ProjectBuildContext(..),
 
-    -- ** 
+    -- ** Adjusting the plan
     selectTargets,
     printPlan,
 
@@ -23,14 +56,19 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
-import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
+import           Distribution.Client.Types
+                   hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
+                          , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import           Distribution.Client.BuildTarget hiding (BuildTargetProblem, reportBuildTargetProblems)
+import           Distribution.Client.BuildTarget
+                   ( UserBuildTarget, resolveUserBuildTargets
+                   , BuildTarget(..), buildTargetPackage )
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
-import           Distribution.Client.Setup hiding (packageName, cabalVersion)
+import           Distribution.Client.Setup hiding (packageName)
 
-import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import           Distribution.Package
+                   hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -47,53 +85,18 @@ import           Data.List
 import           Data.Either
 
 
-------------------------------------------------------------------------------
--- * Understanding this module
-------------------------------------------------------------------------------
-
--- This module deals with building and incrementally rebuilding a collection
--- of packages. It is what backs the "cabal build" and "configure" commands,
--- as well as being a core part of "run", "test", "bench" and others. 
+-- | Command line configuration flags. These are used to extend\/override the
+-- project configuration.
 --
--- The primary thing is in fact rebuilding (and trying to make that quick by
--- not redoing unnecessary work), so building from scratch is just a special
--- case.
---
--- The build process and the code can be understood by breaking it down into
--- three major parts:
---
--- * The 'ElaboratedInstallPlan' type
---
--- * The "what to do" phase, where we look at the all input configuration
---   (project files, .cabal files, command line etc) and produce a detailed
---   plan of what to do -- the 'ElaboratedInstallPlan'.
---
--- * The "do it" phase, where we take the 'ElaboratedInstallPlan' and we
--- re-execute it.
---
--- As far as possible, the "what to do" phase embodies all the policy, leaving
--- the "do it" phase policy free. The first phase contains more of the
--- complicated logic, but it is contained in code that is either pure or just
--- has read effects (except cache updates). Then the second phase does all the
--- actions to build packages, but as far as possible it just follows the
--- instructions and avoids any logic for deciding what to do (apart from
--- recompilation avoidance in executing the plan).
---
--- This division helps us keep the code under control, making it easier to
--- understand, test and debug. So when you are extending this module, please
--- think about which parts of your change belong in which part. It is
--- perfectly ok to extend the description of what to do (i.e. the 
--- 'ElaboratedInstallPlan') if that helps keep the policy decisions in the
--- first phase. Also, the second phase does not have direct access to any of
--- the input configuration anyway; all the information has to flow via the
--- 'ElaboratedInstallPlan'.
-
-
-
 type CliConfigFlags = ( GlobalFlags
                       , ConfigFlags, ConfigExFlags
                       , InstallFlags, HaddockFlags )
 
+-- | Hooks to alter the behaviour of 'runProjectPreBuildPhase'.
+--
+-- For example the @configure@, @build@ and @repl@ commands use this to get
+-- their different behaviour.
+--
 data PreBuildHooks = PreBuildHooks {
        hookPrePlanning      :: FilePath
                             -> DistDirLayout
@@ -103,20 +106,8 @@ data PreBuildHooks = PreBuildHooks {
                             -> IO ElaboratedInstallPlan
      }
 
-
--- The (re)build is split into two major parts:
---  * decide what to do
---  * do it
-
-runProjectPreBuildPhase :: Verbosity
-                        -> CliConfigFlags
-                        -> PreBuildHooks
-                        -> IO ProjectBuildContext
-
-runProjectBuildPhase :: Verbosity
-                     -> ProjectBuildContext
-                     -> IO ()
-
+-- | This holds the context between the pre-build and build phases.
+--
 data ProjectBuildContext = ProjectBuildContext {
       distDirLayout    :: DistDirLayout,
       elaboratedPlan   :: ElaboratedInstallPlan,
@@ -128,6 +119,10 @@ data ProjectBuildContext = ProjectBuildContext {
 
 -- | Pre-build phase: decide what to do.
 --
+runProjectPreBuildPhase :: Verbosity
+                        -> CliConfigFlags
+                        -> PreBuildHooks
+                        -> IO ProjectBuildContext
 runProjectPreBuildPhase
     verbosity
     ( globalFlags
@@ -193,6 +188,9 @@ runProjectPreBuildPhase
 -- Execute all or parts of the description of what to do to build or
 -- rebuild the various packages needed.
 --
+runProjectBuildPhase :: Verbosity
+                     -> ProjectBuildContext
+                     -> IO ()
 runProjectBuildPhase verbosity ProjectBuildContext {..} = do
     _ <- rebuildTargets verbosity
                         distDirLayout
@@ -224,6 +222,11 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} = do
 -- Taking targets into account, selecting what to build
 --
 
+-- | Adjust an 'ElaboratedInstallPlan' by selecting just those parts of it
+-- required to build the given user targets.
+--
+-- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable.
+--
 selectTargets :: PackageTarget
               -> (ComponentTarget -> PackageTarget)
               -> [UserBuildTarget]
@@ -367,6 +370,9 @@ reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
 -- Displaying what we plan to do
 --
 
+-- | Print a user-oriented presentation of the install plan, indicating what
+-- will be built.
+--
 printPlan :: Verbosity -> ProjectBuildContext -> IO ()
 printPlan verbosity
           ProjectBuildContext {

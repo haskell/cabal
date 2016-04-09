@@ -378,7 +378,8 @@ instance Arbitrary PackageConfig where
         <*> (MapMappend . Map.fromList <$> shortListOf 10
               ((,) <$> arbitraryProgramName
                    <*> listOf arbitraryShortToken))
-        <*> (toNubList <$> listOf arbitraryShortToken) <*> arbitrary
+        <*> (toNubList <$> listOf arbitraryShortToken)
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -411,7 +412,6 @@ instance Arbitrary PackageConfig where
                    | (prog, _) <- knownPrograms (defaultProgramDb) ]
 
     shrink (PackageConfig
-              xa0 xa1 xa2 xa3
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
               x10 x11 x12 x13 x14
@@ -419,44 +419,45 @@ instance Arbitrary PackageConfig where
               x20 x21 x22 x23 x24
               x25 x26 x27 x28 x29
               x30 x31 x32 x33 x34
-              x35 x36) =
+              x35 x36 x37 x38 x39
+              x40) =
       [ PackageConfig
-          (postShrink_Paths xa0')
-          (postShrink_Args  xa1')
-          xa2' xa3'
-          x00' x01' x02' x03' x04'
-          x05' x06' x07' (map getNonEmpty x08') x09'
-          x10' x11'
-          (map getNonEmpty x12')
-          (map getNonEmpty x13')
-          (map getNonEmpty x14')
-          x15' x16' x17' x18' x19'
+          (postShrink_Paths x00')
+          (postShrink_Args  x01') x02' x03' x04'
+          x05' x06' x07' x08' x09'
+          x10' x11' (map getNonEmpty x12') x13' x14'
+          x15' (map getNonEmpty x16')
+               (map getNonEmpty x17')
+               (map getNonEmpty x18')
+                              x19'
           x20' x21' x22' x23' x24'
           x25' x26' x27' x28' x29'
-          x30' x31' x32' (fmap getNonEmpty x33') x34'
-          (fmap getNonEmpty x35') x36'
-      | (((xa0', xa1', xa2', xa3'),
-          (x00', x01', x02', x03', x04'),
+          x30' x31' x32' x33' x34'
+          x35' x36' (fmap getNonEmpty x37') x38'
+                    (fmap getNonEmpty x39')
+          x40'
+      | (((x00', x01', x02', x03', x04'),
           (x05', x06', x07', x08', x09'),
           (x10', x11', x12', x13', x14'),
           (x15', x16', x17', x18', x19')),
          ((x20', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
           (x30', x31', x32', x33', x34'),
-          (x35', x36')))
+          (x35', x36', x37', x38', x39'),
+          (x40')))
           <- shrink
-               (((preShrink_Paths xa0, preShrink_Args xa1, xa2, xa3),
-                 (x00, x01, x02, x03, x04),
-                 (x05, x06, x07, map NonEmpty x08, x09),
-                 (x10, x11,
-                  map NonEmpty x12,
-                  map NonEmpty x13,
-                  map NonEmpty x14),
-                 (x15, x16, x17, x18, x19)),
+               (((preShrink_Paths x00, preShrink_Args x01, x02, x03, x04),
+                 (x05, x06, x07, x08, x09),
+                 (x10, x11, map NonEmpty x12, x13, x14),
+                 (x15, map NonEmpty x16,
+                       map NonEmpty x17,
+                       map NonEmpty x18,
+                       x19)),
                 ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
-                 (x30, x31, x32, fmap NonEmpty x33, x34),
-                 (fmap NonEmpty x35, x36)))
+                 (x30, x31, x32, x33, x34),
+                 (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
+                 (x40)))
       ]
       where
         preShrink_Paths  = Map.map NonEmpty

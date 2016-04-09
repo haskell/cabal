@@ -22,6 +22,9 @@ import Distribution.Verbosity
 -- The only difference is that @configure@ also allows the user to specify
 -- some extra config flags which we save in the file @cabal.project.local@.
 --
+-- For more details on how this works, see the module
+-- "Distribution.Client.ProjectOrchestration"
+--
 configureAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
                 -> [String] -> GlobalFlags -> IO ()
 configureAction (configFlags, configExFlags, installFlags, haddockFlags)

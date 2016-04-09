@@ -1310,4 +1310,3 @@ manpageAction commands _ extraArgs _ = do
                  then dropExtension pname
                  else pname
   putStrLn $ manpage cabalCmd commands
-

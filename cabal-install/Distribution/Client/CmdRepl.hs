@@ -34,6 +34,9 @@ import Control.Monad (unless)
 -- (given or implicit) and the target type is repl rather than build. The
 -- general plan execution infrastructure handles both build and repl targets.
 --
+-- For more details on how this works, see the module
+-- "Distribution.Client.ProjectOrchestration"
+--
 replAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
 replAction (configFlags, configExFlags, installFlags, haddockFlags)

@@ -30,6 +30,9 @@ import Control.Monad (unless)
 -- selects that part of the plan needed by the given or implicit targets and
 -- then executes the plan.
 --
+-- For more details on how this works, see the module
+-- "Distribution.Client.ProjectOrchestration"
+--
 buildAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
             -> [String] -> GlobalFlags -> IO ()
 buildAction (configFlags, configExFlags, installFlags, haddockFlags)
