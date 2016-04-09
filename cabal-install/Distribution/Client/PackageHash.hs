@@ -109,6 +109,7 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashProgPrefix          :: Maybe PathTemplate,
        pkgHashProgSuffix          :: Maybe PathTemplate
 
+--     TODO: [required eventually] extra program options
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
 --     TODO: [research required] and what about docs?

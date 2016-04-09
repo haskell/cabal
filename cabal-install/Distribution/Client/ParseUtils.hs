@@ -92,7 +92,7 @@ commandOptionsToFields = map viewAsFieldDescr
 -- SectionDescr definition and utilities
 --
 
--- | The description of a section in a config file. It can contains both
+-- | The description of a section in a config file. It can contain both
 -- fields and optionally further subsections. See also 'FieldDescr'.
 --
 data SectionDescr a = forall b. SectionDescr {
