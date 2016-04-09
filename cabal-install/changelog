@@ -59,6 +59,8 @@
 	* Fixed space leaks in modular solver (#2916, #2914).
 	* Added a new command: 'gen-bounds' (#3223). See
 	http://softwaresimply.blogspot.se/2015/08/cabal-gen-bounds-easy-generation-of.html.
+	* Tech preview of new nix-style isolated project-based builds.
+	Currently provides the commands (new-)build/repl/configure.
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
