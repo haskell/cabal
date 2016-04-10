@@ -25,7 +25,7 @@ build-type: Simple
 
 extra-source-files:
   README.md tests/README.md changelog
-  doc/developing-packages.markdown doc/index.markdown
+  doc/Cabal.css doc/developing-packages.markdown doc/index.markdown
   doc/installing-packages.markdown
   doc/misc.markdown
 
@@ -146,6 +146,8 @@ extra-source-files:
   tests/PackageTests/InternalLibraries/p/q/Q.hs
   tests/PackageTests/InternalLibraries/q/Q.hs
   tests/PackageTests/InternalLibraries/q/q.cabal
+  tests/PackageTests/InternalLibraries/r/R.hs
+  tests/PackageTests/InternalLibraries/r/r.cabal
   tests/PackageTests/Macros/A.hs
   tests/PackageTests/Macros/B.hs
   tests/PackageTests/Macros/Main.hs
@@ -164,6 +166,7 @@ extra-source-files:
   tests/PackageTests/PreProcessExtraSources/Main.hs
   tests/PackageTests/PreProcessExtraSources/my.cabal
   tests/PackageTests/ReexportedModules/ReexportedModules.cabal
+  tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
   tests/PackageTests/TemplateHaskell/dynamic/TH.hs
@@ -212,6 +215,10 @@ source-repository head
 flag bundled-binary-generic
   default: False
 
+flag old-directory
+  description:  Use directory < 1.2 and old-time
+  default:      False
+
 library
   build-depends:
     array      >= 0.1 && < 0.6,
@@ -219,11 +226,17 @@ library
     bytestring >= 0.9 && < 1,
     containers >= 0.4 && < 0.6,
     deepseq    >= 1.3 && < 1.5,
-    directory  >= 1.1 && < 1.3,
     filepath   >= 1.3 && < 1.5,
     pretty     >= 1.1 && < 1.2,
     process    >= 1.1.0.1 && < 1.5,
     time       >= 1.4 && < 1.7
+
+  if flag(old-directory)
+    build-depends: directory >= 1.1 && < 1.2, old-time >= 1 && < 1.2,
+                   process   >= 1.0.1.1  && < 1.1.0.2
+  else
+    build-depends: directory >= 1.2 && < 1.3,
+                   process   >= 1.1.0.2  && < 1.5
 
   if flag(bundled-binary-generic)
     build-depends: binary >= 0.5 && < 0.7
@@ -255,6 +268,7 @@ library
     Distribution.Compat.MonadFail
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
+    Distribution.Compat.Time
     Distribution.Compiler
     Distribution.InstalledPackageInfo
     Distribution.License
@@ -328,6 +342,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.GetShortPathName
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
@@ -342,9 +357,6 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
-  -- starting with GHC 7.0, rely on {-# LANGUAGE CPP #-} instead
-  if !impl(ghc >= 7.0)
-    default-extensions: CPP
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -355,6 +367,7 @@ test-suite unit-tests
     Test.QuickCheck.Utils
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Compat.Time
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
@@ -364,9 +377,11 @@ test-suite unit-tests
   build-depends:
     base,
     directory,
+    filepath,
     tasty,
     tasty-hunit,
     tasty-quickcheck,
+    tagged,
     pretty,
     QuickCheck >= 2.7 && < 2.9,
     Cabal
@@ -391,6 +406,7 @@ test-suite package-tests
     tasty,
     tasty-hunit,
     transformers,
+    time,
     Cabal,
     process,
     directory,
@@ -399,7 +415,7 @@ test-suite package-tests
     regex-posix,
     old-time
   if !os(windows)
-    build-depends: unix
+    build-depends: unix, exceptions
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell98

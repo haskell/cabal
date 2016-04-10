@@ -40,14 +40,14 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 import Distribution.Client.Types
          ( SourcePackage(..)
          , GenericReadyPackage(..), ReadyPackage, enableStanzas
-         , ConfiguredPackage(..) , fakeUnitId)
+         , ConfiguredPackage(..))
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), UnitId(..) )
+         ( PackageIdentifier, Package(packageId), UnitId(..), installedUnitId )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -123,10 +123,10 @@ symlinkBinaries platform comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage _cpkg, pkg, exe) <- exes
+        | (rpkg, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               -- This is a bit dodgy; probably won't work for Backpack packages
-              ipid = fakeUnitId pkgid
+              ipid = installedUnitId rpkg
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
               prefix = substTemplate pkgid ipid prefixTemplate
@@ -141,7 +141,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
 
     pkgDescription :: ReadyPackage -> PackageDescription
     pkgDescription (ReadyPackage (ConfiguredPackage
-                                    (SourcePackage _ pkg _ _)
+                                    _ (SourcePackage _ pkg _ _)
                                     flags stanzas _)) =
       case finalizePackageDescription flags
              (const True)

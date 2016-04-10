@@ -41,7 +41,7 @@ import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
                           , DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
+                   ( GenericInstallPlan, SolverInstallPlan, GenericPlanPackage )
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 
 import           Distribution.Package
@@ -65,13 +65,6 @@ import           GHC.Generics (Generic)
 import           Data.Typeable (Typeable)
 import           Control.Exception
 
-
-
--- | The type of install plan produced by the solver and used as the starting
--- point for the 'ElaboratedInstallPlan'.
---
-type SolverInstallPlan
-   = InstallPlan --TODO: [code cleanup] redefine locally or move def to solver interface
 
 
 -- | The combination of an elaborated install plan plus a

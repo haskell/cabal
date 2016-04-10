@@ -5,7 +5,7 @@ import System.FilePath
 import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity
 
-import Distribution.Client.Compat.Time
+import Distribution.Compat.Time
 import Distribution.Client.Sandbox.Timestamp
 
 import Test.Tasty

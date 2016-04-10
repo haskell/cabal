@@ -98,17 +98,16 @@ instance PackageFixedDeps InstalledPackageInfo where
                                  (installedDepends pkg)
 
 
--- | In order to reuse the implementation of PackageIndex which relies on
--- 'UnitId', we need to be able to synthesize these IDs prior
--- to installation.  Eventually, we'll move to a representation of
--- 'UnitId' which can be properly computed before compilation
--- (of course, it's a bit of a misnomer since the packages are not actually
--- installed yet.)  In any case, we'll synthesize temporary installed package
--- IDs to use as keys during install planning.  These should never be written
--- out!  Additionally, they need to be guaranteed unique within the install
--- plan.
-fakeUnitId :: PackageId -> UnitId
-fakeUnitId = mkUnitId . (".fake."++) . display
+-- | In order to reuse the implementation of PackageIndex which relies
+-- on 'UnitId' for 'SolverInstallPlan', we need to be able to synthesize
+-- these IDs prior to installation.   These should never be written out!
+-- Additionally, they need to be guaranteed unique within the install
+-- plan; this holds because an install plan only ever contains one
+-- instance of a particular package and version.  (To fix this,
+-- the IDs not only have to identify a package ID, but also the
+-- transitive requirementso n it.)
+unsafeInternalFakeUnitId :: PackageId -> UnitId
+unsafeInternalFakeUnitId = mkUnitId . (".fake."++) . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -116,6 +115,7 @@ fakeUnitId = mkUnitId . (".fake."++) . display
 -- final configure process will be independent of the environment.
 --
 data ConfiguredPackage loc = ConfiguredPackage {
+       confPkgId :: UnitId, -- the generated 'UnitId' for this package
        confPkgSource :: SourcePackage loc, -- package info, including repo
        confPkgFlags :: FlagAssignment,     -- complete flag assignment for the package
        confPkgStanzas :: [OptionalStanza], -- list of enabled optional stanzas for the package
@@ -164,7 +164,7 @@ instance PackageFixedDeps (ConfiguredPackage loc) where
   depends cpkg = fmap (map installedUnitId) (confPkgDeps cpkg)
 
 instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId cpkg = fakeUnitId (packageId cpkg)
+  installedUnitId = confPkgId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -173,6 +173,58 @@ newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPacka
 
 type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
+
+-- | A 'SolverPackage' is a package specified by the dependency solver.
+-- It will get elaborated into a 'ConfiguredPackage' or even an
+-- 'ElaboratedConfiguredPackage'.
+--
+-- NB: 'SolverPackage's are essentially always with 'UnresolvedPkgLoc',
+-- but for symmetry we have the parameter.  (Maybe it can be removed.)
+--
+data SolverPackage loc = SolverPackage {
+        solverPkgSource :: SourcePackage loc,
+        solverPkgFlags :: FlagAssignment,
+        solverPkgStanzas :: [OptionalStanza],
+        solverPkgDeps :: ComponentDeps [SolverId]
+    }
+  deriving (Eq, Show, Generic)
+
+instance Binary loc => Binary (SolverPackage loc)
+
+instance Package (SolverPackage loc) where
+  packageId = packageId . solverPkgSource
+
+-- | This is a minor hack as 'PackageIndex' assumes keys are
+-- 'UnitId's but prior to computing 'UnitId's (i.e., immediately
+-- after running the solver, we don't have this information.)
+-- But this is strictly temporary: once we convert to a
+-- 'ConfiguredPackage' we'll record 'UnitId's for everything.
+instance HasUnitId (SolverPackage loc) where
+  installedUnitId = unsafeInternalFakeUnitId . packageId . solverPkgSource
+
+instance PackageFixedDeps (SolverPackage loc) where
+  depends pkg = fmap (map installedUnitId) (solverPkgDeps pkg)
+
+-- | The solver can produce references to existing packages or
+-- packages we plan to install.  Unlike 'ConfiguredId' we don't
+-- yet know the 'UnitId' for planned packages, because it's
+-- not the solver's job to compute them.
+--
+data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
+              | PlannedId     { solverSrcId :: PackageId }
+  deriving (Eq, Generic)
+
+instance Binary SolverId
+
+instance Show SolverId where
+    show = show . solverSrcId
+
+instance Package SolverId where
+  packageId = solverSrcId
+
+instance HasUnitId SolverId where
+  installedUnitId (PreExistingId _ instId) = instId
+  installedUnitId (PlannedId pid) = unsafeInternalFakeUnitId pid
 
 -- | A package description along with the location of the package sources.
 --
@@ -347,7 +399,7 @@ data BuildFailure = PlanningFailed
                   | InstallFailed   SomeException
   deriving (Show, Generic)
 data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    (Maybe InstalledPackageInfo)
+                                    [InstalledPackageInfo]
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk

@@ -85,7 +85,7 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils ( byteStringToFilePath
                                  , tryFindAddSourcePackageDesc )
 import Distribution.Compat.Exception (catchIO)
-import Distribution.Client.Compat.Time (getFileAge, getModTime)
+import Distribution.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist, doesDirectoryExist)
 import System.FilePath
          ( (</>), takeExtension, replaceExtension, splitDirectories, normalise )

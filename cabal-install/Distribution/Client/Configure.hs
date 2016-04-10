@@ -23,7 +23,7 @@ import Distribution.Client.Dependency.Types
          ( ConstraintSource(..)
          , LabeledPackageConstraint(..), showConstraintSource )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.InstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
@@ -130,9 +130,11 @@ configure verbosity packageDBs repoCtxt comp platform conf
       setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
         Nothing configureCommand (const configFlags) extraArgs
 
-    Right installPlan -> case InstallPlan.ready installPlan of
+    Right installPlan0 ->
+     let installPlan = InstallPlan.configureInstallPlan installPlan0
+     in case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
-             (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
+              (ConfiguredPackage _ (SourcePackage _ _ (LocalUnpackedPackage _) _)
                                  _ _ _))] -> do
         configurePackage verbosity
           platform (compilerInfo comp)
@@ -269,7 +271,7 @@ planLocalPackage :: Verbosity -> Compiler
                  -> InstalledPackageIndex
                  -> SourcePackageDb
                  -> PkgConfigDb
-                 -> IO (Progress String String InstallPlan)
+                 -> IO (Progress String String SolverInstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags
   installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
@@ -344,7 +346,7 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-                 (ReadyPackage (ConfiguredPackage spkg flags stanzas deps))
+                 (ReadyPackage (ConfiguredPackage ipid spkg flags stanzas deps))
                  extraArgs =
 
   setupWrapper verbosity
@@ -353,6 +355,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
   where
     gpkg = packageDescription spkg
     configureFlags   = filterConfigureFlags configFlags {
+      configIPID = toFlag (display ipid),
       configConfigurationsFlags = flags,
       -- We generate the legacy constraints as well as the new style precise
       -- deps.  In the end only one set gets passed to Setup.hs configure,

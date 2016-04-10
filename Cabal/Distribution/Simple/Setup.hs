@@ -1084,7 +1084,7 @@ registerCommand = CommandUI
          trueArg
 
       ,option "" ["gen-pkg-config"]
-         "instead of registering, generate a package registration file"
+         "instead of registering, generate a package registration file/directory"
          regGenPkgConf (\v flags -> flags { regGenPkgConf  = v })
          (optArg' "PKG" Flag flagToList)
 

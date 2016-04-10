@@ -8,9 +8,9 @@ fi
 
 set -ex
 
-find tests -type f \( -name '*.hs' -or -name '*.lhs' -or -name '*.c' -or -name '*.sh' \
-    -or -name '*.cabal' -or -name '*.hsc' -or -name '*.err' -or -name '*.out' -or -name "ghc*" \) -and -not -regex ".*/dist.*/.*" \
-    | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs|IntegrationTests.hs|CreatePipe|^tests\/Test/ { next } { print }' \
+git ls-files tests \
+    | awk '/\.(hs|lhs|c|sh|cabal|hsc|err|out)$|ghc/ { print } { next }' \
+    | awk '/Check.hs$|UnitTests|PackageTester|autogen|register.sh|PackageTests.hs|IntegrationTests.hs|CreatePipe|^tests\/Test/ { next } { print }' \
     | LC_ALL=C sort \
     | sed -e 's/^/  /' \
     > source-file-list

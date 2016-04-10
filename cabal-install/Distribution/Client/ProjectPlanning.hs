@@ -655,7 +655,7 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
            mloc <- checkFetched locm
            return (pkg, locm, mloc)
       | InstallPlan.Configured
-          (ConfiguredPackage pkg _ _ _) <- InstallPlan.toList installPlan ]
+          SolverPackage { solverPkgSource = pkg } <- InstallPlan.toList installPlan ]
 
     let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
         alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
@@ -883,24 +883,17 @@ elaborateInstallPlan platform compiler compilerprogdb
 
           InstallPlan.Configured  pkg ->
             InstallPlan.Configured
-              (elaborateConfiguredPackage (fixupDependencies mapDep pkg))
+              (elaborateSolverPackage mapDep pkg)
 
           _ -> error "elaborateInstallPlan: unexpected package state"
 
-    -- remap the installed package ids of the direct deps, since we're
-    -- changing the installed package ids of all the packages to use the
-    -- final nix-style hashed ids.
-    fixupDependencies mapDep
-       (ConfiguredPackage pkg flags stanzas deps) =
-        ConfiguredPackage pkg flags stanzas deps'
-      where
-        deps' = fmap (map (\d -> d { confInstId = mapDep (confInstId d) })) deps
-
-    elaborateConfiguredPackage :: ConfiguredPackage UnresolvedPkgLoc
-                               -> ElaboratedConfiguredPackage
-    elaborateConfiguredPackage
-        pkg@(ConfiguredPackage (SourcePackage pkgid gdesc srcloc descOverride)
-                               flags stanzas deps) =
+    elaborateSolverPackage :: (UnitId -> UnitId)
+                           -> SolverPackage UnresolvedPkgLoc
+                           -> ElaboratedConfiguredPackage
+    elaborateSolverPackage
+        mapDep
+        pkg@(SolverPackage (SourcePackage pkgid gdesc srcloc descOverride)
+                           flags stanzas deps0) =
         elaboratedPackage
       where
         -- Knot tying: the final elaboratedPackage includes the
@@ -908,6 +901,15 @@ elaborateInstallPlan platform compiler compilerprogdb
         -- of the other fields of the elaboratedPackage.
         --
         elaboratedPackage = ElaboratedConfiguredPackage {..}
+
+        deps = fmap (map elaborateSolverId) deps0
+
+        elaborateSolverId sid =
+            ConfiguredId {
+                confSrcId  = packageId sid,
+                -- Update the 'UnitId' to the final nix-style hashed ID
+                confInstId = mapDep (installedPackageId sid)
+            }
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
@@ -1101,7 +1103,7 @@ elaborateInstallPlan platform compiler compilerprogdb
       $ map installedPackageId
       $ InstallPlan.reverseDependencyClosure
           solverPlan
-          [ fakeUnitId (packageId pkg)
+          [ installedPackageId (PlannedId (packageId pkg))
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
@@ -1649,7 +1651,7 @@ rememberImplicitSetupDeps sourcePkgIndex plan =
       Set.fromList
         [ installedPackageId pkg
         | InstallPlan.Configured
-            pkg@(ConfiguredPackage newpkg _ _ _) <- InstallPlan.toList plan
+            pkg@(SolverPackage newpkg _ _ _) <- InstallPlan.toList plan
           -- has explicit setup deps now
         , hasExplicitSetupDeps newpkg
           -- but originally had no setup deps
@@ -1670,7 +1672,7 @@ rememberImplicitSetupDeps sourcePkgIndex plan =
 -- through the solver.
 --
 packageSetupScriptStylePostSolver :: Set InstalledPackageId
-                                  -> ConfiguredPackage loc
+                                  -> SolverPackage loc
                                   -> PD.PackageDescription
                                   -> SetupScriptStyle
 packageSetupScriptStylePostSolver pkgsImplicitSetupDeps pkg pkgDescription =

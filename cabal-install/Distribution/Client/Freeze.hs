@@ -25,7 +25,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
-         ( InstallPlan, PlanPackage )
+         ( SolverInstallPlan, SolverPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.PkgConfigDb
          ( PkgConfigDb, readPkgConfigDb )
@@ -39,7 +39,7 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion )
+         ( Package, packageId, packageName, packageVersion, installedUnitId )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -116,7 +116,7 @@ getFreezePkgs :: Verbosity
               -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags
-              -> IO [PlanPackage]
+              -> IO [SolverPlanPackage]
 getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
       globalFlags freezeFlags = do
 
@@ -151,7 +151,7 @@ planPackages :: Verbosity
              -> SourcePackageDb
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
-             -> IO [PlanPackage]
+             -> IO [SolverPlanPackage]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers = do
 
@@ -214,14 +214,17 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
-pruneInstallPlan :: InstallPlan
+--
+-- Invariant: @pkgSpecifiers@ must refer to packages which are not
+-- 'PreExisting' in the 'SolverInstallPlan'.
+pruneInstallPlan :: SolverInstallPlan
                  -> [PackageSpecifier UnresolvedSourcePackage]
-                 -> [PlanPackage]
+                 -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    InstallPlan.dependencyClosure installPlan (map fakeUnitId pkgIds)
+    InstallPlan.dependencyClosure installPlan (map installedUnitId pkgIds)
   where
-    pkgIds = [ packageId pkg
+    pkgIds = [ PlannedId (packageId pkg)
              | SpecificSourcePackage pkg <- pkgSpecifiers ]
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= packageId thisPkg)
     removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "

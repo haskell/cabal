@@ -56,6 +56,8 @@ module PackageTests.PackageTester
     , assertOutputDoesNotContain
     , assertFindInFile
     , concatOutput
+    , ghcFileModDelay
+    , withSymlink
 
     -- * Test trees
     , TestTreeM
@@ -122,7 +124,14 @@ import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess, showCommandForUser)
+import Control.Concurrent (threadDelay)
 import Test.Tasty (TestTree, askOption, testGroup)
+
+#ifndef mingw32_HOST_OS
+import Control.Monad.Catch ( bracket_ )
+import System.Directory    ( removeFile )
+import System.Posix.Files  ( createSymbolicLink )
+#endif
 
 -- | Our test monad maintains an environment recording the global test
 -- suite configuration 'SuiteConfig', and the local per-test
@@ -191,6 +200,9 @@ data SuiteConfig = SuiteConfig
     , suiteVerbosity :: Verbosity
     -- | The absolute current working directory
     , absoluteCWD :: FilePath
+    -- | How long we should 'threadDelay' to make sure the file timestamp is
+    -- updated correctly for recompilation tests.
+    , mtimeChangeDelay :: Int
     }
 
 getProgram :: ProgramDb -> Program -> ConfiguredProgram
@@ -718,6 +730,37 @@ assertFindInFile needle path =
 -- | Replace line breaks with spaces, correctly handling "\r\n".
 concatOutput :: String -> String
 concatOutput = unwords . lines . filter ((/=) '\r')
+
+-- | Delay a sufficient period of time to permit file timestamp
+-- to be updated.
+ghcFileModDelay :: TestM ()
+ghcFileModDelay = do
+    (suite, _) <- ask
+    -- For old versions of GHC, we only had second-level precision,
+    -- so we need to sleep a full second.  Newer versions use
+    -- millisecond level precision, so we only have to wait
+    -- the granularity of the underlying filesystem.
+    -- TODO: cite commit when GHC got better precision; this
+    -- version bound was empirically generated.
+    let delay | withGhcVersion suite < Version [7,7] []
+              = 1000000 -- 1s
+              | otherwise
+              = mtimeChangeDelay suite
+    liftIO $ threadDelay delay
+
+-- | Create a symlink for the duration of the provided action. If the symlink
+-- already exists, it is deleted. Does not work on Windows.
+withSymlink :: FilePath -> FilePath -> TestM a -> TestM a
+#ifdef mingw32_HOST_OS
+withSymlink _oldpath _newpath _act =
+  error "PackageTests.PackageTester.withSymlink: does not work on Windows!"
+#else
+withSymlink oldpath newpath act = do
+  symlinkExists <- liftIO $ doesFileExist newpath
+  when symlinkExists $ liftIO $ removeFile newpath
+  bracket_ (liftIO $ createSymbolicLink oldpath newpath)
+           (liftIO $ removeFile newpath) act
+#endif
 
 ------------------------------------------------------------------------
 -- * Test trees

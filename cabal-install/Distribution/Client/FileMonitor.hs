@@ -58,7 +58,7 @@ import           Control.Monad.Except (ExceptT, runExceptT, withExceptT,
                                        throwError)
 import           Control.Exception
 
-import           Distribution.Client.Compat.Time
+import           Distribution.Compat.Time
 import           Distribution.Client.Glob
 import           Distribution.Simple.Utils (handleDoesNotExist, writeFileAtomic)
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))

@@ -40,7 +40,7 @@ import Distribution.Client.Sandbox.Index
   ,listBuildTreeRefs)
 
 import Distribution.Compat.Exception                 (catchIO)
-import Distribution.Client.Compat.Time               (ModTime, getCurTime,
+import Distribution.Compat.Time               (ModTime, getCurTime,
                                                       getModTime,
                                                       posixSecondsToModTime)
 

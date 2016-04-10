@@ -1160,7 +1160,8 @@ This command takes the following options:
 
 `--gen-pkg-config`[=_path_]
 :   Instead of registering the package, generate a package registration
-    file. This only applies to compilers that support package
+    file (or directory, in some circumstances).
+    This only applies to compilers that support package
     registration files which at the moment is only GHC. The file should
     be used with the compiler's mechanism for registering packages. This
     option is mainly intended for packaging systems. If possible use the
@@ -1169,6 +1170,11 @@ This command takes the following options:
     optional and can be used to specify a particular output file to
     generate. Otherwise, by default the file is the package name and
     version with a `.conf` extension.
+
+    This option outputs a directory if the package requires multiple
+    registrations: this can occur if internal/convenience libraries
+    are used.  These configuration file names are sorted so that they
+    can be registered in order.
 
 `--inplace`
 :   Registers the package for use directly from the build tree, without
