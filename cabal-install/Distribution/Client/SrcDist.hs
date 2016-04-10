@@ -1,3 +1,4 @@
+{-# LANGUAGE NondecreasingIndentation #-}
 -- Implements the \"@.\/cabal sdist@\" command, which creates a source
 -- distribution for this package.  That is, packs up the source code
 -- into a tarball, making use of the corresponding Cabal module.
@@ -35,15 +36,15 @@ import Distribution.Verbosity (Verbosity, normal, lessVerbose)
 import Distribution.Version   (Version(..), orLaterVersion)
 
 import Distribution.Client.Utils
-  (removeExistingFile, tryFindAddSourcePackageDesc)
+  (tryFindAddSourcePackageDesc)
 import Distribution.Compat.Exception                 (catchIO)
 
 import System.FilePath ((</>), (<.>))
 import Control.Monad (when, unless, liftM)
-import System.Directory (doesFileExist, removeFile, canonicalizePath)
+import System.Directory (doesFileExist, removeFile, canonicalizePath, getTemporaryDirectory)
 import System.Process (runProcess, waitForProcess)
 import System.Exit    (ExitCode(..))
-import Control.Exception                             (IOException)
+import Control.Exception                             (IOException, evaluate)
 
 -- |Create a source distribution.
 sdist :: SDistFlags -> SDistExFlags -> IO ()
@@ -152,8 +153,9 @@ allPackageSourceFiles verbosity packageDir = do
     let err = "Error reading source files of package."
     desc <- tryFindAddSourcePackageDesc packageDir err
     flattenPackageDescription `fmap` readPackageDescription verbosity desc
-  let -- TODO: allocate a temporary directory for this, more thread safe.
-      file      = packageDir </> "cabal-sdist-list-sources"
+  globalTmp <- getTemporaryDirectory
+  withTempDirectory verbosity globalTmp "cabal-list-sources." $ \tempDir -> do
+  let file      = tempDir </> "cabal-sdist-list-sources"
       flags     = defaultSDistFlags {
         sDistVerbosity   = Flag $ if verbosity == normal
                                   then lessVerbose verbosity else verbosity,
@@ -179,6 +181,8 @@ allPackageSourceFiles verbosity packageDir = do
           "Exception was: " ++ show e
 
   -- Run setup sdist --list-sources=TMPFILE
-  ret <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
-  removeExistingFile file
-  return ret
+  r <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
+  -- Ensure that we've closed the 'readFile' handle before we exit the
+  -- temporary directory.
+  _ <- evaluate (length r)
+  return r
