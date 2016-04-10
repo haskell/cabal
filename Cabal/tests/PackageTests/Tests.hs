@@ -427,6 +427,10 @@ tests config = do
         >>= assertOutputContains "a1 b2"
 
   -- Test copy --assume-deps-up-to-date
+  -- NB: This test has a HORRIBLE HORRIBLE hack to ensure that
+  -- on Windows, we don't try to make a prefix relative package;
+  -- specifically, we give the package under testing a library
+  -- so that we don't attempt to make it prefix relative.
   mtc "CopyAssumeDepsUpToDate" $ \step -> do
     withPackageDb $ do
       step "Initial build"
@@ -448,7 +452,7 @@ tests config = do
 
       step "Install executable"
       liftIO $ writeFile (pkg_dir </> "data") "bbb"
-      cabal "copy" ["--assume-deps-up-to-date", "myprog"]
+      cabal "copy" ["--assume-deps-up-to-date", "exe:myprog"]
       runInstalledExe' "myprog" []
         >>= assertOutputContains "aaa"
 
