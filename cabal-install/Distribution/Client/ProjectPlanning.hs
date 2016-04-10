@@ -1,6 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable, 
-             RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, RankNTypes #-}
 
 -- | Planning how to build everything in a project.
 --
@@ -56,13 +54,15 @@ module Distribution.Client.ProjectPlanning (
     createPackageDBIfMissing
   ) where
 
+import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
+import           Distribution.Client.ProjectPlanOutput
 
-import           Distribution.Client.Types hiding (BuildResult, BuildSuccess(..), BuildFailure(..), DocsResult(..), TestsResult(..))
-import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
+import           Distribution.Client.Types
+                   hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
+                          , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
@@ -76,14 +76,13 @@ import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
-import           Distribution.Utils.NubList (toNubList)
+import           Distribution.Utils.NubList
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
-import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -96,12 +95,10 @@ import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
-import           Distribution.ModuleName (ModuleName)
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import           Distribution.Simple.InstallDirs (PathTemplate)
 import qualified Distribution.Simple.BuildTarget as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
@@ -115,8 +112,6 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Graph as Graph
 import qualified Data.Tree  as Tree
-import qualified Data.ByteString.Lazy as LBS
-
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
 #endif
@@ -127,11 +122,6 @@ import           Data.List
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Function
-
-import           Distribution.Compat.Binary
-import           GHC.Generics (Generic)
-import           Data.Typeable (Typeable)
-
 import           System.FilePath
 
 
@@ -176,234 +166,13 @@ import           System.FilePath
 -- condition on the graph structure).
 --
 
--- | The combination of an elaborated install plan plus a
--- 'ElaboratedSharedConfig' contains all the details necessary to be able
--- to execute the plan without having to make further policy decisions.
---
--- It does not include dynamic elements such as resources (such as http
--- connections).
---
-type ElaboratedInstallPlan
-   = GenericInstallPlan InstalledPackageInfo
-                        ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
+-- Refer to ProjectPlanning.Types for details of these important types:
 
-type ElaboratedPlanPackage
-   = GenericPlanPackage InstalledPackageInfo
-                        ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
-
-type SolverInstallPlan
-   = InstallPlan --TODO: [code cleanup] redefine locally or move def to solver interface
-
---TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
---      even platform and compiler could be different if we're building things
---      like a server + client with ghc + ghcjs
-data ElaboratedSharedConfig
-   = ElaboratedSharedConfig {
-
-       pkgConfigPlatform         :: Platform,
-       pkgConfigCompiler         :: Compiler, --TODO: [code cleanup] replace with CompilerInfo
-       pkgConfigProgramDb        :: ProgramDb --TODO: [code cleanup] no Eq instance
-       --TODO: [code cleanup] binary instance does not preserve the prog paths
-       --      perhaps should keep the configured progs separately
-     }
-  deriving (Show, Generic)
-
-instance Binary ElaboratedSharedConfig
-
-data ElaboratedConfiguredPackage
-   = ElaboratedConfiguredPackage {
-
-       pkgInstalledId :: InstalledPackageId,
-       pkgSourceId    :: PackageId,
-
-       -- | TODO: [code cleanup] we don't need this, just a few bits from it:
-       --   build type, spec version
-       pkgDescription :: Cabal.PackageDescription,
-
-       -- | A total flag assignment for the package
-       pkgFlagAssignment   :: Cabal.FlagAssignment,
-
-       -- | The original default flag assignment, used only for reporting.
-       pkgFlagDefaults     :: Cabal.FlagAssignment,
-
-       -- | The exact dependencies (on other plan packages)
-       --
-       pkgDependencies     :: ComponentDeps [ConfiguredId],
-
-       -- | Which optional stanzas (ie testsuites, benchmarks) can be built.
-       -- This means the solver produced a plan that has them available.
-       -- This doesn't necessary mean we build them by default.
-       pkgStanzasAvailable :: Set OptionalStanza,
-
-       -- | Which optional stanzas the user explicitly asked to enable or
-       -- to disable. This tells us which ones we build by default, and
-       -- helps with error messages when the user asks to build something
-       -- they explicitly disabled.
-       pkgStanzasRequested :: Map OptionalStanza Bool,
-
-       -- | Which optional stanzas (ie testsuites, benchmarks) will actually
-       -- be enabled during the package configure step.
-       pkgStanzasEnabled :: Set OptionalStanza,
-
-       -- | Where the package comes from, e.g. tarball, local dir etc. This
-       --   is not the same as where it may be unpacked to for the build.
-       pkgSourceLocation :: PackageLocation (Maybe FilePath),
-
-       -- | The hash of the source, e.g. the tarball. We don't have this for
-       -- local source dir packages.
-       pkgSourceHash     :: Maybe PackageSourceHash,
-
-       --pkgSourceDir ? -- currently passed in later because they can use temp locations
-       --pkgBuildDir  ? -- but could in principle still have it here, with optional instr to use temp loc
-
-       pkgBuildStyle             :: BuildStyle,
-
-       pkgSetupPackageDBStack    :: PackageDBStack,
-       pkgBuildPackageDBStack    :: PackageDBStack,
-       pkgRegisterPackageDBStack :: PackageDBStack,
-
-       -- | The package contains a library and so must be registered
-       pkgRequiresRegistration :: Bool,
-       pkgDescriptionOverride  :: Maybe CabalFileText,
-
-       pkgVanillaLib           :: Bool,
-       pkgSharedLib            :: Bool,
-       pkgDynExe               :: Bool,
-       pkgGHCiLib              :: Bool,
-       pkgProfLib              :: Bool,
-       pkgProfExe              :: Bool,
-       pkgProfLibDetail        :: ProfDetailLevel,
-       pkgProfExeDetail        :: ProfDetailLevel,
-       pkgCoverage             :: Bool,
-       pkgOptimization         :: OptimisationLevel,
-       pkgSplitObjs            :: Bool,
-       pkgStripLibs            :: Bool,
-       pkgStripExes            :: Bool,
-       pkgDebugInfo            :: DebugInfoLevel,
-
-       pkgConfigureScriptArgs   :: [String],
-       pkgExtraLibDirs          :: [FilePath],
-       pkgExtraFrameworkDirs    :: [FilePath],
-       pkgExtraIncludeDirs      :: [FilePath],
-       pkgProgPrefix            :: Maybe PathTemplate,
-       pkgProgSuffix            :: Maybe PathTemplate,
-
-       pkgInstallDirs           :: InstallDirs.InstallDirs FilePath,
-
-       pkgHaddockHoogle         :: Bool,
-       pkgHaddockHtml           :: Bool,
-       pkgHaddockHtmlLocation   :: Maybe String,
-       pkgHaddockExecutables    :: Bool,
-       pkgHaddockTestSuites     :: Bool,
-       pkgHaddockBenchmarks     :: Bool,
-       pkgHaddockInternal       :: Bool,
-       pkgHaddockCss            :: Maybe FilePath,
-       pkgHaddockHscolour       :: Bool,
-       pkgHaddockHscolourCss    :: Maybe FilePath,
-       pkgHaddockContents       :: Maybe PathTemplate,
-
-       -- Setup.hs related things:
-
-       -- | One of four modes for how we build and interact with the Setup.hs
-       -- script, based on whether it's a build-type Custom, with or without
-       -- explicit deps and the cabal spec version the .cabal file needs.
-       pkgSetupScriptStyle      :: SetupScriptStyle,
-
-       -- | The version of the Cabal command line interface that we are using
-       -- for this package. This is typically the version of the Cabal lib
-       -- that the Setup.hs is built against.
-       pkgSetupScriptCliVersion :: Version,
-
-       -- Build time related:
-       pkgBuildTargets          :: [ComponentTarget],
-       pkgReplTarget            :: Maybe ComponentTarget,
-       pkgBuildHaddocks         :: Bool
-     }
-  deriving (Eq, Show, Generic)
-
-instance Binary ElaboratedConfiguredPackage
-
-instance Package ElaboratedConfiguredPackage where
-  packageId = pkgSourceId
-
-instance HasUnitId ElaboratedConfiguredPackage where
-  installedUnitId = pkgInstalledId
-
-instance PackageFixedDeps ElaboratedConfiguredPackage where
-  depends = fmap (map installedPackageId) . pkgDependencies
-
--- | This is used in the install plan to indicate how the package will be
--- built.
---
-data BuildStyle =
-    -- | The classic approach where the package is built, then the files
-    -- installed into some location and the result registered in a package db.
-    --
-    -- If the package came from a tarball then it's built in a temp dir and
-    -- the results discarded.
-    BuildAndInstall
-
-    -- | The package is built, but the files are not installed anywhere,
-    -- rather the build dir is kept and the package is registered inplace.
-    --
-    -- Such packages can still subsequently be installed.
-    --
-    -- Typically 'BuildAndInstall' packages will only depend on other
-    -- 'BuildAndInstall' style packages and not on 'BuildInplaceOnly' ones.
-    --
-  | BuildInplaceOnly
-  deriving (Eq, Show, Generic)
-
-instance Binary BuildStyle
-
-type CabalFileText = LBS.ByteString
-
-type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
-                                                  InstalledPackageInfo
-
---TODO: [code cleanup] this duplicates the InstalledPackageInfo quite a bit in an install plan
--- because the same ipkg is used by many packages. So the binary file will be big.
--- Could we keep just (ipkgid, deps) instead of the whole InstalledPackageInfo?
--- or transform to a shared form when serialising / deserialising
-
-data GenericBuildResult ipkg iresult ifailure
-                  = BuildFailure ifailure
-                  | BuildSuccess (Maybe ipkg) iresult
-  deriving (Eq, Show, Generic)
-
-instance (Binary ipkg, Binary iresult, Binary ifailure) =>
-         Binary (GenericBuildResult ipkg iresult ifailure)
-
-type BuildResult  = GenericBuildResult InstalledPackageInfo 
-                                       BuildSuccess BuildFailure
-
-data BuildSuccess = BuildOk DocsResult TestsResult
-  deriving (Eq, Show, Generic)
-
-data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
-  deriving (Eq, Show, Generic)
-
-data TestsResult = TestsNotTried | TestsOk
-  deriving (Eq, Show, Generic)
-
-data BuildFailure = PlanningFailed              --TODO: [required eventually] not yet used
-                  | DependentFailed PackageId
-                  | DownloadFailed  String      --TODO: [required eventually] not yet used
-                  | UnpackFailed    String      --TODO: [required eventually] not yet used
-                  | ConfigureFailed String
-                  | BuildFailed     String
-                  | TestsFailed     String      --TODO: [required eventually] not yet used
-                  | InstallFailed   String
-  deriving (Eq, Show, Typeable, Generic)
-
-instance Exception BuildFailure
-
-instance Binary BuildFailure
-instance Binary BuildSuccess
-instance Binary DocsResult
-instance Binary TestsResult
+-- type ElaboratedInstallPlan = ...
+-- type ElaboratedPlanPackage = ...
+-- data ElaboratedSharedConfig = ...
+-- data ElaboratedConfiguredPackage = ...
+-- data BuildStyle =
 
 
 sanityCheckElaboratedConfiguredPackage :: ElaboratedSharedConfig
@@ -471,12 +240,14 @@ rebuildInstallPlan verbosity
           (projectConfig, projectConfigTransient) <- phaseReadProjectConfig
           localPackages <- phaseReadLocalPackages projectConfig
           compilerEtc   <- phaseConfigureCompiler projectConfig
+          _             <- phaseConfigurePrograms projectConfig compilerEtc
           solverPlan    <- phaseRunSolver         projectConfigTransient
                                                   compilerEtc localPackages
           (elaboratedPlan,
            elaboratedShared) <- phaseElaboratePlan projectConfigTransient
                                                    compilerEtc
                                                    solverPlan localPackages
+          phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
 
           return (elaboratedPlan, elaboratedShared,
                   projectConfig)
@@ -540,29 +311,82 @@ rebuildInstallPlan verbosity
     --
     phaseConfigureCompiler :: ProjectConfig
                            -> Rebuild (Compiler, Platform, ProgramDb)
-    phaseConfigureCompiler ProjectConfig{projectConfigShared} = do
+    phaseConfigureCompiler ProjectConfig {
+                             projectConfigShared = ProjectConfigShared {
+                               projectConfigHcFlavor,
+                               projectConfigHcPath,
+                               projectConfigHcPkg
+                             },
+                             projectConfigLocalPackages = PackageConfig {
+                               packageConfigProgramPaths,
+                               packageConfigProgramArgs,
+                               packageConfigProgramPathExtra
+                             }
+                           } = do
         progsearchpath <- liftIO $ getSystemSearchPath
         rerunIfChanged verbosity projectRootDir fileMonitorCompiler
-                       (hcFlavor, hcPath, hcPkg, progsearchpath) $ do
+                       (hcFlavor, hcPath, hcPkg, progsearchpath,
+                        packageConfigProgramPaths,
+                        packageConfigProgramArgs,
+                        packageConfigProgramPathExtra) $ do
 
           liftIO $ info verbosity "Compiler settings changed, reconfiguring..."
-          result@(_, _, progdb) <- liftIO $
+          result@(_, _, progdb') <- liftIO $
             Cabal.configCompilerEx
               hcFlavor hcPath hcPkg
-              defaultProgramDb verbosity
+              progdb verbosity
 
-          monitorFiles (programsMonitorFiles progdb)
+        -- Note that we added the user-supplied program locations and args
+        -- for /all/ programs, not just those for the compiler prog and
+        -- compiler-related utils. In principle we don't know which programs
+        -- the compiler will configure (and it does vary between compilers).
+        -- We do know however that the compiler will only configure the
+        -- programs it cares about, and those are the ones we monitor here.
+          monitorFiles (programsMonitorFiles progdb')
 
           return result
       where
         hcFlavor = flagToMaybe projectConfigHcFlavor
         hcPath   = flagToMaybe projectConfigHcPath
         hcPkg    = flagToMaybe projectConfigHcPkg
-        ProjectConfigShared {
-          projectConfigHcFlavor,
-          projectConfigHcPath,
-          projectConfigHcPkg
-        }        = projectConfigShared
+        progdb   =
+            userSpecifyPaths (Map.toList (getMapLast packageConfigProgramPaths))
+          . userSpecifyArgss (Map.toList (getMapMappend packageConfigProgramArgs))
+          . modifyProgramSearchPath
+              (++ [ ProgramSearchPathDir dir
+                  | dir <- fromNubList packageConfigProgramPathExtra ])
+          $ defaultProgramDb
+
+
+    -- Configuring other programs.
+    --
+    -- Having configred the compiler, now we configure all the remaining
+    -- programs. This is to check we can find them, and to monitor them for
+    -- changes.
+    --
+    -- TODO: [required eventually] we don't actually do this yet.
+    --
+    -- We rely on the fact that the previous phase added the program config for
+    -- all local packages, but that all the programs configured so far are the
+    -- compiler program or related util programs.
+    --
+    phaseConfigurePrograms :: ProjectConfig
+                           -> (Compiler, Platform, ProgramDb)
+                           -> Rebuild ()
+    phaseConfigurePrograms projectConfig (_, _, compilerprogdb) = do
+        -- Users are allowed to specify program locations independently for
+        -- each package (e.g. to use a particular version of a pre-processor
+        -- for some packages). However they cannot do this for the compiler
+        -- itself as that's just not going to work. So we check for this.
+        liftIO $ checkBadPerPackageCompilerPaths
+          (configuredPrograms compilerprogdb)
+          (getMapMappend (projectConfigSpecificPackage projectConfig))
+
+        --TODO: [required eventually] find/configure other programs that the
+        -- user specifies.
+
+        --TODO: [required eventually] find/configure all build-tools
+        -- but note that some of them may be built as part of the plan.
 
 
     -- Run the solver to get the initial install plan.
@@ -587,6 +411,10 @@ rebuildInstallPlan verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
+          --TODO: [code cleanup] it'd be better if the Compiler contained the
+          -- ConfiguredPrograms that it needs, rather than relying on the progdb
+          -- since we don't need to depend on all the programs here, just the
+          -- ones relevant for the compiler.
 
           liftIO $ do
             solver <- chooseSolver verbosity
@@ -604,7 +432,7 @@ rebuildInstallPlan verbosity
                            cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
-        solverSettings = resolveSolverSettings projectConfigShared
+        solverSettings = resolveSolverSettings projectConfig
         logMsg message rest = debugNoWrap verbosity message >> rest
 
         localPackagesEnabledStanzas =
@@ -665,12 +493,30 @@ rebuildInstallPlan verbosity
             defaultInstallDirs
             projectConfigShared
             projectConfigLocalPackages
-            projectConfigSpecificPackage
+            (getMapMappend projectConfigSpecificPackage)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity 
                         cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
+
+
+    -- Update the files we maintain that reflect our current build environment.
+    -- In particular we maintain a JSON representation of the elaborated
+    -- install plan.
+    --
+    -- TODO: [required eventually] maintain the ghc environment file reflecting
+    -- the libs available. This will need to be after plan improvement phase.
+    --
+    phaseMaintainPlanOutputs :: ElaboratedInstallPlan
+                             -> ElaboratedSharedConfig
+                             -> Rebuild ()
+    phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = do
+        liftIO $ debug verbosity "Updating plan.json"
+        liftIO $ writePlanExternalRepresentation
+                   distDirLayout
+                   elaboratedPlan
+                   elaboratedShared
 
 
     -- Improve the elaborated install plan. The elaborated plan consists
@@ -701,9 +547,9 @@ rebuildInstallPlan verbosity
         storeDirectory  = cabalStoreDirectory (compilerId compiler)
         storePackageDb  = cabalStorePackageDB (compilerId compiler)
         ElaboratedSharedConfig {
-          pkgConfigCompiler  = compiler,
-          pkgConfigPlatform  = platform,
-          pkgConfigProgramDb = progdb
+          pkgConfigPlatform      = platform,
+          pkgConfigCompiler      = compiler,
+          pkgConfigCompilerProgs = progdb
         } = elaboratedShared
 
 
@@ -935,8 +781,18 @@ planPackages comp platform solver SolverSettings{..}
           ]
 
       . addConstraints
-          --TODO: [nice to have] this just applies all flags to all targets which
-          -- is silly. We should check if the flags are appropriate
+          --TODO: [nice to have] should have checked at some point that the
+          -- package in question actually has these flags.
+          [ LabeledPackageConstraint
+              (PackageConstraintFlags pkgname flags)
+              ConstraintSourceConfigFlagOrTarget
+          | (pkgname, flags) <- Map.toList solverSettingFlagAssignments ]
+
+      . addConstraints
+          --TODO: [nice to have] we have user-supplied flags for unspecified
+          -- local packages (as well as specific per-package flags). For the
+          -- former we just apply all these flags to all local targets which
+          -- is silly. We should check if the flags are appropriate.
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget
@@ -996,7 +852,7 @@ elaborateInstallPlan
   -> PackageConfig
   -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
-elaborateInstallPlan platform compiler progdb
+elaborateInstallPlan platform compiler compilerprogdb
                      DistDirLayout{..}
                      cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
                      solverPlan pkgsImplicitSetupDeps localPackages
@@ -1009,9 +865,9 @@ elaborateInstallPlan platform compiler progdb
   where
     elaboratedSharedConfig =
       ElaboratedSharedConfig {
-        pkgConfigPlatform         = platform,
-        pkgConfigCompiler         = compiler,
-        pkgConfigProgramDb        = progdb
+        pkgConfigPlatform      = platform,
+        pkgConfigCompiler      = compiler,
+        pkgConfigCompilerProgs = compilerprogdb
       }
 
     elaboratedInstallPlan =
@@ -1131,6 +987,23 @@ elaborateInstallPlan platform compiler progdb
         pkgStripExes     = perPkgOptionFlag pkgid False packageConfigStripExes
         pkgDebugInfo     = perPkgOptionFlag pkgid NoDebugInfo packageConfigDebugInfo
 
+        -- Combine the configured compiler prog settings with the user-supplied
+        -- config. For the compiler progs any user-supplied config was taken
+        -- into account earlier when configuring the compiler so its ok that
+        -- our configured settings for the compiler override the user-supplied
+        -- config here.
+        pkgProgramPaths  = Map.fromList
+                             [ (programId prog, programPath prog)
+                             | prog <- configuredPrograms compilerprogdb ]
+                        <> perPkgOptionMapLast pkgid packageConfigProgramPaths
+        pkgProgramArgs   = Map.fromList
+                             [ (programId prog, args)
+                             | prog <- configuredPrograms compilerprogdb
+                             , let args = programOverrideArgs prog
+                             , not (null args)
+                             ]
+                        <> perPkgOptionMapMappend pkgid packageConfigProgramArgs
+        pkgProgramPathExtra    = perPkgOptionNubList pkgid packageConfigProgramPathExtra
         pkgConfigureScriptArgs = perPkgOptionList pkgid packageConfigConfigureArgs
         pkgExtraLibDirs        = perPkgOptionList pkgid packageConfigExtraLibDirs
         pkgExtraFrameworkDirs  = perPkgOptionList pkgid packageConfigExtraFrameworkDirs
@@ -1179,6 +1052,9 @@ elaborateInstallPlan platform compiler progdb
     perPkgOptionFlag  pkgid def f = fromFlagOrDefault def (lookupPerPkgOption pkgid f)
     perPkgOptionMaybe pkgid     f = flagToMaybe (lookupPerPkgOption pkgid f)
     perPkgOptionList  pkgid     f = lookupPerPkgOption pkgid f
+    perPkgOptionNubList    pkgid f = fromNubList   (lookupPerPkgOption pkgid f)
+    perPkgOptionMapLast    pkgid f = getMapLast    (lookupPerPkgOption pkgid f)
+    perPkgOptionMapMappend pkgid f = getMapMappend (lookupPerPkgOption pkgid f)
 
     perPkgOptionLibExeFlag pkgid def fboth flib = (exe, lib)
       where
@@ -1287,32 +1163,11 @@ elaborateInstallPlan platform compiler progdb
 -- Build targets
 --
 
--- | The various targets within a package. This is more of a high level
--- specification than a elaborated prescription.
---
-data PackageTarget =
-     -- | Build the default components in this package. This usually means
-     -- just the lib and exes, but it can also mean the testsuites and
-     -- benchmarks if the user explicitly requested them.
-     BuildDefaultComponents
-     -- | Build a specific component in this package.
-   | BuildSpecificComponent ComponentTarget
-   | ReplDefaultComponent
-   | ReplSpecificComponent  ComponentTarget
-   | HaddockDefaultComponents
-  deriving (Eq, Show, Generic)
+-- Refer to ProjectPlanning.Types for details of these important types:
 
-data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
-  deriving (Eq, Show, Generic)
-
-data SubComponentTarget = WholeComponent
-                        | ModuleTarget ModuleName
-                        | FileTarget   FilePath
-  deriving (Eq, Show, Generic)
-
-instance Binary PackageTarget
-instance Binary ComponentTarget
-instance Binary SubComponentTarget
+-- data PackageTarget = ...
+-- data ComponentTarget = ...
+-- data SubComponentTarget = ...
 
 
 --TODO: this needs to report some user target/config errors
@@ -1660,8 +1515,8 @@ dependencyGraph pkgid deps pkgs =
 -- solver phase, and part in the elaboration phase. We keep the helper
 -- functions for both phases together here so at least you can see all of it
 -- in one place.
-
--- | There are four major cases for Setup.hs handling:
+--
+-- There are four major cases for Setup.hs handling:
 --
 --  1. @build-type@ Custom with a @custom-setup@ section
 --  2. @build-type@ Custom without a @custom-setup@ section
@@ -1678,14 +1533,7 @@ dependencyGraph pkgid deps pkgs =
 -- to build an external Setup.hs script because the package needs a later
 -- Cabal lib version than we can support internally.
 --
-data SetupScriptStyle = SetupCustomExplicitDeps
-                      | SetupCustomImplicitDeps
-                      | SetupNonCustomExternalLib
-                      | SetupNonCustomInternalLib
-  deriving (Eq, Show, Generic)
-
-instance Binary SetupScriptStyle
-
+-- data SetupScriptStyle = ...  -- see ProjectPlanning.Types
 
 -- | Work out the 'SetupScriptStyle' given the package description.
 --
@@ -1907,7 +1755,7 @@ setupHsScriptOptions (ReadyPackage ElaboratedConfiguredPackage{..} deps)
                                  | ipkg <- CD.setupDeps deps ],
       useDependenciesExclusive = True,
       useVersionMacros         = pkgSetupScriptStyle == SetupCustomExplicitDeps,
-      useProgramConfig         = pkgConfigProgramDb,
+      useProgramConfig         = pkgConfigCompilerProgs,
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
@@ -1976,12 +1824,12 @@ setupHsConfigureFlags (ReadyPackage
 
     configIPID                = toFlag (display (installedUnitId pkg))
 
-    configProgramPaths        = programDbProgramPaths pkgConfigProgramDb
-    configProgramArgs         = programDbProgramArgs  pkgConfigProgramDb
-    configProgramPathExtra    = programDbPathExtra    pkgConfigProgramDb
+    configProgramPaths        = Map.toList pkgProgramPaths
+    configProgramArgs         = Map.toList pkgProgramArgs
+    configProgramPathExtra    = toNubList pkgProgramPathExtra
     configHcFlavor            = toFlag (compilerFlavor pkgConfigCompiler)
-    configHcPath              = mempty -- use configProgramPaths instead
-    configHcPkg               = mempty -- use configProgramPaths instead
+    configHcPath              = mempty -- we use configProgramPaths instead
+    configHcPkg               = mempty -- we use configProgramPaths instead
 
     configVanillaLib          = toFlag pkgVanillaLib
     configSharedLib           = toFlag pkgSharedLib
@@ -2038,23 +1886,6 @@ setupHsConfigureFlags (ReadyPackage
     configScratchDir          = mempty -- never use
     configUserInstall         = mempty -- don't rely on defaults
     configPrograms_           = mempty -- never use, shouldn't exist
-
-    programDbProgramPaths db =
-      [ (programId prog, programPath prog)
-      | prog <- configuredPrograms db ]
-
-    programDbProgramArgs db =
-      [ (programId prog, programOverrideArgs prog)
-      | prog <- configuredPrograms db ]
-
-    programDbPathExtra db =
-      case getProgramSearchPath db of
-        ProgramSearchPathDefault : extra ->
-          toNubList [ dir | ProgramSearchPathDir dir <- extra ]
-        _ -> error $ "setupHsConfigureFlags: we cannot currently cope with a "
-                  ++ "search path that does not start with the system path"
-                  -- the Setup.hs interface only has --extra-prog-path
-                  -- so we cannot put things before the $PATH, only after
 
 
 setupHsBuildFlags :: ElaboratedConfiguredPackage

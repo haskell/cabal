@@ -9,6 +9,8 @@ module Distribution.Client.ProjectConfig (
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
     PackageConfig(..),
+    MapLast(..),
+    MapMappend(..),
 
     -- * Project config files
     findProjectRoot,
@@ -32,6 +34,10 @@ module Distribution.Client.ProjectConfig (
     resolveSolverSettings,
     BuildTimeSettings(..),
     resolveBuildTimeSettings,
+
+    -- * Checking configuration
+    checkBadPerPackageCompilerPaths,
+    BadPerPackageCompilerPaths(..)
   ) where
 
 import Distribution.Client.ProjectConfig.Types
@@ -60,6 +66,8 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo )
+import Distribution.Simple.Program
+         ( ConfiguredProgram(..) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
          , fromFlag, AllowNewer(..) )
@@ -90,6 +98,8 @@ import Data.Typeable
 import Data.Maybe
 import Data.Either
 import qualified Data.Map as Map
+import Data.Map (Map)
+import qualified Data.Set as Set
 import Distribution.Compat.Semigroup
 import System.FilePath hiding (combine)
 import System.Directory
@@ -113,7 +123,8 @@ lookupLocalPackageConfig field ProjectConfig {
                            projectConfigSpecificPackage
                          } pkgname =
     field projectConfigLocalPackages
- <> maybe mempty field (Map.lookup pkgname projectConfigSpecificPackage)
+ <> maybe mempty field
+          (Map.lookup pkgname (getMapMappend projectConfigSpecificPackage))
 
 
 -- | Use a 'RepoContext' based on the 'BuildTimeSettings'.
@@ -156,15 +167,23 @@ projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
 -- | Resolve the project configuration, with all its optional fields, into
 -- 'SolverSettings' with no optional fields (by applying defaults).
 --
-resolveSolverSettings :: ProjectConfigShared -> SolverSettings
-resolveSolverSettings projectConfig =
+resolveSolverSettings :: ProjectConfig -> SolverSettings
+resolveSolverSettings ProjectConfig{
+                        projectConfigShared,
+                        projectConfigLocalPackages,
+                        projectConfigSpecificPackage
+                      } =
     SolverSettings {..}
   where
+    --TODO: [required eventually] some of these settings need validation, e.g.
+    -- the flag assignments need checking.
     solverSettingRemoteRepos       = fromNubList projectConfigRemoteRepos
     solverSettingLocalRepos        = fromNubList projectConfigLocalRepos
     solverSettingConstraints       = projectConfigConstraints
     solverSettingPreferences       = projectConfigPreferences
-    solverSettingFlagAssignment    = projectConfigFlagAssignment
+    solverSettingFlagAssignment    = packageConfigFlagAssignment projectConfigLocalPackages
+    solverSettingFlagAssignments   = fmap packageConfigFlagAssignment
+                                          (getMapMappend projectConfigSpecificPackage)
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
     solverSettingAllowNewer        = fromJust projectConfigAllowNewer
@@ -180,7 +199,7 @@ resolveSolverSettings projectConfig =
   --solverSettingOverrideReinstall = fromFlag projectConfigOverrideReinstall
   --solverSettingUpgradeDeps       = fromFlag projectConfigUpgradeDeps
 
-    ProjectConfigShared {..} = defaults <> projectConfig
+    ProjectConfigShared {..} = defaults <> projectConfigShared
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
@@ -388,10 +407,10 @@ readProjectLocalExtraConfig verbosity projectRootDir = do
       else do monitorFiles [monitorNonExistentFile projectExtraConfigFile]
               return mempty
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
 
     readProjectExtraConfigFile =
-          reportParseResult verbosity "project extra configuration file"
+          reportParseResult verbosity "project local configuration file"
                             projectExtraConfigFile
         . parseProjectConfig
       =<< readFile projectExtraConfigFile
@@ -424,7 +443,7 @@ writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir =
     writeProjectConfigFile projectExtraConfigFile
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.extra"
+    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
 
 
 -- | Write in the @cabal.project@ format to the given file.
@@ -610,8 +629,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       case () of
         _ | isDir
          -> do let dirname = filename -- now we know its a dir
-                   glob    = globStarDotCabal pkglocstr
-               matches <- matchFileGlob projectRootDir glob
+               matches <- matchFileGlob dirname globStarDotCabal
                case matches of
                  [match]
                      -> return (Right (ProjectPackageLocalDirectory
@@ -638,12 +656,9 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                       && takeExtension (dropExtension f) == ".tar"
 
 
-globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal :: FilePathGlob
 globStarDotCabal =
-    FilePathGlob FilePathRelative
-  . foldr (\dirpart -> GlobDir [Literal dirpart])
-          (GlobFile [WildCard, Literal ".cabal"])
-  . splitDirectories
+    FilePathGlob FilePathRelative (GlobFile [WildCard, Literal ".cabal"])
 
 
 --TODO: [code cleanup] use sufficiently recent transformers package
@@ -674,4 +689,38 @@ readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
 readSourcePackage _verbosity _ =
     fail $ "TODO: add support for fetching and reading local tarballs, remote "
         ++ "tarballs, remote repos and passing named packages through"
+
+
+---------------------------------------------
+-- Checking configuration sanity
+--
+
+data BadPerPackageCompilerPaths
+   = BadPerPackageCompilerPaths [(PackageName, String)]
+  deriving (Show, Typeable)
+
+instance Exception BadPerPackageCompilerPaths
+--TODO: [required eventually] displayException for nice rendering
+--TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+-- | The project configuration is not allowed to specify program locations for
+-- programs used by the compiler as these have to be the same for each set of
+-- packages.
+--
+-- We cannot check this until we know which programs the compiler uses, which
+-- in principle is not until we've configured the compiler.
+--
+-- Throws 'BadPerPackageCompilerPaths'
+--
+checkBadPerPackageCompilerPaths :: [ConfiguredProgram]
+                                -> Map PackageName PackageConfig
+                                -> IO ()
+checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
+    case [ (pkgname, progname)
+         | let compProgNames = Set.fromList (map programId compilerPrograms)
+         ,  (pkgname, pkgconf) <- Map.toList packagesConfig
+         , progname <- Map.keys (getMapLast (packageConfigProgramPaths pkgconf))
+         , progname `Set.member` compProgNames ] of
+      [] -> return ()
+      ps -> throwIO (BadPerPackageCompilerPaths ps)
 

@@ -80,7 +80,6 @@ import Distribution.Simple.Command
 import Control.Applicative
 #endif
 import Control.Monad
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Char (isSpace)
 import Distribution.Compat.Semigroup
@@ -107,7 +106,7 @@ data LegacyProjectConfig = LegacyProjectConfig {
 
        legacySharedConfig      :: LegacySharedConfig,
        legacyLocalConfig       :: LegacyPackageConfig,
-       legacySpecificConfig    :: Map PackageName LegacyPackageConfig
+       legacySpecificConfig    :: MapMappend PackageName LegacyPackageConfig
      } deriving Generic
 
 instance Monoid LegacyProjectConfig where
@@ -280,20 +279,14 @@ convertLegacyAllPackageFlags globalFlags configFlags
     } = globalFlags
 
     ConfigFlags {
-      configProgramPaths,
-      configProgramArgs,
-      configProgramPathExtra    = projectConfigProgramPathExtra,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
-      configConfigurationsFlags = projectConfigFlagAssignment,
       configAllowNewer          = projectConfigAllowNewer
     } = configFlags
-    projectConfigProgramPaths   = Map.fromList configProgramPaths
-    projectConfigProgramArgs    = Map.fromList configProgramArgs
 
     ConfigExFlags {
       configCabalVersion        = projectConfigCabalVersion,
@@ -326,6 +319,9 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
     PackageConfig{..}
   where
     ConfigFlags {
+      configProgramPaths,
+      configProgramArgs,
+      configProgramPathExtra    = packageConfigProgramPathExtra,
       configVanillaLib          = packageConfigVanillaLib,
       configProfLib             = packageConfigProfLib,
       configSharedLib           = packageConfigSharedLib,
@@ -345,7 +341,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configExtraLibDirs        = packageConfigExtraLibDirs,
       configExtraFrameworkDirs  = packageConfigExtraFrameworkDirs,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
-      configConfigurationsFlags = _projectConfigFlagAssignment, --TODO: should be per pkg
+      configConfigurationsFlags = packageConfigFlagAssignment,
       configTests               = packageConfigTests,
       configBenchmarks          = packageConfigBenchmarks,
       configCoverage            = coverage,
@@ -353,6 +349,8 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       configDebugInfo           = packageConfigDebugInfo,
       configRelocatable         = packageConfigRelocatable
     } = configFlags
+    packageConfigProgramPaths   = MapLast    (Map.fromList configProgramPaths)
+    packageConfigProgramArgs    = MapMappend (Map.fromList configProgramArgs)
 
     packageConfigCoverage       = coverage <> libcoverage
     --TODO: defer this merging to the resolve phase
@@ -529,9 +527,9 @@ convertToLegacyAllPackageConfig
   where
     configFlags = ConfigFlags {
       configPrograms_           = mempty,
-      configProgramPaths        = Map.toList projectConfigProgramPaths,
-      configProgramArgs         = Map.toList projectConfigProgramArgs,
-      configProgramPathExtra    = projectConfigProgramPathExtra,
+      configProgramPaths        = mempty,
+      configProgramArgs         = mempty,
+      configProgramPathExtra    = mempty,
       configHcFlavor            = projectConfigHcFlavor,
       configHcPath              = projectConfigHcPath,
       configHcPkg               = projectConfigHcPkg,
@@ -563,7 +561,7 @@ convertToLegacyAllPackageConfig
       configDependencies        = mempty,
       configExtraIncludeDirs    = mempty,
       configIPID                = mempty,
-      configConfigurationsFlags = projectConfigFlagAssignment,
+      configConfigurationsFlags = mempty,
       configTests               = mempty,
       configCoverage            = mempty, --TODO: don't merge
       configLibCoverage         = mempty, --TODO: don't merge
@@ -590,9 +588,9 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
   where
     configFlags = ConfigFlags {
       configPrograms_           = configPrograms_ mempty,
-      configProgramPaths        = mempty,
-      configProgramArgs         = mempty,
-      configProgramPathExtra    = mempty,
+      configProgramPaths        = Map.toList (getMapLast packageConfigProgramPaths),
+      configProgramArgs         = Map.toList (getMapMappend packageConfigProgramArgs),
+      configProgramPathExtra    = packageConfigProgramPathExtra,
       configHcFlavor            = mempty,
       configHcPath              = mempty,
       configHcPkg               = mempty,
@@ -624,7 +622,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configDependencies        = mempty,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configIPID                = mempty,
-      configConfigurationsFlags = mempty,
+      configConfigurationsFlags = packageConfigFlagAssignment,
       configTests               = packageConfigTests,
       configCoverage            = packageConfigCoverage, --TODO: don't merge
       configLibCoverage         = packageConfigCoverage, --TODO: don't merge
@@ -1050,11 +1048,20 @@ packageSpecificOptionsSectionDescr =
                                    configProgramArgs  = args
                                  }
                                }
-                             ),
+                             )
+                        ++ liftFields
+                             legacyConfigureFlags
+                             (\flags pkgconf -> pkgconf {
+                                 legacyConfigureFlags = flags
+                               }
+                             )
+                             programLocationsFieldDescrs,
       sectionSubsections = [],
       sectionGet         = \projconf ->
                              [ (display pkgname, pkgconf)
-                             | (pkgname, pkgconf) <- Map.toList (legacySpecificConfig projconf) ],
+                             | (pkgname, pkgconf) <-
+                                 Map.toList . getMapMappend
+                               . legacySpecificConfig $ projconf ],
       sectionSet         =
         \lineno pkgnamestr pkgconf projconf -> do
           pkgname <- case simpleParse pkgnamestr of
@@ -1064,8 +1071,9 @@ packageSpecificOptionsSectionDescr =
                              ++ "as an argument"
           return projconf {
             legacySpecificConfig =
+              MapMappend $
               Map.insertWith mappend pkgname pkgconf
-                             (legacySpecificConfig projconf)
+                             (getMapMappend $ legacySpecificConfig projconf)
           },
       sectionEmpty       = mempty
     }

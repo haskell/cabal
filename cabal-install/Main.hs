@@ -67,10 +67,9 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
---TODO: temporary import, just to force these modules to be built.
--- It will be replaced by import of new build command once merged.
-import Distribution.Client.ProjectPlanning ()
-import Distribution.Client.ProjectBuilding ()
+import qualified Distribution.Client.CmdConfigure as CmdConfigure
+import qualified Distribution.Client.CmdBuild     as CmdBuild
+import qualified Distribution.Client.CmdRepl      as CmdRepl
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
@@ -276,6 +275,13 @@ mainWorker args = topHandler $
       , hiddenCmd  win32SelfUpgradeCommand win32SelfUpgradeAction
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
+
+      , hiddenCmd  installCommand { commandName = "new-configure" }
+                                  CmdConfigure.configureAction
+      , hiddenCmd  installCommand { commandName = "new-build" }
+                                  CmdBuild.buildAction
+      , hiddenCmd  installCommand { commandName = "new-repl" }
+                                  CmdRepl.replAction
       ]
 
 type Action = GlobalFlags -> IO ()
