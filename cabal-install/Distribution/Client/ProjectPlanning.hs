@@ -389,7 +389,7 @@ rebuildInstallPlan verbosity
         --TODO: [required eventually] find/configure other programs that the
         -- user specifies.
 
-        --TODO: [required eventually] find/configure all build-tools 
+        --TODO: [required eventually] find/configure all build-tools
         -- but note that some of them may be built as part of the plan.
 
 
@@ -788,6 +788,8 @@ planPackages comp platform solver SolverSettings{..}
           ]
 
       . addConstraints
+          --TODO: [nice to have] should have checked at some point that the
+          -- package in question actually has these flags.
           [ LabeledPackageConstraint
               (PackageConstraintFlags pkgname flags)
               ConstraintSourceConfigFlagOrTarget

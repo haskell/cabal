@@ -92,11 +92,13 @@ data ElaboratedSharedConfig
 
        pkgConfigPlatform      :: Platform,
        pkgConfigCompiler      :: Compiler, --TODO: [code cleanup] replace with CompilerInfo
-       pkgConfigCompilerProgs :: ProgramDb --TODO: [code cleanup] no Eq instance
-       --TODO: [code cleanup] binary instance does not preserve the prog paths
-       --      perhaps should keep the configured progs separately
+       -- | The programs that the compiler configured (e.g. for GHC, the progs
+       -- ghc & ghc-pkg). Once constructed, only the 'configuredPrograms' are
+       -- used.
+       pkgConfigCompilerProgs :: ProgramDb
      }
   deriving (Show, Generic)
+  --TODO: [code cleanup] no Eq instance
 
 instance Binary ElaboratedSharedConfig
 

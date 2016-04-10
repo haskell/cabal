@@ -128,6 +128,9 @@ executable cabal
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
+        Distribution.Client.CmdBuild
+        Distribution.Client.CmdConfigure
+        Distribution.Client.CmdRepl
         Distribution.Client.ComponentDeps
         Distribution.Client.Config
         Distribution.Client.Configure
@@ -183,7 +186,6 @@ executable cabal
         Distribution.Client.JobControl
         Distribution.Client.List
         Distribution.Client.Manpage
-        Distribution.Client.MultiPkg
         Distribution.Client.PackageHash
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
