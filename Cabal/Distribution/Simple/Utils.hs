@@ -178,8 +178,6 @@ import Data.Foldable
     ( traverse_ )
 import Data.List
     ( nub, unfoldr, intercalate, isInfixOf )
-import Data.Typeable
-    ( cast )
 import Data.Ord
     ( comparing )
 import qualified Data.ByteString.Lazy as BS
@@ -205,11 +203,7 @@ import System.IO
     ( Handle, openFile, openBinaryFile, openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
-import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
-    , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 import System.IO.Error
-    ( ioeSetLocation, ioeGetLocation )
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 
@@ -234,6 +228,8 @@ cabalVersion = Version [1,9999] []  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+-- TODO: Convert this into its own exception type and subsequently stop
+-- (ab)using 'IOError' for it.
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -246,48 +242,36 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
+-- | Install an error handler which catches the exceptions raised
+-- by 'die' and 'dieWithLocation', and print an appropriate message.
 topHandlerWith :: forall a. (SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
     catches prog [
-        Handler rethrowAsyncExceptions
-      , Handler rethrowExitStatus
-      , Handler handler
+        Handler dieHandler
       ]
   where
-    -- Let async exceptions rise to the top for the default top-handler
-    rethrowAsyncExceptions :: AsyncException -> IO a
-    rethrowAsyncExceptions = throwIO
+    dieHandler :: IOException -> IO a
+    dieHandler ioe
+        | isUserError ioe = do
+            hFlush stdout
+            pname <- getProgName
+            hPutStr stderr (wrapText (message pname ioe))
+            -- TODO: This is a bit goofy but I didn't want to change
+            -- the type signature.
+            cont (toException ioe)
+        | otherwise =
+            throwIO ioe
 
-    -- ExitCode gets thrown asynchronously too, and we don't want to print it
-    rethrowExitStatus :: ExitCode -> IO a
-    rethrowExitStatus = throwIO
-
-    -- Print all other exceptions
-    handler :: SomeException -> IO a
-    handler se = do
-      hFlush stdout
-      pname <- getProgName
-      hPutStr stderr (wrapText (message pname se))
-      cont se
-
-    message :: String -> SomeException -> String
-    message pname (SomeException se) =
-      case cast se :: Maybe IOException of
-        Just ioe ->
-          let file         = case ioeGetFileName ioe of
-                               Nothing   -> ""
-                               Just path -> path ++ location ++ ": "
-              location     = case ioeGetLocation ioe of
-                               l@(n:_) | Char.isDigit n -> ':' : l
-                               _                        -> ""
-              detail       = ioeGetErrorString ioe
-          in pname ++ ": " ++ file ++ detail
-        Nothing ->
-#if __GLASGOW_HASKELL__ < 710
-          show se
-#else
-          displayException se
-#endif
+    message :: String -> IOException -> String
+    message pname ioe =
+        let file         = case ioeGetFileName ioe of
+                             Nothing   -> ""
+                             Just path -> path ++ location ++ ": "
+            location     = case ioeGetLocation ioe of
+                             l@(n:_) | Char.isDigit n -> ':' : l
+                             _                        -> ""
+            detail       = ioeGetErrorString ioe
+        in pname ++ ": " ++ file ++ detail
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
