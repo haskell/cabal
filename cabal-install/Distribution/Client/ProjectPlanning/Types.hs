@@ -268,7 +268,7 @@ data GenericBuildResult ipkg iresult ifailure
 instance (Binary ipkg, Binary iresult, Binary ifailure) =>
          Binary (GenericBuildResult ipkg iresult ifailure)
 
-type BuildResult  = GenericBuildResult InstalledPackageInfo 
+type BuildResult  = GenericBuildResult InstalledPackageInfo
                                        BuildSuccess BuildFailure
 
 data BuildSuccess = BuildOk DocsResult TestsResult

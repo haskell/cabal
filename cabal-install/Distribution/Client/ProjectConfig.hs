@@ -723,4 +723,3 @@ checkBadPerPackageCompilerPaths compilerPrograms packagesConfig =
          , progname `Set.member` compProgNames ] of
       [] -> return ()
       ps -> throwIO (BadPerPackageCompilerPaths ps)
-

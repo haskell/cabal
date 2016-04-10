@@ -1,6 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable,
-             RankNTypes, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, RankNTypes #-}
 
 -- | Planning how to build everything in a project.
 --
@@ -417,6 +415,11 @@ rebuildInstallPlan verbosity
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
           pkgConfigDB       <- liftIO $
                                readPkgConfigDb      verbosity progdb
+          --TODO: [code cleanup] it'd be better if the Compiler contained the
+          -- ConfiguredPrograms that it needs, rather than relying on the progdb
+          -- since we don't need to depend on all the programs here, just the
+          -- ones relevant for the compiler.
+
           --TODO: [code cleanup] it'd be better if the Compiler contained the
           -- ConfiguredPrograms that it needs, rather than relying on the progdb
           -- since we don't need to depend on all the programs here, just the

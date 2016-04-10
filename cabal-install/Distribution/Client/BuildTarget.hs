@@ -31,7 +31,6 @@ module Distribution.Client.BuildTarget (
 
     -- * Resolving build targets
     resolveBuildTargets,
-    getUserTargetFileStatus,
     BuildTargetProblem(..),
     reportBuildTargetProblems,
   ) where
@@ -214,6 +213,8 @@ data BuildTarget pkg =
   deriving (Eq, Ord, Functor, Show, Generic)
 
 
+-- | Get the package that the 'BuildTarget' is referring to.
+--
 buildTargetPackage :: BuildTarget pkg -> pkg
 buildTargetPackage (BuildTargetPackage   p)         = p
 buildTargetPackage (BuildTargetComponent p _cn)     = p
@@ -221,6 +222,10 @@ buildTargetPackage (BuildTargetModule    p _cn _mn) = p
 buildTargetPackage (BuildTargetFile      p _cn _fn) = p
 
 
+-- | Get the 'ComponentName' that the 'BuildTarget' is referring to, if any.
+-- The 'BuildTargetPackage' target kind doesn't refer to any individual
+-- component, while the component, module and file kinds do.
+--
 buildTargetComponentName :: BuildTarget pkg -> Maybe ComponentName
 buildTargetComponentName (BuildTargetPackage   _p)        = Nothing
 buildTargetComponentName (BuildTargetComponent _p cn)     = Just cn
@@ -232,6 +237,10 @@ buildTargetComponentName (BuildTargetFile      _p cn _fn) = Just cn
 -- * Top level, do everything
 -- ------------------------------------------------------------
 
+
+-- | Parse a bunch of command line args as user build targets, failing with an
+-- error if any targets are unrecognised.
+--
 readUserBuildTargets :: [String] -> IO [UserBuildTarget]
 readUserBuildTargets targetStrs = do
     let (uproblems, utargets) = parseUserBuildTargets targetStrs
@@ -239,6 +248,14 @@ readUserBuildTargets targetStrs = do
     return utargets
 
 
+-- | A 'UserBuildTarget's is just a semi-structured string. We sill have quite
+-- a bit of work to do to figure out which targets they refer to (ie packages,
+-- components, file locations etc).
+--
+-- The possible targets are based on the available packages (and their
+-- locations). It fails with an error if any user string cannot be matched to
+-- a valid target.
+--
 resolveUserBuildTargets :: [(PackageDescription, PackageLocation a)]
                         -> [UserBuildTarget] -> IO [BuildTarget PackageName]
 resolveUserBuildTargets pkgs utargets = do
@@ -319,12 +336,15 @@ forgetFileStatus t = case t of
 -- * Parsing user targets
 -- ------------------------------------------------------------
 
+
+-- | Parse a bunch of 'UserBuildTarget's (purely without throwing exceptions).
+--
 parseUserBuildTargets :: [String] -> ([UserBuildTargetProblem]
-                                    ,[UserBuildTarget])
+                                     ,[UserBuildTarget])
 parseUserBuildTargets = partitionEithers . map parseUserBuildTarget
 
 parseUserBuildTarget :: String -> Either UserBuildTargetProblem
-                                        UserBuildTarget
+                                         UserBuildTarget
 parseUserBuildTarget targetstr =
     case readPToMaybe parseTargetApprox targetstr of
       Nothing  -> Left  (UserBuildTargetUnrecognised targetstr)
@@ -363,10 +383,13 @@ parseUserBuildTarget targetstr =
     readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
                                          , all isSpace s ]
 
+-- | Syntax error when trying to parse a 'UserBuildTarget'.
 data UserBuildTargetProblem
    = UserBuildTargetUnrecognised String
   deriving Show
 
+-- | Throw an exception with a formatted message if there are any problems.
+--
 reportUserBuildTargetProblems :: [UserBuildTargetProblem] -> IO ()
 reportUserBuildTargetProblems problems = do
     case [ target | UserBuildTargetUnrecognised target <- problems ] of
@@ -394,6 +417,10 @@ reportUserBuildTargetProblems problems = do
            ++ " - build tests:Data.Foo -- module qualified by component\n"
            ++ " - build lib:foo        -- component qualified by kind"
 
+
+-- | Render a 'UserBuildTarget' back as the external syntax. This is mainly for
+-- error messages.
+--
 showUserBuildTarget :: UserBuildTarget -> String
 showUserBuildTarget = intercalate ":" . components
   where
@@ -465,6 +492,9 @@ resolveBuildTarget ppinfo opinfo userTarget =
         innerErr c m = (c,m)
 
 
+-- | The various ways that trying to resolve a 'UserBuildTarget' to a
+-- 'BuildTarget' can fail.
+--
 data BuildTargetProblem
    = BuildTargetExpected   UserBuildTarget [String]  String
      -- ^  [expected thing] (actually got)
@@ -616,6 +646,8 @@ renderBuildTarget ql t =
                | PackageInfo { pinfoPackageFile = Just (fabs,frel) } <- [p] ]
 
 
+-- | Throw an exception with a formatted message if there are any problems.
+--
 reportBuildTargetProblems :: [BuildTargetProblem] -> IO ()
 reportBuildTargetProblems problems = do
 
