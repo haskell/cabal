@@ -403,7 +403,7 @@ printPlan verbosity
     showPkg pkg = display (packageId pkg)
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage pkg _) =
+    showPkgAndReason (ReadyPackage pkg) =
       display (packageId pkg) ++
       showTargets pkg ++
       showFlagAssignment (nonDefaultFlags pkg) ++

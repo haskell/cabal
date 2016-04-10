@@ -604,29 +604,29 @@ renderBuildTarget ql t =
 
       BuildTargetComponent p c ->
         case ql of
-          QL1 -> [t1                     (dispC p c)]
-          QL2 -> [t2 (dispP p)           (dispC p c),
-                  t2           (dispK c) (dispC p c)]
-          QL3 -> [t3 (dispP p) (dispK c) (dispC p c)]
+          QL1 -> [t1                     (dispC c)]
+          QL2 -> [t2 (dispP p)           (dispC c),
+                  t2           (dispK c) (dispC c)]
+          QL3 -> [t3 (dispP p) (dispK c) (dispC c)]
           QL4 -> []
 
       BuildTargetModule p c m ->
         case ql of
           QL1 -> [t1                                 (dispM m)]
           QL2 -> [t2 (dispP p)                       (dispM m),
-                  t2                     (dispC p c) (dispM m)]
-          QL3 -> [t3 (dispP p)           (dispC p c) (dispM m),
-                  t3           (dispK c) (dispC p c) (dispM m)]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) (dispM m)]
+                  t2                     (dispC c) (dispM m)]
+          QL3 -> [t3 (dispP p)           (dispC c) (dispM m),
+                  t3           (dispK c) (dispC c) (dispM m)]
+          QL4 -> [t4 (dispP p) (dispK c) (dispC c) (dispM m)]
 
       BuildTargetFile p c f ->
         case ql of
           QL1 -> [t1                                 f]
           QL2 -> [t2 (dispP p)                       f,
-                  t2                     (dispC p c) f]
-          QL3 -> [t3 (dispP p)           (dispC p c) f,
-                  t3           (dispK c) (dispC p c) f]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) f]
+                  t2                     (dispC c) f]
+          QL3 -> [t3 (dispP p)           (dispC c) f,
+                  t3           (dispK c) (dispC c) f]
+          QL4 -> [t4 (dispP p) (dispK c) (dispC c) f]
   where
     t1  s1 = UserBuildTargetFileStatus1 s1 none
     t1' s1 = UserBuildTargetFileStatus1 s1
@@ -636,7 +636,7 @@ renderBuildTarget ql t =
     none   = FileStatusNotExists False
 
     dispP = display . packageName
-    dispC = componentStringName . packageName
+    dispC = componentStringName
     dispK = showComponentKindShort . componentKind
     dispM = display
 
@@ -1062,7 +1062,7 @@ selectComponentInfo :: PackageInfo -> PackageDescription -> [ComponentInfo]
 selectComponentInfo pinfo pkg =
     [ ComponentInfo {
         cinfoName    = componentName c,
-        cinfoStrName = componentStringName (packageName pkg) (componentName c),
+        cinfoStrName = componentStringName (componentName c),
         cinfoPackage = pinfo,
         cinfoSrcDirs = hsSourceDirs bi,
 --                       [ pkgroot </> srcdir
@@ -1077,11 +1077,11 @@ selectComponentInfo pinfo pkg =
     , let bi = componentBuildInfo c ]
 
 
-componentStringName :: PackageName -> ComponentName -> ComponentStringName
-componentStringName pkgname CLibName         = display pkgname
-componentStringName _      (CExeName  name)  = name
-componentStringName _      (CTestName  name) = name
-componentStringName _      (CBenchName name) = name
+componentStringName :: ComponentName -> ComponentStringName
+componentStringName (CLibName   name) = name
+componentStringName (CExeName   name) = name
+componentStringName (CTestName  name) = name
+componentStringName (CBenchName name) = name
 
 componentModules :: Component -> [ModuleName]
 componentModules (CLib   lib)   = libModules lib
@@ -1108,8 +1108,8 @@ data ComponentKind = LibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
-componentKind CLibName       = LibKind
-componentKind (CExeName  _)  = ExeKind
+componentKind (CLibName   _) = LibKind
+componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
 componentKind (CBenchName _) = BenchKind
 
@@ -1614,7 +1614,7 @@ ex_cs =
   , (mkC (CExeName "tst") ["src1", "test"]      ["Foo"])
   ]
     where
-    mkC n ds ms = ComponentInfo n (componentStringName pkgid n) ds (map mkMn ms)
+    mkC n ds ms = ComponentInfo n (componentStringName n) ds (map mkMn ms)
     mkMn :: String -> ModuleName
     mkMn  = fromJust . simpleParse
     pkgid :: PackageIdentifier

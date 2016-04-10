@@ -41,7 +41,7 @@ import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
                           , DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, InstallPlan, GenericPlanPackage )
+                   ( GenericInstallPlan, SolverInstallPlan, GenericPlanPackage )
 import           Distribution.Client.ComponentDeps (ComponentDeps)
 
 import           Distribution.Package
@@ -254,7 +254,6 @@ instance Binary BuildStyle
 type CabalFileText = LBS.ByteString
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
-                                                  InstalledPackageInfo
 
 --TODO: [code cleanup] this duplicates the InstalledPackageInfo quite a bit in an install plan
 -- because the same ipkg is used by many packages. So the binary file will be big.
