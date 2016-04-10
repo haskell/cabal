@@ -170,7 +170,11 @@ allPackageSourceFiles verbosity packageDir = do
       doListSources :: IO [FilePath]
       doListSources = do
         setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
-        fmap lines . readFile $ file
+        r <- fmap lines . readFile $ file
+        -- Ensure that we've closed the 'readFile' handle before we exit the
+        -- temporary directory.
+        _ <- evaluate (length r)
+        return r
 
       onFailedListSources :: IOException -> IO ()
       onFailedListSources e = do
@@ -181,8 +185,4 @@ allPackageSourceFiles verbosity packageDir = do
           "Exception was: " ++ show e
 
   -- Run setup sdist --list-sources=TMPFILE
-  r <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
-  -- Ensure that we've closed the 'readFile' handle before we exit the
-  -- temporary directory.
-  _ <- evaluate (length r)
-  return r
+  doListSources `catchIO` (\e -> onFailedListSources e >> return [])
