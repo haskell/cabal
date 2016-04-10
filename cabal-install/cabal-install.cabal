@@ -85,7 +85,6 @@ Extra-Source-Files:
   tests/IntegrationTests/sandbox-sources/remove_nonexistent_source.sh
   tests/IntegrationTests/sandbox-sources/report_success_removing_source.out
   tests/IntegrationTests/sandbox-sources/report_success_removing_source.sh
-  tests/IntegrationTests/user-config/common.sh
   tests/IntegrationTests/user-config/doesnt_overwrite_without_f.err
   tests/IntegrationTests/user-config/doesnt_overwrite_without_f.sh
   tests/IntegrationTests/user-config/overwrites_with_f.out
