@@ -42,6 +42,14 @@ tests = [
                              ReverseOrder -> reverse targets
             in counterexample (showResults r1 r2) $
                isJust (resultPlan r1) === isJust (resultPlan r2)
+
+    , testProperty
+          "solvable without --independent-goals => solvable with --independent-goals" $
+          \(SolverTest db targets) reorderGoals solver ->
+            let r1 = solve reorderGoals (IndepGoals False) solver targets db
+                r2 = solve reorderGoals (IndepGoals True)  solver targets db
+             in counterexample (showResults r1 r2) $
+                isJust (resultPlan r1) `implies` isJust (resultPlan r2)
     ]
   where
     showResults :: Result -> Result -> String
@@ -52,6 +60,9 @@ tests = [
         unlines $ ["", "Run " ++ show n ++ ":"]
                ++ resultLog result
                ++ ["result: " ++ show (resultPlan result)]
+
+    implies :: Bool -> Bool -> Bool
+    implies x y = not x || y
 
 solve :: ReorderGoals -> IndepGoals -> Solver -> [PN] -> TestDb -> Result
 solve reorder indep solver targets (TestDb db) =
