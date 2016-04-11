@@ -66,6 +66,7 @@ module PackageTests.PackageTester
     , testTree
     , testTreeSteps
     , testTreeSub
+    , testTreeSubSteps
     , testTree'
     , groupTests
     , mapTestTrees
@@ -788,7 +789,12 @@ testTreeSub :: SuiteConfig -> String -> String -> TestM a -> TestTreeM ()
 testTreeSub config name sub_name m =
     testTree' $ HUnit.testCase (name </> sub_name) $ runTestM config name (Just sub_name) m
 
--- TODO testTreeSubSteps
+testTreeSubSteps :: SuiteConfig -> String -> String
+                 -> ((String -> TestM ()) -> TestM a)
+                 -> TestTreeM ()
+testTreeSubSteps config name sub_name f =
+    testTree' . HUnit.testCaseSteps (name </> sub_name)
+              $ \step -> runTestM config name (Just sub_name) (f (liftIO . step))
 
 testTree' :: TestTree -> TestTreeM ()
 testTree' tc = tell [tc]
