@@ -220,7 +220,6 @@ library
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.Internal.TempFile
-    Distribution.Compat.MonadFail
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
     Distribution.Compiler
