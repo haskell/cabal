@@ -25,7 +25,7 @@ build-type: Simple
 
 extra-source-files:
   README.md tests/README.md changelog
-  doc/developing-packages.markdown doc/index.markdown
+  doc/Cabal.css doc/developing-packages.markdown doc/index.markdown
   doc/installing-packages.markdown
   doc/misc.markdown
 
@@ -296,6 +296,8 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.GetShortPathName
+    Distribution.Compat.MonadFail
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Simple.GHC.Internal
@@ -310,9 +312,6 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
-  -- starting with GHC 7.0, rely on {-# LANGUAGE CPP #-} instead
-  if !impl(ghc >= 7.0)
-    default-extensions: CPP
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -367,7 +366,7 @@ test-suite package-tests
     regex-posix,
     old-time
   if !os(windows)
-    build-depends: unix
+    build-depends: unix, exceptions
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell98

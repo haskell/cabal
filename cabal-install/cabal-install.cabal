@@ -103,7 +103,7 @@ source-repository head
   subdir:   cabal-install
 
 Flag old-bytestring
-  description:  Use bytestring == 0.9.* and bytestring-builder
+  description:  Use bytestring < 0.10.2 and bytestring-builder
   default: False
 
 Flag old-directory
@@ -253,7 +253,7 @@ executable cabal
         hackage-security >= 0.5 && < 0.6
 
     if flag(old-bytestring)
-      build-depends: bytestring <  0.10.2, bytestring-builder
+      build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
     else
       build-depends: bytestring >= 0.10.2
 
