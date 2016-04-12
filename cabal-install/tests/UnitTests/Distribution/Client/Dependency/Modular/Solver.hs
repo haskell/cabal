@@ -125,6 +125,9 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
+    , testGroup "Independent goals" [
+          runTest $ indep $ mkTest db17 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        ]
     ]
   where
     -- | Combinator to turn on --independent-goals behavior, i.e. solve
@@ -505,6 +508,24 @@ db15 = [
   , Right $ exAv   "C" 2            []            `withSetupDeps` [ExAny "D"]
   , Right $ exAv   "D" 1            [ExAny "C"  ]
   , Right $ exAv   "E" 1            [ExFix "C" 2]
+  ]
+
+-- | This database checks that when the solver discovers a constraint on a
+-- package's version after choosing to link that package, it can backtrack to
+-- try alternative versions for the linked-to package.
+--
+-- When A and B are installed as independent goals, their dependencies on C
+-- must be linked. Since C depends on D, A and B's dependencies on D must also
+-- be linked. This test relies on the fact that the solver chooses D-2 for both
+-- 0.D and 1.D before it encounters the test suites' constraints. The solver
+-- must backtrack to try D-1 for both 0.D and 1.D.
+db17 :: ExampleDb
+db17 = [
+    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
   ]
 
 dbExts1 :: ExampleDb
