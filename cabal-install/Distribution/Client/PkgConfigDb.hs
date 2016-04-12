@@ -11,15 +11,15 @@
 -- Read the list of packages available to pkg-config.
 -----------------------------------------------------------------------------
 module Distribution.Client.PkgConfigDb
-    (
-     PkgConfigDb
+    ( PkgConfigDb
     , readPkgConfigDb
     , pkgConfigDbFromList
     , pkgConfigPkgIsPresent
+    , getPkgConfigDbDirs
     ) where
 
 #if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>))
 #endif
 
 import Control.Exception (IOException, handle)
@@ -27,6 +27,7 @@ import Data.Char (isSpace)
 import qualified Data.Map as M
 import Data.Version (parseVersion)
 import Text.ParserCombinators.ReadP (readP_to_S)
+import System.FilePath (splitSearchPath)
 
 import Distribution.Package
     ( PackageName(..) )
@@ -35,6 +36,8 @@ import Distribution.Verbosity
 import Distribution.Version
     ( Version, VersionRange, withinRange )
 
+import Distribution.Compat.Environment
+    ( lookupEnv )
 import Distribution.Simple.Program
     ( ProgramConfiguration, pkgConfigProgram, getProgramOutput,
       requireProgram )
@@ -101,3 +104,43 @@ pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
 -- executed later on, but we have no grounds for rejecting the plan at
 -- this stage.
 pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
+
+
+-- | Query pkg-config for the locations of pkg-config's package files. Use this
+-- to monitor for changes in the pkg-config DB.
+--
+getPkgConfigDbDirs :: Verbosity -> ProgramConfiguration -> IO [FilePath]
+getPkgConfigDbDirs verbosity conf =
+    (++) <$> getEnvPath <*> getDefPath
+ where
+    -- According to @man pkg-config@:
+    --
+    -- PKG_CONFIG_PATH
+    -- A  colon-separated  (on Windows, semicolon-separated) list of directories
+    -- to search for .pc files.  The default directory will always be searched
+    -- after searching the path
+    --
+    getEnvPath = maybe [] parseSearchPath
+             <$> lookupEnv "PKG_CONFIG_PATH"
+
+    -- Again according to @man pkg-config@:
+    --
+    -- pkg-config can be used to query itself for the default search path,
+    -- version number and other information, for instance using:
+    --
+    -- > pkg-config --variable pc_path pkg-config
+    --
+    getDefPath = handle ioErrorHandler $ do
+      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
+      parseSearchPath <$>
+        getProgramOutput verbosity pkgConfig
+                         ["--variable", "pc_path", "pkg-config"]
+
+    parseSearchPath str =
+      case lines str of
+        [p] | not (null p) -> splitSearchPath p
+        _                  -> []
+
+    ioErrorHandler :: IOException -> IO [FilePath]
+    ioErrorHandler _e = return []
+
