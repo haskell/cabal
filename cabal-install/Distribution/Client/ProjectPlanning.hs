@@ -413,8 +413,7 @@ rebuildInstallPlan verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
-          pkgConfigDB       <- liftIO $
-                               readPkgConfigDb      verbosity progdb
+          pkgConfigDB       <- getPkgConfigDb      verbosity progdb
 
           --TODO: [code cleanup] it'd be better if the Compiler contained the
           -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -628,6 +627,16 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
         createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
         Cabal.createPackageDB verbosity compiler progdb False dbPath
     _ -> return ()
+
+
+getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
+getPkgConfigDb verbosity progdb = do
+    dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
+    monitorFiles (map monitorDirectory dirs)
+    -- Just monitor the dirs so we'll notice new .pc files.
+    -- Alternatively we could monitor all the .pc files too.
+
+    liftIO $ readPkgConfigDb verbosity progdb
 
 
 recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
