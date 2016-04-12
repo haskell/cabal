@@ -178,8 +178,6 @@ import Data.Foldable
     ( traverse_ )
 import Data.List
     ( nub, unfoldr, intercalate, isInfixOf )
-import Data.Typeable
-    ( cast )
 import Data.Ord
     ( comparing )
 import qualified Data.ByteString.Lazy as BS
@@ -205,16 +203,11 @@ import System.IO
     ( Handle, openFile, openBinaryFile, openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
-import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
-    , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 import System.IO.Error
-    ( ioeSetLocation, ioeGetLocation )
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
-import qualified Control.Exception as Exception
 
-import Control.Exception (IOException, evaluate, throwIO)
+import Control.Exception
 import Control.Concurrent (forkIO)
 import qualified System.Process as Process
          ( CreateProcess(..), StdStream(..), proc)
@@ -235,6 +228,8 @@ cabalVersion = Version [1,9999] []  --used when bootstrapping
 -- ----------------------------------------------------------------------------
 -- Exception and logging utils
 
+-- TODO: Convert this into its own exception type and subsequently stop
+-- (ab)using 'IOError' for it.
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
   ioError . setLocation lineno
@@ -247,48 +242,36 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
-topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
+-- | Install an error handler which catches the exceptions raised
+-- by 'die' and 'dieWithLocation', and print an appropriate message.
+topHandlerWith :: forall a. (SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
-    Exception.catches prog [
-        Exception.Handler rethrowAsyncExceptions
-      , Exception.Handler rethrowExitStatus
-      , Exception.Handler handle
+    catches prog [
+        Handler dieHandler
       ]
   where
-    -- Let async exceptions rise to the top for the default top-handler
-    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
-    rethrowAsyncExceptions = throwIO
+    dieHandler :: IOException -> IO a
+    dieHandler ioe
+        | isUserError ioe = do
+            hFlush stdout
+            pname <- getProgName
+            hPutStr stderr (wrapText (message pname ioe))
+            -- TODO: This is a bit goofy but I didn't want to change
+            -- the type signature.
+            cont (toException ioe)
+        | otherwise =
+            throwIO ioe
 
-    -- ExitCode gets thrown asynchronously too, and we don't want to print it
-    rethrowExitStatus :: ExitCode -> IO a
-    rethrowExitStatus = throwIO
-
-    -- Print all other exceptions
-    handle :: Exception.SomeException -> IO a
-    handle se = do
-      hFlush stdout
-      pname <- getProgName
-      hPutStr stderr (wrapText (message pname se))
-      cont se
-
-    message :: String -> Exception.SomeException -> String
-    message pname (Exception.SomeException se) =
-      case cast se :: Maybe Exception.IOException of
-        Just ioe ->
-          let file         = case ioeGetFileName ioe of
-                               Nothing   -> ""
-                               Just path -> path ++ location ++ ": "
-              location     = case ioeGetLocation ioe of
-                               l@(n:_) | Char.isDigit n -> ':' : l
-                               _                        -> ""
-              detail       = ioeGetErrorString ioe
-          in pname ++ ": " ++ file ++ detail
-        Nothing ->
-#if __GLASGOW_HASKELL__ < 710
-          show se
-#else
-          Exception.displayException se
-#endif
+    message :: String -> IOException -> String
+    message pname ioe =
+        let file         = case ioeGetFileName ioe of
+                             Nothing   -> ""
+                             Just path -> path ++ location ++ ": "
+            location     = case ioeGetLocation ioe of
+                             l@(n:_) | Char.isDigit n -> ':' : l
+                             _                        -> ""
+            detail       = ioeGetErrorString ioe
+        in pname ++ ": " ++ file ++ detail
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
@@ -359,7 +342,7 @@ chattyTry desc action =
 -- does not exist" error.
 handleDoesNotExist :: a -> IO a -> IO a
 handleDoesNotExist e =
-    Exception.handleJust
+    handleJust
       (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
       (\_ -> return e)
 
@@ -538,7 +521,7 @@ rawSystemStdInOut :: Verbosity
 rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
   printRawCommandAndArgs verbosity path args
 
-  Exception.bracket
+  bracket
      (runInteractiveProcess path args mcwd menv)
      (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
     $ \(inh,outh,errh,pid) -> do
@@ -556,7 +539,7 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
 
       mv <- newEmptyMVar
       let force str = (evaluate (length str) >> return ())
-            `Exception.finally` putMVar mv ()
+            `finally` putMVar mv ()
           --TODO: handle exceptions like text decoding.
       _ <- forkIO $ force out
       _ <- forkIO $ force err
@@ -1096,11 +1079,11 @@ withTempFileEx :: TempFileOptions
                  -> String   -- ^ File name template. See 'openTempFile'.
                  -> (FilePath -> Handle -> IO a) -> IO a
 withTempFileEx opts tmpDir template action =
-  Exception.bracket
+  bracket
     (openTempFile tmpDir template)
-    (\(name, handle) -> do hClose handle
-                           unless (optKeepTempFiles opts) $
-                             handleDoesNotExist () . removeFile $ name)
+    (\(name, fh) -> do hClose fh
+                       unless (optKeepTempFiles opts) $
+                         handleDoesNotExist () . removeFile $ name)
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -1124,7 +1107,7 @@ withTempDirectoryEx :: Verbosity
                        -> TempFileOptions
                        -> FilePath -> String -> (FilePath -> IO a) -> IO a
 withTempDirectoryEx _verbosity opts targetDir template =
-  Exception.bracket
+  bracket
     (createTempDirectory targetDir template)
     (unless (optKeepTempFiles opts)
      . handleDoesNotExist () . removeDirectoryRecursive)
@@ -1139,7 +1122,7 @@ withTempDirectoryEx _verbosity opts targetDir template =
 --
 withFileContents :: FilePath -> (String -> IO a) -> IO a
 withFileContents name action =
-  Exception.bracket (openFile name ReadMode) hClose
+  bracket (openFile name ReadMode) hClose
                     (\hnd -> hGetContents hnd >>= action)
 
 -- | Writes a file atomically.
@@ -1153,12 +1136,12 @@ withFileContents name action =
 writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
 writeFileAtomic targetPath content = do
   let (targetDir, targetFile) = splitFileName targetPath
-  Exception.bracketOnError
+  bracketOnError
     (openBinaryTempFileWithDefaultPermissions targetDir $ targetFile <.> "tmp")
-    (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
-    (\(tmpPath, handle) -> do
-        BS.hPut handle content
-        hClose handle
+    (\(tmpPath, fh) -> hClose fh >> removeFile tmpPath)
+    (\(tmpPath, fh) -> do
+        BS.hPut fh content
+        hClose fh
         renameFile tmpPath targetPath)
 
 -- | Write a file but only if it would have new content. If we would be writing
@@ -1373,7 +1356,7 @@ readUTF8File f = fmap (ignoreBOM . fromUTF8)
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  Exception.bracket
+  bracket
     (openBinaryFile name ReadMode)
     hClose
     (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)

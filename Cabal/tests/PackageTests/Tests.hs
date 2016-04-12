@@ -408,6 +408,30 @@ tests config = do
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "bbb"
 
+  tc "TopHandler/FileDoesNotExist" $ do
+    r <- shouldFail $ cabal' "configure" []
+    assertOutputContains "Setup" r          -- executable name
+    assertOutputContains "does-not-exist" r -- file which does not exist
+    assertOutputContains "does not exist" r -- short error message
+    assertOutputContains "No such file or directory" r -- long error message
+
+  tc "TopHandler/Die" $ do
+    r <- shouldFail $ cabal' "configure" []
+    assertOutputContains "Setup" r   -- executable name
+    assertOutputContains "oopsies" r -- the error message from dying
+
+  tc "TopHandler/DieWithLocation" $ do
+    r <- shouldFail $ cabal' "configure" []
+    assertOutputContains "Setup" r     -- executable name
+    assertOutputContains "oopsies" r   -- the error message from dying
+    assertOutputContains "MyFile.hs" r -- the source file
+    assertOutputContains "42" r        -- the line number
+
+  tc "TopHandler/Error" $ do
+    r <- shouldFail $ cabal' "configure" []
+    assertOutputContains "Setup" r     -- executable name
+    assertOutputContains "foobar" r    -- the error message from error
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir
