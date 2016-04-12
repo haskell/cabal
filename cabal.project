@@ -1,0 +1,7 @@
+packages: Cabal/ cabal-install/
+
+-- Uncomment to allow picking up extra local unpacked deps:
+--optional-packages: */
+
+-- current hackage-security release needs Cabal < 1.25
+allow-newer: hackage-security:Cabal
