@@ -970,7 +970,7 @@ elaborateInstallPlan platform compiler compilerprogdb
                                 then BuildInplaceOnly else BuildAndInstall
         pkgBuildPackageDBStack    = buildAndRegisterDbs
         pkgRegisterPackageDBStack = buildAndRegisterDbs
-        pkgRequiresRegistration   = PD.hasPublicLib (PD.packageDescription gdesc)
+        pkgRequiresRegistration   = PD.hasPublicLib pkgDescription
 
         pkgSetupScriptStyle       = packageSetupScriptStylePostSolver
                                       pkgsImplicitSetupDeps pkg pkgDescription
