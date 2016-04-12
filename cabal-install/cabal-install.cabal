@@ -64,6 +64,7 @@ Extra-Source-Files:
   tests/IntegrationTests/freeze/runs_without_error.sh
   tests/IntegrationTests/internal-libs/internal_lib_basic.sh
   tests/IntegrationTests/internal-libs/internal_lib_shadow.sh
+  tests/IntegrationTests/internal-libs/new_build.sh
   tests/IntegrationTests/internal-libs/p/Foo.hs
   tests/IntegrationTests/internal-libs/p/p.cabal
   tests/IntegrationTests/internal-libs/p/p/P.hs

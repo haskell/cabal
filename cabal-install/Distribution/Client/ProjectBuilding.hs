@@ -152,7 +152,7 @@ data BuildStatus =
      -- | The package exists in a local dir already, and is fully up to date.
      --   So this package can be put into the 'InstallPlan.Installed' state
      --   and it does not need to be built.
-   | BuildStatusUpToDate (Maybe InstalledPackageInfo) BuildSuccess
+   | BuildStatusUpToDate [InstalledPackageInfo] BuildSuccess
 
 -- | For a package that is going to be built or rebuilt, the state it's in now.
 --
@@ -172,7 +172,7 @@ data BuildStatusRebuild =
      -- The optional registration info here tells us if we've registered the
      -- package already, or if we stil need to do that after building.
      --
-   | BuildStatusBuild (Maybe (Maybe InstalledPackageInfo)) BuildReason
+   | BuildStatusBuild (Maybe [InstalledPackageInfo]) BuildReason
 
 data BuildReason =
      -- | The depencencies of this package have been (re)built so the build
@@ -299,8 +299,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
             return (BuildStatusRebuild srcdir rebuild)
 
           -- No changes, the package is up to date. Use the saved build results.
-          Right (mipkg, buildSuccess) ->
-            return (BuildStatusUpToDate mipkg buildSuccess)
+          Right (ipkgs, buildSuccess) ->
+            return (BuildStatusUpToDate ipkgs buildSuccess)
       where
         packageFileMonitor =
           newPackageFileMonitor distDirLayout (packageId pkg)
@@ -347,17 +347,19 @@ improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
                                        -> ElaboratedInstallPlan
 improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
     replaceWithPreInstalled installPlan
-      [ (installedPackageId pkg, mipkg, buildSuccess)
+      [ (installedPackageId pkg, ipkgs, buildSuccess)
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
-      , BuildStatusUpToDate mipkg buildSuccess <- [pkgBuildStatus]
+      , BuildStatusUpToDate ipkgs buildSuccess <- [pkgBuildStatus]
       ]
   where
     replaceWithPreInstalled =
-      foldl' (\plan (ipkgid, mipkg, buildSuccess) ->
-                InstallPlan.preinstalled ipkgid mipkg buildSuccess plan)
+      foldl' (\plan (ipkgid, ipkgs, buildSuccess) ->
+                InstallPlan.preinstalled ipkgid
+                    (find (\ipkg -> installedPackageId ipkg == ipkgid) ipkgs)
+                    buildSuccess plan)
 
 
 -----------------------------
@@ -377,7 +379,7 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
 data PackageFileMonitor = PackageFileMonitor {
        pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage (),
        pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccess,
-       pkgFileMonitorReg    :: FileMonitor () (Maybe InstalledPackageInfo)
+       pkgFileMonitorReg    :: FileMonitor () [InstalledPackageInfo]
      }
 
 newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
@@ -436,7 +438,7 @@ checkPackageFileMonitorChanged :: PackageFileMonitor
                                -> FilePath
                                -> ComponentDeps [BuildStatus]
                                -> IO (Either BuildStatusRebuild
-                                            (Maybe InstalledPackageInfo,
+                                            ([InstalledPackageInfo],
                                              BuildSuccess))
 checkPackageFileMonitorChanged PackageFileMonitor{..}
                                pkg srcdir depsBuildStatus = do
@@ -491,8 +493,8 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                 where
                   buildReason = BuildReasonEphemeralTargets
 
-              (MonitorUnchanged buildSuccess _, MonitorUnchanged mipkg _) ->
-                return (Right (mipkg, buildSuccess))
+              (MonitorUnchanged buildSuccess _, MonitorUnchanged ipkgs _) ->
+                return (Right (ipkgs, buildSuccess))
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
     changedToMaybe (MonitorChanged     _) = Nothing
@@ -542,12 +544,12 @@ updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
 
 updatePackageRegFileMonitor :: PackageFileMonitor
                             -> FilePath
-                            -> Maybe InstalledPackageInfo
+                            -> [InstalledPackageInfo]
                             -> IO ()
 updatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg}
-                            srcdir mipkg =
+                            srcdir ipkgs =
     updateFileMonitor pkgFileMonitorReg srcdir Nothing
-                      [] () mipkg
+                      [] () ipkgs
 
 invalidatePackageRegFileMonitor :: PackageFileMonitor -> IO ()
 invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
@@ -819,8 +821,10 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
                -> GenericBuildResult ipkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-    updatePlan pkg (BuildSuccess mipkg buildSuccess) =
-        InstallPlan.completed (installedPackageId pkg) mipkg buildSuccess
+    updatePlan pkg (BuildSuccess ipkgs buildSuccess) =
+        InstallPlan.completed (installedPackageId pkg)
+            (find (\ipkg -> installedPackageId ipkg == installedPackageId pkg) ipkgs)
+            buildSuccess
 
     updatePlan pkg (BuildFailure buildFailure) =
         InstallPlan.failed (installedPackageId pkg) buildFailure depsFailure
@@ -1009,20 +1013,26 @@ buildAndInstallUnpackedPackage verbosity
       -- then when it's done, move it to its final location, to reduce problems
       -- with installs failing half-way. Could also register and then move.
 
-      -- For libraries, grab the package configuration file
-      -- and register it ourselves
       if pkgRequiresRegistration pkg
         then do
-          ipkg <- generateInstalledPackageInfo
+          ipkgs <- generateInstalledPackageInfos
           -- We register ourselves rather than via Setup.hs. We need to
           -- grab and modify the InstalledPackageInfo. We decide what
           -- the installed package id is, not the build system.
-          let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
-          Cabal.registerPackage verbosity compiler progdb
-                                HcPkg.MultiInstance
-                                (pkgRegisterPackageDBStack pkg) ipkg'
-          return (Just ipkg')
-        else return Nothing
+
+          -- See Note [Updating installedUnitId]
+          let ipkgs' = case ipkgs of
+                          -- Case A and B
+                          [ipkg] -> [ipkg { Installed.installedUnitId = ipkgid }]
+                          -- Case C
+                          _      -> assert (any ((== ipkgid) . Installed.installedUnitId)
+                                                ipkgs) ipkgs
+          forM_ ipkgs' $ \ipkg' ->
+              Cabal.registerPackage verbosity compiler progdb
+                                    HcPkg.MultiInstance
+                                    (pkgRegisterPackageDBStack pkg) ipkg'
+          return ipkgs
+        else return []
 
     --TODO: [required feature] docs and test phases
     let docsResult  = DocsNotTried
@@ -1044,16 +1054,14 @@ buildAndInstallUnpackedPackage verbosity
     buildCommand     = Cabal.buildCommand defaultProgramConfiguration
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
-    generateInstalledPackageInfo :: IO InstalledPackageInfo
-    generateInstalledPackageInfo =
-      withTempInstalledPackageInfoFile
-        verbosity distTempDirectory $ \pkgConfFile -> do
-        -- make absolute since setup changes dir
-        pkgConfFile' <- canonicalizePath pkgConfFile
+    generateInstalledPackageInfos :: IO [InstalledPackageInfo]
+    generateInstalledPackageInfos =
+      withTempInstalledPackageInfoFiles
+        verbosity distTempDirectory $ \pkgConfDest -> do
         let registerFlags _ = setupHsRegisterFlags
                                 pkg pkgshared
                                 verbosity builddir
-                                pkgConfFile'
+                                pkgConfDest
         setup Cabal.registerCommand registerFlags
 
     copyFlags _ = setupHsCopyFlags pkg pkgshared verbosity builddir
@@ -1146,24 +1154,76 @@ buildInplaceUnpackedPackage verbosity
                                         pkg buildStatus
                                         allSrcFiles buildSuccess
 
-        mipkg <- whenReRegister $ do
+        ipkgs <- whenReRegister $ do
           -- Register locally
-          mipkg <- if pkgRequiresRegistration pkg
+          ipkgs <- if pkgRequiresRegistration pkg
             then do
-                ipkg <- generateInstalledPackageInfo
+                ipkgs <- generateInstalledPackageInfos
                 -- We register ourselves rather than via Setup.hs. We need to
                 -- grab and modify the InstalledPackageInfo. We decide what
                 -- the installed package id is, not the build system.
-                let ipkg' = ipkg { Installed.installedUnitId = ipkgid }
-                Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
-                                      (pkgRegisterPackageDBStack pkg)
-                                      ipkg'
-                return (Just ipkg')
 
-           else return Nothing
+                -- Note [Updating installedUnitId]
+                -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                -- This is a bit tricky.  There are three variables we
+                -- care about:
+                --
+                --      1. Does the Setup script we're interfacing with
+                --         support --ipid?  (Only if version >= 1.23)
+                --         If not, we have to explicitly update the
+                --         the UID that was recorded.
+                --
+                --      2. Does the Setup script we're interfacing with
+                --         support internal libraries?  (Only if
+                --         version >= 1.25).  If so, there may be
+                --         multiple IPIs... and it would be wrong to
+                --         update them all to the same UID (you need
+                --         to generate derived UIDs for each
+                --         subcomponent.)
+                --
+                --      3. Does GHC require that the IPID be input at
+                --         configure time?  (Only if GHC >= 8.0, which
+                --         also implies Cabal version >= 1.23, as earlier
+                --         Cabal's don't know how to do this properly).
+                --         If so, it is IMPERMISSIBLE to update the
+                --         UID that was recorded.
+                --
+                -- This means that there are three situations:
+                --
+                --   A. Cabal  < 1.23
+                --   B. Cabal >= 1.23 && < 1.25
+                --   C. Cabal >= 1.25
+                --
+                -- We consider each in turn:
+                --
+                --      A. There is only ever one IPI, and we must
+                --         update it.
+                --
+                --      B. There is only ever one IPI, but because
+                --         --ipid is supported, the installedUnitId of
+                --         this IPI is ipkgid (so it's harmless to
+                --         overwrite).
+                --
+                --      C. There may be multiple IPIs, but because
+                --         --ipid is supported they always have the
+                --         right installedUnitIds.
+                --
+                let ipkgs' = case ipkgs of
+                                -- Case A and B
+                                [ipkg] -> [ipkg { Installed.installedUnitId = ipkgid }]
+                                -- Case C
+                                _      -> assert (any ((== ipkgid) . Installed.installedUnitId)
+                                                      ipkgs) ipkgs
+                forM_ ipkgs' $ \ipkg' ->
+                    Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
+                                          (pkgRegisterPackageDBStack pkg)
+                                          ipkg'
+                return ipkgs'
 
-          updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
-          return mipkg
+           else return []
+
+          updatePackageRegFileMonitor packageFileMonitor srcdir ipkgs
+          return ipkgs
 
         -- Repl phase
         --
@@ -1174,7 +1234,7 @@ buildInplaceUnpackedPackage verbosity
         whenHaddock $
           setup haddockCommand haddockFlags []
 
-        return (BuildSuccess mipkg buildSuccess)
+        return (BuildSuccess ipkgs buildSuccess)
 
   where
     pkgid  = packageId rpkg
@@ -1203,7 +1263,7 @@ buildInplaceUnpackedPackage verbosity
     whenReRegister  action = case buildStatus of
       BuildStatusConfigure          _ -> action
       BuildStatusBuild Nothing      _ -> action
-      BuildStatusBuild (Just mipkg) _ -> return mipkg
+      BuildStatusBuild (Just ipkgs) _ -> return ipkgs
 
     configureCommand = Cabal.configureCommand defaultProgramConfiguration
     configureFlags v = flip filterConfigureFlags v $
@@ -1235,16 +1295,14 @@ buildInplaceUnpackedPackage verbosity
                    (Just (pkgDescription pkg))
                    cmd flags args
 
-    generateInstalledPackageInfo :: IO InstalledPackageInfo
-    generateInstalledPackageInfo =
-      withTempInstalledPackageInfoFile
-        verbosity distTempDirectory $ \pkgConfFile -> do
-        -- make absolute since setup changes dir
-        pkgConfFile' <- canonicalizePath pkgConfFile
+    generateInstalledPackageInfos :: IO [InstalledPackageInfo]
+    generateInstalledPackageInfos =
+      withTempInstalledPackageInfoFiles
+        verbosity distTempDirectory $ \pkgConfDest -> do
         let registerFlags _ = setupHsRegisterFlags
                                 pkg pkgshared
                                 verbosity builddir
-                                pkgConfFile'
+                                pkgConfDest
         setup Cabal.registerCommand registerFlags []
 
 
@@ -1261,15 +1319,33 @@ annotateFailure annotate action =
                        --TODO: [nice to have] use displayException when available
 
 
-withTempInstalledPackageInfoFile :: Verbosity -> FilePath
-                                 -> (FilePath -> IO ())
-                                 -> IO InstalledPackageInfo
-withTempInstalledPackageInfoFile verbosity tempdir action =
-    withTempFile tempdir "package-registration-" $ \pkgConfFile hnd -> do
-      hClose hnd
-      action pkgConfFile
+withTempInstalledPackageInfoFiles :: Verbosity -> FilePath
+                                  -> (FilePath -> IO ())
+                                  -> IO [InstalledPackageInfo]
+withTempInstalledPackageInfoFiles verbosity tempdir action =
+    withTempDirectory verbosity tempdir "package-registration-" $ \dir -> do
+      -- make absolute since @action@ will often change directory
+      abs_dir <- canonicalizePath dir
 
-      (warns, ipkg) <- withUTF8FileContents pkgConfFile $ \pkgConfStr ->
+      let pkgConfDest = abs_dir </> "pkgConf"
+      action pkgConfDest
+
+      is_dir <- doesDirectoryExist pkgConfDest
+
+      let notHidden = not . isHidden
+          isHidden name = "." `isPrefixOf` name
+      if is_dir
+        then mapM (readPkgConf pkgConfDest) . sort . filter notHidden
+                =<< getDirectoryContents pkgConfDest
+        else fmap (:[]) $ readPkgConf "." pkgConfDest
+  where
+    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed perror =
+      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+            ++ show perror
+
+    readPkgConf pkgConfDir pkgConfFile = do
+      (warns, ipkg) <- withUTF8FileContents (pkgConfDir </> pkgConfFile) $ \pkgConfStr ->
         case Installed.parseInstalledPackageInfo pkgConfStr of
           Installed.ParseFailed perror -> pkgConfParseFailed perror
           Installed.ParseOk warns ipkg -> return (warns, ipkg)
@@ -1278,9 +1354,4 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
         warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
 
       return ipkg
-  where
-    pkgConfParseFailed :: Installed.PError -> IO a
-    pkgConfParseFailed perror =
-      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-            ++ show perror
 

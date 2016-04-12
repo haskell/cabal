@@ -279,7 +279,7 @@ type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
 
 data GenericBuildResult ipkg iresult ifailure
                   = BuildFailure ifailure
-                  | BuildSuccess (Maybe ipkg) iresult
+                  | BuildSuccess [ipkg] iresult
   deriving (Eq, Show, Generic)
 
 instance (Binary ipkg, Binary iresult, Binary ifailure) =>
