@@ -458,18 +458,6 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
               }
 benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 
--- | Initialize a new package db file for libraries defined
--- internally to the package.
-createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
-                        -> IO PackageDB
-createInternalPackageDB verbosity lbi distPref = do
-    existsAlready <- doesPackageDBExist dbPath
-    when existsAlready $ deletePackageDB dbPath
-    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
-    return (SpecificPackageDB dbPath)
-  where
-    dbPath = internalPackageDBPath lbi distPref
-
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb
 addInternalBuildTools pkg lbi bi progs =

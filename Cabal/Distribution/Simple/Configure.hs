@@ -73,6 +73,7 @@ import Distribution.Simple.Setup as Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
+import Distribution.Simple.Register (createInternalPackageDB)
 import Distribution.System
 import Distribution.Version
 import Distribution.Verbosity
@@ -332,10 +333,12 @@ configure (pkg_descr0', pbi) cfg = do
     checkExactConfiguration pkg_descr0 cfg
 
     -- Where to build the package
-    let buildDir :: FilePath -- e.g. dist/build
+    let distPref :: FilePath -- e.g. dist
+        distPref = fromFlag (configDistPref cfg)
+        buildDir :: FilePath -- e.g. dist/build
         -- fromFlag OK due to Distribution.Simple calling
         -- findDistPrefOrDefault to fill it in
-        buildDir = fromFlag (configDistPref cfg) </> "build"
+        buildDir = distPref </> "build"
     createDirectoryIfMissingVerbose (lessVerbose verbosity) True buildDir
 
     -- What package database(s) to use
@@ -696,6 +699,9 @@ configure (pkg_descr0', pbi) cfg = do
                 progSuffix          = fromFlag $ configProgSuffix cfg,
                 relocatable         = reloc
               }
+
+    -- Create the internal package database
+    _ <- createInternalPackageDB verbosity lbi distPref
 
     when reloc (checkRelocatable verbosity pkg_descr lbi)
 

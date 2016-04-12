@@ -29,6 +29,7 @@ module Distribution.Simple.Register (
     unregister,
 
     internalPackageDBPath,
+    createInternalPackageDB,
 
     initPackageDB,
     doesPackageDBExist,
@@ -516,3 +517,15 @@ internalPackageDBPath lbi distPref =
       case compilerFlavor (compiler lbi) of
         UHC -> UHC.inplacePackageDbPath lbi
         _   -> distPref </> "package.conf.inplace"
+
+-- | Initialize a new package db file for libraries defined
+-- internally to the package.
+createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
+                        -> IO PackageDB
+createInternalPackageDB verbosity lbi distPref = do
+    existsAlready <- doesPackageDBExist dbPath
+    when existsAlready $ deletePackageDB dbPath
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
+    return (SpecificPackageDB dbPath)
+  where
+    dbPath = internalPackageDBPath lbi distPref
