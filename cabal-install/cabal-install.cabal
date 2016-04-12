@@ -78,6 +78,8 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/p/p.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Main.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
+  tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
+  tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
   tests/IntegrationTests/sandbox-sources/common.sh
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.err
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.sh
