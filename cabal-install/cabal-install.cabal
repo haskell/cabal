@@ -335,7 +335,6 @@ Test-Suite unit-tests
         random,
         hackage-security,
         tasty,
-        tasty-expected-failure,
         tasty-hunit,
         tasty-quickcheck,
         tagged,
