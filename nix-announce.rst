@@ -52,7 +52,7 @@ that needs to be done to start working with it.
    these commands with ``new-``; e.g., ``cabal new-configure; cabal new-build``.
    ``cabal new-repl`` is also supported.  (Unfortunately, other commands
    are not yet supported, e.g.
-   ``new-clean`` (` <https://github.com/haskell/cabal/issues/2957>`_) or ``new-freeze``
+   ``new-clean`` (`#2957 <https://github.com/haskell/cabal/issues/2957>`_) or ``new-freeze``
    (`#2996 <https://github.com/haskell/cabal/issues/2996>`_).)
 
 3. To build multiple Cabal packages, you need to first create
