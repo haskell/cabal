@@ -206,7 +206,7 @@ import System.IO
     , IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError, isAlreadyExistsError
+    ( isDoesNotExistError, isAlreadyExistsError, isUserError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
@@ -274,7 +274,7 @@ topHandlerWith cont prog =
     message :: String -> Exception.SomeException -> String
     message pname (Exception.SomeException se) =
       case cast se :: Maybe Exception.IOException of
-        Just ioe ->
+        Just ioe | isUserError ioe ->
           let file         = case ioeGetFileName ioe of
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
@@ -283,7 +283,7 @@ topHandlerWith cont prog =
                                _                        -> ""
               detail       = ioeGetErrorString ioe
           in pname ++ ": " ++ file ++ detail
-        Nothing ->
+        _ ->
 #if __GLASGOW_HASKELL__ < 710
           show se
 #else
