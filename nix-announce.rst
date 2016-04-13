@@ -133,7 +133,7 @@ is a simple example file which displays some of the possibilities::
 
     -- Settings can be applied per-package
     package cryptohash
-      -- So cryptohash will get its profiling suites built
+      -- So cryptohash will get built with profiling
       profiling: True
 
     package bytestring
