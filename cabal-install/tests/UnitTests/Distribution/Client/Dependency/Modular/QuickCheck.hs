@@ -6,8 +6,7 @@ module UnitTests.Distribution.Client.Dependency.Modular.QuickCheck (tests) where
 import Control.Monad (foldM)
 import Data.Either (lefts)
 import Data.Function (on)
-import Data.List (groupBy, nub, sort)
-import Data.Maybe (isJust)
+import Data.List (groupBy, isInfixOf, nub, sort)
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
@@ -24,6 +23,7 @@ import Distribution.Client.ComponentDeps ( Component(..)
                                          , ComponentDep, ComponentDeps)
 import Distribution.Client.Dependency.Types (Solver(..))
 import Distribution.Client.PkgConfigDb (pkgConfigDbFromList)
+import Distribution.Client.Setup (defaultMaxBackjumps)
 
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 
@@ -41,9 +41,23 @@ tests = [
                              SameOrder -> targets
                              ReverseOrder -> reverse targets
             in counterexample (showResults r1 r2) $
-               isJust (resultPlan r1) === isJust (resultPlan r2)
+               noneReachedBackjumpLimit [r1, r2] ==>
+               isRight (resultPlan r1) === isRight (resultPlan r2)
+
+    , testProperty
+          "solvable without --independent-goals => solvable with --independent-goals" $
+          \(SolverTest db targets) reorderGoals solver ->
+            let r1 = solve reorderGoals (IndepGoals False) solver targets db
+                r2 = solve reorderGoals (IndepGoals True)  solver targets db
+             in counterexample (showResults r1 r2) $
+                noneReachedBackjumpLimit [r1, r2] ==>
+                isRight (resultPlan r1) `implies` isRight (resultPlan r2)
     ]
   where
+    noneReachedBackjumpLimit :: [Result] -> Bool
+    noneReachedBackjumpLimit =
+        not . any (\r -> resultPlan r == Left BackjumpLimitReached)
+
     showResults :: Result -> Result -> String
     showResults r1 r2 = showResult 1 r1 ++ showResult 2 r2
 
@@ -53,19 +67,32 @@ tests = [
                ++ resultLog result
                ++ ["result: " ++ show (resultPlan result)]
 
+    implies :: Bool -> Bool -> Bool
+    implies x y = not x || y
+
+    isRight :: Either a b -> Bool
+    isRight (Right _) = True
+    isRight _         = False
+
 solve :: ReorderGoals -> IndepGoals -> Solver -> [PN] -> TestDb -> Result
 solve reorder indep solver targets (TestDb db) =
   let (lg, result) =
         exResolve db Nothing Nothing
                   (pkgConfigDbFromList [])
                   (map unPN targets)
-                  solver indep reorder []
+                  solver
+                  -- The backjump limit prevents individual tests from using
+                  -- too much time and memory.
+                  (Just defaultMaxBackjumps)
+                  indep reorder []
+
+      failure :: String -> Failure
+      failure msg
+        | "Backjump limit reached" `isInfixOf` msg = BackjumpLimitReached
+        | otherwise                                = OtherFailure
   in Result {
        resultLog = lg
-     , resultPlan =
-          case result of
-            Left _ -> Nothing
-            Right plan -> Just (extractInstallPlan plan)
+     , resultPlan = either (Left . failure) (Right . extractInstallPlan) result
      }
 
 -- | How to modify the order of the input targets.
@@ -80,8 +107,11 @@ instance Arbitrary TargetOrder where
 
 data Result = Result {
     resultLog :: [String]
-  , resultPlan :: Maybe [(ExamplePkgName, ExamplePkgVersion)]
+  , resultPlan :: Either Failure [(ExamplePkgName, ExamplePkgVersion)]
   }
+
+data Failure = BackjumpLimitReached | OtherFailure
+  deriving (Eq, Show)
 
 -- | Package name.
 newtype PN = PN { unPN :: String }

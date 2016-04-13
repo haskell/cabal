@@ -221,7 +221,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let (_msgs, result) = exResolve testDb testSupportedExts
                             testSupportedLangs testPkgConfigDb testTargets
-                            Modular testIndepGoals (ReorderGoals False)
+                            Modular Nothing testIndepGoals (ReorderGoals False)
                             testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
