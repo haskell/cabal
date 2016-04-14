@@ -179,7 +179,7 @@ old-style                               new-style
 ``cabal freeze``                        does not exist yet
 ``cabal install --only-dependencies``   unnecessary (handled by ``new-build``)
 ``cabal install``                       does not exist yet (for libraries ``new-build`` should be sufficient; for executables, they can be found in  ``~/.cabal/store/ghc-GHCVER/PACKAGE-VERSION-HASH/bin``)
-======================================= ===================
+======================================  =============================================
 
 cabal.project files
 -------------------
