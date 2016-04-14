@@ -698,13 +698,13 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     whenShared  $ copyModuleFiles "dyn_hi"
 
     -- copy the built library files over:
-    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
-    whenProf    $ installOrdinary builtDir targetDir       profileLibName
-    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
-    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
+    whenVanilla $ installOrdinaryNative builtDir targetDir       vanillaLibName
+    whenProf    $ installOrdinaryNative builtDir targetDir       profileLibName
+    whenGHCi    $ installOrdinaryNative builtDir targetDir       ghciLibName
+    whenShared  $ installSharedNative   builtDir dynlibTargetDir sharedLibName
 
   where
-    install isShared srcDir dstDir name = do
+    install isShared isJS srcDir dstDir name = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
@@ -713,11 +713,15 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
         then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
 
-      when (stripLibs lbi) $ Strip.stripLib verbosity
-                             (hostPlatform lbi) (withPrograms lbi) dst
+      when (stripLibs lbi && not isJS) $
+        Strip.stripLib verbosity
+        (hostPlatform lbi) (withPrograms lbi) dst
 
-    installOrdinary = install False
-    installShared   = install True
+    installOrdinary = install False True
+    installShared   = install True  True
+
+    installOrdinaryNative = install False False
+    installSharedNative   = install True  False
 
     copyModuleFiles ext =
       findModuleFiles [builtDir] [ext] (libModules lib)
