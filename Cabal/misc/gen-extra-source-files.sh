@@ -9,7 +9,7 @@ fi
 set -ex
 
 git ls-files tests \
-    | awk '/\.(hs|lhs|c|sh|cabal|hsc|err|out)$|ghc/ { print } { next }' \
+    | awk '/\.(hs|lhs|c|sh|cabal|hsc|err|out|in)$|ghc/ { print } { next }' \
     | awk '/Check.hs$|UnitTests|PackageTester|autogen|register.sh|PackageTests.hs|IntegrationTests.hs|CreatePipe|^tests\/Test/ { next } { print }' \
     | LC_ALL=C sort \
     | sed -e 's/^/  /' \
