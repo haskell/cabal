@@ -131,6 +131,20 @@ data ElaboratedConfiguredPackage
        -- to disable. This tells us which ones we build by default, and
        -- helps with error messages when the user asks to build something
        -- they explicitly disabled.
+       --
+       -- TODO: The 'Bool' here should be refined into an ADT with three
+       -- cases: NotRequested, ExplicitlyRequested and
+       -- ImplicitlyRequested.  A stanza is explicitly requested if
+       -- the user asked, for this *specific* package, that the stanza
+       -- be enabled; it's implicitly requested if the user asked for
+       -- all global packages to have this stanza enabled.  The
+       -- difference between an explicit and implicit request is
+       -- error reporting behavior: if a user asks for tests to be
+       -- enabled for a specific package that doesn't have any tests,
+       -- we should warn them about it, but we shouldn't complain
+       -- that a user enabled tests globally, and some local packages
+       -- just happen not to have any tests.  (But perhaps we should
+       -- warn if ALL local packages don't have any tests.)
        pkgStanzasRequested :: Map OptionalStanza Bool,
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually

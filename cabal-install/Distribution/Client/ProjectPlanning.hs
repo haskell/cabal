@@ -189,7 +189,7 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
     -- (according to the solver)
     pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable
 
-    -- the stanzas that the user explicitlyr requested should be
+    -- the stanzas that the user explicitly requested should be
     -- enabled (by the previous test, they are also available)
  && Map.keysSet (Map.filter id pkgStanzasRequested)
       `Set.isSubsetOf` pkgStanzasEnabled
@@ -970,7 +970,14 @@ elaborateInstallPlan platform compiler compilerprogdb
             tests      = perPkgOptionMaybe pkgid packageConfigTests
             benchmarks = perPkgOptionMaybe pkgid packageConfigBenchmarks
 
-        -- These sometimes get adjusted later
+        -- This is a placeholder which will get updated by 'pruneInstallPlanPass1'
+        -- and 'pruneInstallPlanPass2'.  We can't populate it here
+        -- because whether or not tests/benchmarks should be enabled
+        -- is heuristically calculated based on whether or not the
+        -- dependencies of the test suite have already been installed,
+        -- but this function doesn't know what is installed (since
+        -- we haven't improved the plan yet), so we do it in another pass.
+        -- Check the comments of those functions for more details.
         pkgStanzasEnabled   = Set.empty
         pkgBuildTargets     = []
         pkgReplTarget       = Nothing
@@ -1308,7 +1315,7 @@ pruneInstallPlanToTargets perPkgTargetsMap =
   . pruneInstallPlanPass1 perPkgTargetsMap
   . InstallPlan.toList
 
--- The first pass does three things:
+-- | The first pass does three things:
 --
 -- * Set the build targets based on the user targets (but not rev deps yet).
 -- * A first go at determining which optional stanzas (testsuites, benchmarks)
@@ -1334,7 +1341,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
   where
     -- Elaborate and set the targets we'll build for this package. This is just
     -- based on the targets from the user, not targets implied by reverse
-    -- depencencies. Those comes in the second pass once we know the rev deps.
+    -- dependencies. Those comes in the second pass once we know the rev deps.
     --
     setBuildTargets pkg =
         pkg {
@@ -1356,7 +1363,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     --
     -- There are two cases in which we will enable the testsuites (or
     -- benchmarks): if one of the targets is a testsuite, or if all of the
-    -- testsuite depencencies are already cached in the store. The rationale
+    -- testsuite dependencies are already cached in the store. The rationale
     -- for the latter is to minimise how often we have to reconfigure due to
     -- the particular targets we choose to build. Otherwise choosing to build
     -- a testsuite target, and then later choosing to build an exe target
@@ -1371,7 +1378,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
                <> optionalStanzasRequestedByDefault pkg
                <> optionalStanzasWithDepsAvailable availablePkgs pkg
 
-    -- Calculate package depencencies but cut out those needed only by
+    -- Calculate package dependencies but cut out those needed only by
     -- optional stanzas that we've determined we will not enable.
     -- These pruned deps are not persisted in this pass since they're based on
     -- the optional stanzas and we'll make further tweaks to the optional
@@ -1410,6 +1417,12 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
         [ installedPackageId pkg
         | InstallPlan.PreExisting pkg <- pkgs ]
 
+-- | Given a set of already installed packages @availablePkgs@,
+-- determine the set of available optional stanzas from @pkg@
+-- which have all of their dependencies already installed.  This is used
+-- to implement "sticky" testsuites, where once we have installed
+-- all of the deps needed for the test suite, we go ahead and
+-- enable it always.
 optionalStanzasWithDepsAvailable :: Set InstalledPackageId
                                  -> ElaboratedConfiguredPackage
                                  -> Set OptionalStanza
@@ -1432,15 +1445,15 @@ optionalStanzasWithDepsAvailable availablePkgs pkg =
 -- The second pass does three things:
 --
 -- * A second go at deciding which optional stanzas to enable.
--- * Prune the depencencies based on the final choice of optional stanzas.
+-- * Prune the dependencies based on the final choice of optional stanzas.
 -- * Extend the targets within each package to build, now we know the reverse
---   depencencies, ie we know which libs are needed as deps by other packages.
+--   dependencies, ie we know which libs are needed as deps by other packages.
 --
 -- Achieving sticky behaviour with enabling\/disabling optional stanzas is
 -- tricky. The first approximation was handled by the first pass above, but
 -- it's not quite enough. That pass will enable stanzas if all of the deps
--- of the optional stanza are already instaled /in the store/. That's important
--- but it does not account for depencencies that get built inplace as part of
+-- of the optional stanza are already installed /in the store/. That's important
+-- but it does not account for dependencies that get built inplace as part of
 -- the project. We cannot take those inplace build deps into account in the
 -- pruning pass however because we don't yet know which ones we're going to
 -- build. Once we do know, we can have another go and enable stanzas that have
