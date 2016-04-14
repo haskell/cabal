@@ -94,16 +94,14 @@ import Distribution.Package
          , Package(..), packageName, packageVersion
          , UnitId, Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), SetupBuildInfo(..)
-         , GenericPackageDescription(..)
-         , Flag(flagName), FlagName(..) )
+import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
-         ( VersionRange, anyVersion, thisVersion, withinRange
-         , simplifyVersionRange )
+         ( Version(..), VersionRange, anyVersion, thisVersion, orLaterVersion
+         , withinRange, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -394,7 +392,7 @@ removeUpperBounds allowNewer     params =
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
-addDefaultSetupDependencies :: (UnresolvedSourcePackage -> [Dependency])
+addDefaultSetupDependencies :: (UnresolvedSourcePackage -> Maybe [Dependency])
                             -> DepResolverParams -> DepResolverParams
 addDefaultSetupDependencies defaultSetupDeps params =
     params {
@@ -410,9 +408,12 @@ addDefaultSetupDependencies defaultSetupDeps params =
               PD.setupBuildInfo =
                 case PD.setupBuildInfo pkgdesc of
                   Just sbi -> Just sbi
-                  Nothing  -> Just PD.SetupBuildInfo {
-                                PD.setupDepends = defaultSetupDeps srcpkg
-                              }
+                  Nothing  -> case defaultSetupDeps srcpkg of
+                    Nothing -> Nothing
+                    Just deps -> Just PD.SetupBuildInfo {
+                      PD.defaultSetupDepends = True,
+                      PD.setupDepends        = deps
+                    }
             }
           }
         }
@@ -451,11 +452,40 @@ standardInstallPolicy
   . hideInstalledPackagesSpecificBySourcePackageId
       [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
+  . addDefaultSetupDependencies mkDefaultSetupDeps
+
   . addSourcePackages
       [ pkg  | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
   $ basicDepResolverParams
       installedPkgIndex sourcePkgIndex
+
+    where
+      -- Force Cabal >= 1.24 dep when the package is affected by #3199.
+      mkDefaultSetupDeps :: UnresolvedSourcePackage -> Maybe [Dependency]
+      mkDefaultSetupDeps srcpkg | affected        =
+        Just [Dependency (PackageName "Cabal")
+              (orLaterVersion $ Version [1,24] [])]
+                                | otherwise       = Nothing
+        where
+          gpkgdesc = packageDescription srcpkg
+          pkgdesc  = PD.packageDescription gpkgdesc
+          bt       = fromMaybe PD.Custom (PD.buildType pkgdesc)
+          affected = bt == PD.Custom && hasBuildableFalse gpkgdesc
+
+      -- Does this package contain any components with non-empty 'build-depends'
+      -- and a 'buildable' field that could potentially be set to 'False'? False
+      -- positives are possible.
+      hasBuildableFalse :: PD.GenericPackageDescription -> Bool
+      hasBuildableFalse gpkg =
+        not (all alwaysTrue (zipWith PD.cOr buildableConditions noDepConditions))
+        where
+          buildableConditions      = PD.extractConditions PD.buildable gpkg
+          noDepConditions          = PD.extractConditions
+                                     (null . PD.targetBuildDepends)    gpkg
+          alwaysTrue (PD.Lit True) = True
+          alwaysTrue _             = False
+
 
 applySandboxInstallPolicy :: SandboxPackageInfo
                              -> DepResolverParams

@@ -161,15 +161,16 @@ data SetupScriptOptions = SetupScriptOptions {
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
 
-    -- | List of dependencies to use when building Setup.hs
+    -- | List of dependencies to use when building Setup.hs.
     useDependencies :: [(UnitId, PackageId)],
 
     -- | Is the list of setup dependencies exclusive?
     --
-    -- When this is @False@, if we compile the Setup.hs script we do so with
-    -- the list in 'useDependencies' but all other packages in the environment
-    -- are also visible. Additionally, a suitable version of @Cabal@ library
-    -- is added to the list of dependencies (see 'useCabalVersion').
+    -- When this is @False@, if we compile the Setup.hs script we do so with the
+    -- list in 'useDependencies' but all other packages in the environment are
+    -- also visible. A suitable version of @Cabal@ library (see
+    -- 'useCabalVersion') is also added to the list of dependencies, unless
+    -- 'useDependencies' already contains a Cabal dependency.
     --
     -- When @True@, only the 'useDependencies' packages are used, with other
     -- packages in the environment hidden.
@@ -604,16 +605,22 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           -- With 'useDependenciesExclusive' we enforce the deps specified,
           -- so only the given ones can be used. Otherwise we allow the use
           -- of packages in the ambient environment, and add on a dep on the
-          -- Cabal library.
+          -- Cabal library (unless 'useDependencies' already contains one).
           --
           -- With 'useVersionMacros' we use a version CPP macros .h file.
           --
           -- Both of these options should be enabled for packages that have
           -- opted-in and declared a custom-settup stanza.
           --
+          hasCabal (_, PackageIdentifier (PackageName "Cabal") _) = True
+          hasCabal _                                              = False
+
           selectedDeps | useDependenciesExclusive options'
                                    = useDependencies options'
-                       | otherwise = useDependencies options' ++ cabalDep
+                       | otherwise = useDependencies options' ++
+                                     if any hasCabal (useDependencies options')
+                                     then []
+                                     else cabalDep
           addRenaming (ipid, _) = (ipid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {

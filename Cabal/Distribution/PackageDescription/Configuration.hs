@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- -fno-warn-deprecations for use of Map.foldWithKey
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
@@ -23,6 +24,7 @@ module Distribution.PackageDescription.Configuration (
     parseCondition,
     freeVars,
     extractCondition,
+    extractConditions,
     addBuildableCondition,
     mapCondTree,
     mapTreeData,
@@ -31,6 +33,9 @@ module Distribution.PackageDescription.Configuration (
     transformAllBuildInfos,
     transformAllBuildDepends,
   ) where
+
+import Control.Applicative -- 7.10 -Werror workaround.
+import Prelude
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -293,17 +298,24 @@ addBuildableCondition getInfo t =
     Lit False -> CondNode mempty mempty []
     c         -> CondNode mempty mempty [(c, t, Nothing)]
 
--- | Extract buildable condition from a cond tree.
+-- Note: extracting buildable conditions.
+-- --------------------------------------
 --
--- Background: If the conditions in a cond tree lead to Buildable being set to False,
--- then none of the dependencies for this cond tree should actually be taken into
--- account. On the other hand, some of the flags may only be decided in the solver,
--- so we cannot necessarily make the decision whether a component is Buildable or not
--- prior to solving.
+-- If the conditions in a cond tree lead to Buildable being set to False, then
+-- none of the dependencies for this cond tree should actually be taken into
+-- account. On the other hand, some of the flags may only be decided in the
+-- solver, so we cannot necessarily make the decision whether a component is
+-- Buildable or not prior to solving.
 --
--- What we are doing here is to partially evaluate a condition tree in order to extract
--- the condition under which Buildable is True. The predicate determines whether data
--- under a 'CondTree' is buildable.
+-- What we are doing here is to partially evaluate a condition tree in order to
+-- extract the condition under which Buildable is True. The predicate determines
+-- whether data under a 'CondTree' is buildable.
+
+
+-- | Extract the condition matched by the given predicate from a cond tree.
+--
+-- We use this mainly for extracting buildable conditions (see the Note above),
+-- but the function is in fact more general.
 extractCondition :: Eq v => (a -> Bool) -> CondTree v c a -> Condition v
 extractCondition p = go
   where
@@ -316,21 +328,20 @@ extractCondition p = go
         ct = go t
         ce = maybe (Lit True) go e
       in
-        ((c `cand` ct) `cor` (CNot c `cand` ce)) `cand` goList cs
+        ((c `cAnd` ct) `cOr` (CNot c `cAnd` ce)) `cAnd` goList cs
 
-    cand (Lit False) _           = Lit False
-    cand _           (Lit False) = Lit False
-    cand (Lit True)  x           = x
-    cand x           (Lit True)  = x
-    cand x           y           = CAnd x y
+-- | Extract conditions matched by the given predicate from all cond trees in a
+-- 'GenericPackageDescription'.
+extractConditions :: (BuildInfo -> Bool) -> GenericPackageDescription
+                     -> [Condition ConfVar]
+extractConditions f gpkg =
+  concat [
+      extractCondition (f . libBuildInfo)       . snd <$> condLibraries   gpkg
+    , extractCondition (f . buildInfo)          . snd <$> condExecutables gpkg
+    , extractCondition (f . testBuildInfo)      . snd <$> condTestSuites  gpkg
+    , extractCondition (f . benchmarkBuildInfo) . snd <$> condBenchmarks  gpkg
+    ]
 
-    cor  (Lit True)  _           = Lit True
-    cor  _           (Lit True)  = Lit True
-    cor  (Lit False) x           = x
-    cor  x           (Lit False) = x
-    cor  c           (CNot d)
-      | c == d                   = Lit True
-    cor  x           y           = COr x y
 
 -- | A map of dependencies that combines version ranges using 'unionVersionRanges'.
 newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRange }
