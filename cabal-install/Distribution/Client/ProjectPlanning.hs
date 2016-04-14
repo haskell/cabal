@@ -177,15 +177,20 @@ import           System.FilePath
 -- data BuildStyle =
 
 
+-- | Check that an 'ElaboratedConfiguredPackage' actually makes
+-- sense under some 'ElaboratedSharedConfig'.
 sanityCheckElaboratedConfiguredPackage :: ElaboratedSharedConfig
                                        -> ElaboratedConfiguredPackage
                                        -> Bool
 sanityCheckElaboratedConfiguredPackage sharedConfig
                                        pkg@ElaboratedConfiguredPackage{..} =
 
+    -- we should only have enabled stanzas that actually can be built
+    -- (according to the solver)
     pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable
 
-    -- the stanzas explicitly enabled should be available and enabled
+    -- the stanzas that the user explicitlyr requested should be
+    -- enabled (by the previous test, they are also available)
  && Map.keysSet (Map.filter id pkgStanzasRequested)
       `Set.isSubsetOf` pkgStanzasEnabled
 
@@ -193,10 +198,17 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
  && Set.null (Map.keysSet (Map.filter not pkgStanzasRequested)
                 `Set.intersection` pkgStanzasAvailable)
 
+    -- either a package is being built inplace, or the
+    -- 'installedPackageId' we assigned is consistent with
+    -- the 'hashedInstalledPackageId' we would compute from
+    -- the elaborated configured package
  && (pkgBuildStyle == BuildInplaceOnly ||
      installedPackageId pkg == hashedInstalledPackageId
                                  (packageHashInputs sharedConfig pkg))
 
+    -- either a package is built inplace, or we are not attempting to
+    -- build any test suites or benchmarks (we never build these
+    -- for remote packages!)
  && (pkgBuildStyle == BuildInplaceOnly ||
      Set.null pkgStanzasAvailable)
 
