@@ -40,13 +40,14 @@ import Distribution.Text
 import Distribution.Client.Types
          ( InstalledPackageId )
 
+import qualified Crypto.Hash.SHA256         as SHA256
+import qualified Data.ByteString.Base16     as Base16
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
-import qualified Crypto.Hash                as Hash
-import qualified Data.Byteable              as Hash
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
+import Control.Monad     (unless)
 import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
 import Data.Function     (on)
@@ -203,22 +204,22 @@ renderPackageHashInputs PackageHashInputs{
 -- there is some value in preventing intentional hash collisions in installed
 -- package ids.
 
-newtype HashValue = HashValue (Hash.Digest Hash.SHA256)
+newtype HashValue = HashValue BS.ByteString
   deriving (Eq, Show)
 
 instance Binary HashValue where
-  put (HashValue digest) = put (Hash.toBytes digest)
+  put (HashValue digest) = put digest
   get = do
-    bs <- get
-    case Hash.digestFromByteString bs of
-      Nothing     -> fail "HashValue: bad digest"
-      Just digest -> return (HashValue digest)
+    digest <- get
+    unless (BS.length digest == 32) $ -- NB: valid for SHA256
+        fail "HashValue: bad digest"
+    return (HashValue digest)
 
 hashValue :: LBS.ByteString -> HashValue
-hashValue = HashValue . Hash.hashlazy
+hashValue = HashValue . SHA256.hashlazy
 
 showHashValue :: HashValue -> String
-showHashValue (HashValue digest) = BS.unpack (Hash.digestToHexByteString digest)
+showHashValue (HashValue digest) = BS.unpack (Base16.encode digest)
 
 readFileHashValue :: FilePath -> IO HashValue
 readFileHashValue tarball =
