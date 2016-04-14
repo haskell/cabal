@@ -40,8 +40,8 @@ that needs to be done to start working with it.
    `cabal-install 1.24 prerelease <https://github.com/haskell/cabal/tree/1.24>`_::
 
     git clone https://github.com/haskell/cabal.git \
-        --branch="1.24" cabal-nix-local-build
-    cd cabal-nix-local-build
+        --branch="1.24" cabal-1.24.x
+    cd cabal-1.24.x
     (cd Cabal; cabal install)
     (cd cabal-install; cabal install)
 
