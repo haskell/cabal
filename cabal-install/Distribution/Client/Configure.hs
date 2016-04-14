@@ -184,18 +184,18 @@ configureSetupScript packageDBs
                      index
                      mpkg
   = SetupScriptOptions {
-      useCabalVersion   = cabalVersion
-    , useCabalSpecVersion = Nothing
-    , useCompiler       = Just comp
-    , usePlatform       = Just platform
-    , usePackageDB      = packageDBs'
-    , usePackageIndex   = index'
-    , useProgramConfig  = conf
-    , useDistPref       = distPref
-    , useLoggingHandle  = Nothing
-    , useWorkingDir     = Nothing
-    , setupCacheLock    = lock
-    , useWin32CleanHack = False
+      useCabalVersion          = cabalVersion
+    , useCabalSpecVersion      = Nothing
+    , useCompiler              = Just comp
+    , usePlatform              = Just platform
+    , usePackageDB             = packageDBs'
+    , usePackageIndex          = index'
+    , useProgramConfig         = conf
+    , useDistPref              = distPref
+    , useLoggingHandle         = Nothing
+    , useWorkingDir            = Nothing
+    , setupCacheLock           = lock
+    , useWin32CleanHack        = False
     , forceExternalSetupMethod = forceExternal
       -- If we have explicit setup dependencies, list them; otherwise, we give
       -- the empty list of dependencies; ideally, we would fix the version of
@@ -204,8 +204,8 @@ configureSetupScript packageDBs
       -- know the version of Cabal at this point, but only find this there.
       -- Therefore, for now, we just leave this blank.
     , useDependencies          = fromMaybe [] explicitSetupDeps
-    , useDependenciesExclusive = isJust explicitSetupDeps
-    , useVersionMacros         = isJust explicitSetupDeps
+    , useDependenciesExclusive = not defaultSetupDeps && isJust explicitSetupDeps
+    , useVersionMacros         = not defaultSetupDeps && isJust explicitSetupDeps
     }
   where
     -- When we are compiling a legacy setup script without an explicit
@@ -223,13 +223,24 @@ configureSetupScript packageDBs
         -- but if the user is using an odd db stack, don't touch it
         _otherwise -> (packageDBs, Just index)
 
+    maybeSetupBuildInfo :: Maybe PkgDesc.SetupBuildInfo
+    maybeSetupBuildInfo = do
+      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) _
+                 <- mpkg
+      PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
+
+    -- Was a default 'custom-setup' stanza added by 'cabal-install' itself? If
+    -- so, 'setup-depends' must not be exclusive. See #3199.
+    defaultSetupDeps :: Bool
+    defaultSetupDeps = maybe False PkgDesc.defaultSetupDepends
+                       maybeSetupBuildInfo
+
     explicitSetupDeps :: Maybe [(UnitId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
-                 <- mpkg
-      -- Check if there is an explicit setup stanza
-      _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
+      -- Check if there is an explicit setup stanza.
+      _buildInfo <- maybeSetupBuildInfo
       -- Return the setup dependencies computed by the solver
+      ReadyPackage _ deps <- mpkg
       return [ ( Installed.installedUnitId deppkg
                , Installed.sourcePackageId    deppkg
                )
