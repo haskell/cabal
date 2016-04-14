@@ -181,36 +181,40 @@ import           System.FilePath
 -- sense under some 'ElaboratedSharedConfig'.
 sanityCheckElaboratedConfiguredPackage :: ElaboratedSharedConfig
                                        -> ElaboratedConfiguredPackage
-                                       -> Bool
+                                       -> a
+                                       -> a
 sanityCheckElaboratedConfiguredPackage sharedConfig
-                                       pkg@ElaboratedConfiguredPackage{..} =
+                                       pkg@ElaboratedConfiguredPackage{..}
+                                       ret =
 
     -- we should only have enabled stanzas that actually can be built
     -- (according to the solver)
-    pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable
+    assert (pkgStanzasEnabled `Set.isSubsetOf` pkgStanzasAvailable)
 
     -- the stanzas that the user explicitly requested should be
     -- enabled (by the previous test, they are also available)
- && Map.keysSet (Map.filter id pkgStanzasRequested)
-      `Set.isSubsetOf` pkgStanzasEnabled
+  . assert (Map.keysSet (Map.filter id pkgStanzasRequested)
+                `Set.isSubsetOf` pkgStanzasEnabled)
 
     -- the stanzas explicitly disabled should not be available
- && Set.null (Map.keysSet (Map.filter not pkgStanzasRequested)
-                `Set.intersection` pkgStanzasAvailable)
+  . assert (Set.null (Map.keysSet (Map.filter not pkgStanzasRequested)
+                `Set.intersection` pkgStanzasAvailable))
 
     -- either a package is being built inplace, or the
     -- 'installedPackageId' we assigned is consistent with
     -- the 'hashedInstalledPackageId' we would compute from
     -- the elaborated configured package
- && (pkgBuildStyle == BuildInplaceOnly ||
+  . assert (pkgBuildStyle == BuildInplaceOnly ||
      installedPackageId pkg == hashedInstalledPackageId
                                  (packageHashInputs sharedConfig pkg))
 
     -- either a package is built inplace, or we are not attempting to
     -- build any test suites or benchmarks (we never build these
     -- for remote packages!)
- && (pkgBuildStyle == BuildInplaceOnly ||
+  . assert (pkgBuildStyle == BuildInplaceOnly ||
      Set.null pkgStanzasAvailable)
+
+  $ ret
 
 
 ------------------------------------------------------------------------------
@@ -1857,8 +1861,8 @@ setupHsConfigureFlags (ReadyPackage
                          pkg@ElaboratedConfiguredPackage{..})
                       sharedConfig@ElaboratedSharedConfig{..}
                       verbosity builddir =
-    assert (sanityCheckElaboratedConfiguredPackage sharedConfig pkg)
-    Cabal.ConfigFlags {..}
+    sanityCheckElaboratedConfiguredPackage sharedConfig pkg
+        (Cabal.ConfigFlags {..})
   where
     configDistPref            = toFlag builddir
     configVerbosity           = toFlag verbosity
