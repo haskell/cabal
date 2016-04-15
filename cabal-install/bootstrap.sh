@@ -213,8 +213,16 @@ OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
 BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
                        # 0.1.1
-CRYPTOHASH_VER="0.11.7"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
+MEMORY_VER="0.12";     MEMORY_VER_REGEXP="0\."
+                       # 0.*
+CRYPTONITE_VER="0.15"; CRYPTONITE_VER_REGEXP="0\."
+                       # 0.*
+CRYPTOHASH_VER="0.11.9"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
                        # 0.11.*
+CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
+                       # 0.11.*
+BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
+                       # 0.1.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.0.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.?"
@@ -407,8 +415,14 @@ info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 info_pkg "async"        ${ASYNC_VER}   ${ASYNC_VER_REGEXP}
-info_pkg "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+info_pkg "byteable"     ${BYTEABLE_VER}     ${BYTEABLE_VER_REGEXP}
+info_pkg "memory"       ${MEMORY_VER}       ${MEMORY_VER_REGEXP}
+info_pkg "cryptonite"        ${CRYPTONITE_VER}       ${CRYPTONITE_VER_REGEXP}
 info_pkg "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+info_pkg "base16-bytestring" ${BASE16_BYTESTRING_VER} \
+    ${BASE16_BYTESTRING_VER_REGEXP}
+info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
+    ${CRYPTOHASH_SHA256_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
@@ -437,8 +451,14 @@ do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}        ${STM_VER_REGEXP}
 do_pkg   "async"        ${ASYNC_VER}      ${ASYNC_VER_REGEXP}
-do_pkg   "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
+do_pkg   "byteable"     ${BYTEABLE_VER}   ${BYTEABLE_VER_REGEXP}
+do_pkg   "memory"       ${MEMORY_VER}     ${MEMORY_VER_REGEXP}
+do_pkg   "cryptonite"        ${CRYPTONITE_VER}       ${CRYPTONITE_VER_REGEXP}
 do_pkg   "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
+do_pkg   "base16-bytestring" ${BASE16_BYTESTRING_VER} \
+    ${BASE16_BYTESTRING_VER_REGEXP}
+do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
+    ${CRYPTOHASH_SHA256_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
