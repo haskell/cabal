@@ -240,19 +240,19 @@ rebuildInstallPlan verbosity
                      cabalStorePackageDB
                    }
                    cliConfig =
-    runRebuild $ do
+    runRebuild projectRootDir $ do
     progsearchpath <- liftIO $ getSystemSearchPath
     let cliConfigPersistent = cliConfig { projectConfigBuildOnly = mempty }
 
     -- The overall improved plan is cached
-    rerunIfChanged verbosity projectRootDir fileMonitorImprovedPlan
+    rerunIfChanged verbosity fileMonitorImprovedPlan
                    -- react to changes in command line args and the path
                    (cliConfigPersistent, progsearchpath) $ do
 
       -- And so is the elaborated plan that the improved plan based on
       (elaboratedPlan, elaboratedShared,
        projectConfig) <-
-        rerunIfChanged verbosity projectRootDir fileMonitorElaboratedPlan
+        rerunIfChanged verbosity fileMonitorElaboratedPlan
                        (cliConfigPersistent, progsearchpath) $ do
 
           (projectConfig, projectConfigTransient) <- phaseReadProjectConfig
@@ -342,7 +342,7 @@ rebuildInstallPlan verbosity
                              }
                            } = do
         progsearchpath <- liftIO $ getSystemSearchPath
-        rerunIfChanged verbosity projectRootDir fileMonitorCompiler
+        rerunIfChanged verbosity fileMonitorCompiler
                        (hcFlavor, hcPath, hcPkg, progsearchpath,
                         packageConfigProgramPaths,
                         packageConfigProgramArgs,
@@ -420,7 +420,7 @@ rebuildInstallPlan verbosity
                    }
                    (compiler, platform, progdb)
                    localPackages =
-        rerunIfChanged verbosity projectRootDir fileMonitorSolverPlan
+        rerunIfChanged verbosity fileMonitorSolverPlan
                        (solverSettings, cabalPackageCacheDirectory,
                         localPackages, localPackagesEnabledStanzas,
                         compiler, platform, programsDbSignature progdb) $ do
@@ -496,7 +496,7 @@ rebuildInstallPlan verbosity
         liftIO $ debug verbosity "Elaborating the install plan..."
 
         sourcePackageHashes <-
-          rerunIfChanged verbosity projectRootDir fileMonitorSourceHashes
+          rerunIfChanged verbosity fileMonitorSourceHashes
                          (map packageId $ InstallPlan.toList solverPlan) $
             getPackageSourceHashes verbosity withRepoCtx solverPlan
 
