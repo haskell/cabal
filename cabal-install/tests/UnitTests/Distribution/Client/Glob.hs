@@ -40,12 +40,12 @@ prop_roundtrip_printparse pathglob =
 testParseCases :: Assertion
 testParseCases = do
 
-  FilePathGlob FilePathUnixRoot GlobDirTrailing <- testparse "/"
+  FilePathGlob (FilePathRoot "/") GlobDirTrailing <- testparse "/"
   FilePathGlob FilePathHomeDir  GlobDirTrailing <- testparse "~/"
 
-  FilePathGlob (FilePathWinDrive 'A') GlobDirTrailing <- testparse "A:/"
-  FilePathGlob (FilePathWinDrive 'Z') GlobDirTrailing <- testparse "z:/"
-  FilePathGlob (FilePathWinDrive 'C') GlobDirTrailing <- testparse "C:\\"
+  FilePathGlob (FilePathRoot "A:\\") GlobDirTrailing <- testparse "A:/"
+  FilePathGlob (FilePathRoot "Z:\\") GlobDirTrailing <- testparse "z:/"
+  FilePathGlob (FilePathRoot "C:\\") GlobDirTrailing <- testparse "C:\\"
   FilePathGlob FilePathRelative (GlobFile [Literal "_:"]) <- testparse "_:"
 
   FilePathGlob FilePathRelative
@@ -68,7 +68,7 @@ testParseCases = do
     (GlobDir [Literal "foo"]
       (GlobDir [Literal "bar"] GlobDirTrailing)) <- testparse "foo/bar/"
 
-  FilePathGlob FilePathUnixRoot
+  FilePathGlob (FilePathRoot "/")
     (GlobDir [Literal "foo"]
       (GlobDir [Literal "bar"] GlobDirTrailing)) <- testparse "/foo/bar/"
 
@@ -134,16 +134,17 @@ instance Arbitrary FilePathRoot where
   arbitrary =
     frequency
       [ (3, pure FilePathRelative)
-      , (1, pure FilePathUnixRoot)
+      , (1, pure (FilePathRoot unixroot))
+      , (1, FilePathRoot <$> windrive)
       , (1, pure FilePathHomeDir)
-      , (1, FilePathWinDrive <$> choose ('A', 'Z'))
       ]
+    where
+      unixroot = "/"
+      windrive = do d <- choose ('A', 'Z'); return (d : ":\\")
 
   shrink FilePathRelative     = []
-  shrink FilePathUnixRoot     = [FilePathRelative]
+  shrink (FilePathRoot _)     = [FilePathRelative]
   shrink FilePathHomeDir      = [FilePathRelative]
-  shrink (FilePathWinDrive d) = FilePathRelative
-                              : [ FilePathWinDrive d' | d' <- shrink d ]
 
 
 instance Arbitrary FilePathGlobRel where
