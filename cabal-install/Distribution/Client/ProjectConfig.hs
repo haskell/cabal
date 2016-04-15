@@ -591,7 +591,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       case simpleParse pkglocstr of
         Nothing   -> return Nothing
         Just glob -> liftM Just $ do
-          matches <- matchFileGlob projectRootDir glob
+          matches <- matchFileGlob glob
           case matches of
             [] | isJust (isTrivialFilePathGlob glob)
                -> return (Left (BadPackageLocationFile
@@ -629,13 +629,13 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       case () of
         _ | isDir
          -> do let dirname = filename -- now we know its a dir
-               matches <- matchFileGlob dirname globStarDotCabal
+               matches <- matchFileGlob (globStarDotCabal pkglocstr)
                case matches of
                  [match]
                      -> return (Right (ProjectPackageLocalDirectory
                                          dirname cabalFile))
                    where
-                     cabalFile = dirname </> match
+                     cabalFile = projectRootDir </> match
                  []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
                  _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
 
@@ -656,9 +656,14 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                       && takeExtension (dropExtension f) == ".tar"
 
 
-globStarDotCabal :: FilePathGlob
-globStarDotCabal =
-    FilePathGlob FilePathRelative (GlobFile [WildCard, Literal ".cabal"])
+globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal dir =
+    FilePathGlob
+      (if isAbsolute dir then FilePathRoot root else FilePathRelative)
+      (foldr (\d -> GlobDir [Literal d])
+             (GlobFile [WildCard, Literal ".cabal"]) dirComponents)
+  where
+    (root, dirComponents) = fmap splitDirectories (splitDrive dir)
 
 
 --TODO: [code cleanup] use sufficiently recent transformers package
