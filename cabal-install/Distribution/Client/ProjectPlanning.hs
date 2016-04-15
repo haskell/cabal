@@ -967,8 +967,16 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgDependencies     = deps
         pkgStanzasAvailable = Set.fromList stanzas
         pkgStanzasRequested =
-            Map.fromList $ [ (TestStanzas,  v) | v <- maybeToList tests ]
-                        ++ [ (BenchStanzas, v) | v <- maybeToList benchmarks ]
+            -- NB: even if a package stanza is requested, if the package
+            -- doesn't actually have any of that stanza we omit it from
+            -- the request, to ensure that we don't decide that this
+            -- package needs to be rebuilt.  (It needs to be done here,
+            -- because the ElaboratedConfiguredPackage is where we test
+            -- whether or not there have been changes.)
+            Map.fromList $ [ (TestStanzas,  v) | v <- maybeToList tests
+                                               , _ <- PD.testSuites pkgDescription ]
+                        ++ [ (BenchStanzas, v) | v <- maybeToList benchmarks
+                                               , _ <- PD.benchmarks pkgDescription ]
           where
             tests, benchmarks :: Maybe Bool
             tests      = perPkgOptionMaybe pkgid packageConfigTests
