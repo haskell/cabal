@@ -1161,6 +1161,7 @@ data InstallFlags = InstallFlags {
     installUpgradeDeps      :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
+    installIndexSnapshot    :: Flag Int,
     installRootCmd          :: Flag String,
     installSummaryFile      :: NubList PathTemplate,
     installLogFile          :: Flag PathTemplate,
@@ -1194,6 +1195,7 @@ defaultInstallFlags = InstallFlags {
     installUpgradeDeps     = Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
+    installIndexSnapshot   = mempty,
     installRootCmd         = mempty,
     installSummaryFile     = mempty,
     installLogFile         = mempty,
@@ -1365,6 +1367,13 @@ installOptions showOrParseArgs =
           "A synonym for --only-dependencies"
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
           (yesNoOpt showOrParseArgs)
+
+      , option [] ["index-snapshot"]
+          "Operate on package index state rolled back to given unix-timestamp"
+          installIndexSnapshot (\v flags -> flags { installIndexSnapshot = v })
+          (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
+                         (fmap toFlag parse))
+           (map show . flagToList))
 
       , option [] ["root-cmd"]
           "(No longer supported, do not use.)"

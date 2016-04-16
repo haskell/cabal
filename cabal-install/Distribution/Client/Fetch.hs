@@ -85,7 +85,7 @@ fetch verbosity packageDBs repoCtxt comp platform conf
     mapM_ checkTarget userTargets
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt Nothing
     pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt

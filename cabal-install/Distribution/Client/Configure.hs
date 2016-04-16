@@ -115,7 +115,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
   configFlags configExFlags extraArgs = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-  sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+  sourcePkgDb       <- getSourcePackages    verbosity repoCtxt Nothing
   pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
   checkConfigExFlags verbosity installedPkgIndex
