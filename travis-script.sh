@@ -1,7 +1,38 @@
 #!/usr/bin/env bash
 set -ev
 
+# ---------------------------------------------------------------------
+# Bootstrap cabal, to verify bootstrap.sh script works.
+# ---------------------------------------------------------------------
+
+OLD_CWD=$PWD
+
+# Bootstrap
+cd Cabal
+ghc --make Setup
+./Setup configure --user
+./Setup build
+./Setup install
+cd ../cabal-install
+env EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh --no-doc
+~/.cabal/bin/cabal --version
+
+# Move cabal for local use.
+mkdir ~/fresh-cabal
+mv -i ~/.cabal/bin/cabal ~/fresh-cabal/
+
+# Clean up after ourselves.
+rm -r ~/.ghc ~/.cabal
+
+# From here on we use the freshly built cabal executable.
+export PATH="$HOME/fresh-cabal/:$PATH"
+
+cd $OLD_CWD
+
+
 # Initial working directory: base directory of Git repository
+
+cabal update
 
 # We depend on parsec nowadays, which isn't distributed with GHC <8.0
 if [ "$PARSEC_BUNDLED" != "YES" ]; then
