@@ -300,6 +300,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --installReinstall          = projectConfigReinstall,
     --installAvoidReinstalls    = projectConfigAvoidReinstalls,
     --installOverrideReinstall  = projectConfigOverrideReinstall,
+      installIndexSnapshot        = projectConfigIndexSnapshot,
       installMaxBackjumps       = projectConfigMaxBackjumps,
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
@@ -499,6 +500,7 @@ convertToLegacySharedConfig
       installStrongFlags       = projectConfigStrongFlags,
       installOnly              = mempty,
       installOnlyDeps          = projectConfigOnlyDeps,
+      installIndexSnapshot       = projectConfigIndexSnapshot,
       installRootCmd           = projectConfigRootCmd,
       installSummaryFile       = projectConfigSummaryFile,
       installLogFile           = projectConfigLogFile,
@@ -826,6 +828,7 @@ legacySharedConfigFieldDescrs =
       , "one-shot", "jobs", "offline"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "strong-flags"
+      , "index-snapshot"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)

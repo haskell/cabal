@@ -84,7 +84,7 @@ getPkgList :: Verbosity
            -> IO [PackageDisplayInfo]
 getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackages verbosity repoCtxt Nothing
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
@@ -176,7 +176,7 @@ info verbosity packageDBs repoCtxt comp conf
      globalFlags _listFlags userTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackages verbosity repoCtxt Nothing -- FIXME?
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))

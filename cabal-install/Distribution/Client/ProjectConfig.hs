@@ -192,6 +192,8 @@ resolveSolverSettings ProjectConfig{
                                          | otherwise -> Just n
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
+    solverSettingIndexSnapshot     = fmap fromIntegral
+                                          (flagToMaybe projectConfigIndexSnapshot)
   --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
   --solverSettingReinstall         = fromFlag projectConfigReinstall

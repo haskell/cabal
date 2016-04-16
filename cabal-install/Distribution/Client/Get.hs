@@ -88,7 +88,7 @@ get verbosity repoCtxt globalFlags getFlags userTargets = do
   unless useFork $
     mapM_ checkTarget userTargets
 
-  sourcePkgDb <- getSourcePackages verbosity repoCtxt
+  sourcePkgDb <- getSourcePackages verbosity repoCtxt Nothing
 
   pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                    (fromFlag $ globalWorldFile globalFlags)
