@@ -692,6 +692,7 @@ readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
     dir = takeDirectory cabalFile
 
 readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
+    monitorFiles [monitorFileHashed cabalFile]
     root <- askRoot
     pkgdesc <- liftIO $ readPackageDescription verbosity (root </> cabalFile)
     return SourcePackage {

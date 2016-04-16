@@ -28,6 +28,7 @@ module Distribution.Client.RebuildMonad (
     monitorFileHashedSearchPath,
     -- ** Monitoring file globs
     monitorFileGlob,
+    monitorFileGlobExistence,
     FilePathGlob(..),
     FilePathRoot(..),
     FilePathGlobRel(..),
@@ -140,6 +141,6 @@ rerunIfChanged verbosity monitor key action = do
 matchFileGlob :: FilePathGlob -> Rebuild [FilePath]
 matchFileGlob glob = do
     root <- askRoot
-    monitorFiles [monitorFileGlob glob]
+    monitorFiles [monitorFileGlobExistence glob]
     liftIO $ Glob.matchFileGlob root glob
 
