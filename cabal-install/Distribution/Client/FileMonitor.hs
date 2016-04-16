@@ -19,6 +19,7 @@ module Distribution.Client.FileMonitor (
   monitorDirectoryExistence,
   monitorFileOrDirectory,
   monitorFileGlob,
+  monitorFileGlobExistence,
   monitorFileSearchPath,
   monitorFileHashedSearchPath,
 
@@ -155,6 +156,13 @@ monitorFileOrDirectory = MonitorFile FileModTime DirModTime
 --
 monitorFileGlob :: FilePathGlob -> MonitorFilePath
 monitorFileGlob = MonitorFileGlob FileHashed DirExists
+
+-- | Monitor a set of files (or directories) identified by a file glob for
+-- existence only. The monitored glob is considered to have changed if the set
+-- of files matching the glob changes (i.e. creations or deletions).
+--
+monitorFileGlobExistence :: FilePathGlob -> MonitorFilePath
+monitorFileGlobExistence = MonitorFileGlob FileExists DirExists
 
 -- | Creates a list of files to monitor when you search for a file which
 -- unsuccessfully looked in @notFoundAtPaths@ before finding it at
