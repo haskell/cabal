@@ -481,6 +481,10 @@ reportParseResult _verbosity filetype filename (ParseFailed err) =
 -- Reading packages in the project
 --
 
+-- | The location of a package as part of a project. Local file paths are
+-- either absolute (if the user specified it as such) or they are relative
+-- to the project root.
+--
 data ProjectPackageLocation =
      ProjectPackageLocalCabalFile FilePath
    | ProjectPackageLocalDirectory FilePath FilePath -- dir and .cabal file
@@ -621,29 +625,29 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
     checkFilePackageMatch :: String -> Rebuild (Either BadPackageLocationMatch
                                                        ProjectPackageLocation)
     checkFilePackageMatch pkglocstr = do
-      let filename = projectRootDir </> pkglocstr
-      isDir  <- liftIO $ doesDirectoryExist filename
-      parentDirExists <- case takeDirectory filename of
+      -- The pkglocstr may be absolute or may be relative to the project root.
+      -- Either way, </> does the right thing here. We return relative paths if
+      -- they were relative in the first place.
+      let abspath = projectRootDir </> pkglocstr
+      isDir  <- liftIO $ doesDirectoryExist abspath
+      parentDirExists <- case takeDirectory abspath of
                            []  -> return False
                            dir -> liftIO $ doesDirectoryExist dir
       case () of
         _ | isDir
-         -> do let dirname = filename -- now we know its a dir
-               matches <- matchFileGlob (globStarDotCabal pkglocstr)
+         -> do matches <- matchFileGlob (globStarDotCabal pkglocstr)
                case matches of
-                 [match]
+                 [cabalFile]
                      -> return (Right (ProjectPackageLocalDirectory
-                                         dirname cabalFile))
-                   where
-                     cabalFile = projectRootDir </> match
+                                         pkglocstr cabalFile))
                  []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
                  _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
 
-          | extensionIsTarGz filename
-         -> return (Right (ProjectPackageLocalTarball filename))
+          | extensionIsTarGz pkglocstr
+         -> return (Right (ProjectPackageLocalTarball pkglocstr))
 
-          | takeExtension filename == ".cabal"
-         -> return (Right (ProjectPackageLocalCabalFile filename))
+          | takeExtension pkglocstr == ".cabal"
+         -> return (Right (ProjectPackageLocalCabalFile pkglocstr))
 
           | parentDirExists
          -> return (Left (BadLocNonexistantFile pkglocstr))
@@ -680,6 +684,11 @@ mplusMaybeT ma mb = do
     Just x  -> return (Just x)
 
 
+-- | Read the @.cabal@ file of the given package.
+--
+-- Note here is where we convert from project-root relative paths to absolute
+-- paths.
+--
 readSourcePackage :: Verbosity -> ProjectPackageLocation
                   -> Rebuild UnresolvedSourcePackage
 readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
@@ -689,11 +698,12 @@ readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
 
 readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
     monitorFiles [monitorFileHashed cabalFile]
-    pkgdesc <- liftIO $ readPackageDescription verbosity cabalFile
+    root <- askRoot
+    pkgdesc <- liftIO $ readPackageDescription verbosity (root </> cabalFile)
     return SourcePackage {
       packageInfoId        = packageId pkgdesc,
       packageDescription   = pkgdesc,
-      packageSource        = LocalUnpackedPackage dir,
+      packageSource        = LocalUnpackedPackage (root </> dir),
       packageDescrOverride = Nothing
     }
 readSourcePackage _verbosity _ =
