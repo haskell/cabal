@@ -259,7 +259,6 @@ resolveBuildTimeSettings verbosity
     buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry
     buildSettingReportPlanningFailure
                               = fromFlag projectConfigReportPlanningFailure
-    buildSettingRootCmd       = flagToMaybe projectConfigRootCmd
 
     ProjectConfigBuildOnly{..} = defaults
                               <> fromProjectFile
