@@ -31,6 +31,13 @@ Extra-Source-Files:
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests/common.sh
+  tests/IntegrationTests/custom/custom_dep.sh
+  tests/IntegrationTests/custom/custom_dep/client/B.hs
+  tests/IntegrationTests/custom/custom_dep/client/Setup.hs
+  tests/IntegrationTests/custom/custom_dep/client/client.cabal
+  tests/IntegrationTests/custom/custom_dep/custom/A.hs
+  tests/IntegrationTests/custom/custom_dep/custom/Setup.hs
+  tests/IntegrationTests/custom/custom_dep/custom/custom.cabal
   tests/IntegrationTests/custom/plain.err
   tests/IntegrationTests/custom/plain.sh
   tests/IntegrationTests/custom/plain/A.hs
