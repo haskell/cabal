@@ -54,6 +54,7 @@ import Control.Applicative
 import Data.Traversable
          ( traverse )
 #endif
+import Control.Exception ( assert )
 import Control.Monad
          ( filterM, forM_, when, unless )
 import System.Directory
@@ -122,8 +123,7 @@ import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , CompilerInfo(..), compilerInfo, PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration,
-                                    defaultProgramConfiguration)
+import Distribution.Simple.Program (ProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -143,6 +143,9 @@ import Distribution.Simple.Utils
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
+import Distribution.Simple.Configure (interpretPackageDbFlags)
+import Distribution.Simple.Register (registerPackage)
+import Distribution.Simple.Program.HcPkg (MultiInstance(..))
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..)
@@ -1094,8 +1097,8 @@ performInstallations verbosity
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
                                  configFlags'
-                                 installFlags haddockFlags
-                                 cinfo platform pkg rpkg pkgoverride mpath useLogFile
+                                 installFlags haddockFlags comp conf
+                                 platform pkg rpkg pkgoverride mpath useLogFile
 
   where
     cinfo = compilerInfo comp
@@ -1390,7 +1393,8 @@ installUnpackedPackage
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
-  -> CompilerInfo
+  -> Compiler
+  -> ProgramConfiguration
   -> Platform
   -> PackageDescription
   -> ReadyPackage
@@ -1400,9 +1404,8 @@ installUnpackedPackage
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions
-                       configFlags installFlags haddockFlags
-                       cinfo platform pkg rpkg pkgoverride workingDir useLogFile = do
-
+                       configFlags installFlags haddockFlags comp conf
+                       platform pkg rpkg pkgoverride workingDir useLogFile = do
   -- Override the .cabal file if necessary
   case pkgoverride of
     Nothing     -> return ()
@@ -1461,19 +1464,32 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
             withWin32SelfUpgrade verbosity ipid configFlags
                                  cinfo platform pkg $ do
               setup Cabal.copyCommand copyFlags mLogPath
-              when shouldRegister $ do
-                setup Cabal.registerCommand registerFlags mLogPath
 
             -- Capture installed package configuration file, so that
             -- it can be incorporated into the final InstallPlan
-            maybePkgConfs <- maybeGenPkgConfs mLogPath
+            -- TODO: This is duplicated with
+            -- Distribution/Client/ProjectBuilding.hs, search for
+            -- the Note [Updating installedUnitId].
+            ipkgs <- genPkgConfs mLogPath
+            let ipkgs' = case ipkgs of
+                            [ipkg] -> [ipkg { Installed.installedUnitId = ipid }]
+                            _ -> assert (any ((== ipid) . Installed.installedUnitId)
+                                             ipkgs) ipkgs
+            let packageDBs = interpretPackageDbFlags
+                                (fromFlag (configUserInstall configFlags))
+                                (configPackageDBs configFlags)
+            forM_ ipkgs' $ \ipkg' ->
+                registerPackage verbosity comp conf
+                                      NoMultiInstance
+                                      packageDBs ipkg'
 
-            return (Right (BuildOk docsResult testsResult maybePkgConfs))
+            return (Right (BuildOk docsResult testsResult ipkgs'))
 
   where
     pkgid            = packageId pkg
     ipid             = installedUnitId rpkg
-    buildCommand'    = buildCommand defaultProgramConfiguration
+    cinfo            = compilerInfo comp
+    buildCommand'    = buildCommand conf
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'
@@ -1516,9 +1532,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
-    maybeGenPkgConfs :: Maybe FilePath
+    genPkgConfs :: Maybe FilePath
                      -> IO [Installed.InstalledPackageInfo]
-    maybeGenPkgConfs mLogPath =
+    genPkgConfs mLogPath =
       if shouldRegister then do
         tmp <- getTemporaryDirectory
         withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
