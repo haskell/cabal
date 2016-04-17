@@ -129,8 +129,7 @@ data ProjectConfigBuildOnly
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
        projectConfigLogsDir               :: Flag FilePath,
-       projectConfigWorldFile             :: Flag FilePath,
-       projectConfigRootCmd               :: Flag String
+       projectConfigWorldFile             :: Flag FilePath
      }
   deriving (Eq, Show, Generic)
 
@@ -363,7 +362,6 @@ data BuildTimeSettings
        buildSettingLocalRepos            :: [FilePath],
        buildSettingCacheDir              :: FilePath,
        buildSettingHttpTransport         :: Maybe String,
-       buildSettingIgnoreExpiry          :: Bool,
-       buildSettingRootCmd               :: Maybe String
+       buildSettingIgnoreExpiry          :: Bool
      }
 

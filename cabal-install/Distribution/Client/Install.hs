@@ -106,7 +106,6 @@ import qualified Distribution.Client.InstallSymlink as InstallSymlink
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -139,7 +138,7 @@ import qualified Distribution.Simple.Setup as Cabal
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, rawSystemExit, comparing
+         ( createDirectoryIfMissingVerbose, comparing
          , writeFileAtomic, withUTF8FileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
@@ -164,14 +163,14 @@ import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( determineNumJobs, inDir, logDirChange, mergeBy, MergeResult(..)
+         ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, normal, verbose )
+         ( Verbosity, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -1050,7 +1049,6 @@ updateSandboxTimestampsFile _ _ _ _ _ = return ()
 -- ------------------------------------------------------------
 
 data InstallMisc = InstallMisc {
-    rootCmd    :: Maybe FilePath,
     libVersion :: Maybe Version
   }
 
@@ -1090,7 +1088,7 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
-                                 miscOptions configFlags'
+                                 configFlags'
                                  installFlags haddockFlags
                                  cinfo platform pkg rpkg pkgoverride mpath useLogFile
 
@@ -1165,11 +1163,6 @@ performInstallations verbosity
                   (compilerInfo comp) platform
 
     miscOptions  = InstallMisc {
-      rootCmd    = if fromFlag (configUserInstall configFlags)
-                      || (isUseSandbox useSandbox)
-                     then Nothing      -- ignore --root-cmd if --user
-                                       -- or working inside a sandbox.
-                     else flagToMaybe (installRootCmd installFlags),
       libVersion = flagToMaybe (configCabalVersion configExFlags)
     }
 
@@ -1389,7 +1382,6 @@ installUnpackedPackage
   -> Lock
   -> Int
   -> SetupScriptOptions
-  -> InstallMisc
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
@@ -1402,7 +1394,7 @@ installUnpackedPackage
   -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
-                       scriptOptions miscOptions
+                       scriptOptions
                        configFlags installFlags haddockFlags
                        cinfo platform pkg rpkg pkgoverride workingDir useLogFile = do
 
@@ -1463,12 +1455,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
             -- Actual installation
             withWin32SelfUpgrade verbosity ipid configFlags
                                  cinfo platform pkg $ do
-              case rootCmd miscOptions of
-                (Just cmd) -> reexec cmd
-                Nothing    -> do
-                  setup Cabal.copyCommand copyFlags mLogPath
-                  when shouldRegister $ do
-                    setup Cabal.registerCommand registerFlags mLogPath
+              setup Cabal.copyCommand copyFlags mLogPath
+              when shouldRegister $ do
+                setup Cabal.registerCommand registerFlags mLogPath
 
             -- Capture installed package configuration file, so that
             -- it can be incorporated into the final InstallPlan
@@ -1582,18 +1571,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                         , useWorkingDir    = workingDir }
           (Just pkg)
           cmd flags [])
-
-    reexec cmd = do
-      -- look for our own executable file and re-exec ourselves using a helper
-      -- program like sudo to elevate privileges:
-      self <- getExecutablePath
-      weExist <- doesFileExist self
-      if weExist
-        then inDir workingDir $
-               rawSystemExit verbosity cmd
-                 [self, "install", "--only"
-                 ,"--verbose=" ++ showForCabal verbosity]
-        else die $ "Unable to find cabal executable at: " ++ self
 
 
 -- helper

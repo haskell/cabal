@@ -1153,7 +1153,6 @@ data InstallFlags = InstallFlags {
     installUpgradeDeps      :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
-    installRootCmd          :: Flag String,
     installSummaryFile      :: NubList PathTemplate,
     installLogFile          :: Flag PathTemplate,
     installBuildReports     :: Flag ReportLevel,
@@ -1184,7 +1183,6 @@ defaultInstallFlags = InstallFlags {
     installUpgradeDeps     = Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
-    installRootCmd         = mempty,
     installSummaryFile     = mempty,
     installLogFile         = mempty,
     installBuildReports    = Flag NoReports,
@@ -1353,11 +1351,6 @@ installOptions showOrParseArgs =
           "A synonym for --only-dependencies"
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
           (yesNoOpt showOrParseArgs)
-
-      , option [] ["root-cmd"]
-          "Command used to gain root privileges, when installing with --global."
-          installRootCmd (\v flags -> flags { installRootCmd = v })
-          (reqArg' "COMMAND" toFlag flagToList)
 
       , option [] ["symlink-bindir"]
           "Add symlinks to installed executables into this directory."
