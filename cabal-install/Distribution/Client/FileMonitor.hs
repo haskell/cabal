@@ -16,6 +16,7 @@ module Distribution.Client.FileMonitor (
   monitorFileHashed,
   monitorNonExistentFile,
   monitorDirectory,
+  monitorNonExistentDirectory,
   monitorDirectoryExistence,
   monitorFileOrDirectory,
   monitorFileGlob,
@@ -135,6 +136,15 @@ monitorNonExistentFile = MonitorFile FileNotExists DirNotExists
 --
 monitorDirectory :: FilePath -> MonitorFilePath
 monitorDirectory = MonitorFile FileNotExists DirModTime
+
+-- | Monitor a single non-existent directory for changes.  The monitored
+-- directory is considered to have changed if it exists.
+--
+monitorNonExistentDirectory :: FilePath -> MonitorFilePath
+-- Just an alias for monitorNonExistentFile, since you can't
+-- tell the difference between a non-existent directory and
+-- a non-existent file :)
+monitorNonExistentDirectory = monitorNonExistentFile
 
 -- | Monitor a single directory for existence. The monitored directory is
 -- considered to have changed only if it no longer exists.
