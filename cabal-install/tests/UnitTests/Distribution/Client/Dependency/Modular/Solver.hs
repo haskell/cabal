@@ -518,9 +518,9 @@ db16 :: ExampleDb
 db16 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
   , Right $ exAv "B" 1 [ ExFix "D" 2
-                       , ExFlag "flagA"
+                       , exFlag "flagA"
                              [ExAny "C"]
-                             [ExFlag "flagB"
+                             [exFlag "flagB"
                                  [ExAny "E"]
                                  [ExAny "C"]]]
   , Right $ exAv "C" 1 [ExAny "D"]

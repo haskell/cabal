@@ -358,7 +358,10 @@ preferReallyEasyGoalChoices = trav go
     go x                = x
 
 -- | Monad used internally in enforceSingleInstanceRestriction
-type EnforceSIR = Reader (Map (PI PN) QPN)
+--
+-- For each package instance we record the goal for which we picked a concrete
+-- instance. The SIR means that for any package instance there can only be one.
+type EnforceSIR = Reader (Map (PI PN) (Goal QPN))
 
 -- | Enforce ghc's single instance restriction
 --
@@ -373,14 +376,15 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
-      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
+      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) cs)
     go _otherwise =
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
-    goP qpn@(Q _ pn) (POption i linkedTo) r = do
+    goP :: QPN -> QGoalReasonChain -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP qpn@(Q _ pn) gr (POption i linkedTo) r = do
       let inst = PI pn i
+          goal = Goal (P qpn) gr
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->
@@ -388,7 +392,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
           r
         (Nothing, Nothing) ->
           -- Not linked, not already used
-          local (M.insert inst qpn) r
-        (Nothing, Just qpn') -> do
+          local (M.insert inst goal) r
+        (Nothing, Just goal') -> do
           -- Not linked, already used. This is an error
-          return $ Fail (CS.fromList [P qpn, P qpn']) MultipleInstances
+          return $ Fail (CS.union (toConflictSet goal) (toConflictSet goal')) MultipleInstances
