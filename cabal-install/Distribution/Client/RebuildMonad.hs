@@ -13,6 +13,7 @@ module Distribution.Client.RebuildMonad (
     -- * Rebuild monad
     Rebuild,
     runRebuild,
+    askRoot,
 
     -- * Setting up file monitoring
     monitorFiles,
@@ -27,6 +28,7 @@ module Distribution.Client.RebuildMonad (
     monitorFileHashedSearchPath,
     -- ** Monitoring file globs
     monitorFileGlob,
+    monitorFileGlobExistence,
     FilePathGlob(..),
     FilePathRoot(..),
     FilePathGlobRel(..),
@@ -52,6 +54,7 @@ import Distribution.Verbosity    (Verbosity)
 import Control.Applicative
 #endif
 import Control.Monad.State as State
+import Control.Monad.Reader as Reader
 import Distribution.Compat.Binary     (Binary)
 import System.FilePath (takeFileName)
 
@@ -60,7 +63,7 @@ import System.FilePath (takeFileName)
 -- input files and values they depend on change. The crucial operations are
 -- 'rerunIfChanged' and 'monitorFiles'.
 --
-newtype Rebuild a = Rebuild (StateT [MonitorFilePath] IO a)
+newtype Rebuild a = Rebuild (ReaderT FilePath (StateT [MonitorFilePath] IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 -- | Use this wihin the body action of 'rerunIfChanged' to declare that the
@@ -68,16 +71,23 @@ newtype Rebuild a = Rebuild (StateT [MonitorFilePath] IO a)
 -- actually did. It is these files that will be checked for changes next
 -- time 'rerunIfChanged' is called for that 'FileMonitor'.
 --
+-- Relative paths are interpreted as relative to an implicit root, ultimately
+-- passed in to 'runRebuild'.
+--
 monitorFiles :: [MonitorFilePath] -> Rebuild ()
 monitorFiles filespecs = Rebuild (State.modify (filespecs++))
 
 -- | Run a 'Rebuild' IO action.
-unRebuild :: Rebuild a -> IO (a, [MonitorFilePath])
-unRebuild (Rebuild action) = runStateT action []
+unRebuild :: FilePath -> Rebuild a -> IO (a, [MonitorFilePath])
+unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
 
 -- | Run a 'Rebuild' IO action.
-runRebuild :: Rebuild a -> IO a
-runRebuild (Rebuild action) = evalStateT action []
+runRebuild :: FilePath -> Rebuild a -> IO a
+runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+
+-- | The root that relative paths are interpreted as being relative to.
+askRoot :: Rebuild FilePath
+askRoot = Rebuild Reader.ask
 
 -- | This captures the standard use pattern for a 'FileMonitor': given a
 -- monitor, an action and the input value the action depends on, either
@@ -90,12 +100,12 @@ runRebuild (Rebuild action) = evalStateT action []
 --
 rerunIfChanged :: (Binary a, Binary b)
                => Verbosity
-               -> FilePath
                -> FileMonitor a b
                -> a
                -> Rebuild b
                -> Rebuild b
-rerunIfChanged verbosity rootDir monitor key action = do
+rerunIfChanged verbosity monitor key action = do
+    rootDir <- askRoot
     changed <- liftIO $ checkFileMonitorChanged monitor rootDir key
     case changed of
       MonitorUnchanged result files -> do
@@ -108,7 +118,7 @@ rerunIfChanged verbosity rootDir monitor key action = do
         liftIO $ debug verbosity $ "File monitor '" ++ monitorName
                                 ++ "' changed: " ++ showReason reason
         startTime <- liftIO $ beginUpdateFileMonitor
-        (result, files) <- liftIO $ unRebuild action
+        (result, files) <- liftIO $ unRebuild rootDir action
         liftIO $ updateFileMonitor monitor rootDir
                                    (Just startTime) files key result
         monitorFiles files
@@ -128,8 +138,9 @@ rerunIfChanged verbosity rootDir monitor key action = do
 -- Since this operates in the 'Rebuild' monad, it also monitrs the given glob
 -- for changes.
 --
-matchFileGlob :: FilePath -> FilePathGlob -> Rebuild [FilePath]
-matchFileGlob root glob = do
-    monitorFiles [monitorFileGlob glob]
+matchFileGlob :: FilePathGlob -> Rebuild [FilePath]
+matchFileGlob glob = do
+    root <- askRoot
+    monitorFiles [monitorFileGlobExistence glob]
     liftIO $ Glob.matchFileGlob root glob
 

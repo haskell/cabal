@@ -481,6 +481,10 @@ reportParseResult _verbosity filetype filename (ParseFailed err) =
 -- Reading packages in the project
 --
 
+-- | The location of a package as part of a project. Local file paths are
+-- either absolute (if the user specified it as such) or they are relative
+-- to the project root.
+--
 data ProjectPackageLocation =
      ProjectPackageLocalCabalFile FilePath
    | ProjectPackageLocalDirectory FilePath FilePath -- dir and .cabal file
@@ -591,7 +595,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       case simpleParse pkglocstr of
         Nothing   -> return Nothing
         Just glob -> liftM Just $ do
-          matches <- matchFileGlob projectRootDir glob
+          matches <- matchFileGlob glob
           case matches of
             [] | isJust (isTrivialFilePathGlob glob)
                -> return (Left (BadPackageLocationFile
@@ -621,29 +625,29 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
     checkFilePackageMatch :: String -> Rebuild (Either BadPackageLocationMatch
                                                        ProjectPackageLocation)
     checkFilePackageMatch pkglocstr = do
-      let filename = projectRootDir </> pkglocstr
-      isDir  <- liftIO $ doesDirectoryExist filename
-      parentDirExists <- case takeDirectory filename of
+      -- The pkglocstr may be absolute or may be relative to the project root.
+      -- Either way, </> does the right thing here. We return relative paths if
+      -- they were relative in the first place.
+      let abspath = projectRootDir </> pkglocstr
+      isDir  <- liftIO $ doesDirectoryExist abspath
+      parentDirExists <- case takeDirectory abspath of
                            []  -> return False
                            dir -> liftIO $ doesDirectoryExist dir
       case () of
         _ | isDir
-         -> do let dirname = filename -- now we know its a dir
-               matches <- matchFileGlob dirname globStarDotCabal
+         -> do matches <- matchFileGlob (globStarDotCabal pkglocstr)
                case matches of
-                 [match]
+                 [cabalFile]
                      -> return (Right (ProjectPackageLocalDirectory
-                                         dirname cabalFile))
-                   where
-                     cabalFile = dirname </> match
+                                         pkglocstr cabalFile))
                  []  -> return (Left (BadLocDirNoCabalFile pkglocstr))
                  _   -> return (Left (BadLocDirManyCabalFiles pkglocstr))
 
-          | extensionIsTarGz filename
-         -> return (Right (ProjectPackageLocalTarball filename))
+          | extensionIsTarGz pkglocstr
+         -> return (Right (ProjectPackageLocalTarball pkglocstr))
 
-          | takeExtension filename == ".cabal"
-         -> return (Right (ProjectPackageLocalCabalFile filename))
+          | takeExtension pkglocstr == ".cabal"
+         -> return (Right (ProjectPackageLocalCabalFile pkglocstr))
 
           | parentDirExists
          -> return (Left (BadLocNonexistantFile pkglocstr))
@@ -656,9 +660,19 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
                       && takeExtension (dropExtension f) == ".tar"
 
 
-globStarDotCabal :: FilePathGlob
-globStarDotCabal =
-    FilePathGlob FilePathRelative (GlobFile [WildCard, Literal ".cabal"])
+-- | A glob to find all the cabal files in a directory.
+--
+-- For a directory @some/dir/@, this is a glob of the form @some/dir/\*.cabal@.
+-- The directory part can be either absolute or relative.
+--
+globStarDotCabal :: FilePath -> FilePathGlob
+globStarDotCabal dir =
+    FilePathGlob
+      (if isAbsolute dir then FilePathRoot root else FilePathRelative)
+      (foldr (\d -> GlobDir [Literal d])
+             (GlobFile [WildCard, Literal ".cabal"]) dirComponents)
+  where
+    (root, dirComponents) = fmap splitDirectories (splitDrive dir)
 
 
 --TODO: [code cleanup] use sufficiently recent transformers package
@@ -670,6 +684,11 @@ mplusMaybeT ma mb = do
     Just x  -> return (Just x)
 
 
+-- | Read the @.cabal@ file of the given package.
+--
+-- Note here is where we convert from project-root relative paths to absolute
+-- paths.
+--
 readSourcePackage :: Verbosity -> ProjectPackageLocation
                   -> Rebuild UnresolvedSourcePackage
 readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
@@ -679,11 +698,12 @@ readSourcePackage verbosity (ProjectPackageLocalCabalFile cabalFile) =
 
 readSourcePackage verbosity (ProjectPackageLocalDirectory dir cabalFile) = do
     monitorFiles [monitorFileHashed cabalFile]
-    pkgdesc <- liftIO $ readPackageDescription verbosity cabalFile
+    root <- askRoot
+    pkgdesc <- liftIO $ readPackageDescription verbosity (root </> cabalFile)
     return SourcePackage {
       packageInfoId        = packageId pkgdesc,
       packageDescription   = pkgdesc,
-      packageSource        = LocalUnpackedPackage dir,
+      packageSource        = LocalUnpackedPackage (root </> dir),
       packageDescrOverride = Nothing
     }
 readSourcePackage _verbosity _ =

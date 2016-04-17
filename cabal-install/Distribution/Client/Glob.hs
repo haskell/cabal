@@ -55,8 +55,7 @@ data GlobPiece = WildCard
 
 data FilePathRoot
    = FilePathRelative
-   | FilePathUnixRoot
-   | FilePathWinDrive Char
+   | FilePathRoot FilePath -- ^ e.g. @"/"@, @"c:\"@ or result of 'takeDrive'
    | FilePathHomeDir
   deriving (Eq, Show, Generic)
 
@@ -76,9 +75,8 @@ instance Binary GlobPiece
 isTrivialFilePathGlob :: FilePathGlob -> Maybe FilePath
 isTrivialFilePathGlob (FilePathGlob root pathglob) =
     case root of
-      FilePathRelative       -> go []          pathglob
-      FilePathUnixRoot       -> go ["/"]       pathglob
-      FilePathWinDrive drive -> go [drive:":"] pathglob
+      FilePathRelative       -> go []      pathglob
+      FilePathRoot root'     -> go [root'] pathglob
       FilePathHomeDir        -> Nothing
   where
     go paths (GlobDir  [Literal path] globs) = go (path:paths) globs
@@ -95,10 +93,9 @@ isTrivialFilePathGlob (FilePathGlob root pathglob) =
 getFilePathRootDirectory :: FilePathRoot
                          -> FilePath      -- ^ root for relative paths
                          -> IO FilePath
-getFilePathRootDirectory  FilePathRelative     root = return root
-getFilePathRootDirectory  FilePathUnixRoot        _ = return "/"
-getFilePathRootDirectory (FilePathWinDrive drive) _ = return (drive:":")
-getFilePathRootDirectory  FilePathHomeDir         _ = getHomeDirectory
+getFilePathRootDirectory  FilePathRelative   root = return root
+getFilePathRootDirectory (FilePathRoot root) _    = return root
+getFilePathRootDirectory  FilePathHomeDir    _    = getHomeDirectory
 
 
 ------------------------------------------------------------------------------
@@ -180,21 +177,17 @@ instance Text FilePathGlob where
 
 instance Text FilePathRoot where
   disp  FilePathRelative    = Disp.empty
-  disp  FilePathUnixRoot    = Disp.char '/'
-  disp (FilePathWinDrive c) = Disp.char c
-                      Disp.<> Disp.char ':'
-                      Disp.<> Disp.char '\\'
-  disp FilePathHomeDir      = Disp.char '~'
-                      Disp.<> Disp.char '/'
+  disp (FilePathRoot root)  = Disp.text root
+  disp FilePathHomeDir      = Disp.char '~' Disp.<> Disp.char '/'
 
   parse =
-        (     (Parse.char '/' >> return FilePathUnixRoot)
+        (     (Parse.char '/' >> return (FilePathRoot "/"))
           +++ (Parse.char '~' >> Parse.char '/' >> return FilePathHomeDir)
           +++ (do drive <- Parse.satisfy (\c -> (c >= 'a' && c <= 'z')
                                              || (c >= 'A' && c <= 'Z'))
                   _ <- Parse.char ':'
                   _ <- Parse.char '/' +++ Parse.char '\\'
-                  return (FilePathWinDrive (toUpper drive)))
+                  return (FilePathRoot (toUpper drive : ":\\")))
         )
     <++ return FilePathRelative
 
