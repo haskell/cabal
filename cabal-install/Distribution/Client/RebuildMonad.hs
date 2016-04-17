@@ -22,6 +22,7 @@ module Distribution.Client.RebuildMonad (
     monitorFileHashed,
     monitorNonExistentFile,
     monitorDirectory,
+    monitorNonExistentDirectory,
     monitorDirectoryExistence,
     monitorFileOrDirectory,
     monitorFileSearchPath,
