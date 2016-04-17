@@ -125,6 +125,7 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Function
 import           System.FilePath
+import           System.Directory (doesDirectoryExist)
 
 
 ------------------------------------------------------------------------------
@@ -648,9 +649,14 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
 getPkgConfigDb verbosity progdb = do
     dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
-    monitorFiles (map monitorDirectory dirs)
     -- Just monitor the dirs so we'll notice new .pc files.
     -- Alternatively we could monitor all the .pc files too.
+    forM_ dirs $ \dir -> do
+        dirExists <- liftIO $ doesDirectoryExist dir
+        -- TODO: turn this into a utility function
+        monitorFiles [if dirExists
+                        then monitorDirectory dir
+                        else monitorNonExistentDirectory dir]
 
     liftIO $ readPkgConfigDb verbosity progdb
 
