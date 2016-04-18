@@ -131,9 +131,9 @@ tests = [
         ]
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         , expectFail $
-          runTest $ indep $ mkTest db20 "indepGoals2" ["D", "E", "F"] Nothing -- The target order is important.
-        , runTest $ indep $ mkTest db17 "indepGoals3" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+          runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
         ]
     ]
   where
@@ -567,6 +567,24 @@ db16 = [
   , Right $ exAv "E" 1 []
   ]
 
+-- | This database checks that when the solver discovers a constraint on a
+-- package's version after choosing to link that package, it can backtrack to
+-- try alternative versions for the linked-to package.
+--
+-- When A and B are installed as independent goals, their dependencies on C
+-- must be linked. Since C depends on D, A and B's dependencies on D must also
+-- be linked. This test relies on the fact that the solver chooses D-2 for both
+-- 0.D and 1.D before it encounters the test suites' constraints. The solver
+-- must backtrack to try D-1 for both 0.D and 1.D.
+db17 :: ExampleDb
+db17 = [
+    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  ]
+
 -- | When both A and B are installed as independent goals, their dependencies on
 -- C must be linked. The only combination of C's flags that is consistent with
 -- A and B's dependencies on D is -flagA +flagB. This database tests that the
@@ -622,8 +640,8 @@ db18 = [
 -- >   \ | \ / | /
 -- >    \|  V  |/
 -- >     D  F  E
-db20 :: ExampleDb
-db20 = [
+db19 :: ExampleDb
+db19 = [
     Right $ exAv "A" 1 [ExAny "C"]
   , Right $ exAv "B" 1 [ExAny "C"]
   , Right $ exAv "C" 1 []
@@ -631,24 +649,6 @@ db20 = [
   , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
   , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
   , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
-  ]
-
--- | This database checks that when the solver discovers a constraint on a
--- package's version after choosing to link that package, it can backtrack to
--- try alternative versions for the linked-to package.
---
--- When A and B are installed as independent goals, their dependencies on C
--- must be linked. Since C depends on D, A and B's dependencies on D must also
--- be linked. This test relies on the fact that the solver chooses D-2 for both
--- 0.D and 1.D before it encounters the test suites' constraints. The solver
--- must backtrack to try D-1 for both 0.D and 1.D.
-db17 :: ExampleDb
-db17 = [
-    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "C" 1 [ExAny "D"]
-  , Right $ exAv "D" 1 []
-  , Right $ exAv "D" 2 []
   ]
 
 dbExts1 :: ExampleDb
