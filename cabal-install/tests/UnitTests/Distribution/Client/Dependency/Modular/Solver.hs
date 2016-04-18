@@ -436,7 +436,7 @@ db10 =
     ]
 
 -- | This database tests that a package's setup dependencies are correctly
--- linked when the package is linked.
+-- linked when the package is linked. See pull request #3268.
 --
 -- When A and B are installed as independent goals, their dependencies on C must
 -- be linked, due to the single instance restriction. Since C depends on D, 0.D
@@ -535,7 +535,7 @@ db15 = [
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
 
--- | Check that the solver can backtrack after encountering the SIR
+-- | Check that the solver can backtrack after encountering the SIR (issue #2843)
 --
 -- When A and B are installed as independent goals, the single instance
 -- restriction prevents B from depending on C.  This database tests that the
@@ -569,7 +569,7 @@ db16 = [
 
 -- | This database checks that when the solver discovers a constraint on a
 -- package's version after choosing to link that package, it can backtrack to
--- try alternative versions for the linked-to package.
+-- try alternative versions for the linked-to package. See pull request #3327.
 --
 -- When A and B are installed as independent goals, their dependencies on C
 -- must be linked. Since C depends on D, A and B's dependencies on D must also
@@ -585,7 +585,8 @@ db17 = [
   , Right $ exAv "D" 2 []
   ]
 
--- | When both A and B are installed as independent goals, their dependencies on
+-- | Issue #2834
+-- When both A and B are installed as independent goals, their dependencies on
 -- C must be linked. The only combination of C's flags that is consistent with
 -- A and B's dependencies on D is -flagA +flagB. This database tests that the
 -- solver can backtrack to find the right combination of flags (requiring F, but
@@ -616,7 +617,7 @@ db18 = [
   , Right $ exAv "G" 1 []
   ]
 
--- | Tricky test case with independent goals
+-- | Tricky test case with independent goals (issue #2842)
 --
 -- Suppose we are installing D, E, and F as independent goals:
 --
