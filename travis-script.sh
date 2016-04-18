@@ -75,7 +75,7 @@ install_from_tarball
 cd ../cabal-install
 
 cabal install happy
-cabal install --only-dependencies --enable-tests --enable-benchmarks
+cabal install --only-dependencies --enable-tests --enable-benchmarks --allow-newer=tasty-expected-failure:base
 cabal configure \
     --user --ghc-option=-Werror --enable-tests --enable-benchmarks \
     -v2 # -v2 provides useful information for debugging

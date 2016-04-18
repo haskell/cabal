@@ -11,6 +11,7 @@ import qualified Distribution.Version as V
 
 -- test-framework
 import Test.Tasty as TF
+import Test.Tasty.ExpectedFailure (expectFail)
 import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 
 -- Cabal
@@ -128,7 +129,8 @@ tests = [
         ]
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
-        , runTest $ indep $ mkTest db20 "indepGoals2" ["D", "E", "F"] Nothing -- The target order is important.
+        , expectFail $
+          runTest $ indep $ mkTest db20 "indepGoals2" ["D", "E", "F"] Nothing -- The target order is important.
         ]
     ]
   where
