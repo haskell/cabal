@@ -67,8 +67,7 @@ tests = [
         , runTest $         mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
         , runTest $         mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
         , runTest $         mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
-        , expectFail $
-          runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+        , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
     , testGroup "Base shim" [
           runTest $ mkTest db11 "baseShim1" ["A"] (Just [("A", 1)])
