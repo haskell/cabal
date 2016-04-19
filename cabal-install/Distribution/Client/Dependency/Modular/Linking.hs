@@ -199,7 +199,7 @@ conflict = lift' . Left
 execUpdateState :: UpdateState () -> ValidateState -> Either Conflict ValidateState
 execUpdateState = execStateT . unUpdateState
 
-pickPOption :: QPN -> POption -> FlaggedDeps comp QPN -> UpdateState ()
+pickPOption :: QPN -> POption -> FlaggedDeps Component QPN -> UpdateState ()
 pickPOption qpn (POption i Nothing)    _deps = pickConcrete qpn i
 pickPOption qpn (POption i (Just pp'))  deps = pickLink     qpn i pp' deps
 
@@ -217,7 +217,7 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn i
 
-pickLink :: QPN -> I -> PP -> FlaggedDeps comp QPN -> UpdateState ()
+pickLink :: QPN -> I -> PP -> FlaggedDeps Component QPN -> UpdateState ()
 pickLink qpn@(Q pp pn) i pp' deps = do
     vs <- get
     -- Find the link group for the package we are linking to, and add this package
@@ -226,7 +226,8 @@ pickLink qpn@(Q pp pn) i pp' deps = do
     -- concrete instance for that package, and since we create singleton link
     -- groups for concrete instances, this link group must exist (and must
     -- in fact already have a canonical member).
-    let lg = vsLinks vs ! Q pp' pn
+    let target = Q pp' pn
+        lg     = vsLinks vs ! target
 
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
@@ -240,7 +241,7 @@ pickLink qpn@(Q pp pn) i pp' deps = do
     -- member into the group
     let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
     updateLinkGroup lg'
-    linkDeps [P qpn] pp' deps
+    linkDeps target [P qpn] deps
 
 makeCanonical :: LinkGroup -> QPN -> I -> UpdateState ()
 makeCanonical lg qpn@(Q pp _) i =
@@ -264,35 +265,45 @@ makeCanonical lg qpn@(Q pp _) i =
 -- because having the direct dependencies in a link group means that we must
 -- have already made or will make sooner or later a link choice for one of these
 -- as well, and cover their dependencies at that point.
-linkDeps :: [Var QPN] -> PP -> FlaggedDeps comp QPN -> UpdateState ()
-linkDeps parents pp' = mapM_ go
+linkDeps :: QPN -> [Var QPN] -> FlaggedDeps Component QPN -> UpdateState ()
+linkDeps parent = \parents deps -> do
+    rdeps <- requalify deps
+    go parents deps rdeps
   where
-    go :: FlaggedDep comp QPN -> UpdateState ()
-    go (Simple (Dep qpn@(Q _ pn) _) _) = do
-      vs <- get
-      let qpn' = Q pp' pn
-          lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
-          lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
-      lg'' <- lift' $ lgMerge parents lg lg'
-      updateLinkGroup lg''
+    go :: [Var QPN] -> FlaggedDeps Component QPN -> FlaggedDeps Component QPN -> UpdateState ()
+    go parents deps rdeps = mapM_ (uncurry (go1 parents)) $ zip deps rdeps
+
+    go1 :: [Var QPN] -> FlaggedDep Component QPN -> FlaggedDep Component QPN -> UpdateState ()
+    go1 parents dep rdep = case (dep, rdep) of
+      (Simple (Dep qpn _) _, ~(Simple (Dep qpn' _) _)) -> do
+        vs <- get
+        let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
+            lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
+        lg'' <- lift' $ lgMerge parents lg lg'
+        updateLinkGroup lg''
+      (Flagged fn _ t f, ~(Flagged _ _ t' f')) -> do
+        vs <- get
+        case M.lookup fn (vsFlags vs) of
+          Nothing    -> return () -- flag assignment not yet known
+          Just True  -> go (F fn:parents) t t'
+          Just False -> go (F fn:parents) f f'
+      (Stanza sn t, ~(Stanza _ t')) -> do
+        vs <- get
+        case M.lookup sn (vsStanzas vs) of
+          Nothing    -> return () -- stanza assignment not yet known
+          Just True  -> go (S sn:parents) t t'
+          Just False -> return () -- stanza not enabled; no new deps
     -- For extensions and language dependencies, there is nothing to do.
     -- No choice is involved, just checking, so there is nothing to link.
-    go (Simple (Ext  _)             _) = return ()
-    go (Simple (Lang _)             _) = return ()
-    -- Similarly for pkg-config constraints
-    go (Simple (Pkg  _ _)           _) = return ()
-    go (Flagged fn _ t f) = do
+    -- The same goes for for pkg-config constraints.
+      (Simple (Ext  _)   _, _) -> return ()
+      (Simple (Lang _)   _, _) -> return ()
+      (Simple (Pkg  _ _) _, _) -> return ()
+
+    requalify :: FlaggedDeps Component QPN -> UpdateState (FlaggedDeps Component QPN)
+    requalify deps = do
       vs <- get
-      case M.lookup fn (vsFlags vs) of
-        Nothing    -> return () -- flag assignment not yet known
-        Just True  -> linkDeps (F fn:parents) pp' t
-        Just False -> linkDeps (F fn:parents) pp' f
-    go (Stanza sn t) = do
-      vs <- get
-      case M.lookup sn (vsStanzas vs) of
-        Nothing    -> return () -- stanza assignment not yet known
-        Just True  -> linkDeps (S sn:parents) pp' t
-        Just False -> return () -- stanza not enabled; no new deps
+      return $ qualifyDeps (vsQualifyOptions vs) parent (unqualifyDeps deps)
 
 pickFlag :: QFN -> Bool -> UpdateState ()
 pickFlag qfn b = do
@@ -322,7 +333,7 @@ linkNewDeps var b = do
         lg                      = vsLinks vs ! qpn
         (parents, newDeps)      = findNewDeps vs qdeps
         linkedTo                = S.delete pp (lgMembers lg)
-    forM_ (S.toList linkedTo) $ \pp' -> linkDeps (P qpn : parents) pp' newDeps
+    forM_ (S.toList linkedTo) $ \pp' -> linkDeps (Q pp' pn) (P qpn : parents) newDeps
   where
     findNewDeps :: ValidateState -> FlaggedDeps comp QPN -> ([Var QPN], FlaggedDeps Component QPN)
     findNewDeps vs = concatMapUnzip (findNewDeps' vs)
