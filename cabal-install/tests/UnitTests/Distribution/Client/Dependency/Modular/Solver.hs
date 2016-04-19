@@ -11,6 +11,7 @@ import qualified Distribution.Version as V
 
 -- test-framework
 import Test.Tasty as TF
+import Test.Tasty.ExpectedFailure (expectFail)
 import Test.Tasty.HUnit (testCase, assertEqual, assertBool)
 
 -- Cabal
@@ -44,6 +45,7 @@ tests = [
         , runTest $         mkTest db3 "forceFlagOff" ["D"]      (Just [("A", 2), ("B", 1), ("D", 1)])
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] Nothing
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] Nothing
+        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
           runTest $         mkTest db5 "simpleTest1" ["C"]      (Just [("A", 2), ("C", 1)])
@@ -57,14 +59,16 @@ tests = [
         , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         ]
     , testGroup "Setup dependencies" [
-          runTest $ mkTest db7  "setupDeps1" ["B"] (Just [("A", 2), ("B", 1)])
-        , runTest $ mkTest db7  "setupDeps2" ["C"] (Just [("A", 2), ("C", 1)])
-        , runTest $ mkTest db7  "setupDeps3" ["D"] (Just [("A", 1), ("D", 1)])
-        , runTest $ mkTest db7  "setupDeps4" ["E"] (Just [("A", 1), ("A", 2), ("E", 1)])
-        , runTest $ mkTest db7  "setupDeps5" ["F"] (Just [("A", 1), ("A", 2), ("F", 1)])
-        , runTest $ mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $ mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
-        , runTest $ mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
+          runTest $         mkTest db7  "setupDeps1" ["B"] (Just [("A", 2), ("B", 1)])
+        , runTest $         mkTest db7  "setupDeps2" ["C"] (Just [("A", 2), ("C", 1)])
+        , runTest $         mkTest db7  "setupDeps3" ["D"] (Just [("A", 1), ("D", 1)])
+        , runTest $         mkTest db7  "setupDeps4" ["E"] (Just [("A", 1), ("A", 2), ("E", 1)])
+        , runTest $         mkTest db7  "setupDeps5" ["F"] (Just [("A", 1), ("A", 2), ("F", 1)])
+        , runTest $         mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $         mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
+        , runTest $         mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
+        , expectFail $
+          runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
     , testGroup "Base shim" [
           runTest $ mkTest db11 "baseShim1" ["A"] (Just [("A", 1)])
@@ -126,7 +130,10 @@ tests = [
         , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (Just [("A", 1), ("B", 2), ("C", 1)])
         ]
     , testGroup "Independent goals" [
-          runTest $ indep $ mkTest db16 "indepGoals" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+          runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+        , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        , expectFail $
+          runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
         ]
     ]
   where
@@ -428,6 +435,24 @@ db10 =
     , Right $ exAv "C" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
     ]
 
+-- | This database tests that a package's setup dependencies are correctly
+-- linked when the package is linked. See pull request #3268.
+--
+-- When A and B are installed as independent goals, their dependencies on C must
+-- be linked, due to the single instance restriction. Since C depends on D, 0.D
+-- and 1.D must be linked. C also has a setup dependency on D, so 0.C-setup.D
+-- and 1.C-setup.D must be linked. However, D's two link groups must remain
+-- independent. The solver should be able to choose D-1 for C's library and D-2
+-- for C's setup script.
+dbSetupDeps :: ExampleDb
+dbSetupDeps = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 [ExFix "D" 1] `withSetupDeps` [ExFix "D" 2]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  ]
+
 -- | Tests for dealing with base shims
 db11 :: ExampleDb
 db11 =
@@ -510,10 +535,23 @@ db15 = [
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
 
--- | When A and B are installed as independent goals, the single instance
+-- | Check that the solver can backtrack after encountering the SIR (issue #2843)
+--
+-- When A and B are installed as independent goals, the single instance
 -- restriction prevents B from depending on C.  This database tests that the
 -- solver can backtrack after encountering the single instance restriction and
--- choose the only valid flag assignment (-flagA +flagB).
+-- choose the only valid flag assignment (-flagA +flagB):
+--
+-- > flagA flagB  B depends on
+-- >  On    _     C-*
+-- >  Off   On    E-*               <-- only valid flag assignment
+-- >  Off   Off   D-2.0, C-*
+--
+-- Since A depends on C-* and D-1.0, and C-1.0 depends on any version of D,
+-- we must build C-1.0 against D-1.0. Since B depends on D-2.0, we cannot have
+-- C in the transitive closure of B's dependencies, because that would mean we
+-- would need two instances of C: one built against D-1.0 and one built against
+-- D-2.0.
 db16 :: ExampleDb
 db16 = [
     Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
@@ -527,6 +565,91 @@ db16 = [
   , Right $ exAv "D" 1 []
   , Right $ exAv "D" 2 []
   , Right $ exAv "E" 1 []
+  ]
+
+-- | This database checks that when the solver discovers a constraint on a
+-- package's version after choosing to link that package, it can backtrack to
+-- try alternative versions for the linked-to package. See pull request #3327.
+--
+-- When A and B are installed as independent goals, their dependencies on C
+-- must be linked. Since C depends on D, A and B's dependencies on D must also
+-- be linked. This test relies on the fact that the solver chooses D-2 for both
+-- 0.D and 1.D before it encounters the test suites' constraints. The solver
+-- must backtrack to try D-1 for both 0.D and 1.D.
+db17 :: ExampleDb
+db17 = [
+    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "C" 1 [ExAny "D"]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  ]
+
+-- | Issue #2834
+-- When both A and B are installed as independent goals, their dependencies on
+-- C must be linked. The only combination of C's flags that is consistent with
+-- A and B's dependencies on D is -flagA +flagB. This database tests that the
+-- solver can backtrack to find the right combination of flags (requiring F, but
+-- not E or G) and apply it to both 0.C and 1.C.
+--
+-- > flagA flagB  C depends on
+-- >  On    _     D-1, E-*
+-- >  Off   On    F-*        <-- Only valid choice
+-- >  Off   Off   D-2, G-*
+--
+-- The single instance restriction means we cannot have one instance of C
+-- built against D-1 and one instance built against D-2; since A depends on
+-- D-1, and B depends on C-2, it is therefore important that C cannot depend
+-- on any version of D.
+db18 :: ExampleDb
+db18 = [
+    Right $ exAv "A" 1 [ExAny "C", ExFix "D" 1]
+  , Right $ exAv "B" 1 [ExAny "C", ExFix "D" 2]
+  , Right $ exAv "C" 1 [exFlag "flagA"
+                           [ExFix "D" 1, ExAny "E"]
+                           [exFlag "flagB"
+                               [ExAny "F"]
+                               [ExFix "D" 2, ExAny "G"]]]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
+  , Right $ exAv "E" 1 []
+  , Right $ exAv "F" 1 []
+  , Right $ exAv "G" 1 []
+  ]
+
+-- | Tricky test case with independent goals (issue #2842)
+--
+-- Suppose we are installing D, E, and F as independent goals:
+--
+-- * D depends on A-* and C-1, requiring A-1 to be built against C-1
+-- * E depends on B-* and C-2, requiring B-1 to be built against C-2
+-- * F depends on A-* and B-*; this means we need A-1 and B-1 both to be built
+--     against the same version of C, violating the single instance restriction.
+--
+-- We can visualize this DB as:
+--
+-- >    C-1   C-2
+-- >    /|\   /|\
+-- >   / | \ / | \
+-- >  /  |  X  |  \
+-- > |   | / \ |   |
+-- > |   |/   \|   |
+-- > |   +     +   |
+-- > |   |     |   |
+-- > |   A     B   |
+-- >  \  |\   /|  /
+-- >   \ | \ / | /
+-- >    \|  V  |/
+-- >     D  F  E
+db19 :: ExampleDb
+db19 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
   ]
 
 dbExts1 :: ExampleDb
