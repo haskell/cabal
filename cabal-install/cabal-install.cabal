@@ -80,6 +80,11 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
+  tests/IntegrationTests/regression/common.sh
+  tests/IntegrationTests/regression/t3199.sh
+  tests/IntegrationTests/regression/t3199/Main.hs
+  tests/IntegrationTests/regression/t3199/Setup.hs
+  tests/IntegrationTests/regression/t3199/test-3199.cabal
   tests/IntegrationTests/sandbox-sources/common.sh
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.err
   tests/IntegrationTests/sandbox-sources/should_fail/fail_removing_source_thats_not_registered.sh
@@ -243,7 +248,7 @@ executable cabal
         base16-bytestring >= 0.1.1 && < 0.2,
         binary     >= 0.5      && < 0.9,
         bytestring >= 0.9      && < 1,
-        Cabal      >= 1.24     && < 1.25,
+        Cabal      >= 1.24.1   && < 1.25,
         containers >= 0.4      && < 0.6,
         cryptohash-sha256 >= 0.11 && < 0.12,
         filepath   >= 1.3      && < 1.5,
