@@ -21,14 +21,14 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
-type DetectCycles = Reader (Map QPN QGoalReasonChain)
+type DetectCycles = Reader (Map QPN QGoalReason)
 
 -- | Find and reject any solutions that are cyclic
-detectCyclesPhase :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+detectCyclesPhase :: Tree QGoalReason -> Tree QGoalReason
 detectCyclesPhase = (`runReader` Map.empty) .  cata go
   where
     -- Most cases are simple; we just need to remember which choices we made
-    go :: TreeF QGoalReasonChain (DetectCycles (Tree QGoalReasonChain)) -> DetectCycles (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (DetectCycles (Tree QGoalReason)) -> DetectCycles (Tree QGoalReason)
     go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (Map.insert qpn gr) (T.sequence cs)
     go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> T.sequence cs
     go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> T.sequence cs
@@ -47,16 +47,16 @@ detectCyclesPhase = (`runReader` Map.empty) .  cata go
 -- as the full conflict set containing all decisions that led to that 'Done'
 -- node, check if the solution is cyclic. If it is, return the conflict set
 -- containing all decisions that could potentially break the cycle.
-findCycles :: Map QPN QGoalReasonChain -> RevDepMap -> Maybe (ConflictSet QPN)
+findCycles :: Map QPN QGoalReason -> RevDepMap -> Maybe (ConflictSet QPN)
 findCycles grs revDeps = do
     guard $ not (null cycles)
     return $ CS.unions $ map (\(qpn, gr) -> toConflictSet $ Goal (P qpn) gr) $ head cycles
   where
-    cycles :: [[(QPN, QGoalReasonChain)]]
+    cycles :: [[(QPN, QGoalReason)]]
     cycles = [vs | Gr.CyclicSCC vs <- scc]
 
-    scc :: [SCC (QPN, QGoalReasonChain)]
+    scc :: [SCC (QPN, QGoalReason)]
     scc = Gr.stronglyConnComp . map aux . Map.toList $ revDeps
 
-    aux :: (QPN, [(comp, QPN)]) -> ((QPN, QGoalReasonChain), QPN, [QPN])
+    aux :: (QPN, [(comp, QPN)]) -> ((QPN, QGoalReason), QPN, [QPN])
     aux (fr, to) = ((fr, grs Map.! fr), fr, map snd to)
