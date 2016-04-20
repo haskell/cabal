@@ -133,6 +133,8 @@ tests = [
         , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         , expectFail $
           runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
+        , expectFail $
+          runTest $ indep $ mkTest db20 "indepGoals4" ["C", "A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
     ]
   where
@@ -649,6 +651,24 @@ db19 = [
   , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
   , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
   , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
+  ]
+
+-- | This database tests that the solver correctly backjumps when dependencies
+-- of linked packages are not linked. It is an example where the conflict set
+-- from enforcing the single instance restriction is not sufficient. See pull
+-- request #3327.
+--
+-- When C, A, and B are installed as independent goals, the solver first
+-- chooses 0.C-1 and 0.D-2. When choosing dependencies for A and B, it links
+-- 1.D and 2.D to 0.D. Finally, the solver discovers the test's constraint on
+-- D. It must backjump to try 1.D-1 and then link 2.D to 1.D.
+db20 :: ExampleDb
+db20 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 [ExAny "D"] `withTest` ExTest "test" [ExFix "D" 1]
+  , Right $ exAv "C" 1 [ExFix "D" 2]
+  , Right $ exAv "D" 1 []
+  , Right $ exAv "D" 2 []
   ]
 
 dbExts1 :: ExampleDb
