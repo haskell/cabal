@@ -100,7 +100,7 @@ module Distribution.PackageDescription (
         GenericPackageDescription(..),
         Flag(..), FlagName(..), FlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
-        cNot,
+        cNot, cAnd, cOr,
 
         -- * Source repositories
         SourceRepo(..),
@@ -114,7 +114,7 @@ module Distribution.PackageDescription (
 
 import Distribution.Compat.Binary
 import qualified Distribution.Compat.Semigroup as Semi ((<>))
-import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup, gmempty, gmappend)
+import Distribution.Compat.Semigroup as Semi (Monoid(..), Semigroup, gmempty)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.Package
@@ -310,18 +310,24 @@ instance Text BuildType where
 -- options authors can specify to just Haskell package dependencies.
 
 data SetupBuildInfo = SetupBuildInfo {
-        setupDepends :: [Dependency]
+        setupDepends        :: [Dependency],
+        defaultSetupDepends :: Bool
+        -- ^ Is this a default 'custom-setup' section added by the cabal-install
+        -- code (as opposed to user-provided)? This field is only used
+        -- internally, and doesn't correspond to anything in the .cabal
+        -- file. See #3199.
     }
     deriving (Generic, Show, Eq, Read, Typeable, Data)
 
 instance Binary SetupBuildInfo
 
 instance Semi.Monoid SetupBuildInfo where
-  mempty = gmempty
+  mempty  = SetupBuildInfo [] False
   mappend = (Semi.<>)
 
 instance Semigroup SetupBuildInfo where
-  (<>) = gmappend
+  a <> b = SetupBuildInfo (setupDepends a Semi.<> setupDepends b)
+           (defaultSetupDepends a || defaultSetupDepends b)
 
 -- ---------------------------------------------------------------------------
 -- Module renaming
@@ -1225,10 +1231,31 @@ data Condition c = Var c
                  | CAnd (Condition c) (Condition c)
     deriving (Show, Eq, Typeable, Data, Generic)
 
+-- | Boolean negation of a 'Condition' value.
 cNot :: Condition a -> Condition a
 cNot (Lit b)  = Lit (not b)
 cNot (CNot c) = c
 cNot c        = CNot c
+
+-- | Boolean AND of two 'Condtion' values.
+cAnd :: Condition a -> Condition a -> Condition a
+cAnd (Lit False) _           = Lit False
+cAnd _           (Lit False) = Lit False
+cAnd (Lit True)  x           = x
+cAnd x           (Lit True)  = x
+cAnd x           y           = CAnd x y
+
+-- | Boolean OR of two 'Condition' values.
+cOr :: Eq v => Condition v -> Condition v -> Condition v
+cOr  (Lit True)  _           = Lit True
+cOr  _           (Lit True)  = Lit True
+cOr  (Lit False) x           = x
+cOr  x           (Lit False) = x
+cOr  c           (CNot d)
+  | c == d                   = Lit True
+cOr  (CNot c)    d
+  | c == d                   = Lit True
+cOr  x           y           = COr x y
 
 instance Functor Condition where
   f `fmap` Var c    = Var (f c)

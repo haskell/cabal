@@ -221,7 +221,8 @@ exAvSrcPkg ex =
                  , C.benchmarks     = error "not yet configured: benchmarks"
                  , C.buildDepends   = error "not yet configured: buildDepends"
                  , C.setupBuildInfo = Just C.SetupBuildInfo {
-                       C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
+                       C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex)),
+                       C.defaultSetupDepends = False
                      }
                  }
              , C.genPackageFlags = nub $ concatMap extractFlags $

@@ -1629,7 +1629,7 @@ packageSetupScriptStylePreSolver pkg
 -- we still need to distinguish the case of explicit and implict setup deps.
 -- See 'rememberImplicitSetupDeps'.
 --
-defaultSetupDeps :: Platform -> PD.PackageDescription -> [Dependency]
+defaultSetupDeps :: Platform -> PD.PackageDescription -> Maybe [Dependency]
 defaultSetupDeps platform pkg =
     case packageSetupScriptStylePreSolver pkg of
 
@@ -1637,6 +1637,7 @@ defaultSetupDeps platform pkg =
       -- setup dependencies, we add a dependency on Cabal and a number
       -- of other packages.
       SetupCustomImplicitDeps ->
+        Just $
         [ Dependency depPkgname anyVersion
         | depPkgname <- legacyCustomSetupPkgs platform ] ++
         -- The Cabal dep is slightly special:
@@ -1663,13 +1664,13 @@ defaultSetupDeps platform pkg =
       -- external Setup.hs, it'll be one of the simple ones that only depends
       -- on Cabal and base.
       SetupNonCustomExternalLib ->
-        [ Dependency cabalPkgname cabalConstraint
-        , Dependency basePkgname  anyVersion ]
+        Just [ Dependency cabalPkgname cabalConstraint
+             , Dependency basePkgname  anyVersion ]
         where
           cabalConstraint = orLaterVersion (PD.specVersion pkg)
 
       -- The internal setup wrapper method has no deps at all.
-      SetupNonCustomInternalLib -> []
+      SetupNonCustomInternalLib -> Just []
 
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
