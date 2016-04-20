@@ -93,10 +93,10 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree QGoalReasonChain -> Validate (Tree QGoalReasonChain)
+validate :: Tree QGoalReason -> Validate (Tree QGoalReason)
 validate = cata go
   where
-    go :: TreeF QGoalReasonChain (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (Validate (Tree QGoalReason)) -> Validate (Tree QGoalReason)
 
     go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) ts)
     go (FChoiceF qfn gr b m ts) =
@@ -130,7 +130,7 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasonChain -> POption -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goP :: QPN -> QGoalReason -> POption -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goP qpn@(Q _pp pn) gr (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -161,7 +161,7 @@ validate = cata go
                                     local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goF :: QFN -> QGoalReason -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goF qfn@(FN (PI qpn _i) _f) gr b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -186,7 +186,7 @@ validate = cata go
         Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
-    goS :: QSN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goS :: QSN -> QGoalReason -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goS qsn@(SN (PI qpn _i) _f) gr b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -230,7 +230,7 @@ extractDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> QGoalReasonChain -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
+extractNewDeps :: Var QPN -> QGoalReason -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
 extractNewDeps v gr b fa sa = go
   where
     go :: FlaggedDeps comp QPN -> [Dep QPN] -- Type annotation necessary (polymorphic recursion)
@@ -254,7 +254,7 @@ extractNewDeps v gr b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree QGoalReason -> Tree QGoalReason
 validateTree cinfo idx pkgConfigDb t = runReader (validate t) VS {
     supportedExt   = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                            (\ es -> let s = S.fromList es in \ x -> S.member x s)

@@ -55,10 +55,10 @@ type Linker       = Reader RelatedGoals
 -- package instance. Whenever we make a choice, we extend the map. Whenever we
 -- find a choice, we look into the map in order to find out what link options we
 -- have to add.
-addLinking :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+addLinking :: Tree QGoalReason -> Tree QGoalReason
 addLinking = (`runReader` M.empty) .  cata go
   where
-    go :: TreeF QGoalReasonChain (Linker (Tree QGoalReasonChain)) -> Linker (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (Linker (Tree QGoalReason)) -> Linker (Tree QGoalReason)
 
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
@@ -71,15 +71,15 @@ addLinking = (`runReader` M.empty) .  cata go
 
     -- Recurse underneath package choices. Here we just need to make sure
     -- that we record the package choice so that it is available below
-    goP :: QPN -> POption -> Linker (Tree QGoalReasonChain) -> Linker (Tree QGoalReasonChain)
+    goP :: QPN -> POption -> Linker (Tree QGoalReason) -> Linker (Tree QGoalReason)
     goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
     goP _ _ = alreadyLinked
 
-linkChoices :: RelatedGoals -> QPN -> (POption, Tree QGoalReasonChain) -> [(POption, Tree QGoalReasonChain)]
+linkChoices :: RelatedGoals -> QPN -> (POption, Tree QGoalReason) -> [(POption, Tree QGoalReason)]
 linkChoices related (Q _pp pn) (POption i Nothing, subtree) =
     map aux (M.findWithDefault [] (pn, i) related)
   where
-    aux :: PP -> (POption, Tree QGoalReasonChain)
+    aux :: PP -> (POption, Tree QGoalReason)
     aux pp = (POption i (Just pp), subtree)
 linkChoices _ _ (POption _ (Just _), _) =
     alreadyLinked
@@ -127,10 +127,10 @@ type Validate = Reader ValidateState
 -- * Linked dependencies,
 -- * Equal flag assignments
 -- * Equal stanza assignments
-validateLinking :: Index -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+validateLinking :: Index -> Tree QGoalReason -> Tree QGoalReason
 validateLinking index = (`runReader` initVS) . cata go
   where
-    go :: TreeF QGoalReasonChain (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (Validate (Tree QGoalReason)) -> Validate (Tree QGoalReason)
 
     go (PChoiceF qpn gr cs) =
       PChoice qpn gr     <$> T.sequence (P.mapWithKey (goP qpn) cs)
@@ -145,7 +145,7 @@ validateLinking index = (`runReader` initVS) . cata go
     go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
 
     -- Package choices
-    goP :: QPN -> POption -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goP :: QPN -> POption -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goP qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ = vsIndex vs ! pn ! i
@@ -155,7 +155,7 @@ validateLinking index = (`runReader` initVS) . cata go
         Right vs'       -> local (const vs') r
 
     -- Flag choices
-    goF :: QFN -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goF :: QFN -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goF qfn b r = do
       vs <- ask
       case execUpdateState (pickFlag qfn b) vs of
@@ -163,7 +163,7 @@ validateLinking index = (`runReader` initVS) . cata go
         Right vs'       -> local (const vs') r
 
     -- Stanza choices (much the same as flag choices)
-    goS :: QSN -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goS :: QSN -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
     goS qsn b r = do
       vs <- ask
       case execUpdateState (pickStanza qsn b) vs of
@@ -240,6 +240,7 @@ pickLink qpn@(Q pp pn) i pp' deps = do
     -- Since we already have a canonical member, we just need to add the new
     -- member into the group
     let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
+    -- TODO: Can it not be that *we* are already in a different link group?
     updateLinkGroup lg'
     linkDeps target [P qpn] deps
 

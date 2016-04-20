@@ -61,7 +61,7 @@ showMessages p sl = go [] 0
     go !v !l (Step (TryS qsn b) (Step Enter (Step (Failure c fr) (Step Leave ms)))) =
         (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
-        (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGRs gr) (go (add (P qpn) v) l ms)
+        (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (add (P qpn) v) l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
         let v' = add (P qpn) v
         in (atLevel v' l $ showPackageGoal qpn gr) $ (atLevel v' l $ showFailure c fr) (go v l ms)
@@ -78,8 +78,8 @@ showMessages p sl = go [] 0
     go !v !l (Step (Success)                ms) = (atLevel v l $ "done") (go v l ms)
     go !v !l (Step (Failure c fr)           ms) = (atLevel v l $ showFailure c fr) (go v l ms)
 
-    showPackageGoal :: QPN -> QGoalReasonChain -> String
-    showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGRs gr
+    showPackageGoal :: QPN -> QGoalReason -> String
+    showPackageGoal qpn gr = "next goal: " ++ showQPN qpn ++ showGR gr
 
     showFailure :: ConflictSet QPN -> FailReason -> String
     showFailure c fr = "fail" ++ showFR c fr
@@ -115,12 +115,9 @@ showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
     Nothing  -> showPI (PI qpn i) -- Consistent with prior to POption
     Just pp' -> showQPN qpn ++ "~>" ++ showPI (PI (Q pp' pn) i)
 
-showGRs :: QGoalReasonChain -> String
-showGRs (gr : _) = showGR gr
-showGRs []       = ""
-
-showGR :: GoalReason QPN -> String
+showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
+showGR Unknown             = " (UNKNOWN GOAL)"
 showGR (PDependency pi)    = " (dependency of " ++ showPI pi            ++ ")"
 showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
 showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"

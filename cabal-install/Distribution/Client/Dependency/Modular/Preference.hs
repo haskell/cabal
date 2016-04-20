@@ -189,8 +189,8 @@ processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
-                          -> Tree QGoalReasonChain
-                          -> Tree QGoalReasonChain
+                          -> Tree QGoalReason
+                          -> Tree QGoalReason
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q pp pn)              gr      ts) =
@@ -218,7 +218,7 @@ enforcePackageConstraints pcs = trav go
 -- be run after user preferences have been enforced. For manual flags,
 -- it checks if a user choice has been made. If not, it disables all but
 -- the first choice.
-enforceManualFlags :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceManualFlags :: Tree QGoalReason -> Tree QGoalReason
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
@@ -232,7 +232,7 @@ enforceManualFlags = trav go
     go x                                                   = x
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+requireInstalled :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
 requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) gr cs)
@@ -256,7 +256,7 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+avoidReinstalls :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
 avoidReinstalls p = trav go
   where
     go (PChoiceF qpn@(Q _ pn) gr cs)
@@ -369,10 +369,10 @@ type EnforceSIR = Reader (Map (PI PN) (Goal QPN))
 -- (that is, package name + package version) there can be at most one qualified
 -- goal resolving to that instance (there may be other goals _linking_ to that
 -- instance however).
-enforceSingleInstanceRestriction :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceSingleInstanceRestriction :: Tree QGoalReason -> Tree QGoalReason
 enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
   where
-    go :: TreeF QGoalReasonChain (EnforceSIR (Tree QGoalReasonChain)) -> EnforceSIR (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (EnforceSIR (Tree QGoalReason)) -> EnforceSIR (Tree QGoalReason)
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
@@ -381,7 +381,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> QGoalReasonChain -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP :: QPN -> QGoalReason -> POption -> EnforceSIR (Tree QGoalReason) -> EnforceSIR (Tree QGoalReason)
     goP qpn@(Q _ pn) gr (POption i linkedTo) r = do
       let inst = PI pn i
           goal = Goal (P qpn) gr
