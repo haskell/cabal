@@ -1,7 +1,7 @@
 .. -*- mode: rst -*-
 
 ``cabal new-build``, also known as “Nix-style local builds”, is a new
-command that will be beta'd with cabal-install 1.24. Nix-style
+command inspired by Nix that will be beta'd with cabal-install 1.24. Nix-style
 local builds combine the best of non-sandboxed and sandboxed Cabal:
 
 1. Like sandboxed Cabal today, we build sets of independent local
