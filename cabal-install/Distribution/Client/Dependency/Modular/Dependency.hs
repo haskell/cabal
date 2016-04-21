@@ -308,11 +308,7 @@ type RevDepMap = Map QPN [(Component, QPN)]
 data Goal qpn = Goal (Var qpn) (GoalReason qpn)
   deriving (Eq, Show, Functor)
 
--- | Reasons why a goal is being added to a goal set.
---
--- Empty list means user goal.
--- More than one element means that the combination of the goals is responsible.
---
+-- | Reason why a goal is being added to a goal set.
 data GoalReason qpn =
     UserGoal
   | Unknown -- TODO: is this really needed?
