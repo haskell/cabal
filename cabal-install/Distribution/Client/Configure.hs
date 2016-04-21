@@ -45,7 +45,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), AllowNewer(..)
-         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+         , toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
 import Distribution.Simple.Utils
@@ -286,8 +286,6 @@ planLocalPackage :: Verbosity -> Compiler
 planLocalPackage verbosity comp platform configFlags configExFlags
   installedPkgIndex (SourcePackageDb _ packagePrefs) pkgConfigDb = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
-  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
-            (compilerInfo comp)
 
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {
@@ -338,7 +336,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies platform (compilerInfo comp) pkgConfigDb solver resolverParams)
+  return (resolveDependencies platform (compilerInfo comp) pkgConfigDb resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

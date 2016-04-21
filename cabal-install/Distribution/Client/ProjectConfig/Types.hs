@@ -22,10 +22,10 @@ module Distribution.Client.ProjectConfig.Types (
 import Distribution.Client.Types
          ( RemoteRepo )
 import Distribution.Client.Dependency.Types
-         ( PreSolver, ConstraintSource )
+         ( ConstraintSource )
 import Distribution.Client.Targets
          ( UserConstraint )
-import Distribution.Client.BuildReports.Types 
+import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 
 import Distribution.Package
@@ -158,7 +158,6 @@ data ProjectConfigShared
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
        projectConfigPreferences       :: [Dependency],
        projectConfigCabalVersion      :: Flag Version,  --TODO: [required eventually] unused
-       projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowNewer        :: Maybe AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag Bool,
@@ -312,7 +311,6 @@ data SolverSettings
        solverSettingFlagAssignment    :: FlagAssignment, -- ^ For all local packages
        solverSettingFlagAssignments   :: Map PackageName FlagAssignment,
        solverSettingCabalVersion      :: Maybe Version,  --TODO: [required eventually] unused
-       solverSettingSolver            :: PreSolver,
        solverSettingAllowNewer        :: AllowNewer,
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: Bool,

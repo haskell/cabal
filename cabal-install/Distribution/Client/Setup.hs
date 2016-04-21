@@ -19,11 +19,11 @@ module Distribution.Client.Setup
     , RepoContext(..), withRepoContext
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
-                        , configureExOptions
+    , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
-    , defaultSolver, defaultMaxBackjumps
+    , defaultMaxBackjumps
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
@@ -59,7 +59,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), ConstraintSource(..) )
+         ( ConstraintSource(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -110,7 +110,7 @@ import Distribution.Client.GlobalFlags
 import Data.Char
          ( isAlphaNum )
 import Data.List
-         ( intercalate, deleteFirstsBy )
+         ( deleteFirstsBy )
 import Data.Maybe
          ( maybeToList, fromMaybe )
 import GHC.Generics (Generic)
@@ -421,13 +421,12 @@ filterConfigureFlags flags cabalLibVersion
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [(UserConstraint, ConstraintSource)],
-    configPreferences  :: [Dependency],
-    configSolver       :: Flag PreSolver
+    configPreferences  :: [Dependency]
   }
   deriving (Eq, Generic)
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver }
+defaultConfigExFlags = mempty
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
@@ -468,8 +467,6 @@ configureExOptions _showOrParseArgs src =
               (readP_to_E (const "dependency expected")
                           (fmap (\x -> [x]) parse))
               (map display))
-
-  , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
   ]
 
@@ -600,7 +597,6 @@ data FetchFlags = FetchFlags {
 --    fetchOutput    :: Flag FilePath,
       fetchDeps      :: Flag Bool,
       fetchDryRun    :: Flag Bool,
-      fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag Bool,
       fetchIndependentGoals :: Flag Bool,
@@ -614,7 +610,6 @@ defaultFetchFlags = FetchFlags {
 --  fetchOutput    = mempty,
     fetchDeps      = toFlag True,
     fetchDryRun    = toFlag False,
-    fetchSolver           = Flag defaultSolver,
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
     fetchReorderGoals     = Flag False,
     fetchIndependentGoals = Flag False,
@@ -659,7 +654,6 @@ fetchCommand = CommandUI {
 
        ] ++
 
-       optionSolver      fetchSolver           (\v flags -> flags { fetchSolver           = v }) :
        optionSolverFlags showOrParseArgs
                          fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
@@ -677,7 +671,6 @@ data FreezeFlags = FreezeFlags {
       freezeDryRun           :: Flag Bool,
       freezeTests            :: Flag Bool,
       freezeBenchmarks       :: Flag Bool,
-      freezeSolver           :: Flag PreSolver,
       freezeMaxBackjumps     :: Flag Int,
       freezeReorderGoals     :: Flag Bool,
       freezeIndependentGoals :: Flag Bool,
@@ -691,7 +684,6 @@ defaultFreezeFlags = FreezeFlags {
     freezeDryRun           = toFlag False,
     freezeTests            = toFlag False,
     freezeBenchmarks       = toFlag False,
-    freezeSolver           = Flag defaultSolver,
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
     freezeReorderGoals     = Flag False,
     freezeIndependentGoals = Flag False,
@@ -735,7 +727,6 @@ freezeCommand = CommandUI {
 
        ] ++
 
-       optionSolver      freezeSolver           (\v flags -> flags { freezeSolver           = v }) :
        optionSolverFlags showOrParseArgs
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
@@ -1198,12 +1189,6 @@ defaultInstallFlags = InstallFlags {
 
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 2000
-
-defaultSolver :: PreSolver
-defaultSolver = Choose
-
-allSolvers :: String
-allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
@@ -2051,17 +2036,6 @@ liftOptions get set = map (liftOption get set)
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
 yesNoOpt _        sf lf = Command.boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
-
-optionSolver :: (flags -> Flag PreSolver)
-             -> (Flag PreSolver -> flags -> flags)
-             -> OptionField flags
-optionSolver get set =
-  option [] ["solver"]
-    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ", where 'choose' chooses between 'topdown' and 'modular' based on compiler version.")
-    get set
-    (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
-                                 (toFlag `fmap` parse))
-                     (flagToList . fmap display))
 
 optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)

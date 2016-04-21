@@ -19,7 +19,6 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
-import Distribution.Client.Dependency.Types (Solver(Modular))
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 import UnitTests.Options
 
@@ -221,7 +220,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
       let (_msgs, result) = exResolve testDb testSupportedExts
                             testSupportedLangs testPkgConfigDb testTargets
-                            Modular Nothing testIndepGoals (ReorderGoals False)
+                            Nothing testIndepGoals (ReorderGoals False)
                             testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of

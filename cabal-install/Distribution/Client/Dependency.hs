@@ -14,7 +14,6 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency (
     -- * The main package dependency resolver
-    chooseSolver,
     resolveDependencies,
     Progress(..),
     foldProgress,
@@ -38,7 +37,6 @@ module Distribution.Client.Dependency (
 
     -- ** Extra policy options
     dontUpgradeNonUpgradeablePackages,
-    hideBrokenInstalledPackages,
     upgradeDependencies,
     reinstallTargets,
 
@@ -53,15 +51,12 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     addSourcePackages,
-    hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
     removeUpperBounds,
     addDefaultSetupDependencies,
   ) where
 
-import Distribution.Client.Dependency.TopDown
-         ( topDownResolver )
 import Distribution.Client.Dependency.Modular
          ( modularResolver, SolverConfig(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -76,7 +71,7 @@ import Distribution.Client.Types
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         ( ResolverPackage(..)
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
@@ -88,11 +83,10 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Client.Targets
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
-         , UnitId, Dependency(Dependency))
+         , Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
@@ -109,15 +103,13 @@ import Distribution.System
 import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
-         ( comparing, warn, info )
+         ( comparing )
 import Distribution.Simple.Configure
          ( relaxPackageDeps )
 import Distribution.Simple.Setup
          ( AllowNewer(..) )
 import Distribution.Text
          ( display )
-import Distribution.Verbosity
-         ( Verbosity )
 
 import Data.List
          ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
@@ -304,9 +296,6 @@ dontUpgradeNonUpgradeablePackages params =
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
       , isInstalled pkgname ]
-    -- TODO: the top down resolver chokes on the base constraints
-    -- below when there are no targets and thus no dep on base.
-    -- Need to refactor constraints separate from needing packages.
     isInstalled = not . null
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
@@ -318,17 +307,6 @@ addSourcePackages pkgs params =
       depResolverSourcePkgIndex =
         foldl (flip PackageIndex.insert)
               (depResolverSourcePkgIndex params) pkgs
-    }
-
-hideInstalledPackagesSpecificByUnitId :: [UnitId]
-                                                     -> DepResolverParams
-                                                     -> DepResolverParams
-hideInstalledPackagesSpecificByUnitId pkgids params =
-    --TODO: this should work using exclude constraints instead
-    params {
-      depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteUnitId)
-               (depResolverInstalledPkgIndex params) pkgids
     }
 
 hideInstalledPackagesSpecificBySourcePackageId :: [PackageId]
@@ -352,17 +330,6 @@ hideInstalledPackagesAllVersions pkgnames params =
                (depResolverInstalledPkgIndex params) pkgnames
     }
 
-
-hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
-hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByUnitId pkgids params
-  where
-    pkgids = map Installed.installedUnitId
-           . InstalledPackageIndex.reverseDependencyClosure
-                            (depResolverInstalledPkgIndex params)
-           . map (Installed.installedUnitId . fst)
-           . InstalledPackageIndex.brokenPackages
-           $ depResolverInstalledPkgIndex params
 
 -- | Remove upper bounds in dependencies using the policy specified by the
 -- 'AllowNewer' argument (all/some/none).
@@ -527,26 +494,6 @@ applySandboxInstallPolicy
     installedNotModified = [ packageName pkg | pkg <- installedPkgIds,
                              pkg `notElem` modifiedPkgIds ]
 
--- ------------------------------------------------------------
--- * Interface to the standard resolver
--- ------------------------------------------------------------
-
-chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver verbosity preSolver _cinfo =
-    case preSolver of
-      AlwaysTopDown -> do
-        warn verbosity "Topdown solver is deprecated"
-        return TopDown
-      AlwaysModular -> do
-        return Modular
-      Choose -> do
-        info verbosity "Choosing modular solver."
-        return Modular
-
-runSolver :: Solver -> SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
-runSolver Modular = modularResolver
-
 -- | Run the dependency solver.
 --
 -- Since this is potentially an expensive operation, the result is wrapped in a
@@ -556,22 +503,21 @@ runSolver Modular = modularResolver
 resolveDependencies :: Platform
                     -> CompilerInfo
                     -> PkgConfigDb
-                    -> Solver
                     -> DepResolverParams
                     -> Progress String String SolverInstallPlan
 
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
-resolveDependencies platform comp _pkgConfigDB _solver params
+resolveDependencies platform comp _pkgConfigDB params
   | null (depResolverTargets params)
   = return (validateSolverResult platform comp indGoals [])
   where
     indGoals = depResolverIndependentGoals params
 
-resolveDependencies platform comp pkgConfigDB solver params =
+resolveDependencies platform comp pkgConfigDB params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
-  $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
+  $ modularResolver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
@@ -588,13 +534,6 @@ resolveDependencies platform comp pkgConfigDB solver params =
       shadowing
       strFlags
       maxBkjumps)     = dontUpgradeNonUpgradeablePackages
-                      -- TODO:
-                      -- The modular solver can properly deal with broken
-                      -- packages and won't select them. So the
-                      -- 'hideBrokenInstalledPackages' function should be moved
-                      -- into a module that is specific to the top-down solver.
-                      . (if solver /= Modular then hideBrokenInstalledPackages
-                                              else id)
                       $ params
 
     preferences = interpretPackagesPreference

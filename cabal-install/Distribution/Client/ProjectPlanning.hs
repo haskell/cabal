@@ -438,13 +438,9 @@ rebuildInstallPlan verbosity
           -- ones relevant for the compiler.
 
           liftIO $ do
-            solver <- chooseSolver verbosity
-                                   (solverSettingSolver solverSettings)
-                                   (compilerInfo compiler)
-
             notice verbosity "Resolving dependencies..."
             foldProgress logMsg die return $
-              planPackages compiler platform solver solverSettings
+              planPackages compiler platform solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
       where
@@ -729,7 +725,7 @@ getPackageSourceHashes verbosity withRepoCtx installPlan = do
 
 planPackages :: Compiler
              -> Platform
-             -> Solver -> SolverSettings
+             -> SolverSettings
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> PkgConfigDb
@@ -737,7 +733,7 @@ planPackages :: Compiler
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String
                          (SolverInstallPlan, PackagesImplicitSetupDeps)
-planPackages comp platform solver SolverSettings{..}
+planPackages comp platform SolverSettings{..}
              installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
 
@@ -745,7 +741,7 @@ planPackages comp platform solver SolverSettings{..}
 
     resolveDependencies
       platform (compilerInfo comp)
-      pkgConfigDB solver
+      pkgConfigDB
       resolverParams
 
   where

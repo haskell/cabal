@@ -21,7 +21,6 @@ import Test.Tasty.QuickCheck
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.ComponentDeps ( Component(..)
                                          , ComponentDep, ComponentDeps)
-import Distribution.Client.Dependency.Types (Solver(..))
 import Distribution.Client.PkgConfigDb (pkgConfigDbFromList)
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
@@ -34,9 +33,9 @@ tests = [
       -- parameters on the second run. The test also applies parameters that
       -- can affect the existence of a solution to both runs.
       testProperty "target order and --reorder-goals do not affect solvability" $
-          \(SolverTest db targets) targetOrder reorderGoals indepGoals solver ->
-            let r1 = solve (ReorderGoals False) indepGoals solver targets  db
-                r2 = solve reorderGoals         indepGoals solver targets2 db
+          \(SolverTest db targets) targetOrder reorderGoals indepGoals ->
+            let r1 = solve (ReorderGoals False) indepGoals targets  db
+                r2 = solve reorderGoals         indepGoals targets2 db
                 targets2 = case targetOrder of
                              SameOrder -> targets
                              ReverseOrder -> reverse targets
@@ -46,9 +45,9 @@ tests = [
 
     , testProperty
           "solvable without --independent-goals => solvable with --independent-goals" $
-          \(SolverTest db targets) reorderGoals solver ->
-            let r1 = solve reorderGoals (IndepGoals False) solver targets db
-                r2 = solve reorderGoals (IndepGoals True)  solver targets db
+          \(SolverTest db targets) reorderGoals ->
+            let r1 = solve reorderGoals (IndepGoals False) targets db
+                r2 = solve reorderGoals (IndepGoals True)  targets db
              in counterexample (showResults r1 r2) $
                 noneReachedBackjumpLimit [r1, r2] ==>
                 isRight (resultPlan r1) `implies` isRight (resultPlan r2)
@@ -74,13 +73,12 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
-solve :: ReorderGoals -> IndepGoals -> Solver -> [PN] -> TestDb -> Result
-solve reorder indep solver targets (TestDb db) =
+solve :: ReorderGoals -> IndepGoals -> [PN] -> TestDb -> Result
+solve reorder indep targets (TestDb db) =
   let (lg, result) =
         exResolve db Nothing Nothing
                   (pkgConfigDbFromList [])
                   (map unPN targets)
-                  solver
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
@@ -253,13 +251,6 @@ instance Arbitrary IndepGoals where
   arbitrary = IndepGoals <$> arbitrary
 
   shrink (IndepGoals indep) = [IndepGoals False | indep]
-
-instance Arbitrary Solver where
-  arbitrary = frequency [ (1, return TopDown)
-                        , (5, return Modular) ]
-
-  shrink Modular = []
-  shrink TopDown = [Modular]
 
 instance Arbitrary Component where
   arbitrary = oneof [ ComponentLib <$> arbitraryComponentName
