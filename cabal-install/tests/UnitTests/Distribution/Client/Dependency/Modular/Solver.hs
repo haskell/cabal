@@ -132,8 +132,7 @@ tests = [
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
         , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
-        , expectFail $
-          runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
+        , runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
         , expectFail $
           runTest $ indep $ mkTest db20 "indepGoals4" ["C", "A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
