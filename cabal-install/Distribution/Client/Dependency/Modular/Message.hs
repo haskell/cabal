@@ -62,6 +62,8 @@ showMessages p sl = go [] 0
         (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (add (P qpn) v) l ms)
+    go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
+        (atLevel (add (P qpn) v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
         let v' = add (P qpn) v
         in (atLevel v' l $ showPackageGoal qpn gr) $ (atLevel v' l $ showFailure c fr) (go v l ms)
@@ -134,7 +136,6 @@ showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " re
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
 showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
-showFR _ (BuildFailureNotInIndex pn)      = " (unknown package: " ++ display pn ++ ")"
 showFR c Backjump                         = " (backjumping, conflict set: " ++ showCS c ++ ")"
 showFR _ MultipleInstances                = " (multiple instances)"
 showFR c (DependenciesNotLinked msg)      = " (dependencies not linked: " ++ msg ++ "; conflict set: " ++ showCS c ++ ")"

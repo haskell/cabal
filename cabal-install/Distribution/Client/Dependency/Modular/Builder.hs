@@ -125,8 +125,13 @@ build = ana go
     go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
       error "Distribution.Client.Dependency.Modular.Builder: build.go called with Pkg goal"
     go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _) _) gr) }) =
+      -- If the package does not exist in the index, we construct an emty PChoiceF node for it
+      -- After all, we have no choices here. Alternatively, we could immediately construct
+      -- a Fail node here, but that would complicate the construction of conflict sets.
+      -- We will probably want to give this case special treatment when generating error
+      -- messages though.
       case M.lookup pn idx of
-        Nothing  -> FailF (goalReasonToVars gr) (BuildFailureNotInIndex pn)
+        Nothing  -> PChoiceF qpn gr (P.fromList [])
         Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
                                                            (POption i Nothing, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
