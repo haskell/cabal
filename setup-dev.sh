@@ -27,8 +27,6 @@ setup() {
     echo "Cabal package DB location: $PACKAGEDB"
     ./Setup configure --enable-tests --package-db="$PACKAGEDB" || die "$NAME: 'configure' failed"
     ./Setup build || die "$NAME: 'build' failed"
-    # Run tests
-    ./Setup test || die "$1 'test' failed"
 }
 
 # Build
