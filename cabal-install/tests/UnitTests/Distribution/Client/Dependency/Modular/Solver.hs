@@ -39,6 +39,7 @@ tests = [
         , runTest $         mkTest db1 "buildDepAgainstOld" ["F"]      (Just [("B", 1), ("E", 1), ("F", 1)])
         , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (Just [("B", 2), ("E", 1), ("G", 1)])
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] Nothing
+        , runTest $         mkTest db21 "unknownPackage"    ["A"]      (Just [("A", 1), ("B", 1)])
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (Just [("A", 1), ("B", 1), ("C", 1)])
@@ -669,6 +670,18 @@ db20 = [
   , Right $ exAv "C" 1 [ExFix "D" 2]
   , Right $ exAv "D" 1 []
   , Right $ exAv "D" 2 []
+  ]
+
+-- | Test the error message that we get when a package refers to an unknown pkg
+--
+-- TODO: Currently we don't actually test the error message itself, since this
+-- is not exposed to the test. We should expose it. Right now we can only
+-- verify this by hand.
+db21 :: ExampleDb
+db21 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "A" 2 [ExAny "C"] -- A-2.0 will be tried first, but C unknown
+  , Right $ exAv "B" 1 []
   ]
 
 dbExts1 :: ExampleDb

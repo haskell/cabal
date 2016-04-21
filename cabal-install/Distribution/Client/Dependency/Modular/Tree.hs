@@ -76,7 +76,6 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintSource ConstraintSource
                 | GlobalConstraintFlag ConstraintSource
                 | ManualFlag
-                | BuildFailureNotInIndex PN
                 | MalformedFlagChoice QFN
                 | MalformedStanzaChoice QSN
                 | EmptyGoalChoice
