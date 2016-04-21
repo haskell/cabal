@@ -507,6 +507,7 @@ db15 = [
   , Right $ exAv   "E" 1            [ExFix "C" 2]
   ]
 
+
 dbExts1 :: ExampleDb
 dbExts1 = [
     Right $ exAv "A" 1 [ExExt (EnableExtension RankNTypes)]

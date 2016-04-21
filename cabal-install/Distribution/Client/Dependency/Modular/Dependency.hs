@@ -7,7 +7,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , varPI
     -- * Conflict sets
   , ConflictSet
-  , showCS
+  , CS.showCS
     -- * Constrained instances
   , CI(..)
   , merge
@@ -30,7 +30,6 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , QGoalReasonChain
   , ResetGoal(..)
   , toConflictSet
-  , extendConflictSet
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -38,66 +37,21 @@ module Distribution.Client.Dependency.Modular.Dependency (
 
 import Prelude hiding (pi)
 
-import Data.List (intercalate)
 import Data.Map (Map)
-import Data.Set (Set)
 import qualified Data.List as L
-import qualified Data.Set  as S
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
 import Distribution.Text
 
+import Distribution.Client.Dependency.Modular.ConflictSet (ConflictSet)
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
+import Distribution.Client.Dependency.Modular.Var
 import Distribution.Client.Dependency.Modular.Version
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.ComponentDeps (Component(..))
-
-{-------------------------------------------------------------------------------
-  Variables
--------------------------------------------------------------------------------}
-
--- | The type of variables that play a role in the solver.
--- Note that the tree currently does not use this type directly,
--- and rather has separate tree nodes for the different types of
--- variables. This fits better with the fact that in most cases,
--- these have to be treated differently.
---
--- TODO: This isn't the ideal location to declare the type,
--- but we need them for constrained instances.
-data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
-  deriving (Eq, Ord, Show, Functor)
-
--- | For computing conflict sets, we map flag choice vars to a
--- single flag choice. This means that all flag choices are treated
--- as interdependent. So if one flag of a package ends up in a
--- conflict set, then all flags are being treated as being part of
--- the conflict set.
-simplifyVar :: Var qpn -> Var qpn
-simplifyVar (P qpn)       = P qpn
-simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
-simplifyVar (S qsn)       = S qsn
-
-showVar :: Var QPN -> String
-showVar (P qpn) = showQPN qpn
-showVar (F qfn) = showQFN qfn
-showVar (S qsn) = showQSN qsn
-
--- | Extract the package instance from a Var
-varPI :: Var QPN -> (QPN, Maybe I)
-varPI (P qpn)               = (qpn, Nothing)
-varPI (F (FN (PI qpn i) _)) = (qpn, Just i)
-varPI (S (SN (PI qpn i) _)) = (qpn, Just i)
-
-{-------------------------------------------------------------------------------
-  Conflict sets
--------------------------------------------------------------------------------}
-
-type ConflictSet qpn = Set (Var qpn)
-
-showCS :: ConflictSet QPN -> String
-showCS = intercalate ", " . L.map showVar . S.toList
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -131,13 +85,13 @@ showCI (Constrained vr) = showVR (collapse vr)
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
-  | otherwise                                 = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
+  | otherwise                                 = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, d))
 merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
+      | otherwise      = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
@@ -364,20 +318,16 @@ instance ResetGoal Goal where
 -- | Compute a conflict set from a goal. The conflict set contains the closure
 -- of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
-
--- | Add another variable into a conflict set
-extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
-extendConflictSet = S.insert . simplifyVar
+toConflictSet (Goal g grs) = CS.insert g (goalReasonChainToVars grs)
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
-goalReasonToVars UserGoal                 = S.empty
-goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = S.singleton (simplifyVar (F qfn))
-goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
+goalReasonToVars UserGoal                 = CS.empty
+goalReasonToVars (PDependency (PI qpn _)) = CS.singleton (P qpn)
+goalReasonToVars (FDependency qfn _)      = CS.singleton (F qfn)
+goalReasonToVars (SDependency qsn)        = CS.singleton (S qsn)
 
 goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
-goalReasonChainToVars = S.unions . L.map goalReasonToVars
+goalReasonChainToVars = CS.unions . L.map goalReasonToVars
 
 {-------------------------------------------------------------------------------
   Open goals
