@@ -360,12 +360,18 @@ goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 varToConflictSet :: Var qpn -> ConflictSet qpn
 varToConflictSet = CS.singleton
 
-goalReasonToVars :: Ord qpn => GoalReason qpn -> ConflictSet qpn
-goalReasonToVars UserGoal                 = CS.empty
-goalReasonToVars (PDependency (PI qpn _)) = CS.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = CS.singleton (F qfn)
-goalReasonToVars (SDependency qsn)        = CS.singleton (S qsn)
-goalReasonToVars Unknown                  = CS.empty
+-- | A goal reason is mostly just a variable paired with the
+-- decision we made for that variable (except for user goals,
+-- where we cannot really point to a solver variable). This
+-- function drops the decision and recovers the list of
+-- variables (which will be empty or contain one element).
+--
+goalReasonToVars :: Ord qpn => GoalReason qpn -> [Var qpn]
+goalReasonToVars UserGoal                 = []
+goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
+goalReasonToVars (FDependency qfn _)      = [F qfn]
+goalReasonToVars (SDependency qsn)        = [S qsn]
+goalReasonToVars Unknown                  = []
 
 {-------------------------------------------------------------------------------
   Open goals

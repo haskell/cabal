@@ -38,7 +38,8 @@ tests = [
         , runTest $         mkTest db1 "buildDepAgainstOld" ["F"]      (Just [("B", 1), ("E", 1), ("F", 1)])
         , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (Just [("B", 2), ("E", 1), ("G", 1)])
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] Nothing
-        , runTest $         mkTest db21 "unknownPackage"    ["A"]      (Just [("A", 1), ("B", 1)])
+        , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (Just [("A", 1), ("B", 1)])
+        , runTest $         mkTest db22 "unknownPackage1"   ["A"]      Nothing
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (Just [("A", 1), ("B", 1), ("C", 1)])
@@ -133,8 +134,8 @@ tests = [
         , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         , runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] Nothing -- The target order is important.
         , runTest $ indep $ mkTest db20 "indepGoals4" ["C", "A", "B"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
-        , runTest $ indep $ mkTest db22 "indepGoals5" ["X", "Y"] (Just [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
-        , runTest $ indep $ mkTest db23 "indepGoals6" ["X", "Y"] (Just [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
+        , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (Just [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
+        , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (Just [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
         ]
     ]
   where
@@ -683,6 +684,13 @@ db21 = [
   , Right $ exAv "B" 1 []
   ]
 
+-- | A variant of 'db21'. The same TODO applies.
+db22 :: ExampleDb
+db22 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "A" 2 [ExAny "C"]
+  ]
+
 -- | Database for (unsuccessfully) trying to expose a bug in the handling
 -- of implied linking constraints. The question is whether an implied linking
 -- constraint should only have the introducing package in its conflict set,
@@ -696,8 +704,8 @@ db21 = [
 -- be found, because without the SIR, linking is always optional, but never
 -- necessary.
 --
-db22 :: ExampleDb
-db22 = [
+db23 :: ExampleDb
+db23 = [
     Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
   , Right $ exAv "Y" 1 [ExFix "C" 1, ExFix "A" 2]
   , Right $ exAv "A" 1 []
@@ -708,8 +716,8 @@ db22 = [
   ]
 
 -- | A simplified version of 'db23'.
-db23 :: ExampleDb
-db23 = [
+db24 :: ExampleDb
+db24 = [
     Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
   , Right $ exAv "Y" 1 [ExFix "B" 1, ExFix "A" 2]
   , Right $ exAv "A" 1 []
