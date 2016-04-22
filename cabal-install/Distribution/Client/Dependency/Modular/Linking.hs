@@ -286,7 +286,7 @@ linkDeps parent = \parents deps -> do
     go parents deps rdeps
   where
     go :: [Var QPN] -> FlaggedDeps Component QPN -> FlaggedDeps Component QPN -> UpdateState ()
-    go parents deps rdeps = mapM_ (uncurry (go1 parents)) $ zip deps rdeps
+    go = zipWithM_ . go1
 
     go1 :: [Var QPN] -> FlaggedDep Component QPN -> FlaggedDep Component QPN -> UpdateState ()
     go1 parents dep rdep = case (dep, rdep) of
