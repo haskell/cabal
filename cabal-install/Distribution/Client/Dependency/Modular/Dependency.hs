@@ -242,6 +242,13 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     qSetup :: Component -> Bool
     qSetup comp = qoSetupIndependent && comp == ComponentSetup
 
+-- | Remove qualifiers from set of dependencies
+--
+-- This is used during link validation: when we link package @Q.A@ to @Q'.A@,
+-- then all dependencies @Q.B@ need to be linked to @Q'.B@. In order to compute
+-- what to link these dependencies to, we need to requalify @Q.B@ to become
+-- @Q'.B@; we do this by first removing all qualifiers and then calling
+-- 'qualifyDeps' again.
 unqualifyDeps :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
 unqualifyDeps = go
   where
