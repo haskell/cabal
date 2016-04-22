@@ -352,12 +352,12 @@ goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
 -- | Compute a singleton conflict set from a 'Var'
 varToConflictSet :: Var qpn -> ConflictSet qpn
-varToConflictSet = CS.singleton . simplifyVar
+varToConflictSet = CS.singleton
 
 goalReasonToVars :: Ord qpn => GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = CS.empty
 goalReasonToVars (PDependency (PI qpn _)) = CS.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = CS.singleton (simplifyVar (F qfn))
+goalReasonToVars (FDependency qfn _)      = CS.singleton (F qfn)
 goalReasonToVars (SDependency qsn)        = CS.singleton (S qsn)
 goalReasonToVars Unknown                  = CS.empty
 
