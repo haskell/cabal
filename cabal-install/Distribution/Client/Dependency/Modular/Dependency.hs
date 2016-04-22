@@ -29,7 +29,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , Goal(..)
   , GoalReason(..)
   , QGoalReason
-  , ResetGoal(..)
+  , ResetVar(..)
   , goalVarToConflictSet
   , varToConflictSet
   , goalReasonToVars
@@ -64,7 +64,7 @@ import Distribution.Client.ComponentDeps (Component(..))
 -- a fixed instance, and we record the package name for which the choice
 -- is for convenience. Otherwise, it is a list of version ranges paired with
 -- the goals / variables that introduced them.
-data CI qpn = Fixed I (Goal qpn) | Constrained [VROrigin qpn]
+data CI qpn = Fixed I (Var qpn) | Constrained [VROrigin qpn]
   deriving (Eq, Show, Functor)
 
 showCI :: CI QPN -> String
@@ -88,13 +88,13 @@ showCI (Constrained vr) = showVR (collapse vr)
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
-  | otherwise                                 = Left (CS.union (goalVarToConflictSet g1) (goalVarToConflictSet g2), (c, d))
+  | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
 merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (CS.union (goalVarToConflictSet g1) (goalVarToConflictSet g2), (c, Constrained [d]))
+      | otherwise      = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, Constrained [d]))
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
@@ -164,12 +164,12 @@ data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn (Fixed i (Goal v _))          ) =
+showDep (Dep qpn (Fixed i v)            ) =
   (if P qpn /= v then showVar v ++ " => " else "") ++
   showQPN qpn ++ "==" ++ showI i
-showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
+showDep (Dep qpn (Constrained [(vr, v)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
-showDep (Dep qpn ci                            ) =
+showDep (Dep qpn ci                     ) =
   showQPN qpn ++ showCI ci
 showDep (Ext ext)   = "requires " ++ display ext
 showDep (Lang lang) = "requires " ++ display lang
@@ -324,7 +324,6 @@ data Goal qpn = Goal (Var qpn) (GoalReason qpn)
 -- | Reason why a goal is being added to a goal set.
 data GoalReason qpn =
     UserGoal
-  | Unknown -- TODO: is this really needed?
   | PDependency (PI qpn)
   | FDependency (FN qpn) Bool
   | SDependency (SN qpn)
@@ -332,21 +331,21 @@ data GoalReason qpn =
 
 type QGoalReason = GoalReason QPN
 
-class ResetGoal f where
-  resetGoal :: Goal qpn -> f qpn -> f qpn
+class ResetVar f where
+  resetVar :: Var qpn -> f qpn -> f qpn
 
-instance ResetGoal CI where
-  resetGoal g (Fixed i _)       = Fixed i g
-  resetGoal g (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetGoal g y)) vrs)
+instance ResetVar CI where
+  resetVar v (Fixed i _)       = Fixed i v
+  resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
 
-instance ResetGoal Dep where
-  resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
-  resetGoal _ (Ext ext)    = Ext ext
-  resetGoal _ (Lang lang)  = Lang lang
-  resetGoal _ (Pkg pn vr)  = Pkg pn vr
+instance ResetVar Dep where
+  resetVar v (Dep qpn ci) = Dep qpn (resetVar v ci)
+  resetVar _ (Ext ext)    = Ext ext
+  resetVar _ (Lang lang)  = Lang lang
+  resetVar _ (Pkg pn vr)  = Pkg pn vr
 
-instance ResetGoal Goal where
-  resetGoal = const
+instance ResetVar Var where
+  resetVar = const
 
 -- | Compute a singleton conflict set from a goal, containing just
 -- the goal variable.
@@ -371,7 +370,6 @@ goalReasonToVars UserGoal                 = []
 goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
 goalReasonToVars (FDependency qfn _)      = [F qfn]
 goalReasonToVars (SDependency qsn)        = [S qsn]
-goalReasonToVars Unknown                  = []
 
 {-------------------------------------------------------------------------------
   Open goals
@@ -399,7 +397,7 @@ close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
   Version ranges paired with origins
 -------------------------------------------------------------------------------}
 
-type VROrigin qpn = (VR, Goal qpn)
+type VROrigin qpn = (VR, Var qpn)
 
 -- | Helper function to collapse a list of version ranges with origins into
 -- a single, simplified, version range.

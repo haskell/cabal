@@ -90,9 +90,9 @@ extend extSupported langSupported pkgPresent var = foldM extendSingle
     -- making a choice pkg == instance, and pkg => pkg == instance is a part
     -- of the conflict, then this info is clear from the context and does not
     -- have to be repeated.
-    simplify v (Fixed _ (Goal var' _)) c | v == var && var' == var = [c]
-    simplify v c (Fixed _ (Goal var' _)) | v == var && var' == var = [c]
-    simplify _ c                       d                           = [c, d]
+    simplify v (Fixed _ var') c | v == var && var' == var = [c]
+    simplify v c (Fixed _ var') | v == var && var' == var = [c]
+    simplify _ c              d                           = [c, d]
 
 -- | Delivers an ordered list of fully configured packages.
 --
