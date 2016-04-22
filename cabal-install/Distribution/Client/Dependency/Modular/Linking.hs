@@ -282,6 +282,11 @@ makeCanonical lg qpn@(Q pp _) i =
 -- as well, and cover their dependencies at that point.
 linkDeps :: QPN -> [Var QPN] -> FlaggedDeps Component QPN -> UpdateState ()
 linkDeps target = \blame deps -> do
+    -- linkDeps is called in two places: when we first link one package to
+    -- another, and when we discover more dependencies of an already linked
+    -- package after doing some flag assignment. It is therefore important that
+    -- flag assignments cannot influence _how_ dependencies are qualified;
+    -- fortunately this is a documented property of 'qualifyDeps'.
     rdeps <- requalify deps
     go blame deps rdeps
   where

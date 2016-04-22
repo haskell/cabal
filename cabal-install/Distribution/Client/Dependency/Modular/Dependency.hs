@@ -191,6 +191,12 @@ data QualifyOptions = QO {
 
 -- | Apply built-in rules for package qualifiers
 --
+-- Although the behaviour of 'qualifyDeps' depends on the 'QualifyOptions',
+-- it is important that these 'QualifyOptions' are _static_. Qualification
+-- does NOT depend on flag assignment; in other words, it behaves the same no
+-- matter which choices the solver makes (modulo the global 'QualifyOptions');
+-- we rely on this in 'linkDeps' (see comment there).
+--
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
