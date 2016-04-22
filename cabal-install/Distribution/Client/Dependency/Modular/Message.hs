@@ -119,7 +119,6 @@ showQPNPOpt qpn@(Q _pp pn) (POption i linkedTo) =
 
 showGR :: QGoalReason -> String
 showGR UserGoal            = " (user goal)"
-showGR Unknown             = " (UNKNOWN GOAL)"
 showGR (PDependency pi)    = " (dependency of " ++ showPI pi            ++ ")"
 showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
 showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"
