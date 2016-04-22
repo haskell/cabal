@@ -4,13 +4,9 @@ module Distribution.Client.Dependency.Modular.Cycles (
   ) where
 
 import Prelude hiding (cycle)
-import Control.Monad
-import Control.Monad.Reader
 import Data.Graph (SCC)
-import Data.Map   (Map)
-import qualified Data.Graph       as Gr
-import qualified Data.Map         as Map
-import qualified Data.Traversable as T
+import qualified Data.Graph as Gr
+import qualified Data.Map   as Map
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -21,25 +17,22 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
-type DetectCycles = Reader (Map QPN QGoalReason)
-
 -- | Find and reject any solutions that are cyclic
 detectCyclesPhase :: Tree QGoalReason -> Tree QGoalReason
-detectCyclesPhase = (`runReader` Map.empty) .  cata go
+detectCyclesPhase = cata go
   where
-    -- Most cases are simple; we just need to remember which choices we made
-    go :: TreeF QGoalReason (DetectCycles (Tree QGoalReason)) -> DetectCycles (Tree QGoalReason)
-    go (PChoiceF qpn gr     cs) = PChoice qpn gr     <$> local (Map.insert qpn gr) (T.sequence cs)
-    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m <$> T.sequence cs
-    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   <$> T.sequence cs
-    go (GoalChoiceF         cs) = GoalChoice         <$> T.sequence cs
-    go (FailF cs reason)        = return $ Fail cs reason
+    -- The only node of interest is DoneF
+    go :: TreeF QGoalReason (Tree QGoalReason) -> Tree QGoalReason
+    go (PChoiceF qpn gr     cs) = PChoice qpn gr     cs
+    go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m cs
+    go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   cs
+    go (GoalChoiceF         cs) = GoalChoice         cs
+    go (FailF cs reason)        = Fail cs reason
 
     -- We check for cycles only if we have actually found a solution
     -- This minimizes the number of cycle checks we do as cycles are rare
     go (DoneF revDeps) = do
-      fullSet <- ask
-      return $ case findCycles fullSet revDeps of
+      case findCycles revDeps of
         Nothing     -> Done revDeps
         Just relSet -> Fail relSet CyclicDependencies
 
@@ -47,16 +40,17 @@ detectCyclesPhase = (`runReader` Map.empty) .  cata go
 -- as the full conflict set containing all decisions that led to that 'Done'
 -- node, check if the solution is cyclic. If it is, return the conflict set
 -- containing all decisions that could potentially break the cycle.
-findCycles :: Map QPN QGoalReason -> RevDepMap -> Maybe (ConflictSet QPN)
-findCycles grs revDeps = do
-    guard $ not (null cycles)
-    return $ CS.unions $ map (\(qpn, gr) -> toConflictSet $ Goal (P qpn) gr) $ head cycles
+findCycles :: RevDepMap -> Maybe (ConflictSet QPN)
+findCycles revDeps =
+    case cycles of
+      []  -> Nothing
+      c:_ -> Just $ CS.unions $ map (varToConflictSet . P) c
   where
-    cycles :: [[(QPN, QGoalReason)]]
+    cycles :: [[QPN]]
     cycles = [vs | Gr.CyclicSCC vs <- scc]
 
-    scc :: [SCC (QPN, QGoalReason)]
+    scc :: [SCC QPN]
     scc = Gr.stronglyConnComp . map aux . Map.toList $ revDeps
 
-    aux :: (QPN, [(comp, QPN)]) -> ((QPN, QGoalReason), QPN, [QPN])
-    aux (fr, to) = ((fr, grs Map.! fr), fr, map snd to)
+    aux :: (QPN, [(comp, QPN)]) -> (QPN, QPN, [QPN])
+    aux (fr, to) = (fr, fr, map snd to)

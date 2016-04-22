@@ -30,8 +30,8 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , GoalReason(..)
   , QGoalReason
   , ResetGoal(..)
-  , toConflictSet
-  , extendConflictSet
+  , goalVarToConflictSet
+  , varToConflictSet
   , goalReasonToVars
     -- * Open goals
   , OpenGoal(..)
@@ -88,13 +88,13 @@ showCI (Constrained vr) = showVR (collapse vr)
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
-  | otherwise                                 = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, d))
+  | otherwise                                 = Left (CS.union (goalVarToConflictSet g1) (goalVarToConflictSet g2), (c, d))
 merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (CS.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
+      | otherwise      = Left (CS.union (goalVarToConflictSet g1) (goalVarToConflictSet g2), (c, Constrained [d]))
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
@@ -337,12 +337,15 @@ instance ResetGoal Goal where
 
 -- | Compute a singleton conflict set from a goal, containing just
 -- the goal variable.
-toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g _gr) = CS.singleton (simplifyVar g)
+--
+-- NOTE: This is just a call to 'varToConflictSet' under the hood;
+-- the 'GoalReason' is ignored.
+goalVarToConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
+goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
--- | Add another variable into a conflict set
-extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
-extendConflictSet = CS.insert . simplifyVar
+-- | Compute a singleton conflict set from a 'Var'
+varToConflictSet :: Var qpn -> ConflictSet qpn
+varToConflictSet = CS.singleton . simplifyVar
 
 goalReasonToVars :: Ord qpn => GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = CS.empty

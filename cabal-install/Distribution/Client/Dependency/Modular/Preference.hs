@@ -194,19 +194,19 @@ enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q pp pn)              gr      ts) =
-      let c = toConflictSet (Goal (P qpn) gr)
+      let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
-      let c = toConflictSet (Goal (F qfn) gr)
+      let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn gr tr m (P.mapWithKey g ts)
     go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr   ts) =
-      let c = toConflictSet (Goal (S qsn) gr)
+      let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
                            (M.findWithDefault [] pn pcs)
@@ -222,7 +222,7 @@ enforceManualFlags :: Tree QGoalReason -> Tree QGoalReason
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
-      let c = toConflictSet (Goal (F qfn) gr)
+      let c = varToConflictSet (F qfn)
       in  case span isDisabled (P.toList ts) of
             ([], y : ys) -> P.fromList (y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
             _            -> ts -- something has been manually selected, leave things alone
@@ -240,7 +240,7 @@ requireInstalled p = trav go
       | otherwise = PChoiceF v gr                         cs
       where
         installed (POption (I _ (Inst _)) _) x = x
-        installed _ _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
+        installed _ _ = Fail (varToConflictSet (P v)) CannotInstall
     go x          = x
 
 -- | Avoid reinstalls.
@@ -268,7 +268,7 @@ avoidReinstalls p = trav go
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
-          Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
+          Fail (varToConflictSet (P qpn)) CannotReinstall
         notReinstall _ _ x =
           x
     go x          = x
@@ -361,7 +361,7 @@ preferReallyEasyGoalChoices = trav go
 --
 -- For each package instance we record the goal for which we picked a concrete
 -- instance. The SIR means that for any package instance there can only be one.
-type EnforceSIR = Reader (Map (PI PN) (Goal QPN))
+type EnforceSIR = Reader (Map (PI PN) QPN)
 
 -- | Enforce ghc's single instance restriction
 --
@@ -376,15 +376,14 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
-      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) cs)
+      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
     go _otherwise =
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> QGoalReason -> POption -> EnforceSIR (Tree QGoalReason) -> EnforceSIR (Tree QGoalReason)
-    goP qpn@(Q _ pn) gr (POption i linkedTo) r = do
+    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReason) -> EnforceSIR (Tree QGoalReason)
+    goP qpn@(Q _ pn) (POption i linkedTo) r = do
       let inst = PI pn i
-          goal = Goal (P qpn) gr
       env <- ask
       case (linkedTo, M.lookup inst env) of
         (Just _, _) ->
@@ -392,7 +391,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
           r
         (Nothing, Nothing) ->
           -- Not linked, not already used
-          local (M.insert inst goal) r
-        (Nothing, Just goal') -> do
+          local (M.insert inst qpn) r
+        (Nothing, Just qpn') -> do
           -- Not linked, already used. This is an error
-          return $ Fail (CS.union (toConflictSet goal) (toConflictSet goal')) MultipleInstances
+          return $ Fail (CS.union (varToConflictSet (P qpn)) (varToConflictSet (P qpn'))) MultipleInstances
