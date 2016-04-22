@@ -281,32 +281,32 @@ makeCanonical lg qpn@(Q pp _) i =
 -- have already made or will make sooner or later a link choice for one of these
 -- as well, and cover their dependencies at that point.
 linkDeps :: QPN -> [Var QPN] -> FlaggedDeps Component QPN -> UpdateState ()
-linkDeps parent = \parents deps -> do
+linkDeps target = \blame deps -> do
     rdeps <- requalify deps
-    go parents deps rdeps
+    go blame deps rdeps
   where
     go :: [Var QPN] -> FlaggedDeps Component QPN -> FlaggedDeps Component QPN -> UpdateState ()
     go = zipWithM_ . go1
 
     go1 :: [Var QPN] -> FlaggedDep Component QPN -> FlaggedDep Component QPN -> UpdateState ()
-    go1 parents dep rdep = case (dep, rdep) of
+    go1 blame dep rdep = case (dep, rdep) of
       (Simple (Dep qpn _) _, ~(Simple (Dep qpn' _) _)) -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
-        lg'' <- lift' $ lgMerge parents lg lg'
+        lg'' <- lift' $ lgMerge blame lg lg'
         updateLinkGroup lg''
       (Flagged fn _ t f, ~(Flagged _ _ t' f')) -> do
         vs <- get
         case M.lookup fn (vsFlags vs) of
           Nothing    -> return () -- flag assignment not yet known
-          Just True  -> go (F fn:parents) t t'
-          Just False -> go (F fn:parents) f f'
+          Just True  -> go (F fn:blame) t t'
+          Just False -> go (F fn:blame) f f'
       (Stanza sn t, ~(Stanza _ t')) -> do
         vs <- get
         case M.lookup sn (vsStanzas vs) of
           Nothing    -> return () -- stanza assignment not yet known
-          Just True  -> go (S sn:parents) t t'
+          Just True  -> go (S sn:blame) t t'
           Just False -> return () -- stanza not enabled; no new deps
     -- For extensions and language dependencies, there is nothing to do.
     -- No choice is involved, just checking, so there is nothing to link.
@@ -318,7 +318,7 @@ linkDeps parent = \parents deps -> do
     requalify :: FlaggedDeps Component QPN -> UpdateState (FlaggedDeps Component QPN)
     requalify deps = do
       vs <- get
-      return $ qualifyDeps (vsQualifyOptions vs) parent (unqualifyDeps deps)
+      return $ qualifyDeps (vsQualifyOptions vs) target (unqualifyDeps deps)
 
 pickFlag :: QFN -> Bool -> UpdateState ()
 pickFlag qfn b = do
