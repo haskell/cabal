@@ -352,7 +352,7 @@ instance ResetVar Var where
 --
 -- NOTE: This is just a call to 'varToConflictSet' under the hood;
 -- the 'GoalReason' is ignored.
-goalVarToConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
+goalVarToConflictSet :: Goal qpn -> ConflictSet qpn
 goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
 -- | Compute a singleton conflict set from a 'Var'
@@ -365,7 +365,7 @@ varToConflictSet = CS.singleton
 -- function drops the decision and recovers the list of
 -- variables (which will be empty or contain one element).
 --
-goalReasonToVars :: Ord qpn => GoalReason qpn -> [Var qpn]
+goalReasonToVars :: GoalReason qpn -> [Var qpn]
 goalReasonToVars UserGoal                 = []
 goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
 goalReasonToVars (FDependency qfn _)      = [F qfn]
