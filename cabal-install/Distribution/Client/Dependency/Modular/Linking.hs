@@ -31,7 +31,7 @@ import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.Types (OptionalStanza(..))
-import Distribution.Client.ComponentDeps (Component)
+import Distribution.Client.ComponentDeps (Component(ComponentSetup))
 
 {-------------------------------------------------------------------------------
   Add linking
@@ -199,7 +199,7 @@ conflict = lift' . Left
 execUpdateState :: UpdateState () -> ValidateState -> Either Conflict ValidateState
 execUpdateState = execStateT . unUpdateState
 
-pickPOption :: QPN -> POption -> FlaggedDeps comp QPN -> UpdateState ()
+pickPOption :: QPN -> POption -> FlaggedDeps Component QPN -> UpdateState ()
 pickPOption qpn (POption i Nothing)    _deps = pickConcrete qpn i
 pickPOption qpn (POption i (Just pp'))  deps = pickLink     qpn i pp' deps
 
@@ -217,7 +217,7 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn i
 
-pickLink :: QPN -> I -> PP -> FlaggedDeps comp QPN -> UpdateState ()
+pickLink :: QPN -> I -> PP -> FlaggedDeps Component QPN -> UpdateState ()
 pickLink qpn@(Q pp pn) i pp' deps = do
     vs <- get
     -- Find the link group for the package we are linking to, and add this package
@@ -264,13 +264,17 @@ makeCanonical lg qpn@(Q pp _) i =
 -- because having the direct dependencies in a link group means that we must
 -- have already made or will make sooner or later a link choice for one of these
 -- as well, and cover their dependencies at that point.
-linkDeps :: [Var QPN] -> PP -> FlaggedDeps comp QPN -> UpdateState ()
-linkDeps parents pp' = mapM_ go
+linkDeps :: [Var QPN] -> PP -> FlaggedDeps Component QPN -> UpdateState ()
+linkDeps parents pp'@(PP ns' _) = mapM_ go
   where
-    go :: FlaggedDep comp QPN -> UpdateState ()
-    go (Simple (Dep qpn@(Q _ pn) _) _) = do
+    go :: FlaggedDep Component QPN -> UpdateState ()
+    go (Simple (Dep qpn@(Q (PP _ q) pn) _) comp) = do
       vs <- get
-      let qpn' = Q pp' pn
+      let qpn' = case comp of
+                   -- Link setup dependencies to packages with the same
+                   -- setup qualifier.
+                   ComponentSetup -> Q (PP ns' q) pn
+                   _              -> Q pp'        pn
           lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
           lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
       lg'' <- lift' $ lgMerge parents lg lg'
