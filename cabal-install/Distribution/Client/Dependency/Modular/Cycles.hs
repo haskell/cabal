@@ -8,10 +8,6 @@ import Data.Graph (SCC)
 import qualified Data.Graph as Gr
 import qualified Data.Map   as Map
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-#endif
-
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
