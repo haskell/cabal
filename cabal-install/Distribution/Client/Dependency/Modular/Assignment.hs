@@ -64,22 +64,22 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 extend :: (Extension -> Bool) -- ^ is a given extension supported
        -> (Language  -> Bool) -- ^ is a given language supported
        -> (PN -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
-       -> Goal QPN
+       -> Var QPN
        -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
-extend extSupported langSupported pkgPresent goal@(Goal var _) = foldM extendSingle
+extend extSupported langSupported pkgPresent var = foldM extendSingle
   where
 
     extendSingle :: PPreAssignment -> Dep QPN
                  -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
     extendSingle a (Ext  ext )  =
       if extSupported  ext  then Right a
-                            else Left (toConflictSet goal, [Ext ext])
+                            else Left (varToConflictSet var, [Ext ext])
     extendSingle a (Lang lang)  =
       if langSupported lang then Right a
-                            else Left (toConflictSet goal, [Lang lang])
+                            else Left (varToConflictSet var, [Lang lang])
     extendSingle a (Pkg pn vr)  =
       if pkgPresent pn vr then Right a
-                          else Left (toConflictSet goal, [Pkg pn vr])
+                          else Left (varToConflictSet var, [Pkg pn vr])
     extendSingle a (Dep qpn ci) =
       let ci' = M.findWithDefault (Constrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of

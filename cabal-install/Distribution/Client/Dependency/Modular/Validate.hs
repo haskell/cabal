@@ -109,7 +109,7 @@ validate = cata go
           Just rb -> -- flag has already been assigned; collapse choice to the correct branch
                      case P.lookup rb ts of
                        Just t  -> goF qfn gr rb t
-                       Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
+                       Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
                      FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn gr) ts)
     go (SChoiceF qsn gr b   ts) =
@@ -120,7 +120,7 @@ validate = cata go
           Just rb -> -- stanza choice has already been made; collapse choice to the correct branch
                      case P.lookup rb ts of
                        Just t  -> goS qsn gr rb t
-                       Nothing -> return $ Fail (toConflictSet (Goal (S qsn) gr)) (MalformedStanzaChoice qsn)
+                       Nothing -> return $ Fail (varToConflictSet (S qsn)) (MalformedStanzaChoice qsn)
           Nothing -> -- stanza choice is new, follow both branches
                      SChoice qsn gr b <$> sequence (P.mapWithKey (goS qsn gr) ts)
 
@@ -148,12 +148,12 @@ validate = cata go
       let goal = Goal (P qpn) gr
       let newactives = Dep qpn (Fixed i goal) : L.map (resetGoal goal) (extractDeps pfa psa qdeps)
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent goal ppa newactives
+      let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mfr of
         Just fr -> -- The index marks this as an invalid choice. We can stop.
-                   return (Fail (toConflictSet goal) fr)
+                   return (Fail (varToConflictSet (P qpn)) fr)
         _       -> case mnppa of
                      Left (c, d) -> -- We have an inconsistency. We can stop.
                                     return (Fail c (Conflicting d))
@@ -181,7 +181,7 @@ validate = cata go
       -- we have chosen a new flag.
       let newactives = extractNewDeps (F qfn) gr b npfa psa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (Goal (F qfn) gr) ppa newactives of
+      case extend extSupported langSupported pkgPresent (F qfn) ppa newactives of
         Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
         Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
@@ -206,7 +206,7 @@ validate = cata go
       -- we have chosen a new flag.
       let newactives = extractNewDeps (S qsn) gr b pfa npsa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (Goal (S qsn) gr) ppa newactives of
+      case extend extSupported langSupported pkgPresent (S qsn) ppa newactives of
         Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
         Right nppa  -> local (\ s -> s { pa = PA nppa pfa npsa }) r
 
