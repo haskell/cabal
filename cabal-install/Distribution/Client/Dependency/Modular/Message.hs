@@ -62,6 +62,10 @@ showMessages p sl = go [] 0
         (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (TryP qpn' i) ms@(Step Enter (Step (Next _) _)))) =
         (atLevel (add (P qpn) v) l $ "trying: " ++ showQPNPOpt qpn' i ++ showGR gr) (go (add (P qpn) v) l ms)
+    go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Fail _)) =
+        (atLevel (add (P qpn) v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
+        -- the previous case potentially arises in the error output, because we remove the backjump itself
+        -- if we cut the log after the first error
     go !v !l (Step (Next (Goal (P qpn) gr)) ms@(Step (Failure _c Backjump) _)) =
         (atLevel (add (P qpn) v) l $ "unknown package: " ++ showQPN qpn ++ showGR gr) $ go v l ms
     go !v !l (Step (Next (Goal (P qpn) gr)) (Step (Failure c fr) ms)) =
