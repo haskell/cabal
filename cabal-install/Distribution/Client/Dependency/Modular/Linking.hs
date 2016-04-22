@@ -241,7 +241,7 @@ pickLink qpn@(Q _pp pn) i pp' deps = do
     -- groups for concrete instances, this link group must exist (and must
     -- in fact already have a canonical member).
     let target   = Q pp' pn
-        lgTarget = vsLinks vs ! Q pp' pn
+        lgTarget = vsLinks vs ! target
 
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
