@@ -189,24 +189,24 @@ processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
-                          -> Tree QGoalReasonChain
-                          -> Tree QGoalReasonChain
+                          -> Tree QGoalReason
+                          -> Tree QGoalReason
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q pp pn)              gr      ts) =
-      let c = toConflictSet (Goal (P qpn) gr)
+      let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
-      let c = toConflictSet (Goal (F qfn) gr)
+      let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn gr tr m (P.mapWithKey g ts)
     go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr   ts) =
-      let c = toConflictSet (Goal (S qsn) gr)
+      let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
                            (M.findWithDefault [] pn pcs)
@@ -218,11 +218,11 @@ enforcePackageConstraints pcs = trav go
 -- be run after user preferences have been enforced. For manual flags,
 -- it checks if a user choice has been made. If not, it disables all but
 -- the first choice.
-enforceManualFlags :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceManualFlags :: Tree QGoalReason -> Tree QGoalReason
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
-      let c = toConflictSet (Goal (F qfn) gr)
+      let c = varToConflictSet (F qfn)
       in  case span isDisabled (P.toList ts) of
             ([], y : ys) -> P.fromList (y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
             _            -> ts -- something has been manually selected, leave things alone
@@ -232,7 +232,7 @@ enforceManualFlags = trav go
     go x                                                   = x
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+requireInstalled :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
 requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) gr cs)
@@ -240,7 +240,7 @@ requireInstalled p = trav go
       | otherwise = PChoiceF v gr                         cs
       where
         installed (POption (I _ (Inst _)) _) x = x
-        installed _ _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
+        installed _ _ = Fail (varToConflictSet (P v)) CannotInstall
     go x          = x
 
 -- | Avoid reinstalls.
@@ -256,7 +256,7 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+avoidReinstalls :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
 avoidReinstalls p = trav go
   where
     go (PChoiceF qpn@(Q _ pn) gr cs)
@@ -268,7 +268,7 @@ avoidReinstalls p = trav go
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
-          Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
+          Fail (varToConflictSet (P qpn)) CannotReinstall
         notReinstall _ _ x =
           x
     go x          = x
@@ -358,6 +358,9 @@ preferReallyEasyGoalChoices = trav go
     go x                = x
 
 -- | Monad used internally in enforceSingleInstanceRestriction
+--
+-- For each package instance we record the goal for which we picked a concrete
+-- instance. The SIR means that for any package instance there can only be one.
 type EnforceSIR = Reader (Map (PI PN) QPN)
 
 -- | Enforce ghc's single instance restriction
@@ -366,10 +369,10 @@ type EnforceSIR = Reader (Map (PI PN) QPN)
 -- (that is, package name + package version) there can be at most one qualified
 -- goal resolving to that instance (there may be other goals _linking_ to that
 -- instance however).
-enforceSingleInstanceRestriction :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceSingleInstanceRestriction :: Tree QGoalReason -> Tree QGoalReason
 enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
   where
-    go :: TreeF QGoalReasonChain (EnforceSIR (Tree QGoalReasonChain)) -> EnforceSIR (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (EnforceSIR (Tree QGoalReason)) -> EnforceSIR (Tree QGoalReason)
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
@@ -378,7 +381,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReason) -> EnforceSIR (Tree QGoalReason)
     goP qpn@(Q _ pn) (POption i linkedTo) r = do
       let inst = PI pn i
       env <- ask
@@ -391,4 +394,4 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
           local (M.insert inst qpn) r
         (Nothing, Just qpn') -> do
           -- Not linked, already used. This is an error
-          return $ Fail (CS.fromList [P qpn, P qpn']) MultipleInstances
+          return $ Fail (CS.union (varToConflictSet (P qpn)) (varToConflictSet (P qpn'))) MultipleInstances

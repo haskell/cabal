@@ -93,12 +93,12 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree QGoalReasonChain -> Validate (Tree QGoalReasonChain)
+validate :: Tree QGoalReason -> Validate (Tree QGoalReason)
 validate = cata go
   where
-    go :: TreeF QGoalReasonChain (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
+    go :: TreeF QGoalReason (Validate (Tree QGoalReason)) -> Validate (Tree QGoalReason)
 
-    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) ts)
+    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) ts)
     go (FChoiceF qfn gr b m ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
@@ -108,10 +108,10 @@ validate = cata go
         case M.lookup qfn pfa of
           Just rb -> -- flag has already been assigned; collapse choice to the correct branch
                      case P.lookup rb ts of
-                       Just t  -> goF qfn gr rb t
-                       Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
+                       Just t  -> goF qfn rb t
+                       Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn gr) ts)
+                     FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn) ts)
     go (SChoiceF qsn gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
@@ -119,10 +119,10 @@ validate = cata go
         case M.lookup qsn psa of
           Just rb -> -- stanza choice has already been made; collapse choice to the correct branch
                      case P.lookup rb ts of
-                       Just t  -> goS qsn gr rb t
-                       Nothing -> return $ Fail (toConflictSet (Goal (S qsn) gr)) (MalformedStanzaChoice qsn)
+                       Just t  -> goS qsn rb t
+                       Nothing -> return $ Fail (varToConflictSet (S qsn)) (MalformedStanzaChoice qsn)
           Nothing -> -- stanza choice is new, follow both branches
-                     SChoice qsn gr b <$> sequence (P.mapWithKey (goS qsn gr) ts)
+                     SChoice qsn gr b <$> sequence (P.mapWithKey (goS qsn) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
     go (GoalChoiceF              ts) = GoalChoice <$> sequence ts
@@ -130,8 +130,8 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasonChain -> POption -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goP qpn@(Q _pp pn) gr (POption i _) r = do
+    goP :: QPN -> POption -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
+    goP qpn@(Q _pp pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -145,15 +145,14 @@ validate = cata go
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let goal = Goal (P qpn) gr
-      let newactives = Dep qpn (Fixed i goal) : L.map (resetGoal goal) (extractDeps pfa psa qdeps)
+      let newactives = Dep qpn (Fixed i (P qpn)) : L.map (resetVar (P qpn)) (extractDeps pfa psa qdeps)
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend extSupported langSupported pkgPresent goal ppa newactives
+      let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mfr of
         Just fr -> -- The index marks this as an invalid choice. We can stop.
-                   return (Fail (toConflictSet goal) fr)
+                   return (Fail (varToConflictSet (P qpn)) fr)
         _       -> case mnppa of
                      Left (c, d) -> -- We have an inconsistency. We can stop.
                                     return (Fail c (Conflicting d))
@@ -161,8 +160,8 @@ validate = cata go
                                     local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goF qfn@(FN (PI qpn _i) _f) gr b r = do
+    goF :: QFN -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
+    goF qfn@(FN (PI qpn _i) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -179,15 +178,15 @@ validate = cata go
       let npfa = M.insert qfn b pfa
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
-      let newactives = extractNewDeps (F qfn) gr b npfa psa qdeps
+      let newactives = extractNewDeps (F qfn) b npfa psa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (Goal (F qfn) gr) ppa newactives of
+      case extend extSupported langSupported pkgPresent (F qfn) ppa newactives of
         Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
         Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
-    goS :: QSN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goS qsn@(SN (PI qpn _i) _f) gr b r = do
+    goS :: QSN -> Bool -> Validate (Tree QGoalReason) -> Validate (Tree QGoalReason)
+    goS qsn@(SN (PI qpn _i) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
       langSupported  <- asks supportedLang -- obtain the supported languages
@@ -204,9 +203,9 @@ validate = cata go
       let npsa = M.insert qsn b psa
       -- We now try to get the new active dependencies we might learn about because
       -- we have chosen a new flag.
-      let newactives = extractNewDeps (S qsn) gr b pfa npsa qdeps
+      let newactives = extractNewDeps (S qsn) b pfa npsa qdeps
       -- As in the package case, we try to extend the partial assignment.
-      case extend extSupported langSupported pkgPresent (Goal (S qsn) gr) ppa newactives of
+      case extend extSupported langSupported pkgPresent (S qsn) ppa newactives of
         Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
         Right nppa  -> local (\ s -> s { pa = PA nppa pfa npsa }) r
 
@@ -230,8 +229,8 @@ extractDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> QGoalReasonChain -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
-extractNewDeps v gr b fa sa = go
+extractNewDeps :: Var QPN -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
+extractNewDeps v b fa sa = go
   where
     go :: FlaggedDeps comp QPN -> [Dep QPN] -- Type annotation necessary (polymorphic recursion)
     go deps = do
@@ -239,14 +238,14 @@ extractNewDeps v gr b fa sa = go
       case d of
         Simple _ _           -> mzero
         Flagged qfn' _ td fd
-          | v == F qfn'      -> L.map (resetGoal (Goal v gr)) $
+          | v == F qfn'      -> L.map (resetVar v) $
                                 if b then extractDeps fa sa td else extractDeps fa sa fd
           | otherwise        -> case M.lookup qfn' fa of
                                   Nothing    -> mzero
                                   Just True  -> go td
                                   Just False -> go fd
         Stanza qsn' td
-          | v == S qsn'      -> L.map (resetGoal (Goal v gr)) $
+          | v == S qsn'      -> L.map (resetVar v) $
                                 if b then extractDeps fa sa td else []
           | otherwise        -> case M.lookup qsn' sa of
                                   Nothing    -> mzero
@@ -254,7 +253,7 @@ extractNewDeps v gr b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree QGoalReason -> Tree QGoalReason
 validateTree cinfo idx pkgConfigDb t = runReader (validate t) VS {
     supportedExt   = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                            (\ es -> let s = S.fromList es in \ x -> S.member x s)

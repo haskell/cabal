@@ -84,7 +84,7 @@ convIPId pn' idx ipid =
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  Just (D.Simple (Dep pn (Fixed i (Goal (P pn') []))) ())
+                in  Just (D.Simple (Dep pn (Fixed i (P pn'))) ())
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -300,7 +300,7 @@ convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
     -- occurrences of multiple version ranges, as all dependencies below this
     -- point have been generated using 'convDep'.
     extractCommon :: FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
-    extractCommon ps ps' = [ D.Simple (Dep pn1 (Constrained [(vr1 .||. vr2, Goal (P pn) [])])) comp
+    extractCommon ps ps' = [ D.Simple (Dep pn1 (Constrained [(vr1 .||. vr2, P pn)])) comp
                            | D.Simple (Dep pn1 (Constrained [(vr1, _)])) _ <- ps
                            , D.Simple (Dep pn2 (Constrained [(vr2, _)])) _ <- ps'
                            , pn1 == pn2
@@ -308,7 +308,7 @@ convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN
-convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
+convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, P pn')])
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN

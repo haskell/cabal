@@ -16,7 +16,8 @@ import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Types as T
 
--- | This function takes the variable we're currently considering and a
+-- | This function takes the variable we're currently considering, an
+-- initial conflict set and a
 -- list of children's logs. Each log yields either a solution or a
 -- conflict set. The result is a combined log for the parent node that
 -- has explored a prefix of the children.
@@ -31,8 +32,15 @@ import qualified Distribution.Client.Dependency.Types as T
 -- If any of the children might contain a successful solution, we can
 -- return it immediately. If all children contain conflict sets, we can
 -- take the union as the combined conflict set.
-backjump :: F.Foldable t => Var QPN -> t (ConflictSetLog a) -> ConflictSetLog a
-backjump var xs = F.foldr combine logBackjump xs CS.empty
+--
+-- The initial conflict set corresponds to the justification that we
+-- have to choose this goal at all. There is a reason why we have
+-- introduced the goal in the first place, and this reason is in conflict
+-- with the (virtual) option not to choose anything for the current
+-- variable. See also the comments for 'avoidSet'.
+--
+backjump :: F.Foldable t => Var QPN -> ConflictSet QPN -> t (ConflictSetLog a) -> ConflictSetLog a
+backjump var initial xs = F.foldr combine logBackjump xs initial
   where
     combine :: ConflictSetLog a
             -> (ConflictSet QPN -> ConflictSetLog a)
@@ -50,27 +58,27 @@ type ConflictSetLog = T.Progress Message (ConflictSet QPN)
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
-exploreLog :: Tree a -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
+exploreLog :: Tree QGoalReason -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
 exploreLog = cata go
   where
-    go :: TreeF a (Assignment -> ConflictSetLog (Assignment, RevDepMap))
-               -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
+    go :: TreeF QGoalReason (Assignment -> ConflictSetLog (Assignment, RevDepMap))
+                         -> (Assignment -> ConflictSetLog (Assignment, RevDepMap))
     go (FailF c fr)          _           = failWith (Failure c fr) c
     go (DoneF rdm)           a           = succeedWith Success (a, rdm)
-    go (PChoiceF qpn _     ts) (A pa fa sa)   =
-      backjump (P qpn) $                          -- try children in order,
+    go (PChoiceF qpn gr     ts) (A pa fa sa)   =
+      backjump (P qpn) (avoidSet (P qpn) gr) $    -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ i@(POption k _) r -> tryWith (TryP qpn i) $ -- log and ...
                     r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
       ts
-    go (FChoiceF qfn _ _ _ ts) (A pa fa sa)   =
-      backjump (F qfn) $                          -- try children in order,
+    go (FChoiceF qfn gr _ _ ts) (A pa fa sa)   =
+      backjump (F qfn) (avoidSet (F qfn) gr) $    -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
                     r (A pa (M.insert qfn k fa) sa)) -- record the pkg choice
       ts
-    go (SChoiceF qsn _ _   ts) (A pa fa sa)   =
-      backjump (S qsn) $                          -- try children in order,
+    go (SChoiceF qsn gr _   ts) (A pa fa sa)   =
+      backjump (S qsn) (avoidSet (S qsn) gr) $    -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryS qsn k) $          -- log and ...
                     r (A pa fa (M.insert qsn k sa))) -- record the pkg choice
@@ -80,8 +88,35 @@ exploreLog = cata go
         (failWith (Failure CS.empty EmptyGoalChoice) CS.empty) -- empty goal choice is an internal error
         (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
 
+-- | Build a conflict set corresponding to the (virtual) option not to
+-- choose a solution for a goal at all.
+--
+-- In the solver, the set of goals is not statically determined, but depends
+-- on the choices we make. Therefore, when dealing with conflict sets, we
+-- always have to consider that we could perhaps make choices that would
+-- avoid the existence of the goal completely.
+--
+-- Whenever we actual introduce a choice in the tree, we have already established
+-- that the goal cannot be avoided. This is tracked in the "goal reason".
+-- The choice to avoid the goal therefore is a conflict between the goal itself
+-- and its goal reason. We build this set here, and pass it to the 'backjump'
+-- function as the initial conflict set.
+--
+-- This has two effects:
+--
+-- - In a situation where there are no choices available at all (this happens
+-- if an unknown package is requested), the initial conflict set becomes the
+-- actual conflict set.
+--
+-- - In a situation where we backjump past the current node, the goal reason
+-- of the current node will be added to the conflict set.
+--
+avoidSet :: Var QPN -> QGoalReason -> ConflictSet QPN
+avoidSet var gr =
+  CS.fromList (var : goalReasonToVars gr)
+
 -- | Interface.
-backjumpAndExplore :: Tree a -> Log Message (Assignment, RevDepMap)
+backjumpAndExplore :: Tree QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore t = toLog $ exploreLog t (A M.empty M.empty M.empty)
   where
     toLog :: T.Progress step fail done -> Log step done
