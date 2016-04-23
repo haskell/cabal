@@ -848,7 +848,7 @@ planPackages comp platform solver SolverSettings{..}
 
       . removeUpperBounds solverSettingAllowNewer
 
-      . addDefaultSetupDependencies (defaultSetupDeps platform
+      . addDefaultSetupDependencies (defaultSetupDeps comp platform
                                    . PD.packageDescription
                                    . packageDescription)
 
@@ -1681,8 +1681,10 @@ packageSetupScriptStylePreSolver pkg
 -- we still need to distinguish the case of explicit and implict setup deps.
 -- See 'rememberImplicitSetupDeps'.
 --
-defaultSetupDeps :: Platform -> PD.PackageDescription -> Maybe [Dependency]
-defaultSetupDeps platform pkg =
+defaultSetupDeps :: Compiler -> Platform
+                 -> PD.PackageDescription
+                 -> Maybe [Dependency]
+defaultSetupDeps compiler platform pkg =
     case packageSetupScriptStylePreSolver pkg of
 
       -- For packages with build type custom that do not specify explicit
@@ -1691,7 +1693,7 @@ defaultSetupDeps platform pkg =
       SetupCustomImplicitDeps ->
         Just $
         [ Dependency depPkgname anyVersion
-        | depPkgname <- legacyCustomSetupPkgs platform ] ++
+        | depPkgname <- legacyCustomSetupPkgs compiler platform ] ++
         -- The Cabal dep is slightly special:
         --  * we omit the dep for the Cabal lib itself (since it bootstraps),
         --  * we constrain it to be less than 1.23 since all packages
@@ -1822,14 +1824,18 @@ cabalPkgname = PackageName "Cabal"
 basePkgname  = PackageName "base"
 
 
-legacyCustomSetupPkgs :: Platform -> [PackageName]
-legacyCustomSetupPkgs (Platform _ os) =
+legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
+legacyCustomSetupPkgs compiler (Platform _ os) =
     map PackageName $
         [ "array", "base", "binary", "bytestring", "containers"
-        , "deepseq", "directory", "filepath", "pretty"
-        , "process", "time" ]
+        , "deepseq", "directory", "filepath", "old-time", "pretty"
+        , "process", "time", "transformers" ]
      ++ [ "Win32" | os == Windows ]
      ++ [ "unix"  | os /= Windows ]
+     ++ [ "ghc-prim"         | isGHC ]
+     ++ [ "template-haskell" | isGHC ]
+  where
+    isGHC = compilerCompatFlavor GHC compiler
 
 -- The other aspects of our Setup.hs policy lives here where we decide on
 -- the 'SetupScriptOptions'.
