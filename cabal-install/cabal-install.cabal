@@ -88,6 +88,11 @@ Extra-Source-Files:
   tests/IntegrationTests/regression/t3199/Main.hs
   tests/IntegrationTests/regression/t3199/Setup.hs
   tests/IntegrationTests/regression/t3199/test-3199.cabal
+  tests/IntegrationTests/sandbox-reinstalls/p/Main.hs
+  tests/IntegrationTests/sandbox-reinstalls/p/p.cabal
+  tests/IntegrationTests/sandbox-reinstalls/q/Q.hs
+  tests/IntegrationTests/sandbox-reinstalls/q/q.cabal
+  tests/IntegrationTests/sandbox-reinstalls/reinstall-modified-source.sh
   tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.err
   tests/IntegrationTests/sandbox-sources/fail_removing_source_thats_not_registered.sh
   tests/IntegrationTests/sandbox-sources/p/Setup.hs
