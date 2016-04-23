@@ -75,6 +75,7 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
+import qualified Hackage.Security.Client as Sec
 import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList
@@ -122,11 +123,11 @@ import           Control.Monad.State as State
 import           Control.Exception
 import           Data.List
 import           Data.Maybe
+import           Data.Either
 import           Data.Monoid
 import           Data.Function
 import           System.FilePath
 import           System.Directory (doesDirectoryExist)
-
 
 ------------------------------------------------------------------------------
 -- * Elaborated install plan
@@ -498,7 +499,7 @@ rebuildInstallPlan verbosity
 
         sourcePackageHashes <-
           rerunIfChanged verbosity fileMonitorSourceHashes
-                         (map packageId $ InstallPlan.toList solverPlan) $
+                         (packageLocationsSignature solverPlan) $
             getPackageSourceHashes verbosity withRepoCtx solverPlan
 
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
@@ -667,6 +668,16 @@ recreateDirectory verbosity createParents dir = do
     monitorFiles [monitorDirectoryExistence dir]
 
 
+-- | Select the config values to monitor for changes package source hashes.
+packageLocationsSignature :: SolverInstallPlan
+                          -> [(PackageId, PackageLocation (Maybe FilePath))]
+packageLocationsSignature solverPlan =
+    [ (packageId pkg, packageSource pkg)
+    | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+        <- InstallPlan.toList solverPlan
+    ]
+
+
 -- | Get the 'HashValue' for all the source packages where we use hashes,
 -- and download any packages required to do so.
 --
@@ -676,51 +687,123 @@ getPackageSourceHashes :: Verbosity
                        -> (forall a. (RepoContext -> IO a) -> IO a)
                        -> SolverInstallPlan
                        -> Rebuild (Map PackageId PackageSourceHash)
-getPackageSourceHashes verbosity withRepoCtx installPlan = do
+getPackageSourceHashes verbosity withRepoCtx solverPlan = do
 
-    -- Determine which packages need fetching, and which are present already
+    -- Determine if and where to get the package's source hash from.
     --
-    pkgslocs <- liftIO $ sequence
-      [ do let locm = packageSource pkg
-           mloc <- checkFetched locm
-           return (pkg, locm, mloc)
-      | InstallPlan.Configured
-          SolverPackage { solverPkgSource = pkg } <- InstallPlan.toList installPlan ]
+    let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
+        allPkgLocations =
+          [ (packageId pkg, packageSource pkg)
+          | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+              <- InstallPlan.toList solverPlan ]
 
-    let requireDownloading = [ (pkg, locm) | (pkg, locm, Nothing) <- pkgslocs ]
-        alreadyDownloaded  = [ (pkg, loc)  | (pkg, _, Just loc)   <- pkgslocs ]
+        -- Tarballs that were local in the first place.
+        -- We'll hash these tarball files directly.
+        localTarballPkgs :: [(PackageId, FilePath)]
+        localTarballPkgs =
+          [ (pkgid, tarball)
+          | (pkgid, LocalTarballPackage tarball) <- allPkgLocations ]
 
-    -- Download the ones we need
+        -- Tarballs from remote URLs. We must have downloaded these already
+        -- (since we extracted the .cabal file earlier)
+        --TODO: [required eventually] finish remote tarball functionality
+--        allRemoteTarballPkgs =
+--          [ (pkgid, )
+--          | (pkgid, RemoteTarballPackage ) <- allPkgLocations ]
+
+        -- Tarballs from repositories, either where the repository provides
+        -- hashes as part of the repo metadata, or where we will have to
+        -- download and hash the tarball.
+        repoTarballPkgsWithMetadata    :: [(PackageId, Repo)]
+        repoTarballPkgsWithoutMetadata :: [(PackageId, Repo)]
+        (repoTarballPkgsWithMetadata,
+         repoTarballPkgsWithoutMetadata) =
+          partitionEithers
+          [ case repo of
+              RepoSecure{} -> Left  (pkgid, repo)
+              _            -> Right (pkgid, repo)
+          | (pkgid, RepoTarballPackage repo _ _) <- allPkgLocations ]
+
+    -- For tarballs from repos that do not have hashes available we now have
+    -- to check if the packages were downloaded already.
     --
-    newlyDownloaded <-
-      if null requireDownloading
-        then return []
-        else liftIO $
-              withRepoCtx $ \repoctx ->
+    (repoTarballPkgsToDownload,
+     repoTarballPkgsDownloaded)
+      <- fmap partitionEithers $
+         liftIO $ sequence
+           [ do mtarball <- checkRepoTarballFetched repo pkgid
+                case mtarball of
+                  Nothing      -> return (Left  (pkgid, repo))
+                  Just tarball -> return (Right (pkgid, tarball))
+           | (pkgid, repo) <- repoTarballPkgsWithoutMetadata ]
+
+    (hashesFromRepoMetadata,
+     repoTarballPkgsNewlyDownloaded) <-
+      -- Avoid having to initialise the repository (ie 'withRepoCtx') if we
+      -- don't have to. (The main cost is configuring the http client.)
+      if null repoTarballPkgsToDownload && null repoTarballPkgsWithMetadata
+      then return (Map.empty, [])
+      else liftIO $ withRepoCtx $ \repoctx -> do
+
+      -- For tarballs from repos that do have hashes available as part of the
+      -- repo metadata we now load up the index for each repo and retrieve
+      -- the hashes for the packages
+      --
+      hashesFromRepoMetadata <-
+        Sec.uncheckClientErrors $ --TODO: [code cleanup] wrap in our own exceptions
+        fmap (Map.fromList . concat) $
+        sequence
+          -- Reading the repo index is expensive so we group the packages by repo
+          [ repoContextWithSecureRepo repoctx repo $ \secureRepo ->
+              Sec.withIndex secureRepo $ \repoIndex ->
                 sequence
-                  [ do loc <- fetchPackage verbosity repoctx locm
-                       return (pkg, loc)
-                  | (pkg, locm) <- requireDownloading ]
+                  [ do hash <- Sec.trusted <$> -- strip off Trusted tag
+                               Sec.indexLookupHash repoIndex pkgid
+                       -- Note that hackage-security currently uses SHA256
+                       -- but this API could in principle give us some other
+                       -- choice in future.
+                       return (pkgid, hashFromTUF hash)
+                  | pkgid <- pkgids ]
+          | (repo, pkgids) <-
+                map (\grp@((_,repo):_) -> (repo, map fst grp))
+              . groupBy ((==)    `on` (remoteRepoName . repoRemote . snd))
+              . sortBy  (compare `on` (remoteRepoName . repoRemote . snd))
+              $ repoTarballPkgsWithMetadata
+          ]
 
-    -- Get the hashes of all the tarball packages (i.e. not local dir pkgs)
+      -- For tarballs from repos that do not have hashes available, download
+      -- the ones we previously determined we need.
+      --
+      repoTarballPkgsNewlyDownloaded <-
+        sequence
+          [ do tarball <- fetchRepoTarball verbosity repoctx repo pkgid
+               return (pkgid, tarball)
+          | (pkgid, repo) <- repoTarballPkgsToDownload ]
+
+      return (hashesFromRepoMetadata,
+              repoTarballPkgsNewlyDownloaded)
+
+    -- Hash tarball files for packages where we have to do that. This includes
+    -- tarballs that were local in the first place, plus tarballs from repos,
+    -- either previously cached or freshly downloaded.
     --
-    let pkgsTarballs =
-          [ (packageId pkg, tarball)
-          | (pkg, srcloc) <- newlyDownloaded ++ alreadyDownloaded
-          , tarball <- maybeToList (tarballFileLocation srcloc) ]
-
-    monitorFiles [ monitorFile tarball | (_pkgid, tarball) <- pkgsTarballs ]
-
-    liftM Map.fromList $ liftIO $
+    let allTarballFilePkgs :: [(PackageId, FilePath)]
+        allTarballFilePkgs = localTarballPkgs
+                          ++ repoTarballPkgsDownloaded
+                          ++ repoTarballPkgsNewlyDownloaded
+    hashesFromTarballFiles <- liftIO $
+      fmap Map.fromList $
       sequence
         [ do srchash <- readFileHashValue tarball
              return (pkgid, srchash)
-        | (pkgid, tarball) <- pkgsTarballs ]
-  where
-    tarballFileLocation (LocalUnpackedPackage _dir)      = Nothing
-    tarballFileLocation (LocalTarballPackage    tarball) = Just tarball
-    tarballFileLocation (RemoteTarballPackage _ tarball) = Just tarball
-    tarballFileLocation (RepoTarballPackage _ _ tarball) = Just tarball
+        | (pkgid, tarball) <- allTarballFilePkgs
+        ]
+    monitorFiles [ monitorFile tarball
+                 | (_pkgid, tarball) <- allTarballFilePkgs ]
+
+    -- Return the combination
+    return $! hashesFromRepoMetadata
+           <> hashesFromTarballFiles
 
 
 -- ------------------------------------------------------------
