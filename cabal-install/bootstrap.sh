@@ -407,8 +407,6 @@ info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 info_pkg "async"        ${ASYNC_VER}   ${ASYNC_VER_REGEXP}
-info_pkg "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
-info_pkg "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 info_pkg "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
 info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
@@ -441,8 +439,6 @@ do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}        ${STM_VER_REGEXP}
 do_pkg   "async"        ${ASYNC_VER}      ${ASYNC_VER_REGEXP}
-do_pkg   "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
-do_pkg   "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 do_pkg   "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
 do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
