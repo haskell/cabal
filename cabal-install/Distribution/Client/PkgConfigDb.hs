@@ -143,4 +143,3 @@ getPkgConfigDbDirs verbosity conf =
 
     ioErrorHandler :: IOException -> IO [FilePath]
     ioErrorHandler _e = return []
-
