@@ -397,9 +397,11 @@ exResolve :: ExampleDb
           -> Maybe Int
           -> IndepGoals
           -> ReorderGoals
+          -> EnableBackjumping
           -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
-exResolve db exts langs pkgConfigDb targets solver mbj (IndepGoals indepGoals) (ReorderGoals reorder) prefs
+exResolve db exts langs pkgConfigDb targets solver mbj (IndepGoals indepGoals)
+          (ReorderGoals reorder) enableBj prefs
     = runProgress $ resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
                         solver
@@ -424,6 +426,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj (IndepGoals indepGoals) (
                    $ setIndependentGoals indepGoals
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
+                   $ setEnableBackjumping enableBj
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
     toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v

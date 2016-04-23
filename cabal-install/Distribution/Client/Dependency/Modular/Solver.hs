@@ -31,7 +31,8 @@ data SolverConfig = SolverConfig {
   avoidReinstalls       :: Bool,
   shadowPkgs            :: Bool,
   strongFlags           :: Bool,
-  maxBackjumps          :: Maybe Int
+  maxBackjumps          :: Maybe Int,
+  enableBackjumping     :: EnableBackjumping
 }
 
 -- | Run all solver phases.
@@ -76,7 +77,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = backjumpAndExplore
+    explorePhase     = backjumpAndExplore (enableBackjumping sc)
     heuristicsPhase  = (if preferEasyGoalChoices sc
                          then P.preferEasyGoalChoices -- also leaves just one choice
                          else P.firstGoal) . -- after doing goal-choice heuristics, commit to the first choice (saves space)

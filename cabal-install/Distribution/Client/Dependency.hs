@@ -52,6 +52,7 @@ module Distribution.Client.Dependency (
     setShadowPkgs,
     setStrongFlags,
     setMaxBackjumps,
+    setEnableBackjumping,
     addSourcePackages,
     hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
@@ -77,6 +78,7 @@ import Distribution.Client.Types
          , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         , EnableBackjumping(..)
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
@@ -152,7 +154,8 @@ data DepResolverParams = DepResolverParams {
        depResolverAvoidReinstalls   :: Bool,
        depResolverShadowPkgs        :: Bool,
        depResolverStrongFlags       :: Bool,
-       depResolverMaxBackjumps      :: Maybe Int
+       depResolverMaxBackjumps      :: Maybe Int,
+       depResolverEnableBackjumping :: EnableBackjumping
      }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -223,7 +226,8 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverAvoidReinstalls   = False,
        depResolverShadowPkgs        = False,
        depResolverStrongFlags       = False,
-       depResolverMaxBackjumps      = Nothing
+       depResolverMaxBackjumps      = Nothing,
+       depResolverEnableBackjumping = EnableBackjumping True
      }
 
 addTargets :: [PackageName]
@@ -290,6 +294,12 @@ setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
 setMaxBackjumps n params =
     params {
       depResolverMaxBackjumps = n
+    }
+
+setEnableBackjumping :: EnableBackjumping -> DepResolverParams -> DepResolverParams
+setEnableBackjumping b params =
+    params {
+      depResolverEnableBackjumping = b
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -542,7 +552,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
-                      shadowing strFlags maxBkjumps)
+                      shadowing strFlags maxBkjumps enableBj)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -557,7 +567,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
       noReinstalls
       shadowing
       strFlags
-      maxBkjumps)     = dontUpgradeNonUpgradeablePackages
+      maxBkjumps
+      enableBj) = dontUpgradeNonUpgradeablePackages
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
@@ -792,7 +803,7 @@ resolveWithoutDependencies :: DepResolverParams
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
-                              _shadowing _strFlags _maxBjumps) =
+                              _shadowing _strFlags _maxBjumps _enableBj) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage
