@@ -189,8 +189,8 @@ NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
-CABAL_VER="1.25.0.0";  CABAL_VER_REGEXP="1\.25\.[0-9]"
-                       # >= 1.25 && < 1.26
+CABAL_VER="1.24.0.0";  CABAL_VER_REGEXP="1\.24\.[0-9]"
+                       # >= 1.24 && < 1.25
 TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
@@ -211,26 +211,18 @@ OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
                        # >=1.0.0.0 && <1.2
 OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
-BYTEABLE_VER="0.1.1";  BYTEABLE_VER_REGEXP="0\.?"
-                       # 0.1.1
-MEMORY_VER="0.12";     MEMORY_VER_REGEXP="0\."
-                       # 0.*
-CRYPTONITE_VER="0.15"; CRYPTONITE_VER_REGEXP="0\."
-                       # 0.*
-CRYPTOHASH_VER="0.11.9"; CRYPTOHASH_VER_REGEXP="0\.11\.?"
-                       # 0.11.*
-CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
-                       # 0.11.*
 BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
+BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
+                       # >=1.0
+CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
+                       # 0.11.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.0.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.?"
-                       # >= 0.5 && < 0.6
+HACKAGE_SECURITY_VER="0.5.1.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
+                       # >= 0.5.1 && < 0.6
 TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
                        # >= 0.5.0.1  && < 0.6
-BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
-                                    # >=1.0
 HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
                        # 1.*
 
@@ -415,18 +407,16 @@ info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 info_pkg "async"        ${ASYNC_VER}   ${ASYNC_VER_REGEXP}
-info_pkg "byteable"     ${BYTEABLE_VER}     ${BYTEABLE_VER_REGEXP}
-info_pkg "memory"       ${MEMORY_VER}       ${MEMORY_VER_REGEXP}
-info_pkg "cryptonite"        ${CRYPTONITE_VER}       ${CRYPTONITE_VER_REGEXP}
+info_pkg "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
 info_pkg "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 info_pkg "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
+info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
+    ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
-info_pkg "base64-bytestring" ${BASE64_BYTESTRING_VER} \
-    ${BASE64_BYTESTRING_VER_REGEXP}
 info_pkg "hashable"          ${HASHABLE_VER}          ${HASHABLE_VER_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
@@ -451,18 +441,16 @@ do_pkg   "zlib"         ${ZLIB_VER}       ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}     ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}        ${STM_VER_REGEXP}
 do_pkg   "async"        ${ASYNC_VER}      ${ASYNC_VER_REGEXP}
-do_pkg   "byteable"     ${BYTEABLE_VER}   ${BYTEABLE_VER_REGEXP}
-do_pkg   "memory"       ${MEMORY_VER}     ${MEMORY_VER_REGEXP}
-do_pkg   "cryptonite"        ${CRYPTONITE_VER}       ${CRYPTONITE_VER_REGEXP}
+do_pkg   "byteable"          ${BYTEABLE_VER}         ${BYTEABLE_VER_REGEXP}
 do_pkg   "cryptohash"        ${CRYPTOHASH_VER}       ${CRYPTOHASH_VER_REGEXP}
 do_pkg   "base16-bytestring" ${BASE16_BYTESTRING_VER} \
     ${BASE16_BYTESTRING_VER_REGEXP}
+do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
+    ${BASE64_BYTESTRING_VER_REGEXP}
 do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
-do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
-    ${BASE64_BYTESTRING_VER_REGEXP}
 do_pkg   "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
