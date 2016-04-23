@@ -21,7 +21,8 @@ module Distribution.Client.PackageHash (
     HashValue,
     hashValue,
     showHashValue,
-    readFileHashValue
+    readFileHashValue,
+    hashFromTUF,
   ) where
 
 import Distribution.Package
@@ -40,6 +41,8 @@ import Distribution.Text
 import Distribution.Client.Types
          ( InstalledPackageId )
 
+import qualified Hackage.Security.Client    as Sec
+
 import qualified Crypto.Hash.SHA256         as SHA256
 import qualified Data.ByteString.Base16     as Base16
 import qualified Data.ByteString.Char8      as BS
@@ -47,7 +50,6 @@ import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
-import Control.Monad     (unless)
 import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
 import Data.Function     (on)
@@ -211,18 +213,37 @@ instance Binary HashValue where
   put (HashValue digest) = put digest
   get = do
     digest <- get
-    unless (BS.length digest == 32) $ -- NB: valid for SHA256
-        fail "HashValue: bad digest"
+    -- Cannot do any sensible validation here. Although we use SHA256
+    -- for stuff we hash ourselves, we can also get hashes from TUF
+    -- and that can in principle use different hash functions in future.
     return (HashValue digest)
 
+-- | Hash some data. Currently uses SHA256.
+--
 hashValue :: LBS.ByteString -> HashValue
 hashValue = HashValue . SHA256.hashlazy
 
 showHashValue :: HashValue -> String
 showHashValue (HashValue digest) = BS.unpack (Base16.encode digest)
 
+-- | Hash the content of a file. Uses SHA256.
+--
 readFileHashValue :: FilePath -> IO HashValue
 readFileHashValue tarball =
     withBinaryFile tarball ReadMode $ \hnd ->
       evaluate . hashValue =<< LBS.hGetContents hnd
+
+-- | Convert a hash from TUF metadata into a 'PackageSourceHash'.
+--
+-- Note that TUF hashes don't neessarily have to be SHA256, since it can
+-- support new algorithms in future.
+--
+hashFromTUF :: Sec.Hash -> HashValue
+hashFromTUF (Sec.Hash hashstr) =
+    --TODO: [code cleanup] either we should get TUF to use raw bytestrings or
+    -- perhaps we should also just use a base16 string as the internal rep.
+    case Base16.decode (BS.pack hashstr) of
+      (hash, trailing) | not (BS.null hash) && BS.null trailing
+        -> HashValue hash
+      _ -> error "hashFromTUF: cannot decode base16 hash"
 
