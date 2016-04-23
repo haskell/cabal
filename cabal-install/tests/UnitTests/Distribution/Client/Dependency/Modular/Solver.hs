@@ -19,7 +19,7 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
-import Distribution.Client.Dependency.Types (Solver(Modular))
+import Distribution.Client.Dependency.Types (EnableBackjumping(..), Solver(Modular))
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 import UnitTests.Options
 
@@ -244,7 +244,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let (_msgs, result) = exResolve testDb testSupportedExts
                             testSupportedLangs testPkgConfigDb testTargets
                             Modular Nothing testIndepGoals (ReorderGoals False)
-                            testSoftConstraints
+                            (EnableBackjumping True) testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (check testResult err)

@@ -16,6 +16,7 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
+    EnableBackjumping(..),
     DependencyResolver,
     ResolverPackage(..),
 
@@ -104,6 +105,9 @@ instance Text PreSolver where
       "modular" -> return AlwaysModular
       "choose"  -> return Choose
       _         -> Parse.pfail
+
+newtype EnableBackjumping = EnableBackjumping Bool
+  deriving Show
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
