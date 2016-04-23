@@ -72,7 +72,7 @@ import Distribution.Client.Configure
          ( chooseCabalVersion, configureSetupScript, checkConfigExFlags )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
+         ( ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
          ( HttpTransport (..) )
@@ -301,10 +301,8 @@ makeInstallPlan verbosity
   (installedPkgIndex, sourcePkgDb, pkgConfigDb,
    _, pkgSpecifiers, _) = do
 
-    solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
-              (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
+    return $ planPackages comp platform mSandboxPkgInfo
           configFlags configExFlags installFlags
           installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers
 
@@ -336,7 +334,6 @@ processInstallPlan verbosity
 planPackages :: Compiler
              -> Platform
              -> Maybe SandboxPackageInfo
-             -> Solver
              -> ConfigFlags
              -> ConfigExFlags
              -> InstallFlags
@@ -345,13 +342,12 @@ planPackages :: Compiler
              -> PkgConfigDb
              -> [PackageSpecifier UnresolvedSourcePackage]
              -> Progress String String SolverInstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages comp platform mSandboxPkgInfo
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgConfigDb pkgSpecifiers =
 
         resolveDependencies
           platform (compilerInfo comp) pkgConfigDb
-          solver
           resolverParams
 
     >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return

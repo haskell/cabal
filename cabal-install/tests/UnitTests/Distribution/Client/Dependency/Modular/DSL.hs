@@ -394,16 +394,14 @@ exResolve :: ExampleDb
           -> Maybe [Language]
           -> PC.PkgConfigDb
           -> [ExamplePkgName]
-          -> Solver
           -> Maybe Int
           -> IndepGoals
           -> ReorderGoals
           -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
-exResolve db exts langs pkgConfigDb targets solver mbj (IndepGoals indepGoals) (ReorderGoals reorder) prefs
+exResolve db exts langs pkgConfigDb targets mbj (IndepGoals indepGoals) (ReorderGoals reorder) prefs
     = runProgress $ resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
-                        solver
                         params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag

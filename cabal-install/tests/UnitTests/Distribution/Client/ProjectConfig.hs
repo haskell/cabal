@@ -218,7 +218,7 @@ prop_roundtrip_printparse_specific config =
 
 
 ----------------------------
--- Individual Parser tests 
+-- Individual Parser tests
 --
 
 prop_parsePackageLocationTokenQ :: PackageLocationString -> Bool
@@ -336,7 +336,6 @@ instance Arbitrary ProjectConfigShared where
         <*> arbitrary
         <*> (toNubList <$> listOf arbitraryShortToken)
         <*> arbitraryConstraints
-        <*> shortListOf 2 arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary <*> arbitrary
@@ -348,25 +347,25 @@ instance Arbitrary ProjectConfigShared where
     shrink (ProjectConfigShared
               x00 x01 x02 x03 x04
               x05 x06 x07 x08 x09
-              x10 x11 x12 x13) =
+              x10 x11 x12) =
       [ ProjectConfigShared
           x00' (fmap getNonEmpty x01') (fmap getNonEmpty x02') x03' x04'
           x05' (postShrink_Constraints x06') x07' x08' x09'
-          x10' x11' x12' x13'
+          x10' x11' x12'
       | ((x00', x01', x02', x03', x04'),
          (x05', x06', x07', x08', x09'),
-         (x10', x11', x12', x13'))
+         (x10', x11', x12'))
           <- shrink
                ((x00, fmap NonEmpty x01, fmap NonEmpty x02, x03, x04),
                 (x05, preShrink_Constraints x06, x07, x08, x09),
-                (x10, x11, x12, x13))
+                (x10, x11, x12))
       ]
       where
         preShrink_Constraints  = map fst
         postShrink_Constraints = map (\uc -> (uc, projectConfigConstraintSource))
 
 projectConfigConstraintSource :: ConstraintSource
-projectConfigConstraintSource = 
+projectConfigConstraintSource =
     ConstraintSourceProjectConfig "TODO"
 
 instance Arbitrary PackageConfig where
@@ -568,9 +567,6 @@ instance Arbitrary FlagName where
         flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
                       `suchThat` (("-" /=) . take 1)
         flagChars   = "-_" ++ ['a'..'z']
-
-instance Arbitrary PreSolver where
-    arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary AllowNewer where
     arbitrary = oneof [ pure AllowNewerNone

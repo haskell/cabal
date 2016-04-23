@@ -334,8 +334,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configExConstraints = lastNonEmpty configExConstraints,
         -- TODO: NubListify
-        configPreferences   = lastNonEmpty configPreferences,
-        configSolver        = combine configSolver
+        configPreferences   = lastNonEmpty configPreferences
         }
         where
           combine      = combine' savedConfigureExFlags

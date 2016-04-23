@@ -14,8 +14,6 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
-    PreSolver(..),
-    Solver(..),
     DependencyResolver,
     ResolverPackage(..),
 
@@ -42,8 +40,6 @@ import Control.Applicative
 import Control.Applicative
          ( Alternative(..) )
 
-import Data.Char
-         ( isAlpha, toLower )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
@@ -54,8 +50,6 @@ import Distribution.Client.PkgConfigDb
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..), SolverPackage )
 
-import qualified Distribution.Compat.ReadP as Parse
-         ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
 import Distribution.InstalledPackageInfo
@@ -72,38 +66,13 @@ import Distribution.Compiler
 import Distribution.System
          ( Platform )
 import Distribution.Text
-         ( Text(..), display )
+         ( display )
 
-import Text.PrettyPrint
-         ( text )
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
 
 import Prelude hiding (fail)
 
-
--- | All the solvers that can be selected.
-data PreSolver = AlwaysTopDown | AlwaysModular | Choose
-  deriving (Eq, Ord, Show, Bounded, Enum, Generic)
-
--- | All the solvers that can be used.
-data Solver = TopDown | Modular
-  deriving (Eq, Ord, Show, Bounded, Enum, Generic)
-
-instance Binary PreSolver
-instance Binary Solver
-
-instance Text PreSolver where
-  disp AlwaysTopDown = text "topdown"
-  disp AlwaysModular = text "modular"
-  disp Choose        = text "choose"
-  parse = do
-    name <- Parse.munch1 isAlpha
-    case map toLower name of
-      "topdown" -> return AlwaysTopDown
-      "modular" -> return AlwaysModular
-      "choose"  -> return Choose
-      _         -> Parse.pfail
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
