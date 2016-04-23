@@ -49,6 +49,8 @@ import Data.Monoid
          ( Monoid(..) )
 #endif
 
+import Distribution.Client.PkgConfigDb
+         ( PkgConfigDb )
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
 
@@ -115,6 +117,7 @@ type DependencyResolver = Platform
                        -> CompilerInfo
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
+                       -> PkgConfigDb
                        -> (PackageName -> PackagePreferences)
                        -> [LabeledPackageConstraint]
                        -> [PackageName]
@@ -217,7 +220,7 @@ data PackagesPreferenceDefault =
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
                              | Done done
-  deriving Functor
+  deriving (Functor)
 
 -- | Consume a 'Progress' calculation. Much like 'foldr' for lists but with two
 -- base cases, one for a final result and one for failure.

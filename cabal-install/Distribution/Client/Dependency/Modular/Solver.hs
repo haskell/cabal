@@ -7,6 +7,8 @@ import Data.Map as M
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Client.PkgConfigDb (PkgConfigDb)
+
 import Distribution.Client.Dependency.Types
 
 import Distribution.Client.Dependency.Modular.Assignment
@@ -60,11 +62,12 @@ data SolverConfig = SolverConfig {
 solve :: SolverConfig ->                      -- ^ solver parameters
          CompilerInfo ->
          Index ->                             -- ^ all available packages as an index
+         PkgConfigDb ->                       -- ^ available pkg-config pkgs
          (PN -> PackagePreferences) ->        -- ^ preferences
          Map PN [LabeledPackageConstraint] -> -- ^ global constraints
          [PN] ->                              -- ^ global goals
          Log Message (Assignment, RevDepMap)
-solve sc cinfo idx userPrefs userConstraints userGoals =
+solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
   detectCyclesPhase$
   heuristicsPhase  $
@@ -86,7 +89,7 @@ solve sc cinfo idx userPrefs userConstraints userGoals =
                        P.enforcePackageConstraints userConstraints .
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
-                       validateTree cinfo idx
+                       validateTree cinfo idx pkgConfigDB
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
                        P.requireInstalled (`elem` [ PackageName "base"

@@ -76,10 +76,12 @@ import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import qualified Hackage.Security.Client as Sec
+import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList
 
-import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import           Distribution.Package hiding
+  (InstalledPackageId, installedPackageId)
 import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
@@ -94,7 +96,8 @@ import           Distribution.Simple.Program
 import           Distribution.Simple.Program.Db
 import           Distribution.Simple.Program.Find
 import qualified Distribution.Simple.Setup as Cabal
-import           Distribution.Simple.Setup (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
+import           Distribution.Simple.Setup
+  (Flag, toFlag, flagToMaybe, flagToList, fromFlagOrDefault)
 import qualified Distribution.Simple.Configure as Cabal
 import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
@@ -413,6 +416,8 @@ rebuildInstallPlan verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
+          pkgConfigDB       <- getPkgConfigDb      verbosity progdb
+
           --TODO: [code cleanup] it'd be better if the Compiler contained the
           -- ConfiguredPrograms that it needs, rather than relying on the progdb
           -- since we don't need to depend on all the programs here, just the
@@ -426,7 +431,7 @@ rebuildInstallPlan verbosity
             notice verbosity "Resolving dependencies..."
             foldProgress logMsg die return $
               planPackages compiler platform solver solverSettings
-                           installedPkgIndex sourcePkgDb
+                           installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
       where
         corePackageDbs = [GlobalPackageDB]
@@ -627,6 +632,16 @@ createPackageDBIfMissing verbosity compiler progdb packageDbs =
     _ -> return ()
 
 
+getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
+getPkgConfigDb verbosity progdb = do
+    dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
+    monitorFiles (map monitorDirectory dirs)
+    -- Just monitor the dirs so we'll notice new .pc files.
+    -- Alternatively we could monitor all the .pc files too.
+
+    liftIO $ readPkgConfigDb verbosity progdb
+
+
 recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
 recreateDirectory verbosity createParents dir = do
     liftIO $ createDirectoryIfMissingVerbose verbosity createParents dir
@@ -780,19 +795,20 @@ planPackages :: Compiler
              -> Solver -> SolverSettings
              -> InstalledPackageIndex
              -> SourcePackageDb
+             -> PkgConfigDb
              -> [SourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
              -> Progress String String
                          (SolverInstallPlan, PackagesImplicitSetupDeps)
 planPackages comp platform solver SolverSettings{..}
-             installedPkgIndex sourcePkgDb
+             installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
 
     rememberImplicitSetupDeps (depResolverSourcePkgIndex stdResolverParams) <$>
 
     resolveDependencies
       platform (compilerInfo comp)
-      solver
+      pkgConfigDB solver
       resolverParams
 
   where

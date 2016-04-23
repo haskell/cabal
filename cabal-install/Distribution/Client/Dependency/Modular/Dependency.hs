@@ -7,7 +7,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , varPI
     -- * Conflict sets
   , ConflictSet
-  , showCS
+  , CS.showCS
     -- * Constrained instances
   , CI(..)
   , merge
@@ -19,6 +19,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , flattenFlaggedDeps
   , QualifyOptions(..)
   , qualifyDeps
+  , unqualifyDeps
     -- ** Setting/forgetting components
   , forgetCompOpenGoal
   , setCompFlaggedDeps
@@ -27,10 +28,11 @@ module Distribution.Client.Dependency.Modular.Dependency (
     -- * Goals
   , Goal(..)
   , GoalReason(..)
-  , QGoalReasonChain
-  , ResetGoal(..)
-  , toConflictSet
-  , extendConflictSet
+  , QGoalReason
+  , ResetVar(..)
+  , goalVarToConflictSet
+  , varToConflictSet
+  , goalReasonToVars
     -- * Open goals
   , OpenGoal(..)
   , close
@@ -38,66 +40,21 @@ module Distribution.Client.Dependency.Modular.Dependency (
 
 import Prelude hiding (pi)
 
-import Data.List (intercalate)
 import Data.Map (Map)
-import Data.Set (Set)
 import qualified Data.List as L
-import qualified Data.Set  as S
 
 import Language.Haskell.Extension (Extension(..), Language(..))
 
 import Distribution.Text
 
+import Distribution.Client.Dependency.Modular.ConflictSet (ConflictSet)
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
+import Distribution.Client.Dependency.Modular.Var
 import Distribution.Client.Dependency.Modular.Version
+import qualified Distribution.Client.Dependency.Modular.ConflictSet as CS
 
 import Distribution.Client.ComponentDeps (Component(..))
-
-{-------------------------------------------------------------------------------
-  Variables
--------------------------------------------------------------------------------}
-
--- | The type of variables that play a role in the solver.
--- Note that the tree currently does not use this type directly,
--- and rather has separate tree nodes for the different types of
--- variables. This fits better with the fact that in most cases,
--- these have to be treated differently.
---
--- TODO: This isn't the ideal location to declare the type,
--- but we need them for constrained instances.
-data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
-  deriving (Eq, Ord, Show, Functor)
-
--- | For computing conflict sets, we map flag choice vars to a
--- single flag choice. This means that all flag choices are treated
--- as interdependent. So if one flag of a package ends up in a
--- conflict set, then all flags are being treated as being part of
--- the conflict set.
-simplifyVar :: Var qpn -> Var qpn
-simplifyVar (P qpn)       = P qpn
-simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
-simplifyVar (S qsn)       = S qsn
-
-showVar :: Var QPN -> String
-showVar (P qpn) = showQPN qpn
-showVar (F qfn) = showQFN qfn
-showVar (S qsn) = showQSN qsn
-
--- | Extract the package instance from a Var
-varPI :: Var QPN -> (QPN, Maybe I)
-varPI (P qpn)               = (qpn, Nothing)
-varPI (F (FN (PI qpn i) _)) = (qpn, Just i)
-varPI (S (SN (PI qpn i) _)) = (qpn, Just i)
-
-{-------------------------------------------------------------------------------
-  Conflict sets
--------------------------------------------------------------------------------}
-
-type ConflictSet qpn = Set (Var qpn)
-
-showCS :: ConflictSet QPN -> String
-showCS = intercalate ", " . L.map showVar . S.toList
 
 {-------------------------------------------------------------------------------
   Constrained instances
@@ -107,7 +64,7 @@ showCS = intercalate ", " . L.map showVar . S.toList
 -- a fixed instance, and we record the package name for which the choice
 -- is for convenience. Otherwise, it is a list of version ranges paired with
 -- the goals / variables that introduced them.
-data CI qpn = Fixed I (Goal qpn) | Constrained [VROrigin qpn]
+data CI qpn = Fixed I (Var qpn) | Constrained [VROrigin qpn]
   deriving (Eq, Show, Functor)
 
 showCI :: CI QPN -> String
@@ -131,13 +88,13 @@ showCI (Constrained vr) = showVR (collapse vr)
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
-  | otherwise                                 = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
+  | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
 merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
+      | otherwise      = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, Constrained [d]))
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
@@ -198,18 +155,22 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
              | Ext  Extension     -- dependency on a language extension
              | Lang Language      -- dependency on a language version
+             | Pkg  PN VR         -- dependency on a pkg-config package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn (Fixed i (Goal v _))          ) =
+showDep (Dep qpn (Fixed i v)            ) =
   (if P qpn /= v then showVar v ++ " => " else "") ++
   showQPN qpn ++ "==" ++ showI i
-showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
+showDep (Dep qpn (Constrained [(vr, v)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
-showDep (Dep qpn ci                            ) =
+showDep (Dep qpn ci                     ) =
   showQPN qpn ++ showCI ci
 showDep (Ext ext)   = "requires " ++ display ext
 showDep (Lang lang) = "requires " ++ display lang
+showDep (Pkg pn vr) = "requires pkg-config package "
+                      ++ display pn ++ display vr
+                      ++ ", not found in the pkg-config database"
 
 -- | Options for goal qualification (used in 'qualifyDeps')
 --
@@ -224,6 +185,12 @@ data QualifyOptions = QO {
   deriving Show
 
 -- | Apply built-in rules for package qualifiers
+--
+-- Although the behaviour of 'qualifyDeps' depends on the 'QualifyOptions',
+-- it is important that these 'QualifyOptions' are _static_. Qualification
+-- does NOT depend on flag assignment; in other words, it behaves the same no
+-- matter which choices the solver makes (modulo the global 'QualifyOptions');
+-- we rely on this in 'linkDeps' (see comment there).
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
@@ -249,6 +216,7 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     goD :: Dep PN -> Component -> Dep QPN
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
+    goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
       | qBase  dep  = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
       | qSetup comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
@@ -274,6 +242,33 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     -- Should we qualify this goal with the 'Setup' packaeg path?
     qSetup :: Component -> Bool
     qSetup comp = qoSetupIndependent && comp == ComponentSetup
+
+-- | Remove qualifiers from set of dependencies
+--
+-- This is used during link validation: when we link package @Q.A@ to @Q'.A@,
+-- then all dependencies @Q.B@ need to be linked to @Q'.B@. In order to compute
+-- what to link these dependencies to, we need to requalify @Q.B@ to become
+-- @Q'.B@; we do this by first removing all qualifiers and then calling
+-- 'qualifyDeps' again.
+unqualifyDeps :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+unqualifyDeps = go
+  where
+    go :: FlaggedDeps comp QPN -> FlaggedDeps comp PN
+    go = map go1
+
+    go1 :: FlaggedDep comp QPN -> FlaggedDep comp PN
+    go1 (Flagged fn nfo t f) = Flagged (fmap unq fn) nfo (go t) (go f)
+    go1 (Stanza  sn     t)   = Stanza  (fmap unq sn)     (go t)
+    go1 (Simple dep comp)    = Simple (goD dep) comp
+
+    goD :: Dep QPN -> Dep PN
+    goD (Dep qpn ci) = Dep (unq qpn) (fmap unq ci)
+    goD (Ext  ext)   = Ext ext
+    goD (Lang lang)  = Lang lang
+    goD (Pkg pn vr)  = Pkg pn vr
+
+    unq :: QPN -> PN
+    unq (Q _ pn) = pn
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
@@ -316,12 +311,12 @@ type RevDepMap = Map QPN [(Component, QPN)]
   Goals
 -------------------------------------------------------------------------------}
 
--- | Goals are solver variables paired with information about
--- why they have been introduced.
-data Goal qpn = Goal (Var qpn) (GoalReasonChain qpn)
+-- | A goal is just a solver variable paired with a reason.
+-- The reason is only used for tracing.
+data Goal qpn = Goal (Var qpn) (GoalReason qpn)
   deriving (Eq, Show, Functor)
 
--- | Reasons why a goal can be added to a goal set.
+-- | Reason why a goal is being added to a goal set.
 data GoalReason qpn =
     UserGoal
   | PDependency (PI qpn)
@@ -329,44 +324,47 @@ data GoalReason qpn =
   | SDependency (SN qpn)
   deriving (Eq, Show, Functor)
 
--- | The first element is the immediate reason. The rest are the reasons
--- for the reasons ...
-type GoalReasonChain qpn = [GoalReason qpn]
+type QGoalReason = GoalReason QPN
 
-type QGoalReasonChain = GoalReasonChain QPN
+class ResetVar f where
+  resetVar :: Var qpn -> f qpn -> f qpn
 
-class ResetGoal f where
-  resetGoal :: Goal qpn -> f qpn -> f qpn
+instance ResetVar CI where
+  resetVar v (Fixed i _)       = Fixed i v
+  resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
 
-instance ResetGoal CI where
-  resetGoal g (Fixed i _)       = Fixed i g
-  resetGoal g (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetGoal g y)) vrs)
+instance ResetVar Dep where
+  resetVar v (Dep qpn ci) = Dep qpn (resetVar v ci)
+  resetVar _ (Ext ext)    = Ext ext
+  resetVar _ (Lang lang)  = Lang lang
+  resetVar _ (Pkg pn vr)  = Pkg pn vr
 
-instance ResetGoal Dep where
-  resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
-  resetGoal _ (Ext ext)    = Ext ext
-  resetGoal _ (Lang lang)  = Lang lang
+instance ResetVar Var where
+  resetVar = const
 
-instance ResetGoal Goal where
-  resetGoal = const
+-- | Compute a singleton conflict set from a goal, containing just
+-- the goal variable.
+--
+-- NOTE: This is just a call to 'varToConflictSet' under the hood;
+-- the 'GoalReason' is ignored.
+goalVarToConflictSet :: Goal qpn -> ConflictSet qpn
+goalVarToConflictSet (Goal g _gr) = varToConflictSet g
 
--- | Compute a conflict set from a goal. The conflict set contains the closure
--- of goal reasons as well as the variable of the goal itself.
-toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
+-- | Compute a singleton conflict set from a 'Var'
+varToConflictSet :: Var qpn -> ConflictSet qpn
+varToConflictSet = CS.singleton
 
--- | Add another variable into a conflict set
-extendConflictSet :: Ord qpn => Var qpn -> ConflictSet qpn -> ConflictSet qpn
-extendConflictSet = S.insert . simplifyVar
-
-goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
-goalReasonToVars UserGoal                 = S.empty
-goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = S.singleton (simplifyVar (F qfn))
-goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
-
-goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
-goalReasonChainToVars = S.unions . L.map goalReasonToVars
+-- | A goal reason is mostly just a variable paired with the
+-- decision we made for that variable (except for user goals,
+-- where we cannot really point to a solver variable). This
+-- function drops the decision and recovers the list of
+-- variables (which will be empty or contain one element).
+--
+goalReasonToVars :: GoalReason qpn -> [Var qpn]
+goalReasonToVars UserGoal                 = []
+goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
+goalReasonToVars (FDependency qfn _)      = [F qfn]
+goalReasonToVars (SDependency qsn)        = [S qsn]
 
 {-------------------------------------------------------------------------------
   Open goals
@@ -374,7 +372,7 @@ goalReasonChainToVars = S.unions . L.map goalReasonToVars
 
 -- | For open goals as they occur during the build phase, we need to store
 -- additional information about flags.
-data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReasonChain
+data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReason
   deriving (Eq, Show)
 
 -- | Closes a goal, i.e., removes all the extraneous information that we
@@ -385,6 +383,8 @@ close (OpenGoal (Simple (Ext     _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Ext goal"
 close (OpenGoal (Simple (Lang    _) _) _ ) =
   error "Distribution.Client.Dependency.Modular.Dependency.close: called on Lang goal"
+close (OpenGoal (Simple (Pkg   _ _) _) _ ) =
+  error "Distribution.Client.Dependency.Modular.Dependency.close: called on Pkg goal"
 close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
 close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 
@@ -392,7 +392,7 @@ close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
   Version ranges paired with origins
 -------------------------------------------------------------------------------}
 
-type VROrigin qpn = (VR, Goal qpn)
+type VROrigin qpn = (VR, Var qpn)
 
 -- | Helper function to collapse a list of version ranges with origins into
 -- a single, simplified, version range.

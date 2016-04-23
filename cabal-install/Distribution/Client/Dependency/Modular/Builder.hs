@@ -61,12 +61,13 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
           -- code above is correct; insert/adjust have different arg order
     go g o (   (OpenGoal (Simple (Ext _ext ) _) _gr) : ngs) = go g o ngs
     go g o (   (OpenGoal (Simple (Lang _lang)_) _gr) : ngs) = go g o ngs
+    go g o (   (OpenGoal (Simple (Pkg _pn _vr)_) _gr) : ngs)= go g o ngs
 
     cons' = P.cons . forgetCompOpenGoal
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps Component PN -> FlagInfo ->
+scopedExtendOpen :: QPN -> I -> QGoalReason -> FlaggedDeps Component PN -> FlagInfo ->
                     BuildState -> BuildState
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
@@ -96,13 +97,13 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
 data BuildType =
     Goals                                  -- ^ build a goal choice node
   | OneGoal (OpenGoal ())                  -- ^ build a node for this goal
-  | Instance QPN I PInfo QGoalReasonChain  -- ^ build a tree for a concrete instance
+  | Instance QPN I PInfo QGoalReason  -- ^ build a tree for a concrete instance
   deriving Show
 
-build :: BuildState -> Tree QGoalReasonChain
+build :: BuildState -> Tree QGoalReason
 build = ana go
   where
-    go :: BuildState -> TreeF QGoalReasonChain BuildState
+    go :: BuildState -> TreeF QGoalReason BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -121,9 +122,16 @@ build = ana go
       error "Distribution.Client.Dependency.Modular.Builder: build.go called with Ext goal"
     go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Lang _            ) _) _ ) }) =
       error "Distribution.Client.Dependency.Modular.Builder: build.go called with Lang goal"
+    go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
+      error "Distribution.Client.Dependency.Modular.Builder: build.go called with Pkg goal"
     go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _) _) gr) }) =
+      -- If the package does not exist in the index, we construct an emty PChoiceF node for it
+      -- After all, we have no choices here. Alternatively, we could immediately construct
+      -- a Fail node here, but that would complicate the construction of conflict sets.
+      -- We will probably want to give this case special treatment when generating error
+      -- messages though.
       case M.lookup pn idx of
-        Nothing  -> FailF (toConflictSet (Goal (P qpn) gr)) (BuildFailureNotInIndex pn)
+        Nothing  -> PChoiceF qpn gr (P.fromList [])
         Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
                                                            (POption i Nothing, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
@@ -135,8 +143,8 @@ build = ana go
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
       FChoiceF qfn gr (w || trivial) m (P.fromList (reorder b
-        [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
-         (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
+        [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
+         (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })]))
       where
         reorder True  = id
         reorder False = reverse
@@ -149,8 +157,8 @@ build = ana go
 
     go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
       SChoiceF qsn gr trivial (P.fromList
-        [(False,                                                                  bs  { next = Goals }),
-         (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn : gr)) t) bs) { next = Goals })])
+        [(False,                                                             bs  { next = Goals }),
+         (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
       where
         trivial = L.null t
 
@@ -158,13 +166,13 @@ build = ana go
     -- and furthermore we update the set of goals.
     --
     -- TODO: We could inline this above.
-    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) gr }) =
-      go ((scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs)
+    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) _gr }) =
+      go ((scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs)
              { next = Goals })
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> Bool -> [PN] -> Tree QGoalReasonChain
+buildTree :: Index -> Bool -> [PN] -> Tree QGoalReason
 buildTree idx ind igs =
     build BS {
         index = idx
@@ -174,7 +182,7 @@ buildTree idx ind igs =
       , qualifyOptions = defaultQualifyOptions idx
       }
   where
-    topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) [UserGoal]
+    topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) UserGoal
 
     qpns | ind       = makeIndependent igs
          | otherwise = L.map (Q (PP DefaultNamespace Unqualified)) igs
