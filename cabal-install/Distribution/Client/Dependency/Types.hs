@@ -16,7 +16,14 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
+
+    ReorderGoals(..),
+    IndependentGoals(..),
+    AvoidReinstalls(..),
+    ShadowPkgs(..),
+    StrongFlags(..),
     EnableBackjumping(..),
+
     DependencyResolver,
     ResolverPackage(..),
 
@@ -106,8 +113,29 @@ instance Text PreSolver where
       "choose"  -> return Choose
       _         -> Parse.pfail
 
+newtype ReorderGoals = ReorderGoals { unReorderGoals :: Bool }
+  deriving (Eq, Generic, Show)
+
+newtype IndependentGoals = IndependentGoals { unIndependentGoals :: Bool }
+  deriving (Eq, Generic, Show)
+
+newtype AvoidReinstalls = AvoidReinstalls { unAvoidReinstalls :: Bool }
+  deriving (Eq, Generic, Show)
+
+newtype ShadowPkgs = ShadowPkgs { unShadowPkgs :: Bool }
+  deriving (Eq, Generic, Show)
+
+newtype StrongFlags = StrongFlags { unStrongFlags :: Bool }
+  deriving (Eq, Generic, Show)
+
 newtype EnableBackjumping = EnableBackjumping Bool
   deriving Show
+
+instance Binary ReorderGoals
+instance Binary IndependentGoals
+instance Binary AvoidReinstalls
+instance Binary ShadowPkgs
+instance Binary StrongFlags
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to

@@ -22,7 +22,7 @@ module Distribution.Client.ProjectConfig.Types (
 import Distribution.Client.Types
          ( RemoteRepo )
 import Distribution.Client.Dependency.Types
-         ( PreSolver, ConstraintSource )
+         ( PreSolver, ConstraintSource, ReorderGoals, StrongFlags )
 import Distribution.Client.Targets
          ( UserConstraint )
 import Distribution.Client.BuildReports.Types 
@@ -161,8 +161,8 @@ data ProjectConfigShared
        projectConfigSolver            :: Flag PreSolver,
        projectConfigAllowNewer        :: Maybe AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
-       projectConfigReorderGoals      :: Flag Bool,
-       projectConfigStrongFlags       :: Flag Bool
+       projectConfigReorderGoals      :: Flag ReorderGoals,
+       projectConfigStrongFlags       :: Flag StrongFlags
 
        -- More things that only make sense for manual mode, not --local mode
        -- too much control!
@@ -315,8 +315,8 @@ data SolverSettings
        solverSettingSolver            :: PreSolver,
        solverSettingAllowNewer        :: AllowNewer,
        solverSettingMaxBackjumps      :: Maybe Int,
-       solverSettingReorderGoals      :: Bool,
-       solverSettingStrongFlags       :: Bool
+       solverSettingReorderGoals      :: ReorderGoals,
+       solverSettingStrongFlags       :: StrongFlags
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
      --solverSettingIndependentGoals  :: Bool,

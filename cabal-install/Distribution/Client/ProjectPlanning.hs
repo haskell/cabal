@@ -1409,7 +1409,7 @@ pruneInstallPlanToTargets :: Map InstalledPackageId [PackageTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
 pruneInstallPlanToTargets perPkgTargetsMap =
     either (\_ -> assert False undefined) id
-  . InstallPlan.new False
+  . InstallPlan.new (IndependentGoals False)
   . PackageIndex.fromList
     -- We have to do this in two passes
   . pruneInstallPlanPass2

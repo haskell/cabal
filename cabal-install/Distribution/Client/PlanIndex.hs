@@ -32,6 +32,7 @@ import Distribution.Version
          ( Version )
 
 import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Client.Dependency.Types
 import Distribution.Client.Types
          ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex
@@ -62,7 +63,7 @@ brokenPackages index =
 -- cycle. Such cycles may or may not be an issue; either way, we don't check
 -- for them here.
 dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasUnitId pkg)
-                          => Bool
+                          => IndependentGoals
                           -> PackageIndex pkg
                           -> [(PackageName, [(PackageIdentifier, Version)])]
 dependencyInconsistencies indepGoals index  =
@@ -80,8 +81,8 @@ dependencyInconsistencies indepGoals index  =
 -- as singletons sets if we are considering them as independent goals), along
 -- with all setup dependencies of all packages.
 rootSets :: (PackageFixedDeps pkg, HasUnitId pkg)
-         => Bool -> PackageIndex pkg -> [[UnitId]]
-rootSets indepGoals index =
+         => IndependentGoals -> PackageIndex pkg -> [[UnitId]]
+rootSets (IndependentGoals indepGoals) index =
        if indepGoals then map (:[]) libRoots else [libRoots]
     ++ setupRoots index
   where

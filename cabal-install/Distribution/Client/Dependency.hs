@@ -78,7 +78,8 @@ import Distribution.Client.Types
          , OptionalStanza(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
-         , EnableBackjumping(..)
+         , ReorderGoals(..), IndependentGoals(..), AvoidReinstalls(..)
+         , ShadowPkgs(..), StrongFlags(..), EnableBackjumping(..)
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
@@ -147,11 +148,11 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex UnresolvedSourcePackage,
-       depResolverReorderGoals      :: Bool,
-       depResolverIndependentGoals  :: Bool,
-       depResolverAvoidReinstalls   :: Bool,
-       depResolverShadowPkgs        :: Bool,
-       depResolverStrongFlags       :: Bool,
+       depResolverReorderGoals      :: ReorderGoals,
+       depResolverIndependentGoals  :: IndependentGoals,
+       depResolverAvoidReinstalls   :: AvoidReinstalls,
+       depResolverShadowPkgs        :: ShadowPkgs,
+       depResolverStrongFlags       :: StrongFlags,
        depResolverMaxBackjumps      :: Maybe Int,
        depResolverEnableBackjumping :: EnableBackjumping
      }
@@ -219,11 +220,11 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
-       depResolverReorderGoals      = False,
-       depResolverIndependentGoals  = False,
-       depResolverAvoidReinstalls   = False,
-       depResolverShadowPkgs        = False,
-       depResolverStrongFlags       = False,
+       depResolverReorderGoals      = ReorderGoals False,
+       depResolverIndependentGoals  = IndependentGoals False,
+       depResolverAvoidReinstalls   = AvoidReinstalls False,
+       depResolverShadowPkgs        = ShadowPkgs False,
+       depResolverStrongFlags       = StrongFlags False,
        depResolverMaxBackjumps      = Nothing,
        depResolverEnableBackjumping = EnableBackjumping True
      }
@@ -258,34 +259,34 @@ setPreferenceDefault preferenceDefault params =
       depResolverPreferenceDefault = preferenceDefault
     }
 
-setReorderGoals :: Bool -> DepResolverParams -> DepResolverParams
-setReorderGoals b params =
+setReorderGoals :: ReorderGoals -> DepResolverParams -> DepResolverParams
+setReorderGoals reorder params =
     params {
-      depResolverReorderGoals = b
+      depResolverReorderGoals = reorder
     }
 
-setIndependentGoals :: Bool -> DepResolverParams -> DepResolverParams
-setIndependentGoals b params =
+setIndependentGoals :: IndependentGoals -> DepResolverParams -> DepResolverParams
+setIndependentGoals indep params =
     params {
-      depResolverIndependentGoals = b
+      depResolverIndependentGoals = indep
     }
 
-setAvoidReinstalls :: Bool -> DepResolverParams -> DepResolverParams
-setAvoidReinstalls b params =
+setAvoidReinstalls :: AvoidReinstalls -> DepResolverParams -> DepResolverParams
+setAvoidReinstalls avoid params =
     params {
-      depResolverAvoidReinstalls = b
+      depResolverAvoidReinstalls = avoid
     }
 
-setShadowPkgs :: Bool -> DepResolverParams -> DepResolverParams
-setShadowPkgs b params =
+setShadowPkgs :: ShadowPkgs -> DepResolverParams -> DepResolverParams
+setShadowPkgs shadow params =
     params {
-      depResolverShadowPkgs = b
+      depResolverShadowPkgs = shadow
     }
 
-setStrongFlags :: Bool -> DepResolverParams -> DepResolverParams
-setStrongFlags b params =
+setStrongFlags :: StrongFlags -> DepResolverParams -> DepResolverParams
+setStrongFlags sf params =
     params {
-      depResolverStrongFlags = b
+      depResolverStrongFlags = sf
     }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
@@ -660,7 +661,7 @@ interpretPackagesPreference selected defaultPref prefs =
 --
 validateSolverResult :: Platform
                      -> CompilerInfo
-                     -> Bool
+                     -> IndependentGoals
                      -> [ResolverPackage UnresolvedPkgLoc]
                      -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =

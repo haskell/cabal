@@ -11,8 +11,6 @@ module UnitTests.Distribution.Client.Dependency.Modular.DSL (
   , ExamplePkgName
   , ExampleAvailable(..)
   , ExampleInstalled(..)
-  , IndepGoals(..)
-  , ReorderGoals(..)
   , exAv
   , exInst
   , exFlag
@@ -194,12 +192,6 @@ exInst pn v hash deps = ExInst pn v hash (map exInstHash deps)
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
 type DependencyTree a = C.CondTree C.ConfVar [C.Dependency] a
-
-newtype IndepGoals = IndepGoals Bool
-  deriving Show
-
-newtype ReorderGoals = ReorderGoals Bool
-  deriving Show
 
 exDbPkgs :: ExampleDb -> [ExamplePkgName]
 exDbPkgs = map (either exInstName exAvName)
@@ -396,13 +388,13 @@ exResolve :: ExampleDb
           -> [ExamplePkgName]
           -> Solver
           -> Maybe Int
-          -> IndepGoals
+          -> IndependentGoals
           -> ReorderGoals
           -> EnableBackjumping
           -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
-exResolve db exts langs pkgConfigDb targets solver mbj (IndepGoals indepGoals)
-          (ReorderGoals reorder) enableBj prefs
+exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
+          enableBj prefs
     = runProgress $ resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
                         solver
