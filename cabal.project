@@ -1,0 +1,4 @@
+packages: Cabal/ cabal-install/
+
+-- Uncomment to allow picking up extra local unpacked deps:
+--optional-packages: */
