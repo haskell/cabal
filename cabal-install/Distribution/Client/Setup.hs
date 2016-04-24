@@ -55,7 +55,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), RemoteRepo(..) )
+         ( BooleanFlag(..), Username(..), Password(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -1329,7 +1329,7 @@ installOptions showOrParseArgs =
 
       , option [] ["avoid-reinstalls"]
           "Do not select versions that would destructively overwrite installed packages."
-          (fmap unAvoidReinstalls . installAvoidReinstalls)
+          (fmap asBool . installAvoidReinstalls)
           (\v flags -> flags { installAvoidReinstalls = fmap AvoidReinstalls v })
           (yesNoOpt showOrParseArgs)
 
@@ -2081,7 +2081,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
                     (map show . flagToList))
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
-      (fmap unReorderGoals . getrg)
+      (fmap asBool . getrg)
       (setrg . fmap ReorderGoals)
       (yesNoOpt showOrParseArgs)
   -- TODO: Disabled for now because it does not work as advertised (yet).
@@ -2093,12 +2093,12 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
 -}
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."
-      (fmap unShadowPkgs . getsip)
+      (fmap asBool . getsip)
       (setsip . fmap ShadowPkgs)
       (yesNoOpt showOrParseArgs)
   , option [] ["strong-flags"]
       "Do not defer flag choices (this used to be the default in cabal-install <= 1.20)."
-      (fmap unStrongFlags . getstrfl)
+      (fmap asBool . getstrfl)
       (setstrfl . fmap StrongFlags)
       (yesNoOpt showOrParseArgs)
   ]
