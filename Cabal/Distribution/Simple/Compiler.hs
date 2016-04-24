@@ -26,6 +26,7 @@ module Distribution.Simple.Compiler (
         Compiler(..),
         showCompilerId, showCompilerIdWithAbi,
         compilerFlavor, compilerVersion,
+        compilerCompatFlavor,
         compilerCompatVersion,
         compilerInfo,
 
@@ -112,6 +113,30 @@ compilerFlavor = (\(CompilerId f _) -> f) . compilerId
 compilerVersion :: Compiler -> Version
 compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 
+
+-- | Is this compiler compatible with the compiler flavour we're interested in?
+--
+-- For example this checks if the compiler is actually GHC or is another
+-- compiler that claims to be compatible with some version of GHC, e.g. GHCJS.
+--
+-- > if compilerCompatFlavor GHC compiler then ... else ...
+--
+compilerCompatFlavor :: CompilerFlavor -> Compiler -> Bool
+compilerCompatFlavor flavor comp =
+    flavor == compilerFlavor comp
+ || flavor `elem` [ flavor' | CompilerId flavor' _ <- compilerCompat comp ]
+
+
+-- | Is this compiler compatible with the compiler flavour we're interested in,
+-- and if so what version does it claim to be compatible with.
+--
+-- For example this checks if the compiler is actually GHC-7.x or is another
+-- compiler that claims to be compatible with some GHC-7.x version.
+--
+-- > case compilerCompatVersion GHC compiler of
+-- >   Just (Version (7:_)) -> ...
+-- >   _                    -> ...
+--
 compilerCompatVersion :: CompilerFlavor -> Compiler -> Maybe Version
 compilerCompatVersion flavor comp
   | compilerFlavor comp == flavor = Just (compilerVersion comp)
