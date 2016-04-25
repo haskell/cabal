@@ -19,7 +19,9 @@ import Language.Haskell.Extension ( Extension(..)
 
 -- cabal-install
 import Distribution.Client.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
-import Distribution.Client.Dependency.Types (EnableBackjumping(..), Solver(Modular))
+import Distribution.Client.Dependency.Types
+         ( ReorderGoals(..) , IndependentGoals(..), EnableBackjumping(..)
+         , Solver(Modular) )
 import UnitTests.Distribution.Client.Dependency.Modular.DSL
 import UnitTests.Options
 
@@ -142,7 +144,7 @@ tests = [
     -- | Combinator to turn on --independent-goals behavior, i.e. solve
     -- for the goals as if we were solving for each goal independently.
     -- (This doesn't really work well at the moment, see #2842)
-    indep test      = test { testIndepGoals = IndepGoals True }
+    indep test      = test { testIndepGoals = IndependentGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
@@ -156,7 +158,7 @@ data SolverTest = SolverTest {
     testLabel          :: String
   , testTargets        :: [String]
   , testResult         :: SolverResult
-  , testIndepGoals     :: IndepGoals
+  , testIndepGoals     :: IndependentGoals
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
@@ -230,7 +232,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
     testLabel          = label
   , testTargets        = targets
   , testResult         = result
-  , testIndepGoals     = IndepGoals False
+  , testIndepGoals     = IndependentGoals False
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts

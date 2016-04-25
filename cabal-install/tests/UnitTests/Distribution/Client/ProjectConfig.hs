@@ -572,6 +572,12 @@ instance Arbitrary FlagName where
 instance Arbitrary PreSolver where
     arbitrary = elements [minBound..maxBound]
 
+instance Arbitrary ReorderGoals where
+    arbitrary = ReorderGoals <$> arbitrary
+
+instance Arbitrary StrongFlags where
+    arbitrary = StrongFlags <$> arbitrary
+
 instance Arbitrary AllowNewer where
     arbitrary = oneof [ pure AllowNewerNone
                       , AllowNewerSome <$> shortListOf1 3 arbitrary

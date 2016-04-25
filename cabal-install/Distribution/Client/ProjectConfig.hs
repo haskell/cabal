@@ -47,6 +47,8 @@ import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
+import Distribution.Client.Dependency.Types
+         ( ReorderGoals(..), StrongFlags(..) )
 import Distribution.Client.DistDirLayout
          ( CabalDirLayout(..) )
 import Distribution.Client.GlobalFlags
@@ -205,8 +207,8 @@ resolveSolverSettings ProjectConfig{
        projectConfigSolver            = Flag defaultSolver,
        projectConfigAllowNewer        = Just AllowNewerNone,
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
-       projectConfigReorderGoals      = Flag False,
-       projectConfigStrongFlags       = Flag False
+       projectConfigReorderGoals      = Flag (ReorderGoals False),
+       projectConfigStrongFlags       = Flag (StrongFlags False)
      --projectConfigIndependentGoals  = Flag False,
      --projectConfigShadowPkgs        = Flag False,
      --projectConfigReinstall         = Flag False,

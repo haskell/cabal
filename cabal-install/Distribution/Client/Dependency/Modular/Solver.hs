@@ -23,14 +23,15 @@ import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.Preference as P
 import Distribution.Client.Dependency.Modular.Validate
 import Distribution.Client.Dependency.Modular.Linking
+import Distribution.Client.Types (BooleanFlag(..))
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
-  preferEasyGoalChoices :: Bool,
-  independentGoals      :: Bool,
-  avoidReinstalls       :: Bool,
-  shadowPkgs            :: Bool,
-  strongFlags           :: Bool,
+  preferEasyGoalChoices :: ReorderGoals,
+  independentGoals      :: IndependentGoals,
+  avoidReinstalls       :: AvoidReinstalls,
+  shadowPkgs            :: ShadowPkgs,
+  strongFlags           :: StrongFlags,
   maxBackjumps          :: Maybe Int,
   enableBackjumping     :: EnableBackjumping
 }
@@ -78,7 +79,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   buildPhase
   where
     explorePhase     = backjumpAndExplore (enableBackjumping sc)
-    heuristicsPhase  = (if preferEasyGoalChoices sc
+    heuristicsPhase  = (if asBool (preferEasyGoalChoices sc)
                          then P.preferEasyGoalChoices -- also leaves just one choice
                          else P.firstGoal) . -- after doing goal-choice heuristics, commit to the first choice (saves space)
                        P.deferWeakFlagChoices .
@@ -91,7 +92,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB
-    prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
+    prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
                        P.requireInstalled (`elem` [ PackageName "base"
                                                   , PackageName "ghc-prim"

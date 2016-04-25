@@ -19,9 +19,11 @@ import Test.Tasty (TestTree)
 import Test.Tasty.QuickCheck
 
 import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.ComponentDeps ( Component(..)
-                                         , ComponentDep, ComponentDeps)
-import Distribution.Client.Dependency.Types (EnableBackjumping(..), Solver(..))
+import Distribution.Client.ComponentDeps
+         ( Component(..), ComponentDep, ComponentDeps )
+import Distribution.Client.Dependency.Types
+         ( ReorderGoals(..), IndependentGoals(..), EnableBackjumping(..)
+         , Solver(..) )
 import Distribution.Client.PkgConfigDb (pkgConfigDbFromList)
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
@@ -49,8 +51,8 @@ tests = [
     , testProperty
           "solvable without --independent-goals => solvable with --independent-goals" $
           \(SolverTest db targets) reorderGoals solver ->
-            let r1 = solve' (IndepGoals False) targets db
-                r2 = solve' (IndepGoals True)  targets db
+            let r1 = solve' (IndependentGoals False) targets db
+                r2 = solve' (IndependentGoals True)  targets db
                 solve' indep = solve (EnableBackjumping True)
                                      reorderGoals indep solver
              in counterexample (showResults r1 r2) $
@@ -87,7 +89,7 @@ tests = [
     isRight (Right _) = True
     isRight _         = False
 
-solve :: EnableBackjumping -> ReorderGoals -> IndepGoals
+solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
       -> Solver -> [PN] -> TestDb -> Result
 solve enableBj reorder indep solver targets (TestDb db) =
   let (lg, result) =
@@ -263,10 +265,10 @@ instance Arbitrary ReorderGoals where
 
   shrink (ReorderGoals reorder) = [ReorderGoals False | reorder]
 
-instance Arbitrary IndepGoals where
-  arbitrary = IndepGoals <$> arbitrary
+instance Arbitrary IndependentGoals where
+  arbitrary = IndependentGoals <$> arbitrary
 
-  shrink (IndepGoals indep) = [IndepGoals False | indep]
+  shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
 instance Arbitrary Solver where
   arbitrary = frequency [ (1, return TopDown)

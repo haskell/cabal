@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -16,7 +17,14 @@
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
+
+    ReorderGoals(..),
+    IndependentGoals(..),
+    AvoidReinstalls(..),
+    ShadowPkgs(..),
+    StrongFlags(..),
     EnableBackjumping(..),
+
     DependencyResolver,
     ResolverPackage(..),
 
@@ -53,7 +61,8 @@ import Data.Monoid
 import Distribution.Client.PkgConfigDb
          ( PkgConfigDb )
 import Distribution.Client.Types
-         ( OptionalStanza(..), SourcePackage(..), SolverPackage )
+         ( BooleanFlag(..), OptionalStanza(..), SourcePackage(..)
+         , SolverPackage )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
@@ -106,8 +115,29 @@ instance Text PreSolver where
       "choose"  -> return Choose
       _         -> Parse.pfail
 
+newtype ReorderGoals = ReorderGoals Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype IndependentGoals = IndependentGoals Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype AvoidReinstalls = AvoidReinstalls Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype ShadowPkgs = ShadowPkgs Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype StrongFlags = StrongFlags Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
 newtype EnableBackjumping = EnableBackjumping Bool
-  deriving Show
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+instance Binary ReorderGoals
+instance Binary IndependentGoals
+instance Binary AvoidReinstalls
+instance Binary ShadowPkgs
+instance Binary StrongFlags
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to

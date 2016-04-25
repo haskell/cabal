@@ -12,6 +12,7 @@ import Prelude hiding (pi)
 import qualified Distribution.Client.PackageIndex as CI
 import Distribution.Client.Types
 import Distribution.Client.ComponentDeps (Component(..))
+import Distribution.Client.Dependency.Types
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
@@ -38,15 +39,15 @@ import Distribution.Client.Dependency.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> Bool -> Bool ->
+convPIs :: OS -> Arch -> CompilerInfo -> ShadowPkgs -> StrongFlags ->
            SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc) -> Index
 convPIs os arch comp sip strfl iidx sidx =
   mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: Bool -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
-convIPI' sip idx =
+convIPI' :: ShadowPkgs -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
+convIPI' (ShadowPkgs sip) idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
@@ -88,12 +89,12 @@ convIPId pn' idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
+convSPI' :: OS -> Arch -> CompilerInfo -> StrongFlags ->
             CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
 convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage loc -> (PN, I, PInfo)
+convSP :: OS -> Arch -> CompilerInfo -> StrongFlags -> SourcePackage loc -> (PN, I, PInfo)
 convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
   in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
@@ -103,7 +104,7 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
+convGPD :: OS -> Arch -> CompilerInfo -> StrongFlags ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch cinfo strfl pi@(PI pn _)
         (GenericPackageDescription pkg flags libs exes tests benchs) =
@@ -188,8 +189,9 @@ prefix f fds = [f (concat fds)]
 
 -- | Convert flag information. Automatic flags are now considered weak
 -- unless strong flags have been selected explicitly.
-flagInfo :: Bool -> [PD.Flag] -> FlagInfo
-flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
+flagInfo :: StrongFlags -> [PD.Flag] -> FlagInfo
+flagInfo (StrongFlags strfl) =
+    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
 -- | Internal package names, which should not be interpreted as true
 -- dependencies.

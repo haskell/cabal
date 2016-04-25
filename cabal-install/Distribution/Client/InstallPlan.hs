@@ -61,6 +61,8 @@ import Distribution.InstalledPackageInfo
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasUnitId(..), UnitId(..) )
+import Distribution.Client.Dependency.Types
+         ( IndependentGoals(..) )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
          , PackageFixedDeps(..)
@@ -201,7 +203,7 @@ instance (HasUnitId ipkg, HasUnitId srcpkg) =>
 
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
-    planIndepGoals :: !Bool,
+    planIndepGoals :: !IndependentGoals,
 
     -- | Cached (lazily) graph
     --
@@ -296,7 +298,7 @@ invariant plan =
 mkInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                   HasUnitId srcpkg, PackageFixedDeps srcpkg)
               => PlanIndex ipkg srcpkg iresult ifailure
-              -> Bool
+              -> IndependentGoals
               -> GenericInstallPlan ipkg srcpkg iresult ifailure
 mkInstallPlan index indepGoals =
     GenericInstallPlan {
@@ -354,7 +356,7 @@ showPlanPackageTag (Failed    _   _) = "Failed"
 --
 new :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
         HasUnitId srcpkg, PackageFixedDeps srcpkg)
-    => Bool
+    => IndependentGoals
     -> PlanIndex ipkg srcpkg iresult ifailure
     -> Either [PlanProblem ipkg srcpkg iresult ifailure]
               (GenericInstallPlan ipkg srcpkg iresult ifailure)
@@ -619,7 +621,7 @@ mapPreservingGraph f plan =
 --
 valid :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
           HasUnitId srcpkg, PackageFixedDeps srcpkg)
-      => Bool
+      => IndependentGoals
       -> PlanIndex ipkg srcpkg iresult ifailure
       -> Bool
 valid indepGoals index =
@@ -671,7 +673,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 --
 problems :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
              HasUnitId srcpkg, PackageFixedDeps srcpkg)
-         => Bool
+         => IndependentGoals
          -> PlanIndex ipkg srcpkg iresult ifailure
          -> [PlanProblem ipkg srcpkg iresult ifailure]
 problems indepGoals index =
@@ -737,7 +739,7 @@ closed = null . PlanIndex.brokenPackages
 consistent :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                HasUnitId srcpkg, PackageFixedDeps srcpkg)
            => PlanIndex ipkg srcpkg iresult ifailure -> Bool
-consistent = null . PlanIndex.dependencyInconsistencies False
+consistent = null . PlanIndex.dependencyInconsistencies (IndependentGoals False)
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on

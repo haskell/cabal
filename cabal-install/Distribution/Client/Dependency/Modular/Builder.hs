@@ -29,6 +29,7 @@ import qualified Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 
 import Distribution.Client.ComponentDeps (Component)
+import Distribution.Client.Dependency.Types (IndependentGoals(..))
 
 -- | The state needed during the build phase of the search tree.
 data BuildState = BS {
@@ -172,8 +173,8 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> Bool -> [PN] -> Tree QGoalReason
-buildTree idx ind igs =
+buildTree :: Index -> IndependentGoals -> [PN] -> Tree QGoalReason
+buildTree idx (IndependentGoals ind) igs =
     build BS {
         index = idx
       , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)

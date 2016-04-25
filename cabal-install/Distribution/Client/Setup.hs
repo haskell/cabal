@@ -55,11 +55,13 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( Username(..), Password(..), RemoteRepo(..) )
+         ( BooleanFlag(..), Username(..), Password(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), ConstraintSource(..) )
+         ( PreSolver(..), ConstraintSource(..), ReorderGoals(..)
+         , IndependentGoals(..), AvoidReinstalls(..), ShadowPkgs(..)
+         , StrongFlags(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -602,10 +604,10 @@ data FetchFlags = FetchFlags {
       fetchDryRun    :: Flag Bool,
       fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
-      fetchReorderGoals     :: Flag Bool,
-      fetchIndependentGoals :: Flag Bool,
-      fetchShadowPkgs       :: Flag Bool,
-      fetchStrongFlags      :: Flag Bool,
+      fetchReorderGoals     :: Flag ReorderGoals,
+      fetchIndependentGoals :: Flag IndependentGoals,
+      fetchShadowPkgs       :: Flag ShadowPkgs,
+      fetchStrongFlags      :: Flag StrongFlags,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -616,10 +618,10 @@ defaultFetchFlags = FetchFlags {
     fetchDryRun    = toFlag False,
     fetchSolver           = Flag defaultSolver,
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
-    fetchReorderGoals     = Flag False,
-    fetchIndependentGoals = Flag False,
-    fetchShadowPkgs       = Flag False,
-    fetchStrongFlags      = Flag False,
+    fetchReorderGoals     = Flag (ReorderGoals False),
+    fetchIndependentGoals = Flag (IndependentGoals False),
+    fetchShadowPkgs       = Flag (ShadowPkgs False),
+    fetchStrongFlags      = Flag (StrongFlags False),
     fetchVerbosity = toFlag normal
    }
 
@@ -679,10 +681,10 @@ data FreezeFlags = FreezeFlags {
       freezeBenchmarks       :: Flag Bool,
       freezeSolver           :: Flag PreSolver,
       freezeMaxBackjumps     :: Flag Int,
-      freezeReorderGoals     :: Flag Bool,
-      freezeIndependentGoals :: Flag Bool,
-      freezeShadowPkgs       :: Flag Bool,
-      freezeStrongFlags      :: Flag Bool,
+      freezeReorderGoals     :: Flag ReorderGoals,
+      freezeIndependentGoals :: Flag IndependentGoals,
+      freezeShadowPkgs       :: Flag ShadowPkgs,
+      freezeStrongFlags      :: Flag StrongFlags,
       freezeVerbosity        :: Flag Verbosity
     }
 
@@ -693,10 +695,10 @@ defaultFreezeFlags = FreezeFlags {
     freezeBenchmarks       = toFlag False,
     freezeSolver           = Flag defaultSolver,
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
-    freezeReorderGoals     = Flag False,
-    freezeIndependentGoals = Flag False,
-    freezeShadowPkgs       = Flag False,
-    freezeStrongFlags      = Flag False,
+    freezeReorderGoals     = Flag (ReorderGoals False),
+    freezeIndependentGoals = Flag (IndependentGoals False),
+    freezeShadowPkgs       = Flag (ShadowPkgs False),
+    freezeStrongFlags      = Flag (StrongFlags False),
     freezeVerbosity        = toFlag normal
    }
 
@@ -1140,12 +1142,12 @@ data InstallFlags = InstallFlags {
     installHaddockIndex     :: Flag PathTemplate,
     installDryRun           :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
-    installReorderGoals     :: Flag Bool,
-    installIndependentGoals :: Flag Bool,
-    installShadowPkgs       :: Flag Bool,
-    installStrongFlags      :: Flag Bool,
+    installReorderGoals     :: Flag ReorderGoals,
+    installIndependentGoals :: Flag IndependentGoals,
+    installShadowPkgs       :: Flag ShadowPkgs,
+    installStrongFlags      :: Flag StrongFlags,
     installReinstall        :: Flag Bool,
-    installAvoidReinstalls  :: Flag Bool,
+    installAvoidReinstalls  :: Flag AvoidReinstalls,
     installOverrideReinstall :: Flag Bool,
     installUpgradeDeps      :: Flag Bool,
     installOnly             :: Flag Bool,
@@ -1171,12 +1173,12 @@ defaultInstallFlags = InstallFlags {
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
-    installReorderGoals    = Flag False,
-    installIndependentGoals= Flag False,
-    installShadowPkgs      = Flag False,
-    installStrongFlags     = Flag False,
+    installReorderGoals    = Flag (ReorderGoals False),
+    installIndependentGoals= Flag (IndependentGoals False),
+    installShadowPkgs      = Flag (ShadowPkgs False),
+    installStrongFlags     = Flag (StrongFlags False),
     installReinstall       = Flag False,
-    installAvoidReinstalls = Flag False,
+    installAvoidReinstalls = Flag (AvoidReinstalls False),
     installOverrideReinstall = Flag False,
     installUpgradeDeps     = Flag False,
     installOnly            = Flag False,
@@ -1327,7 +1329,8 @@ installOptions showOrParseArgs =
 
       , option [] ["avoid-reinstalls"]
           "Do not select versions that would destructively overwrite installed packages."
-          installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
+          (fmap asBool . installAvoidReinstalls)
+          (\v flags -> flags { installAvoidReinstalls = fmap AvoidReinstalls v })
           (yesNoOpt showOrParseArgs)
 
       , option [] ["force-reinstalls"]
@@ -2065,10 +2068,10 @@ optionSolver get set =
 
 optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
-                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
-                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
-                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
-                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
+                  -> (flags -> Flag ReorderGoals)     -> (Flag ReorderGoals     -> flags -> flags)
+                  -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
+                  -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
+                  -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> [OptionField flags]
 optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip setsip getstrfl setstrfl =
   [ option [] ["max-backjumps"]
@@ -2078,7 +2081,8 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
                     (map show . flagToList))
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
-      getrg setrg
+      (fmap asBool . getrg)
+      (setrg . fmap ReorderGoals)
       (yesNoOpt showOrParseArgs)
   -- TODO: Disabled for now because it does not work as advertised (yet).
 {-
@@ -2089,11 +2093,13 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
 -}
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."
-      getsip setsip
+      (fmap asBool . getsip)
+      (setsip . fmap ShadowPkgs)
       (yesNoOpt showOrParseArgs)
   , option [] ["strong-flags"]
       "Do not defer flag choices (this used to be the default in cabal-install <= 1.20)."
-      getstrfl setstrfl
+      (fmap asBool . getstrfl)
+      (setstrfl . fmap StrongFlags)
       (yesNoOpt showOrParseArgs)
   ]
 
