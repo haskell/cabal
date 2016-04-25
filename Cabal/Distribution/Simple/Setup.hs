@@ -66,6 +66,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
+  BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
   optionVerbosity, optionNumJobs, readPToMaybe ) where
 
@@ -174,6 +175,13 @@ allFlags :: [Flag Bool] -> Flag Bool
 allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
                  then Flag True
                  else NoFlag
+
+-- | Types that represent boolean flags.
+class BooleanFlag a where
+    asBool :: a -> Bool
+
+instance BooleanFlag Bool where
+  asBool = id
 
 -- ------------------------------------------------------------
 -- * Global flags
