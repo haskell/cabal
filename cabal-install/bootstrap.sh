@@ -179,7 +179,7 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 # The version regex says what existing installed versions are ok.
 PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
-DEEPSEQ_VER="1.4.1.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
+DEEPSEQ_VER="1.4.2.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
 BINARY_VER="0.8.2.1";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
