@@ -55,7 +55,7 @@ module Distribution.Client.Setup
     ) where
 
 import Distribution.Client.Types
-         ( BooleanFlag(..), Username(..), Password(..), RemoteRepo(..) )
+         ( Username(..), Password(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
@@ -82,7 +82,8 @@ import Distribution.Simple.Setup
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg
+         , BooleanFlag(..), optionVerbosity
+         , boolOpt, boolOpt', trueArg, falseArg
          , readPToMaybe, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)

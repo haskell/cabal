@@ -23,7 +23,8 @@ import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.Preference as P
 import Distribution.Client.Dependency.Modular.Validate
 import Distribution.Client.Dependency.Modular.Linking
-import Distribution.Client.Types (BooleanFlag(..))
+
+import Distribution.Simple.Setup (BooleanFlag(..))
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {

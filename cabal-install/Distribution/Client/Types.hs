@@ -51,13 +51,6 @@ import Distribution.Compat.Binary (Binary(..))
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
 
--- | Types that represent boolean flags.
-class BooleanFlag a where
-    asBool :: a -> Bool
-
-instance BooleanFlag Bool where
-  asBool = id
-
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
 data SourcePackageDb = SourcePackageDb {

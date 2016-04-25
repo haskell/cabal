@@ -61,8 +61,7 @@ import Data.Monoid
 import Distribution.Client.PkgConfigDb
          ( PkgConfigDb )
 import Distribution.Client.Types
-         ( BooleanFlag(..), OptionalStanza(..), SourcePackage(..)
-         , SolverPackage )
+         ( OptionalStanza(..), SourcePackage(..), SolverPackage )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
@@ -73,6 +72,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
+import Distribution.Simple.Setup ( BooleanFlag(..) )
 import Distribution.Package
          ( PackageName )
 import Distribution.Version
