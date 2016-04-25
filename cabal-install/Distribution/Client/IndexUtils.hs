@@ -472,19 +472,23 @@ packageIndexFromCache mkPkg hnd cache mode = do
 
 -- | Read package list
 --
--- The result packages (though not the preferences) are guaranteed to be listed
--- in the same order as they are in the tar file (because later entries in a tar
--- file mask earlier ones).
+-- The result package releases and preference entries are guaranteed
+-- to be unique.
+--
+-- Note: 01-index.tar is an append-only index and therefore contains
+-- all .cabal edits and preference-updates. The masking happens
+-- here, i.e. the semantics that later entries in a tar file mask
+-- earlier ones is resolved in this function.
 packageListFromCache :: (PackageEntry -> pkg)
                      -> Handle
                      -> Cache
                      -> ReadPackageIndexMode
                      -> IO ([pkg], [Dependency])
-packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
+packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntries
   where
-    accum srcpkgs prefs [] = return (reverse srcpkgs, prefs)
+    accum !srcpkgs btrs !prefs [] = return (Map.elems srcpkgs ++ btrs, Map.elems prefs)
 
-    accum srcpkgs prefs (CachePackageId pkgid blockno : entries) = do
+    accum srcpkgs btrs prefs (CachePackageId pkgid blockno : entries) = do
       -- Given the cache entry, make a package index entry.
       -- The magic here is that we use lazy IO to read the .cabal file
       -- from the index tarball if it turns out that we need it.
@@ -499,9 +503,9 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
             ReadPackageIndexStrict ->
               pkg `seq` pkgtxt `seq` mkPkg (NormalPackage pkgid pkg
                                             pkgtxt blockno)
-      accum (srcpkg:srcpkgs) prefs entries
+      accum (Map.insert pkgid srcpkg srcpkgs) btrs prefs entries
 
-    accum srcpkgs prefs (CacheBuildTreeRef refType blockno : entries) = do
+    accum srcpkgs btrs prefs (CacheBuildTreeRef refType blockno : entries) = do
       -- We have to read the .cabal file eagerly here because we can't cache the
       -- package id for build tree references - the user might edit the .cabal
       -- file after the reference was added to the index.
@@ -510,10 +514,10 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] cacheEntries
                  file <- tryFindAddSourcePackageDesc path err
                  PackageDesc.Parse.readPackageDescription normal file
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
-      accum (srcpkg:srcpkgs) prefs entries
+      accum srcpkgs (srcpkg:btrs) prefs entries
 
-    accum srcpkgs prefs (CachePreference pref : entries) =
-      accum srcpkgs (pref:prefs) entries
+    accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _) : entries) =
+      accum srcpkgs btrs (Map.insert pn pref prefs) entries
 
     getEntryContent :: BlockNo -> IO ByteString
     getEntryContent blockno = do
