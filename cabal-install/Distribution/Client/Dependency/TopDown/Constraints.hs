@@ -25,9 +25,6 @@ module Distribution.Client.Dependency.TopDown.Constraints (
   ) where
 
 import Distribution.Client.Dependency.TopDown.Types
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex
-        ( PackageIndex )
 import Distribution.Package
          ( PackageName, PackageId, PackageIdentifier(..)
          , Package(packageId), packageName, packageVersion
@@ -36,6 +33,9 @@ import Distribution.Version
          ( Version )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
+
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.PackageIndex ( PackageIndex )
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid

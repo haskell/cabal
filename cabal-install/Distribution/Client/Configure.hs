@@ -26,8 +26,6 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.PackageIndex ( PackageIndex, elemByPackageName )
-import Distribution.Client.PkgConfigDb (PkgConfigDb, readPkgConfigDb)
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags
          , RepoContext(..) )
@@ -36,9 +34,16 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
          ( userToPackageConstraint, userConstraintPackageName )
-import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Package (PackageId)
 import Distribution.Client.JobControl (Lock)
+
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.PackageIndex
+                   ( PackageIndex, elemByPackageName )
+import           Distribution.Solver.Types.PkgConfigDb
+                   (PkgConfigDb, readPkgConfigDb)
+import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
@@ -292,7 +297,7 @@ planLocalPackage verbosity comp platform configFlags configExFlags
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {
         packageInfoId             = packageId pkg,
-        Source.packageDescription = pkg,
+        packageDescription        = pkg,
         packageSource             = LocalUnpackedPackage ".",
         packageDescrOverride      = Nothing
       }

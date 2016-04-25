@@ -21,8 +21,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), mkUnitId, pkgName
-         , HasUnitId(..), PackageInstalled(..) )
+         , UnitId(..), HasUnitId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -30,18 +29,19 @@ import Distribution.PackageDescription
          , TestSuite(..) )
 import Distribution.PackageDescription.Configuration
          ( mapTreeData )
-import Distribution.Client.PackageIndex
-         ( PackageIndex )
-import Distribution.Client.ComponentDeps
-         ( ComponentDeps )
-import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Version
          ( VersionRange )
-import Distribution.Text (display)
+
+import Distribution.Solver.Types.PackageIndex
+         ( PackageIndex )
+import Distribution.Solver.Types.ComponentDeps
+         ( ComponentDeps )
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageFixedDeps
+import Distribution.Solver.Types.SourcePackage
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
-import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
 import GHC.Generics (Generic)
@@ -81,31 +81,6 @@ type InstalledPackageId = UnitId
 installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
 installedPackageId = installedUnitId
 
--- | Subclass of packages that have specific versioned dependencies.
---
--- So for example a not-yet-configured package has dependencies on version
--- ranges, not specific versions. A configured or an already installed package
--- depends on exact versions. Some operations or data structures (like
---  dependency graphs) only make sense on this subclass of package types.
---
-class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [UnitId]
-
-instance PackageFixedDeps InstalledPackageInfo where
-  depends pkg = CD.fromInstalled (display (pkgName (packageId pkg)))
-                                 (installedDepends pkg)
-
-
--- | In order to reuse the implementation of PackageIndex which relies
--- on 'UnitId' for 'SolverInstallPlan', we need to be able to synthesize
--- these IDs prior to installation.   These should never be written out!
--- Additionally, they need to be guaranteed unique within the install
--- plan; this holds because an install plan only ever contains one
--- instance of a particular package and version.  (To fix this,
--- the IDs not only have to identify a package ID, but also the
--- transitive requirementso n it.)
-unsafeInternalFakeUnitId :: PackageId -> UnitId
-unsafeInternalFakeUnitId = mkUnitId . (".fake."++) . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -171,86 +146,8 @@ newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPacka
 
 type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
-
--- | A 'SolverPackage' is a package specified by the dependency solver.
--- It will get elaborated into a 'ConfiguredPackage' or even an
--- 'ElaboratedConfiguredPackage'.
---
--- NB: 'SolverPackage's are essentially always with 'UnresolvedPkgLoc',
--- but for symmetry we have the parameter.  (Maybe it can be removed.)
---
-data SolverPackage loc = SolverPackage {
-        solverPkgSource :: SourcePackage loc,
-        solverPkgFlags :: FlagAssignment,
-        solverPkgStanzas :: [OptionalStanza],
-        solverPkgDeps :: ComponentDeps [SolverId]
-    }
-  deriving (Eq, Show, Generic)
-
-instance Binary loc => Binary (SolverPackage loc)
-
-instance Package (SolverPackage loc) where
-  packageId = packageId . solverPkgSource
-
--- | This is a minor hack as 'PackageIndex' assumes keys are
--- 'UnitId's but prior to computing 'UnitId's (i.e., immediately
--- after running the solver, we don't have this information.)
--- But this is strictly temporary: once we convert to a
--- 'ConfiguredPackage' we'll record 'UnitId's for everything.
-instance HasUnitId (SolverPackage loc) where
-  installedUnitId = unsafeInternalFakeUnitId . packageId . solverPkgSource
-
-instance PackageFixedDeps (SolverPackage loc) where
-  depends pkg = fmap (map installedUnitId) (solverPkgDeps pkg)
-
--- | The solver can produce references to existing packages or
--- packages we plan to install.  Unlike 'ConfiguredId' we don't
--- yet know the 'UnitId' for planned packages, because it's
--- not the solver's job to compute them.
---
-data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
-              | PlannedId     { solverSrcId :: PackageId }
-  deriving (Eq, Generic)
-
-instance Binary SolverId
-
-instance Show SolverId where
-    show = show . solverSrcId
-
-instance Package SolverId where
-  packageId = solverSrcId
-
-instance HasUnitId SolverId where
-  installedUnitId (PreExistingId _ instId) = instId
-  installedUnitId (PlannedId pid) = unsafeInternalFakeUnitId pid
-
--- | A package description along with the location of the package sources.
---
-data SourcePackage loc = SourcePackage {
-    packageInfoId        :: PackageId,
-    packageDescription   :: GenericPackageDescription,
-    packageSource        :: loc,
-    packageDescrOverride :: PackageDescriptionOverride
-  }
-  deriving (Eq, Show, Generic)
-
-instance (Binary loc) => Binary (SourcePackage loc)
-
 -- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
 type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
-
--- | We sometimes need to override the .cabal file in the tarball with
--- the newer one from the package index.
-type PackageDescriptionOverride = Maybe ByteString
-
-instance Package (SourcePackage a) where packageId = packageInfoId
-
-data OptionalStanza
-    = TestStanzas
-    | BenchStanzas
-  deriving (Eq, Ord, Enum, Bounded, Show, Generic)
-
-instance Binary OptionalStanza
 
 enableStanzas
     :: [OptionalStanza]

@@ -103,13 +103,19 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
-import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
-import qualified Distribution.Client.ComponentDeps as CD
+
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.OptionalStanza
+import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
+import           Distribution.Solver.Types.PackageFixedDeps
+import           Distribution.Solver.Types.PkgConfigDb
+                   ( PkgConfigDb, readPkgConfigDb )
+import           Distribution.Solver.Types.SourcePackage as SourcePackage
 
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
@@ -148,8 +154,6 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.Client.PkgConfigDb
-         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
@@ -692,7 +696,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     nonDefaultFlags cpkg =
       let defaultAssignment =
             toFlagAssignment
-             (genPackageFlags (Source.packageDescription (confPkgSource cpkg)))
+             (genPackageFlags (SourcePackage.packageDescription $ confPkgSource cpkg))
       in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String

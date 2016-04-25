@@ -148,7 +148,6 @@ executable cabal
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
         Distribution.Client.CmdRepl
-        Distribution.Client.ComponentDeps
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
@@ -156,29 +155,6 @@ executable cabal
         Distribution.Client.Dependency.TopDown.Constraints
         Distribution.Client.Dependency.TopDown.Types
         Distribution.Client.Dependency.Types
-        Distribution.Client.Dependency.Modular
-        Distribution.Client.Dependency.Modular.Assignment
-        Distribution.Client.Dependency.Modular.Builder
-        Distribution.Client.Dependency.Modular.Configured
-        Distribution.Client.Dependency.Modular.ConfiguredConversion
-        Distribution.Client.Dependency.Modular.ConflictSet
-        Distribution.Client.Dependency.Modular.Cycles
-        Distribution.Client.Dependency.Modular.Dependency
-        Distribution.Client.Dependency.Modular.Explore
-        Distribution.Client.Dependency.Modular.Flag
-        Distribution.Client.Dependency.Modular.Index
-        Distribution.Client.Dependency.Modular.IndexConversion
-        Distribution.Client.Dependency.Modular.Linking
-        Distribution.Client.Dependency.Modular.Log
-        Distribution.Client.Dependency.Modular.Message
-        Distribution.Client.Dependency.Modular.Package
-        Distribution.Client.Dependency.Modular.Preference
-        Distribution.Client.Dependency.Modular.PSQ
-        Distribution.Client.Dependency.Modular.Solver
-        Distribution.Client.Dependency.Modular.Tree
-        Distribution.Client.Dependency.Modular.Validate
-        Distribution.Client.Dependency.Modular.Var
-        Distribution.Client.Dependency.Modular.Version
         Distribution.Client.DistDirLayout
         Distribution.Client.Exec
         Distribution.Client.Fetch
@@ -204,10 +180,8 @@ executable cabal
         Distribution.Client.List
         Distribution.Client.Manpage
         Distribution.Client.PackageHash
-        Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
-        Distribution.Client.PkgConfigDb
         Distribution.Client.PlanIndex
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectConfig
@@ -234,7 +208,6 @@ executable cabal
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
-        Distribution.Client.Utils.LabeledGraph
         Distribution.Client.Utils.Json
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
@@ -242,6 +215,41 @@ executable cabal
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
+        Distribution.Solver.Types.ComponentDeps
+        Distribution.Solver.Types.Internal.Utils
+        Distribution.Solver.Types.OptionalStanza
+        Distribution.Solver.Types.PackageFixedDeps
+        Distribution.Solver.Types.PackageIndex
+        Distribution.Solver.Types.PkgConfigDb
+        Distribution.Solver.Types.Progress
+        Distribution.Solver.Types.Settings
+        Distribution.Solver.Types.SolverId
+        Distribution.Solver.Types.SolverPackage
+        Distribution.Solver.Types.SourcePackage
+        Distribution.Solver.Modular
+        Distribution.Solver.Modular.Assignment
+        Distribution.Solver.Modular.Builder
+        Distribution.Solver.Modular.Configured
+        Distribution.Solver.Modular.ConfiguredConversion
+        Distribution.Solver.Modular.ConflictSet
+        Distribution.Solver.Modular.Cycles
+        Distribution.Solver.Modular.Dependency
+        Distribution.Solver.Modular.Explore
+        Distribution.Solver.Modular.Flag
+        Distribution.Solver.Modular.Index
+        Distribution.Solver.Modular.IndexConversion
+        Distribution.Solver.Modular.Linking
+        Distribution.Solver.Modular.LabeledGraph
+        Distribution.Solver.Modular.Log
+        Distribution.Solver.Modular.Message
+        Distribution.Solver.Modular.Package
+        Distribution.Solver.Modular.Preference
+        Distribution.Solver.Modular.PSQ
+        Distribution.Solver.Modular.Solver
+        Distribution.Solver.Modular.Tree
+        Distribution.Solver.Modular.Validate
+        Distribution.Solver.Modular.Var
+        Distribution.Solver.Modular.Version
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
@@ -311,9 +319,6 @@ Test-Suite unit-tests
   other-modules:
     UnitTests.Distribution.Client.ArbitraryInstances
     UnitTests.Distribution.Client.Targets
-    UnitTests.Distribution.Client.Dependency.Modular.PSQ
-    UnitTests.Distribution.Client.Dependency.Modular.Solver
-    UnitTests.Distribution.Client.Dependency.Modular.DSL
     UnitTests.Distribution.Client.FileMonitor
     UnitTests.Distribution.Client.Glob
     UnitTests.Distribution.Client.GZipUtils
@@ -322,6 +327,9 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
+    UnitTests.Distribution.Solver.Modular.PSQ
+    UnitTests.Distribution.Solver.Modular.Solver
+    UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Options
   build-depends:
         base,
@@ -376,8 +384,8 @@ Test-Suite solver-quickcheck
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs
   other-modules:
-    UnitTests.Distribution.Client.Dependency.Modular.DSL
-    UnitTests.Distribution.Client.Dependency.Modular.QuickCheck
+    UnitTests.Distribution.Solver.Modular.DSL
+    UnitTests.Distribution.Solver.Modular.QuickCheck
   build-depends:
         base,
         array,

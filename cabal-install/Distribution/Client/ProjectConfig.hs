@@ -47,8 +47,6 @@ import Distribution.Client.Glob
          ( isTrivialFilePathGlob )
 
 import Distribution.Client.Types
-import Distribution.Client.Dependency.Types
-         ( ReorderGoals(..), StrongFlags(..) )
 import Distribution.Client.DistDirLayout
          ( CabalDirLayout(..) )
 import Distribution.Client.GlobalFlags
@@ -57,6 +55,9 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
          ( loadConfig, defaultConfigFile )
+
+import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.Settings
 
 import Distribution.Package
          ( PackageName, PackageId, packageId, UnitId, Dependency )

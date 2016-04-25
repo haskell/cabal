@@ -55,15 +55,18 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..)
+         ( PackageLocation(..)
          , ResolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ConstraintSource(..)
          , LabeledPackageConstraint(..) )
 
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.SourcePackage
+
 import qualified Distribution.Client.World as World
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Distribution.Client.Tar as Tar

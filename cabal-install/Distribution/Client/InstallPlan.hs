@@ -61,18 +61,13 @@ import Distribution.InstalledPackageInfo
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasUnitId(..), UnitId(..) )
-import Distribution.Client.Dependency.Types
-         ( IndependentGoals(..) )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
-         , PackageFixedDeps(..)
          , ConfiguredPackage(..), ConfiguredId(..)
-         , UnresolvedPkgLoc, SolverPackage(..)
+         , UnresolvedPkgLoc
          , GenericReadyPackage(..) )
 import Distribution.Version
          ( Version )
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import qualified Distribution.Simple.Configure as Configure
@@ -82,6 +77,13 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
+
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.PackageFixedDeps
+import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.SolverPackage
+
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
 

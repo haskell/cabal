@@ -95,8 +95,9 @@ import Distribution.Simple.PackageIndex
 import Distribution.Text
   ( display, Text(..) )
 
-import Distribution.Client.PackageIndex
+import Distribution.Solver.Types.PackageIndex
   ( elemByPackageName )
+
 import Distribution.Client.IndexUtils
   ( getSourcePackages )
 import Distribution.Client.Types

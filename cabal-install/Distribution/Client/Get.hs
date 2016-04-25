@@ -43,6 +43,8 @@ import Distribution.Client.Compat.Process
 import Distribution.Compat.Exception
         ( catchIO )
 
+import Distribution.Solver.Types.SourcePackage
+
 import Control.Exception
          ( finally )
 import Control.Monad

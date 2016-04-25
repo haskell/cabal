@@ -2,14 +2,14 @@ module Main where
 
 import Test.Tasty
 
-import qualified UnitTests.Distribution.Client.Dependency.Modular.QuickCheck
+import qualified UnitTests.Distribution.Solver.Modular.QuickCheck
 
 
 tests :: TestTree
 tests =
   testGroup "Solver QuickCheck"
-  [ testGroup "UnitTests.Distribution.Client.Dependency.Modular.QuickCheck"
-        UnitTests.Distribution.Client.Dependency.Modular.QuickCheck.tests
+  [ testGroup "UnitTests.Distribution.Solver.Modular.QuickCheck"
+        UnitTests.Distribution.Solver.Modular.QuickCheck.tests
   ]
 
 main :: IO ()

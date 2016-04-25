@@ -31,6 +31,9 @@ import Distribution.Client.Targets
 import Distribution.Utils.NubList
 import Network.URI
 
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.Settings
+
 import Distribution.Client.ProjectConfig
 import Distribution.Client.ProjectConfig.Legacy
 
