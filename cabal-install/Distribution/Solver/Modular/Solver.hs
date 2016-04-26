@@ -110,8 +110,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
       in case goalOrder sc of
            Nothing -> (if asBool (preferEasyGoalChoices sc)
                         then P.preferEasyGoalChoices -- also leaves just one choice
-                        else P.firstGoal) . -- after doing goal-choice heuristics,
-                                            -- commit to the first choice (saves space)
+                        else id) . 
                       heuristicsTree .
                       P.deferWeakFlagChoices .
                       P.deferSetupChoices .
