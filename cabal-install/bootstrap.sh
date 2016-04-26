@@ -181,7 +181,7 @@ PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
 DEEPSEQ_VER="1.4.2.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-BINARY_VER="0.8.3";    BINARY_VER_REGEXP="[0]\.[78]\."
+BINARY_VER="0.8.3.0";  BINARY_VER_REGEXP="[0]\.[78]\."
                        # >= 0.7 && < 0.9
 TEXT_VER="1.2.2.1";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
