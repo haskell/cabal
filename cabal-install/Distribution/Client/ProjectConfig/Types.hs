@@ -22,14 +22,14 @@ module Distribution.Client.ProjectConfig.Types (
 import Distribution.Client.Types
          ( RemoteRepo )
 import Distribution.Client.Dependency.Types
-         ( PreSolver, ConstraintSource )
+         ( PreSolver )
 import Distribution.Client.Targets
          ( UserConstraint )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 
 import Distribution.Solver.Types.Settings
-         ( ReorderGoals, StrongFlags )
+import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
          ( PackageName, PackageId, UnitId, Dependency )

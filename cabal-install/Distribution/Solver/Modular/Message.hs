@@ -15,9 +15,8 @@ import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
          ( FailReason(..), POption(..) )
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Progress
-import Distribution.Client.Dependency.Types
-         ( ConstraintSource(..), showConstraintSource )
 
 data Message =
     Enter           -- ^ increase indentation level

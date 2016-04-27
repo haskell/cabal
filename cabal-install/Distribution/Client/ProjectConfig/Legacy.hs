@@ -23,10 +23,10 @@ module Distribution.Client.ProjectConfig.Legacy (
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
          ( RemoteRepo(..), emptyRemoteRepo )
-import Distribution.Client.Dependency.Types
-         ( ConstraintSource(..) )
 import Distribution.Client.Config
          ( SavedConfig(..), remoteRepoFields )
+
+import Distribution.Solver.Types.ConstraintSource
 
 import Distribution.Package
 import Distribution.PackageDescription

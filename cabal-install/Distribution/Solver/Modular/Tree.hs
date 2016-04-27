@@ -26,7 +26,7 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.PSQ (PSQ)
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Version
-import Distribution.Client.Dependency.Types ( ConstraintSource(..) )
+import Distribution.Solver.Types.ConstraintSource
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =

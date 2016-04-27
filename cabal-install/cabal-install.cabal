@@ -216,6 +216,7 @@ executable cabal
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
         Distribution.Solver.Types.ComponentDeps
+        Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.Internal.Utils
         Distribution.Solver.Types.OptionalStanza
         Distribution.Solver.Types.PackageFixedDeps

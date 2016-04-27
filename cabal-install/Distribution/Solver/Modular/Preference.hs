@@ -29,8 +29,9 @@ import Data.Map (Map)
 import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), LabeledPackageConstraint(..), ConstraintSource(..)
+  ( PackageConstraint(..), LabeledPackageConstraint(..)
   , PackagePreferences(..), InstalledPreference(..) )
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Solver.Modular.Dependency

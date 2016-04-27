@@ -72,7 +72,7 @@ import Distribution.Client.Configure
          ( chooseCabalVersion, configureSetupScript, checkConfigExFlags )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
+         ( Solver(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
          ( HttpTransport (..) )
@@ -110,6 +110,7 @@ import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
 import           Distribution.Solver.Types.PackageFixedDeps
