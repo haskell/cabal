@@ -74,7 +74,7 @@ import Distribution.Client.Types
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         ( PreSolver(..), Solver(..), DependencyResolver
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , PackagePreferences(..), InstalledPreference(..)
@@ -120,6 +120,7 @@ import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import           Distribution.Solver.Types.Progress
+import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage

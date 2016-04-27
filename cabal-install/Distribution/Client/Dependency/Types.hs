@@ -18,7 +18,6 @@ module Distribution.Client.Dependency.Types (
     Solver(..),
 
     DependencyResolver,
-    ResolverPackage(..),
 
     PackageConstraint(..),
     showPackageConstraint,
@@ -39,15 +38,13 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
+import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.SolverPackage
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
          ( PackageName )
@@ -108,14 +105,6 @@ type DependencyResolver loc = Platform
                            -> [LabeledPackageConstraint]
                            -> [PackageName]
                            -> Progress String String [ResolverPackage loc]
-
--- | The dependency resolver picks either pre-existing installed packages
--- or it picks source packages along with package configuration.
---
--- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
---
-data ResolverPackage loc = PreExisting InstalledPackageInfo
-                         | Configured  (SolverPackage loc)
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously

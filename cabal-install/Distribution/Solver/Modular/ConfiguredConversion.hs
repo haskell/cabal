@@ -7,14 +7,14 @@ import Prelude hiding (pi)
 
 import Distribution.Package (UnitId, packageId)
 
-import Distribution.Client.Dependency.Types (ResolverPackage(..))
 import qualified Distribution.Simple.PackageIndex as SI
 
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Package
 
-import qualified Distribution.Solver.Types.PackageIndex as CI
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.PackageIndex as CI
+import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.SourcePackage

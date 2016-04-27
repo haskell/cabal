@@ -23,7 +23,7 @@ import Distribution.Client.Types
          ( UnresolvedPkgLoc
          , UnresolvedSourcePackage, enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, ResolverPackage(..)
+         ( DependencyResolver
          , PackageConstraint(..), unlabelPackageConstraint
          , PackagePreferences(..), InstalledPreference(..) )
 
@@ -58,6 +58,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import           Distribution.Solver.Types.Progress
+import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.SourcePackage
