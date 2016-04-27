@@ -20,15 +20,19 @@ local builds combine the best of non-sandboxed and sandboxed Cabal:
    dependencies whenever you make a new sandbox: dependencies which can
    be shared, are shared.
 
+Nix-style local builds work with all versions of GHC supported
+by cabal-install 1.24, which currently is GHC 7.0 and later.
+Additionally, cabal-install is on a different release cycle than
+GHC, so we plan to be pushing bugfixes and updates on a faster
+basis than GHC's yearly release cycle.
+
 Although this feature is in only beta (there are bugs, see “Known
 Issues”, and the documentation is a bit sparse), I’ve been successfully
 using Nix-style local builds exclusively to do my Haskell development.
-It's hard to understate my enthusiasm for this new feature:  it achieves
-much of the same user experience as Stack, but without positing the
-existence of a distribution of blessed, version-pegged packages to build
-against (e.g., Stackage).  Our eventual plan is for ``new-build`` to
-replace Cabal's existing ``build`` command, eliminating sandboxes
-once and for all!
+It's hard to understate my enthusiasm for this new feature:  it
+“just works”, and you don't need to assume that there is a distribution
+of blessed, version-pegged packages to build against (e.g., Stackage).
+Eventually, ``new-build`` will simply replace the existing ``build`` command.
 
 Quick start
 -----------
