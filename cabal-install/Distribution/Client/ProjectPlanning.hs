@@ -66,19 +66,26 @@ import           Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
-import qualified Distribution.Client.ComponentDeps as CD
-import           Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.IndexUtils as IndexUtils
-import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import           Distribution.Client.Targets (userToPackageConstraint)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.SetupWrapper
 import           Distribution.Client.JobControl
 import           Distribution.Client.FetchUtils
 import qualified Hackage.Security.Client as Sec
-import           Distribution.Client.PkgConfigDb
 import           Distribution.Client.Setup hiding (packageName, cabalVersion)
 import           Distribution.Utils.NubList
+
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.PackageFixedDeps
+import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
+import           Distribution.Solver.Types.PkgConfigDb
+import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.SolverId
+import           Distribution.Solver.Types.SolverPackage
+import           Distribution.Solver.Types.SourcePackage
 
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)

@@ -34,7 +34,6 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Version
          ( Version(..), VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
@@ -42,8 +41,11 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Text
          ( Text(disp), display )
 
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.SourcePackage
+
 import Distribution.Client.Types
-         ( SourcePackage(..), SourcePackageDb(..)
+         ( SourcePackageDb(..)
          , UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )

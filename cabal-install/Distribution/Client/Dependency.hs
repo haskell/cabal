@@ -63,34 +63,26 @@ module Distribution.Client.Dependency (
 
 import Distribution.Client.Dependency.TopDown
          ( topDownResolver )
-import Distribution.Client.Dependency.Modular
+import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (SolverInstallPlan)
-import Distribution.Client.PkgConfigDb (PkgConfigDb)
 import Distribution.Client.Types
-         ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , SolverPackage(..), SolverId(..)
+         ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
-         , OptionalStanza(..), enableStanzas )
+         , enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
-         , ReorderGoals(..), IndependentGoals(..), AvoidReinstalls(..)
-         , ShadowPkgs(..), StrongFlags(..), EnableBackjumping(..)
          , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
          , ConstraintSource(..), showConstraintSource
          , PackagePreferences(..), InstalledPreference(..)
-         , PackagesPreferenceDefault(..)
-         , Progress(..), foldProgress )
+         , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
@@ -121,6 +113,17 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.OptionalStanza
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
+import           Distribution.Solver.Types.Progress
+import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.SolverId
+import           Distribution.Solver.Types.SolverPackage
+import           Distribution.Solver.Types.SourcePackage
 
 import Data.List
          ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )

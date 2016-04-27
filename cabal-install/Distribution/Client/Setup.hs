@@ -59,9 +59,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), ConstraintSource(..), ReorderGoals(..)
-         , IndependentGoals(..), AvoidReinstalls(..), ShadowPkgs(..)
-         , StrongFlags(..) )
+         ( PreSolver(..), ConstraintSource(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -69,6 +67,7 @@ import Distribution.Client.Targets
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
 
+import Distribution.Solver.Types.Settings
 
 import Distribution.Simple.Compiler (PackageDB)
 import Distribution.Simple.Program

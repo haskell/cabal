@@ -24,8 +24,6 @@ import Distribution.Text         (simpleParse)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
     ( ModuleName, toFilePath )
-import Distribution.Client.PackageIndex
-    ( allPackagesByName )
 import qualified Distribution.Package as P
 import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
@@ -35,7 +33,12 @@ import Distribution.Client.Utils
          ( tryCanonicalizePath )
 import Language.Haskell.Extension ( Extension )
 
-import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
+import Distribution.Solver.Types.PackageIndex
+    ( allPackagesByName )
+import Distribution.Solver.Types.SourcePackage
+    ( packageDescription )
+
+import Distribution.Client.Types ( SourcePackageDb(..) )
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Data.Monoid         ( mempty, mappend, mconcat )

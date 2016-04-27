@@ -42,7 +42,6 @@ import           Distribution.Client.Types
                           , DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, SolverInstallPlan, GenericPlanPackage )
-import           Distribution.Client.ComponentDeps (ComponentDeps)
 
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
@@ -56,6 +55,10 @@ import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import           Distribution.Simple.InstallDirs (PathTemplate)
 import           Distribution.Version
+
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.PackageFixedDeps
 
 import           Data.Map (Map)
 import           Data.Set (Set)

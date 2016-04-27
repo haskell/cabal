@@ -38,13 +38,14 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( SourcePackage(..)
-         , GenericReadyPackage(..), ReadyPackage, enableStanzas
+         ( GenericReadyPackage(..), ReadyPackage, enableStanzas
          , ConfiguredPackage(..))
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
+
+import Distribution.Solver.Types.SourcePackage
 
 import Distribution.Package
          ( PackageIdentifier, Package(packageId), UnitId(..), installedUnitId )

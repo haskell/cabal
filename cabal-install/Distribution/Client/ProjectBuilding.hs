@@ -21,13 +21,10 @@ import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
                    ( PackageLocation(..), GenericReadyPackage(..)
-                   , PackageFixedDeps(..)
                    , InstalledPackageId, installedPackageId )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import qualified Distribution.Client.ComponentDeps as CD
-import           Distribution.Client.ComponentDeps (ComponentDeps)
 import           Distribution.Client.DistDirLayout
 import           Distribution.Client.FileMonitor
 import           Distribution.Client.SetupWrapper
@@ -38,6 +35,10 @@ import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
+
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import           Distribution.Solver.Types.PackageFixedDeps
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)

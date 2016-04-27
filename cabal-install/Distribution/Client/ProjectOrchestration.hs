@@ -67,6 +67,8 @@ import           Distribution.Client.DistDirLayout
 import           Distribution.Client.Config (defaultCabalDir)
 import           Distribution.Client.Setup hiding (packageName)
 
+import           Distribution.Solver.Types.OptionalStanza
+
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD

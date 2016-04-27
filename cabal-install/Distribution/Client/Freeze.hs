@@ -27,8 +27,6 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.InstallPlan
          ( SolverInstallPlan, SolverPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.PkgConfigDb
-         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..)
          , RepoContext(..) )
@@ -37,6 +35,11 @@ import Distribution.Client.Sandbox.PackageEnvironment
            userPackageEnvironmentFile )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
+
+import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PkgConfigDb
+         ( PkgConfigDb, readPkgConfigDb )
+import Distribution.Solver.Types.SolverId
 
 import Distribution.Package
          ( Package, packageId, packageName, packageVersion, installedUnitId )

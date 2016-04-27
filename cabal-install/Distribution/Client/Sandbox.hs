@@ -70,8 +70,7 @@ import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.SetupWrapper
   ( SetupScriptOptions(..), defaultSetupScriptOptions )
-import Distribution.Client.Types              ( PackageLocation(..)
-                                              , SourcePackage(..) )
+import Distribution.Client.Types              ( PackageLocation(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
                                               , tryFindAddSourcePackageDesc)
 import Distribution.PackageDescription.Configuration
@@ -105,6 +104,9 @@ import qualified Distribution.Client.Sandbox.Index as Index
 import Distribution.Simple.PackageIndex       ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
+
+import Distribution.Solver.Types.SourcePackage
+
 import qualified Data.Map                          as M
 import qualified Data.Set                          as S
 import Data.Either                            (partitionEithers)

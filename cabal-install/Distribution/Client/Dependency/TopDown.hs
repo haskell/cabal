@@ -20,24 +20,16 @@ import qualified Distribution.Client.Dependency.TopDown.Constraints as Constrain
 import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
-         ( SourcePackage(..), SolverPackage(..)
-         , UnresolvedPkgLoc, UnresolvedSourcePackage
-         , enableStanzas, SolverId(..) )
+         ( UnresolvedPkgLoc
+         , UnresolvedSourcePackage, enableStanzas )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), unlabelPackageConstraint
-         , PackagePreferences(..), InstalledPreference(..)
-         , Progress(..), foldProgress )
+         , PackagePreferences(..), InstalledPreference(..) )
 
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-import Distribution.Client.ComponentDeps
-         ( ComponentDeps )
-import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
-         ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
          , UnitId(..), ComponentId(..)
@@ -60,6 +52,15 @@ import Distribution.Simple.Utils
          ( equating, comparing )
 import Distribution.Text
          ( display )
+
+import           Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.PackageIndex ( PackageIndex )
+import           Distribution.Solver.Types.Progress
+import           Distribution.Solver.Types.SolverId
+import           Distribution.Solver.Types.SolverPackage
+import           Distribution.Solver.Types.SourcePackage
 
 import Data.List
          ( foldl', maximumBy, minimumBy, nub, sort, sortBy, groupBy )

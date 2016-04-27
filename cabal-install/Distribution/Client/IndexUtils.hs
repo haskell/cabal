@@ -41,8 +41,6 @@ import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency) )
-import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex      as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
@@ -67,6 +65,10 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 import Distribution.Client.Setup
          ( RepoContext(..) )
+
+import           Distribution.Solver.Types.PackageIndex (PackageIndex)
+import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.SourcePackage
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, catMaybes, maybeToList)

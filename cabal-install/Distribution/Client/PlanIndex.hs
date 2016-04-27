@@ -31,10 +31,10 @@ import Distribution.Package
 import Distribution.Version
          ( Version )
 
-import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.Dependency.Types
-import Distribution.Client.Types
-         ( PackageFixedDeps(..) )
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.PackageFixedDeps
+import           Distribution.Solver.Types.Settings
+
 import Distribution.Simple.PackageIndex
          ( PackageIndex, allPackages, insert, lookupUnitId )
 import Distribution.Package

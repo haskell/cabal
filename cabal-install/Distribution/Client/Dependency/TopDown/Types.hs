@@ -14,11 +14,14 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( UnresolvedPkgLoc, UnresolvedSourcePackage
-         , OptionalStanza, SolverPackage(..), SolverId(..) )
+         ( UnresolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
-import qualified Distribution.Client.ComponentDeps as CD
+
+import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.OptionalStanza
+import           Distribution.Solver.Types.SolverPackage
+import           Distribution.Solver.Types.SolverId
 
 import Distribution.Package
          ( PackageId, PackageIdentifier, Dependency

@@ -15,7 +15,8 @@ import           Distribution.Client.DistDirLayout
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
-import qualified Distribution.Client.ComponentDeps as ComponentDeps
+
+import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 
 import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
