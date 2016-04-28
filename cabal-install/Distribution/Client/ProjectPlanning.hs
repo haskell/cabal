@@ -78,6 +78,7 @@ import           Distribution.Utils.NubList
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
+import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageFixedDeps
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex

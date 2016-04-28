@@ -48,6 +48,7 @@ import qualified Distribution.Client.InstallPlan       as CI.InstallPlan
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex      as CI.PackageIndex
 import qualified Distribution.Solver.Types.PkgConfigDb as PC

@@ -36,7 +36,6 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig
                                        , installDirsFields, withProgramsFields
                                        , withProgramOptionsFields
                                        , defaultCompiler )
-import Distribution.Client.Dependency.Types ( ConstraintSource (..) )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
@@ -51,6 +50,7 @@ import Distribution.Simple.Setup       ( Flag(..)
                                        , ConfigFlags(..), HaddockFlags(..)
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
 import Distribution.Simple.Utils       ( die, info, notice, warn )
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField, commaNewLineListField
                                        , liftField, lineNo, locatedErrorMsg

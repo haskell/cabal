@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -18,7 +16,6 @@ module Distribution.Client.Dependency.Types (
     Solver(..),
 
     DependencyResolver,
-    ResolverPackage(..),
 
     PackageConstraint(..),
     showPackageConstraint,
@@ -27,28 +24,25 @@ module Distribution.Client.Dependency.Types (
     PackagesPreferenceDefault(..),
 
     LabeledPackageConstraint(..),
-    ConstraintSource(..),
-    unlabelPackageConstraint,
-    showConstraintSource
+    unlabelPackageConstraint
 
   ) where
 
 import Data.Char
          ( isAlpha, toLower )
 
+import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
+import Distribution.Solver.Types.ResolverPackage
 import Distribution.Solver.Types.SourcePackage
-import Distribution.Solver.Types.SolverPackage
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
          ( PackageName )
@@ -109,14 +103,6 @@ type DependencyResolver loc = Platform
                            -> [LabeledPackageConstraint]
                            -> [PackageName]
                            -> Progress String String [ResolverPackage loc]
-
--- | The dependency resolver picks either pre-existing installed packages
--- or it picks source packages along with package configuration.
---
--- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
---
-data ResolverPackage loc = PreExisting InstalledPackageInfo
-                         | Configured  (SolverPackage loc)
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
@@ -206,65 +192,3 @@ data LabeledPackageConstraint
 
 unlabelPackageConstraint :: LabeledPackageConstraint -> PackageConstraint
 unlabelPackageConstraint (LabeledPackageConstraint pc _) = pc
-
--- | Source of a 'PackageConstraint'.
-data ConstraintSource =
-
-  -- | Main config file, which is ~/.cabal/config by default.
-  ConstraintSourceMainConfig FilePath
-
-  -- | Local cabal.project file
-  | ConstraintSourceProjectConfig FilePath
-
-  -- | Sandbox config file, which is ./cabal.sandbox.config by default.
-  | ConstraintSourceSandboxConfig FilePath
-
-  -- | User config file, which is ./cabal.config by default.
-  | ConstraintSourceUserConfig FilePath
-
-  -- | Flag specified on the command line.
-  | ConstraintSourceCommandlineFlag
-
-  -- | Target specified by the user, e.g., @cabal install package-0.1.0.0@
-  -- implies @package==0.1.0.0@.
-  | ConstraintSourceUserTarget
-
-  -- | Internal requirement to use installed versions of packages like ghc-prim.
-  | ConstraintSourceNonUpgradeablePackage
-
-  -- | Internal requirement to use the add-source version of a package when that
-  -- version is installed and the source is modified.
-  | ConstraintSourceModifiedAddSourceDep
-
-  -- | Internal constraint used by @cabal freeze@.
-  | ConstraintSourceFreeze
-
-  -- | Constraint specified by a config file, a command line flag, or a user
-  -- target, when a more specific source is not known.
-  | ConstraintSourceConfigFlagOrTarget
-
-  -- | The source of the constraint is not specified.
-  | ConstraintSourceUnknown
-  deriving (Eq, Show, Generic)
-
-instance Binary ConstraintSource
-
--- | Description of a 'ConstraintSource'.
-showConstraintSource :: ConstraintSource -> String
-showConstraintSource (ConstraintSourceMainConfig path) =
-    "main config " ++ path
-showConstraintSource (ConstraintSourceProjectConfig path) =
-    "project config " ++ path
-showConstraintSource (ConstraintSourceSandboxConfig path) =
-    "sandbox config " ++ path
-showConstraintSource (ConstraintSourceUserConfig path)= "user config " ++ path
-showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
-showConstraintSource ConstraintSourceUserTarget = "user target"
-showConstraintSource ConstraintSourceNonUpgradeablePackage =
-    "non-upgradeable package"
-showConstraintSource ConstraintSourceModifiedAddSourceDep =
-    "modified add-source dependency"
-showConstraintSource ConstraintSourceFreeze = "cabal freeze"
-showConstraintSource ConstraintSourceConfigFlagOrTarget =
-    "config file, command line flag, or user target"
-showConstraintSource ConstraintSourceUnknown = "unknown source"
