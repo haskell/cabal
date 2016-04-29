@@ -10,9 +10,10 @@
 #   - executable|test-suite|benchmark for the three
 _cabal_list()
 {
-	cat *.cabal |
-	grep -Ei "^[[:space:]]*($1)[[:space:]]" |
-	sed -e "s/.* \([^ ]*\).*/\1/"
+    for f in ./*.cabal; do
+        grep -Ei "^[[:space:]]*($1)[[:space:]]" "$f" |
+        sed -e "s/.* \([^ ]*\).*/\1/"
+    done
 }
 
 # List possible targets depending on the command supplied as parameter.  The
@@ -20,17 +21,16 @@ _cabal_list()
 # This is a temporary workaround.
 _cabal_targets()
 {
-	# If command ($*) contains build, repl, test or bench completes with
-	# targets of according type.
-	[ -f *.cabal ] || return 0
-	local comp
-	for comp in $*; do
-		[ $comp == build ] && _cabal_list "executable|test-suite|benchmark" && break
-		[ $comp == repl  ] && _cabal_list "executable|test-suite|benchmark" && break
-		[ $comp == run   ] && _cabal_list "executable"                      && break
-		[ $comp == test  ] && _cabal_list            "test-suite"           && break
-		[ $comp == bench ] && _cabal_list                       "benchmark" && break
-	done
+    # If command ($*) contains build, repl, test or bench completes with
+    # targets of according type.
+    local comp
+    for comp in "$@"; do
+        [ "$comp" == build ] && _cabal_list "executable|test-suite|benchmark" && break
+        [ "$comp" == repl  ] && _cabal_list "executable|test-suite|benchmark" && break
+        [ "$comp" == run   ] && _cabal_list "executable"                      && break
+        [ "$comp" == test  ] && _cabal_list            "test-suite"           && break
+        [ "$comp" == bench ] && _cabal_list                       "benchmark" && break
+    done
 }
 
 # List possible subcommands of a cabal subcommand.
@@ -87,7 +87,7 @@ _cabal()
     cmd[${COMP_CWORD}]="--list-options"
 
     # the resulting completions should be put into this array
-    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _cabal_targets ${cmd[@]} ) $( _cabal_subcommands ${COMP_WORDS[@]} )" -- $cur ) )
+    COMPREPLY=( $( compgen -W "$( eval "${cmd[@]}" 2>/dev/null ) $( _cabal_targets "${cmd[@]}" ) $( _cabal_subcommands "${COMP_WORDS[@]}" )" -- "$cur" ) )
 }
 
 complete -F _cabal -o default cabal
