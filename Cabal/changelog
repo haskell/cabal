@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
+1.24.0.0 Ryan Thomas <ryan@ryant.org> May 2016
 	* Support GHC 8.
 	* Deal with extra C sources from preprocessors (#238).
 	* Include cabal_macros.h when running c2hs (#2600).
