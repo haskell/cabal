@@ -228,8 +228,9 @@ HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
-# Haddock fails for network-2.5.0.0.
-NO_DOCS_PACKAGES_VER_REGEXP="network-uri-2\.5\.[0-9]+\.[0-9]+"
+# Haddock fails for network-2.5.0.0, and for hackage-security for
+# GHC <8, c.f. https://github.com/well-typed/hackage-security/issues/149
+NO_DOCS_PACKAGES_VER_REGEXP="network-uri-2\.5\.[0-9]+\.[0-9]+|hackage-security-0\.5\.[0-9]+\.[0-9]+"
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
