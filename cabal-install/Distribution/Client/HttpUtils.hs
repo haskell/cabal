@@ -635,7 +635,7 @@ plainHttpTransport =
       (_, resp) <- cabalBrowse verbosity Nothing (request req)
       let code  = convertRspCode (rspCode resp)
           etag' = lookupHeader HdrETag (rspHeaders resp)
-      when (code==200) $
+      when (code==200 || code==206) $
         writeFileAtomic destPath $ rspBody resp
       return (code, etag')
 
