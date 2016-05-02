@@ -635,6 +635,7 @@ plainHttpTransport =
       (_, resp) <- cabalBrowse verbosity Nothing (request req)
       let code  = convertRspCode (rspCode resp)
           etag' = lookupHeader HdrETag (rspHeaders resp)
+      -- 206 Partial Content is a normal response to a range request, see #3385.
       when (code==200 || code==206) $
         writeFileAtomic destPath $ rspBody resp
       return (code, etag')
