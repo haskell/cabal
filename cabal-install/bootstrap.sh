@@ -221,8 +221,8 @@ ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.1.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
                        # >= 0.5.1 && < 0.6
-TAR_VER="0.5.0.1";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.1)\.?"
-                       # >= 0.5.0.1  && < 0.6
+TAR_VER="0.5.0.3";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
+                       # >= 0.5.0.3  && < 0.6
 HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
                        # 1.*
 
