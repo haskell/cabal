@@ -1,5 +1,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
+#ifdef DEBUG_CONFLICT_SETS
+{-# LANGUAGE ImplicitParams #-}
+#endif
 module Distribution.Solver.Modular.Dependency (
     -- * Variables
     Var(..)
@@ -56,6 +60,10 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
 
+#ifdef DEBUG_CONFLICT_SETS
+import GHC.Stack (CallStack)
+#endif
+
 {-------------------------------------------------------------------------------
   Constrained instances
 -------------------------------------------------------------------------------}
@@ -85,7 +93,11 @@ showCI (Constrained vr) = showVR (collapse vr)
 -- set in the sense the it contains variables that allow us to backjump
 -- further. We might apply some heuristics here, such as to change the
 -- order in which we check the constraints.
-merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
+merge ::
+#ifdef DEBUG_CONFLICT_SETS
+  (?loc :: CallStack) =>
+#endif
+  Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                    = Right c
   | otherwise                                 = Left (CS.union (varToConflictSet g1) (varToConflictSet g2), (c, d))
