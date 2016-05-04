@@ -669,14 +669,11 @@ whenGhcVersion p m = do
 withPackage :: FilePath -> TestM a -> TestM a
 withPackage f = withReaderT (\(suite, test) -> (suite, test { testCurrentPackage = f }))
 
--- TODO: Really should accumulate... but I think to do this
--- properly we can't just append
+-- We append to the environment list, as per 'getEffectiveEnvironment'
+-- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e m = do
-    (_, test0) <- ask
-    when (not (null (testEnvironment test0)))
-        $ error "nested withEnv (not yet) supported"
-    withReaderT (\(suite, test) -> (suite, test { testEnvironment = e })) m
+    withReaderT (\(suite, test) -> (suite, test { testEnvironment = testEnvironment test ++ e })) m
 
 withPackageDb :: TestM a -> TestM a
 withPackageDb m = do
