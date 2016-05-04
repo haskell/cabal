@@ -1,7 +1,7 @@
 -*-change-log-*-
 
 1.25.x.x (current development version)
-	* Made the solver aware of pkg-config constraints (#3023).
+	* TODO
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
@@ -57,6 +57,7 @@
 	(#3171).
 	* Improved performance of '--reorder-goals' (#3208).
 	* Fixed space leaks in modular solver (#2916, #2914).
+	* Made the solver aware of pkg-config constraints (#3023).
 	* Added a new command: 'gen-bounds' (#3223). See
 	http://softwaresimply.blogspot.se/2015/08/cabal-gen-bounds-easy-generation-of.html.
 	* Tech preview of new nix-style isolated project-based builds.
