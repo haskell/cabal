@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Distribution.Solver.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
@@ -92,7 +94,11 @@ data ValidateState = VS {
   qualifyOptions :: QualifyOptions
 }
 
-type Validate = Reader ValidateState
+newtype Validate a = Validate (Reader ValidateState a)
+  deriving (Functor, Applicative, Monad, MonadReader ValidateState)
+
+runValidate :: Validate a -> ValidateState -> a
+runValidate (Validate r) = runReader r
 
 validate :: Tree QGoalReason -> Validate (Tree QGoalReason)
 validate = cata go
@@ -255,7 +261,7 @@ extractNewDeps v b fa sa = go
 
 -- | Interface.
 validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree QGoalReason -> Tree QGoalReason
-validateTree cinfo idx pkgConfigDb t = runReader (validate t) VS {
+validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
     supportedExt   = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                            (\ es -> let s = S.fromList es in \ x -> S.member x s)
                            (compilerInfoExtensions cinfo)
