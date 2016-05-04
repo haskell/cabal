@@ -90,7 +90,7 @@ exploreLog enableBj = cata go
     go (GoalChoiceF        ts) a           =
       P.casePSQ ts
         (failWith (Failure CS.empty EmptyGoalChoice) CS.empty) -- empty goal choice is an internal error
-        (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
+        (\ k v _xs -> continueWith (Next k) (v a))             -- commit to the first goal choice
 
 -- | Build a conflict set corresponding to the (virtual) option not to
 -- choose a solution for a goal at all.
