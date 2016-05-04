@@ -54,6 +54,7 @@
 	(#3171).
 	* Improved performance of '--reorder-goals' (#3208).
 	* Fixed space leaks in modular solver (#2916, #2914).
+	* Made the solver aware of pkg-config constraints (#3023).
 	* Added a new command: 'gen-bounds' (#3223). See
 	http://softwaresimply.blogspot.se/2015/08/cabal-gen-bounds-easy-generation-of.html.
 	* Tech preview of new nix-style isolated project-based builds.
