@@ -19,6 +19,7 @@ module Distribution.Solver.Modular.Package
   , showI
   , showPI
   , showQPN
+  , showPP
   , unPN
   ) where
 

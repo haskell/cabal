@@ -5,6 +5,7 @@ module Distribution.Solver.Modular.Dependency (
     Var(..)
   , simplifyVar
   , varPI
+  , showVar
     -- * Conflict sets
   , ConflictSet
   , CS.showCS
