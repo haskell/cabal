@@ -111,8 +111,9 @@ build = ana go
     -- it from the queue of open goals.
     go bs@(BS { rdeps = rds, open = gs, next = Goals })
       | P.null gs = DoneF rds
-      | otherwise = GoalChoiceF (P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
-                                              (P.splits gs))
+      | otherwise = GoalChoiceF $ P.mapKeys close
+                                $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
+                                $ P.splits gs
 
     -- If we have already picked a goal, then the choice depends on the kind
     -- of goal.

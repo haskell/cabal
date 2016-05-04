@@ -295,9 +295,9 @@ preferBaseGoalChoice = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys isBase xs)
     go x                = x
 
-    isBase :: OpenGoal comp -> Bool
-    isBase (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) | unPN pn == "base" = True
-    isBase _                                                              = False
+    isBase :: Goal QPN -> Bool
+    isBase (Goal (P (Q _pp pn)) _) = unPN pn == "base"
+    isBase _                       = False
 
 -- | Deal with setup dependencies after regular dependencies, so that we can
 -- will link setup depencencies against package dependencies when possible
@@ -307,9 +307,9 @@ deferSetupChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.preferByKeys noSetup xs)
     go x                = x
 
-    noSetup :: OpenGoal comp -> Bool
-    noSetup (OpenGoal (Simple (Dep (Q (PP _ns (Setup _)) _) _) _) _) = False
-    noSetup _                                                        = True
+    noSetup :: Goal QPN -> Bool
+    noSetup (Goal (P (Q (PP _ns (Setup _)) _)) _) = False
+    noSetup _                                     = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such
