@@ -193,6 +193,8 @@ getExtraPathEnv env extras = do
     return [("PATH", Just path')]
 
 -- | Return the current environment extended with the given overrides.
+-- If an entry is specified twice in @overrides@, the second entry takes
+-- precedence.
 --
 getEffectiveEnvironment :: [(String, Maybe String)]
                         -> NoCallStackIO (Maybe [(String, String)])
