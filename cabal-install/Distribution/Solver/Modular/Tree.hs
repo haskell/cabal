@@ -30,21 +30,49 @@ import Distribution.Solver.Types.ConstraintSource
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
-    PChoice     QPN a           (PSQ POption    (Tree a))
-  | FChoice     QFN a Bool Bool (PSQ Bool       (Tree a)) -- Bool indicates whether it's weak/trivial, second Bool whether it's manual
-  | SChoice     QSN a Bool      (PSQ Bool       (Tree a)) -- Bool indicates whether it's trivial
-  | GoalChoice                  (PSQ (Goal QPN) (Tree a)) -- PSQ should never be empty
-  | Done        RevDepMap
-  | Fail        (ConflictSet QPN) FailReason
+    -- | Choose a version for a package (or choose to link)
+    PChoice QPN a (PSQ POption (Tree a))
+
+    -- | Choose a value for a flag
+    --
+    -- The first Bool indicates whether it's weak/trivial,
+    -- the second Bool whether it's manual.
+    --
+    -- A choice is called trivial if it clearly does not matter. The
+    -- special case of triviality we actually consider is if there are no new
+    -- dependencies introduced by this node.
+    --
+    -- A (flag) choice is called weak if we do want to defer it. This is the
+    -- case for flags that should be implied by what's currently installed on
+    -- the system, as opposed to flags that are used to explicitly enable or
+    -- disable some functionality.
+  | FChoice QFN a Bool Bool (PSQ Bool (Tree a))
+
+    -- | Choose whether or not to enable a stanza
+    --
+    -- The Bool indicates whether it's trivial (see 'FChoice' for a discussion
+    -- of triviality).
+  | SChoice QSN a Bool (PSQ Bool (Tree a))
+
+    -- | Choose which choice to make next
+    --
+    -- Invariants:
+    --
+    -- * PSQ should never be empty
+    -- * For each choice we additionally record the 'QGoalReason' why we are
+    --   introducing that goal into tree. Note that most of the time we are
+    --   working with @Tree QGoalReason@; in that case, we must have the
+    --   invariant that the 'QGoalReason' cached in the 'PChoice', 'FChoice'
+    --   or 'SChoice' directly below a 'GoalChoice' node must equal the reason
+    --   recorded on that 'GoalChoice' node.
+  | GoalChoice (PSQ (Goal QPN) (Tree a))
+
+    -- | We're done -- we found a solution!
+  | Done RevDepMap
+
+    -- | We failed to find a solution in this path through the tree
+  | Fail (ConflictSet QPN) FailReason
   deriving (Eq, Show, Functor)
-  -- Above, a choice is called trivial if it clearly does not matter. The
-  -- special case of triviality we actually consider is if there are no new
-  -- dependencies introduced by this node.
-  --
-  -- A (flag) choice is called weak if we do want to defer it. This is the
-  -- case for flags that should be implied by what's currently installed on
-  -- the system, as opposed to flags that are used to explicitly enable or
-  -- disable some functionality.
 
 -- | A package option is a package instance with an optional linking annotation
 --
