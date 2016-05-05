@@ -301,8 +301,8 @@ type SetupMethod = Verbosity
 internalSetupMethod :: SetupMethod
 internalSetupMethod verbosity options _ bt mkargs = do
   let args = mkargs cabalVersion
-  debug verbosity $ "Using internal setup method with build-type " ++ show bt
-                 ++ " and args:\n  " ++ show args
+  info verbosity $ "Using internal setup method with build-type " ++ show bt
+                ++ " and args:\n  " ++ show args
   inDir (useWorkingDir options) $
     buildTypeAction bt args
 
@@ -323,7 +323,7 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
   let args = ["act-as-setup",
               "--build-type=" ++ display bt,
               "--"] ++ mkargs cabalVersion
-  debug verbosity $ "Using self-exec internal setup method with build-type "
+  info verbosity $ "Using self-exec internal setup method with build-type "
                  ++ show bt ++ " and args:\n  " ++ show args
   path <- getExecutablePath
   info verbosity $ unwords (path : args)
