@@ -1265,7 +1265,7 @@ If we want to do that, however, it means that the `containers` test suite
 executable now uses _two_ versions of `containers`: the version-under-test
 and the older, stable version that we have linked `tasty` against.
 
-As of  version 1.24, this scenario is supported. The `cabal` solver can make
+As of  version 1.26, this scenario is supported. The `cabal` solver can make
 independent choices for the dependencies of test suites which do not appear
 as (direct) dependencies of any other component in the package. In other words,
 if the test suite for `containers` _directly_ depends on `containers` (as it
