@@ -211,6 +211,11 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
+    unless (installRootCmd installFlags == Cabal.NoFlag) $
+        die "--root-cmd is no longer supported, see https://github.com/haskell/cabal/issues/3353"
+    unless (fromFlag (configUserInstall configFlags)) $
+        warn verbosity "the --global flag is deprecated--it is generally considered a bad idea to install packages into the global store"
+
     installContext <- makeInstallContext verbosity args (Just userTargets0)
     planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
                       makeInstallPlan verbosity args installContext

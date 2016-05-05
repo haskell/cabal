@@ -402,6 +402,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       installDryRun             = projectConfigDryRun,
       installOnly               = _,
       installOnlyDeps           = projectConfigOnlyDeps,
+      installRootCmd            = _,
       installSummaryFile        = projectConfigSummaryFile,
       installLogFile            = projectConfigLogFile,
       installBuildReports       = projectConfigBuildReports,
@@ -498,6 +499,7 @@ convertToLegacySharedConfig
       installStrongFlags       = projectConfigStrongFlags,
       installOnly              = mempty,
       installOnlyDeps          = projectConfigOnlyDeps,
+      installRootCmd           = mempty, --no longer supported
       installSummaryFile       = projectConfigSummaryFile,
       installLogFile           = projectConfigLogFile,
       installBuildReports      = projectConfigBuildReports,
