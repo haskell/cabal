@@ -248,6 +248,7 @@ instance Semigroup SavedConfig where
         installUpgradeDeps           = combine installUpgradeDeps,
         installOnly                  = combine installOnly,
         installOnlyDeps              = combine installOnlyDeps,
+        installRootCmd               = combine installRootCmd,
         installSummaryFile           = lastNonEmptyNL installSummaryFile,
         installLogFile               = combine installLogFile,
         installBuildReports          = combine installBuildReports,
