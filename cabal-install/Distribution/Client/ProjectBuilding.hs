@@ -563,7 +563,7 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 
 -- | Build things for real.
 --
--- It requires the 'BuildStatusMap' gatthered by 'rebuildTargetsDryRun'.
+-- It requires the 'BuildStatusMap' gathered by 'rebuildTargetsDryRun'.
 --
 rebuildTargets :: Verbosity
                -> DistDirLayout
