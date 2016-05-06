@@ -57,10 +57,9 @@ import Distribution.Package
 import Distribution.Client.Types
          ( PackageLocation(..)
          , ResolvedPkgLoc, UnresolvedSourcePackage )
-import Distribution.Client.Dependency.Types
-         ( LabeledPackageConstraint(..) )
 
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)

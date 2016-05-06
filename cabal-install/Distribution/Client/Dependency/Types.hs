@@ -21,18 +21,14 @@ module Distribution.Client.Dependency.Types (
     InstalledPreference(..),
     PackagesPreferenceDefault(..),
 
-    LabeledPackageConstraint(..),
-    unlabelPackageConstraint
-
   ) where
 
 import Data.Char
          ( isAlpha, toLower )
 
-import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
-import Distribution.Solver.Types.PackageConstraint ( PackageConstraint )
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.ResolverPackage
@@ -146,10 +142,3 @@ data PackagesPreferenceDefault =
      --
    | PreferLatestForSelected
   deriving Show
-
--- | 'PackageConstraint' labeled with its source.
-data LabeledPackageConstraint
-   = LabeledPackageConstraint PackageConstraint ConstraintSource
-
-unlabelPackageConstraint :: LabeledPackageConstraint -> PackageConstraint
-unlabelPackageConstraint (LabeledPackageConstraint pc _) = pc

@@ -223,6 +223,7 @@ executable cabal
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.Internal.Utils
+        Distribution.Solver.Types.LabeledPackageConstraint
         Distribution.Solver.Types.OptionalStanza
         Distribution.Solver.Types.PackageConstraint
         Distribution.Solver.Types.PackageFixedDeps

@@ -75,7 +75,6 @@ import Distribution.Client.Types
          , enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver
-         , LabeledPackageConstraint(..), unlabelPackageConstraint
          , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
@@ -115,6 +114,7 @@ import Distribution.Verbosity
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
