@@ -18,7 +18,6 @@ module Distribution.Client.Dependency.Types (
     DependencyResolver,
 
     PackagePreferences(..),
-    InstalledPreference(..),
     PackagesPreferenceDefault(..),
 
   ) where
@@ -26,6 +25,7 @@ module Distribution.Client.Dependency.Types (
 import Data.Char
          ( isAlpha, toLower )
 
+import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
@@ -111,12 +111,6 @@ type DependencyResolver loc = Platform
 data PackagePreferences = PackagePreferences [VersionRange]
                                              InstalledPreference
                                              [OptionalStanza]
-
--- | Whether we prefer an installed version of a package or simply the latest
--- version.
---
-data InstalledPreference = PreferInstalled | PreferLatest
-  deriving Show
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.

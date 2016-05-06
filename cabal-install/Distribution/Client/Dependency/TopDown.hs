@@ -24,7 +24,7 @@ import Distribution.Client.Types
          , UnresolvedSourcePackage, enableStanzas )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver
-         , PackagePreferences(..), InstalledPreference(..) )
+         , PackagePreferences(..) )
 
 
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
@@ -55,6 +55,7 @@ import Distribution.Text
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
