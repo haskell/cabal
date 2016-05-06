@@ -28,11 +28,12 @@ import Control.Monad.Reader hiding (sequence)
 import Data.Map (Map)
 import Data.Traversable (sequence)
 
-import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), LabeledPackageConstraint(..)
-  , PackagePreferences(..), InstalledPreference(..) )
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.InstalledPreference
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.PackagePreferences
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag

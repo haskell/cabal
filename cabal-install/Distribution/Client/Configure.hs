@@ -19,8 +19,6 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
-         ( LabeledPackageConstraint(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -38,6 +36,7 @@ import Distribution.Client.JobControl (Lock)
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageIndex
                    ( PackageIndex, elemByPackageName )

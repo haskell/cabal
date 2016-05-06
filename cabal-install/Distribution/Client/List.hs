@@ -41,14 +41,13 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Text
          ( Text(disp), display )
 
+import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Client.Types
          ( SourcePackageDb(..)
          , UnresolvedSourcePackage )
-import Distribution.Client.Dependency.Types
-         ( PackageConstraint(..) )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup

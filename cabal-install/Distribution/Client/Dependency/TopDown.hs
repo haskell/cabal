@@ -22,10 +22,6 @@ import Distribution.Client.Dependency.TopDown.Constraints
 import Distribution.Client.Types
          ( UnresolvedPkgLoc
          , UnresolvedSourcePackage, enableStanzas )
-import Distribution.Client.Dependency.Types
-         ( DependencyResolver
-         , PackageConstraint(..), unlabelPackageConstraint
-         , PackagePreferences(..), InstalledPreference(..) )
 
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -53,10 +49,15 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 
-import           Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
+import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.DependencyResolver
+import           Distribution.Solver.Types.InstalledPreference
+import           Distribution.Solver.Types.LabeledPackageConstraint
+import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
-import           Distribution.Solver.Types.PackageIndex ( PackageIndex )
+import           Distribution.Solver.Types.PackageIndex (PackageIndex)
+import           Distribution.Solver.Types.PackagePreferences
 import           Distribution.Solver.Types.Progress
 import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId

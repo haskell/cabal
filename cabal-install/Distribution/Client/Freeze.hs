@@ -20,8 +20,6 @@ import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
-         ( LabeledPackageConstraint(..) )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
@@ -37,9 +35,9 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb
-         ( PkgConfigDb, readPkgConfigDb )
 import Distribution.Solver.Types.SolverId
 
 import Distribution.Package
