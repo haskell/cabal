@@ -29,10 +29,11 @@ import Data.Map (Map)
 import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), LabeledPackageConstraint(..)
+  ( LabeledPackageConstraint(..)
   , PackagePreferences(..), InstalledPreference(..) )
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackageConstraint
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag

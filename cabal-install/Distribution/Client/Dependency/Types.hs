@@ -17,8 +17,6 @@ module Distribution.Client.Dependency.Types (
 
     DependencyResolver,
 
-    PackageConstraint(..),
-    showPackageConstraint,
     PackagePreferences(..),
     InstalledPreference(..),
     PackagesPreferenceDefault(..),
@@ -34,6 +32,7 @@ import Data.Char
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
+import Distribution.Solver.Types.PackageConstraint ( PackageConstraint )
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.ResolverPackage
@@ -41,19 +40,17 @@ import Distribution.Solver.Types.SourcePackage
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
-import Distribution.PackageDescription
-         ( FlagAssignment, FlagName(..) )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
          ( PackageName )
 import Distribution.Version
-         ( VersionRange, simplifyVersionRange )
+         ( VersionRange )
 import Distribution.Compiler
          ( CompilerInfo )
 import Distribution.System
          ( Platform )
 import Distribution.Text
-         ( Text(..), display )
+         ( Text(..) )
 
 import Text.PrettyPrint
          ( text )
@@ -103,42 +100,6 @@ type DependencyResolver loc = Platform
                            -> [LabeledPackageConstraint]
                            -> [PackageName]
                            -> Progress String String [ResolverPackage loc]
-
--- | Per-package constraints. Package constraints must be respected by the
--- solver. Multiple constraints for each package can be given, though obviously
--- it is possible to construct conflicting constraints (eg impossible version
--- range or inconsistent flag assignment).
---
-data PackageConstraint
-   = PackageConstraintVersion   PackageName VersionRange
-   | PackageConstraintInstalled PackageName
-   | PackageConstraintSource    PackageName
-   | PackageConstraintFlags     PackageName FlagAssignment
-   | PackageConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Eq,Show,Generic)
-
-instance Binary PackageConstraint
-
--- | Provide a textual representation of a package constraint
--- for debugging purposes.
---
-showPackageConstraint :: PackageConstraint -> String
-showPackageConstraint (PackageConstraintVersion pn vr) =
-  display pn ++ " " ++ display (simplifyVersionRange vr)
-showPackageConstraint (PackageConstraintInstalled pn) =
-  display pn ++ " installed"
-showPackageConstraint (PackageConstraintSource pn) =
-  display pn ++ " source"
-showPackageConstraint (PackageConstraintFlags pn fs) =
-  "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
-  where
-    showFlag (FlagName f) True  = "+" ++ f
-    showFlag (FlagName f) False = "-" ++ f
-showPackageConstraint (PackageConstraintStanzas pn ss) =
-  "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
-  where
-    showStanza TestStanzas  = "test"
-    showStanza BenchStanzas = "bench"
 
 -- | Per-package preferences on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of

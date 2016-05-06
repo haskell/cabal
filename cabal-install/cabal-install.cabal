@@ -224,6 +224,7 @@ executable cabal
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.Internal.Utils
         Distribution.Solver.Types.OptionalStanza
+        Distribution.Solver.Types.PackageConstraint
         Distribution.Solver.Types.PackageFixedDeps
         Distribution.Solver.Types.PackageIndex
         Distribution.Solver.Types.PkgConfigDb
