@@ -229,6 +229,7 @@ executable cabal
         Distribution.Solver.Types.PackageConstraint
         Distribution.Solver.Types.PackageFixedDeps
         Distribution.Solver.Types.PackageIndex
+        Distribution.Solver.Types.PackagePreferences
         Distribution.Solver.Types.PkgConfigDb
         Distribution.Solver.Types.Progress
         Distribution.Solver.Types.ResolverPackage

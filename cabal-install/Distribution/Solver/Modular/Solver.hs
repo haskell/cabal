@@ -7,12 +7,10 @@ import Data.Map as M
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.Settings
-
-import Distribution.Client.Dependency.Types
-         ( PackagePreferences )
 
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Builder

@@ -17,7 +17,6 @@ module Distribution.Client.Dependency.Types (
 
     DependencyResolver,
 
-    PackagePreferences(..),
     PackagesPreferenceDefault(..),
 
   ) where
@@ -25,10 +24,9 @@ module Distribution.Client.Dependency.Types (
 import Data.Char
          ( isAlpha, toLower )
 
-import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
-import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
+import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
 import Distribution.Solver.Types.Progress
 import Distribution.Solver.Types.ResolverPackage
@@ -39,8 +37,6 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
          ( PackageName )
-import Distribution.Version
-         ( VersionRange )
 import Distribution.Compiler
          ( CompilerInfo )
 import Distribution.System
@@ -96,21 +92,6 @@ type DependencyResolver loc = Platform
                            -> [LabeledPackageConstraint]
                            -> [PackageName]
                            -> Progress String String [ResolverPackage loc]
-
--- | Per-package preferences on the version. It is a soft constraint that the
--- 'DependencyResolver' should try to respect where possible. It consists of
--- an 'InstalledPreference' which says if we prefer versions of packages
--- that are already installed. It also has (possibly multiple)
--- 'PackageVersionPreference's which are suggested constraints on the version
--- number. The resolver should try to use package versions that satisfy
--- the maximum number of the suggested version constraints.
---
--- It is not specified if preferences on some packages are more important than
--- others.
---
-data PackagePreferences = PackagePreferences [VersionRange]
-                                             InstalledPreference
-                                             [OptionalStanza]
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.

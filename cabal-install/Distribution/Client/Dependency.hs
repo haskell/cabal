@@ -75,7 +75,6 @@ import Distribution.Client.Types
          , enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver
-         , PackagePreferences(..)
          , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
@@ -118,6 +117,7 @@ import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
+import           Distribution.Solver.Types.PackagePreferences
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import           Distribution.Solver.Types.Progress
