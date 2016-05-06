@@ -1,16 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
------------------------------------------------------------------------------
--- |
--- Module      :  Distribution.Client.Dependency.Types
--- Copyright   :  (c) Duncan Coutts 2008
--- License     :  BSD-like
---
--- Maintainer  :  cabal-devel@haskell.org
--- Stability   :  provisional
--- Portability :  portable
---
--- Common types for dependency resolution.
------------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
