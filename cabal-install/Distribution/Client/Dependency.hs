@@ -74,7 +74,7 @@ import Distribution.Client.Types
          , UnresolvedPkgLoc, UnresolvedSourcePackage
          , enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver
+         ( PreSolver(..), Solver(..)
          , PackagesPreferenceDefault(..) )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
@@ -113,6 +113,7 @@ import Distribution.Verbosity
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.DependencyResolver
 import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza

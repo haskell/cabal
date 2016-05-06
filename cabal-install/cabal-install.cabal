@@ -222,6 +222,7 @@ executable cabal
         Distribution.Client.Compat.Semaphore
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
+        Distribution.Solver.Types.DependencyResolver
         Distribution.Solver.Types.Internal.Utils
         Distribution.Solver.Types.InstalledPreference
         Distribution.Solver.Types.LabeledPackageConstraint

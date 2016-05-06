@@ -25,8 +25,7 @@ import Distribution.Solver.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.PackageConstraint
-import Distribution.Client.Dependency.Types
-         ( DependencyResolver )
+import Distribution.Solver.Types.DependencyResolver
 import Distribution.System
          ( Platform(..) )
 

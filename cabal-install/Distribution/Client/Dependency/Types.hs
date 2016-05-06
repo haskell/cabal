@@ -15,8 +15,6 @@ module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
 
-    DependencyResolver,
-
     PackagesPreferenceDefault(..),
 
   ) where
@@ -24,23 +22,8 @@ module Distribution.Client.Dependency.Types (
 import Data.Char
          ( isAlpha, toLower )
 
-import Distribution.Solver.Types.LabeledPackageConstraint
-import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
-import Distribution.Solver.Types.PackagePreferences
-import Distribution.Solver.Types.PackageIndex ( PackageIndex )
-import Distribution.Solver.Types.Progress
-import Distribution.Solver.Types.ResolverPackage
-import Distribution.Solver.Types.SourcePackage
-
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
-import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
-import Distribution.Package
-         ( PackageName )
-import Distribution.Compiler
-         ( CompilerInfo )
-import Distribution.System
-         ( Platform )
 import Distribution.Text
          ( Text(..) )
 
@@ -74,24 +57,6 @@ instance Text PreSolver where
       "modular" -> return AlwaysModular
       "choose"  -> return Choose
       _         -> Parse.pfail
-
--- | A dependency resolver is a function that works out an installation plan
--- given the set of installed and available packages and a set of deps to
--- solve for.
---
--- The reason for this interface is because there are dozens of approaches to
--- solving the package dependency problem and we want to make it easy to swap
--- in alternatives.
---
-type DependencyResolver loc = Platform
-                           -> CompilerInfo
-                           -> InstalledPackageIndex
-                           -> PackageIndex (SourcePackage loc)
-                           -> PkgConfigDb
-                           -> (PackageName -> PackagePreferences)
-                           -> [LabeledPackageConstraint]
-                           -> [PackageName]
-                           -> Progress String String [ResolverPackage loc]
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
