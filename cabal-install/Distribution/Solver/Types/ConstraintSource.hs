@@ -7,8 +7,6 @@ module Distribution.Solver.Types.ConstraintSource
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
 
-import Prelude hiding (fail)
-
 -- | Source of a 'PackageConstraint'.
 data ConstraintSource =
 

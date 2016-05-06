@@ -32,8 +32,6 @@ import Text.PrettyPrint
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
 
-import Prelude hiding (fail)
-
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysTopDown | AlwaysModular | Choose
