@@ -467,8 +467,13 @@ renderArgs verbosity tmpFileOpts version comp platform args k = do
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do
                          when haddockSupportsUTF8 (hSetEncoding hf utf8)
-                         hPutStr hf $ unlines $ map escapeArg renderedArgs
+                         let responseContents =
+                                 unlines $ map escapeArg renderedArgs
+                         hPutStr hf responseContents
                          hClose hf
+                         info verbosity $ responseFileName ++ " contents: <<<"
+                         info verbosity responseContents
+                         info verbosity $ ">>> " ++ responseFileName
                          let respFile = "@" ++ responseFileName
                          k ([respFile], result)
                else
