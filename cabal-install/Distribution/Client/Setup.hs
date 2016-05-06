@@ -1355,7 +1355,7 @@ installOptions showOrParseArgs =
           (yesNoOpt showOrParseArgs)
 
       , option [] ["root-cmd"]
-          "Command used to gain root privileges, when installing with --global."
+          "(No longer supported, do not use.)"
           installRootCmd (\v flags -> flags { installRootCmd = v })
           (reqArg' "COMMAND" toFlag flagToList)
 
