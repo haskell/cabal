@@ -871,7 +871,7 @@ planPackages comp platform solver SolverSettings{..}
 
       . removeUpperBounds solverSettingAllowNewer
 
-      . addDefaultSetupDependencies (defaultSetupDeps platform
+      . addDefaultSetupDependencies (defaultSetupDeps comp platform
                                    . PD.packageDescription
                                    . packageDescription)
 
@@ -1727,8 +1727,10 @@ packageSetupScriptStylePreSolver pkg
 -- we still need to distinguish the case of explicit and implict setup deps.
 -- See 'rememberImplicitSetupDeps'.
 --
-defaultSetupDeps :: Platform -> PD.PackageDescription -> Maybe [Dependency]
-defaultSetupDeps platform pkg =
+defaultSetupDeps :: Compiler -> Platform
+                 -> PD.PackageDescription
+                 -> Maybe [Dependency]
+defaultSetupDeps compiler platform pkg =
     case packageSetupScriptStylePreSolver pkg of
 
       -- For packages with build type custom that do not specify explicit
@@ -1737,26 +1739,32 @@ defaultSetupDeps platform pkg =
       SetupCustomImplicitDeps ->
         Just $
         [ Dependency depPkgname anyVersion
-        | depPkgname <- legacyCustomSetupPkgs platform ] ++
-        -- The Cabal dep is slightly special:
-        --  * we omit the dep for the Cabal lib itself (since it bootstraps),
-        --  * we constrain it to be less than 1.23 since all packages
-        --    relying on later Cabal spec versions are supposed to use
-        --    explit setup deps. Having this constraint also allows later
-        --    Cabal lib versions to make breaking API changes without breaking
-        --    all old Setup.hs scripts.
+        | depPkgname <- legacyCustomSetupPkgs compiler platform ] ++
         [ Dependency cabalPkgname cabalConstraint
         | packageName pkg /= cabalPkgname ]
         where
-          cabalConstraint   = orLaterVersion (PD.specVersion pkg)
+          -- The Cabal dep is slightly special:
+          -- * We omit the dep for the Cabal lib itself, since it bootstraps.
+          -- * We constrain it to be >= 1.18 < 2
+          --
+          cabalConstraint   = orLaterVersion cabalCompatMinVer
+                                `intersectVersionRanges`
+                              orLaterVersion (PD.specVersion pkg)
                                 `intersectVersionRanges`
                               earlierVersion cabalCompatMaxVer
-        -- TODO/FIXME: turns out that constraining to less than 1.23 causes
-        --             problems with GHC8 as there's too many important packages
-        --             with Custom build-type, for which there wouldn't be any
-        --             install-plan (as GHC8 requires Cabal-1.24+). So let's
-        --             set an implicit upper bound `Cabal < 2` instead.
+          -- The idea here is that at some point we will make significant
+          -- breaking changes to the Cabal API that Setup.hs scripts use.
+          -- So for old custom Setup scripts that do not specify explicit
+          -- constraints, we constrain them to use a compatible Cabal version.
+          -- The exact version where we'll make this API break has not yet been
+          -- decided, so for the meantime we guess at 2.x.
           cabalCompatMaxVer = Version [2] []
+          -- In principle we can talk to any old Cabal version, and we need to
+          -- be able to do that for custom Setup scripts that require older
+          -- Cabal lib versions. However in practice we have currently have
+          -- problems with Cabal-1.16. (1.16 does not know about build targets)
+          -- If this is fixed we can relax this constraint.
+          cabalCompatMinVer = Version [1,18] []
 
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
@@ -1868,14 +1876,18 @@ cabalPkgname = PackageName "Cabal"
 basePkgname  = PackageName "base"
 
 
-legacyCustomSetupPkgs :: Platform -> [PackageName]
-legacyCustomSetupPkgs (Platform _ os) =
+legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
+legacyCustomSetupPkgs compiler (Platform _ os) =
     map PackageName $
         [ "array", "base", "binary", "bytestring", "containers"
-        , "deepseq", "directory", "filepath", "pretty"
-        , "process", "time" ]
+        , "deepseq", "directory", "filepath", "old-time", "pretty"
+        , "process", "time", "transformers" ]
      ++ [ "Win32" | os == Windows ]
      ++ [ "unix"  | os /= Windows ]
+     ++ [ "ghc-prim"         | isGHC ]
+     ++ [ "template-haskell" | isGHC ]
+  where
+    isGHC = compilerCompatFlavor GHC compiler
 
 -- The other aspects of our Setup.hs policy lives here where we decide on
 -- the 'SetupScriptOptions'.
