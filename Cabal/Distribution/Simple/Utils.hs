@@ -555,9 +555,9 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
       out <- hGetContents outh
 
       mv <- newEmptyMVar
-      let force str = (evaluate (length str) >> return ())
-            `Exception.finally` putMVar mv ()
-          --TODO: handle exceptions like text decoding.
+      let force str = do
+            mberr <- Exception.try (evaluate (length str) >> return ())
+            putMVar mv (mberr :: Either IOError ())
       _ <- forkIO $ force out
       _ <- forkIO $ force err
 
@@ -573,8 +573,8 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
           -- or if it closes stdin (eg if it exits)
 
       -- wait for both to finish, in either order
-      takeMVar mv
-      takeMVar mv
+      mberr1 <- takeMVar mv
+      mberr2 <- takeMVar mv
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
@@ -587,7 +587,17 @@ rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
                             Just ("",  _) -> ""
                             Just (inp, _) -> "\nstdin input:\n" ++ inp
 
+      -- Check if we we hit an exception while consuming the output
+      -- (e.g. a text decoding error)
+      reportOutputIOError mberr1
+      reportOutputIOError mberr2
+
       return (out, err, exitcode)
+  where
+    reportOutputIOError :: Either IOError () -> IO ()
+    reportOutputIOError =
+      either (\e -> throwIO (ioeSetFileName e ("output of " ++ path)))
+             return
 
 
 {-# DEPRECATED findProgramLocation
