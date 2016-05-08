@@ -1,11 +1,9 @@
 name: Cabal
 version: 1.25.0.0
-copyright: 2003-2006, Isaac Jones
-           2005-2011, Duncan Coutts
+copyright: 2003-2016, Cabal Development Team
 license: BSD3
 license-file: LICENSE
-author: Isaac Jones <ijones@syntaxpolice.org>
-        Duncan Coutts <duncan@community.haskell.org>
+author: Cabal Development Team <cabal-devel@haskell.org>
 maintainer: cabal-devel@haskell.org
 homepage: http://www.haskell.org/cabal/
 bug-reports: https://github.com/haskell/cabal/issues
