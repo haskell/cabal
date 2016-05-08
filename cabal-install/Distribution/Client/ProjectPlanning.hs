@@ -1843,6 +1843,13 @@ legacyCustomSetupPkgs compiler (Platform _ os) =
   where
     isGHC = compilerCompatFlavor GHC compiler
 
+    -- This util is copied here just in this branch to avoid requiring a new
+    -- Cabal version. The master branch already does the right thing.
+    compilerCompatFlavor :: CompilerFlavor -> Compiler -> Bool
+    compilerCompatFlavor flavor comp =
+        flavor == compilerFlavor comp
+     || flavor `elem` [ flavor' | CompilerId flavor' _ <- compilerCompat comp ]
+
 -- The other aspects of our Setup.hs policy lives here where we decide on
 -- the 'SetupScriptOptions'.
 --
