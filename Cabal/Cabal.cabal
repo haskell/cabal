@@ -1,13 +1,13 @@
-name: Cabal
-version: 1.25.0.0
-copyright: 2003-2016, Cabal Development Team
-license: BSD3
-license-file: LICENSE
-author: Cabal Development Team <cabal-devel@haskell.org>
-maintainer: cabal-devel@haskell.org
-homepage: http://www.haskell.org/cabal/
-bug-reports: https://github.com/haskell/cabal/issues
-synopsis: A framework for packaging Haskell software
+name:          Cabal
+version:       1.25.0.0
+copyright:     2003-2016, Cabal Development Team
+license:       BSD3
+license-file:  LICENSE
+author:        Cabal Development Team <cabal-devel@haskell.org>
+maintainer:    cabal-devel@haskell.org
+homepage:      http://www.haskell.org/cabal/
+bug-reports:   https://github.com/haskell/cabal/issues
+synopsis:      A framework for packaging Haskell software
 description:
   The Haskell Common Architecture for Building Applications and
   Libraries: a framework defining a common interface for authors to more
@@ -15,9 +15,9 @@ description:
   .
   The Haskell Cabal is part of a larger infrastructure for distributing,
   organizing, and cataloging Haskell libraries and tools.
-category: Distribution
-cabal-version: >=1.10
-build-type: Simple
+category:       Distribution
+cabal-version:  >=1.10
+build-type:     Simple
 -- If we use a new Cabal feature, this needs to be changed to Custom so
 -- we can bootstrap.
 
