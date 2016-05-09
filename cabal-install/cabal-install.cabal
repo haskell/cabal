@@ -9,7 +9,7 @@ homepage:           http://www.haskell.org/cabal/
 bug-reports:        https://github.com/haskell/cabal/issues
 License:            BSD3
 License-File:       LICENSE
-Author:             Cabal Development Team
+Author:             Cabal Development Team (see AUTHORS file)
 Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
 Copyright:          2003-2016, Cabal Development Team
 Category:           Distribution
