@@ -121,6 +121,12 @@ Extra-Source-Files:
   tests/IntegrationTests/user-config/runs_without_error.sh
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
+  tests/IntegrationTests2.hs
+  tests/IntegrationTests2/exception/build/Main.hs
+  tests/IntegrationTests2/exception/build/a.cabal
+  tests/IntegrationTests2/exception/configure/a.cabal
+  tests/IntegrationTests2/exception/no-pkg/empty.in
+  tests/IntegrationTests2/exception/no-pkg2/cabal.project
   -- END gen-extra-source-files
 
 source-repository head
@@ -466,6 +472,7 @@ Test-Suite solver-quickcheck
 
   default-language: Haskell2010
 
+-- Integration tests that call the cabal executable externally
 test-suite integration-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
@@ -491,6 +498,62 @@ test-suite integration-tests
     ghc-options: -threaded
 
   ghc-options: -Wall
+  default-language: Haskell2010
+
+-- Integration tests that use the cabal-install code directly
+-- but still build whole projects
+test-suite integration-tests2
+  type: exitcode-stdio-1.0
+  main-is: IntegrationTests2.hs
+  hs-source-dirs: tests, .
+  ghc-options: -Wall -fwarn-tabs
+  other-modules:
+  build-depends:
+        async,
+        array,
+        base,
+        base16-bytestring,
+        binary,
+        bytestring,
+        Cabal,
+        containers,
+        cryptohash-sha256,
+        directory,
+        filepath,
+        hackage-security,
+        hashable,
+        HTTP,
+        mtl,
+        network,
+        network-uri,
+        pretty,
+        process,
+        random,
+        stm,
+        tar,
+        time,
+        zlib,
+        tasty,
+        tasty-hunit
+
+  if flag(old-bytestring)
+    build-depends: bytestring-builder
+
+  if flag(old-directory)
+    build-depends: old-time
+
+  if impl(ghc < 7.6)
+    build-depends: ghc-prim >= 0.2 && < 0.3
+
+  if os(windows)
+    build-depends: Win32
+  else
+    build-depends: unix
+
+  if arch(arm)
+    cc-options:  -DCABAL_NO_THREADED
+  else
+    ghc-options: -threaded
   default-language: Haskell2010
 
 custom-setup
