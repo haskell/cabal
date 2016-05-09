@@ -352,13 +352,16 @@ instance Semigroup SavedConfig where
       combinedSavedUploadFlags = UploadFlags {
         uploadCandidate   = combine uploadCandidate,
         uploadDoc         = combine uploadDoc,
+        uploadHaddockProgramPaths = lastNonEmpty uploadHaddockProgramPaths,
+        uploadHaddockProgramArgs  = lastNonEmpty uploadHaddockProgramArgs,
         uploadUsername    = combine uploadUsername,
         uploadPassword    = combine uploadPassword,
         uploadPasswordCmd = combine uploadPasswordCmd,
         uploadVerbosity   = combine uploadVerbosity
         }
         where
-          combine = combine' savedUploadFlags
+          combine      = combine' savedUploadFlags
+          lastNonEmpty = lastNonEmpty' savedUploadFlags
 
       combinedSavedReportFlags = ReportFlags {
         reportUsername  = combine reportUsername,
@@ -734,7 +737,9 @@ configFieldDescriptions src =
 
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
-       ["verbose", "check", "documentation", "publish"] []
+       ["verbose", "check", "documentation", "publish"
+       ,"with-ghc", "with-haddock"
+       ,"ghc-option", "ghc-options", "haddock-option", "haddock-options"] []
 
   ++ toSavedConfig liftReportFlag
        (commandOptions reportCommand ParseArgs)

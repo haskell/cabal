@@ -40,6 +40,7 @@ module Distribution.Simple.Setup (
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
+  defaultHaddockProgramConfiguration,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   buildVerbose,
@@ -55,7 +56,8 @@ module Distribution.Simple.Setup (
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, haddockOptions, installDirsOptions,
-  programConfigurationOptions, programConfigurationPaths',
+  programConfigurationPaths,  programConfigurationPaths',
+  programConfigurationOption, programConfigurationOptions,
   splitArgs,
 
   defaultDistPref, optionDistPref,
@@ -68,7 +70,7 @@ module Distribution.Simple.Setup (
   flagToList,
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
-  optionVerbosity, optionNumJobs, readPToMaybe ) where
+  optionVerbosity, optionNumJobs, readPToMaybe, ) where
 
 import Distribution.Compiler
 import Distribution.ReadE
@@ -1310,9 +1312,12 @@ haddockCommand = CommandUI
              haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
   }
   where
-    progConf = addKnownProgram haddockProgram
-             $ addKnownProgram ghcProgram
-             $ emptyProgramConfiguration
+    progConf = defaultHaddockProgramConfiguration
+
+defaultHaddockProgramConfiguration :: ProgramConfiguration
+defaultHaddockProgramConfiguration = addKnownProgram haddockProgram
+                                     $ addKnownProgram ghcProgram
+                                     $ emptyProgramConfiguration
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
 haddockOptions showOrParseArgs =

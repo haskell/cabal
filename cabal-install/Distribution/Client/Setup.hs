@@ -84,7 +84,10 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, flagToList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
-         , readPToMaybe, optionNumJobs )
+         , readPToMaybe, optionNumJobs
+         , defaultHaddockProgramConfiguration
+         , programConfigurationPaths
+         , programConfigurationOption, programConfigurationOptions )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -1433,6 +1436,8 @@ data IsCandidate = IsCandidate | IsPublished
 data UploadFlags = UploadFlags {
     uploadCandidate   :: Flag IsCandidate,
     uploadDoc         :: Flag Bool,
+    uploadHaddockProgramPaths :: [(String, FilePath)],
+    uploadHaddockProgramArgs  :: [(String, [String])],
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
     uploadPasswordCmd :: Flag [String],
@@ -1443,6 +1448,8 @@ defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
     uploadCandidate   = toFlag IsCandidate,
     uploadDoc         = toFlag False,
+    uploadHaddockProgramPaths = mempty,
+    uploadHaddockProgramArgs  = mempty,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
     uploadPasswordCmd = mempty,
@@ -1460,41 +1467,57 @@ uploadCommand = CommandUI {
     commandUsage        = \pname ->
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
-    commandOptions      = \_ ->
-      [optionVerbosity uploadVerbosity
-       (\v flags -> flags { uploadVerbosity = v })
+    commandOptions      = \showOrParseArgs ->
+      uploadOptions showOrParseArgs
+      ++ programConfigurationPaths progConf ParseArgs
+         uploadHaddockProgramPaths
+         (\v flags -> flags { uploadHaddockProgramPaths = v })
+      ++ programConfigurationOption progConf showOrParseArgs
+         uploadHaddockProgramArgs
+         (\v flags -> flags { uploadHaddockProgramArgs = v })
+      ++ programConfigurationOptions progConf ParseArgs
+         uploadHaddockProgramArgs
+         (\v flags -> flags { uploadHaddockProgramArgs = v })
+  }
+  where
+    progConf = defaultHaddockProgramConfiguration
 
-      ,option [] ["publish"]
-        "Publish the package instead of uploading it as a candidate."
-        uploadCandidate (\v flags -> flags { uploadCandidate = v })
-        (noArg (Flag IsPublished))
+uploadOptions :: ShowOrParseArgs -> [OptionField UploadFlags]
+uploadOptions _ =
+  [optionVerbosity uploadVerbosity
+   (\v flags -> flags { uploadVerbosity = v })
 
-      ,option ['d'] ["documentation"]
-        ("Upload documentation instead of a source package. "
-        ++ "By default, this uploads documentation for a package candidate. "
-        ++ "To upload documentation for "
-        ++ "a published package, combine with --publish.")
-        uploadDoc (\v flags -> flags { uploadDoc = v })
-        trueArg
+  ,option [] ["publish"]
+   "Publish the package instead of uploading it as a candidate."
+    uploadCandidate (\v flags -> flags { uploadCandidate = v })
+    (noArg (Flag IsPublished))
 
-      ,option ['u'] ["username"]
-        "Hackage username."
-        uploadUsername (\v flags -> flags { uploadUsername = v })
-        (reqArg' "USERNAME" (toFlag . Username)
-                            (flagToList . fmap unUsername))
+  ,option ['d'] ["documentation"]
+   ("Upload documentation instead of a source package. "
+   ++ "By default, this uploads documentation for a package candidate. "
+   ++ "To upload documentation for "
+   ++ "a published package, combine with --publish.")
+   uploadDoc (\v flags -> flags { uploadDoc = v })
+   trueArg
 
-      ,option ['p'] ["password"]
-        "Hackage password."
-        uploadPassword (\v flags -> flags { uploadPassword = v })
-        (reqArg' "PASSWORD" (toFlag . Password)
+  ,option ['u'] ["username"]
+   "Hackage username."
+   uploadUsername (\v flags -> flags { uploadUsername = v })
+   (reqArg' "USERNAME" (toFlag . Username)
+    (flagToList . fmap unUsername))
+
+  ,option ['p'] ["password"]
+   "Hackage password."
+   uploadPassword (\v flags -> flags { uploadPassword = v })
+   (reqArg' "PASSWORD" (toFlag . Password)
                             (flagToList . fmap unPassword))
 
-      ,option ['P'] ["password-command"]
-        "Command to get Hackage password."
-        uploadPasswordCmd (\v flags -> flags { uploadPasswordCmd = v })
-        (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
-      ]
-  }
+  ,option ['P'] ["password-command"]
+   "Command to get Hackage password."
+   uploadPasswordCmd (\v flags -> flags { uploadPasswordCmd = v })
+   (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
+  ]
+
 
 instance Monoid UploadFlags where
   mempty = gmempty
