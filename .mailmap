@@ -7,16 +7,18 @@
 Adam Langley                <agl@imperialviolet.org>
 Alistair Bailey             <alistair@abayley.org>                 alistair <alistair@abayley.org>
 Alson Kemp                  <alson@alsonkemp.com>                  alson <alson@alsonkemp.com>
-Andres Löh                  <andres@well-typed.com>
-Andres Löh                  <andres@well-typed.com>                <andres@cs.uu.nl>
-Andres Löh                  <andres@well-typed.com>                <ksgithub@andres-loeh.de>
-Andres Löh                  <andres@well-typed.com>                <mail@andres-loeh.de>
+Andres Löh                  <andres.loeh@gmail.com>
+Andres Löh                  <andres.loeh@gmail.com>                <andres@cs.uu.nl>
+Andres Löh                  <andres.loeh@gmail.com>                <ksgithub@andres-loeh.de>
+Andres Löh                  <andres.loeh@gmail.com>                <mail@andres-loeh.de>
+Andres Löh                  <andres.loeh@gmail.com>                <andres@well-typed.com>
 Audrey Tang                 <audreyt@audreyt.org>                  audreyt <audreyt@audreyt.org>
-Austin Seipp                <austin@well-typed.com>
-Austin Seipp                <austin@well-typed.com>                Austin Seipp <aseipp@pobox.com>
-Austin Seipp                <austin@well-typed.com>                austin seipp <as@0xff.ath.cx>
-Ben Gamari                  <ben@well-typed.com>                   <ben@smart-cactus.org>
-Ben Gamari                  <ben@well-typed.com>                   <bgamari.foss@gmail.com>
+Austin Seipp                <aseipp@pobox.com>
+Austin Seipp                <aseipp@pobox.com>                     <aseipp@well-typed.com>
+Austin Seipp                <aseipp@pobox.com>                     austin seipp <as@0xff.ath.cx>
+Ben Gamari                  <ben@smart-cactus.org>
+Ben Gamari                  <ben@smart-cactus.org>                 <ben@well-typed.com>
+Ben Gamari                  <ben@smart-cactus.org>                 <bgamari.foss@gmail.com>
 Ben Millwood                <thebenmachine+git@gmail.com>          <haskell@benmachine.co.uk>
 Benedikt Huber              <benedikt.huber@gmail.com>             benedikt.huber <benedikt.huber@gmail.com>
 Benno Fünfstück             <benno.fuenfstueck@gmail.com>          <bneno.fuenfstueck@gmail.com>
@@ -27,13 +29,13 @@ Bram Schuur                 <bramschuur@gmail.com>
 Brent Yorgey                <byorgey@gmail.com>                    <byorgey@cis.upenn.edu>
 Brian Smith                 <brianlsmith@gmail.com>                brianlsmith <brianlsmith@gmail.com>
 David Waern                 <davve@dtek.chalmers.se>               David Waern <unknown>
-Duncan Coutts               <duncan@well-typed.com>
-Duncan Coutts               <duncan@well-typed.com>                <Duncan Coutts duncan@community.haskell.org>
-Duncan Coutts               <duncan@well-typed.com>                <duncan.coutts@worc.ox.ac.uk>
-Duncan Coutts               <duncan@well-typed.com>                <duncan@community.haskell.org>
-Duncan Coutts               <duncan@well-typed.com>                <duncan@haskell.org>
-Duncan Coutts               <duncan@well-typed.com>                <duncan@well-typed.com>
-Duncan Coutts               <duncan@well-typed.com>                unknown <unknown> # 04e9fcc80bc68b72126e33b20f08050df28e727d
+Duncan Coutts               <duncan@community.haskell.org>
+Duncan Coutts               <duncan@community.haskell.org>         <Duncan Coutts duncan@community.haskell.org>
+Duncan Coutts               <duncan@community.haskell.org>         <duncan.coutts@worc.ox.ac.uk>
+Duncan Coutts               <duncan@community.haskell.org>         <duncan@community.haskell.org>
+Duncan Coutts               <duncan@community.haskell.org>         <duncan@haskell.org>
+Duncan Coutts               <duncan@community.haskell.org>         <duncan@well-typed.com>
+Duncan Coutts               <duncan@community.haskell.org>         unknown <unknown> # 04e9fcc80bc68b72126e33b20f08050df28e727d
 Edward Z. Yang              <ezyang@cs.stanford.edu>               <ezyang@mit.edu>
 Einar Karttunen             <ekarttun@cs.helsinki.fi>
 Ganesh Sittampalam          <ganesh.sittampalam@credit-suisse.com> <ganesh@earth.li>
