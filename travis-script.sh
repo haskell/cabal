@@ -9,20 +9,30 @@ if [ "$PARSEC_BUNDLED" != "YES" ]; then
 fi
 
 # ---------------------------------------------------------------------
+# Check that auto-generated files/fields are up to date.
+# ---------------------------------------------------------------------
+
+# Regenerate the CONTRIBUTORS file.
+# Currently doesn't work because Travis uses --depth=50 when cloning.
+#./Cabal/misc/gen-authors.sh > AUTHORS
+
+# Regenerate the 'extra-source-files' field in Cabal.cabal.
+cd Cabal
+./misc/gen-extra-source-files.sh Cabal.cabal
+
+# Regenerate the 'extra-source-files' field in cabal-install.cabal.
+cd ../cabal-install
+../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
+cd ..
+
+# Fail if the diff is not empty.
+./Cabal/misc/travis-diff-files.sh
+
+# ---------------------------------------------------------------------
 # Cabal
 # ---------------------------------------------------------------------
 
 cd Cabal
-
-# Test if gen-extra-source-files.sh was run recently enough
-./misc/gen-extra-source-files.sh Cabal.cabal
-./misc/travis-diff-files.sh
-
-cd ../cabal-install
-../Cabal/misc/gen-extra-source-files.sh cabal-install.cabal
-../Cabal/misc/travis-diff-files.sh
-
-cd ../Cabal
 
 # Build the setup script in the same way that cabal-install would:
 mkdir -p ./dist/setup

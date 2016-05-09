@@ -9,17 +9,9 @@ homepage:           http://www.haskell.org/cabal/
 bug-reports:        https://github.com/haskell/cabal/issues
 License:            BSD3
 License-File:       LICENSE
-Author:             Lemmih <lemmih@gmail.com>
-                    Paolo Martini <paolo@nemail.it>
-                    Bjorn Bringert <bjorn@bringert.net>
-                    Isaac Potoczny-Jones <ijones@syntaxpolice.org>
-                    Duncan Coutts <duncan@community.haskell.org>
-Maintainer:         cabal-devel@haskell.org
-Copyright:          2005 Lemmih <lemmih@gmail.com>
-                    2006 Paolo Martini <paolo@nemail.it>
-                    2007 Bjorn Bringert <bjorn@bringert.net>
-                    2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
-                    2007-2012 Duncan Coutts <duncan@community.haskell.org>
+Author:             Cabal Development Team (see AUTHORS file)
+Maintainer:         Cabal Development Team <cabal-devel@haskell.org>
+Copyright:          2003-2016, Cabal Development Team
 Category:           Distribution
 Build-type:         Custom
 Cabal-Version:      >= 1.10
