@@ -14,7 +14,7 @@ fi
 
 # Regenerate the CONTRIBUTORS file.
 # Currently doesn't work because Travis uses --depth=50 when cloning.
-#./Cabal/misc/gen-contributors.sh > CONTRIBUTORS
+#./Cabal/misc/gen-authors.sh > AUTHORS
 
 # Regenerate the 'extra-source-files' field in Cabal.cabal.
 cd Cabal
