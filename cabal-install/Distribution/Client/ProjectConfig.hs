@@ -21,6 +21,7 @@ module Distribution.Client.ProjectConfig (
 
     -- * Packages within projects
     ProjectPackageLocation(..),
+    BadPackageLocations(..),
     BadPackageLocation(..),
     BadPackageLocationMatch(..),
     findProjectPackages,
