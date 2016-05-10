@@ -34,9 +34,9 @@ Just checkURI = parseURI $ "http://hackage.haskell.org/cgi-bin/"
                            ++ "hackage-scripts/check-pkg"
 
 upload :: Verbosity -> RepoContext
-       -> Maybe Username -> Maybe Password -> [FilePath]
+       -> Maybe Username -> Maybe Password -> Bool -> [FilePath]
        -> IO ()
-upload verbosity repoCtxt mUsername mPassword paths = do
+upload verbosity repoCtxt mUsername mPassword candidate paths = do
     let repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
@@ -46,8 +46,10 @@ upload verbosity repoCtxt mUsername mPassword paths = do
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI)
-                      FilePath.Posix.</> "upload"
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</>
+              if candidate
+                then "packages/candidates"
+                else "upload"
         }
     Username username <- maybe promptUsername return mUsername
     Password password <- maybe promptPassword return mPassword
@@ -57,9 +59,9 @@ upload verbosity repoCtxt mUsername mPassword paths = do
       handlePackage transport verbosity uploadURI auth path
 
 uploadDoc :: Verbosity -> RepoContext
-          -> Maybe Username -> Maybe Password -> FilePath
+          -> Maybe Username -> Maybe Password -> Bool -> FilePath
           -> IO ()
-uploadDoc verbosity repoCtxt mUsername mPassword path = do
+uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     let repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
@@ -69,8 +71,11 @@ uploadDoc verbosity repoCtxt mUsername mPassword path = do
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI)
-                      FilePath.Posix.</> "package/" ++ pkgid ++ "/docs"
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> mconcat
+              [ "package/", pkgid
+              , if candidate then "/candidate" else ""
+              , "/docs"
+              ]
         }
         (reverseSuffix, reversePkgid) = break (== '-')
                                         (reverse (takeFileName path))

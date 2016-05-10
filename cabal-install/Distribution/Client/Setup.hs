@@ -1427,6 +1427,7 @@ instance Semigroup InstallFlags where
 -- ------------------------------------------------------------
 
 data UploadFlags = UploadFlags {
+    uploadCandidate   :: Flag Bool,
     uploadCheck       :: Flag Bool,
     uploadDoc         :: Flag Bool,
     uploadUsername    :: Flag Username,
@@ -1437,6 +1438,7 @@ data UploadFlags = UploadFlags {
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
+    uploadCandidate   = toFlag False,
     uploadCheck       = toFlag False,
     uploadDoc         = toFlag False,
     uploadUsername    = mempty,
@@ -1459,13 +1461,19 @@ uploadCommand = CommandUI {
     commandOptions      = \_ ->
       [optionVerbosity uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
 
+      ,option ['C'] ["candidate"]
+        "Upload the package as candidate."
+        uploadCandidate (\v flags -> flags { uploadCandidate = v })
+        trueArg
+
       ,option ['c'] ["check"]
          "Do not upload, just do QA checks."
         uploadCheck (\v flags -> flags { uploadCheck = v })
         trueArg
 
       ,option ['d'] ["documentation"]
-        "Upload documentation instead of a source package. Cannot be used together with --check."
+        "Upload documentation instead of a source package. Cannot be used together with --check. \
+        \\nWhen combined with --candidate, uploads docuementation for a package candidate."
         uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg
 
