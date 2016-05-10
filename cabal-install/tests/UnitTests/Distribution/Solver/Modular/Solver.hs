@@ -139,6 +139,19 @@ tests = [
         , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
         , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
         ]
+      -- Tests designed for the backjumping blog post
+    , testGroup "Backjumping" [
+          runTest $         mkTest dbBJ1a "bj1a" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ1b "bj1b" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ1c "bj1c" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ2  "bj2"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $         mkTest dbBJ3  "bj3 " ["A"]      (SolverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
+        , runTest $         mkTest dbBJ4  "bj4"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $         mkTest dbBJ5  "bj5"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("D", 1)])
+        , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        ]
     ]
   where
     -- | Combinator to turn on --independent-goals behavior, i.e. solve
@@ -823,4 +836,100 @@ dbBuildable2 = [
         , ExFlag "disable-lib" NotBuildable (Buildable [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
+  ]
+
+{-------------------------------------------------------------------------------
+  Simple databases for the illustrations for the backjumping blog post
+-------------------------------------------------------------------------------}
+
+-- | Motivate conflict sets
+dbBJ1a :: ExampleDb
+dbBJ1a = [
+    Right $ exAv "A" 1 [ExFix "B" 1]
+  , Right $ exAv "A" 2 [ExFix "B" 2]
+  , Right $ exAv "B" 1 []
+  ]
+
+-- | Show that we can skip some decisions
+dbBJ1b :: ExampleDb
+dbBJ1b = [
+    Right $ exAv "A" 1 [ExFix "B" 1]
+  , Right $ exAv "A" 2 [ExFix "B" 2, ExAny "C"]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  ]
+
+-- | Motivate why both A and B need to be in the conflict set
+dbBJ1c :: ExampleDb
+dbBJ1c = [
+    Right $ exAv "A" 1 [ExFix "B" 1]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "B" 2 []
+  ]
+
+-- | Motivate the need for accumulating conflict sets while we walk the tree
+dbBJ2 :: ExampleDb
+dbBJ2 = [
+    Right $ exAv "A"  1 [ExFix "B" 1]
+  , Right $ exAv "A"  2 [ExFix "B" 2]
+  , Right $ exAv "B"  1 [ExFix "C" 1]
+  , Right $ exAv "B"  2 [ExFix "C" 2]
+  , Right $ exAv "C"  1 []
+  ]
+
+-- | Motivate the need for `QGoalReason`
+dbBJ3 :: ExampleDb
+dbBJ3 = [
+    Right $ exAv "A"  1 [ExAny "Ba"]
+  , Right $ exAv "A"  2 [ExAny "Bb"]
+  , Right $ exAv "Ba" 1 [ExFix "C" 1]
+  , Right $ exAv "Bb" 1 [ExFix "C" 2]
+  , Right $ exAv "C"  1 []
+  ]
+
+-- | `QGOalReason` not unique
+dbBJ4 :: ExampleDb
+dbBJ4 = [
+    Right $ exAv "A" 1 [ExAny "B", ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
+  ]
+
+-- | Flags are represented somewhat strangely in the tree
+--
+-- This example probably won't be in the blog post itself but as a separate
+-- bug report (#3409)
+dbBJ5 :: ExampleDb
+dbBJ5 = [
+    Right $ exAv "A" 1 [exFlag "flagA" [ExFix "B" 1] [ExFix "C" 1]]
+  , Right $ exAv "B" 1 [ExFix "D" 1]
+  , Right $ exAv "C" 1 [ExFix "D" 2]
+  , Right $ exAv "D" 1 []
+  ]
+
+-- | Conflict sets for cycles
+dbBJ6 :: ExampleDb
+dbBJ6 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "B" 2 [ExAny "C"]
+  , Right $ exAv "C" 1 [ExAny "A"]
+  ]
+
+-- | Conflicts not unique
+dbBJ7 :: ExampleDb
+dbBJ7 = [
+    Right $ exAv "A" 1 [ExAny "B", ExFix "C" 1]
+  , Right $ exAv "B" 1 [ExFix "C" 1]
+  , Right $ exAv "C" 1 []
+  , Right $ exAv "C" 2 []
+  ]
+
+-- | Conflict sets for SIR (C shared subgoal of independent goals A, B)
+dbBJ8 :: ExampleDb
+dbBJ8 = [
+    Right $ exAv "A" 1 [ExAny "C"]
+  , Right $ exAv "B" 1 [ExAny "C"]
+  , Right $ exAv "C" 1 []
   ]

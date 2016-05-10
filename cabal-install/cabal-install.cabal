@@ -134,6 +134,10 @@ Flag debug-conflict-sets
   description:  Add additional information to ConflictSets
   default:      False
 
+Flag debug-tracetree
+  description:  Compile in support for tracetree (used to debug the solver)
+  default:      False
+
 executable cabal
     main-is:        Main.hs
     ghc-options:    -Wall -fwarn-tabs
@@ -323,6 +327,10 @@ executable cabal
       cpp-options: -DDEBUG_CONFLICT_SETS
       build-depends: base >= 4.8
 
+    if flag(debug-tracetree)
+      cpp-options: -DDEBUG_TRACETREE
+      build-depends: tracetree >= 0.1 && < 0.2
+
     default-language: Haskell2010
 
 -- Small, fast running tests.
@@ -395,6 +403,10 @@ Test-Suite unit-tests
     cpp-options: -DDEBUG_CONFLICT_SETS
     build-depends: base >= 4.8
 
+  if flag(debug-tracetree)
+      cpp-options: -DDEBUG_TRACETREE
+      build-depends: tracetree >= 0.1 && < 0.2
+
   default-language: Haskell2010
 
 -- Slow solver tests
@@ -453,6 +465,10 @@ Test-Suite solver-quickcheck
   if flag(debug-conflict-sets)
     cpp-options: -DDEBUG_CONFLICT_SETS
     build-depends: base >= 4.8
+
+  if flag(debug-tracetree)
+      cpp-options: -DDEBUG_TRACETREE
+      build-depends: tracetree >= 0.1 && < 0.2
 
   default-language: Haskell2010
 
