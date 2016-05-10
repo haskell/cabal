@@ -26,6 +26,7 @@ import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
 import Control.Monad (forM_, when)
 import Data.Maybe (catMaybes)
+import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
 
@@ -94,7 +95,7 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     notice verbosity $ "Uploading documentation " ++ path ++ "... "
     resp <- putHttpFile transport verbosity uploadURI path auth headers
     case resp of
-      (200,_)     ->
+      (code,_) | code `elem` [200,204] -> do
         notice verbosity "Ok"
       (code,err)  -> do
         notice verbosity $ "Error uploading documentation "
@@ -159,10 +160,19 @@ handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
 handlePackage transport verbosity uri auth path =
   do resp <- postHttpFile transport verbosity uri path auth
      case resp of
-       (200,_)     ->
-          notice verbosity "Ok"
+       (code,warnings) | code `elem` [200, 204] -> do
+          notice verbosity $ "Ok. " ++ formatWarnings (trim warnings)
        (code,err)  -> do
           notice verbosity $ "Error uploading " ++ path ++ ": "
                           ++ "http code " ++ show code ++ "\n"
                           ++ err
           exitFailure
+
+formatWarnings :: String -> String
+formatWarnings "" = ""
+formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
+
+-- Trim
+trim :: String -> String
+trim = f . f
+      where f = reverse . dropWhile isSpace
