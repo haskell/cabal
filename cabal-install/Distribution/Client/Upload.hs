@@ -60,7 +60,8 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
                 else "upload"
         }
         packageURI pkgid = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
+            uriPath = rootIfEmpty (uriPath targetRepoURI)
+                      FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               ]
@@ -71,9 +72,10 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
     forM_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
-        Just pkgid -> handlePackage transport verbosity uploadURI (packageURI pkgid) auth candidate path
-        -- This case shouldn't really happen, since we check in Main that we only pass tar.gz files
-        -- to upload.
+        Just pkgid -> handlePackage transport verbosity uploadURI
+                                    (packageURI pkgid) auth candidate path
+        -- This case shouldn't really happen, since we check in Main that we
+        -- only pass tar.gz files to upload.
         Nothing -> die $ "Not a tar.gz file: " ++ path
 
 uploadDoc :: Verbosity -> RepoContext
@@ -89,7 +91,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
+            uriPath = rootIfEmpty (uriPath targetRepoURI)
+                      FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               , "/docs"
@@ -188,9 +191,11 @@ handlePackage transport verbosity uri packageUri auth candidate path =
  where
   okMessage
     | candidate =
-        "Package successfully uploaded as candidate. You can now preview the \
-        \result at " ++ show packageUri ++ ". To publish the candidate, use cabal upload --publish."
-    | otherwise = "Package successfully published. You can now view it at " ++ show packageUri ++ "."
+        "Package successfully uploaded as candidate. "
+        ++ "You can now preview the result at '" ++ show packageUri
+        ++ "'. To publish the candidate, use 'cabal upload --publish'."
+    | otherwise = "Package successfully published. You can now view it at '"
+                  ++ show packageUri ++ "'."
 
 formatWarnings :: String -> String
 formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
