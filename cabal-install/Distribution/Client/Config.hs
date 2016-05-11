@@ -350,6 +350,7 @@ instance Semigroup SavedConfig where
                                        `mappend` savedGlobalInstallDirs b
 
       combinedSavedUploadFlags = UploadFlags {
+        uploadCandidate   = combine uploadCandidate,
         uploadCheck       = combine uploadCheck,
         uploadDoc         = combine uploadDoc,
         uploadUsername    = combine uploadUsername,

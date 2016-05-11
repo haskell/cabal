@@ -1078,12 +1078,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
                        repoContext
                        (flagToMaybe $ uploadUsername uploadFlags')
                        maybe_password
+                       (fromFlag (uploadCandidate uploadFlags'))
                        tarfile
     else do
       Upload.upload verbosity
                     repoContext
                     (flagToMaybe $ uploadUsername uploadFlags')
                     maybe_password
+                    (fromFlag (uploadCandidate uploadFlags'))
                     tarfiles
     where
     verbosity = fromFlag (uploadVerbosity uploadFlags)
