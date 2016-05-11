@@ -1,4 +1,4 @@
-module Distribution.Client.Upload (check, upload, uploadDoc, report) where
+module Distribution.Client.Upload (upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
                                  , RemoteRepo(..), maybeRepoRemote )
@@ -15,7 +15,7 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
-import Network.URI (URI(uriPath), parseURI)
+import Network.URI (URI(uriPath))
 import Network.HTTP (Header(..), HeaderName(..))
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
@@ -29,10 +29,6 @@ import Data.Maybe (catMaybes)
 import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
-
-checkURI :: URI
-Just checkURI = parseURI $ "http://hackage.haskell.org/cgi-bin/"
-                           ++ "hackage-scripts/check-pkg"
 
 stripExtensions :: [String] -> FilePath -> Maybe String
 stripExtensions exts path = foldM f path (reverse exts)
@@ -169,13 +165,6 @@ report verbosity repoCtxt mUsername mPassword = do
                        BuildReport.uploadReports verbosity repoCtxt auth
                          (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                        return ()
-
-check :: Verbosity -> RepoContext -> [FilePath] -> IO ()
-check verbosity repoCtxt paths = do
-    transport <- repoContextGetTransport repoCtxt
-    forM_ paths $ \path -> do
-      notice verbosity $ "Checking " ++ path ++ "... "
-      handlePackage transport verbosity checkURI checkURI Nothing False path
 
 handlePackage :: HttpTransport -> Verbosity -> URI -> URI -> Auth
               -> Bool -> FilePath -> IO ()

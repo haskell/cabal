@@ -1054,9 +1054,6 @@ uploadAction uploadFlags extraArgs globalFlags = do
       tarfiles     = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     die "the 'upload' command expects at least one .tar.gz archive."
-  when (fromFlag (uploadCheck uploadFlags')
-        && fromFlag (uploadDoc uploadFlags')) $
-    die "--check and --doc cannot be used together."
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags'
@@ -1065,10 +1062,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
                         (simpleProgramInvocation xs xss)
        _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
   withRepoContext verbosity globalFlags' $ \repoContext -> do
-    if fromFlag (uploadCheck uploadFlags')
-    then do
-      Upload.check verbosity repoContext tarfiles
-    else if fromFlag (uploadDoc uploadFlags')
+    if fromFlag (uploadDoc uploadFlags')
     then do
       when (length tarfiles > 1) $
        die $ "the 'upload' command can only upload documentation "

@@ -10,6 +10,8 @@
 	package on Hackage instead of uploading a candidate (#3419).
 	* Added optional solver output visualisation support via the
 	tracetree package. Mainly intended for debugging (#3410).
+	* Removed the '--check' option from 'cabal upload'
+	(#1823). It was replaced by package candidates.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates

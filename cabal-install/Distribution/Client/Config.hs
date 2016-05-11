@@ -351,7 +351,6 @@ instance Semigroup SavedConfig where
 
       combinedSavedUploadFlags = UploadFlags {
         uploadCandidate   = combine uploadCandidate,
-        uploadCheck       = combine uploadCheck,
         uploadDoc         = combine uploadDoc,
         uploadUsername    = combine uploadUsername,
         uploadPassword    = combine uploadPassword,
