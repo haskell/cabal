@@ -30,6 +30,10 @@ import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
 
+-- > stripExtensions ["tar", "gz"] "foo.tar.gz"
+-- Just "foo"
+-- > stripExtensions ["tar", "gz"] "foo.gz.tar"
+-- Nothing
 stripExtensions :: [String] -> FilePath -> Maybe String
 stripExtensions exts path = foldM f path (reverse exts)
  where
