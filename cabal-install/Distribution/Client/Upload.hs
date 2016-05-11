@@ -60,7 +60,7 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
                 else "upload"
         }
         packageURI pkgid = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> mconcat
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               ]
@@ -89,7 +89,7 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> mconcat
+            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               , "/docs"
