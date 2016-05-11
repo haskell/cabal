@@ -1,4 +1,4 @@
-module Distribution.Client.Upload (check, upload, uploadDoc, report) where
+module Distribution.Client.Upload (upload, uploadDoc, report) where
 
 import Distribution.Client.Types ( Username(..), Password(..)
                                  , RemoteRepo(..), maybeRepoRemote )
@@ -15,7 +15,7 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
-import Network.URI (URI(uriPath), parseURI)
+import Network.URI (URI(uriPath))
 import Network.HTTP (Header(..), HeaderName(..))
 
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
@@ -30,10 +30,10 @@ import Data.Char (isSpace)
 
 type Auth = Maybe (String, String)
 
-checkURI :: URI
-Just checkURI = parseURI $ "http://hackage.haskell.org/cgi-bin/"
-                           ++ "hackage-scripts/check-pkg"
-
+-- > stripExtensions ["tar", "gz"] "foo.tar.gz"
+-- Just "foo"
+-- > stripExtensions ["tar", "gz"] "foo.gz.tar"
+-- Nothing
 stripExtensions :: [String] -> FilePath -> Maybe String
 stripExtensions exts path = foldM f path (reverse exts)
  where
@@ -60,7 +60,8 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
                 else "upload"
         }
         packageURI pkgid = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
+            uriPath = rootIfEmpty (uriPath targetRepoURI)
+                      FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               ]
@@ -71,9 +72,10 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
     forM_ paths $ \path -> do
       notice verbosity $ "Uploading " ++ path ++ "... "
       case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
-        Just pkgid -> handlePackage transport verbosity uploadURI (packageURI pkgid) auth candidate path
-        -- This case shouldn't really happen, since we check in Main that we only pass tar.gz files
-        -- to upload.
+        Just pkgid -> handlePackage transport verbosity uploadURI
+                                    (packageURI pkgid) auth candidate path
+        -- This case shouldn't really happen, since we check in Main that we
+        -- only pass tar.gz files to upload.
         Nothing -> die $ "Not a tar.gz file: " ++ path
 
 uploadDoc :: Verbosity -> RepoContext
@@ -89,7 +91,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     let targetRepoURI = remoteRepoURI targetRepo
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
-            uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</> concat
+            uriPath = rootIfEmpty (uriPath targetRepoURI)
+                      FilePath.Posix.</> concat
               [ "package/", pkgid
               , if candidate then "/candidate" else ""
               , "/docs"
@@ -112,6 +115,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     notice verbosity $ "Uploading documentation " ++ path ++ "... "
     resp <- putHttpFile transport verbosity uploadURI path auth headers
     case resp of
+      -- Hackage responds with 204 No Content when docs are uploaded
+      -- successfully.
       (code,_) | code `elem` [200,204] -> do
         notice verbosity "Ok"
       (code,err)  -> do
@@ -165,13 +170,6 @@ report verbosity repoCtxt mUsername mPassword = do
                          (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                        return ()
 
-check :: Verbosity -> RepoContext -> [FilePath] -> IO ()
-check verbosity repoCtxt paths = do
-    transport <- repoContextGetTransport repoCtxt
-    forM_ paths $ \path -> do
-      notice verbosity $ "Checking " ++ path ++ "... "
-      handlePackage transport verbosity checkURI checkURI Nothing False path
-
 handlePackage :: HttpTransport -> Verbosity -> URI -> URI -> Auth
               -> Bool -> FilePath -> IO ()
 handlePackage transport verbosity uri packageUri auth candidate path =
@@ -188,9 +186,11 @@ handlePackage transport verbosity uri packageUri auth candidate path =
  where
   okMessage
     | candidate =
-        "Package successfully uploaded as candidate. You can now preview the \
-        \result at " ++ show packageUri ++ ". To publish the candidate, use cabal upload --publish."
-    | otherwise = "Package successfully published. You can now view it at " ++ show packageUri ++ "."
+        "Package successfully uploaded as candidate. "
+        ++ "You can now preview the result at '" ++ show packageUri
+        ++ "'. To publish the candidate, use 'cabal upload --publish'."
+    | otherwise = "Package successfully published. You can now view it at '"
+                  ++ show packageUri ++ "'."
 
 formatWarnings :: String -> String
 formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
