@@ -115,6 +115,8 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
     notice verbosity $ "Uploading documentation " ++ path ++ "... "
     resp <- putHttpFile transport verbosity uploadURI path auth headers
     case resp of
+      -- Hackage responds with 204 No Content when docs are uploaded
+      -- successfully.
       (code,_) | code `elem` [200,204] -> do
         notice verbosity "Ok"
       (code,err)  -> do
