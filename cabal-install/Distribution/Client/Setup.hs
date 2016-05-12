@@ -35,7 +35,7 @@ module Distribution.Client.Setup
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
-    , uploadCommand, UploadFlags(..)
+    , uploadCommand, UploadFlags(..), IsCandidate(..)
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, IT.InitFlags(..)
@@ -1426,8 +1426,12 @@ instance Semigroup InstallFlags where
 -- * Upload flags
 -- ------------------------------------------------------------
 
+-- | Is this a candidate package or a package to be published?
+data IsCandidate = IsCandidate | IsPublished
+                 deriving Eq
+
 data UploadFlags = UploadFlags {
-    uploadCandidate   :: Flag Bool,
+    uploadCandidate   :: Flag IsCandidate,
     uploadDoc         :: Flag Bool,
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
@@ -1437,7 +1441,7 @@ data UploadFlags = UploadFlags {
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
-    uploadCandidate   = toFlag True,
+    uploadCandidate   = toFlag IsCandidate,
     uploadDoc         = toFlag False,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
@@ -1463,7 +1467,7 @@ uploadCommand = CommandUI {
       ,option [] ["publish"]
         "Publish the package instead of uploading it as a candidate."
         uploadCandidate (\v flags -> flags { uploadCandidate = v })
-        falseArg
+        (noArg (Flag IsPublished))
 
       ,option ['d'] ["documentation"]
         ("Upload documentation instead of a source package. "

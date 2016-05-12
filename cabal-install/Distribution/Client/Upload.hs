@@ -5,7 +5,7 @@ import Distribution.Client.Types ( Username(..), Password(..)
 import Distribution.Client.HttpUtils
          ( HttpTransport(..), remoteRepoTryUpgradeToHttps )
 import Distribution.Client.Setup
-         ( RepoContext(..) )
+         ( IsCandidate(..), RepoContext(..) )
 
 import Distribution.Simple.Utils (notice, warn, info, die)
 import Distribution.Verbosity (Verbosity)
@@ -42,9 +42,9 @@ stripExtensions exts path = foldM f path (reverse exts)
     | otherwise = Nothing
 
 upload :: Verbosity -> RepoContext
-       -> Maybe Username -> Maybe Password -> Bool -> [FilePath]
+       -> Maybe Username -> Maybe Password -> IsCandidate -> [FilePath]
        -> IO ()
-upload verbosity repoCtxt mUsername mPassword candidate paths = do
+upload verbosity repoCtxt mUsername mPassword isCandidate paths = do
     let repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
@@ -55,15 +55,17 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
         rootIfEmpty x = if null x then "/" else x
         uploadURI = targetRepoURI {
             uriPath = rootIfEmpty (uriPath targetRepoURI) FilePath.Posix.</>
-              if candidate
-                then "packages/candidates"
-                else "upload"
+              case isCandidate of
+                IsCandidate -> "packages/candidates"
+                IsPublished -> "upload"
         }
         packageURI pkgid = targetRepoURI {
             uriPath = rootIfEmpty (uriPath targetRepoURI)
                       FilePath.Posix.</> concat
               [ "package/", pkgid
-              , if candidate then "/candidate" else ""
+              , case isCandidate of
+                  IsCandidate -> "/candidate"
+                  IsPublished -> ""
               ]
         }
     Username username <- maybe promptUsername return mUsername
@@ -73,15 +75,15 @@ upload verbosity repoCtxt mUsername mPassword candidate paths = do
       notice verbosity $ "Uploading " ++ path ++ "... "
       case fmap takeFileName (stripExtensions ["tar", "gz"] path) of
         Just pkgid -> handlePackage transport verbosity uploadURI
-                                    (packageURI pkgid) auth candidate path
+                                    (packageURI pkgid) auth isCandidate path
         -- This case shouldn't really happen, since we check in Main that we
         -- only pass tar.gz files to upload.
         Nothing -> die $ "Not a tar.gz file: " ++ path
 
 uploadDoc :: Verbosity -> RepoContext
-          -> Maybe Username -> Maybe Password -> Bool -> FilePath
+          -> Maybe Username -> Maybe Password -> IsCandidate -> FilePath
           -> IO ()
-uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
+uploadDoc verbosity repoCtxt mUsername mPassword isCandidate path = do
     let repos = repoContextRepos repoCtxt
     transport  <- repoContextGetTransport repoCtxt
     targetRepo <-
@@ -94,7 +96,9 @@ uploadDoc verbosity repoCtxt mUsername mPassword candidate path = do
             uriPath = rootIfEmpty (uriPath targetRepoURI)
                       FilePath.Posix.</> concat
               [ "package/", pkgid
-              , if candidate then "/candidate" else ""
+              , case isCandidate of
+                IsCandidate -> "/candidate"
+                IsPublished -> ""
               , "/docs"
               ]
         }
@@ -171,12 +175,12 @@ report verbosity repoCtxt mUsername mPassword = do
                        return ()
 
 handlePackage :: HttpTransport -> Verbosity -> URI -> URI -> Auth
-              -> Bool -> FilePath -> IO ()
-handlePackage transport verbosity uri packageUri auth candidate path =
+              -> IsCandidate -> FilePath -> IO ()
+handlePackage transport verbosity uri packageUri auth isCandidate path =
   do resp <- postHttpFile transport verbosity uri path auth
      case resp of
        (code,warnings) | code `elem` [200, 204] ->
-          notice verbosity $ okMessage ++
+          notice verbosity $ okMessage isCandidate ++
             if null warnings then "" else "\n" ++ formatWarnings (trim warnings)
        (code,err)  -> do
           notice verbosity $ "Error uploading " ++ path ++ ": "
@@ -184,13 +188,13 @@ handlePackage transport verbosity uri packageUri auth candidate path =
                           ++ err
           exitFailure
  where
-  okMessage
-    | candidate =
-        "Package successfully uploaded as candidate. "
-        ++ "You can now preview the result at '" ++ show packageUri
-        ++ "'. To publish the candidate, use 'cabal upload --publish'."
-    | otherwise = "Package successfully published. You can now view it at '"
-                  ++ show packageUri ++ "'."
+  okMessage IsCandidate =
+    "Package successfully uploaded as candidate. "
+    ++ "You can now preview the result at '" ++ show packageUri
+    ++ "'. To publish the candidate, use 'cabal upload --publish'."
+  okMessage IsPublished =
+    "Package successfully published. You can now view it at '"
+    ++ show packageUri ++ "'."
 
 formatWarnings :: String -> String
 formatWarnings x = "Warnings:\n" ++ (unlines . map ("- " ++) . lines) x
