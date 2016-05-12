@@ -1457,7 +1457,8 @@ uploadCommand = CommandUI {
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
     commandOptions      = \_ ->
-      [optionVerbosity uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
+      [optionVerbosity uploadVerbosity
+       (\v flags -> flags { uploadVerbosity = v })
 
       ,option [] ["publish"]
         "Publish the package instead of uploading it as a candidate."
@@ -1465,9 +1466,10 @@ uploadCommand = CommandUI {
         falseArg
 
       ,option ['d'] ["documentation"]
-        "Upload documentation instead of a source package. Cannot be used together with --check. \
-        \By default, this uploads documentation for a package candidate. To upload documentation for \
-        \a published package, combine with --publish."
+        ("Upload documentation instead of a source package. "
+        ++ "By default, this uploads documentation for a package candidate. "
+        ++ "To upload documentation for "
+        ++ "a published package, combine with --publish.")
         uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg
 
