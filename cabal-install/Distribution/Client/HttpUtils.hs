@@ -363,6 +363,7 @@ curlTransport prog =
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
                    , "--header", "Accept: text/plain"
+                   , "--location"
                    ]
         resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
@@ -375,6 +376,7 @@ curlTransport prog =
                    , "--write-out", "\n%{http_code}"
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
+                   , "--location"
                    , "--header", "Accept: text/plain"
                    ]
                 ++ concat
@@ -415,7 +417,7 @@ wgetTransport prog =
   where
     gethttp verbosity uri etag destPath reqHeaders = do
         resp <- runWGet verbosity uri args
-        (code, _err, etag') <- parseResponse uri resp
+        (code, etag') <- parseOutput uri resp
         return (code, etag')
       where
         args = [ "--output-document=" ++ destPath
@@ -433,31 +435,39 @@ wgetTransport prog =
 
     posthttpfile verbosity  uri path auth =
         withTempFile (takeDirectory path)
-                     (takeFileName path) $ \tmpFile tmpHandle -> do
+                     (takeFileName path) $ \tmpFile tmpHandle ->
+        withTempFile (takeDirectory path) "response" $ \responseFile responseHandle -> do
+          hClose responseHandle
           (body, boundary) <- generateMultipartBody path
           BS.hPut tmpHandle body
-          BS.writeFile "wget.in" body
           hClose tmpHandle
           let args = [ "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
                      , "--server-response"
+                     , "--output-document=" ++ responseFile
+                     , "--header=Accept: text/plain"
                      , "--header=Content-type: multipart/form-data; " ++
                                               "boundary=" ++ boundary ]
-          resp <- runWGet verbosity (addUriAuth auth uri) args
-          (code, err, _etag) <- parseResponse uri resp
-          return (code, err)
+          out <- runWGet verbosity (addUriAuth auth uri) args
+          (code, _etag) <- parseOutput uri out
+          resp <- readFile responseFile
+          return (code, resp)
 
-    puthttpfile verbosity uri path auth headers = do
-        let args = [ "--method=PUT", "--body-file="++path
-                   , "--user-agent=" ++ userAgent
-                   , "--server-response"
-                   , "--header=Accept: text/plain" ]
-                ++ [ "--header=" ++ show name ++ ": " ++ value
-                   | Header name value <- headers ]
+    puthttpfile verbosity uri path auth headers =
+        withTempFile (takeDirectory path) "response" $ \responseFile responseHandle -> do
+            hClose responseHandle
+            let args = [ "--method=PUT", "--body-file="++path
+                       , "--user-agent=" ++ userAgent
+                       , "--server-response"
+                       , "--output-document=" ++ responseFile
+                       , "--header=Accept: text/plain" ]
+                    ++ [ "--header=" ++ show name ++ ": " ++ value
+                       | Header name value <- headers ]
 
-        resp <- runWGet verbosity (addUriAuth auth uri) args
-        (code, err, _etag) <- parseResponse uri resp
-        return (code, err)
+            out <- runWGet verbosity (addUriAuth auth uri) args
+            (code, _etag) <- parseOutput uri out
+            resp <- readFile responseFile
+            return (code, resp)
 
     addUriAuth Nothing uri = uri
     addUriAuth (Just (user, pass)) uri = uri
@@ -487,23 +497,19 @@ wgetTransport prog =
     -- http server response with all headers, we want to find a line like
     -- "HTTP/1.1 200 OK", but only the last one, since we can have multiple
     -- requests due to redirects.
-    --
-    -- Unfortunately wget apparently cannot be persuaded to give us the body
-    -- of error responses, so we just return the human readable status message
-    -- like "Forbidden" etc.
-    parseResponse uri resp =
-      let codeerr = listToMaybe
-                    [ (code, unwords err)
-                    | (protocol:codestr:err) <- map words (reverse (lines resp))
-                    , "HTTP/" `isPrefixOf` protocol
-                    , code <- maybeToList (readMaybe codestr) ]
+    parseOutput uri resp =
+      let parsedCode = listToMaybe
+                     [ code
+                     | (protocol:codestr:_err) <- map words (reverse (lines resp))
+                     , "HTTP/" `isPrefixOf` protocol
+                     , code <- maybeToList (readMaybe codestr) ]
           mb_etag :: Maybe ETag
           mb_etag  = listToMaybe
                     [ etag
                     | ["ETag:", etag] <- map words (reverse (lines resp)) ]
-       in case codeerr of
-            Just (i, err) -> return (i, err, mb_etag)
-            _             -> statusParseFail uri resp
+       in case parsedCode of
+            Just i -> return (i, mb_etag)
+            _      -> statusParseFail uri resp
 
 
 powershellTransport :: ConfiguredProgram -> HttpTransport
