@@ -12,6 +12,8 @@
 	tracetree package. Mainly intended for debugging (#3410).
 	* Removed the '--check' option from 'cabal upload'
 	(#1823). It was replaced by package candidates.
+	* Fixed various behaviour differences between network transports
+	(#3429).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
