@@ -440,7 +440,6 @@ wgetTransport prog =
           hClose responseHandle
           (body, boundary) <- generateMultipartBody path
           BS.hPut tmpHandle body
-          BS.writeFile "wget.in" body
           hClose tmpHandle
           let args = [ "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
