@@ -1097,8 +1097,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
     generateDocTarball config = do
-      notice verbosity
-        "No documentation tarball specified. Building documentation tarball..."
+      notice verbosity $
+        "No documentation tarball specified. "
+        ++ "Building a documentation tarball with default settings...\n"
+        ++ "If you need to customise Haddock options, "
+        ++ "run 'haddock --for-hackage' first "
+        ++ "to generate a documentation tarball."
       haddockAction (defaultHaddockFlags { haddockForHackage = Flag True })
                     [] globalFlags
       distPref <- findSavedDistPref config NoFlag
