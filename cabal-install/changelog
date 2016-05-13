@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.24.0.1 Ryan Thomas <ryan@ryant.org> June 2016
+	* Fixed various behaviour differences between network transports
+	(#3429).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> May 2016
 	* If there are multiple remote repos, 'cabal update' now updates
