@@ -443,6 +443,7 @@ wgetTransport prog =
           let args = [ "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
                      , "--server-response"
+                     , "--header=Accept: text/plain"
                      , "--header=Content-type: multipart/form-data; " ++
                                               "boundary=" ++ boundary ]
           resp <- runWGet verbosity (addUriAuth auth uri) args
