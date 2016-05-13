@@ -1097,9 +1097,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
     generateDocTarball config = do
+      let haddockFlags =
+            defaultHaddockFlags
+            { haddockForHackage   = Flag True
+            , haddockProgramPaths = uploadHaddockProgramPaths uploadFlags
+            , haddockProgramArgs  = uploadHaddockProgramArgs  uploadFlags }
       notice verbosity
         "No documentation tarball specified. Building documentation tarball..."
-      haddockAction (defaultHaddockFlags { haddockForHackage = Flag True })
+      haddockAction haddockFlags
                     [] globalFlags
       distPref <- findSavedDistPref config NoFlag
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
