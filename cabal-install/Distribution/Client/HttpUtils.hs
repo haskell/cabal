@@ -363,6 +363,7 @@ curlTransport prog =
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
                    , "--header", "Accept: text/plain"
+                   , "--location"
                    ]
         resp <- getProgramInvocationOutput verbosity $ addAuthConfig auth
                   (programInvocation prog args)
@@ -375,6 +376,7 @@ curlTransport prog =
                    , "--write-out", "\n%{http_code}"
                    , "--user-agent", userAgent
                    , "--silent", "--show-error"
+                   , "--location"
                    , "--header", "Accept: text/plain"
                    ]
                 ++ concat
