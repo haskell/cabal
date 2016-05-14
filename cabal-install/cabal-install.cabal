@@ -69,6 +69,7 @@ Extra-Source-Files:
   tests/IntegrationTests/freeze/freezes_transitive_dependencies.sh
   tests/IntegrationTests/freeze/my.cabal
   tests/IntegrationTests/freeze/runs_without_error.sh
+  tests/IntegrationTests/internal-libs/cabal.project
   tests/IntegrationTests/internal-libs/internal_lib_basic.sh
   tests/IntegrationTests/internal-libs/internal_lib_shadow.sh
   tests/IntegrationTests/internal-libs/new_build.sh
@@ -85,6 +86,7 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
+  tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/p/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/p/p.cabal
