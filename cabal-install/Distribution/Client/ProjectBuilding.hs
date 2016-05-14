@@ -1129,7 +1129,8 @@ buildInplaceUnpackedPackage verbosity
         -- Configure phase
         --
         whenReConfigure $ do
-          setup configureCommand configureFlags []
+          annotateFailure ConfigureFailed $
+            setup configureCommand configureFlags []
           invalidatePackageRegFileMonitor packageFileMonitor
           updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
 
@@ -1143,7 +1144,8 @@ buildInplaceUnpackedPackage verbosity
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
-          setup buildCommand buildFlags buildArgs
+          annotateFailure BuildFailed $
+            setup buildCommand buildFlags buildArgs
 
           --TODO: [required eventually] this doesn't track file
           --non-existence, so we could fail to rebuild if someone
@@ -1154,7 +1156,7 @@ buildInplaceUnpackedPackage verbosity
                                         pkg buildStatus
                                         allSrcFiles buildSuccess
 
-        ipkgs <- whenReRegister $ do
+        ipkgs <- whenReRegister $ annotateFailure InstallFailed $ do
           -- Register locally
           ipkgs <- if pkgRequiresRegistration pkg
             then do
@@ -1228,10 +1230,12 @@ buildInplaceUnpackedPackage verbosity
         -- Repl phase
         --
         whenRepl $
+          annotateFailure BuildFailed $
           setup replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
+          annotateFailure BuildFailed $
           setup haddockCommand haddockFlags []
 
         return (BuildSuccess ipkgs buildSuccess)
@@ -1315,8 +1319,12 @@ annotateFailure annotate action =
     ]
   where
     handler :: Exception e => e -> IO a
-    handler = throwIO . annotate . show
-                       --TODO: [nice to have] use displayException when available
+    handler = throwIO . annotate
+#if MIN_VERSION_base(4,8,0)
+            . displayException
+#else
+            . show
+#endif
 
 
 withTempInstalledPackageInfoFiles :: Verbosity -> FilePath
