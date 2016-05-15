@@ -119,6 +119,11 @@ Extra-Source-Files:
   tests/IntegrationTests2/exception/configure/a.cabal
   tests/IntegrationTests2/exception/no-pkg/empty.in
   tests/IntegrationTests2/exception/no-pkg2/cabal.project
+  tests/IntegrationTests2/regression/3324/cabal.project
+  tests/IntegrationTests2/regression/3324/p/P.hs
+  tests/IntegrationTests2/regression/3324/p/p.cabal
+  tests/IntegrationTests2/regression/3324/q/Q.hs
+  tests/IntegrationTests2/regression/3324/q/q.cabal
   -- END gen-extra-source-files
 
 source-repository head

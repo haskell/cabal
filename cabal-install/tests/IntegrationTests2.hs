@@ -46,6 +46,10 @@ tests =
 --    , testCase "register"   testExceptionInRegisterStep
     ]
     --TODO: need to repeat for packages for the store
+
+  , testGroup "Regression tests" $
+    [ testCase "issue #3324" testRegressionIssue3324
+    ]
   ]
 
 testExceptionInFindingPackage :: Assertion
@@ -94,19 +98,42 @@ testExceptionInBuildStep = do
     plan  <- planProject testdir config
     plan' <- executePlan plan
     (_pkga1, failure) <- expectPackageFailed plan' pkgidA1
-    case failure of
-      BuildFailed _str -> return ()
-      _ -> assertFailure $ "expected BuildFailed, got " ++ show failure 
+    expectBuildFailed failure
   where
     testdir = "exception/build"
     config  = mempty
     pkgidA1 = PackageIdentifier (PackageName "a") (Version [1] [])
 
+-- | See <https://github.com/haskell/cabal/issues/3324>
+--
+testRegressionIssue3324 :: Assertion
+testRegressionIssue3324 = do
+    -- expected failure first time due to missing dep
+    plan1 <- executePlan =<< planProject testdir config
+    (_pkgq, failure) <- expectPackageFailed plan1 pkgidQ
+    expectBuildFailed failure
+
+    -- add the missing dep, now it should work
+    let qcabal  = basedir </> testdir </> "q" </> "q.cabal"
+    withFileFinallyRestore qcabal $ do
+      appendFile qcabal ("  build-depends: p\n")
+      plan2 <- executePlan =<< planProject testdir config
+      _ <- expectPackageInstalled plan2 pkgidP
+      _ <- expectPackageInstalled plan2 pkgidQ
+      return ()
+  where
+    testdir = "regression/3324"
+    config  = mempty
+    pkgidP  = PackageIdentifier (PackageName "p") (Version [0,1] [])
+    pkgidQ  = PackageIdentifier (PackageName "q") (Version [0,1] [])
 
 
 ---------------------------------
 -- Test utils to plan and build
 --
+
+basedir :: FilePath
+basedir = "tests" </> "IntegrationTests2"
 
 planProject :: FilePath -> ProjectConfig -> IO PlanDetails
 planProject testdir cliConfig = do
@@ -259,3 +286,20 @@ expectPlanPackage plan pkgid =
                    "expected to find only one instance of " ++ display pkgid
                 ++ " in the install plan but there's several"
 
+expectBuildFailed :: BuildFailure -> IO ()
+expectBuildFailed (BuildFailed _str) = return ()
+expectBuildFailed failure = assertFailure $ "expected BuildFailed, got "
+                                         ++ show failure
+
+---------------------------------------
+-- Other utils
+--
+
+-- | Allow altering a file during a test, but then restore it afterwards
+--
+withFileFinallyRestore :: FilePath -> IO a -> IO a
+withFileFinallyRestore file action = do
+    copyFile file backup
+    action `finally` renameFile backup file
+  where
+    backup = file <.> "backup"

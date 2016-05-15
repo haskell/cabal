@@ -1,8 +1,8 @@
-name: a
-version: 1
+name: p
+version: 0.1
 build-type: Simple
 cabal-version: >= 1.2
 
-executable a
-  main-is: Main.hs
+library
+  exposed-modules: P
   build-depends: base
