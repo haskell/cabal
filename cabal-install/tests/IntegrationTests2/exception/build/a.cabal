@@ -5,4 +5,4 @@ cabal-version: >= 1.2
 
 executable a
   main-is: Main.hs
-  build-depends: haskell2010
+  build-depends: base
