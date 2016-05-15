@@ -93,6 +93,7 @@ cabal build
 cabal haddock # see https://github.com/haskell/cabal/issues/2198
 cabal test unit-tests --show-details=streaming --test-option=--hide-successes
 cabal test integration-tests --show-details=streaming --test-option=--hide-successes
+cabal test integration-tests2 --show-details=streaming --test-option=--hide-successes
 cabal test solver-quickcheck --show-details=streaming --test-option=--hide-successes \
     --test-option=--quickcheck-tests=1000
 cabal check
