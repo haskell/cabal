@@ -114,6 +114,15 @@ Extra-Source-Files:
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
   tests/IntegrationTests2.hs
+  tests/IntegrationTests2/build/setup-custom1/A.hs
+  tests/IntegrationTests2/build/setup-custom1/Setup.hs
+  tests/IntegrationTests2/build/setup-custom1/a.cabal
+  tests/IntegrationTests2/build/setup-custom2/A.hs
+  tests/IntegrationTests2/build/setup-custom2/Setup.hs
+  tests/IntegrationTests2/build/setup-custom2/a.cabal
+  tests/IntegrationTests2/build/setup-simple/A.hs
+  tests/IntegrationTests2/build/setup-simple/Setup.hs
+  tests/IntegrationTests2/build/setup-simple/a.cabal
   tests/IntegrationTests2/exception/build/Main.hs
   tests/IntegrationTests2/exception/build/a.cabal
   tests/IntegrationTests2/exception/configure/a.cabal
@@ -547,7 +556,8 @@ test-suite integration-tests2
         time,
         zlib,
         tasty,
-        tasty-hunit
+        tasty-hunit,
+        tagged
 
   if flag(old-bytestring)
     build-depends: bytestring-builder
