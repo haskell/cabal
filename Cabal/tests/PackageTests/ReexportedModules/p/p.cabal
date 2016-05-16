@@ -1,6 +1,5 @@
-name:                ReexportedModules
+name:                p
 version:             0.1.0.0
-license-file:        LICENSE
 author:              Edward Z. Yang
 maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
@@ -8,4 +7,7 @@ cabal-version:       >=1.21
 
 library
   build-depends:       base, containers
-  reexported-modules:  containers:Data.Map as DataMap
+  reexported-modules:  containers:Data.Map as DataMap,
+                       Data.Graph,
+                       Data.Set as Set,
+                       containers:Data.Tree
