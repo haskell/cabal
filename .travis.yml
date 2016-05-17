@@ -23,7 +23,6 @@ before_install:
  - git version
 
 install:
- - cabal update
  # We intentionally do not install anything before trying to build Cabal because
  # it should build with each supported GHC version out-of-the-box.
 
