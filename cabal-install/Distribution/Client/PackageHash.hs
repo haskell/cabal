@@ -16,6 +16,9 @@ module Distribution.Client.PackageHash (
     hashedInstalledPackageId,
     hashPackageHashInputs,
     renderPackageHashInputs,
+    -- ** Platform-specific variations
+    hashedInstalledPackageIdLong,
+    hashedInstalledPackageIdShort,
 
     -- * Low level hash choice
     HashValue,
@@ -26,9 +29,9 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, mkUnitId )
+         ( PackageId, PackageIdentifier(..), mkUnitId )
 import Distribution.System
-         ( Platform )
+         ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Compiler
@@ -65,12 +68,65 @@ import System.IO         (withBinaryFile, IOMode(..))
 -- | Calculate a 'InstalledPackageId' for a package using our nix-style
 -- inputs hashing method.
 --
+-- Note that due to path length limitations on Windows, this function uses
+-- a different method on Windows that produces shorted package ids.
+-- See 'hashedInstalledPackageIdLong' vs 'hashedInstalledPackageIdShort'.
+--
 hashedInstalledPackageId :: PackageHashInputs -> InstalledPackageId
-hashedInstalledPackageId pkghashinputs@PackageHashInputs{pkgHashPkgId} =
+hashedInstalledPackageId
+  | buildOS == Windows = hashedInstalledPackageIdShort
+  | otherwise          = hashedInstalledPackageIdLong
+
+-- | Calculate a 'InstalledPackageId' for a package using our nix-style
+-- inputs hashing method.
+--
+-- This produces large ids with big hashes. It is only suitable for systems
+-- without significant path length limitations (ie not Windows).
+--
+hashedInstalledPackageIdLong :: PackageHashInputs -> InstalledPackageId
+hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
     mkUnitId $
          display pkgHashPkgId   -- to be a bit user friendly
       ++ "-"
       ++ showHashValue (hashPackageHashInputs pkghashinputs)
+
+-- | On Windows we have serious problems with path lengths. Windows imposes a
+-- maximum path length of 260 chars, and even if we can use the windows long
+-- path APIs ourselves, we cannot guarantee that ghc, gcc, ld, ar, etc etc all
+-- do so too.
+--
+-- So our only choice is to limit the lengths of the paths, and the only real
+-- way to do that is to limit the size of the 'InstalledPackageId's that we
+-- generate. We do this by truncating the package names and versions and also
+-- by truncating the hash sizes.
+--
+-- Truncating the package names and versions is technically ok because they are
+-- just included for human convenience, the full source package id is included
+-- in the hash.
+--
+-- Truncating the hash size is disappointing but also technically ok. We
+-- rely on the hash primarily for collision avoidance not for any securty
+-- properties (at least for now).
+--
+hashedInstalledPackageIdShort :: PackageHashInputs -> InstalledPackageId
+hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
+    mkUnitId $
+      intercalate "-"
+        -- max length now 64
+        [ truncateStr 14 (display name)
+        , truncateStr  8 (display version)
+        , showHashValue (truncateHash (hashPackageHashInputs pkghashinputs))
+        ]
+  where
+    PackageIdentifier name version = pkgHashPkgId
+
+    -- Truncate a 32 byte SHA256 hash to 160bits, 20 bytes :-(
+    -- It'll render as 40 hex chars.
+    truncateHash (HashValue h) = HashValue (BS.take 20 h)
+
+    -- Truncate a string, with a visual indication that it is truncated.
+    truncateStr n s | length s <= n = s
+                    | otherwise     = take (n-1) s ++ "_"
 
 -- | All the information that contribues to a package's hash, and thus its
 -- 'InstalledPackageId'.
