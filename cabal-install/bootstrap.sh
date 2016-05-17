@@ -203,7 +203,7 @@ NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
 CABAL_VER="1.25.0.0";  CABAL_VER_REGEXP="1\.25\.[0-9]"
-                       # >= 1.24 && < 1.25
+                       # >= 1.25 && < 1.26
 TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
@@ -383,6 +383,26 @@ do_pkg () {
   fi
 }
 
+# If we're bootstrapping from a Git clone, install the local version of Cabal
+# instead of downloading one from Hackage.
+do_Cabal_pkg () {
+    if [ -d "../.git" ]
+    then
+        if need_pkg "Cabal" ${CABAL_VER_REGEXP}
+        then
+            echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
+            cd ../Cabal
+            install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP}
+            cd ../cabal-install
+        else
+            echo "Cabal-${CABAL_VER} is already installed and the version is ok."
+        fi
+    else
+        info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+        do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+    fi
+}
+
 # Replicate the flag selection logic for network-uri in the .cabal file.
 do_network_uri_pkg () {
   # Refresh installed package list.
@@ -420,7 +440,6 @@ do_bytestring_builder_pkg () {
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 info_pkg "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
@@ -448,7 +467,10 @@ info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+
+# Install the Cabal library from the local Git clone if possible.
+do_Cabal_pkg
+
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
