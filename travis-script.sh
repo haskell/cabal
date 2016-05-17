@@ -8,12 +8,7 @@ set -ev
 OLD_CWD=$PWD
 
 # Bootstrap
-cd Cabal
-ghc --make Setup
-./Setup configure --user
-./Setup build
-./Setup install
-cd ../cabal-install
+cd cabal-install
 env EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh --no-doc
 ~/.cabal/bin/cabal --version
 
