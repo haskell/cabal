@@ -218,6 +218,10 @@ checkLibrary pkg lib =
             "Duplicate modules in library: "
          ++ commaSep (map display moduleDuplicates)
 
+  , check (null (libModules lib)) $
+      PackageBuildWarning $
+           "Library " ++ libName lib ++ " does not expose any modules"
+
     -- check use of required-signatures/exposed-signatures sections
   , checkVersion [1,21] (not (null (requiredSignatures lib))) $
       PackageDistInexcusable $
