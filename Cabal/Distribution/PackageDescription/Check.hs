@@ -218,7 +218,7 @@ checkLibrary pkg lib =
             "Duplicate modules in library: "
          ++ commaSep (map display moduleDuplicates)
 
-  , check (not (null (libModules lib))) $
+  , check (null (libModules lib)) $
       PackageBuildWarning $
            "Library " ++ libName lib ++ " does not expose any modules"
 
