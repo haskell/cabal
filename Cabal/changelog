@@ -1,4 +1,6 @@
 -*-change-log-*-
+1.24.0.1 Ryan Thomas <ryan@ryant.org> May 2016
+	* Linker flags are now set correctly on GHC >= 7.8 (#3443).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> May 2016
 	* Support GHC 8.
