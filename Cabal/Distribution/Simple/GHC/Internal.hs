@@ -135,8 +135,10 @@ configureToolchain _implInfo ghcProg ghcInfo =
     mbStripLocation = M.lookup "strip command" ghcInfo
 
     ccFlags        = getFlags "C compiler flags"
-    gccLinkerFlags = getFlags "Gcc Linker flags"
-    ldLinkerFlags  = getFlags "Ld Linker flags"
+    -- GHC 7.8 renamed "Gcc Linker flags" to "C compiler link flags"
+    -- and "Ld Linker flags" to "ld flags" (GHC #4862).
+    gccLinkerFlags = getFlags "Gcc Linker flags" ++ getFlags "C compiler link flags"
+    ldLinkerFlags  = getFlags "Ld Linker flags" ++ getFlags "ld flags"
 
     -- It appears that GHC 7.6 and earlier encode the tokenized flags as a
     -- [String] in these settings whereas later versions just encode the flags as
