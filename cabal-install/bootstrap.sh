@@ -1,4 +1,5 @@
 #!/bin/sh
+set -u
 
 # A script to bootstrap cabal-install.
 
@@ -28,6 +29,29 @@ CURL="${CURL:-curl}"
 FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
+
+usage() {
+    echo -e -n "Usage: `basename $0`\n-j  jobs\n"
+}
+
+jobs="-j1"
+while getopts "hj:" opt; do
+    case $opt in
+        h)
+            usage
+            exit 0
+            ;;
+        j)
+            jobs="-j$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: $OPTARG"
+            usage
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
 
 # The variable SCOPE_OF_INSTALLATION can be set on the command line to
 # use/install the libaries needed to build cabal-install to a custom package
@@ -331,7 +355,7 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make Setup -o Setup ||
+  ${GHC} --make $jobs Setup -o Setup ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
@@ -342,7 +366,7 @@ install_pkg () {
 
   ./Setup configure $args || die "Configuring the ${PKG} package failed."
 
-  ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
+  ./Setup build $jobs ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
      die "Building the ${PKG} package failed."
 
   if [ ! ${NO_DOCUMENTATION} ]
