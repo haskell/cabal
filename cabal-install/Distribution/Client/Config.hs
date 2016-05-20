@@ -350,7 +350,7 @@ instance Semigroup SavedConfig where
                                        `mappend` savedGlobalInstallDirs b
 
       combinedSavedUploadFlags = UploadFlags {
-        uploadCheck       = combine uploadCheck,
+        uploadCandidate   = combine uploadCandidate,
         uploadDoc         = combine uploadDoc,
         uploadUsername    = combine uploadUsername,
         uploadPassword    = combine uploadPassword,
@@ -734,7 +734,7 @@ configFieldDescriptions src =
 
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
-       ["verbose", "check", "documentation"] []
+       ["verbose", "check", "documentation", "publish"] []
 
   ++ toSavedConfig liftReportFlag
        (commandOptions reportCommand ParseArgs)

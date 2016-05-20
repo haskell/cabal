@@ -192,9 +192,11 @@ tests config = do
   tc "OrderFlags" $ cabal_build []
 
   -- Test that reexported modules build correctly
-  -- TODO: should also test that they import OK!
-  tc "ReexportedModules" $ do
-      whenGhcVersion (>= Version [7,9] []) $ cabal_build []
+  tc "ReexportedModules" . whenGhcVersion (>= Version [7,9] []) $ do
+      withPackageDb $ do
+        withPackage "p" $ cabal_install []
+        withPackage "q" $ do
+            cabal_build []
 
   -- Test that Cabal computes different IPIDs when the source changes.
   tc "UniqueIPID" . withPackageDb $ do

@@ -1,7 +1,33 @@
 #!/usr/bin/env bash
 set -ev
 
+# ---------------------------------------------------------------------
+# Bootstrap cabal, to verify bootstrap.sh script works.
+# ---------------------------------------------------------------------
+
+OLD_CWD=$PWD
+
+# Bootstrap
+cd cabal-install
+env EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh --no-doc
+~/.cabal/bin/cabal --version
+
+# Move cabal for local use.
+mkdir ~/fresh-cabal
+mv -i ~/.cabal/bin/cabal ~/fresh-cabal/
+
+# Clean up after ourselves.
+rm -r ~/.ghc ~/.cabal
+
+# From here on we use the freshly built cabal executable.
+export PATH="$HOME/fresh-cabal/:$PATH"
+
+cd $OLD_CWD
+
+
 # Initial working directory: base directory of Git repository
+
+cabal update
 
 # We depend on parsec nowadays, which isn't distributed with GHC <8.0
 if [ "$PARSEC_BUNDLED" != "YES" ]; then
@@ -93,6 +119,7 @@ cabal build
 cabal haddock # see https://github.com/haskell/cabal/issues/2198
 cabal test unit-tests --show-details=streaming --test-option=--hide-successes
 cabal test integration-tests --show-details=streaming --test-option=--hide-successes
+cabal test integration-tests2 --show-details=streaming --test-option=--hide-successes
 cabal test solver-quickcheck --show-details=streaming --test-option=--hide-successes \
     --test-option=--quickcheck-tests=1000
 cabal check

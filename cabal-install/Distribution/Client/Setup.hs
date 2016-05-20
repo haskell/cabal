@@ -35,7 +35,7 @@ module Distribution.Client.Setup
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , formatCommand
-    , uploadCommand, UploadFlags(..)
+    , uploadCommand, UploadFlags(..), IsCandidate(..)
     , reportCommand, ReportFlags(..)
     , runCommand
     , initCommand, IT.InitFlags(..)
@@ -1426,8 +1426,12 @@ instance Semigroup InstallFlags where
 -- * Upload flags
 -- ------------------------------------------------------------
 
+-- | Is this a candidate package or a package to be published?
+data IsCandidate = IsCandidate | IsPublished
+                 deriving Eq
+
 data UploadFlags = UploadFlags {
-    uploadCheck       :: Flag Bool,
+    uploadCandidate   :: Flag IsCandidate,
     uploadDoc         :: Flag Bool,
     uploadUsername    :: Flag Username,
     uploadPassword    :: Flag Password,
@@ -1437,7 +1441,7 @@ data UploadFlags = UploadFlags {
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
-    uploadCheck       = toFlag False,
+    uploadCandidate   = toFlag IsCandidate,
     uploadDoc         = toFlag False,
     uploadUsername    = mempty,
     uploadPassword    = mempty,
@@ -1457,15 +1461,19 @@ uploadCommand = CommandUI {
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
     commandOptions      = \_ ->
-      [optionVerbosity uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
+      [optionVerbosity uploadVerbosity
+       (\v flags -> flags { uploadVerbosity = v })
 
-      ,option ['c'] ["check"]
-         "Do not upload, just do QA checks."
-        uploadCheck (\v flags -> flags { uploadCheck = v })
-        trueArg
+      ,option [] ["publish"]
+        "Publish the package instead of uploading it as a candidate."
+        uploadCandidate (\v flags -> flags { uploadCandidate = v })
+        (noArg (Flag IsPublished))
 
       ,option ['d'] ["documentation"]
-        "Upload documentation instead of a source package. Cannot be used together with --check."
+        ("Upload documentation instead of a source package. "
+        ++ "By default, this uploads documentation for a package candidate. "
+        ++ "To upload documentation for "
+        ++ "a published package, combine with --publish.")
         uploadDoc (\v flags -> flags { uploadDoc = v })
         trueArg
 

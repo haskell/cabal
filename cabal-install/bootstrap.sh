@@ -181,8 +181,21 @@ PARSEC_VER="3.1.9";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
 DEEPSEQ_VER="1.4.2.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-BINARY_VER="0.8.3.0";  BINARY_VER_REGEXP="[0]\.[78]\."
-                       # >= 0.7 && < 0.9
+
+case "$GHC_VER" in
+    7.4*|7.6*)
+        # GHC 7.4 or 7.6
+        BINARY_VER="0.8.2.1"
+        BINARY_VER_REGEXP="[0]\.[78]\.[0-2]\." # >= 0.7 && < 0.8.3
+        ;;
+    *)
+        # GHC >= 7.8
+        BINARY_VER="0.8.3.0"
+        BINARY_VER_REGEXP="[0]\.[78]\." # >= 0.7 && < 0.9
+        ;;
+esac
+
+
 TEXT_VER="1.2.2.1";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
@@ -190,7 +203,7 @@ NETWORK_VER="2.6.2.1"; NETWORK_VER_REGEXP="2\.[0-6]\."
 NETWORK_URI_VER="2.6.1.0"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
 CABAL_VER="1.25.0.0";  CABAL_VER_REGEXP="1\.25\.[0-9]"
-                       # >= 1.24 && < 1.25
+                       # >= 1.25 && < 1.26
 TRANS_VER="0.5.2.0";   TRANS_VER_REGEXP="0\.[45]\."
                        # >= 0.2.* && < 0.6
 MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
@@ -213,7 +226,7 @@ OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
 BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
-BASE64_BYTESTRING_VER="1.0.0.1";    BASE64_BYTESTRING_REGEXP="1\."
+BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_REGEXP="1\."
                        # >=1.0
 CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
@@ -221,6 +234,7 @@ ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
 HACKAGE_SECURITY_VER="0.5.1.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
                        # >= 0.5.1 && < 0.6
+BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
 TAR_VER="0.5.0.3";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
 HASHABLE_VER="1.2.4.0"; HASHABLE_VER_REGEXP="1\."
@@ -369,6 +383,26 @@ do_pkg () {
   fi
 }
 
+# If we're bootstrapping from a Git clone, install the local version of Cabal
+# instead of downloading one from Hackage.
+do_Cabal_pkg () {
+    if [ -d "../.git" ]
+    then
+        if need_pkg "Cabal" ${CABAL_VER_REGEXP}
+        then
+            echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
+            cd ../Cabal
+            install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP}
+            cd ../cabal-install
+        else
+            echo "Cabal-${CABAL_VER} is already installed and the version is ok."
+        fi
+    else
+        info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+        do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+    fi
+}
+
 # Replicate the flag selection logic for network-uri in the .cabal file.
 do_network_uri_pkg () {
   # Refresh installed package list.
@@ -390,12 +424,22 @@ do_network_uri_pkg () {
   fi
 }
 
+# Conditionally install bytestring-builder if bytestring is < 0.10.2.
+do_bytestring_builder_pkg () {
+  if egrep "bytestring-0\.(9|10\.[0,1])\.?" ghc-pkg-stage2.list > /dev/null 2>&1
+  then
+      info_pkg "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
+               ${BYTESTRING_BUILDER_VER_REGEXP}
+      do_pkg   "bytestring-builder" ${BYTESTRING_BUILDER_VER} \
+               ${BYTESTRING_BUILDER_VER_REGEXP}
+  fi
+}
+
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 info_pkg "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
@@ -416,14 +460,17 @@ info_pkg "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
 info_pkg "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
 info_pkg "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
-info_pkg "hashable"          ${HASHABLE_VER}          ${HASHABLE_VER_REGEXP}
+info_pkg "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 info_pkg "hackage-security"  ${HACKAGE_SECURITY_VER} \
     ${HACKAGE_SECURITY_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
+
+# Install the Cabal library from the local Git clone if possible.
+do_Cabal_pkg
+
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
@@ -447,6 +494,11 @@ do_pkg   "base64-bytestring" ${BASE64_BYTESTRING_VER} \
 do_pkg   "cryptohash-sha256" ${CRYPTOHASH_SHA256_VER} \
     ${CRYPTOHASH_SHA256_VER_REGEXP}
 do_pkg   "ed25519"           ${ED25519_VER}          ${ED25519_VER_REGEXP}
+
+# We conditionally install bytestring-builder, depending on the bytestring
+# version.
+do_bytestring_builder_pkg
+
 do_pkg   "tar"               ${TAR_VER}              ${TAR_VER_REGEXP}
 do_pkg   "hashable"          ${HASHABLE_VER}         ${HASHABLE_VER_REGEXP}
 do_pkg   "hackage-security"  ${HACKAGE_SECURITY_VER} \

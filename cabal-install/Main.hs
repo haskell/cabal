@@ -1054,9 +1054,6 @@ uploadAction uploadFlags extraArgs globalFlags = do
       tarfiles     = extraArgs
   when (null tarfiles && not (fromFlag (uploadDoc uploadFlags'))) $
     die "the 'upload' command expects at least one .tar.gz archive."
-  when (fromFlag (uploadCheck uploadFlags')
-        && fromFlag (uploadDoc uploadFlags')) $
-    die "--check and --doc cannot be used together."
   checkTarFiles extraArgs
   maybe_password <-
     case uploadPasswordCmd uploadFlags'
@@ -1065,10 +1062,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
                         (simpleProgramInvocation xs xss)
        _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
   withRepoContext verbosity globalFlags' $ \repoContext -> do
-    if fromFlag (uploadCheck uploadFlags')
-    then do
-      Upload.check verbosity repoContext tarfiles
-    else if fromFlag (uploadDoc uploadFlags')
+    if fromFlag (uploadDoc uploadFlags')
     then do
       when (length tarfiles > 1) $
        die $ "the 'upload' command can only upload documentation "
@@ -1078,12 +1072,14 @@ uploadAction uploadFlags extraArgs globalFlags = do
                        repoContext
                        (flagToMaybe $ uploadUsername uploadFlags')
                        maybe_password
+                       (fromFlag (uploadCandidate uploadFlags'))
                        tarfile
     else do
       Upload.upload verbosity
                     repoContext
                     (flagToMaybe $ uploadUsername uploadFlags')
                     maybe_password
+                    (fromFlag (uploadCandidate uploadFlags'))
                     tarfiles
     where
     verbosity = fromFlag (uploadVerbosity uploadFlags)
@@ -1101,8 +1097,12 @@ uploadAction uploadFlags extraArgs globalFlags = do
               (file', ".gz") -> takeExtension file' == ".tar"
               _              -> False
     generateDocTarball config = do
-      notice verbosity
-        "No documentation tarball specified. Building documentation tarball..."
+      notice verbosity $
+        "No documentation tarball specified. "
+        ++ "Building a documentation tarball with default settings...\n"
+        ++ "If you need to customise Haddock options, "
+        ++ "run 'haddock --for-hackage' first "
+        ++ "to generate a documentation tarball."
       haddockAction (defaultHaddockFlags { haddockForHackage = Flag True })
                     [] globalFlags
       distPref <- findSavedDistPref config NoFlag

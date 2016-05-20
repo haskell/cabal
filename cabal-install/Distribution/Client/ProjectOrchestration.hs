@@ -192,16 +192,14 @@ runProjectPreBuildPhase
 --
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
-                     -> IO ()
-runProjectBuildPhase verbosity ProjectBuildContext {..} = do
-    _ <- rebuildTargets verbosity
-                        distDirLayout
-                        elaboratedPlan
-                        elaboratedShared
-                        pkgsBuildStatus
-                        buildSettings
-    --TODO return the result plan and use it for other status reporting
-    return ()
+                     -> IO ElaboratedInstallPlan
+runProjectBuildPhase verbosity ProjectBuildContext {..} =
+    rebuildTargets verbosity
+                   distDirLayout
+                   elaboratedPlan
+                   elaboratedShared
+                   pkgsBuildStatus
+                   buildSettings
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not

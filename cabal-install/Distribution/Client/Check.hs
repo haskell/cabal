@@ -58,7 +58,7 @@ check verbosity = do
         printCheckMessages buildImpossible
 
     unless (null buildWarning) $ do
-        putStrLn "The following warnings are likely affect your build negatively:"
+        putStrLn "The following warnings are likely to affect your build negatively:"
         printCheckMessages buildWarning
 
     unless (null distSuspicious) $ do
