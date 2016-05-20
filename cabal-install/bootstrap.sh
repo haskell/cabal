@@ -1,4 +1,5 @@
 #!/bin/sh
+set -u
 
 # A script to bootstrap cabal-install.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ev
+set -evu
 
 # ---------------------------------------------------------------------
 # Bootstrap cabal, to verify bootstrap.sh script works.
