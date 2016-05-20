@@ -1,6 +1,29 @@
 #!/usr/bin/env bash
 set -evu
 
+usage() {
+    echo -e -n "Usage: `basename $0`\n-j  jobs\n"
+}
+
+jobs="-j1"
+while getopts "hj:" opt; do
+    case $opt in
+        h)
+            usage
+            exit 0
+            ;;
+        j)
+            jobs="-j$OPTARG"
+            ;;
+        \?)
+            echo "Invalid option: $OPTARG"
+            usage
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 # ---------------------------------------------------------------------
 # Bootstrap cabal, to verify bootstrap.sh script works.
 # ---------------------------------------------------------------------
@@ -9,7 +32,7 @@ OLD_CWD=$PWD
 
 # Bootstrap
 cd cabal-install
-env EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh --no-doc
+env EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh $jobs --no-doc
 ~/.cabal/bin/cabal --version
 
 # Move cabal for local use.
@@ -31,7 +54,7 @@ cabal update
 
 # We depend on parsec nowadays, which isn't distributed with GHC <8.0
 if [ "$PARSEC_BUNDLED" != "YES" ]; then
-    cabal install parsec
+    cabal install $jobs parsec
 fi
 
 # ---------------------------------------------------------------------
@@ -64,18 +87,19 @@ cd Cabal
 mkdir -p ./dist/setup
 cp Setup.hs ./dist/setup/setup.hs
 ghc --make \
+    $jobs \
     -odir ./dist/setup -hidir ./dist/setup -i -i. \
     ./dist/setup/setup.hs -o ./dist/setup/setup \
     -Wall -Werror -threaded
 
 # Install test dependencies only after setup is built
-cabal install --only-dependencies --enable-tests --enable-benchmarks
+cabal install $jobs --only-dependencies --enable-tests --enable-benchmarks
 ./dist/setup/setup configure \
     --user --ghc-option=-Werror --enable-tests --enable-benchmarks \
     -v2 # -v2 provides useful information for debugging
 
 # Build all libraries and executables (including tests/benchmarks)
-./dist/setup/setup build
+./dist/setup/setup build $jobs
 ./dist/setup/setup haddock # see https://github.com/haskell/cabal/issues/2198
 ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
 
@@ -110,12 +134,12 @@ install_from_tarball
 
 cd ../cabal-install
 
-cabal install happy
-cabal install --only-dependencies --enable-tests --enable-benchmarks
+cabal install $jobs happy
+cabal install $jobs --only-dependencies --enable-tests --enable-benchmarks
 cabal configure \
     --user --ghc-option=-Werror --enable-tests --enable-benchmarks \
     -v2 # -v2 provides useful information for debugging
-cabal build
+cabal build $jobs
 cabal haddock # see https://github.com/haskell/cabal/issues/2198
 cabal test unit-tests --show-details=streaming --test-option=--hide-successes
 cabal test integration-tests --show-details=streaming --test-option=--hide-successes

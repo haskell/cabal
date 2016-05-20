@@ -31,7 +31,7 @@ install:
 # ./dist/setup/setup here instead of cabal-install to avoid breakage when the
 # build config format changed.
 script:
- - ./travis-script.sh
+ - ./travis-script.sh -j 4
 
 matrix:
   allow_failures:
