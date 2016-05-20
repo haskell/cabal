@@ -218,8 +218,8 @@ checkLibrary pkg lib =
             "Duplicate modules in library: "
          ++ commaSep (map display moduleDuplicates)
 
-  , check (null (libModules lib)) $
-      PackageBuildWarning $
+  , check (null (libModules lib ++ reexportedModules lib)) $
+      PackageDistSuspiciousWarn $
            "Library " ++ libName lib ++ " does not expose any modules"
 
     -- check use of required-signatures/exposed-signatures sections
