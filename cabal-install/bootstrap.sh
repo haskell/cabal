@@ -135,7 +135,7 @@ while [ "$#" -gt 0 ]; do
       echo "options:"
       echo "   --user          Install for the local user (default)"
       echo "   --global        Install systemwide (must be run as root)"
-      echo "   --no-doc        Do not generate documentation for installed "\
+      echo "   --no-doc        Do not generate documentation for installed"\
            "packages"
       echo "   --sandbox       Install to a sandbox in the default location"\
            "(.cabal-sandbox)"
