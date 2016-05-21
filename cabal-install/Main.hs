@@ -46,7 +46,8 @@ import Distribution.Client.Setup
          , manpageCommand
          )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
+         ( HaddockTarget(..)
+         , HaddockFlags(..), haddockCommand, defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
          , CopyFlags(..), copyCommand
@@ -901,7 +902,7 @@ haddockAction haddockFlags extraArgs globalFlags = do
       setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
-  when (fromFlagOrDefault False $ haddockForHackage haddockFlags) $ do
+  when (haddockForHackage haddockFlags == Flag ForHackage) $ do
     pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
     let dest = distPref </> name <.> "tar.gz"
         name = display (packageId pkg) ++ "-docs"
@@ -1103,7 +1104,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
         ++ "If you need to customise Haddock options, "
         ++ "run 'haddock --for-hackage' first "
         ++ "to generate a documentation tarball."
-      haddockAction (defaultHaddockFlags { haddockForHackage = Flag True })
+      haddockAction (defaultHaddockFlags { haddockForHackage = Flag ForHackage })
                     [] globalFlags
       distPref <- findSavedDistPref config NoFlag
       pkg <- fmap LBI.localPkgDescr (getPersistBuildConfig distPref)
