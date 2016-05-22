@@ -105,6 +105,7 @@ GHC_PKG_VER="$(${GHC_PKG} --version | cut -d' ' -f 5)"
   die "Version mismatch between ${GHC} and ${GHC_PKG}.
        If you set the GHC variable then set GHC_PKG too."
 
+JOBS="-j1"
 while [ "$#" -gt 0 ]; do
   case "${1}" in
     "--user")
@@ -127,11 +128,25 @@ while [ "$#" -gt 0 ]; do
     "--no-doc")
       NO_DOCUMENTATION=1
       shift;;
+    "-j"|"--jobs")
+        shift
+        # check if there is another argument which doesn't start with - or --
+        if [ "$#" -le 0 ] \
+            || [ ! -z $(echo "${1}" | grep "^-") ] \
+            || [ ! -z $(echo "${1}" | grep "^--") ]
+        then
+            JOBS="-j"
+        else
+            JOBS="-j${1}"
+            shift
+        fi;;
     *)
       echo "Unknown argument or option, quitting: ${1}"
       echo "usage: bootstrap.sh [OPTION]"
       echo
       echo "options:"
+      echo "   -j/--jobs       Number of concurrent workers to use (Default: 1)"
+      echo "                   -j without an argument will use all available cores"
       echo "   --user          Install for the local user (default)"
       echo "   --global        Install systemwide (must be run as root)"
       echo "   --no-doc        Do not generate documentation for installed"\
@@ -142,6 +157,15 @@ while [ "$#" -gt 0 ]; do
       exit;;
   esac
 done
+
+# Do not try to use -j with GHC older than 7.8
+case $GHC_VER in
+    7.4*|7.6*)
+        JOBS=""
+        ;;
+    *)
+        ;;
+esac
 
 abspath () { case "$1" in /*)printf "%s\n" "$1";; *)printf "%s\n" "$PWD/$1";;
              esac; }
@@ -330,7 +354,7 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make Setup -o Setup ||
+  ${GHC} --make ${JOBS} Setup -o Setup ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
@@ -341,7 +365,7 @@ install_pkg () {
 
   ./Setup configure $args || die "Configuring the ${PKG} package failed."
 
-  ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
+  ./Setup build ${JOBS} ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
      die "Building the ${PKG} package failed."
 
   if [ ! ${NO_DOCUMENTATION} ]
