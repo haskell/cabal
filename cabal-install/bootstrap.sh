@@ -99,7 +99,6 @@ ${GHC} --numeric-version > /dev/null 2>&1  ||
 
 ${GHC_PKG} --version     > /dev/null 2>&1  || die "${GHC_PKG} not found."
 
-GHC_VER="$(${GHC} --numeric-version)"
 GHC_PKG_VER="$(${GHC_PKG} --version | cut -d' ' -f 5)"
 
 [ ${GHC_VER} = ${GHC_PKG_VER} ] ||
