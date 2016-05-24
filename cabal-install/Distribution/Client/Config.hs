@@ -1088,7 +1088,7 @@ haddockFlagsFields = [ field
                            name  = fieldName field
                      , name `notElem` exclusions ]
   where
-    exclusions = ["verbose", "builddir"]
+    exclusions = ["verbose", "builddir", "for-hackage"]
 
 -- | Fields for the 'program-locations' section.
 withProgramsFields :: [FieldDescr [(String, FilePath)]]
