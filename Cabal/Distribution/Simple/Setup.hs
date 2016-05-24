@@ -39,6 +39,7 @@ module Distribution.Simple.Setup (
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
+  HaddockTarget(..),
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
   HscolourFlags(..), emptyHscolourFlags, defaultHscolourFlags, hscolourCommand,
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
@@ -1248,13 +1249,27 @@ hscolourCommand = CommandUI
 -- * Haddock flags
 -- ------------------------------------------------------------
 
+
+-- | When we build haddock documentation, there are two cases:
+--
+-- 1. We build haddocks only for the current development version,
+--    intended for local use and not for distribution. In this case,
+--    we store the generated documentation in @<dist>/doc/html/<package name>@.
+--
+-- 2. We build haddocks for intended for uploading them to hackage.
+--    In this case, we need to follow the layout that hackage expects
+--    from documentation tarballs, and we might also want to use different
+--    flags than for development builds, so in this case we store the generated
+--    documentation in @<dist>/doc/html/<package id>-docs@.
+data HaddockTarget = ForHackage | ForDevelopment deriving (Eq, Show, Generic)
+
 data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],
     haddockHoogle       :: Flag Bool,
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
-    haddockForHackage   :: Flag Bool,
+    haddockForHackage   :: Flag HaddockTarget,
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
     haddockBenchmarks   :: Flag Bool,
@@ -1276,7 +1291,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHoogle       = Flag False,
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
-    haddockForHackage   = Flag False,
+    haddockForHackage   = Flag ForDevelopment,
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
     haddockBenchmarks   = Flag False,
@@ -1345,7 +1360,7 @@ haddockOptions showOrParseArgs =
   ,option "" ["for-hackage"]
    "Collection of flags to generate documentation suitable for upload to hackage"
    haddockForHackage (\v flags -> flags { haddockForHackage = v })
-   trueArg
+   (noArg (Flag ForHackage))
 
   ,option "" ["executables"]
    "Run haddock for Executables targets"

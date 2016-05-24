@@ -135,15 +135,15 @@ haddock pkg_descr lbi suffixes flags' = do
         comp          = compiler lbi
         platform      = hostPlatform lbi
 
-        flags
-          | fromFlag (haddockForHackage flags') = flags'
+        flags = case haddockTarget of
+          ForDevelopment -> flags'
+          ForHackage -> flags'
             { haddockHoogle       = Flag True
             , haddockHtml         = Flag True
             , haddockHtmlLocation = Flag (pkg_url ++ "/docs")
             , haddockContents     = Flag (toPathTemplate pkg_url)
             , haddockHscolour     = Flag True
             }
-          | otherwise = flags'
         pkg_url       = "/package/$pkg-$version"
         flag f        = fromFlag $ f flags
 
@@ -151,6 +151,8 @@ haddock pkg_descr lbi suffixes flags' = do
                        { optKeepTempFiles = flag haddockKeepTempFiles }
         htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
                         $ flags
+        haddockTarget =
+          fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
@@ -178,15 +180,14 @@ haddock pkg_descr lbi suffixes flags' = do
     -- the tools match the requests, we can proceed
 
     when (flag haddockHscolour) $
-      hscolour' (warn verbosity) pkg_descr lbi suffixes
+      hscolour' (warn verbosity) haddockTarget pkg_descr lbi suffixes
       (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
     libdirArgs <- getGhcLibDir  verbosity lbi
     let commonArgs = mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
-            , fromPackageDescription forDist pkg_descr ]
-        forDist = fromFlagOrDefault False (haddockForHackage flags)
+            , fromPackageDescription haddockTarget pkg_descr ]
 
     withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
       initialBuildSteps (flag haddockDistPref) pkg_descr lbi clbi verbosity
@@ -247,11 +248,12 @@ fromFlags env flags =
       argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
     }
 
-fromPackageDescription :: Bool -> PackageDescription -> HaddockArgs
-fromPackageDescription forDist pkg_descr =
+fromPackageDescription :: HaddockTarget -> PackageDescription -> HaddockArgs
+fromPackageDescription haddockTarget pkg_descr =
       mempty { argInterfaceFile = Flag $ haddockName pkg_descr,
                argPackageName = Flag $ packageId $ pkg_descr,
-               argOutputDir = Dir $ "doc" </> "html" </> name,
+               argOutputDir = Dir $
+                   "doc" </> "html" </> haddockDirName haddockTarget pkg_descr,
                argPrologue = Flag $ if null desc then synopsis pkg_descr
                                     else desc,
                argTitle = Flag $ showPkg ++ subtitle
@@ -259,9 +261,6 @@ fromPackageDescription forDist pkg_descr =
       where
         desc = PD.description pkg_descr
         showPkg = display (packageId pkg_descr)
-        name
-          | forDist = showPkg ++ "-docs"
-          | otherwise = display (packageName pkg_descr)
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
@@ -647,16 +646,16 @@ hscolour :: PackageDescription
          -> [PPSuffixHandler]
          -> HscolourFlags
          -> IO ()
-hscolour pkg_descr lbi suffixes flags = do
-  hscolour' die pkg_descr lbi suffixes flags
+hscolour = hscolour' die ForDevelopment
 
 hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
+          -> HaddockTarget
           -> PackageDescription
           -> LocalBuildInfo
           -> [PPSuffixHandler]
           -> HscolourFlags
           -> IO ()
-hscolour' onNoHsColour pkg_descr lbi suffixes flags =
+hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg) =<<
       lookupProgramVersion verbosity hscolourProgram
       (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
@@ -665,7 +664,7 @@ hscolour' onNoHsColour pkg_descr lbi suffixes flags =
     go hscolourProg = do
       setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
       createDirectoryIfMissingVerbose verbosity True $
-        hscolourPref distPref pkg_descr
+        hscolourPref haddockTarget distPref pkg_descr
 
       withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
         initialBuildSteps distPref pkg_descr lbi clbi verbosity
@@ -673,7 +672,7 @@ hscolour' onNoHsColour pkg_descr lbi suffixes flags =
         let
           doExe com = case (compToExe com) of
             Just exe -> do
-              let outputDir = hscolourPref distPref pkg_descr
+              let outputDir = hscolourPref haddockTarget distPref pkg_descr
                               </> exeName exe </> "src"
               runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
             Nothing -> do
@@ -682,7 +681,7 @@ hscolour' onNoHsColour pkg_descr lbi suffixes flags =
               return ()
         case comp of
           CLib lib -> do
-            let outputDir = hscolourPref distPref pkg_descr </> "src"
+            let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
             runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib clbi
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
