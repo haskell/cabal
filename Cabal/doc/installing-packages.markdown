@@ -745,6 +745,14 @@ be controlled with the following command line options.
     be a file or directory. Not all implementations support arbitrary
     package databases.
 
+    This pushes an extra db onto the db stack. The `--global` and `--user`
+    mode switches add the respective [Global] and [Global, User] dbs to the 
+    initial stack. There is a compiler-implementation constraint that the
+    global db must appear first in the stack, and if the user one appears at
+    all, it must appear immediately after the global db.
+
+    To reset the stack, use `--package-db=clear`.
+
 `--default-user-config=` _file_
 :   Allows a "default" `cabal.config` freeze file to be passed in
     manually. This file will only be used if one does not exist in the
