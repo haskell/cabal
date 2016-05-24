@@ -1,8 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -ev
 
 usage() {
-    echo -e -n "Usage: `basename $0`\n-j  jobs\n"
+    echo "Usage: travis-script.sh"
+    echo "-h  Print this help string"
+    echo "-j  Number of concurrent workers to use (Default: 1)"
+    echo "    -j without an argument will use all available cores"
 }
 
 jobs="-j1"
@@ -66,7 +69,7 @@ rm -r ~/.ghc ~/.cabal
 # From here on we use the freshly built cabal executable.
 export PATH="$HOME/fresh-cabal/:$PATH"
 
-cd $OLD_CWD
+cd "$OLD_CWD"
 
 
 # Initial working directory: base directory of Git repository
@@ -125,7 +128,7 @@ cabal install $jobs --only-dependencies --enable-tests --enable-benchmarks
 ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
 
 # Redo the package tests with different versions of GHC
-if [ "$TEST_OLDER" == "YES" ]; then
+if [ "x$TEST_OLDER" = "xYES" ]; then
     CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc \
         ./dist/setup/setup test package-tests --show-details=streaming
     CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc \
@@ -137,8 +140,9 @@ cabal sdist   # tests that a source-distribution can be generated
 
 # The following scriptlet checks that the resulting source distribution can be
 # built & installed.
-function install_from_tarball {
-   export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+install_from_tarball() {
+   SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
+   export SRC_TGZ
    if [ -f "dist/$SRC_TGZ" ]; then
       cabal install -j1 "dist/$SRC_TGZ" -v2;
    else
@@ -172,4 +176,4 @@ cabal check
 install_from_tarball
 
 # Check what we got
-$HOME/.cabal/bin/cabal --version
+"$HOME/.cabal/bin/cabal" --version
