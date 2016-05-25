@@ -54,9 +54,8 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
-# Try to respect $TMPDIR.
-[ -"$TMPDIR"- = -""- ] &&
-  export TMPDIR=/tmp/cabal-$(echo $(od -XN4 -An /dev/random)) && mkdir $TMPDIR
+TMPDIR=$(mktemp -d -p /tmp -t cabal-XXXXXXX)
+export TMPDIR
 
 # Check for a C compiler, using user-set $CC, if any, first.
 for c in $CC gcc clang cc icc; do
