@@ -416,9 +416,7 @@ do_Cabal_pkg () {
         if need_pkg "Cabal" ${CABAL_VER_REGEXP}
         then
             echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
-            cd ../Cabal
-            install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP}
-            cd ../cabal-install
+            (cd ../Cabal && install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP})
         else
             echo "Cabal-${CABAL_VER} is already installed and the version is ok."
         fi
