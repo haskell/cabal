@@ -16,7 +16,10 @@ EXTRA_CONFIGURE_OPTS=${EXTRA_CONFIGURE_OPTS-$DEFAULT_CONFIGURE_OPTS}
 #EXTRA_BUILD_OPTS
 #EXTRA_INSTALL_OPTS
 
-die () { printf "\nError during cabal-install bootstrap:\n$1\n" >&2 && exit 2 ;}
+die() {
+    printf "\nError during cabal-install bootstrap:\n%s\n" "$1" >&2
+    exit 2
+}
 
 # programs, you can override these by setting environment vars
 GHC="${GHC:-ghc}"
