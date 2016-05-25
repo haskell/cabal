@@ -68,8 +68,12 @@ done
 
 # Find the correct linker/linker-wrapper.
 LINK="$(for link in collect2 ld; do
-          [ $($CC -print-prog-name=$link) = $link ] && continue ||
-          $CC -print-prog-name=$link
+          if [ $($CC -print-prog-name=$link) = $link ]
+          then
+              continue
+          else
+              $CC -print-prog-name=$link
+          fi
         done)"
 
 # Fall back to "ld"... might work.
