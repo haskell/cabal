@@ -60,7 +60,7 @@ DEFAULT_PREFIX="${HOME}/.cabal"
 
 # Check for a C compiler, using user-set $CC, if any, first.
 for c in $CC gcc clang cc icc; do
-  $c --version 2>&1 >/dev/null && CC=$c &&
+  $c --version 1>/dev/null 2>&1 && CC=$c &&
   echo "Using $c for C compiler. If this is not what you want, set CC." >&2 &&
   break
 done
