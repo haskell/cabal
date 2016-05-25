@@ -403,10 +403,8 @@ do_pkg () {
         echo "Downloading ${PKG}-${VER}..."
         fetch_pkg ${PKG} ${VER}
     fi
-    unpack_pkg ${PKG} ${VER}
-    cd "${PKG}-${VER}"
-    install_pkg ${PKG} ${VER}
-    cd ..
+    unpack_pkg "${PKG}" "${VER}"
+    (cd "${PKG}-${VER}" && install_pkg ${PKG} ${VER})
   fi
 }
 
