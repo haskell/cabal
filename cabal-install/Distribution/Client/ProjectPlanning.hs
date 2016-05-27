@@ -82,7 +82,6 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageFixedDeps
-import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
 import           Distribution.Solver.Types.PkgConfigDb
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
@@ -424,7 +423,7 @@ rebuildInstallPlan verbosity
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
                    -> [UnresolvedSourcePackage]
-                   -> Rebuild (SolverInstallPlan, PackagesImplicitSetupDeps)
+                   -> Rebuild SolverInstallPlan
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
@@ -490,7 +489,7 @@ rebuildInstallPlan verbosity
     --
     phaseElaboratePlan :: ProjectConfig
                        -> (Compiler, Platform, ProgramDb)
-                       -> (SolverInstallPlan, PackagesImplicitSetupDeps)
+                       -> SolverInstallPlan
                        -> [SourcePackage loc]
                        -> Rebuild ( ElaboratedInstallPlan
                                   , ElaboratedSharedConfig )
@@ -501,8 +500,7 @@ rebuildInstallPlan verbosity
                          projectConfigBuildOnly
                        }
                        (compiler, platform, progdb)
-                       (solverPlan, pkgsImplicitSetupDeps)
-                       localPackages = do
+                       solverPlan localPackages = do
 
         liftIO $ debug verbosity "Elaborating the install plan..."
 
@@ -518,7 +516,6 @@ rebuildInstallPlan verbosity
             distDirLayout
             cabalDirLayout
             solverPlan
-            pkgsImplicitSetupDeps
             localPackages
             sourcePackageHashes
             defaultInstallDirs
@@ -827,13 +824,10 @@ planPackages :: Compiler
              -> PkgConfigDb
              -> [UnresolvedSourcePackage]
              -> Map PackageName (Map OptionalStanza Bool)
-             -> Progress String String
-                         (SolverInstallPlan, PackagesImplicitSetupDeps)
+             -> Progress String String SolverInstallPlan
 planPackages comp platform solver SolverSettings{..}
              installedPkgIndex sourcePkgDb pkgConfigDB
              localPackages pkgStanzasEnable =
-
-    rememberImplicitSetupDeps (depResolverSourcePkgIndex stdResolverParams) <$>
 
     resolveDependencies
       platform (compilerInfo comp)
@@ -933,7 +927,9 @@ planPackages comp platform solver SolverSettings{..}
       $ stdResolverParams
 
     stdResolverParams =
-      standardInstallPolicy
+      -- Note: we don't use the standardInstallPolicy here, since that uses
+      -- its own addDefaultSetupDependencies that is not appropriate for us.
+      basicInstallPolicy
         installedPkgIndex sourcePkgDb
         (map SpecificSourcePackage localPackages)
 
@@ -973,7 +969,6 @@ elaborateInstallPlan
   -> DistDirLayout
   -> CabalDirLayout
   -> SolverInstallPlan
-  -> PackagesImplicitSetupDeps
   -> [SourcePackage loc]
   -> Map PackageId PackageSourceHash
   -> InstallDirs.InstallDirTemplates
@@ -984,7 +979,7 @@ elaborateInstallPlan
 elaborateInstallPlan platform compiler compilerprogdb
                      DistDirLayout{..}
                      cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
-                     solverPlan pkgsImplicitSetupDeps localPackages
+                     solverPlan localPackages
                      sourcePackageHashes
                      defaultInstallDirs
                      _sharedPackageConfig
@@ -1101,8 +1096,7 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgRegisterPackageDBStack = buildAndRegisterDbs
         pkgRequiresRegistration   = PD.hasPublicLib pkgDescription
 
-        pkgSetupScriptStyle       = packageSetupScriptStylePostSolver
-                                      pkgsImplicitSetupDeps pkg pkgDescription
+        pkgSetupScriptStyle       = packageSetupScriptStyle pkgDescription
         pkgSetupScriptCliVersion  = packageSetupScriptSpecVersion
                                       pkgSetupScriptStyle pkgDescription deps
         pkgSetupPackageDBStack    = buildAndRegisterDbs
@@ -1689,18 +1683,20 @@ dependencyGraph pkgid deps pkgs =
 
 -- | Work out the 'SetupScriptStyle' given the package description.
 --
--- This only works on original packages before we give them to the solver,
--- since after the solver some implicit setup deps are made explicit.
---
--- See 'rememberImplicitSetupDeps' and 'packageSetupScriptStylePostSolver'.
---
-packageSetupScriptStylePreSolver :: PD.PackageDescription -> SetupScriptStyle
-packageSetupScriptStylePreSolver pkg
+packageSetupScriptStyle :: PD.PackageDescription -> SetupScriptStyle
+packageSetupScriptStyle pkg
   | buildType == PD.Custom
-  , isJust (PD.setupBuildInfo pkg)
+  , Just setupbi <- PD.setupBuildInfo pkg -- does have a custom-setup stanza
+  , not (PD.defaultSetupDepends setupbi)  -- but not one we added internally
   = SetupCustomExplicitDeps
 
   | buildType == PD.Custom
+  , Just setupbi <- PD.setupBuildInfo pkg -- we get this case post-solver as
+  , PD.defaultSetupDepends setupbi        -- the solver fills in the deps
+  = SetupCustomImplicitDeps
+
+  | buildType == PD.Custom
+  , Nothing <- PD.setupBuildInfo pkg      -- we get this case pre-solver
   = SetupCustomImplicitDeps
 
   | PD.specVersion pkg > cabalVersion -- one cabal-install is built against
@@ -1731,7 +1727,7 @@ defaultSetupDeps :: Compiler -> Platform
                  -> PD.PackageDescription
                  -> Maybe [Dependency]
 defaultSetupDeps compiler platform pkg =
-    case packageSetupScriptStylePreSolver pkg of
+    case packageSetupScriptStyle pkg of
 
       -- For packages with build type custom that do not specify explicit
       -- setup dependencies, we add a dependency on Cabal and a number
@@ -1781,60 +1777,6 @@ defaultSetupDeps compiler platform pkg =
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
              ++ "setup deps: " ++ display (packageId pkg)
-
-
--- | See 'rememberImplicitSetupDeps' for details.
-type PackagesImplicitSetupDeps = Set InstalledPackageId
-
--- | A consequence of using 'defaultSetupDeps' in 'planPackages' is that by
--- making implicit setup deps explicit we loose track of which packages
--- originally had implicit setup deps. That's important because we do still
--- have different behaviour based on the setup style (in particular whether to
--- compile a Setup.hs script with version macros).
---
--- So we remember the necessary information in an auxilliary set and use it
--- in 'packageSetupScriptStylePreSolver' to recover the full info.
---
-rememberImplicitSetupDeps :: SourcePackageIndex.PackageIndex (SourcePackage loc)
-                          -> SolverInstallPlan
-                          -> (SolverInstallPlan, PackagesImplicitSetupDeps)
-rememberImplicitSetupDeps sourcePkgIndex plan =
-    (plan, pkgsImplicitSetupDeps)
-  where
-    pkgsImplicitSetupDeps =
-      Set.fromList
-        [ installedPackageId pkg
-        | InstallPlan.Configured
-            pkg@(SolverPackage newpkg _ _ _) <- InstallPlan.toList plan
-          -- has explicit setup deps now
-        , hasExplicitSetupDeps newpkg
-          -- but originally had no setup deps
-        , let Just origpkg = SourcePackageIndex.lookupPackageId
-                               sourcePkgIndex (packageId pkg)
-        , not (hasExplicitSetupDeps origpkg)
-        ]
-
-    hasExplicitSetupDeps =
-        (SetupCustomExplicitDeps==)
-      . packageSetupScriptStylePreSolver
-      . PD.packageDescription . packageDescription
-
-
--- | Use the extra info saved by 'rememberImplicitSetupDeps' to let us work
--- out the correct 'SetupScriptStyle'. This should give the same result as
--- 'packageSetupScriptStylePreSolver' gave prior to munging the package info
--- through the solver.
---
-packageSetupScriptStylePostSolver :: Set InstalledPackageId
-                                  -> SolverPackage loc
-                                  -> PD.PackageDescription
-                                  -> SetupScriptStyle
-packageSetupScriptStylePostSolver pkgsImplicitSetupDeps pkg pkgDescription =
-    case packageSetupScriptStylePreSolver pkgDescription of
-      SetupCustomExplicitDeps
-        | Set.member (installedPackageId pkg) pkgsImplicitSetupDeps
-            -> SetupCustomImplicitDeps
-      other -> other
 
 
 -- | Work out which version of the Cabal spec we will be using to talk to the

@@ -30,6 +30,7 @@ module Distribution.Client.Dependency (
     InstalledPreference(..),
 
     -- ** Standard policy
+    basicInstallPolicy,
     standardInstallPolicy,
     PackageSpecifier(..),
 
@@ -448,11 +449,13 @@ reinstallTargets params =
     hideInstalledPackagesAllVersions (depResolverTargets params) params
 
 
-standardInstallPolicy :: InstalledPackageIndex
-                      -> SourcePackageDb
-                      -> [PackageSpecifier UnresolvedSourcePackage]
-                      -> DepResolverParams
-standardInstallPolicy
+-- | A basic solver policy on which all others are built.
+--
+basicInstallPolicy :: InstalledPackageIndex
+                   -> SourcePackageDb
+                   -> [PackageSpecifier UnresolvedSourcePackage]
+                   -> DepResolverParams
+basicInstallPolicy
     installedPkgIndex (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
     pkgSpecifiers
 
@@ -469,13 +472,28 @@ standardInstallPolicy
   . hideInstalledPackagesSpecificBySourcePackageId
       [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
-  . addDefaultSetupDependencies mkDefaultSetupDeps
-
   . addSourcePackages
       [ pkg  | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
   $ basicDepResolverParams
       installedPkgIndex sourcePkgIndex
+
+
+-- | The policy used by all the standard commands, install, fetch, freeze etc
+-- (but not the new-build and related commands).
+--
+-- It extends the 'basicInstallPolicy' with a policy on setup deps.
+--
+standardInstallPolicy :: InstalledPackageIndex
+                      -> SourcePackageDb
+                      -> [PackageSpecifier UnresolvedSourcePackage]
+                      -> DepResolverParams
+standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+
+  = addDefaultSetupDependencies mkDefaultSetupDeps
+
+  $ basicInstallPolicy
+      installedPkgIndex sourcePkgDb pkgSpecifiers
 
     where
       -- Force Cabal >= 1.24 dep when the package is affected by #3199.
