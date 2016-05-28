@@ -16,7 +16,10 @@ EXTRA_CONFIGURE_OPTS=${EXTRA_CONFIGURE_OPTS-$DEFAULT_CONFIGURE_OPTS}
 #EXTRA_BUILD_OPTS
 #EXTRA_INSTALL_OPTS
 
-die () { printf "\nError during cabal-install bootstrap:\n$1\n" >&2 && exit 2 ;}
+die() {
+    printf "\nError during cabal-install bootstrap:\n%s\n" "$1" >&2
+    exit 2
+}
 
 # programs, you can override these by setting environment vars
 GHC="${GHC:-ghc}"
@@ -51,13 +54,12 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
-# Try to respect $TMPDIR.
-[ -"$TMPDIR"- = -""- ] &&
-  export TMPDIR=/tmp/cabal-$(echo $(od -XN4 -An /dev/random)) && mkdir $TMPDIR
+TMPDIR=$(mktemp -d -p /tmp -t cabal-XXXXXXX)
+export TMPDIR
 
 # Check for a C compiler, using user-set $CC, if any, first.
 for c in $CC gcc clang cc icc; do
-  $c --version 2>&1 >/dev/null && CC=$c &&
+  $c --version 1>/dev/null 2>&1 && CC=$c &&
   echo "Using $c for C compiler. If this is not what you want, set CC." >&2 &&
   break
 done
@@ -68,8 +70,12 @@ done
 
 # Find the correct linker/linker-wrapper.
 LINK="$(for link in collect2 ld; do
-          [ $($CC -print-prog-name=$link) = $link ] && continue ||
-          $CC -print-prog-name=$link
+          if [ $($CC -print-prog-name=$link) = $link ]
+          then
+              continue
+          else
+              $CC -print-prog-name=$link
+          fi
         done)"
 
 # Fall back to "ld"... might work.
@@ -249,7 +255,7 @@ OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
 BASE16_BYTESTRING_VER="0.1.1.6"; BASE16_BYTESTRING_VER_REGEXP="0\.1"
                        # 0.1.*
-BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_REGEXP="1\."
+BASE64_BYTESTRING_VER="1.0.0.1"; BASE64_BYTESTRING_VER_REGEXP="1\."
                        # >=1.0
 CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
@@ -399,10 +405,8 @@ do_pkg () {
         echo "Downloading ${PKG}-${VER}..."
         fetch_pkg ${PKG} ${VER}
     fi
-    unpack_pkg ${PKG} ${VER}
-    cd "${PKG}-${VER}"
-    install_pkg ${PKG} ${VER}
-    cd ..
+    unpack_pkg "${PKG}" "${VER}"
+    (cd "${PKG}-${VER}" && install_pkg ${PKG} ${VER})
   fi
 }
 
@@ -414,9 +418,7 @@ do_Cabal_pkg () {
         if need_pkg "Cabal" ${CABAL_VER_REGEXP}
         then
             echo "Cabal-${CABAL_VER} will be installed from the local Git clone."
-            cd ../Cabal
-            install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP}
-            cd ../cabal-install
+            (cd ../Cabal && install_pkg ${CABAL_VER} ${CABAL_VER_REGEXP})
         else
             echo "Cabal-${CABAL_VER} is already installed and the version is ok."
         fi
