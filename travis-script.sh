@@ -176,4 +176,4 @@ cabal check
 install_from_tarball
 
 # Check what we got
-"$HOME/.cabal/bin/cabal" --version
+~/.cabal/bin/cabal --version
