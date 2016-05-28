@@ -144,7 +144,7 @@ install_from_tarball() {
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
    if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install -j1 "dist/$SRC_TGZ" -v2;
+      cabal install $jobs "dist/$SRC_TGZ" -v2;
    else
       echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;
