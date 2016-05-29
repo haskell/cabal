@@ -369,8 +369,9 @@ filterConfigureFlags flags cabalLibVersion
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
       configConstraints = [],
-      -- Passing '--allow-newer' to Setup.hs is unnecessary, we use
+      -- Passing '--allow-{older,newer}' to Setup.hs is unnecessary, we use
       -- '--exact-configuration' instead.
+      configAllowOlder  = Just (Cabal.AllowOlder Cabal.RelaxDepsNone),
       configAllowNewer  = Just (Cabal.AllowNewer Cabal.RelaxDepsNone)
       }
 

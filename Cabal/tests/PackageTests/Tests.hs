@@ -261,6 +261,31 @@ tests config = do
                           ,"--allow-newer=Foo:base"
                           ,"--enable-tests", "--enable-benchmarks"]
 
+  -- Test that '--allow-older' works via the 'Setup.hs configure' interface.
+  tc "AllowOlder" $ do
+        shouldFail $ cabal "configure" []
+        cabal "configure" ["--allow-older"]
+        shouldFail $ cabal "configure" ["--allow-older=baz,quux"]
+        cabal "configure" ["--allow-older=base", "--allow-older=baz,quux"]
+        cabal "configure" ["--allow-older=bar", "--allow-older=base,baz"
+                          ,"--allow-older=quux"]
+        shouldFail $ cabal "configure" ["--enable-tests"]
+        cabal "configure" ["--enable-tests", "--allow-older"]
+        shouldFail $ cabal "configure" ["--enable-benchmarks"]
+        cabal "configure" ["--enable-benchmarks", "--allow-older"]
+        shouldFail $ cabal "configure" ["--enable-benchmarks", "--enable-tests"]
+        cabal "configure" ["--enable-benchmarks", "--enable-tests"
+                          ,"--allow-older"]
+        shouldFail $ cabal "configure" ["--allow-older=Foo:base"]
+        shouldFail $ cabal "configure" ["--allow-older=Foo:base"
+                                       ,"--enable-tests", "--enable-benchmarks"]
+        cabal "configure" ["--allow-older=AllowOlder:base"]
+        cabal "configure" ["--allow-older=AllowOlder:base"
+                          ,"--allow-older=Foo:base"]
+        cabal "configure" ["--allow-older=AllowOlder:base"
+                          ,"--allow-older=Foo:base"
+                          ,"--enable-tests", "--enable-benchmarks"]
+
   -- Test that Cabal can choose flags to disable building a component when that
   -- component's dependencies are unavailable. The build should succeed without
   -- requiring the component's dependencies or imports.

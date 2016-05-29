@@ -75,7 +75,7 @@ import Distribution.Simple.Program
          ( ConfiguredProgram(..) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
-         , fromFlag, AllowNewer(..), RelaxDeps(..) )
+         , fromFlag, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
          ( defaultSolver, defaultMaxBackjumps, )
 import Distribution.Simple.InstallDirs
@@ -191,6 +191,7 @@ resolveSolverSettings ProjectConfig{
                                           (getMapMappend projectConfigSpecificPackage)
     solverSettingCabalVersion      = flagToMaybe projectConfigCabalVersion
     solverSettingSolver            = fromFlag projectConfigSolver
+    solverSettingAllowOlder        = fromJust projectConfigAllowOlder
     solverSettingAllowNewer        = fromJust projectConfigAllowNewer
     solverSettingMaxBackjumps      = case fromFlag projectConfigMaxBackjumps of
                                        n | n < 0     -> Nothing
@@ -209,6 +210,7 @@ resolveSolverSettings ProjectConfig{
 
     defaults = mempty {
        projectConfigSolver            = Flag defaultSolver,
+       projectConfigAllowOlder        = Just (AllowOlder RelaxDepsNone),
        projectConfigAllowNewer        = Just (AllowNewer RelaxDepsNone),
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),

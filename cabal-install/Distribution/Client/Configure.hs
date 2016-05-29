@@ -48,7 +48,7 @@ import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), AllowNewer(..), RelaxDeps(..)
+         ( ConfigFlags(..), AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, lookupPackageName )
@@ -93,8 +93,10 @@ chooseCabalVersion configFlags maybeVersion =
     -- for '--allow-newer' to work.
     allowNewer = isRelaxDeps
                  (maybe RelaxDepsNone unAllowNewer $ configAllowNewer configFlags)
+    allowOlder = isRelaxDeps
+                 (maybe RelaxDepsNone unAllowOlder $ configAllowOlder configFlags)
 
-    defaultVersionRange = if allowNewer
+    defaultVersionRange = if allowOlder || allowNewer
                           then orLaterVersion (Version [1,19,2] [])
                           else anyVersion
 
@@ -306,8 +308,10 @@ planLocalPackage verbosity comp platform configFlags configExFlags
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
-          removeUpperBounds
-          (maybe RelaxDepsNone unAllowNewer $ configAllowNewer configFlags)
+          removeLowerBounds
+          (fromMaybe (AllowOlder RelaxDepsNone) $ configAllowOlder configFlags)
+        . removeUpperBounds
+          (fromMaybe (AllowNewer RelaxDepsNone) $ configAllowNewer configFlags)
 
         . addPreferences
             -- preferences from the config file or command line

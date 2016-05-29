@@ -132,7 +132,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , AllowNewer(..), RelaxDeps(..)
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
@@ -395,6 +395,7 @@ planPackages comp platform mSandboxPkgInfo solver
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
+      . removeLowerBounds allowOlder
       . removeUpperBounds allowNewer
 
       . addPreferences
@@ -446,8 +447,10 @@ planPackages comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
-    allowNewer       = maybe RelaxDepsNone unAllowNewer
-                       (configAllowNewer configFlags)
+    allowOlder       = fromMaybe (AllowOlder RelaxDepsNone)
+                                 (configAllowOlder configFlags)
+    allowNewer       = fromMaybe (AllowNewer RelaxDepsNone)
+                                 (configAllowNewer configFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg

@@ -320,10 +320,12 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0', pbi) cfg = do
     let pkg_descr0 =
-          -- Ignore '--allow-newer' when we're given '--exact-configuration'.
+          -- Ignore '--allow-{older,newer}' when we're given '--exact-configuration'.
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
-          else relaxPackageDeps
+          else relaxPackageDeps removeLowerBound
+               (maybe RelaxDepsNone unAllowOlder $ configAllowOlder cfg) $
+               relaxPackageDeps removeUpperBound
                (maybe RelaxDepsNone unAllowNewer $ configAllowNewer cfg)
                pkg_descr0'
 
@@ -871,14 +873,15 @@ dependencySatisfiable
                       $ PackageIndex.lookupDependency internalPackageSet d
 
 -- | Relax the dependencies of this package if needed.
-relaxPackageDeps :: RelaxDeps -> GenericPackageDescription
-                 -> GenericPackageDescription
-relaxPackageDeps RelaxDepsNone gpd = gpd
-relaxPackageDeps RelaxDepsAll  gpd = transformAllBuildDepends relaxAll gpd
+relaxPackageDeps :: (VersionRange -> VersionRange)
+                 -> RelaxDeps
+                 -> GenericPackageDescription -> GenericPackageDescription
+relaxPackageDeps _ RelaxDepsNone gpd = gpd
+relaxPackageDeps vrtrans RelaxDepsAll  gpd = transformAllBuildDepends relaxAll gpd
   where
     relaxAll = \(Dependency pkgName verRange) ->
-      Dependency pkgName (removeUpperBound verRange)
-relaxPackageDeps (RelaxDepsSome allowNewerDeps') gpd =
+      Dependency pkgName (vrtrans verRange)
+relaxPackageDeps vrtrans (RelaxDepsSome allowNewerDeps') gpd =
   transformAllBuildDepends relaxSome gpd
   where
     thisPkgName    = packageName gpd
@@ -886,11 +889,11 @@ relaxPackageDeps (RelaxDepsSome allowNewerDeps') gpd =
 
     f (Setup.RelaxedDep p) = Just p
     f (Setup.RelaxedDepScoped scope p) | scope == thisPkgName = Just p
-                                          | otherwise            = Nothing
+                                       | otherwise            = Nothing
 
     relaxSome = \d@(Dependency depName verRange) ->
       if depName `elem` allowNewerDeps
-      then Dependency depName (removeUpperBound verRange)
+      then Dependency depName (vrtrans verRange)
       else d
 
 -- | Finalize a generic package description.  The workhorse is

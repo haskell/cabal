@@ -60,6 +60,7 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
+    removeLowerBounds,
     removeUpperBounds,
     addDefaultSetupDependencies,
   ) where
@@ -94,7 +95,8 @@ import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion, orLaterVersion
-         , withinRange, simplifyVersionRange )
+         , withinRange, simplifyVersionRange
+         , removeLowerBound, removeUpperBound )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -106,7 +108,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
          ( relaxPackageDeps )
 import Distribution.Simple.Setup
-         ( RelaxDeps(..) )
+         ( AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -414,9 +416,9 @@ hideBrokenInstalledPackages params =
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
-removeUpperBounds :: RelaxDeps -> DepResolverParams -> DepResolverParams
-removeUpperBounds RelaxDepsNone params = params
-removeUpperBounds allowNewer     params =
+removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
+removeUpperBounds (AllowNewer RelaxDepsNone) params = params
+removeUpperBounds (AllowNewer allowNewer)    params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'
     }
@@ -425,7 +427,23 @@ removeUpperBounds allowNewer     params =
 
     relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
     relaxDeps srcPkg = srcPkg {
-      packageDescription = relaxPackageDeps allowNewer
+      packageDescription = relaxPackageDeps removeUpperBound allowNewer
+                           (packageDescription srcPkg)
+      }
+
+-- | Dual of 'removeUpperBounds'
+removeLowerBounds :: AllowOlder -> DepResolverParams -> DepResolverParams
+removeLowerBounds (AllowOlder RelaxDepsNone) params = params
+removeLowerBounds (AllowOlder allowNewer)    params =
+    params {
+      depResolverSourcePkgIndex = sourcePkgIndex'
+    }
+  where
+    sourcePkgIndex' = fmap relaxDeps $ depResolverSourcePkgIndex params
+
+    relaxDeps :: UnresolvedSourcePackage -> UnresolvedSourcePackage
+    relaxDeps srcPkg = srcPkg {
+      packageDescription = relaxPackageDeps removeLowerBound allowNewer
                            (packageDescription srcPkg)
       }
 
