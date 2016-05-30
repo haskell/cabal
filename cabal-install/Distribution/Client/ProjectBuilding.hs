@@ -1031,7 +1031,7 @@ buildAndInstallUnpackedPackage verbosity
               Cabal.registerPackage verbosity compiler progdb
                                     HcPkg.MultiInstance
                                     (pkgRegisterPackageDBStack pkg) ipkg'
-          return ipkgs
+          return ipkgs'
         else return []
 
     --TODO: [required feature] docs and test phases
