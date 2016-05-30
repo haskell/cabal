@@ -73,6 +73,18 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- * Operating System
 -- ------------------------------------------------------------
 
+-- | These are the known OS names: Linux, Windows, OSX
+--  ,FreeBSD, OpenBSD, NetBSD, DragonFly
+--  ,Solaris, AIX, HPUX, IRIX
+--  ,HaLVM ,Hurd ,IOS, Android,Ghcjs
+--
+-- The following aliases can also be used:,
+--    * Windows aliases: mingw32, win32, cygwin32
+--    * OSX alias: darwin
+--    * Hurd alias: gnu
+--    * FreeBSD alias: kfreebsdgnu
+--    * Solaris alias: solaris2
+--
 data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | FreeBSD | OpenBSD | NetBSD   -- other free Unix OSs
         | DragonFly
@@ -127,6 +139,17 @@ buildOS = classifyOS Permissive System.Info.os
 -- * Machine Architecture
 -- ------------------------------------------------------------
 
+-- | These are the known Arches: I386, X86_64, PPC, PPC64, Sparc
+-- ,Arm, Mips, SH, IA64, S39, Alpha, Hppa, Rs6000, M68k, Vax
+-- and JavaScript.
+--
+-- The following aliases can also be used:
+--    * PPC alias: powerpc
+--    * PPC64 alias : powerpc64
+--    * Sparc aliases: parc64, sun4
+--    * Mips aliases: mipsel, mipseb
+--    * Arm aliases: armeb, armel
+-- 
 data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
           | Arm   | Mips   | SH
           | IA64  | S390
