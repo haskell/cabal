@@ -427,12 +427,15 @@ lookupReadyPackage plan pkg = do
         Just (Configured  _)               -> Nothing
         Just (Processing  _)               -> Nothing
         Just (Installed   _ (Just ipkg) _) -> Just ipkg
-        Just (Installed   _ Nothing     _) -> internalError depOnNonLib
+        Just (Installed   _ Nothing     _) -> internalError (depOnNonLib pkgid)
         Just (Failed      _             _) -> internalError depOnFailed
         Nothing                            -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
-    depOnNonLib = "configured package depends on a non-library package"
+    depOnNonLib dep = "the configured package "
+                   ++ display (packageId pkg)
+                   ++ " depends on a non-library package "
+                   ++ display dep
 
 -- | Marks packages in the graph as currently processing (e.g. building).
 --

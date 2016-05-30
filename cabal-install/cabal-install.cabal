@@ -528,7 +528,7 @@ test-suite integration-tests2
   type: exitcode-stdio-1.0
   main-is: IntegrationTests2.hs
   hs-source-dirs: tests, .
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
   other-modules:
   build-depends:
         async,
