@@ -823,8 +823,19 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
                -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
     updatePlan pkg (BuildSuccess ipkgs buildSuccess) =
         InstallPlan.completed (installedPackageId pkg)
-            (find (\ipkg -> installedPackageId ipkg == installedPackageId pkg) ipkgs)
+            mipkg
             buildSuccess
+      where
+        mipkg = case (ipkgs, find (\ipkg -> installedPackageId ipkg
+                                         == installedPackageId pkg) ipkgs) of
+          ([],    _)         -> Nothing
+          ((_:_), Just ipkg) -> Just ipkg
+          ((_:_), Nothing)   ->
+            error $ "executeInstallPlan: package " ++ display (packageId pkg)
+                 ++ " was expected to register the unit "
+                 ++ display (installedPackageId pkg)
+                 ++ " but is actually registering the unit(s) "
+                 ++ intercalate ", " (map (display . installedPackageId) ipkgs)
 
     updatePlan pkg (BuildFailure buildFailure) =
         InstallPlan.failed (installedPackageId pkg) buildFailure depsFailure
@@ -1025,13 +1036,18 @@ buildAndInstallUnpackedPackage verbosity
                           -- Case A and B
                           [ipkg] -> [ipkg { Installed.installedUnitId = ipkgid }]
                           -- Case C
-                          _      -> assert (any ((== ipkgid) . Installed.installedUnitId)
-                                                ipkgs) ipkgs
+                          _      -> ipkgs
+          unless (any ((== ipkgid) . Installed.installedUnitId) ipkgs') $
+            die $ "the package " ++ display (packageId pkg) ++ " was expected "
+               ++ " to produce registeration info for the unit Id "
+               ++ display ipkgid ++ " but it actually produced info for "
+               ++ intercalate ", "
+                    (map (display . Installed.installedUnitId) ipkgs')
           forM_ ipkgs' $ \ipkg' ->
               Cabal.registerPackage verbosity compiler progdb
                                     HcPkg.MultiInstance
                                     (pkgRegisterPackageDBStack pkg) ipkg'
-          return ipkgs
+          return ipkgs'
         else return []
 
     --TODO: [required feature] docs and test phases
