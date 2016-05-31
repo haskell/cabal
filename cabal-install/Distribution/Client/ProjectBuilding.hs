@@ -581,8 +581,9 @@ rebuildTargets verbosity
 
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
-    jobControl    <- if isParallelBuild then newParallelJobControl
-                                        else newSerialJobControl
+    jobControl    <- if isParallelBuild
+                       then newParallelJobControl buildSettingNumJobs
+                       else newSerialJobControl
     buildLimit    <- newJobLimit buildSettingNumJobs
     installLock   <- newLock -- serialise installation
     cacheLock     <- newLock -- serialise access to setup exe cache

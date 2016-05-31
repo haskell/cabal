@@ -47,7 +47,6 @@ update verbosity repoCtxt | null (repoContextRepos repoCtxt) = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
 update verbosity repoCtxt = do
-  jobCtrl <- newParallelJobControl
   let repos       = repoContextRepos repoCtxt
       remoteRepos = catMaybes (map maybeRepoRemote repos)
   case remoteRepos of
@@ -58,6 +57,7 @@ update verbosity repoCtxt = do
     _ -> notice verbosity . unlines
             $ "Downloading the latest package lists from: "
             : map (("- " ++) . remoteRepoName) remoteRepos
+  jobCtrl <- newParallelJobControl (length repos)
   mapM_ (spawnJob jobCtrl . updateRepo verbosity repoCtxt) repos
   mapM_ (\_ -> collectJob jobCtrl) repos
 

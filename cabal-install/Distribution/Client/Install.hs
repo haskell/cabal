@@ -1080,7 +1080,7 @@ performInstallations verbosity
       notice verbosity $ "Notice: installing into a sandbox located at "
                          ++ sandboxDir
 
-  jobControl   <- if parallelInstall then newParallelJobControl
+  jobControl   <- if parallelInstall then newParallelJobControl numJobs
                                      else newSerialJobControl
   buildLimit   <- newJobLimit numJobs
   fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
