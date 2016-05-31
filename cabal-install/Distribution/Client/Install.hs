@@ -1087,7 +1087,8 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity comp jobControl useLogFile installPlan $ \rpkg ->
+  executeInstallPlan verbosity jobControl keepGoing useLogFile
+                     installPlan $ \rpkg ->
     installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity repoCtxt fetchLimit src $ \src' ->
@@ -1106,6 +1107,7 @@ performInstallations verbosity
     numJobs         = determineNumJobs (installNumJobs installFlags)
     numFetchJobs    = 2
     parallelInstall = numJobs >= 2
+    keepGoing       = False
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
 
@@ -1176,20 +1178,28 @@ performInstallations verbosity
 
 
 executeInstallPlan :: Verbosity
-                   -> Compiler
                    -> JobControl IO (PackageId, UnitId, BuildResult)
+                   -> Bool
                    -> UseLogFile
                    -> InstallPlan
                    -> (ReadyPackage -> IO BuildResult)
                    -> IO InstallPlan
-executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
-    tryNewTasks 0 plan0
+executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
+    tryNewTasks False False plan0
   where
-    tryNewTasks taskCount plan = do
+    tryNewTasks :: Bool -> Bool -> InstallPlan -> IO InstallPlan
+    tryNewTasks tasksFailed tasksRemaining plan
+      | tasksFailed && not keepGoing && not tasksRemaining
+      = return plan
+
+      | tasksFailed && not keepGoing && tasksRemaining
+      = waitForTasks tasksFailed plan
+
+    tryNewTasks tasksFailed tasksRemaining plan = do
       case InstallPlan.ready plan of
-        [] | taskCount == 0 -> return plan
-           | otherwise      -> waitForTasks taskCount plan
-        pkgs                -> do
+        [] | not tasksRemaining -> return plan
+           | otherwise          -> waitForTasks tasksFailed plan
+        pkgs                    -> do
           sequence_
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
@@ -1198,17 +1208,25 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
             | pkg <- pkgs
             , let pkgid = packageId pkg ]
 
-          let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
-          waitForTasks taskCount' plan'
+          let plan' = InstallPlan.processing pkgs plan
+          waitForTasks tasksFailed plan'
 
-    waitForTasks taskCount plan = do
+    waitForTasks :: Bool -> InstallPlan -> IO InstallPlan
+    waitForTasks tasksFailed plan = do
       info verbosity $ "Waiting for install task to finish..."
       (pkgid, ipid, buildResult) <- collectJob jobCtl
       printBuildResult pkgid ipid buildResult
-      let taskCount' = taskCount-1
-          plan'      = updatePlan pkgid ipid buildResult plan
-      tryNewTasks taskCount' plan'
+      let plan'        = updatePlan pkgid ipid buildResult plan
+          tasksFailed' = tasksFailed || isBuildFailure buildResult
+      -- if this is the first failure and we're not trying to keep going
+      -- then try to cancel as many of the remaining jobs as possible
+      when (not tasksFailed && isBuildFailure buildResult && not keepGoing) $
+        cancelJobs jobCtl
+      tasksRemaining <- remainingJobs jobCtl
+      tryNewTasks tasksFailed' tasksRemaining plan'
+
+    isBuildFailure (Left  _buildFailure) = True
+    isBuildFailure (Right _buildSuccess) = False
 
     updatePlan :: PackageIdentifier -> InstalledPackageId
                -> BuildResult -> InstallPlan

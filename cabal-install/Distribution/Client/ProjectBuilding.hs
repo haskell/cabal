@@ -598,7 +598,7 @@ rebuildTargets verbosity
                           installPlan pkgsBuildStatus $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      executeInstallPlan verbosity jobControl installPlan $ \pkg ->
+      executeInstallPlan verbosity jobControl keepGoing installPlan $ \pkg ->
         handle (return . BuildFailure) $ --TODO: review exception handling
 
         let ipkgid = installedPackageId pkg
@@ -614,6 +614,7 @@ rebuildTargets verbosity
           pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
+    keepGoing       = False
     withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
                         buildSettings
 
@@ -786,18 +787,29 @@ executeInstallPlan
   => Verbosity
   -> JobControl IO ( GenericReadyPackage srcpkg
                    , GenericBuildResult ipkg iresult BuildFailure )
+  -> Bool
   -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
   -> (    GenericReadyPackage srcpkg
        -> IO (GenericBuildResult ipkg iresult BuildFailure))
   -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
-executeInstallPlan verbosity jobCtl plan0 installPkg =
-    tryNewTasks 0 plan0
+executeInstallPlan verbosity jobCtl keepGoing plan0 installPkg =
+    tryNewTasks False False plan0
   where
-    tryNewTasks taskCount plan = do
+    tryNewTasks :: Bool -> Bool
+                ->     GenericInstallPlan ipkg srcpkg iresult BuildFailure
+                -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
+    tryNewTasks tasksFailed tasksRemaining plan
+      | tasksFailed && not keepGoing && not tasksRemaining
+      = return plan
+
+      | tasksFailed && not keepGoing && tasksRemaining
+      = waitForTasks tasksFailed plan
+
+    tryNewTasks tasksFailed tasksRemaining plan = do
       case InstallPlan.ready plan of
-        [] | taskCount == 0 -> return plan
-           | otherwise      -> waitForTasks taskCount plan
-        pkgs                -> do
+        [] | not tasksRemaining -> return plan
+           | otherwise          -> waitForTasks tasksFailed plan
+        pkgs                    -> do
           sequence_
             [ do debug verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
@@ -807,16 +819,26 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
             , let pkgid = packageId pkg
             ]
 
-          let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
-          waitForTasks taskCount' plan'
+          let plan' = InstallPlan.processing pkgs plan
+          waitForTasks tasksFailed plan'
 
-    waitForTasks taskCount plan = do
+    waitForTasks :: Bool
+                ->     GenericInstallPlan ipkg srcpkg iresult BuildFailure
+                -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
+    waitForTasks tasksFailed plan = do
       debug verbosity $ "Waiting for install task to finish..."
       (pkg, buildResult) <- collectJob jobCtl
-      let taskCount' = taskCount-1
-          plan'      = updatePlan pkg buildResult plan
-      tryNewTasks taskCount' plan'
+      let plan'         = updatePlan pkg buildResult plan
+          tasksFailed'  = tasksFailed || isBuildFailure buildResult
+      -- if this is the first failure and we're not trying to keep going
+      -- then try to cancel as many of the remaining jobs as possible
+      when (not tasksFailed && isBuildFailure buildResult && not keepGoing) $
+        cancelJobs jobCtl
+      tasksRemaining <- remainingJobs jobCtl
+      tryNewTasks tasksFailed' tasksRemaining plan'
+
+    isBuildFailure (BuildFailure _) = True
+    isBuildFailure _                = False
 
     updatePlan :: GenericReadyPackage srcpkg
                -> GenericBuildResult ipkg iresult BuildFailure
