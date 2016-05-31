@@ -303,6 +303,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
       installMaxBackjumps       = projectConfigMaxBackjumps,
     --installUpgradeDeps        = projectConfigUpgradeDeps,
       installReorderGoals       = projectConfigReorderGoals,
+      installCountConflicts     = projectConfigCountConflicts,
     --installIndependentGoals   = projectConfigIndependentGoals,
     --installShadowPkgs         = projectConfigShadowPkgs,
       installStrongFlags        = projectConfigStrongFlags
@@ -495,6 +496,7 @@ convertToLegacySharedConfig
       installMaxBackjumps      = projectConfigMaxBackjumps,
       installUpgradeDeps       = mempty, --projectConfigUpgradeDeps,
       installReorderGoals      = projectConfigReorderGoals,
+      installCountConflicts    = projectConfigCountConflicts,
       installIndependentGoals  = mempty, --projectConfigIndependentGoals,
       installShadowPkgs        = mempty, --projectConfigShadowPkgs,
       installStrongFlags       = projectConfigStrongFlags,
@@ -827,7 +829,7 @@ legacySharedConfigFieldDescrs =
       , "remote-build-reporting", "report-planning-failure"
       , "one-shot", "jobs", "keep-going", "offline"
         -- solver flags:
-      , "max-backjumps", "reorder-goals", "strong-flags"
+      , "max-backjumps", "reorder-goals", "count-conflicts", "strong-flags"
       ]
   . commandOptionsToFields
   ) (installOptions ParseArgs)

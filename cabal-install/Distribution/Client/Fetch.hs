@@ -158,6 +158,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setReorderGoals reorderGoals
 
+      . setCountConflicts countConflicts
+
       . setShadowPkgs shadowPkgs
 
       . setStrongFlags strongFlags
@@ -174,6 +176,7 @@ planPackages verbosity comp platform fetchFlags
     logMsg message rest = debug verbosity message >> rest
 
     reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
+    countConflicts   = fromFlag (fetchCountConflicts   fetchFlags)
     independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
     shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
     strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)

@@ -606,6 +606,7 @@ data FetchFlags = FetchFlags {
       fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag ReorderGoals,
+      fetchCountConflicts   :: Flag CountConflicts,
       fetchIndependentGoals :: Flag IndependentGoals,
       fetchShadowPkgs       :: Flag ShadowPkgs,
       fetchStrongFlags      :: Flag StrongFlags,
@@ -620,6 +621,7 @@ defaultFetchFlags = FetchFlags {
     fetchSolver           = Flag defaultSolver,
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
     fetchReorderGoals     = Flag (ReorderGoals False),
+    fetchCountConflicts   = Flag (CountConflicts False),
     fetchIndependentGoals = Flag (IndependentGoals False),
     fetchShadowPkgs       = Flag (ShadowPkgs False),
     fetchStrongFlags      = Flag (StrongFlags False),
@@ -666,6 +668,7 @@ fetchCommand = CommandUI {
        optionSolverFlags showOrParseArgs
                          fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
+                         fetchCountConflicts   (\v flags -> flags { fetchCountConflicts   = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
                          fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
@@ -683,6 +686,7 @@ data FreezeFlags = FreezeFlags {
       freezeSolver           :: Flag PreSolver,
       freezeMaxBackjumps     :: Flag Int,
       freezeReorderGoals     :: Flag ReorderGoals,
+      freezeCountConflicts   :: Flag CountConflicts,
       freezeIndependentGoals :: Flag IndependentGoals,
       freezeShadowPkgs       :: Flag ShadowPkgs,
       freezeStrongFlags      :: Flag StrongFlags,
@@ -697,6 +701,7 @@ defaultFreezeFlags = FreezeFlags {
     freezeSolver           = Flag defaultSolver,
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
     freezeReorderGoals     = Flag (ReorderGoals False),
+    freezeCountConflicts   = Flag (CountConflicts False),
     freezeIndependentGoals = Flag (IndependentGoals False),
     freezeShadowPkgs       = Flag (ShadowPkgs False),
     freezeStrongFlags      = Flag (StrongFlags False),
@@ -742,6 +747,7 @@ freezeCommand = CommandUI {
        optionSolverFlags showOrParseArgs
                          freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
                          freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
+                         freezeCountConflicts   (\v flags -> flags { freezeCountConflicts   = v })
                          freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
@@ -1144,6 +1150,7 @@ data InstallFlags = InstallFlags {
     installDryRun           :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag ReorderGoals,
+    installCountConflicts   :: Flag CountConflicts,
     installIndependentGoals :: Flag IndependentGoals,
     installShadowPkgs       :: Flag ShadowPkgs,
     installStrongFlags      :: Flag StrongFlags,
@@ -1176,6 +1183,7 @@ defaultInstallFlags = InstallFlags {
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag (ReorderGoals False),
+    installCountConflicts  = Flag (CountConflicts True),
     installIndependentGoals= Flag (IndependentGoals False),
     installShadowPkgs      = Flag (ShadowPkgs False),
     installStrongFlags     = Flag (StrongFlags False),
@@ -1321,6 +1329,7 @@ installOptions showOrParseArgs =
       optionSolverFlags showOrParseArgs
                         installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
+                        installCountConflicts   (\v flags -> flags { installCountConflicts   = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
                         installStrongFlags      (\v flags -> flags { installStrongFlags      = v }) ++
@@ -2085,11 +2094,12 @@ optionSolver get set =
 optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
                   -> (flags -> Flag ReorderGoals)     -> (Flag ReorderGoals     -> flags -> flags)
+                  -> (flags -> Flag CountConflicts)   -> (Flag CountConflicts   -> flags -> flags)
                   -> (flags -> Flag IndependentGoals) -> (Flag IndependentGoals -> flags -> flags)
                   -> (flags -> Flag ShadowPkgs)       -> (Flag ShadowPkgs       -> flags -> flags)
                   -> (flags -> Flag StrongFlags)      -> (Flag StrongFlags      -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip setsip getstrfl setstrfl =
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _setig getsip setsip getstrfl setstrfl =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -2099,6 +2109,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
       (fmap asBool . getrg)
       (setrg . fmap ReorderGoals)
+      (yesNoOpt showOrParseArgs)
+  , option [] ["count-conflicts"]
+      "Try to speed up solving by preferring goals that are involved in a lot of conflicts (default)."
+      (fmap asBool . getcc)
+      (setcc . fmap CountConflicts)
       (yesNoOpt showOrParseArgs)
   -- TODO: Disabled for now because it does not work as advertised (yet).
 {-

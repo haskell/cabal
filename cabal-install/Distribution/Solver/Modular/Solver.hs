@@ -51,7 +51,8 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
-  preferEasyGoalChoices :: ReorderGoals,
+  reorderGoals          :: ReorderGoals,
+  countConflicts        :: CountConflicts,
   independentGoals      :: IndependentGoals,
   avoidReinstalls       :: AvoidReinstalls,
   shadowPkgs            :: ShadowPkgs,
@@ -103,14 +104,12 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = backjumpAndExplore (enableBackjumping sc)
+    explorePhase     = backjumpAndExplore (enableBackjumping sc) (countConflicts sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
       in case goalOrder sc of
-           Nothing -> (if asBool (preferEasyGoalChoices sc)
-                        then P.preferEasyGoalChoices -- also leaves just one choice
-                        else id) . 
+           Nothing -> goalChoiceHeuristics .
                       heuristicsTree .
                       P.deferWeakFlagChoices .
                       P.deferSetupChoices .
@@ -136,6 +135,19 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     buildPhase       = traceTree "build.json" id
                      $ addLinking
                      $ buildTree idx (independentGoals sc) userGoals
+
+    -- Counting conflicts and reordering goals interferes, as both are strategies to
+    -- change the order of goals. When count-conflicts is set, we therefore interpret
+    -- reorder-goals to only prefer goals with 0 or 1 enabled choice.
+    --
+    -- In the past, we used P.firstGoal to trim down the goal choice nodes to just a
+    -- single option. This was a way to work around a space leak that was unnecessary
+    -- and is now fixed, so we no longer do it.
+    --
+    goalChoiceHeuristics
+      | asBool (reorderGoals sc) && asBool (countConflicts sc) = P.preferReallyEasyGoalChoices
+      | asBool (reorderGoals sc)                               = P.preferEasyGoalChoices
+      | otherwise                                              = id {- P.firstGoal -}
 
 -- | Dump solver tree to a file (in debugging mode)
 --

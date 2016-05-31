@@ -179,6 +179,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setReorderGoals reorderGoals
 
+      . setCountConflicts countConflicts
+
       . setShadowPkgs shadowPkgs
 
       . setStrongFlags strongFlags
@@ -201,6 +203,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     benchmarksEnabled = fromFlagOrDefault False $ freezeBenchmarks freezeFlags
 
     reorderGoals     = fromFlag (freezeReorderGoals     freezeFlags)
+    countConflicts   = fromFlag (freezeCountConflicts   freezeFlags)
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     strongFlags      = fromFlag (freezeStrongFlags      freezeFlags)

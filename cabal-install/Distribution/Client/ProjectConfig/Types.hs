@@ -165,6 +165,7 @@ data ProjectConfigShared
        projectConfigAllowNewer        :: Maybe AllowNewer,
        projectConfigMaxBackjumps      :: Flag Int,
        projectConfigReorderGoals      :: Flag ReorderGoals,
+       projectConfigCountConflicts    :: Flag CountConflicts,
        projectConfigStrongFlags       :: Flag StrongFlags
 
        -- More things that only make sense for manual mode, not --local mode
@@ -319,6 +320,7 @@ data SolverSettings
        solverSettingAllowNewer        :: AllowNewer,
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: ReorderGoals,
+       solverSettingCountConflicts    :: CountConflicts,
        solverSettingStrongFlags       :: StrongFlags
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!

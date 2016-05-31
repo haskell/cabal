@@ -48,6 +48,7 @@ module Distribution.Client.Dependency (
     addPreferences,
     setPreferenceDefault,
     setReorderGoals,
+    setCountConflicts,
     setIndependentGoals,
     setAvoidReinstalls,
     setShadowPkgs,
@@ -159,6 +160,7 @@ data DepResolverParams = DepResolverParams {
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex UnresolvedSourcePackage,
        depResolverReorderGoals      :: ReorderGoals,
+       depResolverCountConflicts    :: CountConflicts,
        depResolverIndependentGoals  :: IndependentGoals,
        depResolverAvoidReinstalls   :: AvoidReinstalls,
        depResolverShadowPkgs        :: ShadowPkgs,
@@ -181,6 +183,7 @@ showDepResolverParams p =
        (depResolverPreferences p)
   ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault p)
   ++ "\nreorder goals: "     ++ show (depResolverReorderGoals      p)
+  ++ "\ncount conflicts: "   ++ show (depResolverCountConflicts    p)
   ++ "\nindependent goals: " ++ show (depResolverIndependentGoals  p)
   ++ "\navoid reinstalls: "  ++ show (depResolverAvoidReinstalls   p)
   ++ "\nshadow packages: "   ++ show (depResolverShadowPkgs        p)
@@ -234,6 +237,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
        depResolverReorderGoals      = ReorderGoals False,
+       depResolverCountConflicts    = CountConflicts True,
        depResolverIndependentGoals  = IndependentGoals False,
        depResolverAvoidReinstalls   = AvoidReinstalls False,
        depResolverShadowPkgs        = ShadowPkgs False,
@@ -277,6 +281,12 @@ setReorderGoals :: ReorderGoals -> DepResolverParams -> DepResolverParams
 setReorderGoals reorder params =
     params {
       depResolverReorderGoals = reorder
+    }
+
+setCountConflicts :: CountConflicts -> DepResolverParams -> DepResolverParams
+setCountConflicts count params =
+    params {
+      depResolverCountConflicts = count
     }
 
 setIndependentGoals :: IndependentGoals -> DepResolverParams -> DepResolverParams
@@ -621,7 +631,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
 
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
-  $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
+  $ runSolver solver (SolverConfig reordGoals cntConflicts
+                      indGoals noReinstalls
                       shadowing strFlags maxBkjumps enableBj order)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
@@ -632,7 +643,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
-      reorderGoals
+      reordGoals
+      cntConflicts
       indGoals
       noReinstalls
       shadowing
@@ -873,7 +885,7 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _reorderGoals _indGoals _avoidReinstalls
+                              _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj _order) =
     collectEithers (map selectPackage targets)
   where

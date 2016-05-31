@@ -196,6 +196,7 @@ resolveSolverSettings ProjectConfig{
                                        n | n < 0     -> Nothing
                                          | otherwise -> Just n
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
+    solverSettingCountConflicts    = fromFlag projectConfigCountConflicts
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
   --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
@@ -211,6 +212,7 @@ resolveSolverSettings ProjectConfig{
        projectConfigAllowNewer        = Just AllowNewerNone,
        projectConfigMaxBackjumps      = Flag defaultMaxBackjumps,
        projectConfigReorderGoals      = Flag (ReorderGoals False),
+       projectConfigCountConflicts    = Flag (CountConflicts True),
        projectConfigStrongFlags       = Flag (StrongFlags False)
      --projectConfigIndependentGoals  = Flag False,
      --projectConfigShadowPkgs        = Flag False,
