@@ -577,7 +577,10 @@ rebuildTargets verbosity
                installPlan
                sharedPackageConfig
                pkgsBuildStatus
-               buildSettings@BuildTimeSettings{buildSettingNumJobs} = do
+               buildSettings@BuildTimeSettings{
+                 buildSettingNumJobs,
+                 buildSettingKeepGoing
+               } = do
 
     -- Concurrency control: create the job controller and concurrency limits
     -- for downloading, building and installing.
@@ -614,7 +617,7 @@ rebuildTargets verbosity
           pkgBuildStatus
   where
     isParallelBuild = buildSettingNumJobs >= 2
-    keepGoing       = False
+    keepGoing       = buildSettingKeepGoing
     withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
                         buildSettings
 

@@ -251,6 +251,7 @@ resolveBuildTimeSettings verbosity
     buildSettingSymlinkBinDir = flagToList  projectConfigSymlinkBinDir
     buildSettingOneShot       = fromFlag    projectConfigOneShot
     buildSettingNumJobs       = determineNumJobs projectConfigNumJobs
+    buildSettingKeepGoing     = fromFlag    projectConfigKeepGoing
     buildSettingOfflineMode   = fromFlag    projectConfigOfflineMode
     buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
     buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
@@ -270,6 +271,7 @@ resolveBuildTimeSettings verbosity
       projectConfigOnlyDeps              = toFlag False,
       projectConfigBuildReports          = toFlag NoReports,
       projectConfigReportPlanningFailure = toFlag False,
+      projectConfigKeepGoing             = toFlag False,
       projectConfigOneShot               = toFlag False,
       projectConfigOfflineMode           = toFlag False,
       projectConfigKeepTempFiles         = toFlag False,

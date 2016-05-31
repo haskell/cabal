@@ -1161,6 +1161,7 @@ data InstallFlags = InstallFlags {
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
+    installKeepGoing        :: Flag Bool,
     installRunTests         :: Flag Bool,
     installOfflineMode      :: Flag Bool
   }
@@ -1192,6 +1193,7 @@ defaultInstallFlags = InstallFlags {
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
     installNumJobs         = mempty,
+    installKeepGoing       = Flag False,
     installRunTests        = mempty,
     installOfflineMode     = Flag False
   }
@@ -1400,6 +1402,11 @@ installOptions showOrParseArgs =
 
       , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
+
+      , option [] ["keep-going"]
+          "After a build failure, continue to build other unaffected packages."
+          installKeepGoing (\v flags -> flags { installKeepGoing = v })
+          trueArg
 
       , option [] ["offline"]
           "Don't download packages from the Internet."

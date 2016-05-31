@@ -1107,7 +1107,7 @@ performInstallations verbosity
     numJobs         = determineNumJobs (installNumJobs installFlags)
     numFetchJobs    = 2
     parallelInstall = numJobs >= 2
-    keepGoing       = False
+    keepGoing       = fromFlag (installKeepGoing installFlags)
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
 
