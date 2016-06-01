@@ -1082,7 +1082,6 @@ performInstallations verbosity
 
   jobControl   <- if parallelInstall then newParallelJobControl numJobs
                                      else newSerialJobControl
-  buildLimit   <- newJobLimit numJobs
   fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
@@ -1092,9 +1091,8 @@ performInstallations verbosity
     installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity repoCtxt fetchLimit src $ \src' ->
-        installLocalPackage verbosity buildLimit
-                            (packageId pkg) src' distPref $ \mpath ->
-          installUnpackedPackage verbosity buildLimit installLock numJobs
+        installLocalPackage verbosity (packageId pkg) src' distPref $ \mpath ->
+          installUnpackedPackage verbosity installLock numJobs
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
                                  configFlags'
@@ -1324,11 +1322,10 @@ fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
 
 installLocalPackage
   :: Verbosity
-  -> JobLimit
   -> PackageIdentifier -> ResolvedPkgLoc -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
+installLocalPackage verbosity pkgid location distPref installPkg =
 
   case location of
 
@@ -1336,25 +1333,24 @@ installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
       installPkg (Just dir)
 
     LocalTarballPackage tarballPath ->
-      installLocalTarballPackage verbosity jobLimit
+      installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
 
     RemoteTarballPackage _ tarballPath ->
-      installLocalTarballPackage verbosity jobLimit
+      installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
 
     RepoTarballPackage _ _ tarballPath ->
-      installLocalTarballPackage verbosity jobLimit
+      installLocalTarballPackage verbosity
         pkgid tarballPath distPref installPkg
 
 
 installLocalTarballPackage
   :: Verbosity
-  -> JobLimit
   -> PackageIdentifier -> FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalTarballPackage verbosity jobLimit pkgid
+installLocalTarballPackage verbosity pkgid
                            tarballPath distPref installPkg = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
@@ -1363,15 +1359,13 @@ installLocalTarballPackage verbosity jobLimit pkgid
           absUnpackedPath = tmpDirPath </> relUnpackedPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
-      withJobLimit jobLimit $ do
-        info verbosity $ "Extracting " ++ tarballPath
-                      ++ " to " ++ tmpDirPath ++ "..."
-        extractTarGzFile tmpDirPath relUnpackedPath tarballPath
-        exists <- doesFileExist descFilePath
-        when (not exists) $
-          die $ "Package .cabal file not found: " ++ show descFilePath
-        maybeRenameDistDir absUnpackedPath
-
+      info verbosity $ "Extracting " ++ tarballPath
+                    ++ " to " ++ tmpDirPath ++ "..."
+      extractTarGzFile tmpDirPath relUnpackedPath tarballPath
+      exists <- doesFileExist descFilePath
+      when (not exists) $
+        die $ "Package .cabal file not found: " ++ show descFilePath
+      maybeRenameDistDir absUnpackedPath
       installPkg (Just absUnpackedPath)
 
   where
@@ -1404,7 +1398,6 @@ installLocalTarballPackage verbosity jobLimit pkgid
 
 installUnpackedPackage
   :: Verbosity
-  -> JobLimit
   -> Lock
   -> Int
   -> SetupScriptOptions
@@ -1420,7 +1413,7 @@ installUnpackedPackage
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
-installUnpackedPackage verbosity buildLimit installLock numJobs
+installUnpackedPackage verbosity installLock numJobs
                        scriptOptions
                        configFlags installFlags haddockFlags comp conf
                        platform pkg rpkg pkgoverride workingDir useLogFile = do
@@ -1449,7 +1442,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
     -- Configure phase
-    onFailure ConfigureFailed $ withJobLimit buildLimit $ do
+    onFailure ConfigureFailed $ do
       when (numJobs > 1) $ notice verbosity $
         "Configuring " ++ display pkgid ++ "..."
       setup configureCommand configureFlags mLogPath

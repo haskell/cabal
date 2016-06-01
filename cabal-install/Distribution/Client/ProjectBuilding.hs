@@ -587,7 +587,6 @@ rebuildTargets verbosity
     jobControl    <- if isParallelBuild
                        then newParallelJobControl buildSettingNumJobs
                        else newSerialJobControl
-    buildLimit    <- newJobLimit buildSettingNumJobs
     installLock   <- newLock -- serialise installation
     cacheLock     <- newLock -- serialise access to setup exe cache
                              --TODO: [code cleanup] eliminate setup exe cache
@@ -611,7 +610,7 @@ rebuildTargets verbosity
           verbosity
           distDirLayout
           buildSettings downloadMap
-          buildLimit installLock cacheLock 
+          installLock cacheLock 
           sharedPackageConfig
           pkg
           pkgBuildStatus
@@ -627,7 +626,7 @@ rebuildTarget :: Verbosity
               -> DistDirLayout
               -> BuildTimeSettings
               -> AsyncDownloadMap
-              -> JobLimit -> Lock -> Lock
+              -> Lock -> Lock
               -> ElaboratedSharedConfig
               -> ElaboratedReadyPackage
               -> BuildStatus
@@ -635,7 +634,7 @@ rebuildTarget :: Verbosity
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
               buildSettings downloadMap
-              buildLimit installLock cacheLock
+              installLock cacheLock
               sharedPackageConfig
               rpkg@(ReadyPackage pkg)
               pkgBuildStatus =
@@ -660,7 +659,6 @@ rebuildTarget verbosity
 
 
     unpackTarballPhase tarball =
-      withJobLimit buildLimit $
         withTarballLocalDirectory
           verbosity distDirLayout tarball
           (packageId pkg) (pkgBuildStyle pkg)
@@ -679,7 +677,6 @@ rebuildTarget verbosity
     rebuildPhase buildStatus srcdir =
         assert (pkgBuildStyle pkg == BuildInplaceOnly) $
 
-        withJobLimit buildLimit $
           buildInplace buildStatus srcdir builddir
       where
         builddir = distBuildDirectory (packageId pkg)
