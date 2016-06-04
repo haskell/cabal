@@ -54,10 +54,11 @@ esac
 
 timed() {
     echo "$1"
-    start_time=`date +%s`
+    start_time=$(date +%s)
     $2
-    end_time=`date +%s`
-    echo "$1" took $(expr $end_time - $start_time) seconds.
+    end_time=$(date +%s)
+    duration=$((end_time - start_time))
+    echo "$1 took $duration seconds."
     echo "----"
 }
 
