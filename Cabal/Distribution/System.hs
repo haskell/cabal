@@ -146,10 +146,10 @@ buildOS = classifyOS Permissive System.Info.os
 -- The following aliases can also be used:
 --    * PPC alias: powerpc
 --    * PPC64 alias : powerpc64
---    * Sparc aliases: parc64, sun4
+--    * Sparc aliases: sparc64, sun4
 --    * Mips aliases: mipsel, mipseb
 --    * Arm aliases: armeb, armel
--- 
+--
 data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
           | Arm   | Mips   | SH
           | IA64  | S390
