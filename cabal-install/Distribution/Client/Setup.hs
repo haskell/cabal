@@ -371,7 +371,7 @@ filterConfigureFlags flags cabalLibVersion
       configConstraints = [],
       -- Passing '--allow-newer' to Setup.hs is unnecessary, we use
       -- '--exact-configuration' instead.
-      configAllowNewer  = Just Cabal.AllowNewerNone
+      configAllowNewer  = Just (Cabal.AllowNewer Cabal.RelaxDepsNone)
       }
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
