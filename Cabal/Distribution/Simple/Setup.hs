@@ -35,7 +35,8 @@ module Distribution.Simple.Setup (
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
   configPrograms,
-  AllowNewer(..),    AllowNewerDep(..),  isAllowNewer,
+  RelaxDeps(..),    RelaxedDep(..),  isRelaxDeps,
+  AllowNewer(..),   AllowOlder(..),
   configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
@@ -263,63 +264,87 @@ instance Semigroup GlobalFlags where
 -- 'build-depends: array >= 0.3 && < 0.5', are we allowed to relax the upper
 -- bound and choose a version of 'array' that is greater or equal to 0.5? By
 -- default the upper bounds are always strictly honored.
-data AllowNewer =
+data RelaxDeps =
 
   -- | Default: honor the upper bounds in all dependencies, never choose
   -- versions newer than allowed.
-  AllowNewerNone
+  RelaxDepsNone
 
   -- | Ignore upper bounds in dependencies on the given packages.
-  | AllowNewerSome [AllowNewerDep]
+  | RelaxDepsSome [RelaxedDep]
 
   -- | Ignore upper bounds in dependencies on all packages.
-  | AllowNewerAll
+  | RelaxDepsAll
   deriving (Eq, Read, Show, Generic)
+
+-- | 'RelaxDeps' in the context of upper bounds (i.e. for @--allow-newer@ flag)
+newtype AllowNewer = AllowNewer { unAllowNewer :: RelaxDeps }
+                   deriving (Eq, Read, Show, Generic)
+
+-- | 'RelaxDeps' in the context of lower bounds (i.e. for @--allow-older@ flag)
+newtype AllowOlder = AllowOlder { unAllowOlder :: RelaxDeps }
+                   deriving (Eq, Read, Show, Generic)
 
 -- | Dependencies can be relaxed either for all packages in the install plan, or
 -- only for some packages.
-data AllowNewerDep = AllowNewerDep PackageName
-                   | AllowNewerDepScoped PackageName PackageName
-                   deriving (Eq, Read, Show, Generic)
+data RelaxedDep = RelaxedDep PackageName
+                | RelaxedDepScoped PackageName PackageName
+                deriving (Eq, Read, Show, Generic)
 
-instance Text AllowNewerDep where
-  disp (AllowNewerDep p0)          = disp p0
-  disp (AllowNewerDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
+instance Text RelaxedDep where
+  disp (RelaxedDep p0)          = disp p0
+  disp (RelaxedDepScoped p0 p1) = disp p0 Disp.<> Disp.colon Disp.<> disp p1
 
   parse = scopedP Parse.<++ normalP
     where
-      scopedP = AllowNewerDepScoped `fmap` parse A.<* Parse.char ':' A.<*> parse
-      normalP = AllowNewerDep       `fmap` parse
+      scopedP = RelaxedDepScoped `fmap` parse A.<* Parse.char ':' A.<*> parse
+      normalP = RelaxedDep       `fmap` parse
 
+instance Binary RelaxDeps
+instance Binary RelaxedDep
 instance Binary AllowNewer
-instance Binary AllowNewerDep
+instance Binary AllowOlder
 
-instance Semigroup AllowNewer where
-  AllowNewerNone       <> r                    = r
-  l@AllowNewerAll      <> _                    = l
-  l@(AllowNewerSome _) <> AllowNewerNone       = l
-  (AllowNewerSome   _) <> r@AllowNewerAll      = r
-  (AllowNewerSome   a) <> (AllowNewerSome b)   = AllowNewerSome (a ++ b)
+instance Semigroup RelaxDeps where
+  RelaxDepsNone       <> r                    = r
+  l@RelaxDepsAll      <> _                    = l
+  l@(RelaxDepsSome _) <> RelaxDepsNone       = l
+  (RelaxDepsSome   _) <> r@RelaxDepsAll      = r
+  (RelaxDepsSome   a) <> (RelaxDepsSome b)   = RelaxDepsSome (a ++ b)
 
-instance Monoid AllowNewer where
-  mempty  = AllowNewerNone
+instance Monoid RelaxDeps where
+  mempty  = RelaxDepsNone
   mappend = (Semi.<>)
 
--- | Convert 'AllowNewer' to a boolean.
-isAllowNewer :: AllowNewer -> Bool
-isAllowNewer AllowNewerNone     = False
-isAllowNewer (AllowNewerSome _) = True
-isAllowNewer AllowNewerAll      = True
+instance Semigroup AllowNewer where
+  AllowNewer x <> AllowNewer y = AllowNewer (x <> y)
 
-allowNewerParser :: Parse.ReadP r (Maybe AllowNewer)
-allowNewerParser =
-  (Just . AllowNewerSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
+instance Semigroup AllowOlder where
+  AllowOlder x <> AllowOlder y = AllowOlder (x <> y)
 
-allowNewerPrinter :: (Maybe AllowNewer) -> [Maybe String]
-allowNewerPrinter Nothing                      = []
-allowNewerPrinter (Just AllowNewerNone)        = []
-allowNewerPrinter (Just AllowNewerAll)         = [Nothing]
-allowNewerPrinter (Just (AllowNewerSome pkgs)) = map (Just . display) $ pkgs
+instance Monoid AllowNewer where
+  mempty  = AllowNewer mempty
+  mappend = (Semi.<>)
+
+instance Monoid AllowOlder where
+  mempty  = AllowOlder mempty
+  mappend = (Semi.<>)
+
+-- | Convert 'RelaxDeps' to a boolean.
+isRelaxDeps :: RelaxDeps -> Bool
+isRelaxDeps RelaxDepsNone     = False
+isRelaxDeps (RelaxDepsSome _) = True
+isRelaxDeps RelaxDepsAll      = True
+
+relaxDepsParser :: Parse.ReadP r (Maybe RelaxDeps)
+relaxDepsParser =
+  (Just . RelaxDepsSome) `fmap` Parse.sepBy1 parse (Parse.char ',')
+
+relaxDepsPrinter :: (Maybe RelaxDeps) -> [Maybe String]
+relaxDepsPrinter Nothing                      = []
+relaxDepsPrinter (Just RelaxDepsNone)        = []
+relaxDepsPrinter (Just RelaxDepsAll)         = [Nothing]
+relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 
 -- | Flags to @configure@ command.
 --
@@ -690,10 +715,11 @@ configureOptions showOrParseArgs =
 
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")
-       configAllowNewer (\v flags -> flags { configAllowNewer = v})
+       (fmap unAllowNewer . configAllowNewer)
+       (\v flags -> flags { configAllowNewer = fmap AllowNewer v})
        (optArg "DEPS"
-        (readP_to_E ("Cannot parse the list of packages: " ++) allowNewerParser)
-        (Just AllowNewerAll) allowNewerPrinter)
+        (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+        (Just RelaxDepsAll) relaxDepsPrinter)
 
       ,option "" ["exact-configuration"]
          "All direct dependencies and flags are provided on the command line."

@@ -587,14 +587,20 @@ instance Arbitrary StrongFlags where
     arbitrary = StrongFlags <$> arbitrary
 
 instance Arbitrary AllowNewer where
-    arbitrary = oneof [ pure AllowNewerNone
-                      , AllowNewerSome <$> shortListOf1 3 arbitrary
-                      , pure AllowNewerAll
+    arbitrary = AllowNewer <$> arbitrary
+
+instance Arbitrary AllowOlder where
+    arbitrary = AllowOlder <$> arbitrary
+
+instance Arbitrary RelaxDeps where
+    arbitrary = oneof [ pure RelaxDepsNone
+                      , RelaxDepsSome <$> shortListOf1 3 arbitrary
+                      , pure RelaxDepsAll
                       ]
 
-instance Arbitrary AllowNewerDep where
-    arbitrary = oneof [ AllowNewerDep       <$> arbitrary
-                      , AllowNewerDepScoped <$> arbitrary <*> arbitrary
+instance Arbitrary RelaxedDep where
+    arbitrary = oneof [ RelaxedDep       <$> arbitrary
+                      , RelaxedDepScoped <$> arbitrary <*> arbitrary
                       ]
 
 instance Arbitrary ProfDetailLevel where

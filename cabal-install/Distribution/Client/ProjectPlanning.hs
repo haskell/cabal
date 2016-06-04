@@ -883,7 +883,7 @@ planPackages comp platform solver SolverSettings{..}
                                 then PreferAllLatest
                                 else PreferLatestForSelected)-}
 
-      . removeUpperBounds solverSettingAllowNewer
+      . removeUpperBounds (Cabal.unAllowNewer solverSettingAllowNewer)
 
       . addDefaultSetupDependencies (defaultSetupDeps comp platform
                                    . PD.packageDescription

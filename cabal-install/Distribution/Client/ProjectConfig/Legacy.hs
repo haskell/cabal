@@ -40,7 +40,7 @@ import Distribution.Simple.Setup
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , programConfigurationPaths', splitArgs
-         , AllowNewer(..) )
+         , AllowNewer(..), RelaxDeps(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -787,8 +787,9 @@ legacySharedConfigFieldDescrs =
       (\flags conf -> conf { legacyConfigureShFlags = flags })
   . addFields
       [ simpleField "allow-newer"
-        (maybe mempty dispAllowNewer) (fmap Just parseAllowNewer)
-        configAllowNewer (\v conf -> conf { configAllowNewer = v })
+        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (fmap unAllowNewer . configAllowNewer)
+        (\v conf -> conf { configAllowNewer = fmap AllowNewer v })
       ]
   . filterFields ["verbose"]
   . commandOptionsToFields
@@ -836,17 +837,17 @@ legacySharedConfigFieldDescrs =
   where
     constraintSrc = ConstraintSourceProjectConfig "TODO"
 
-parseAllowNewer :: ReadP r AllowNewer
-parseAllowNewer =
-     ((const AllowNewerNone <$> (Parse.string "none" +++ Parse.string "None"))
-  +++ (const AllowNewerAll  <$> (Parse.string "all"  +++ Parse.string "All")))
-  <++ (      AllowNewerSome <$> parseOptCommaList parse)
+parseRelaxDeps :: ReadP r RelaxDeps
+parseRelaxDeps =
+     ((const RelaxDepsNone <$> (Parse.string "none" +++ Parse.string "None"))
+  +++ (const RelaxDepsAll  <$> (Parse.string "all"  +++ Parse.string "All")))
+  <++ (      RelaxDepsSome <$> parseOptCommaList parse)
 
-dispAllowNewer :: AllowNewer -> Doc
-dispAllowNewer  AllowNewerNone       = Disp.text "None"
-dispAllowNewer (AllowNewerSome pkgs) = Disp.fsep . Disp.punctuate Disp.comma
-                                                 . map disp $ pkgs
-dispAllowNewer  AllowNewerAll        = Disp.text "All"
+dispRelaxDeps :: RelaxDeps -> Doc
+dispRelaxDeps  RelaxDepsNone       = Disp.text "None"
+dispRelaxDeps (RelaxDepsSome pkgs) = Disp.fsep . Disp.punctuate Disp.comma
+                                               . map disp $ pkgs
+dispRelaxDeps  RelaxDepsAll        = Disp.text "All"
 
 
 legacyPackageConfigFieldDescrs :: [FieldDescr LegacyPackageConfig]

@@ -107,7 +107,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
          ( relaxPackageDeps )
 import Distribution.Simple.Setup
-         ( AllowNewer(..) )
+         ( RelaxDeps(..) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -414,8 +414,8 @@ hideBrokenInstalledPackages params =
 -- 'addSourcePackages'. Otherwise, the packages inserted by
 -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 --
-removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
-removeUpperBounds AllowNewerNone params = params
+removeUpperBounds :: RelaxDeps -> DepResolverParams -> DepResolverParams
+removeUpperBounds RelaxDepsNone params = params
 removeUpperBounds allowNewer     params =
     params {
       depResolverSourcePkgIndex = sourcePkgIndex'

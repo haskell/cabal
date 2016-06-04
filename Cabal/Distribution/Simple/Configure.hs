@@ -324,7 +324,7 @@ configure (pkg_descr0', pbi) cfg = do
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
           else relaxPackageDeps
-               (fromMaybe AllowNewerNone $ configAllowNewer cfg)
+               (maybe RelaxDepsNone unAllowNewer $ configAllowNewer cfg)
                pkg_descr0'
 
     setupMessage verbosity "Configuring" (packageId pkg_descr0)
@@ -861,21 +861,21 @@ dependencySatisfiable
                       $ PackageIndex.lookupDependency internalPackageSet d
 
 -- | Relax the dependencies of this package if needed.
-relaxPackageDeps :: AllowNewer -> GenericPackageDescription
+relaxPackageDeps :: RelaxDeps -> GenericPackageDescription
                  -> GenericPackageDescription
-relaxPackageDeps AllowNewerNone gpd = gpd
-relaxPackageDeps AllowNewerAll  gpd = transformAllBuildDepends relaxAll gpd
+relaxPackageDeps RelaxDepsNone gpd = gpd
+relaxPackageDeps RelaxDepsAll  gpd = transformAllBuildDepends relaxAll gpd
   where
     relaxAll = \(Dependency pkgName verRange) ->
       Dependency pkgName (removeUpperBound verRange)
-relaxPackageDeps (AllowNewerSome allowNewerDeps') gpd =
+relaxPackageDeps (RelaxDepsSome allowNewerDeps') gpd =
   transformAllBuildDepends relaxSome gpd
   where
     thisPkgName    = packageName gpd
     allowNewerDeps = mapMaybe f allowNewerDeps'
 
-    f (Setup.AllowNewerDep p) = Just p
-    f (Setup.AllowNewerDepScoped scope p) | scope == thisPkgName = Just p
+    f (Setup.RelaxedDep p) = Just p
+    f (Setup.RelaxedDepScoped scope p) | scope == thisPkgName = Just p
                                           | otherwise            = Nothing
 
     relaxSome = \d@(Dependency depName verRange) ->

@@ -62,7 +62,7 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
-         , AllowNewer(..)
+         , AllowNewer(..), RelaxDeps(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
@@ -631,7 +631,7 @@ commentSavedConfig = do
     savedConfigureExFlags  = defaultConfigExFlags,
     savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
       configUserInstall    = toFlag defaultUserInstall,
-      configAllowNewer     = Just AllowNewerNone
+      configAllowNewer     = Just (AllowNewer RelaxDepsNone)
     },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
@@ -661,13 +661,13 @@ configFieldDescriptions src =
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
        ,let showAllowNewer Nothing               = mempty
-            showAllowNewer (Just AllowNewerNone) = Disp.text "False"
+            showAllowNewer (Just (AllowNewer RelaxDepsNone)) = Disp.text "False"
             showAllowNewer (Just _)              = Disp.text "True"
 
-            toAllowNewer True  = Just AllowNewerAll
-            toAllowNewer False = Just AllowNewerNone
+            toAllowNewer True  = Just (AllowNewer RelaxDepsAll)
+            toAllowNewer False = Just (AllowNewer RelaxDepsNone)
 
-            pkgs = (Just . AllowNewerSome) `fmap` parseOptCommaList Text.parse
+            pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
             parseAllowNewer = (toAllowNewer `fmap` Text.parse) Parse.<++ pkgs in
         simpleField "allow-newer"
         showAllowNewer parseAllowNewer
