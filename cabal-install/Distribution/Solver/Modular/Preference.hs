@@ -113,14 +113,18 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 preferPackageStanzaPreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
 preferPackageStanzaPreferences pcs = trav go
   where
-    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts) | primaryPP pp =
-        let PackagePreferences _ _ spref = pcs pn
-            enableStanzaPref = s `elem` spref
-                  -- move True case first to try enabling the stanza
-            ts' | enableStanzaPref = P.sortByKeys (flip compare) ts
-                | otherwise        = ts
-         in SChoiceF qsn gr (WeakOrTrivial True) ts'
+    go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts)
+      | primaryPP pp && enableStanzaPref pn s =
+          -- move True case first to try enabling the stanza
+          let ts' = P.sortByKeys (flip compare) ts
+          -- defer the choice by setting it to weak
+          in  SChoiceF qsn gr (WeakOrTrivial True) ts'
     go x = x
+
+    enableStanzaPref :: PN -> OptionalStanza -> Bool
+    enableStanzaPref pn s =
+      let PackagePreferences _ _ spref = pcs pn
+      in  s `elem` spref
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given instance for a P-node. Translates the constraint into a
