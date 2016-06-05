@@ -144,13 +144,14 @@ build = ana go
     --
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-      FChoiceF qfn gr (w || trivial) m (P.fromList (reorder b
+      FChoiceF qfn gr weak m (P.fromList (reorder b
         [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
          (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })]))
       where
         reorder True  = id
         reorder False = reverse
         trivial = L.null t && L.null f
+        weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
 
     -- For a stanza, we also create only two subtrees. The order is initially
     -- False, True. This can be changed later by constraints (force enabling
@@ -162,7 +163,7 @@ build = ana go
         [(False,                                                             bs  { next = Goals }),
          (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
       where
-        trivial = L.null t
+        trivial = WeakOrTrivial (L.null t)
 
     -- For a particular instance, we change the state: we update the scope,
     -- and furthermore we update the set of goals.

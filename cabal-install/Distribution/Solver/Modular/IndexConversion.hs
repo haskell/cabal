@@ -193,7 +193,9 @@ prefix f fds = [f (concat fds)]
 -- unless strong flags have been selected explicitly.
 flagInfo :: StrongFlags -> [PD.Flag] -> FlagInfo
 flagInfo (StrongFlags strfl) =
-    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
+    M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (weak m)))
+  where
+    weak m = WeakOrTrivial $ not (strfl || m)
 
 -- | Internal package names, which should not be interpreted as true
 -- dependencies.

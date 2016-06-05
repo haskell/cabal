@@ -119,7 +119,7 @@ preferPackageStanzaPreferences pcs = trav go
                   -- move True case first to try enabling the stanza
             ts' | enableStanzaPref = P.sortByKeys (flip compare) ts
                 | otherwise        = ts
-         in SChoiceF qsn gr True ts'   -- True: now weak choice
+         in SChoiceF qsn gr (WeakOrTrivial True) ts'
     go x = x
 
 -- | Helper function that tries to enforce a single package constraint on a
@@ -322,12 +322,12 @@ deferWeakFlagChoices = trav go
     go x                = x
 
     noWeakStanza :: Tree a -> Bool
-    noWeakStanza (SChoice _ _ True _) = False
-    noWeakStanza _                    = True
+    noWeakStanza (SChoice _ _ (WeakOrTrivial True) _) = False
+    noWeakStanza _                                    = True
 
     noWeakFlag :: Tree a -> Bool
-    noWeakFlag (FChoice _ _ True _ _) = False
-    noWeakFlag _                      = True
+    noWeakFlag (FChoice _ _ (WeakOrTrivial True) _ _) = False
+    noWeakFlag _                                      = True
 
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred.
