@@ -18,9 +18,7 @@ import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Text
 
-#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
-#endif
 import qualified Data.Map as Map
 import Control.Monad
 import Control.Exception
@@ -61,6 +59,7 @@ tests config =
 
   , testGroup "Successful builds" $
     [ testCaseSteps "Setup script styles" (testSetupScriptStyles config)
+    , testCase      "keep-going"          (testBuildKeepGoing config)
     ]
 
   , testGroup "Regression tests" $
@@ -160,6 +159,34 @@ testSetupScriptStyles config reportSubCase = do
     -- The solver fills in default setup deps explicitly, but marks them as such
     hasDefaultSetupDeps = fmap defaultSetupDepends
                         . setupBuildInfo . pkgDescription
+
+-- | Test the behaviour with and without @--keep-going@
+--
+testBuildKeepGoing :: ProjectConfig -> Assertion
+testBuildKeepGoing config = do
+    -- P is expected to fail, Q does not depend on P but without
+    -- parallel build and without keep-going then we don't build Q yet.
+    plan1 <- executePlan =<< planProject testdir (config  <> keepGoing False)
+    (_, failure1) <- expectPackageFailed plan1 pkgidP
+    expectBuildFailed failure1
+    _ <- expectPackageProcessing plan1 pkgidQ
+
+    -- With keep-going then we should go on to sucessfully build Q
+    plan2 <- executePlan =<< planProject testdir (config  <> keepGoing True)
+    (_, failure2) <- expectPackageFailed plan2 pkgidP
+    expectBuildFailed failure2
+    _ <- expectPackageInstalled plan2 pkgidQ
+    return ()
+  where
+    testdir = "build/keep-going"
+    pkgidP  = PackageIdentifier (PackageName "p") (Version [0,1] [])
+    pkgidQ  = PackageIdentifier (PackageName "q") (Version [0,1] [])
+    keepGoing kg =
+      mempty {
+        projectConfigBuildOnly = mempty {
+          projectConfigKeepGoing = toFlag kg
+        }
+      }
 
 -- | See <https://github.com/haskell/cabal/issues/3324>
 --
@@ -332,6 +359,15 @@ expectPackageConfigured plan pkgid = do
         -> return pkg
       _ -> unexpectedPackageState "Configured" planpkg
 
+expectPackageProcessing :: ElaboratedInstallPlan -> PackageId
+                        -> IO ElaboratedConfiguredPackage
+expectPackageProcessing plan pkgid = do
+    planpkg <- expectPlanPackage plan pkgid
+    case planpkg of
+      InstallPlan.Processing (ReadyPackage pkg)
+        -> return pkg
+      _ -> unexpectedPackageState "Processing" planpkg
+
 expectPackageInstalled :: ElaboratedInstallPlan -> PackageId
                        -> IO (ElaboratedConfiguredPackage,
                               Maybe InstalledPackageInfo,
@@ -357,7 +393,7 @@ unexpectedPackageState :: String -> ElaboratedPlanPackage -> IO a
 unexpectedPackageState expected planpkg =
     throwIO $ HUnitFailure $
          "expected to find " ++ display (packageId planpkg) ++ " in the "
-      ++ expected ++ " state, but it is actually in the " ++ actual ++ "state."
+      ++ expected ++ " state, but it is actually in the " ++ actual ++ " state."
   where
     actual = case planpkg of
       InstallPlan.PreExisting{} -> "PreExisting"

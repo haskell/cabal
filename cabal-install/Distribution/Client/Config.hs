@@ -256,6 +256,7 @@ instance Semigroup SavedConfig where
         installSymlinkBinDir         = combine installSymlinkBinDir,
         installOneShot               = combine installOneShot,
         installNumJobs               = combine installNumJobs,
+        installKeepGoing             = combine installKeepGoing,
         installRunTests              = combine installRunTests,
         installOfflineMode           = combine installOfflineMode
         }

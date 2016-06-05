@@ -410,6 +410,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
       installSymlinkBinDir      = projectConfigSymlinkBinDir,
       installOneShot            = projectConfigOneShot,
       installNumJobs            = projectConfigNumJobs,
+      installKeepGoing          = projectConfigKeepGoing,
       installOfflineMode        = projectConfigOfflineMode
     } = installFlags
 
@@ -507,6 +508,7 @@ convertToLegacySharedConfig
       installSymlinkBinDir     = projectConfigSymlinkBinDir,
       installOneShot           = projectConfigOneShot,
       installNumJobs           = projectConfigNumJobs,
+      installKeepGoing         = projectConfigKeepGoing,
       installRunTests          = mempty,
       installOfflineMode       = projectConfigOfflineMode
     }
@@ -823,7 +825,7 @@ legacySharedConfigFieldDescrs =
       , "root-cmd", "symlink-bindir"
       , "build-log"
       , "remote-build-reporting", "report-planning-failure"
-      , "one-shot", "jobs", "offline"
+      , "one-shot", "jobs", "keep-going", "offline"
         -- solver flags:
       , "max-backjumps", "reorder-goals", "strong-flags"
       ]

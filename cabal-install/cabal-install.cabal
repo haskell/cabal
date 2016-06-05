@@ -114,6 +114,11 @@ Extra-Source-Files:
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
   tests/IntegrationTests2.hs
+  tests/IntegrationTests2/build/keep-going/cabal.project
+  tests/IntegrationTests2/build/keep-going/p/P.hs
+  tests/IntegrationTests2/build/keep-going/p/p.cabal
+  tests/IntegrationTests2/build/keep-going/q/Q.hs
+  tests/IntegrationTests2/build/keep-going/q/q.cabal
   tests/IntegrationTests2/build/setup-custom1/A.hs
   tests/IntegrationTests2/build/setup-custom1/Setup.hs
   tests/IntegrationTests2/build/setup-custom1/a.cabal
@@ -372,6 +377,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.Tar
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
+    UnitTests.Distribution.Client.JobControl
     UnitTests.Distribution.Solver.Modular.PSQ
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL
