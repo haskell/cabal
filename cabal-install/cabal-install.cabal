@@ -77,6 +77,17 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
+  tests/IntegrationTests/new-build/T3460.sh
+  tests/IntegrationTests/new-build/T3460/C.hs
+  tests/IntegrationTests/new-build/T3460/Setup.hs
+  tests/IntegrationTests/new-build/T3460/T3460.cabal
+  tests/IntegrationTests/new-build/T3460/cabal.project
+  tests/IntegrationTests/new-build/T3460/sub-package-A/A.hs
+  tests/IntegrationTests/new-build/T3460/sub-package-A/Setup.hs
+  tests/IntegrationTests/new-build/T3460/sub-package-A/sub-package-A.cabal
+  tests/IntegrationTests/new-build/T3460/sub-package-B/B.hs
+  tests/IntegrationTests/new-build/T3460/sub-package-B/Setup.hs
+  tests/IntegrationTests/new-build/T3460/sub-package-B/sub-package-B.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
