@@ -261,8 +261,8 @@ CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.1.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
-                       # >= 0.5.1 && < 0.6
+HACKAGE_SECURITY_VER="0.5.2.0"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
+                       # >= 0.5.2 && < 0.6
 BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
 TAR_VER="0.5.0.3";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
                        # >= 0.5.0.3  && < 0.6
