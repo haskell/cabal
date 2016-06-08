@@ -587,7 +587,7 @@ rebuildTargets verbosity
     jobControl    <- if isParallelBuild
                        then newParallelJobControl buildSettingNumJobs
                        else newSerialJobControl
-    installLock   <- newLock -- serialise installation
+    registerLock  <- newLock -- serialise registration
     cacheLock     <- newLock -- serialise access to setup exe cache
                              --TODO: [code cleanup] eliminate setup exe cache
 
@@ -610,7 +610,7 @@ rebuildTargets verbosity
           verbosity
           distDirLayout
           buildSettings downloadMap
-          installLock cacheLock 
+          registerLock cacheLock
           sharedPackageConfig
           pkg
           pkgBuildStatus
@@ -634,7 +634,7 @@ rebuildTarget :: Verbosity
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
               buildSettings downloadMap
-              installLock cacheLock
+              registerLock cacheLock
               sharedPackageConfig
               rpkg@(ReadyPackage pkg)
               pkgBuildStatus =
@@ -684,7 +684,7 @@ rebuildTarget verbosity
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
           verbosity distDirLayout
-          buildSettings installLock cacheLock
+          buildSettings registerLock cacheLock
           sharedPackageConfig
           rpkg
           srcdir builddir'
@@ -696,7 +696,7 @@ rebuildTarget verbosity
         --TODO: [nice to have] use a relative build dir rather than absolute
         buildInplaceUnpackedPackage
           verbosity distDirLayout
-          buildSettings cacheLock
+          buildSettings registerLock cacheLock
           sharedPackageConfig
           rpkg
           buildStatus
@@ -984,7 +984,7 @@ buildAndInstallUnpackedPackage verbosity
                                  buildSettingNumJobs,
                                  buildSettingLogFile
                                }
-                               installLock cacheLock
+                               registerLock cacheLock
                                pkgshared@ElaboratedSharedConfig {
                                  pkgConfigPlatform      = platform,
                                  pkgConfigCompiler      = compiler,
@@ -1020,11 +1020,7 @@ buildAndInstallUnpackedPackage verbosity
 
     -- Install phase
     mipkg <-
-      criticalSection installLock $ 
       annotateFailure InstallFailed $ do
-      --TODO: [research required] do we need the installLock for copying? can we not do that in
-      -- parallel? Isn't it just registering that we have to lock for?
-
       --TODO: [required eventually] need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
 
@@ -1066,7 +1062,8 @@ buildAndInstallUnpackedPackage verbosity
                ++ display ipkgid ++ " but it actually produced info for "
                ++ intercalate ", "
                     (map (display . Installed.installedUnitId) ipkgs')
-          forM_ ipkgs' $ \ipkg' ->
+          criticalSection registerLock $
+            forM_ ipkgs' $ \ipkg' ->
               Cabal.registerPackage verbosity compiler progdb
                                     HcPkg.MultiInstance
                                     (pkgRegisterPackageDBStack pkg) ipkg'
@@ -1138,7 +1135,7 @@ buildAndInstallUnpackedPackage verbosity
 
 buildInplaceUnpackedPackage :: Verbosity
                             -> DistDirLayout
-                            -> BuildTimeSettings -> Lock
+                            -> BuildTimeSettings -> Lock -> Lock
                             -> ElaboratedSharedConfig
                             -> ElaboratedReadyPackage
                             -> BuildStatusRebuild
@@ -1150,7 +1147,7 @@ buildInplaceUnpackedPackage verbosity
                               distPackageCacheDirectory
                             }
                             BuildTimeSettings{buildSettingNumJobs}
-                            cacheLock
+                            registerLock cacheLock
                             pkgshared@ElaboratedSharedConfig {
                               pkgConfigCompiler      = compiler,
                               pkgConfigCompilerProgs = progdb
@@ -1255,7 +1252,8 @@ buildInplaceUnpackedPackage verbosity
                                 -- Case C
                                 _      -> assert (any ((== ipkgid) . Installed.installedUnitId)
                                                       ipkgs) ipkgs
-                forM_ ipkgs' $ \ipkg' ->
+                criticalSection registerLock $
+                  forM_ ipkgs' $ \ipkg' ->
                     Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
                                           (pkgRegisterPackageDBStack pkg)
                                           ipkg'
