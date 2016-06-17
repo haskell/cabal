@@ -29,7 +29,7 @@ import System.Directory
   ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
   , getDirectoryContents, createDirectoryIfMissing )
 import System.FilePath
-  ( (</>), (<.>), takeBaseName )
+  ( (</>), (<.>), takeBaseName, equalFilePath )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -381,13 +381,20 @@ guessSourceDir flags = do
              then Just "src"
              else Nothing
 
+-- | Check whether a potential source file is located in one of the
+--   source directories.
+isSourceFile :: Maybe [FilePath] -> SourceFileEntry -> Bool
+isSourceFile Nothing        sf = isSourceFile (Just ["."]) sf
+isSourceFile (Just srcDirs) sf = any (equalFilePath (relativeSourcePath sf)) srcDirs
+
 -- | Get the list of exposed modules and extra tools needed to build them.
 getModulesBuildToolsAndDeps :: InstalledPackageIndex -> InitFlags -> IO InitFlags
 getModulesBuildToolsAndDeps pkgIx flags = do
   dir <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
 
-  -- TODO: really should use guessed source roots.
-  sourceFiles <- scanForModules dir
+  sourceFiles0 <- scanForModules dir
+
+  let sourceFiles = filter (isSourceFile (sourceDirs flags)) sourceFiles0
 
   Just mods <-      return (exposedModules flags)
            ?>> (return . Just . map moduleName $ sourceFiles)
