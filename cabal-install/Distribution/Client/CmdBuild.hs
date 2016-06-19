@@ -12,19 +12,25 @@ import Distribution.Client.ProjectOrchestration
 import Distribution.Client.ProjectConfig
          ( BuildTimeSettings(..) )
 import Distribution.Client.ProjectPlanning
-         ( PackageTarget(..) )
+         ( PackageTarget(..), BuildFailure(..), ElaboratedInstallPlan )
 import Distribution.Client.BuildTarget
          ( readUserBuildTargets )
+import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
+import Distribution.Package
+         ( packageId )
 import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
+import Distribution.Simple.Utils
+         ( die )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( normal )
 
 import Control.Monad (unless)
-
 
 -- | The @build@ command does a lot. It brings the install plan up to date,
 -- selects that part of the plan needed by the given or implicit targets and
@@ -53,11 +59,8 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     printPlan verbosity buildCtx
 
     unless (buildSettingDryRun buildSettings) $ do
-      _plan <- runProjectBuildPhase
-                 verbosity
-                 buildCtx
-      --TODO: [required eventually] report on build failures in residual plan
-      return ()
+      plan <- runProjectBuildPhase verbosity buildCtx
+      printBuildFailures plan
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
@@ -68,3 +71,35 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
         BuildDefaultComponents
         BuildSpecificComponent
 
+
+-- | If failures are recoded in the install-plan, print them and 'die'.
+printBuildFailures :: ElaboratedInstallPlan -> IO ()
+printBuildFailures plan =
+  case [ (pkg, reason)
+       | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
+    []     -> return ()
+    failed -> die . unlines
+            $ "Error: build failed:"
+            : [ display (packageId pkg) ++ printFailureReason reason
+              | (pkg, reason) <- failed ]
+  where
+    printFailureReason reason = case reason of
+      DependentFailed pkgid -> " depends on " ++ display pkgid
+                            ++ " which failed to install."
+      DownloadFailed  e -> " failed while downloading the package."
+                        ++ showException e
+      UnpackFailed    e -> " failed while unpacking the package."
+                        ++ showException e
+      ConfigureFailed e -> " failed during the configure step."
+                        ++ showException e
+      BuildFailed     e -> " failed during the building phase."
+                        ++ showException e
+      TestsFailed     e -> " failed during the tests phase."
+                        ++ showException e
+      InstallFailed   e -> " failed during the final install step."
+                        ++ showException e
+
+      -- This will never happen, but we include it for completeness
+      PlanningFailed -> " failed during the planning phase."
+
+    showException e   =  " The exception was:\n  " ++ show e
