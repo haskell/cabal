@@ -151,7 +151,7 @@ runProjectPreBuildPhase
     -- everything in the project. This is independent of any specific targets
     -- the user has asked for.
     --
-    (elaboratedPlan, elaboratedShared, projectConfig) <-
+    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig

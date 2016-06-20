@@ -231,12 +231,27 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
 -- * Deciding what to do: making an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
+-- | Return an up-to-date elaborated install plan and associated config.
+--
+-- Two variants of the install plan are returned: with and without packages
+-- from the store. That is, the \"improved\" plan where source packages are
+-- replaced by pre-existing installed packages from the store (when their ids
+-- match), and also the original elaborated plan which uses primarily source
+-- packages.
+
+-- The improved plan is what we use for building, but the original elaborated
+-- plan is useful for reporting and configuration. For example the @freeze@
+-- command needs the source package info to know about flag choices and
+-- dependencies of executables and setup scripts.
+--
 rebuildInstallPlan :: Verbosity
                    -> FilePath -> DistDirLayout -> CabalDirLayout
                    -> ProjectConfig
-                   -> IO ( ElaboratedInstallPlan
+                   -> IO ( ElaboratedInstallPlan  -- with store packages
+                         , ElaboratedInstallPlan  -- with source packages
                          , ElaboratedSharedConfig
                          , ProjectConfig )
+                      -- ^ @(improvedPlan, elaboratedPlan, _, _)@
 rebuildInstallPlan verbosity
                    projectRootDir
                    distDirLayout@DistDirLayout {
@@ -275,16 +290,16 @@ rebuildInstallPlan verbosity
            elaboratedShared) <- phaseElaboratePlan projectConfigTransient
                                                    compilerEtc
                                                    solverPlan localPackages
-          phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
-
-          return (elaboratedPlan, elaboratedShared,
-                  projectConfig)
+          return (elaboratedPlan, elaboratedShared, projectConfig)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
-      return (improvedPlan, elaboratedShared, projectConfig)
+
+      phaseMaintainPlanOutputs improvedPlan elaboratedPlan elaboratedShared
+
+      return (improvedPlan, elaboratedPlan, elaboratedShared, projectConfig)
 
   where
     fileMonitorCompiler       = newFileMonitorInCacheDir "compiler"
@@ -537,9 +552,10 @@ rebuildInstallPlan verbosity
     -- the libs available. This will need to be after plan improvement phase.
     --
     phaseMaintainPlanOutputs :: ElaboratedInstallPlan
+                             -> ElaboratedInstallPlan
                              -> ElaboratedSharedConfig
                              -> Rebuild ()
-    phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = do
+    phaseMaintainPlanOutputs _improvedPlan elaboratedPlan elaboratedShared = do
         liftIO $ debug verbosity "Updating plan.json"
         liftIO $ writePlanExternalRepresentation
                    distDirLayout
