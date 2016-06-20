@@ -8,7 +8,8 @@ module Distribution.Client.CmdRepl (
 
 import Distribution.Client.ProjectOrchestration
          ( PreBuildHooks(..), runProjectPreBuildPhase, selectTargets
-         , ProjectBuildContext(..), runProjectBuildPhase,  printPlan )
+         , ProjectBuildContext(..), runProjectBuildPhase
+         , printPlan, reportBuildFailures )
 import Distribution.Client.ProjectConfig
          ( BuildTimeSettings(..) )
 import Distribution.Client.ProjectPlanning
@@ -57,11 +58,10 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
     printPlan verbosity buildCtx
 
     unless (buildSettingDryRun buildSettings) $ do
-      _plan <- runProjectBuildPhase
-                 verbosity
-                 buildCtx
-      --TODO: [required eventually] report on build failures in residual plan
-      return ()
+      plan <- runProjectBuildPhase
+                verbosity
+                buildCtx
+      reportBuildFailures plan
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
