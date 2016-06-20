@@ -50,6 +50,9 @@ module Distribution.Client.ProjectOrchestration (
 
     -- * Build phase: now do it.
     runProjectBuildPhase,
+
+    -- * Post build actions
+    reportBuildFailures,
   ) where
 
 import           Distribution.Client.ProjectConfig
@@ -85,6 +88,7 @@ import qualified Data.Map as Map
 import           Data.Map (Map)
 import           Data.List
 import           Data.Either
+import           System.Exit (exitFailure)
 
 
 -- | Command line configuration flags. These are used to extend\/override the
@@ -474,4 +478,18 @@ linearizeInstallPlan =
                      (InstallPlan.processing [pkg] plan)
     --TODO: [code cleanup] This is a bit of a hack, pretending that each package is installed
     -- could we use InstallPlan.topologicalOrder?
+
+
+reportBuildFailures :: ElaboratedInstallPlan -> IO ()
+reportBuildFailures plan =
+
+  case [ (pkg, reason)
+       | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
+    []      -> return ()
+    _failed -> exitFailure
+    --TODO: [required eventually] see the old printBuildFailures for an example
+    -- of the kind of things we could report, but we want to handle the special
+    -- case of the current package better, since if you do "cabal build" then
+    -- you don't need a lot of context to explain where the ghc error message
+    -- comes from, and indeed extra noise would just be annoying.
 
