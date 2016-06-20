@@ -1106,6 +1106,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
         pkgSourceLocation   = srcloc
         pkgSourceHash       = Map.lookup pkgid sourcePackageHashes
+        pkgLocalToProject   = isLocalToProject pkg
         pkgBuildStyle       = if shouldBuildInplaceOnly pkg
                                 then BuildInplaceOnly else BuildAndInstall
         pkgBuildPackageDBStack    = buildAndRegisterDbs
