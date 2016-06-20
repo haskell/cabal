@@ -16,6 +16,7 @@ module Distribution.Client.ProjectConfig (
     findProjectRoot,
     readProjectConfig,
     writeProjectLocalExtraConfig,
+    writeProjectLocalFreezeConfig,
     writeProjectConfigFile,
     commandLineFlagsToProjectConfig,
 
@@ -362,9 +363,10 @@ findProjectRoot = do
 readProjectConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
 readProjectConfig verbosity projectRootDir = do
     global <- readGlobalConfig verbosity
-    local  <- readProjectLocalConfig      verbosity projectRootDir
-    extra  <- readProjectLocalExtraConfig verbosity projectRootDir
-    return (global <> local <> extra)
+    local  <- readProjectLocalConfig       verbosity projectRootDir
+    freeze <- readProjectLocalFreezeConfig verbosity projectRootDir
+    extra  <- readProjectLocalExtraConfig  verbosity projectRootDir
+    return (global <> local <> freeze <> extra)
 
 
 -- | Reads an explicit @cabal.project@ file in the given project root dir,
@@ -399,26 +401,43 @@ readProjectLocalConfig verbosity projectRootDir = do
       }
 
 
--- | Reads a @cabal.project.extra@ file in the given project root dir,
+-- | Reads a @cabal.project.local@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal configure@, or in
 -- principle can be edited manually or by other tools.
 --
 readProjectLocalExtraConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
-readProjectLocalExtraConfig verbosity projectRootDir = do
-    hasExtraConfig <- liftIO $ doesFileExist projectExtraConfigFile
-    if hasExtraConfig
-      then do monitorFiles [monitorFileHashed projectExtraConfigFile]
-              liftIO readProjectExtraConfigFile
-      else do monitorFiles [monitorNonExistentFile projectExtraConfigFile]
+readProjectLocalExtraConfig verbosity =
+    readProjectExtensionFile verbosity "local"
+                             "project local configuration file"
+
+-- | Reads a @cabal.project.freeze@ file in the given project root dir,
+-- or returns empty. This file gets written by @cabal freeze@, or in
+-- principle can be edited manually or by other tools.
+--
+readProjectLocalFreezeConfig :: Verbosity -> FilePath -> Rebuild ProjectConfig
+readProjectLocalFreezeConfig verbosity =
+    readProjectExtensionFile verbosity "freeze"
+                             "project freeze file"
+
+-- | Reads a named config file in the given project root dir, or returns empty.
+--
+readProjectExtensionFile :: Verbosity -> String -> FilePath
+                         -> FilePath -> Rebuild ProjectConfig
+readProjectExtensionFile verbosity extensionName extensionDescription
+                         projectRootDir = do
+    exists <- liftIO $ doesFileExist extensionFile
+    if exists
+      then do monitorFiles [monitorFileHashed extensionFile]
+              liftIO readExtensionFile
+      else do monitorFiles [monitorNonExistentFile extensionFile]
               return mempty
   where
-    projectExtraConfigFile = projectRootDir </> "cabal.project.local"
+    extensionFile = projectRootDir </> "cabal.project" <.> extensionName
 
-    readProjectExtraConfigFile =
-          reportParseResult verbosity "project local configuration file"
-                            projectExtraConfigFile
+    readExtensionFile =
+          reportParseResult verbosity extensionDescription extensionFile
         . parseProjectConfig
-      =<< readFile projectExtraConfigFile
+      =<< readFile extensionFile
 
 
 -- | Parse the 'ProjectConfig' format.
@@ -442,13 +461,22 @@ showProjectConfig =
     showLegacyProjectConfig . convertToLegacyProjectConfig
 
 
--- | Write a @cabal.project.extra@ file in the given project root dir.
+-- | Write a @cabal.project.local@ file in the given project root dir.
 --
 writeProjectLocalExtraConfig :: FilePath -> ProjectConfig -> IO ()
 writeProjectLocalExtraConfig projectRootDir =
     writeProjectConfigFile projectExtraConfigFile
   where
     projectExtraConfigFile = projectRootDir </> "cabal.project.local"
+
+
+-- | Write a @cabal.project.freeze@ file in the given project root dir.
+--
+writeProjectLocalFreezeConfig :: FilePath -> ProjectConfig -> IO ()
+writeProjectLocalFreezeConfig projectRootDir =
+    writeProjectConfigFile projectFreezeConfigFile
+  where
+    projectFreezeConfigFile = projectRootDir </> "cabal.project.freeze"
 
 
 -- | Write in the @cabal.project@ format to the given file.
