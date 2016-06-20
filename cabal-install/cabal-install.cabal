@@ -182,6 +182,7 @@ executable cabal
         Distribution.Client.Check
         Distribution.Client.CmdBuild
         Distribution.Client.CmdConfigure
+        Distribution.Client.CmdFreeze
         Distribution.Client.CmdRepl
         Distribution.Client.Config
         Distribution.Client.Configure

@@ -71,6 +71,7 @@ import qualified Distribution.Client.List as List
 import qualified Distribution.Client.CmdConfigure as CmdConfigure
 import qualified Distribution.Client.CmdBuild     as CmdBuild
 import qualified Distribution.Client.CmdRepl      as CmdRepl
+import qualified Distribution.Client.CmdFreeze    as CmdFreeze
 
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
@@ -283,6 +284,8 @@ mainWorker args = topHandler $
                                   CmdBuild.buildAction
       , hiddenCmd  installCommand { commandName = "new-repl" }
                                   CmdRepl.replAction
+      , hiddenCmd  installCommand { commandName = "new-freeze" }
+                                  CmdFreeze.freezeAction
       ]
 
 type Action = GlobalFlags -> IO ()
