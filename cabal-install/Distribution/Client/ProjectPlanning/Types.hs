@@ -165,6 +165,13 @@ data ElaboratedConfiguredPackage
        --pkgSourceDir ? -- currently passed in later because they can use temp locations
        --pkgBuildDir  ? -- but could in principle still have it here, with optional instr to use temp loc
 
+       -- | Is this package one of the ones specified by location in the
+       -- project file? (As opposed to a dependency, or a named package pulled
+       -- in)
+       pkgLocalToProject         :: Bool,
+
+       -- | Are we going to build and install this package to the store, or are
+       -- we going to build it and register it locally.
        pkgBuildStyle             :: BuildStyle,
 
        pkgSetupPackageDBStack    :: PackageDBStack,

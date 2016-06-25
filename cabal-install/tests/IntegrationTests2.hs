@@ -231,7 +231,7 @@ planProject testdir cliConfig = do
     -- ended in an exception (as we leave the files to help with debugging).
     cleanProject testdir
 
-    (elaboratedPlan, elaboratedShared, projectConfig) <-
+    (elaboratedPlan, _, elaboratedShared, projectConfig) <-
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
