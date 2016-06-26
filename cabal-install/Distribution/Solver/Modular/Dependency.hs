@@ -35,6 +35,7 @@ module Distribution.Solver.Modular.Dependency (
   , GoalReason(..)
   , QGoalReason
   , ResetVar(..)
+  , goalToVar
   , goalVarToConflictSet
   , varToConflictSet
   , goalReasonToVars
@@ -360,6 +361,9 @@ instance ResetVar Dep where
 
 instance ResetVar Var where
   resetVar = const
+
+goalToVar :: Goal a -> Var a
+goalToVar (Goal v _) = v
 
 -- | Compute a singleton conflict set from a goal, containing just
 -- the goal variable.

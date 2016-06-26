@@ -54,6 +54,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     setEnableBackjumping,
+    setGoalOrder,
     addSourcePackages,
     hideInstalledPackagesSpecificByUnitId,
     hideInstalledPackagesSpecificBySourcePackageId,
@@ -119,6 +120,7 @@ import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
+import           Distribution.Solver.Types.PackagePath
 import           Distribution.Solver.Types.PackagePreferences
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
@@ -128,6 +130,7 @@ import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Variable
 
 import Data.List
          ( foldl', sort, sortBy, nubBy, maximumBy, intercalate, nub )
@@ -161,7 +164,10 @@ data DepResolverParams = DepResolverParams {
        depResolverShadowPkgs        :: ShadowPkgs,
        depResolverStrongFlags       :: StrongFlags,
        depResolverMaxBackjumps      :: Maybe Int,
-       depResolverEnableBackjumping :: EnableBackjumping
+       depResolverEnableBackjumping :: EnableBackjumping,
+
+       -- | Function to override the solver's goal-ordering heuristics.
+       depResolverGoalOrder         :: Maybe (Variable QPN -> Variable QPN -> Ordering)
      }
 
 showDepResolverParams :: DepResolverParams -> String
@@ -233,7 +239,8 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverShadowPkgs        = ShadowPkgs False,
        depResolverStrongFlags       = StrongFlags False,
        depResolverMaxBackjumps      = Nothing,
-       depResolverEnableBackjumping = EnableBackjumping True
+       depResolverEnableBackjumping = EnableBackjumping True,
+       depResolverGoalOrder         = Nothing
      }
 
 addTargets :: [PackageName]
@@ -306,6 +313,14 @@ setEnableBackjumping :: EnableBackjumping -> DepResolverParams -> DepResolverPar
 setEnableBackjumping b params =
     params {
       depResolverEnableBackjumping = b
+    }
+
+setGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
+             -> DepResolverParams
+             -> DepResolverParams
+setGoalOrder order params =
+    params {
+      depResolverGoalOrder = order
     }
 
 -- | Some packages are specific to a given compiler version and should never be
@@ -607,7 +622,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
     Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
-                      shadowing strFlags maxBkjumps enableBj)
+                      shadowing strFlags maxBkjumps enableBj order)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -623,7 +638,8 @@ resolveDependencies platform comp pkgConfigDB solver params =
       shadowing
       strFlags
       maxBkjumps
-      enableBj) = dontUpgradeNonUpgradeablePackages
+      enableBj
+      order) = dontUpgradeNonUpgradeablePackages
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
@@ -858,7 +874,7 @@ resolveWithoutDependencies :: DepResolverParams
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _indGoals _avoidReinstalls
-                              _shadowing _strFlags _maxBjumps _enableBj) =
+                              _shadowing _strFlags _maxBjumps _enableBj _order) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage

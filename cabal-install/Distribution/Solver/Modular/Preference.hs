@@ -13,10 +13,12 @@ module Distribution.Solver.Modular.Preference
     , preferPackagePreferences
     , preferReallyEasyGoalChoices
     , requireInstalled
+    , sortGoals
     ) where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
+import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
@@ -35,6 +37,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
+import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -274,6 +277,21 @@ avoidReinstalls p = trav go
         notReinstall _ _ x =
           x
     go x          = x
+
+-- | Sort all goals using the provided function.
+sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> Tree a -> Tree a
+sortGoals variableOrder = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys goalOrder xs)
+    go x                = x
+
+    goalOrder :: Goal QPN -> Goal QPN -> Ordering
+    goalOrder = variableOrder `on` (varToVariable . goalToVar)
+
+    varToVariable :: Var QPN -> Variable QPN
+    varToVariable (P qpn)                    = PackageVar qpn
+    varToVariable (F (FN (PI qpn _) fn))     = FlagVar qpn fn
+    varToVariable (S (SN (PI qpn _) stanza)) = StanzaVar qpn stanza
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.

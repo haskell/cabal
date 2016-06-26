@@ -281,6 +281,7 @@ executable cabal
         Distribution.Solver.Types.SolverId
         Distribution.Solver.Types.SolverPackage
         Distribution.Solver.Types.SourcePackage
+        Distribution.Solver.Types.Variable
         Distribution.Solver.Modular
         Distribution.Solver.Modular.Assignment
         Distribution.Solver.Modular.Builder

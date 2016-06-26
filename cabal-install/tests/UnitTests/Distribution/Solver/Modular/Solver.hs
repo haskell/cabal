@@ -172,6 +172,7 @@ data SolverTest = SolverTest {
   , testTargets        :: [String]
   , testResult         :: SolverResult
   , testIndepGoals     :: IndependentGoals
+  , testGoalOrder      :: Maybe [ExampleVar]
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
@@ -246,6 +247,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets        = targets
   , testResult         = result
   , testIndepGoals     = IndependentGoals False
+  , testGoalOrder      = Nothing
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
@@ -259,7 +261,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let (_msgs, result) = exResolve testDb testSupportedExts
                             testSupportedLangs testPkgConfigDb testTargets
                             Modular Nothing testIndepGoals (ReorderGoals False)
-                            (EnableBackjumping True) testSoftConstraints
+                            (EnableBackjumping True) testGoalOrder testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (check testResult err)
