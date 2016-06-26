@@ -76,7 +76,6 @@ import           Data.Maybe
 import           System.FilePath
 import           System.IO
 import           System.Directory
-import           System.Exit (ExitCode)
 
 
 ------------------------------------------------------------------------------
@@ -669,7 +668,8 @@ rebuildTarget verbosity
     unexpectedState = error "rebuildTarget: unexpected package status"
 
     downloadPhase = do
-        downsrcloc <- waitAsyncPackageDownload verbosity downloadMap pkg
+        downsrcloc <- annotateFailure DownloadFailed $
+                        waitAsyncPackageDownload verbosity downloadMap pkg
         case downsrcloc of
           DownloadedTarball tarball -> unpackTarballPhase tarball
           --TODO: [nice to have] git/darcs repos etc
@@ -1261,8 +1261,16 @@ buildInplaceUnpackedPackage verbosity
 annotateFailure :: (SomeException -> BuildFailure) -> IO a -> IO a
 annotateFailure annotate action =
   action `catches`
-    [ Handler $ \ioe  -> handler (ioe  :: IOException)
-    , Handler $ \exit -> handler (exit :: ExitCode)
+    -- It's not just IOException and ExitCode we have to deal with, there's
+    -- lots, including exceptions from the hackage-security and tar packages.
+    -- So we take the strategy of catching everything except async exceptions.
+    [
+#if MIN_VERSION_base(4,7,0)
+      Handler $ \async -> throwIO (async :: SomeAsyncException)
+#else
+      Handler $ \async -> throwIO (async :: AsyncException)
+#endif
+    , Handler $ \other -> handler (other :: SomeException)
     ]
   where
     handler :: Exception e => e -> IO a
