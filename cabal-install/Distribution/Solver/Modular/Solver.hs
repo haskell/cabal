@@ -109,9 +109,9 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        traceTree "heuristics.json" id .
                        P.deferWeakFlagChoices .
                        P.deferSetupChoices .
-                       P.preferBaseGoalChoice .
-                       P.preferLinked
-    preferencesPhase = P.preferPackagePreferences userPrefs
+                       P.preferBaseGoalChoice
+    preferencesPhase = P.preferLinked .
+                       P.preferPackagePreferences userPrefs
     validationPhase  = traceTree "validated.json" id .
                        P.enforceManualFlags . -- can only be done after user constraints
                        P.enforcePackageConstraints userConstraints .
