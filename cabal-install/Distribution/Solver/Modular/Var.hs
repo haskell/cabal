@@ -10,6 +10,7 @@ import Prelude hiding (pi)
 
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
+import Distribution.Solver.Types.PackagePath
 
 {-------------------------------------------------------------------------------
   Variables

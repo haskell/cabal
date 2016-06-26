@@ -60,6 +60,7 @@ import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.ComponentDeps (Component(..))
+import Distribution.Solver.Types.PackagePath
 
 #ifdef DEBUG_CONFLICT_SETS
 import GHC.Stack (CallStack)
@@ -213,7 +214,7 @@ data QualifyOptions = QO {
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
+qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
   where
     go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
     go = map go1
@@ -236,9 +237,9 @@ qualifyDeps QO{..} (Q pp@(PP ns q) pn) = go
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
     goD (Dep  dep ci) comp
-      | qBase  dep  = Dep (Q (PP ns (Base  pn)) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep (Q (PP ns (Setup pn)) dep) (fmap (Q pp) ci)
-      | otherwise   = Dep (Q (PP ns inheritedQ) dep) (fmap (Q pp) ci)
+      | qBase  dep  = Dep (Q (PackagePath ns (Base  pn)) dep) (fmap (Q pp) ci)
+      | qSetup comp = Dep (Q (PackagePath ns (Setup pn)) dep) (fmap (Q pp) ci)
+      | otherwise   = Dep (Q (PackagePath ns inheritedQ) dep) (fmap (Q pp) ci)
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup

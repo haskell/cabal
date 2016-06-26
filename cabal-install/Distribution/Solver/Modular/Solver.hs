@@ -14,6 +14,7 @@ import Data.Version
 
 import Distribution.Compiler (CompilerInfo)
 
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
@@ -206,5 +207,5 @@ _removeGR = trav go
 
    dummy :: QGoalReason
    dummy = PDependency
-         $ PI (Q (PP DefaultNamespace Unqualified) (PackageName "$"))
+         $ PI (Q (PackagePath DefaultNamespace Unqualified) (PackageName "$"))
               (I (Version [1] []) InRepo)

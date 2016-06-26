@@ -31,6 +31,7 @@ import Distribution.Solver.Modular.Version (VR)
 
 import Distribution.Solver.Types.ComponentDeps (Component)
 
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent)
 
 -- In practice, most constraints are implication constraints (IF we have made

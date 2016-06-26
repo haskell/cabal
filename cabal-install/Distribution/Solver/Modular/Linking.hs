@@ -32,13 +32,14 @@ import qualified Distribution.Solver.Modular.PSQ as P
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.ComponentDeps (Component)
 
 {-------------------------------------------------------------------------------
   Add linking
 -------------------------------------------------------------------------------}
 
-type RelatedGoals = Map (PN, I) [PP]
+type RelatedGoals = Map (PN, I) [PackagePath]
 type Linker       = Reader RelatedGoals
 
 -- | Introduce link nodes into tree tree
@@ -80,7 +81,7 @@ linkChoices :: RelatedGoals -> QPN -> (POption, Tree QGoalReason) -> [(POption, 
 linkChoices related (Q _pp pn) (POption i Nothing, subtree) =
     map aux (M.findWithDefault [] (pn, i) related)
   where
-    aux :: PP -> (POption, Tree QGoalReason)
+    aux :: PackagePath -> (POption, Tree QGoalReason)
     aux pp = (POption i (Just pp), subtree)
 linkChoices _ _ (POption _ (Just _), _) =
     alreadyLinked
@@ -224,7 +225,7 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn i
 
-pickLink :: QPN -> I -> PP -> FlaggedDeps Component QPN -> UpdateState ()
+pickLink :: QPN -> I -> PackagePath -> FlaggedDeps Component QPN -> UpdateState ()
 pickLink qpn@(Q _pp pn) i pp' deps = do
     vs <- get
 
@@ -246,7 +247,7 @@ pickLink qpn@(Q _pp pn) i pp' deps = do
     -- Verify here that the member we add is in fact for the same package and
     -- matches the version of the canonical instance. However, violations of
     -- these checks would indicate a bug in the linker, not a true conflict.
-    let sanityCheck :: Maybe (PI PP) -> Bool
+    let sanityCheck :: Maybe (PI PackagePath) -> Bool
         sanityCheck Nothing              = False
         sanityCheck (Just (PI _ canonI)) = pn == lgPackage lgTarget && i == canonI
     assert (sanityCheck (lgCanon lgTarget)) $ return ()
@@ -476,10 +477,10 @@ data LinkGroup = LinkGroup {
       --
       -- We may not know this yet (if we are constructing link groups
       -- for dependencies)
-    , lgCanon :: Maybe (PI PP)
+    , lgCanon :: Maybe (PI PackagePath)
 
       -- | The members of the link group
-    , lgMembers :: Set PP
+    , lgMembers :: Set PackagePath
 
       -- | The set of variables that should be added to the conflict set if
       -- something goes wrong with this link set (in addition to the members
@@ -509,7 +510,7 @@ showLinkGroup :: LinkGroup -> String
 showLinkGroup lg =
     "{" ++ intercalate "," (map showMember (S.toList (lgMembers lg))) ++ "}"
   where
-    showMember :: PP -> String
+    showMember :: PackagePath -> String
     showMember pp = case lgCanon lg of
                       Just (PI pp' _i) | pp == pp' -> "*"
                       _otherwise                   -> ""
@@ -517,11 +518,11 @@ showLinkGroup lg =
                       Nothing -> showQPN (qpn pp)
                       Just i  -> showPI (PI (qpn pp) i)
 
-    qpn :: PP -> QPN
+    qpn :: PackagePath -> QPN
     qpn pp = Q pp (lgPackage lg)
 
 -- | Creates a link group that contains a single member.
-lgSingleton :: QPN -> Maybe (PI PP) -> LinkGroup
+lgSingleton :: QPN -> Maybe (PI PackagePath) -> LinkGroup
 lgSingleton (Q pp pn) canon = LinkGroup {
       lgPackage = pn
     , lgCanon   = canon

@@ -37,8 +37,8 @@ import Data.Tree
 import GHC.Stack
 #endif
 
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Var
+import Distribution.Solver.Types.PackagePath
 
 -- | The set of variables involved in a solver conflict
 --

@@ -27,6 +27,7 @@ import Distribution.Solver.Modular.PSQ (PSQ)
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.PackagePath
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
@@ -90,7 +91,7 @@ data Tree a =
 -- dependencies must also be the exact same).
 --
 -- See <http://www.well-typed.com/blog/2015/03/qualified-goals/> for details.
-data POption = POption I (Maybe PP)
+data POption = POption I (Maybe PackagePath)
   deriving (Eq, Show)
 
 data FailReason = InconsistentInitialConstraints
