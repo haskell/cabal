@@ -23,6 +23,11 @@ module Distribution.Client.FetchUtils (
     checkRepoTarballFetched,
     fetchRepoTarball,
 
+    -- ** fetching packages asynchronously
+    asyncFetchPackages,
+    waitAsyncFetchPackage,
+    AsyncFetchMap,
+
     -- * fetching other things
     downloadIndex,
   ) where
@@ -35,7 +40,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
-         ( notice, info, setupMessage )
+         ( notice, info, debug, setupMessage )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -44,6 +49,12 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Data.Maybe
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Control.Monad
+import Control.Exception
+import Control.Concurrent.Async
+import Control.Concurrent.MVar
 import System.Directory
          ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.IO
@@ -183,6 +194,61 @@ downloadIndex transport verbosity remoteRepo cacheDir = do
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
   downloadURI transport verbosity uri path
+
+
+-- ------------------------------------------------------------
+-- * Async fetch wrapper utilities
+-- ------------------------------------------------------------
+
+type AsyncFetchMap = Map UnresolvedPkgLoc
+                         (MVar (Either SomeException ResolvedPkgLoc))
+
+-- | Fork off an async action to download the given packages (by location).
+--
+-- The downloads are initiated in order, so you can arrange for packages that
+-- will likely be needed sooner to be earlier in the list.
+--
+-- The body action is passed a map from those packages (identified by their
+-- location) to a completion var for that package. So the body action should
+-- lookup the location and use 'asyncFetchPackage' to get the result.
+--
+asyncFetchPackages :: Verbosity
+                   -> RepoContext
+                   -> [UnresolvedPkgLoc]
+                   -> (AsyncFetchMap -> IO a)
+                   -> IO a
+asyncFetchPackages verbosity repoCtxt pkglocs body = do
+    --TODO: [nice to have] use parallel downloads?
+
+    asyncDownloadVars <- sequence [ do v <- newEmptyMVar
+                                       return (pkgloc, v)
+                                  | pkgloc <- pkglocs ]
+
+    let fetchPackages :: IO ()
+        fetchPackages =
+          forM_ asyncDownloadVars $ \(pkgloc, var) -> do
+            result <- try $ fetchPackage verbosity repoCtxt pkgloc
+            putMVar var result
+
+    withAsync fetchPackages $ \_ ->
+      body (Map.fromList asyncDownloadVars)
+
+
+-- | Expect to find a download in progress in the given 'AsyncFetchMap'
+-- and wait on it to finish.
+--
+-- If the download failed with an exception then this will be thrown.
+--
+waitAsyncFetchPackage :: Verbosity
+                      -> AsyncFetchMap
+                      -> UnresolvedPkgLoc
+                      -> IO ResolvedPkgLoc
+waitAsyncFetchPackage verbosity downloadMap srcloc =
+    case Map.lookup srcloc downloadMap of
+      Just hnd -> do
+        debug verbosity $ "Waiting for download of " ++ show srcloc
+        either throwIO return =<< takeMVar hnd
+      Nothing -> fail "waitAsyncFetchPackage: package not being download"
 
 
 -- ------------------------------------------------------------

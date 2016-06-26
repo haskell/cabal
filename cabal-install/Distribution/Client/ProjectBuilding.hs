@@ -68,13 +68,8 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
 
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
 import           Control.Monad
 import           Control.Exception
-import           Control.Concurrent.Async
-import           Control.Concurrent.MVar
 import           Data.List
 import           Data.Maybe
 
@@ -647,7 +642,7 @@ rebuildTargets verbosity
 rebuildTarget :: Verbosity
               -> DistDirLayout
               -> BuildTimeSettings
-              -> AsyncDownloadMap
+              -> AsyncFetchMap
               -> Lock -> Lock
               -> ElaboratedSharedConfig
               -> ElaboratedReadyPackage
@@ -727,20 +722,6 @@ rebuildTarget verbosity
 --TODO: [nice to have] do we need to use a with-style for the temp files for downloading http
 -- packages, or are we going to cache them persistently?
 
-type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
-                            (MVar DownloadedSourceLocation)
-
-data DownloadedSourceLocation = DownloadedTarball FilePath
-                              --TODO: [nice to have] git/darcs repos etc
-
-downloadedSourceLocation :: PackageLocation FilePath
-                         -> Maybe DownloadedSourceLocation
-downloadedSourceLocation pkgloc =
-    case pkgloc of
-      RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
-      RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
-      _                              -> Nothing
-
 -- | Given the current 'InstallPlan' and 'BuildStatusMap', select all the
 -- packages we have to download and fork off an async action to download them.
 -- We download them in dependency order so that the one's we'll need
@@ -751,28 +732,16 @@ downloadedSourceLocation pkgloc =
 -- lookup the location and use 'waitAsyncPackageDownload' to get the result.
 --
 asyncDownloadPackages :: Verbosity
-                      -> ((RepoContext -> IO ()) -> IO ())
+                      -> ((RepoContext -> IO a) -> IO a)
                       -> ElaboratedInstallPlan
                       -> BuildStatusMap
-                      -> (AsyncDownloadMap -> IO a)
+                      -> (AsyncFetchMap -> IO a)
                       -> IO a
 asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
   | null pkgsToDownload = body Map.empty
-  | otherwise = do
-    --TODO: [research required] use parallel downloads? if so, use the fetchLimit
-
-    asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkgsToDownload
-
-    let downloadAction :: IO ()
-        downloadAction =
-          withRepoCtx $ \repoctx ->
-            forM_ asyncDownloadVars $ \(pkgloc, var) -> do
-              Just scrloc <- downloadedSourceLocation <$>
-                             fetchPackage verbosity repoctx pkgloc
-              putMVar var scrloc
-
-    withAsync downloadAction $ \_ ->
-      body (Map.fromList asyncDownloadVars)
+  | otherwise           = withRepoCtx $ \repoctx ->
+                            asyncFetchPackages verbosity repoctx
+                                               pkgsToDownload body
   where
     pkgsToDownload = 
       [ pkgSourceLocation pkg
@@ -785,21 +754,29 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
 
 
 -- | Check if a package needs downloading, and if so expect to find a download
--- in progress in the given 'AsyncDownloadMap' and wait on it to finish.
+-- in progress in the given 'AsyncFetchMap' and wait on it to finish.
 --
 waitAsyncPackageDownload :: Verbosity
-                         -> AsyncDownloadMap
+                         -> AsyncFetchMap
                          -> ElaboratedConfiguredPackage
                          -> IO DownloadedSourceLocation
-waitAsyncPackageDownload verbosity downloadMap pkg =
-    case Map.lookup (pkgSourceLocation pkg) downloadMap of
-      Just hnd -> do
-        debug verbosity $
-          "Waiting for download of " ++ display (packageId pkg) ++ " to finish"
-        --TODO: [required eventually] do the exception handling on download stuff
-        takeMVar hnd
-      Nothing ->
-        fail "waitAsyncPackageDownload: package not being download"
+waitAsyncPackageDownload verbosity downloadMap pkg = do
+    pkgloc <- waitAsyncFetchPackage verbosity downloadMap
+                                    (pkgSourceLocation pkg)
+    case downloadedSourceLocation pkgloc of
+      Just loc -> return loc
+      Nothing  -> fail "waitAsyncPackageDownload: unexpected source location"
+
+data DownloadedSourceLocation = DownloadedTarball FilePath
+                              --TODO: [nice to have] git/darcs repos etc
+
+downloadedSourceLocation :: PackageLocation FilePath
+                         -> Maybe DownloadedSourceLocation
+downloadedSourceLocation pkgloc =
+    case pkgloc of
+      RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
+      RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
+      _                              -> Nothing
 
 
 
