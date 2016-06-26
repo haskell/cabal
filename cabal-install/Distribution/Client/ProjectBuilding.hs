@@ -575,7 +575,10 @@ rebuildTargets :: Verbosity
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
-               sharedPackageConfig
+               sharedPackageConfig@ElaboratedSharedConfig {
+                 pkgConfigCompiler      = compiler,
+                 pkgConfigCompilerProgs = progdb
+               }
                pkgsBuildStatus
                buildSettings@BuildTimeSettings{
                  buildSettingNumJobs,
@@ -593,6 +596,7 @@ rebuildTargets verbosity
 
     createDirectoryIfMissingVerbose verbosity False distBuildRootDirectory
     createDirectoryIfMissingVerbose verbosity False distTempDirectory
+    mapM_ (createPackageDBIfMissing verbosity compiler progdb) packageDBsToUse
 
     -- Before traversing the install plan, pre-emptively find all packages that
     -- will need to be downloaded and start downloading them.
@@ -619,6 +623,14 @@ rebuildTargets verbosity
     keepGoing       = buildSettingKeepGoing
     withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
                         buildSettings
+    packageDBsToUse = -- all the package dbs we may need to create
+      (Set.toList . Set.fromList)
+        [ pkgdb
+        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+        , (pkgdb:_) <- map reverse [ pkgBuildPackageDBStack pkg,
+                                     pkgRegisterPackageDBStack pkg,
+                                     pkgSetupPackageDBStack pkg ]
+        ]
 
 -- | Given all the context and resources, (re)build an individual package.
 --
@@ -1160,7 +1172,6 @@ buildInplaceUnpackedPackage verbosity
         --      builddir is not enough, we also need the per-package cachedir
         createDirectoryIfMissingVerbose verbosity False builddir
         createDirectoryIfMissingVerbose verbosity False (distPackageCacheDirectory pkgid)
-        createPackageDBIfMissing verbosity compiler progdb (pkgBuildPackageDBStack pkg)
 
         -- Configure phase
         --

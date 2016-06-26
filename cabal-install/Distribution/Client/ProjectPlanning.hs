@@ -638,8 +638,7 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
                     verbosity compiler
                     [packagedb] progdb platform)
     liftIO $ do
-      createPackageDBIfMissing verbosity compiler
-                               progdb [packagedb]
+      createPackageDBIfMissing verbosity compiler progdb packagedb
       Cabal.getPackageDBContents verbosity compiler
                                  packagedb progdb
 
@@ -657,16 +656,19 @@ getSourcePackages verbosity withRepoCtx = do
                  $ repos
     return sourcePkgDb
 
+
+-- | Create a package DB if it does not currently exist. Note that this action
+-- is /not/ safe to run concurrently.
+--
 createPackageDBIfMissing :: Verbosity -> Compiler -> ProgramDb
-                         -> PackageDBStack -> IO ()
-createPackageDBIfMissing verbosity compiler progdb packageDbs =
-  case reverse packageDbs of
-    SpecificPackageDB dbPath : _ -> do
-      exists <- liftIO $ Cabal.doesPackageDBExist dbPath
-      unless exists $ do
-        createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
-        Cabal.createPackageDB verbosity compiler progdb False dbPath
-    _ -> return ()
+                         -> PackageDB -> IO ()
+createPackageDBIfMissing verbosity compiler progdb
+                         (SpecificPackageDB dbPath) = do
+    exists <- liftIO $ Cabal.doesPackageDBExist dbPath
+    unless exists $ do
+      createDirectoryIfMissingVerbose verbosity False (takeDirectory dbPath)
+      Cabal.createPackageDB verbosity compiler progdb False dbPath
+createPackageDBIfMissing _ _ _ _ = return ()
 
 
 getPkgConfigDb :: Verbosity -> ProgramDb -> Rebuild PkgConfigDb
