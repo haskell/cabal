@@ -18,6 +18,7 @@ import Language.Haskell.Extension ( Extension(..)
                                   , KnownExtension(..), Language(..))
 
 -- cabal-install
+import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Client.Dependency.Types
@@ -133,7 +134,7 @@ tests = [
         ]
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
-        , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        , runTest $ testIndepGoals2 "indepGoals2"
         , runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] anySolverFailure -- The target order is important.
         , runTest $ indep $ mkTest db20 "indepGoals4" ["C", "A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
@@ -154,14 +155,19 @@ tests = [
         ]
     ]
   where
-    -- | Combinator to turn on --independent-goals behavior, i.e. solve
-    -- for the goals as if we were solving for each goal independently.
-    -- (This doesn't really work well at the moment, see #2842)
-    indep test      = test { testIndepGoals = IndependentGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
     makeV v         = V.Version [v,0,0] []
+
+-- | Combinator to turn on --independent-goals behavior, i.e. solve
+-- for the goals as if we were solving for each goal independently.
+-- (This doesn't really work well at the moment, see #2842)
+indep :: SolverTest -> SolverTest
+indep test = test { testIndepGoals = IndependentGoals True }
+
+goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
+goalOrder order test = test { testGoalOrder = Just order }
 
 {-------------------------------------------------------------------------------
   Solver tests
@@ -604,23 +610,41 @@ db16 = [
   , Right $ exAv "E" 1 []
   ]
 
--- | This database checks that when the solver discovers a constraint on a
+-- | This test checks that when the solver discovers a constraint on a
 -- package's version after choosing to link that package, it can backtrack to
 -- try alternative versions for the linked-to package. See pull request #3327.
 --
 -- When A and B are installed as independent goals, their dependencies on C
 -- must be linked. Since C depends on D, A and B's dependencies on D must also
--- be linked. This test relies on the fact that the solver chooses D-2 for both
--- 0.D and 1.D before it encounters the test suites' constraints. The solver
--- must backtrack to try D-1 for both 0.D and 1.D.
-db17 :: ExampleDb
-db17 = [
-    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "C" 1 [ExAny "D"]
-  , Right $ exAv "D" 1 []
-  , Right $ exAv "D" 2 []
-  ]
+-- be linked. This test fixes the goal order so that the solver chooses D-2 for
+-- both 0.D and 1.D before it encounters the test suites' constraints. The
+-- solver must backtrack to try D-1 for both 0.D and 1.D.
+testIndepGoals2 :: String -> SolverTest
+testIndepGoals2 name =
+    goalOrder goals $ indep $
+    mkTest db name ["A", "B"] $
+    SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+      , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+      , Right $ exAv "C" 1 [ExAny "D"]
+      , Right $ exAv "D" 1 []
+      , Right $ exAv "D" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "A"
+      , P (Indep 0) "C"
+      , P (Indep 0) "D"
+      , P (Indep 1) "B"
+      , P (Indep 1) "C"
+      , P (Indep 1) "D"
+      , S (Indep 1) "B" TestStanzas
+      , S (Indep 0) "A" TestStanzas
+      ]
 
 -- | Issue #2834
 -- When both A and B are installed as independent goals, their dependencies on
