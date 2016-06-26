@@ -9,9 +9,9 @@ import qualified Data.Graph as Gr
 import qualified Data.Map   as Map
 
 import Distribution.Solver.Modular.Dependency
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import Distribution.Solver.Types.PackagePath
 
 -- | Find and reject any solutions that are cyclic
 detectCyclesPhase :: Tree QGoalReason -> Tree QGoalReason

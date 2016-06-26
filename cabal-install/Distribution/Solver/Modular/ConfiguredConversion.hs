@@ -14,6 +14,7 @@ import Distribution.Solver.Modular.Package
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.PackageIndex as CI
+import           Distribution.Solver.Types.PackagePath
 import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage

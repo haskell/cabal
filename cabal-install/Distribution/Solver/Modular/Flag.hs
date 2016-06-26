@@ -22,6 +22,7 @@ import Distribution.PackageDescription hiding (Flag) -- from Cabal
 
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath
 
 -- | Flag name. Consists of a package instance and the flag identifier itself.
 data FN qpn = FN (PI qpn) Flag

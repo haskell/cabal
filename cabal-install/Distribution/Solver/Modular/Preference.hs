@@ -33,6 +33,7 @@ import Distribution.Solver.Types.InstalledPreference
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 
 import Distribution.Solver.Modular.Dependency
@@ -126,7 +127,7 @@ preferPackageStanzaPreferences pcs = trav go
 -- given instance for a P-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintP :: PP
+processPackageConstraintP :: PackagePath
                           -> ConflictSet QPN
                           -> I
                           -> LabeledPackageConstraint
@@ -309,8 +310,8 @@ deferSetupChoices = trav go
     go x                = x
 
     noSetup :: Goal QPN -> Bool
-    noSetup (Goal (P (Q (PP _ns (Setup _)) _)) _) = False
-    noSetup _                                     = True
+    noSetup (Goal (P (Q (PackagePath _ns (Setup _)) _)) _) = False
+    noSetup _                                              = True
 
 -- | Transformation that tries to avoid making weak flag choices early.
 -- Weak flags are trivial flags (not influencing dependencies) or such

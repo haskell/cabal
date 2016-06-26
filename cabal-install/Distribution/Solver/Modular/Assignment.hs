@@ -22,6 +22,7 @@ import Distribution.PackageDescription (FlagAssignment) -- from Cabal
 import Distribution.Solver.Types.ComponentDeps (ComponentDeps, Component)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.OptionalStanza
+import Distribution.Solver.Types.PackagePath
 
 import Distribution.Solver.Modular.Configured
 import Distribution.Solver.Modular.Dependency

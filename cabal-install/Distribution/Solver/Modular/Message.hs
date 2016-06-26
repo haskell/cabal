@@ -16,6 +16,7 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
          ( FailReason(..), POption(..) )
 import Distribution.Solver.Types.ConstraintSource
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
 
 data Message =

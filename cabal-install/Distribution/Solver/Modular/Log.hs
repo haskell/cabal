@@ -11,11 +11,11 @@ import Control.Applicative
 import Data.List as L
 import Data.Maybe (isNothing)
 
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Message
-import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree (FailReason(..))
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 

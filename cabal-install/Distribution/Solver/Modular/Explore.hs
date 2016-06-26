@@ -10,10 +10,10 @@ import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Message
-import Distribution.Solver.Modular.Package
 import qualified Distribution.Solver.Modular.PSQ as P
 import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Modular.Tree
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..))
 import qualified Distribution.Solver.Types.Progress as P
 

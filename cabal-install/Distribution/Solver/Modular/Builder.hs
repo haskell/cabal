@@ -29,6 +29,7 @@ import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
 
 import Distribution.Solver.Types.ComponentDeps (Component)
+import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings
 
 -- | The state needed during the build phase of the search tree.
@@ -187,4 +188,4 @@ buildTree idx (IndependentGoals ind) igs =
     topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) UserGoal
 
     qpns | ind       = makeIndependent igs
-         | otherwise = L.map (Q (PP DefaultNamespace Unqualified)) igs
+         | otherwise = L.map (Q (PackagePath DefaultNamespace Unqualified)) igs
