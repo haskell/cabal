@@ -1,0 +1,12 @@
+This test models the cycle
+
+  optparse-applicative has test-suite dependency on tasty 
+  tasty depends on optparse-applicative
+
+In the test, package "A" models optparse-applicative; there are two versions
+available (1 and 2), and package "T" models tasty. 
+
+The output of the test shows the versions of the packages involved, and it shows
+that the direct dependency of optparse-applicative (A)'s test suite uses version
+2, but the indirect dependency on itself (through tasty/T) uses version 1.
+

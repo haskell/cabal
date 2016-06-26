@@ -38,15 +38,22 @@ groupMap xs = M.fromListWith (flip (++)) (L.map (\ (x, y) -> (x, [y])) xs)
 
 defaultQualifyOptions :: Index -> QualifyOptions
 defaultQualifyOptions idx = QO {
-      qoBaseShim         = or [ dep == base
-                              | -- Find all versions of base ..
-                                Just is <- [M.lookup base idx]
-                                -- .. which are installed ..
-                              , (I _ver (Inst _), PInfo deps _flagNfo _fr) <- M.toList is
-                                -- .. and flatten all their dependencies ..
-                              , (Dep dep _ci, _comp) <- flattenFlaggedDeps deps
-                              ]
-    , qoSetupIndependent = True
+      qoSetupIndependent = True
+    , qoTestsIndependent = True
+    , qoBaseShim         = baseOnBaseDependency
     }
   where
+    -- does base depend on base?
+    baseOnBaseDependency :: Bool
+    baseOnBaseDependency = or [
+        dep == base
+      | -- Find all versions of base ..
+        Just is <- [M.lookup base idx]
+        -- .. which are installed ..
+      , (I _ver (Inst _), PInfo deps _flagNfo _fr) <- M.toList is
+        -- .. and flatten all their dependencies ..
+      , (Dep dep _ci, _comp) <- flattenFlaggedDeps deps
+      ]
+
+    base :: PackageName
     base = PackageName "base"
