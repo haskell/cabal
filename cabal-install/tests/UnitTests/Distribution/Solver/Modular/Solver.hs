@@ -135,7 +135,7 @@ tests = [
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
         , runTest $ testIndepGoals2 "indepGoals2"
-        , runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] anySolverFailure -- The target order is important.
+        , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
         , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
         , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
@@ -702,16 +702,35 @@ db18 = [
 -- >   \ | \ / | /
 -- >    \|  V  |/
 -- >     D  F  E
-db19 :: ExampleDb
-db19 = [
-    Right $ exAv "A" 1 [ExAny "C"]
-  , Right $ exAv "B" 1 [ExAny "C"]
-  , Right $ exAv "C" 1 []
-  , Right $ exAv "C" 2 []
-  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
-  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
-  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
-  ]
+testIndepGoals3 :: String -> SolverTest
+testIndepGoals3 name =
+    goalOrder goals $ indep $
+    mkTest db name ["D", "E", "F"] anySolverFailure
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExAny "C"]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      , Right $ exAv "C" 2 []
+      , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+      , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+      , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "D"
+      , P (Indep 0) "C"
+      , P (Indep 0) "A"
+      , P (Indep 1) "E"
+      , P (Indep 1) "C"
+      , P (Indep 1) "B"
+      , P (Indep 2) "F"
+      , P (Indep 2) "B"
+      , P (Indep 2) "C"
+      , P (Indep 2) "A"
+      ]
 
 -- | This test checks that the solver correctly backjumps when dependencies
 -- of linked packages are not linked. It is an example where the conflict set
