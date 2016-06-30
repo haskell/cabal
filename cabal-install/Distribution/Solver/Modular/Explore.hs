@@ -49,7 +49,7 @@ backjump :: EnableBackjumping -> Var QPN
          -> ConflictSet QPN -> P.PSQ k (Explore (ConflictSetLog a))
          -> Explore (ConflictSetLog a)
 backjump (EnableBackjumping enableBj) var initial xs =
-    makeStrict $ F.foldr combine logBackjump xs initial
+    F.foldr combine logBackjump xs initial
   where
     combine ::  Explore (ConflictSetLog a)
             -> (ConflictSet QPN -> Explore (ConflictSetLog a))
@@ -92,19 +92,16 @@ updateCM cs cm =
     inc Nothing  = Just 1
     inc (Just n) = Just $! n + 1
 
-makeStrict :: Explore a -> Explore a
-makeStrict e = state (\ !cm -> runState e cm)
-
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
 exploreLog :: EnableBackjumping -> CountConflicts -> Tree QGoalReason
            -> (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
-exploreLog enableBj (CountConflicts countConflicts) = cata (\ x y -> makeStrict (go x y))
+exploreLog enableBj (CountConflicts countConflicts) = cata go
   where
-    updateCM' :: ConflictSet QPN -> Explore ()
+    updateCM' :: ConflictSet QPN -> Explore a -> Explore a
     updateCM'
-      | countConflicts = modify' . updateCM
-      | otherwise      = const (modify' id)
+      | countConflicts = \ c k -> modify' (updateCM c) >> k
+      | otherwise      = \ _ k -> k
 
     getBestGoal' :: P.PSQ (Goal QPN) a -> Explore (Goal QPN, a)
     getBestGoal'
@@ -113,7 +110,7 @@ exploreLog enableBj (CountConflicts countConflicts) = cata (\ x y -> makeStrict 
 
     go :: TreeF QGoalReason (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
                          -> (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
-    go (FailF c fr)             _            = updateCM' c >> return (failWith (Failure c fr) c)
+    go (FailF c fr)             _            = updateCM' c (return (failWith (Failure c fr) c))
     go (DoneF rdm)              a            = return (succeedWith Success (a, rdm))
     go (PChoiceF qpn gr     ts) (A pa fa sa) =
       backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
