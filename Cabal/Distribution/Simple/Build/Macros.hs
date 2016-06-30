@@ -76,18 +76,34 @@ generateToolVersionMacros progs = concat
 -- | Common implementation of 'generatePackageVersionMacros' and
 -- 'generateToolVersionMacros'.
 --
+-- Note: the exact output formatting is important, as GHC-8.0.1 does
+-- define the very same macros without guards.
 generateMacros :: String -> String -> Version -> String
 generateMacros macro_prefix name version =
   concat
-  ["#define ", macro_prefix, "VERSION_",name," ",show (display version),"\n"
-  ,"#define MIN_", macro_prefix, "VERSION_",name,"(major1,major2,minor) (\\\n"
-  ,"  (major1) <  ",major1," || \\\n"
-  ,"  (major1) == ",major1," && (major2) <  ",major2," || \\\n"
-  ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor,")"
-  ,"\n\n"
+  [ cppMacro versionMacro Nothing $ show (display version)
+  , cppMacro minVersionMacro (Just "(major1,major2,minor)") $ concat
+    [ "(\\\n"
+    , "  (major1) <  ",major1," || \\\n"
+    , "  (major1) == ",major1," && (major2) <  ",major2," || \\\n"
+    , "  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor
+    , ")"
+    ]
+  , cppMacro min2VersionMacro (Just "(major1,major2,minor)") $ concat
+    [ "(\\\n"
+    , "  (major1) <  ",major1'," || \\\n"
+    , "  (major1) == ",major1'," && (major2) <  ",major2'," || \\\n"
+    , "  (major1) == ",major1'," && (major2) == ",major2'," && (minor) <= ",minor'
+    , ")"
+    ]
+  , "\n"
   ]
   where
+    versionMacro     = macro_prefix ++ "VERSION_" ++ name
+    minVersionMacro  = "MIN_" ++ macro_prefix ++ "VERSION_" ++ name
+    min2VersionMacro = "MIN2_" ++ macro_prefix ++ "VERSION_" ++ name
     (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
+    (major1':major2':minor':_) = map show (versionBranch version ++ repeat (-1))
 
 -- | Generate the @CURRENT_COMPONENT_ID@ definition for the component ID
 --   of the current package.
@@ -96,13 +112,25 @@ generateComponentIdMacro lbi clbi =
   concat $
       (case clbi of
         LibComponentLocalBuildInfo{} ->
-          ["#define CURRENT_PACKAGE_KEY \"" ++ componentCompatPackageKey clbi ++ "\"\n"]
+          [ cppMacro "CURRENT_PACKAGE_KEY" Nothing $ quote $ componentCompatPackageKey clbi ]
         _ -> [])
       ++
-      ["#define CURRENT_COMPONENT_ID \"" ++ display (componentComponentId clbi) ++ "\"\n"
-      ,"#define LOCAL_COMPONENT_ID \"" ++ display (localComponentId lbi) ++ "\"\n"
-      ,"\n"]
+      [ cppMacro "CURRENT_COMPONENT_ID" Nothing $ quote $ display (componentComponentId clbi)
+      , cppMacro "LOCAL_COMPONENT_ID" Nothing $ quote $ display (localComponentId lbi)
+      , "\n"
+      ]
+  where quote s = "\"" ++ s ++ "\""
 
 fixchar :: Char -> Char
 fixchar '-' = '_'
 fixchar c   = c
+
+cppMacro
+    :: String       -- ^ name
+    -> Maybe String -- ^ params
+    -> String       -- ^ body
+    -> String
+cppMacro name params body = start ++ defstart ++ body ++ "\n#endif\n"
+  where
+    start    = "#ifndef " ++ name ++ "\n"
+    defstart = "#define " ++ name ++ maybe "" id params ++ " "
