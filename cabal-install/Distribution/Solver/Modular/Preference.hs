@@ -13,10 +13,12 @@ module Distribution.Solver.Modular.Preference
     , preferPackagePreferences
     , preferReallyEasyGoalChoices
     , requireInstalled
+    , sortGoals
     ) where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
+import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
@@ -35,6 +37,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
+import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
@@ -191,8 +194,8 @@ processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
-                          -> Tree QGoalReason
-                          -> Tree QGoalReason
+                          -> Tree a
+                          -> Tree a
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q pp pn)              gr      ts) =
@@ -220,7 +223,7 @@ enforcePackageConstraints pcs = trav go
 -- be run after user preferences have been enforced. For manual flags,
 -- it checks if a user choice has been made. If not, it disables all but
 -- the first choice.
-enforceManualFlags :: Tree QGoalReason -> Tree QGoalReason
+enforceManualFlags :: Tree a -> Tree a
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
@@ -234,7 +237,7 @@ enforceManualFlags = trav go
     go x                                                   = x
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
+requireInstalled :: (PN -> Bool) -> Tree a -> Tree a
 requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) gr cs)
@@ -258,7 +261,7 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree QGoalReason -> Tree QGoalReason
+avoidReinstalls :: (PN -> Bool) -> Tree a -> Tree a
 avoidReinstalls p = trav go
   where
     go (PChoiceF qpn@(Q _ pn) gr cs)
@@ -274,6 +277,21 @@ avoidReinstalls p = trav go
         notReinstall _ _ x =
           x
     go x          = x
+
+-- | Sort all goals using the provided function.
+sortGoals :: (Variable QPN -> Variable QPN -> Ordering) -> Tree a -> Tree a
+sortGoals variableOrder = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys goalOrder xs)
+    go x                = x
+
+    goalOrder :: Goal QPN -> Goal QPN -> Ordering
+    goalOrder = variableOrder `on` (varToVariable . goalToVar)
+
+    varToVariable :: Var QPN -> Variable QPN
+    varToVariable (P qpn)                    = PackageVar qpn
+    varToVariable (F (FN (PI qpn _) fn))     = FlagVar qpn fn
+    varToVariable (S (SN (PI qpn _) stanza)) = StanzaVar qpn stanza
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.
@@ -371,10 +389,10 @@ type EnforceSIR = Reader (Map (PI PN) QPN)
 -- (that is, package name + package version) there can be at most one qualified
 -- goal resolving to that instance (there may be other goals _linking_ to that
 -- instance however).
-enforceSingleInstanceRestriction :: Tree QGoalReason -> Tree QGoalReason
+enforceSingleInstanceRestriction :: Tree a -> Tree a
 enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
   where
-    go :: TreeF QGoalReason (EnforceSIR (Tree QGoalReason)) -> EnforceSIR (Tree QGoalReason)
+    go :: TreeF a (EnforceSIR (Tree a)) -> EnforceSIR (Tree a)
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
@@ -383,7 +401,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
       innM _otherwise
 
     -- The check proper
-    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReason) -> EnforceSIR (Tree QGoalReason)
+    goP :: QPN -> POption -> EnforceSIR (Tree a) -> EnforceSIR (Tree a)
     goP qpn@(Q _ pn) (POption i linkedTo) r = do
       let inst = PI pn i
       env <- ask

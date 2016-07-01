@@ -19,6 +19,7 @@ import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
 import Distribution.Solver.Types.Settings
+import Distribution.Solver.Types.Variable
 
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Builder
@@ -56,7 +57,8 @@ data SolverConfig = SolverConfig {
   shadowPkgs            :: ShadowPkgs,
   strongFlags           :: StrongFlags,
   maxBackjumps          :: Maybe Int,
-  enableBackjumping     :: EnableBackjumping
+  enableBackjumping     :: EnableBackjumping,
+  goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering)
 }
 
 -- | Run all solver phases.
@@ -103,15 +105,22 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   where
     explorePhase     = backjumpAndExplore (enableBackjumping sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
-    heuristicsPhase  = (if asBool (preferEasyGoalChoices sc)
-                         then P.preferEasyGoalChoices -- also leaves just one choice
-                         else P.firstGoal) . -- after doing goal-choice heuristics, commit to the first choice (saves space)
-                       traceTree "heuristics.json" id .
-                       P.deferWeakFlagChoices .
-                       P.deferSetupChoices .
-                       P.preferBaseGoalChoice .
-                       P.preferLinked
-    preferencesPhase = P.preferPackagePreferences userPrefs
+    heuristicsPhase  =
+      let heuristicsTree = traceTree "heuristics.json" id
+      in case goalOrder sc of
+           Nothing -> (if asBool (preferEasyGoalChoices sc)
+                        then P.preferEasyGoalChoices -- also leaves just one choice
+                        else P.firstGoal) . -- after doing goal-choice heuristics,
+                                            -- commit to the first choice (saves space)
+                      heuristicsTree .
+                      P.deferWeakFlagChoices .
+                      P.deferSetupChoices .
+                      P.preferBaseGoalChoice
+           Just order -> P.firstGoal .
+                         heuristicsTree .
+                         P.sortGoals order
+    preferencesPhase = P.preferLinked .
+                       P.preferPackagePreferences userPrefs
     validationPhase  = traceTree "validated.json" id .
                        P.enforceManualFlags . -- can only be done after user constraints
                        P.enforcePackageConstraints userConstraints .

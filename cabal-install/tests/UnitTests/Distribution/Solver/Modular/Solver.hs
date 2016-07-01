@@ -18,6 +18,7 @@ import Language.Haskell.Extension ( Extension(..)
                                   , KnownExtension(..), Language(..))
 
 -- cabal-install
+import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
 import Distribution.Client.Dependency.Types
@@ -133,9 +134,9 @@ tests = [
         ]
     , testGroup "Independent goals" [
           runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
-        , runTest $ indep $ mkTest db17 "indepGoals2" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
-        , runTest $ indep $ mkTest db19 "indepGoals3" ["D", "E", "F"] anySolverFailure -- The target order is important.
-        , runTest $ indep $ mkTest db20 "indepGoals4" ["C", "A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+        , runTest $ testIndepGoals2 "indepGoals2"
+        , runTest $ testIndepGoals3 "indepGoals3"
+        , runTest $ testIndepGoals4 "indepGoals4"
         , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
         , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
         ]
@@ -154,14 +155,19 @@ tests = [
         ]
     ]
   where
-    -- | Combinator to turn on --independent-goals behavior, i.e. solve
-    -- for the goals as if we were solving for each goal independently.
-    -- (This doesn't really work well at the moment, see #2842)
-    indep test      = test { testIndepGoals = IndependentGoals True }
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
     makeV v         = V.Version [v,0,0] []
+
+-- | Combinator to turn on --independent-goals behavior, i.e. solve
+-- for the goals as if we were solving for each goal independently.
+-- (This doesn't really work well at the moment, see #2842)
+indep :: SolverTest -> SolverTest
+indep test = test { testIndepGoals = IndependentGoals True }
+
+goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
+goalOrder order test = test { testGoalOrder = Just order }
 
 {-------------------------------------------------------------------------------
   Solver tests
@@ -172,6 +178,7 @@ data SolverTest = SolverTest {
   , testTargets        :: [String]
   , testResult         :: SolverResult
   , testIndepGoals     :: IndependentGoals
+  , testGoalOrder      :: Maybe [ExampleVar]
   , testSoftConstraints :: [ExPreference]
   , testDb             :: ExampleDb
   , testSupportedExts  :: Maybe [Extension]
@@ -246,6 +253,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testTargets        = targets
   , testResult         = result
   , testIndepGoals     = IndependentGoals False
+  , testGoalOrder      = Nothing
   , testSoftConstraints = []
   , testDb             = db
   , testSupportedExts  = exts
@@ -259,7 +267,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
       let (_msgs, result) = exResolve testDb testSupportedExts
                             testSupportedLangs testPkgConfigDb testTargets
                             Modular Nothing testIndepGoals (ReorderGoals False)
-                            (EnableBackjumping True) testSoftConstraints
+                            (EnableBackjumping True) testGoalOrder testSoftConstraints
       when showSolverLog $ mapM_ putStrLn _msgs
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (check testResult err)
@@ -602,23 +610,41 @@ db16 = [
   , Right $ exAv "E" 1 []
   ]
 
--- | This database checks that when the solver discovers a constraint on a
+-- | This test checks that when the solver discovers a constraint on a
 -- package's version after choosing to link that package, it can backtrack to
 -- try alternative versions for the linked-to package. See pull request #3327.
 --
 -- When A and B are installed as independent goals, their dependencies on C
 -- must be linked. Since C depends on D, A and B's dependencies on D must also
--- be linked. This test relies on the fact that the solver chooses D-2 for both
--- 0.D and 1.D before it encounters the test suites' constraints. The solver
--- must backtrack to try D-1 for both 0.D and 1.D.
-db17 :: ExampleDb
-db17 = [
-    Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "C" 1 [ExAny "D"]
-  , Right $ exAv "D" 1 []
-  , Right $ exAv "D" 2 []
-  ]
+-- be linked. This test fixes the goal order so that the solver chooses D-2 for
+-- both 0.D and 1.D before it encounters the test suites' constraints. The
+-- solver must backtrack to try D-1 for both 0.D and 1.D.
+testIndepGoals2 :: String -> SolverTest
+testIndepGoals2 name =
+    goalOrder goals $ indep $
+    mkTest db name ["A", "B"] $
+    SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+      , Right $ exAv "B" 1 [ExAny "C"] `withTest` ExTest "test" [ExFix "D" 1]
+      , Right $ exAv "C" 1 [ExAny "D"]
+      , Right $ exAv "D" 1 []
+      , Right $ exAv "D" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "A"
+      , P (Indep 0) "C"
+      , P (Indep 0) "D"
+      , P (Indep 1) "B"
+      , P (Indep 1) "C"
+      , P (Indep 1) "D"
+      , S (Indep 1) "B" TestStanzas
+      , S (Indep 0) "A" TestStanzas
+      ]
 
 -- | Issue #2834
 -- When both A and B are installed as independent goals, their dependencies on
@@ -676,34 +702,76 @@ db18 = [
 -- >   \ | \ / | /
 -- >    \|  V  |/
 -- >     D  F  E
-db19 :: ExampleDb
-db19 = [
-    Right $ exAv "A" 1 [ExAny "C"]
-  , Right $ exAv "B" 1 [ExAny "C"]
-  , Right $ exAv "C" 1 []
-  , Right $ exAv "C" 2 []
-  , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
-  , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
-  , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
-  ]
+testIndepGoals3 :: String -> SolverTest
+testIndepGoals3 name =
+    goalOrder goals $ indep $
+    mkTest db name ["D", "E", "F"] anySolverFailure
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExAny "C"]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      , Right $ exAv "C" 2 []
+      , Right $ exAv "D" 1 [ExAny "A", ExFix "C" 1]
+      , Right $ exAv "E" 1 [ExAny "B", ExFix "C" 2]
+      , Right $ exAv "F" 1 [ExAny "A", ExAny "B"]
+      ]
 
--- | This database tests that the solver correctly backjumps when dependencies
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "D"
+      , P (Indep 0) "C"
+      , P (Indep 0) "A"
+      , P (Indep 1) "E"
+      , P (Indep 1) "C"
+      , P (Indep 1) "B"
+      , P (Indep 2) "F"
+      , P (Indep 2) "B"
+      , P (Indep 2) "C"
+      , P (Indep 2) "A"
+      ]
+
+-- | This test checks that the solver correctly backjumps when dependencies
 -- of linked packages are not linked. It is an example where the conflict set
 -- from enforcing the single instance restriction is not sufficient. See pull
 -- request #3327.
 --
--- When C, A, and B are installed as independent goals, the solver first
--- chooses 0.C-1 and 0.D-2. When choosing dependencies for A and B, it links
--- 1.D and 2.D to 0.D. Finally, the solver discovers the test's constraint on
--- D. It must backjump to try 1.D-1 and then link 2.D to 1.D.
-db20 :: ExampleDb
-db20 = [
-    Right $ exAv "A" 1 [ExAny "B"]
-  , Right $ exAv "B" 1 [ExAny "D"] `withTest` ExTest "test" [ExFix "D" 1]
-  , Right $ exAv "C" 1 [ExFix "D" 2]
-  , Right $ exAv "D" 1 []
-  , Right $ exAv "D" 2 []
-  ]
+-- When A, B, and C are installed as independent goals with the specified goal
+-- order, the first choice that the solver makes for E is 0.E-2. Then, when it
+-- chooses dependencies for B and C, it links both 1.E and 2.E to 0.E. Finally,
+-- the solver discovers C's test's constraint on E. It must backtrack to try
+-- 1.E-1 and then link 2.E to 1.E. Backjumping all the way to 0.E does not lead
+-- to a solution, because 0.E's version is constrained by A and cannot be
+-- changed.
+testIndepGoals4 :: String -> SolverTest
+testIndepGoals4 name =
+    goalOrder goals $ indep $
+    mkTest db name ["A", "B", "C"] $
+    SolverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "A" 1 [ExFix "E" 2]
+      , Right $ exAv "B" 1 [ExAny "D"]
+      , Right $ exAv "C" 1 [ExAny "D"] `withTest` ExTest "test" [ExFix "E" 1]
+      , Right $ exAv "D" 1 [ExAny "E"]
+      , Right $ exAv "E" 1 []
+      , Right $ exAv "E" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "A"
+      , P (Indep 0) "E"
+      , P (Indep 1) "B"
+      , P (Indep 1) "D"
+      , P (Indep 1) "E"
+      , P (Indep 2) "C"
+      , P (Indep 2) "D"
+      , P (Indep 2) "E"
+      , S (Indep 2) "C" TestStanzas
+      ]
 
 -- | Test the trace messages that we get when a package refers to an unknown pkg
 --

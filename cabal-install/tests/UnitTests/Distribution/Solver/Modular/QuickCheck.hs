@@ -102,7 +102,7 @@ solve enableBj reorder indep solver targets (TestDb db) =
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  indep reorder enableBj []
+                  indep reorder enableBj Nothing []
 
       failure :: String -> Failure
       failure msg
@@ -223,12 +223,12 @@ arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
 arbitraryComponentDep db = do
   comp <- arbitrary
   deps <- case comp of
-            ComponentSetup -> smallListOf (arbitraryExDep db Setup)
-            _              -> boundedListOf 5 (arbitraryExDep db NonSetup)
+            ComponentSetup -> smallListOf (arbitraryExDep db SetupDep)
+            _              -> boundedListOf 5 (arbitraryExDep db NonSetupDep)
   return (comp, deps)
 
 -- | Location of an 'ExampleDependency'. It determines which values are valid.
-data ExDepLocation = Setup | NonSetup
+data ExDepLocation = SetupDep | NonSetupDep
 
 arbitraryExDep :: TestDb -> ExDepLocation -> Gen ExampleDependency
 arbitraryExDep db@(TestDb pkgs) level =
@@ -247,13 +247,13 @@ arbitraryExDep db@(TestDb pkgs) level =
           ]
   in oneof $
       case level of
-        NonSetup -> flag : other
-        Setup -> other
+        NonSetupDep -> flag : other
+        SetupDep -> other
 
 arbitraryDeps :: TestDb -> Gen Dependencies
 arbitraryDeps db = frequency
     [ (1, return NotBuildable)
-    , (20, Buildable <$> smallListOf (arbitraryExDep db NonSetup))
+    , (20, Buildable <$> smallListOf (arbitraryExDep db NonSetupDep))
     ]
 
 arbitraryFlagName :: Gen String

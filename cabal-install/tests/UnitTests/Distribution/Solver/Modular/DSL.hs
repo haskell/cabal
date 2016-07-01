@@ -11,6 +11,8 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExamplePkgName
   , ExampleAvailable(..)
   , ExampleInstalled(..)
+  , ExampleQualifier(..)
+  , ExampleVar(..)
   , exAv
   , exInst
   , exFlag
@@ -23,9 +25,10 @@ module UnitTests.Distribution.Solver.Modular.DSL (
 
 -- base
 import Data.Either (partitionEithers)
-import Data.Maybe (catMaybes)
-import Data.List (nub)
+import Data.Maybe (catMaybes, isNothing)
+import Data.List (elemIndex, nub)
 import Data.Monoid
+import Data.Ord (comparing)
 import Data.Version
 import qualified Data.Map as Map
 
@@ -52,10 +55,12 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex      as CI.PackageIndex
+import qualified Distribution.Solver.Types.PackagePath as P
 import qualified Distribution.Solver.Types.PkgConfigDb as PC
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.SourcePackage
+import           Distribution.Solver.Types.Variable
 
 {-------------------------------------------------------------------------------
   Example package database DSL
@@ -142,6 +147,17 @@ data ExampleAvailable = ExAv {
   , exAvVersion :: ExamplePkgVersion
   , exAvDeps    :: ComponentDeps [ExampleDependency]
   } deriving Show
+
+data ExampleVar =
+    P ExampleQualifier ExamplePkgName
+  | F ExampleQualifier ExamplePkgName ExampleFlagName
+  | S ExampleQualifier ExamplePkgName OptionalStanza
+
+data ExampleQualifier =
+    None
+  | Indep Int
+  | Setup ExamplePkgName
+  | IndepSetup Int ExamplePkgName
 
 -- | Constructs an 'ExampleAvailable' package for the 'ExampleDb',
 -- given:
@@ -398,10 +414,11 @@ exResolve :: ExampleDb
           -> IndependentGoals
           -> ReorderGoals
           -> EnableBackjumping
+          -> Maybe [ExampleVar]
           -> [ExPreference]
           -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          enableBj prefs
+          enableBj vars prefs
     = runProgress $ resolveDependencies C.buildPlatform
                         compiler pkgConfigDb
                         solver
@@ -427,9 +444,33 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setReorderGoals reorder
                    $ setMaxBackjumps mbj
                    $ setEnableBackjumping enableBj
+                   $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
     toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v
+
+    goalOrder :: Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
+    goalOrder = (orderFromList . map toVariable) `fmap` vars
+
+    -- Sort elements in the list ahead of elements not in the list. Otherwise,
+    -- follow the order in the list.
+    orderFromList :: Eq a => [a] -> a -> a -> Ordering
+    orderFromList xs =
+        comparing $ \x -> let i = elemIndex x xs in (isNothing i, i)
+
+    toVariable :: ExampleVar -> Variable P.QPN
+    toVariable (P q pn)        = PackageVar (toQPN q pn)
+    toVariable (F q pn fn)     = FlagVar    (toQPN q pn) (C.FlagName fn)
+    toVariable (S q pn stanza) = StanzaVar  (toQPN q pn) stanza
+
+    toQPN :: ExampleQualifier -> ExamplePkgName -> P.QPN
+    toQPN q pn = P.Q pp (C.PackageName pn)
+      where
+        pp = case q of
+               None           -> P.PackagePath P.DefaultNamespace P.Unqualified
+               Indep x        -> P.PackagePath (P.Independent x) P.Unqualified
+               Setup p        -> P.PackagePath P.DefaultNamespace (P.Setup (C.PackageName p))
+               IndepSetup x p -> P.PackagePath (P.Independent x) (P.Setup (C.PackageName p))
 
 extractInstallPlan :: CI.InstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
