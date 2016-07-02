@@ -179,6 +179,7 @@ import Data.Maybe               (listToMaybe)
 import Data.Monoid              (Monoid(..))
 import Control.Applicative      (pure, (<$>))
 #endif
+import Control.Exception        (SomeException(..), try)
 import Control.Monad            (when, unless)
 
 -- | Entry point
@@ -311,7 +312,8 @@ wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command
     { commandDefaultFlags = mempty } $ \flags extraArgs globalFlags -> do
     let verbosity = fromFlagOrDefault normal (verbosityFlag flags)
-    (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+    load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
+    let config = either (\(SomeException _) -> mempty) snd load
     distPref <- findSavedDistPref config (distPrefFlag flags)
     let setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
     setupWrapper verbosity setupScriptOptions Nothing
@@ -695,7 +697,8 @@ installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installAction (configFlags, _, installFlags, _) _ globalFlags
   | fromFlagOrDefault False (installOnly installFlags) = do
       let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-      (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+      load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
+      let config = either (\(SomeException _) -> mempty) snd load
       distPref <- findSavedDistPref config (configDistPref configFlags)
       let setupOpts = defaultSetupScriptOptions { useDistPref = distPref }
       setupWrapper verbosity setupOpts Nothing installCommand (const mempty) []
@@ -911,7 +914,8 @@ haddockAction haddockFlags extraArgs globalFlags = do
 
 cleanAction :: CleanFlags -> [String] -> Action
 cleanAction cleanFlags extraArgs globalFlags = do
-  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
+  let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (cleanDistPref cleanFlags)
   let setupScriptOptions = defaultSetupScriptOptions
                            { useDistPref = distPref
@@ -1148,7 +1152,8 @@ sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag (sDistVerbosity sdistFlags)
-  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  load <- try (loadConfigOrSandboxConfig verbosity globalFlags)
+  let config = either (\(SomeException _) -> mempty) snd load
   distPref <- findSavedDistPref config (sDistDistPref sdistFlags)
   let sdistFlags' = sdistFlags { sDistDistPref = toFlag distPref }
   sdist sdistFlags' sdistExFlags
