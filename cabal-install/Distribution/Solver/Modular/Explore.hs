@@ -3,7 +3,6 @@ module Distribution.Solver.Modular.Explore
     , backjumpAndExplore
     ) where
 
-import Control.Monad.State.Lazy
 import Data.Foldable as F
 import Data.List as L (foldl')
 import Data.Map as M
@@ -18,8 +17,6 @@ import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts(..))
 import qualified Distribution.Solver.Types.Progress as P
-
-type Explore = State ConflictMap
 
 -- | This function takes the variable we're currently considering, an
 -- initial conflict set and a
@@ -45,29 +42,29 @@ type Explore = State ConflictMap
 -- variable. See also the comments for 'avoidSet'.
 --
 backjump :: EnableBackjumping -> Var QPN
-         -> ConflictSet QPN -> P.PSQ k (Explore (ConflictSetLog a))
-         -> Explore (ConflictSetLog a)
+         -> ConflictSet QPN -> P.PSQ k (ConflictMap -> ConflictSetLog a)
+         -> ConflictMap -> ConflictSetLog a
 backjump (EnableBackjumping enableBj) var initial xs =
     F.foldr combine logBackjump xs initial
   where
-    combine ::  Explore (ConflictSetLog a)
-            -> (ConflictSet QPN -> Explore (ConflictSetLog a))
-            ->  ConflictSet QPN -> Explore (ConflictSetLog a)
-    combine x f csAcc = do
-      l <- x
-      case l of
-        P.Done d  -> return (P.Done d)
-        P.Fail cs
-          | enableBj && not (var `CS.member` cs) -> logBackjump cs
-          | otherwise                            -> f (csAcc `CS.union` cs)
-        P.Step m ms -> do
-          l' <- combine (return ms) f csAcc
-          return (P.Step m l')
+    combine :: (ConflictMap -> ConflictSetLog a)
+            -> (ConflictSet QPN -> ConflictMap -> ConflictSetLog a)
+            ->  ConflictSet QPN -> ConflictMap -> ConflictSetLog a
+    combine x f csAcc cm =
+      let l = x cm
+      in case l of
+        P.Done d  -> P.Done d
+        P.Fail (cs, cm')
+          | enableBj && not (var `CS.member` cs) -> logBackjump cs cm'
+          | otherwise                            -> f (csAcc `CS.union` cs) cm'
+        P.Step m ms ->
+          let l' = combine (\ _ -> ms) f csAcc cm
+          in P.Step m l'
 
-    logBackjump :: ConflictSet QPN -> Explore (ConflictSetLog a)
-    logBackjump cs = return (failWith (Failure cs Backjump) cs)
+    logBackjump :: ConflictSet QPN -> ConflictMap -> ConflictSetLog a
+    logBackjump cs cm = failWith (Failure cs Backjump) (cs, cm)
 
-type ConflictSetLog = P.Progress Message (ConflictSet QPN)
+type ConflictSetLog = P.Progress Message (ConflictSet QPN, ConflictMap)
 
 type ConflictMap = Map (Var QPN) Int
 
@@ -94,51 +91,54 @@ updateCM cs cm =
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
 exploreLog :: EnableBackjumping -> CountConflicts -> Tree QGoalReason
-           -> (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
+           -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
 exploreLog enableBj (CountConflicts countConflicts) = cata go
   where
-    updateCM' :: ConflictSet QPN -> Explore a -> Explore a
+    updateCM' :: ConflictSet QPN -> ConflictMap -> ConflictMap
     updateCM'
-      | countConflicts = \ c k -> modify' (updateCM c) >> k
-      | otherwise      = \ _ k -> k
+      | countConflicts = \ c cm -> updateCM c cm
+      | otherwise      = \ _ cm -> cm
 
-    getBestGoal' :: P.PSQ (Goal QPN) a -> Explore (Goal QPN, a)
+    getBestGoal' :: P.PSQ (Goal QPN) a -> ConflictMap -> (Goal QPN, a)
     getBestGoal'
-      | countConflicts = \ ts -> get >>= \ cm -> return (getBestGoal cm ts)
-      | otherwise      = return . getFirstGoal
+      | countConflicts = \ ts cm -> getBestGoal cm ts
+      | otherwise      = \ ts _  -> getFirstGoal ts
 
-    go :: TreeF QGoalReason (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
-                         -> (Assignment -> Explore (ConflictSetLog (Assignment, RevDepMap)))
-    go (FailF c fr)             _            = updateCM' c (return (failWith (Failure c fr) c))
-    go (DoneF rdm)              a            = return (succeedWith Success (a, rdm))
+    go :: TreeF QGoalReason (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
+                         -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
+    go (FailF c fr)             _            = \ cm -> let failure = failWith (Failure c fr)
+                                                       in if countConflicts
+                                                          then failure (c, updateCM' c cm)
+                                                          else failure (c, cm)
+    go (DoneF rdm)              a            = \ _  -> succeedWith Success (a, rdm)
     go (PChoiceF qpn gr     ts) (A pa fa sa) =
       backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
         P.mapWithKey                                -- when descending ...
-          (\ i@(POption k _) r -> do
-            l <- r (A (M.insert qpn k pa) fa sa)
-            return (tryWith (TryP qpn i) l)
+          (\ i@(POption k _) r cm ->
+            let l = r (A (M.insert qpn k pa) fa sa) cm
+            in tryWith (TryP qpn i) l
           )
         ts
     go (FChoiceF qfn gr _ _ ts) (A pa fa sa) =
       backjump enableBj (F qfn) (avoidSet (F qfn) gr) $ -- try children in order,
         P.mapWithKey                                -- when descending ...
-          (\ k r -> do
-            l <- r (A pa (M.insert qfn k fa) sa)
-            return (tryWith (TryF qfn k) l)
+          (\ k r cm ->
+            let l = r (A pa (M.insert qfn k fa) sa) cm
+            in  tryWith (TryF qfn k) l
           )
         ts
     go (SChoiceF qsn gr _   ts) (A pa fa sa) =
       backjump enableBj (S qsn) (avoidSet (S qsn) gr) $ -- try children in order,
         P.mapWithKey                                -- when descending ...
-          (\ k r -> do
-            l <- r (A pa fa (M.insert qsn k sa))
-            return (tryWith (TryS qsn k) l)
+          (\ k r cm ->
+            let l = r (A pa fa (M.insert qsn k sa)) cm
+            in  tryWith (TryS qsn k) l
           )
         ts
-    go (GoalChoiceF         ts) a            = do
-      (k, v) <- getBestGoal' ts
-      l      <- v a
-      return (continueWith (Next k) l)
+    go (GoalChoiceF         ts) a            = \ cm ->
+      let (k, v) = getBestGoal' ts cm
+          l = v a cm
+      in continueWith (Next k) l
 
 -- | Build a conflict set corresponding to the (virtual) option not to
 -- choose a solution for a goal at all.
@@ -172,7 +172,7 @@ backjumpAndExplore :: EnableBackjumping
                    -> CountConflicts
                    -> Tree QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore enableBj countConflicts t =
-    toLog $ fst $ runState (exploreLog enableBj countConflicts t (A M.empty M.empty M.empty)) M.empty
+    toLog $ (exploreLog enableBj countConflicts t (A M.empty M.empty M.empty)) M.empty
   where
     toLog :: P.Progress step fail done -> Log step done
     toLog = P.foldProgress P.Step (const (P.Fail ())) P.Done
