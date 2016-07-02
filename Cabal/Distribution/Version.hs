@@ -53,6 +53,7 @@ module Distribution.Version (
   laterVersion, earlierVersion,
   orLaterVersion, orEarlierVersion,
   unionVersionRanges, intersectVersionRanges,
+  differenceVersionRanges,
   invertVersionRange,
   withinVersion,
   betweenVersionsInclusive,
@@ -239,6 +240,16 @@ unionVersionRanges = UnionVersionRanges
 --
 intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
 intersectVersionRanges = IntersectVersionRanges
+
+-- | The difference of two version ranges
+--
+-- >   withinRange v' (differenceVersionRanges vr1 vr2)
+-- > = withinRange v' vr1 && not (withinRange v' vr2)
+--
+-- @since 1.24.1.0
+differenceVersionRanges :: VersionRange -> VersionRange -> VersionRange
+differenceVersionRanges vr1 vr2 =
+    intersectVersionRanges vr1 (invertVersionRange vr2)
 
 -- | The inverse of a version range
 --
