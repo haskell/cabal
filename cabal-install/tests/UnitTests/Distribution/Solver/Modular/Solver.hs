@@ -138,7 +138,7 @@ tests = [
         , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
         , runTest $ testIndepGoals5 "indepGoals5"
-        , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
+        , runTest $ testIndepGoals6 "indepGoals6"
         ]
       -- Tests designed for the backjumping blog post
     , testGroup "Backjumping" [
@@ -834,15 +834,31 @@ testIndepGoals5 name =
       ]
 
 -- | A simplified version of 'testIndepGoals5'.
-db24 :: ExampleDb
-db24 = [
-    Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
-  , Right $ exAv "Y" 1 [ExFix "B" 1, ExFix "A" 2]
-  , Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExAny "B"]
-  , Right $ exAv "B" 1 []
-  , Right $ exAv "B" 2 []
-  ]
+testIndepGoals6 :: String -> SolverTest
+testIndepGoals6 name =
+    goalOrder goals $ indep $
+    mkTest db name ["X", "Y"] $
+    SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
+      , Right $ exAv "Y" 1 [ExFix "B" 1, ExFix "A" 2]
+      , Right $ exAv "A" 1 []
+      , Right $ exAv "A" 2 [ExAny "B"]
+      , Right $ exAv "B" 1 []
+      , Right $ exAv "B" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "X"
+      , P (Indep 0) "A"
+      , P (Indep 0) "B"
+      , P (Indep 1) "Y"
+      , P (Indep 1) "A"
+      , P (Indep 1) "B"
+      ]
 
 dbExts1 :: ExampleDb
 dbExts1 = [
