@@ -137,7 +137,7 @@ tests = [
         , runTest $ testIndepGoals2 "indepGoals2"
         , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
-        , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
+        , runTest $ testIndepGoals5 "indepGoals5"
         , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
         ]
       -- Tests designed for the backjumping blog post
@@ -804,18 +804,36 @@ db22 = [
 -- be found, because without the SIR, linking is always optional, but never
 -- necessary.
 --
-db23 :: ExampleDb
-db23 = [
-    Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
-  , Right $ exAv "Y" 1 [ExFix "C" 1, ExFix "A" 2]
-  , Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExAny "B"]
-  , Right $ exAv "B" 1 [ExAny "C"]
-  , Right $ exAv "C" 1 []
-  , Right $ exAv "C" 2 []
-  ]
+testIndepGoals5 :: String -> SolverTest
+testIndepGoals5 name =
+    goalOrder goals $ indep $
+    mkTest db name ["X", "Y"] $
+    SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
+  where
+    db :: ExampleDb
+    db = [
+        Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
+      , Right $ exAv "Y" 1 [ExFix "C" 1, ExFix "A" 2]
+      , Right $ exAv "A" 1 []
+      , Right $ exAv "A" 2 [ExAny "B"]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      , Right $ exAv "C" 2 []
+      ]
 
--- | A simplified version of 'db23'.
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "X"
+      , P (Indep 0) "A"
+      , P (Indep 0) "B"
+      , P (Indep 0) "C"
+      , P (Indep 1) "Y"
+      , P (Indep 1) "A"
+      , P (Indep 1) "B"
+      , P (Indep 1) "C"
+      ]
+
+-- | A simplified version of 'testIndepGoals5'.
 db24 :: ExampleDb
 db24 = [
     Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
