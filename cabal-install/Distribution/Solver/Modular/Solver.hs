@@ -137,12 +137,27 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                      $ buildTree idx (independentGoals sc) userGoals
 
     -- Counting conflicts and reordering goals interferes, as both are strategies to
-    -- change the order of goals. When count-conflicts is set, we therefore interpret
-    -- reorder-goals to only prefer goals with 0 or 1 enabled choice.
+    -- change the order of goals.
     --
-    -- In the past, we used P.firstGoal to trim down the goal choice nodes to just a
-    -- single option. This was a way to work around a space leak that was unnecessary
-    -- and is now fixed, so we no longer do it.
+    -- We therefore change the strategy based on whether --count-conflicts is set or
+    -- not:
+    --
+    -- - when --count-conflicts is set, we use preferReallyEasyGoalChoices, which
+    --   prefers (keeps) goals only if the have 0 or 1 enabled choice.
+    --
+    -- - when --count-conflicts is not set, we use preferEasyGoalChoices, which
+    --   (next to preferring goals with 0 or 1 enabled choice)
+    --   also prefers goals that have 2 enabled choices over goals with more than
+    --   two enabled choices.
+    --
+    -- In the past, we furthermore used P.firstGoal to trim down the goal choice nodes
+    -- to just a single option. This was a way to work around a space leak that was
+    -- unnecessary and is now fixed, so we no longer do it.
+    --
+    -- If --count-conflicts is active, it will then choose among the remaining goals
+    -- the one that has been responsible for the most conflicts so far.
+    --
+    -- Otherwise, we simply choose the first remaining goal.
     --
     goalChoiceHeuristics
       | asBool (reorderGoals sc) && asBool (countConflicts sc) = P.preferReallyEasyGoalChoices
