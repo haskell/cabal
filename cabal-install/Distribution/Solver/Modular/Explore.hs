@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 module Distribution.Solver.Modular.Explore
     ( backjump
     , backjumpAndExplore
