@@ -71,7 +71,8 @@ import Distribution.Solver.Modular
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan)
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
@@ -718,7 +719,7 @@ validateSolverResult :: Platform
                      -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
-      [] -> case InstallPlan.new indepGoals index of
+      [] -> case SolverInstallPlan.new indepGoals index of
               Right plan     -> plan
               Left  problems -> error (formatPlanProblems problems)
       problems               -> error (formatPkgProblems problems)

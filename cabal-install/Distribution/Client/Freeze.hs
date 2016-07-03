@@ -22,7 +22,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import Distribution.Client.InstallPlan
+import Distribution.Client.SolverInstallPlan
          ( SolverInstallPlan, SolverPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup

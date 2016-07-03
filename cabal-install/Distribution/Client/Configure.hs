@@ -20,7 +20,8 @@ module Distribution.Client.Configure (
 
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup
@@ -135,7 +136,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
         Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan0 ->
-     let installPlan = InstallPlan.configureInstallPlan installPlan0
+     let installPlan = SolverInstallPlan.configureInstallPlan installPlan0
      in case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
               (ConfiguredPackage _ (SourcePackage _ _ (LocalUnpackedPackage _) _)

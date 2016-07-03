@@ -81,7 +81,9 @@ import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan, InstallPlan)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
@@ -338,7 +340,7 @@ processInstallPlan verbosity
                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan'
   where
-    installPlan = InstallPlan.configureInstallPlan installPlan0
+    installPlan = SolverInstallPlan.configureInstallPlan installPlan0
     dryRun = fromFlag (installDryRun installFlags)
     nothingToInstall = null (InstallPlan.ready installPlan)
 
