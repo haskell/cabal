@@ -885,15 +885,6 @@ dbBuildable1 = [
   , Right $ exAv "flag2-false" 1 []
   ]
 
--- | Package databases for testing @pkg-config@ dependencies.
-dbPC1 :: ExampleDb
-dbPC1 = [
-    Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
-  , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
-  , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
-  , Right $ exAv "C" 1 [ExAny "B"]
-  ]
-
 -- | cabal must pick B-2 to avoid the unknown dependency.
 dbBuildable2 :: ExampleDb
 dbBuildable2 = [
@@ -904,6 +895,15 @@ dbBuildable2 = [
         , ExFlag "disable-lib" NotBuildable (Buildable [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
+  ]
+
+-- | Package databases for testing @pkg-config@ dependencies.
+dbPC1 :: ExampleDb
+dbPC1 = [
+    Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
+  , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
+  , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
 {-------------------------------------------------------------------------------
