@@ -94,11 +94,6 @@ exploreLog :: EnableBackjumping -> CountConflicts -> Tree QGoalReason
            -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
 exploreLog enableBj (CountConflicts countConflicts) = cata go
   where
-    updateCM' :: ConflictSet QPN -> ConflictMap -> ConflictMap
-    updateCM'
-      | countConflicts = \ c cm -> updateCM c cm
-      | otherwise      = \ _ cm -> cm
-
     getBestGoal' :: P.PSQ (Goal QPN) a -> ConflictMap -> (Goal QPN, a)
     getBestGoal'
       | countConflicts = \ ts cm -> getBestGoal cm ts
@@ -108,7 +103,7 @@ exploreLog enableBj (CountConflicts countConflicts) = cata go
                          -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
     go (FailF c fr)             _            = \ cm -> let failure = failWith (Failure c fr)
                                                        in if countConflicts
-                                                          then failure (c, updateCM' c cm)
+                                                          then failure (c, updateCM c cm)
                                                           else failure (c, cm)
     go (DoneF rdm)              a            = \ _  -> succeedWith Success (a, rdm)
     go (PChoiceF qpn gr     ts) (A pa fa sa) =
