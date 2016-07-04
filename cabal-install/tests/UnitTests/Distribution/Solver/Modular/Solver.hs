@@ -137,8 +137,10 @@ tests = [
         , runTest $ testIndepGoals2 "indepGoals2"
         , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
-        , runTest $ testIndepGoals5 "indepGoals5"
-        , runTest $ testIndepGoals6 "indepGoals6"
+        , runTest $ testIndepGoals5 "indepGoals5 - fixed goal order" FixedGoalOrder
+        , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
+        , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
+        , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
         ]
       -- Tests designed for the backjumping blog post
     , testGroup "Backjumping" [
@@ -168,6 +170,8 @@ indep test = test { testIndepGoals = IndependentGoals True }
 
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
+
+data GoalOrder = FixedGoalOrder | DefaultGoalOrder
 
 {-------------------------------------------------------------------------------
   Solver tests
@@ -804,12 +808,17 @@ db22 = [
 -- be found, because without the SIR, linking is always optional, but never
 -- necessary.
 --
-testIndepGoals5 :: String -> SolverTest
-testIndepGoals5 name =
-    goalOrder goals $ indep $
-    mkTest db name ["X", "Y"] $
-    SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
+testIndepGoals5 :: String -> GoalOrder -> SolverTest
+testIndepGoals5 name fixGoalOrder =
+    case fixGoalOrder of
+      FixedGoalOrder   -> goalOrder goals test
+      DefaultGoalOrder -> test
   where
+    test :: SolverTest
+    test = indep $ mkTest db name ["X", "Y"] $
+           SolverSuccess
+           [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
+
     db :: ExampleDb
     db = [
         Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
@@ -834,12 +843,17 @@ testIndepGoals5 name =
       ]
 
 -- | A simplified version of 'testIndepGoals5'.
-testIndepGoals6 :: String -> SolverTest
-testIndepGoals6 name =
-    goalOrder goals $ indep $
-    mkTest db name ["X", "Y"] $
-    SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
+testIndepGoals6 :: String -> GoalOrder -> SolverTest
+testIndepGoals6 name fixGoalOrder =
+    case fixGoalOrder of
+      FixedGoalOrder   -> goalOrder goals test
+      DefaultGoalOrder -> test
   where
+    test :: SolverTest
+    test = indep $ mkTest db name ["X", "Y"] $
+           SolverSuccess
+           [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
+
     db :: ExampleDb
     db = [
         Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
