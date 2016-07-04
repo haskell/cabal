@@ -796,8 +796,6 @@ configureInstallPlan solverPlan =
 
         SolverInstallPlan.Configured  pkg ->
           Configured (configureSolverPackage mapDep pkg)
-
-        _ -> error "configureInstallPlan: unexpected package state"
   where
     configureSolverPackage :: (UnitId -> UnitId)
                            -> SolverPackage UnresolvedPkgLoc

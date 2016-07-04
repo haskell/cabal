@@ -1025,8 +1025,6 @@ elaborateInstallPlan platform compiler compilerprogdb
             InstallPlan.Configured
               (elaborateSolverPackage mapDep pkg)
 
-          _ -> error "elaborateInstallPlan: unexpected package state"
-
     elaborateSolverPackage :: (UnitId -> UnitId)
                            -> SolverPackage UnresolvedPkgLoc
                            -> ElaboratedConfiguredPackage
