@@ -19,6 +19,7 @@ module Distribution.Solver.Modular.PSQ
     , mapKeys
     , mapWithKey
     , mapWithKeyState
+    , maximumBy
     , minimumBy
     , null
     , prefer
@@ -123,6 +124,10 @@ dminimumBy sel (PSQ (x : xs)) = go (sel (snd x)) x xs
       GT -> go d y ys
       where
         d = sel (snd y)
+
+maximumBy :: (k -> Int) -> PSQ k a -> (k, a)
+maximumBy sel (PSQ xs) =
+  S.minimumBy (flip (comparing (sel . fst))) xs
 
 minimumBy :: (a -> Int) -> PSQ k a -> PSQ k a
 minimumBy sel (PSQ xs) =

@@ -865,6 +865,8 @@ planPackages comp platform solver SolverSettings{..}
 
       . setReorderGoals solverSettingReorderGoals
 
+      . setCountConflicts solverSettingCountConflicts
+
         --TODO: [required eventually] should only be configurable for custom installs
    -- . setAvoidReinstalls solverSettingAvoidReinstalls
 

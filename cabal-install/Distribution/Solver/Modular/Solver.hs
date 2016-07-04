@@ -51,7 +51,8 @@ import Debug.Trace.Tree.Assoc (Assoc(..))
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
-  preferEasyGoalChoices :: ReorderGoals,
+  reorderGoals          :: ReorderGoals,
+  countConflicts        :: CountConflicts,
   independentGoals      :: IndependentGoals,
   avoidReinstalls       :: AvoidReinstalls,
   shadowPkgs            :: ShadowPkgs,
@@ -103,15 +104,12 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase     = backjumpAndExplore (enableBackjumping sc)
+    explorePhase     = backjumpAndExplore (enableBackjumping sc) (countConflicts sc)
     detectCycles     = traceTree "cycles.json" id . detectCyclesPhase
     heuristicsPhase  =
       let heuristicsTree = traceTree "heuristics.json" id
       in case goalOrder sc of
-           Nothing -> (if asBool (preferEasyGoalChoices sc)
-                        then P.preferEasyGoalChoices -- also leaves just one choice
-                        else P.firstGoal) . -- after doing goal-choice heuristics,
-                                            -- commit to the first choice (saves space)
+           Nothing -> goalChoiceHeuristics .
                       heuristicsTree .
                       P.deferWeakFlagChoices .
                       P.deferSetupChoices .
@@ -137,6 +135,34 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
     buildPhase       = traceTree "build.json" id
                      $ addLinking
                      $ buildTree idx (independentGoals sc) userGoals
+
+    -- Counting conflicts and reordering goals interferes, as both are strategies to
+    -- change the order of goals.
+    --
+    -- We therefore change the strategy based on whether --count-conflicts is set or
+    -- not:
+    --
+    -- - when --count-conflicts is set, we use preferReallyEasyGoalChoices, which
+    --   prefers (keeps) goals only if the have 0 or 1 enabled choice.
+    --
+    -- - when --count-conflicts is not set, we use preferEasyGoalChoices, which
+    --   (next to preferring goals with 0 or 1 enabled choice)
+    --   also prefers goals that have 2 enabled choices over goals with more than
+    --   two enabled choices.
+    --
+    -- In the past, we furthermore used P.firstGoal to trim down the goal choice nodes
+    -- to just a single option. This was a way to work around a space leak that was
+    -- unnecessary and is now fixed, so we no longer do it.
+    --
+    -- If --count-conflicts is active, it will then choose among the remaining goals
+    -- the one that has been responsible for the most conflicts so far.
+    --
+    -- Otherwise, we simply choose the first remaining goal.
+    --
+    goalChoiceHeuristics
+      | asBool (reorderGoals sc) && asBool (countConflicts sc) = P.preferReallyEasyGoalChoices
+      | asBool (reorderGoals sc)                               = P.preferEasyGoalChoices
+      | otherwise                                              = id {- P.firstGoal -}
 
 -- | Dump solver tree to a file (in debugging mode)
 --

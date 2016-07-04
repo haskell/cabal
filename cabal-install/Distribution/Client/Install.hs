@@ -379,6 +379,8 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setReorderGoals reorderGoals
 
+      . setCountConflicts countConflicts
+
       . setAvoidReinstalls avoidReinstalls
 
       . setShadowPkgs shadowPkgs
@@ -431,6 +433,7 @@ planPackages comp platform mSandboxPkgInfo solver
     reinstall        = fromFlag (installOverrideReinstall installFlags) ||
                        fromFlag (installReinstall         installFlags)
     reorderGoals     = fromFlag (installReorderGoals      installFlags)
+    countConflicts   = fromFlag (installCountConflicts    installFlags)
     independentGoals = fromFlag (installIndependentGoals  installFlags)
     avoidReinstalls  = fromFlag (installAvoidReinstalls   installFlags)
     shadowPkgs       = fromFlag (installShadowPkgs        installFlags)

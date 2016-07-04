@@ -7,6 +7,7 @@ module Distribution.Solver.Types.Settings
     , ShadowPkgs(..)
     , StrongFlags(..)
     , EnableBackjumping(..)
+    , CountConflicts(..)
     ) where
 
 import Distribution.Simple.Setup ( BooleanFlag(..) )
@@ -14,6 +15,9 @@ import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics (Generic)
 
 newtype ReorderGoals = ReorderGoals Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
+newtype CountConflicts = CountConflicts Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
 newtype IndependentGoals = IndependentGoals Bool
@@ -32,6 +36,7 @@ newtype EnableBackjumping = EnableBackjumping Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
 instance Binary ReorderGoals
+instance Binary CountConflicts
 instance Binary IndependentGoals
 instance Binary AvoidReinstalls
 instance Binary ShadowPkgs

@@ -351,10 +351,18 @@ deferWeakFlagChoices = trav go
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred.
 --
--- Only approximates the number of choices in the branches.
--- In particular, we try to take any goal immediately if it has
--- a branching degree of 0 (guaranteed failure) or 1 (no other
--- choice possible).
+-- Only approximates the number of choices in the branches
+-- using dchoices which classifies every goal by the number
+-- of active choices:
+--
+-- - 0 (guaranteed failure) or 1 (no other option) active choice
+-- - 2 active choices
+-- - 3 or more active choices
+--
+-- We pick the minimum goal according to this approximation.
+-- In particular, if we encounter any goal in the first class
+-- (0 or 1 option), we do not look any further and choose it
+-- immediately.
 --
 -- Returns at most one choice.
 --
