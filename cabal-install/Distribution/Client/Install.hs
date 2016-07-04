@@ -340,7 +340,7 @@ processInstallPlan verbosity
                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan'
   where
-    installPlan = SolverInstallPlan.configureInstallPlan installPlan0
+    installPlan = InstallPlan.configureInstallPlan installPlan0
     dryRun = fromFlag (installDryRun installFlags)
     nothingToInstall = null (InstallPlan.ready installPlan)
 
@@ -455,9 +455,9 @@ pruneInstallPlan pkgSpecifiers =
   -- Also, the InstallPlan.remove should return info more precise to the
   -- problem, rather than the very general PlanProblem type.
   either (Fail . explain) Done
-  . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
+  . SolverInstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
   where
-    explain :: [InstallPlan.PlanProblem ipkg srcpkg iresult ifailure] -> String
+    explain :: [SolverInstallPlan.PlanProblem ipkg srcpkg iresult ifailure] -> String
     explain problems =
       "Cannot select only the dependencies (as requested by the "
       ++ "'--only-dependencies' flag), "
@@ -469,7 +469,7 @@ pruneInstallPlan pkgSpecifiers =
       where
         pkgids =
           nub [ depid
-              | InstallPlan.PackageMissingDeps _ depids <- problems
+              | SolverInstallPlan.PackageMissingDeps _ depids <- problems
               , depid <- depids
               , packageName depid `elem` targetnames ]
 

@@ -64,6 +64,7 @@ import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
                           , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -697,8 +698,8 @@ packageLocationsSignature :: SolverInstallPlan
                           -> [(PackageId, PackageLocation (Maybe FilePath))]
 packageLocationsSignature solverPlan =
     [ (packageId pkg, packageSource pkg)
-    | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
-        <- InstallPlan.toList solverPlan
+    | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+        <- SolverInstallPlan.toList solverPlan
     ]
 
 
@@ -718,8 +719,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
         allPkgLocations =
           [ (packageId pkg, packageSource pkg)
-          | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
-              <- InstallPlan.toList solverPlan ]
+          | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+              <- SolverInstallPlan.toList solverPlan ]
 
         -- Tarballs that were local in the first place.
         -- We'll hash these tarball files directly.
@@ -1015,12 +1016,12 @@ elaborateInstallPlan platform compiler compilerprogdb
       }
 
     elaboratedInstallPlan =
-      flip InstallPlan.mapPreservingGraph solverPlan $ \mapDep planpkg ->
+      flip InstallPlan.fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
         case planpkg of
-          InstallPlan.PreExisting pkg ->
+          SolverInstallPlan.PreExisting pkg ->
             InstallPlan.PreExisting pkg
 
-          InstallPlan.Configured  pkg ->
+          SolverInstallPlan.Configured  pkg ->
             InstallPlan.Configured
               (elaborateSolverPackage mapDep pkg)
 
@@ -1255,7 +1256,7 @@ elaborateInstallPlan platform compiler compilerprogdb
     pkgsToBuildInplaceOnly =
         Set.fromList
       $ map installedPackageId
-      $ InstallPlan.reverseDependencyClosure
+      $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
           [ installedPackageId (PlannedId (packageId pkg))
           | pkg <- localPackages ]
@@ -1303,10 +1304,10 @@ elaborateInstallPlan platform compiler compilerprogdb
     packagesWithDownwardClosedProperty property =
         Set.fromList
       $ map packageId
-      $ InstallPlan.dependencyClosure
+      $ SolverInstallPlan.dependencyClosure
           solverPlan
           [ installedPackageId pkg
-          | pkg <- InstallPlan.toList solverPlan
+          | pkg <- SolverInstallPlan.toList solverPlan
           , property pkg ] -- just the packages that satisfy the propety
       --TODO: [nice to have] this does not check the config consistency,
       -- e.g. a package explicitly turning off profiling, but something

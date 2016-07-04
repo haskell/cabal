@@ -24,6 +24,9 @@ module Distribution.Client.InstallPlan (
   toList,
   mapPreservingGraph,
 
+  fromSolverInstallPlan,
+  configureInstallPlan,
+
   ready,
   processing,
   completed,
@@ -53,16 +56,17 @@ module Distribution.Client.InstallPlan (
   reverseTopologicalOrder,
   ) where
 
+import Distribution.Client.Types
+import qualified Distribution.PackageDescription as PD
+import qualified Distribution.Simple.Configure as Configure
+import qualified Distribution.Simple.Setup as Cabal
+
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasUnitId(..), UnitId(..) )
-import Distribution.Client.Types
-         ( BuildSuccess, BuildFailure
-         , ConfiguredPackage(..)
-         , UnresolvedPkgLoc
-         , GenericReadyPackage(..) )
+import Distribution.Solver.Types.SolverPackage
 import Distribution.Version
          ( Version )
 import Distribution.Simple.PackageIndex
@@ -71,6 +75,8 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -752,3 +758,71 @@ reverseTopologicalOrder plan =
     map (planPkgOf plan)
   . Graph.topSort
   $ planGraphRev plan
+
+
+fromSolverInstallPlan ::
+      (HasUnitId ipkg,   PackageFixedDeps ipkg,
+       HasUnitId srcpkg, PackageFixedDeps srcpkg)
+    => ((UnitId -> UnitId) -> SolverInstallPlan.SolverPlanPackage -> GenericPlanPackage ipkg srcpkg iresult ifailure)
+    -> SolverInstallPlan
+    -> GenericInstallPlan ipkg srcpkg iresult ifailure
+fromSolverInstallPlan f plan =
+    mkInstallPlan (PackageIndex.fromList pkgs')
+                  (SolverInstallPlan.planIndepGoals plan)
+  where
+    (_, pkgs') = foldl' f' (Map.empty, []) (SolverInstallPlan.reverseTopologicalOrder plan)
+
+    f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
+      where
+       pkg' = f (mapDep ipkgidMap) pkg
+
+       ipkgidMap'
+         | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
+         | otherwise         =                           ipkgidMap
+         where
+           ipkgid  = installedUnitId pkg
+           ipkgid' = installedUnitId pkg'
+
+    mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
+
+-- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
+-- Similar to 'elaboratedInstallPlan'
+configureInstallPlan :: SolverInstallPlan -> InstallPlan
+configureInstallPlan solverPlan =
+    flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
+      case planpkg of
+        SolverInstallPlan.PreExisting pkg ->
+          PreExisting pkg
+
+        SolverInstallPlan.Configured  pkg ->
+          Configured (configureSolverPackage mapDep pkg)
+
+        _ -> error "configureInstallPlan: unexpected package state"
+  where
+    configureSolverPackage :: (UnitId -> UnitId)
+                           -> SolverPackage UnresolvedPkgLoc
+                           -> ConfiguredPackage UnresolvedPkgLoc
+    configureSolverPackage mapDep spkg =
+      ConfiguredPackage {
+        confPkgId = SimpleUnitId
+                  $ Configure.computeComponentId
+                        Cabal.NoFlag
+                        (packageId spkg)
+                        (PD.CLibName (display (pkgName (packageId spkg))))
+                        -- TODO: this is a hack that won't work for Backpack.
+                        (map ((\(SimpleUnitId cid0) -> cid0) . confInstId)
+                             (CD.libraryDeps deps))
+                        (solverPkgFlags spkg),
+        confPkgSource = solverPkgSource spkg,
+        confPkgFlags  = solverPkgFlags spkg,
+        confPkgStanzas = solverPkgStanzas spkg,
+        confPkgDeps   = deps
+      }
+      where
+        deps = fmap (map (configureSolverId mapDep)) (solverPkgDeps spkg)
+
+    configureSolverId mapDep sid =
+      ConfiguredId {
+        confSrcId  = packageId sid, -- accurate!
+        confInstId = mapDep (installedUnitId sid)
+      }

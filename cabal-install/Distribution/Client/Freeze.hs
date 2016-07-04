@@ -24,7 +24,7 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.SolverInstallPlan
          ( SolverInstallPlan, SolverPlanPackage )
-import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..)
          , RepoContext(..) )
@@ -227,7 +227,7 @@ pruneInstallPlan :: SolverInstallPlan
                  -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    InstallPlan.dependencyClosure installPlan (map installedUnitId pkgIds)
+    SolverInstallPlan.dependencyClosure installPlan (map installedUnitId pkgIds)
   where
     pkgIds = [ PlannedId (packageId pkg)
              | SpecificSourcePackage pkg <- pkgSpecifiers ]

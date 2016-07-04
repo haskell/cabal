@@ -49,6 +49,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan       as CI.InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as CI.SolverInstallPlan
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -417,7 +418,7 @@ exResolve :: ExampleDb
           -> EnableBackjumping
           -> Maybe [ExampleVar]
           -> [ExPreference]
-          -> Progress String String CI.InstallPlan.SolverInstallPlan
+          -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
           enableBj vars prefs
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
@@ -470,11 +471,11 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                Setup p        -> P.PackagePath P.DefaultNamespace (P.Setup (C.PackageName p))
                IndepSetup x p -> P.PackagePath (P.Independent x) (P.Setup (C.PackageName p))
 
-extractInstallPlan :: CI.InstallPlan.SolverInstallPlan
+extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
 extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
   where
-    confPkg :: CI.InstallPlan.SolverPlanPackage -> Maybe (String, Int)
+    confPkg :: CI.SolverInstallPlan.SolverPlanPackage -> Maybe (String, Int)
     confPkg (CI.InstallPlan.Configured pkg) = Just $ srcPkg pkg
     confPkg _                               = Nothing
 

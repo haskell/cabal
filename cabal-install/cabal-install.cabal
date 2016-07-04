@@ -250,6 +250,7 @@ executable cabal
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
         Distribution.Client.SolverInstallPlan
+        Distribution.Client.SolverPlanIndex
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.Types

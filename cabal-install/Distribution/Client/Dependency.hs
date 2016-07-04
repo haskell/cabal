@@ -70,7 +70,6 @@ import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
@@ -727,11 +726,11 @@ validateSolverResult platform comp indepGoals pkgs =
   where
     index = InstalledPackageIndex.fromList (map toPlanPackage pkgs)
 
-    toPlanPackage (PreExisting pkg) = InstallPlan.PreExisting pkg
-    toPlanPackage (Configured  pkg) = InstallPlan.Configured  pkg
+    toPlanPackage (PreExisting pkg) = SolverInstallPlan.PreExisting pkg
+    toPlanPackage (Configured  pkg) = SolverInstallPlan.Configured  pkg
 
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
-    formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
+    formatPlanProblems = formatProblemMessage . map SolverInstallPlan.showPlanProblem
 
     formatProblemMessage problems =
       unlines $
@@ -739,7 +738,7 @@ validateSolverResult platform comp indepGoals pkgs =
       : "The proposed (invalid) plan contained the following problems:"
       : problems
       ++ "Proposed plan:"
-      : [InstallPlan.showPlanIndex index]
+      : [SolverInstallPlan.showPlanIndex index]
 
 
 data PlanPackageProblem =
