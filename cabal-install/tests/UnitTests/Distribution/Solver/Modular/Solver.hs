@@ -137,8 +137,10 @@ tests = [
         , runTest $ testIndepGoals2 "indepGoals2"
         , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
-        , runTest $ indep $ mkTest db23 "indepGoals5" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)])
-        , runTest $ indep $ mkTest db24 "indepGoals6" ["X", "Y"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)])
+        , runTest $ testIndepGoals5 "indepGoals5 - fixed goal order" FixedGoalOrder
+        , runTest $ testIndepGoals5 "indepGoals5 - default goal order" DefaultGoalOrder
+        , runTest $ testIndepGoals6 "indepGoals6 - fixed goal order" FixedGoalOrder
+        , runTest $ testIndepGoals6 "indepGoals6 - default goal order" DefaultGoalOrder
         ]
       -- Tests designed for the backjumping blog post
     , testGroup "Backjumping" [
@@ -168,6 +170,8 @@ indep test = test { testIndepGoals = IndependentGoals True }
 
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
+
+data GoalOrder = FixedGoalOrder | DefaultGoalOrder
 
 {-------------------------------------------------------------------------------
   Solver tests
@@ -804,27 +808,71 @@ db22 = [
 -- be found, because without the SIR, linking is always optional, but never
 -- necessary.
 --
-db23 :: ExampleDb
-db23 = [
-    Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
-  , Right $ exAv "Y" 1 [ExFix "C" 1, ExFix "A" 2]
-  , Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExAny "B"]
-  , Right $ exAv "B" 1 [ExAny "C"]
-  , Right $ exAv "C" 1 []
-  , Right $ exAv "C" 2 []
-  ]
+testIndepGoals5 :: String -> GoalOrder -> SolverTest
+testIndepGoals5 name fixGoalOrder =
+    case fixGoalOrder of
+      FixedGoalOrder   -> goalOrder goals test
+      DefaultGoalOrder -> test
+  where
+    test :: SolverTest
+    test = indep $ mkTest db name ["X", "Y"] $
+           SolverSuccess
+           [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
 
--- | A simplified version of 'db23'.
-db24 :: ExampleDb
-db24 = [
-    Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
-  , Right $ exAv "Y" 1 [ExFix "B" 1, ExFix "A" 2]
-  , Right $ exAv "A" 1 []
-  , Right $ exAv "A" 2 [ExAny "B"]
-  , Right $ exAv "B" 1 []
-  , Right $ exAv "B" 2 []
-  ]
+    db :: ExampleDb
+    db = [
+        Right $ exAv "X" 1 [ExFix "C" 2, ExAny "A"]
+      , Right $ exAv "Y" 1 [ExFix "C" 1, ExFix "A" 2]
+      , Right $ exAv "A" 1 []
+      , Right $ exAv "A" 2 [ExAny "B"]
+      , Right $ exAv "B" 1 [ExAny "C"]
+      , Right $ exAv "C" 1 []
+      , Right $ exAv "C" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "X"
+      , P (Indep 0) "A"
+      , P (Indep 0) "B"
+      , P (Indep 0) "C"
+      , P (Indep 1) "Y"
+      , P (Indep 1) "A"
+      , P (Indep 1) "B"
+      , P (Indep 1) "C"
+      ]
+
+-- | A simplified version of 'testIndepGoals5'.
+testIndepGoals6 :: String -> GoalOrder -> SolverTest
+testIndepGoals6 name fixGoalOrder =
+    case fixGoalOrder of
+      FixedGoalOrder   -> goalOrder goals test
+      DefaultGoalOrder -> test
+  where
+    test :: SolverTest
+    test = indep $ mkTest db name ["X", "Y"] $
+           SolverSuccess
+           [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
+
+    db :: ExampleDb
+    db = [
+        Right $ exAv "X" 1 [ExFix "B" 2, ExAny "A"]
+      , Right $ exAv "Y" 1 [ExFix "B" 1, ExFix "A" 2]
+      , Right $ exAv "A" 1 []
+      , Right $ exAv "A" 2 [ExAny "B"]
+      , Right $ exAv "B" 1 []
+      , Right $ exAv "B" 2 []
+      ]
+
+    goals :: [ExampleVar]
+    goals = [
+        P (Indep 0) "X"
+      , P (Indep 0) "A"
+      , P (Indep 0) "B"
+      , P (Indep 1) "Y"
+      , P (Indep 1) "A"
+      , P (Indep 1) "B"
+      ]
 
 dbExts1 :: ExampleDb
 dbExts1 = [
@@ -885,15 +933,6 @@ dbBuildable1 = [
   , Right $ exAv "flag2-false" 1 []
   ]
 
--- | Package databases for testing @pkg-config@ dependencies.
-dbPC1 :: ExampleDb
-dbPC1 = [
-    Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
-  , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
-  , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
-  , Right $ exAv "C" 1 [ExAny "B"]
-  ]
-
 -- | cabal must pick B-2 to avoid the unknown dependency.
 dbBuildable2 :: ExampleDb
 dbBuildable2 = [
@@ -904,6 +943,15 @@ dbBuildable2 = [
         , ExFlag "disable-lib" NotBuildable (Buildable [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
+  ]
+
+-- | Package databases for testing @pkg-config@ dependencies.
+dbPC1 :: ExampleDb
+dbPC1 = [
+    Right $ exAv "A" 1 [ExPkg ("pkgA", 1)]
+  , Right $ exAv "B" 1 [ExPkg ("pkgB", 1), ExAny "A"]
+  , Right $ exAv "B" 2 [ExPkg ("pkgB", 2), ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "B"]
   ]
 
 {-------------------------------------------------------------------------------
