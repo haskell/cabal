@@ -41,6 +41,7 @@ versionTests =
   , property prop_orEarlierVersion
   , property prop_unionVersionRanges
   , property prop_intersectVersionRanges
+  , property prop_differenceVersionRanges
   , property prop_invertVersionRange
   , property prop_withinVersion
   , property prop_foldVersionRange
@@ -195,6 +196,11 @@ prop_intersectVersionRanges :: VersionRange -> VersionRange -> Version -> Bool
 prop_intersectVersionRanges vr1 vr2 v' =
      withinRange v' (intersectVersionRanges vr1 vr2)
   == (withinRange v' vr1 && withinRange v' vr2)
+
+prop_differenceVersionRanges :: VersionRange -> VersionRange -> Version -> Bool
+prop_differenceVersionRanges vr1 vr2 v' =
+     withinRange v' (differenceVersionRanges vr1 vr2)
+  == (withinRange v' vr1 && not (withinRange v' vr2))
 
 prop_invertVersionRange :: VersionRange -> Version -> Bool
 prop_invertVersionRange vr v' =
