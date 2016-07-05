@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.24.1.0 Ryan Thomas <ryan@ryant.org> ??? 2016
+	* API addition: 'differenceVersionRanges' (#3519).
+
 1.24.0.1 Ryan Thomas <ryan@ryant.org> May 2016
 	* Linker flags are now set correctly on GHC >= 7.8 (#3443).
 
