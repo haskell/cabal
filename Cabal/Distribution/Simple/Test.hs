@@ -49,9 +49,7 @@ test args pkg_descr lbi flags = do
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
-        enabledTests = [ t | t <- pkgTests
-                           , PD.testEnabled t
-                           , PD.buildable (PD.testBuildInfo t) ]
+        enabledTestLBIs = testLBIs lbi
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, _) =
@@ -78,9 +76,16 @@ test args pkg_descr lbi flags = do
         notice verbosity "Package has no test suites."
         exitWith ExitSuccess
 
-    when (PD.hasTests pkg_descr && null enabledTests) $
+    -- TODO: When we support configuring only a single component, we
+    -- should refine the message here
+    when (PD.hasTests pkg_descr && null enabledTestLBIs) $
         die $ "No test suites enabled. Did you remember to configure with "
               ++ "\'--enable-tests\'?"
+
+    targets <- readBuildTargets pkg_descr args
+    targets' <- checkBuildTargets verbosity pkg_descr targets
+
+    -- TODO: rework me
 
     testsToRun <- case testNames of
             [] -> return $ zip enabledTests $ repeat Nothing

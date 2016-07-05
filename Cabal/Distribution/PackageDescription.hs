@@ -62,9 +62,7 @@ module Distribution.PackageDescription (
         knownTestTypes,
         emptyTestSuite,
         hasTests,
-        withTest,
         testModules,
-        enabledTests,
 
         -- * Benchmarks
         Benchmark(..),
@@ -74,9 +72,7 @@ module Distribution.PackageDescription (
         knownBenchmarkTypes,
         emptyBenchmark,
         hasBenchmarks,
-        withBenchmark,
         benchmarkModules,
-        enabledBenchmarks,
 
         -- * Build information
         BuildInfo(..),
@@ -553,13 +549,7 @@ exeModules exe = otherModules (buildInfo exe)
 data TestSuite = TestSuite {
         testName      :: String,
         testInterface :: TestSuiteInterface,
-        testBuildInfo :: BuildInfo,
-        testEnabled   :: Bool
-        -- TODO: By having a 'testEnabled' field in the PackageDescription, we
-        -- are mixing build status information (i.e., arguments to 'configure')
-        -- with static package description information. This is undesirable, but
-        -- a better solution is waiting on the next overhaul to the
-        -- GenericPackageDescription -> PackageDescription resolution process.
+        testBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -597,8 +587,7 @@ instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,
         testInterface = mempty,
-        testBuildInfo = mempty,
-        testEnabled   = False
+        testBuildInfo = mempty
     }
     mappend = (Semi.<>)
 
@@ -606,8 +595,7 @@ instance Semigroup TestSuite where
     a <> b = TestSuite {
         testName      = combine' testName,
         testInterface = combine  testInterface,
-        testBuildInfo = combine  testBuildInfo,
-        testEnabled   = testEnabled a || testEnabled b
+        testBuildInfo = combine  testBuildInfo
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -630,15 +618,6 @@ emptyTestSuite = mempty
 -- | Does this package have any test suites?
 hasTests :: PackageDescription -> Bool
 hasTests = any (buildable . testBuildInfo) . testSuites
-
--- | Get all the enabled test suites from a package.
-enabledTests :: PackageDescription -> [TestSuite]
-enabledTests = filter testEnabled . testSuites
-
--- | Perform an action on each buildable 'TestSuite' in a package.
-withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
-withTest pkg_descr f =
-    mapM_ f $ filter (buildable . testBuildInfo) $ enabledTests pkg_descr
 
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
@@ -699,9 +678,7 @@ testType test = case testInterface test of
 data Benchmark = Benchmark {
         benchmarkName      :: String,
         benchmarkInterface :: BenchmarkInterface,
-        benchmarkBuildInfo :: BuildInfo,
-        benchmarkEnabled   :: Bool
-        -- TODO: See TODO for 'testEnabled'.
+        benchmarkBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -735,8 +712,7 @@ instance Monoid Benchmark where
     mempty = Benchmark {
         benchmarkName      = mempty,
         benchmarkInterface = mempty,
-        benchmarkBuildInfo = mempty,
-        benchmarkEnabled   = False
+        benchmarkBuildInfo = mempty
     }
     mappend = (Semi.<>)
 
@@ -744,8 +720,7 @@ instance Semigroup Benchmark where
     a <> b = Benchmark {
         benchmarkName      = combine' benchmarkName,
         benchmarkInterface = combine  benchmarkInterface,
-        benchmarkBuildInfo = combine  benchmarkBuildInfo,
-        benchmarkEnabled   = benchmarkEnabled a || benchmarkEnabled b
+        benchmarkBuildInfo = combine  benchmarkBuildInfo
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -768,15 +743,6 @@ emptyBenchmark = mempty
 -- | Does this package have any benchmarks?
 hasBenchmarks :: PackageDescription -> Bool
 hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
-
--- | Get all the enabled benchmarks from a package.
-enabledBenchmarks :: PackageDescription -> [Benchmark]
-enabledBenchmarks = filter benchmarkEnabled . benchmarks
-
--- | Perform an action on each buildable 'Benchmark' in a package.
-withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()
-withBenchmark pkg_descr f =
-    mapM_ f $ filter (buildable . benchmarkBuildInfo) $ enabledBenchmarks pkg_descr
 
 -- | Get all the module names from a benchmark.
 benchmarkModules :: Benchmark -> [ModuleName]
@@ -939,12 +905,10 @@ allBuildInfo pkg_descr = [ bi | lib <- libraries pkg_descr
                               , buildable bi ]
                       ++ [ bi | tst <- testSuites pkg_descr
                               , let bi = testBuildInfo tst
-                              , buildable bi
-                              , testEnabled tst ]
+                              , buildable bi ]
                       ++ [ bi | tst <- benchmarks pkg_descr
                               , let bi = benchmarkBuildInfo tst
-                              , buildable bi
-                              , benchmarkEnabled tst ]
+                              , buildable bi ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
 
