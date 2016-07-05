@@ -36,24 +36,11 @@ data Tree a =
 
     -- | Choose a value for a flag
     --
-    -- The first Bool indicates whether it's weak/trivial,
-    -- the second Bool whether it's manual.
-    --
-    -- A choice is called trivial if it clearly does not matter. The
-    -- special case of triviality we actually consider is if there are no new
-    -- dependencies introduced by this node.
-    --
-    -- A (flag) choice is called weak if we do want to defer it. This is the
-    -- case for flags that should be implied by what's currently installed on
-    -- the system, as opposed to flags that are used to explicitly enable or
-    -- disable some functionality.
-  | FChoice QFN a Bool Bool (PSQ Bool (Tree a))
+    -- The Bool indicates whether it's manual.
+  | FChoice QFN a WeakOrTrivial Bool (PSQ Bool (Tree a))
 
     -- | Choose whether or not to enable a stanza
-    --
-    -- The Bool indicates whether it's trivial (see 'FChoice' for a discussion
-    -- of triviality).
-  | SChoice QSN a Bool (PSQ Bool (Tree a))
+  | SChoice QSN a WeakOrTrivial (PSQ Bool (Tree a))
 
     -- | Choose which choice to make next
     --
@@ -116,10 +103,10 @@ data FailReason = InconsistentInitialConstraints
 
 -- | Functor for the tree type.
 data TreeF a b =
-    PChoiceF    QPN a           (PSQ POption    b)
-  | FChoiceF    QFN a Bool Bool (PSQ Bool       b)
-  | SChoiceF    QSN a Bool      (PSQ Bool       b)
-  | GoalChoiceF                 (PSQ (Goal QPN) b)
+    PChoiceF    QPN a                    (PSQ POption    b)
+  | FChoiceF    QFN a WeakOrTrivial Bool (PSQ Bool       b)
+  | SChoiceF    QSN a WeakOrTrivial      (PSQ Bool       b)
+  | GoalChoiceF                          (PSQ (Goal QPN) b)
   | DoneF       RevDepMap
   | FailF       (ConflictSet QPN) FailReason
   deriving (Functor, Foldable, Traversable)

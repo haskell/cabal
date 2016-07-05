@@ -7,6 +7,7 @@ module Distribution.Solver.Modular.Flag
     , QFN
     , QSN
     , SN(..)
+    , WeakOrTrivial(..)
     , mkFlag
     , showFBool
     , showQFN
@@ -40,7 +41,7 @@ mkFlag fn = FlagName fn
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
 -- Weak flags are typically deferred by the solver.
-data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool, fweak :: Bool }
+data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool, fweak :: WeakOrTrivial }
   deriving (Eq, Ord, Show)
 
 -- | Flag defaults.
@@ -55,6 +56,20 @@ data SN qpn = SN (PI qpn) OptionalStanza
 
 -- | Qualified stanza name.
 type QSN = SN QPN
+
+-- | A property of flag and stanza choices that determines whether the
+-- choice should be deferred in the solving process.
+--
+-- A choice is called weak if we do want to defer it. This is the
+-- case for flags that should be implied by what's currently installed on
+-- the system, as opposed to flags that are used to explicitly enable or
+-- disable some functionality.
+--
+-- A choice is called trivial if it clearly does not matter. The
+-- special case of triviality we actually consider is if there are no new
+-- dependencies introduced by the choice.
+newtype WeakOrTrivial = WeakOrTrivial { unWeakOrTrivial :: Bool }
+  deriving (Eq, Ord, Show)
 
 unStanza :: OptionalStanza -> String
 unStanza TestStanzas  = "test"
