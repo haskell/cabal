@@ -22,7 +22,6 @@ module Distribution.Client.InstallPlan (
   -- * Operations on 'InstallPlan's
   new,
   toList,
-  mapPreservingGraph,
 
   fromSolverInstallPlan,
   configureInstallPlan,
@@ -38,21 +37,7 @@ module Distribution.Client.InstallPlan (
   showPlanIndex,
   showInstallPlan,
 
-  -- * Checking validity of plans
-  valid,
-  closed,
-  consistent,
-  acyclic,
-
-  -- ** Details on invalid plans
-  PlanProblem(..),
-  showPlanProblem,
-  problems,
-
-  -- ** Querying the install plan
-  dependencyClosure,
-  reverseDependencyClosure,
-  topologicalOrder,
+  -- * Graph-like operations
   reverseTopologicalOrder,
   ) where
 
@@ -92,7 +77,6 @@ import Data.Maybe
          ( fromMaybe, catMaybes )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
-import qualified Data.Tree as Tree
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Exception
@@ -514,49 +498,6 @@ preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
       rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
--- | Transform an install plan by mapping a function over all the packages in
--- the plan. It can consistently change the 'UnitId' of all the packages,
--- while preserving the same overall graph structure.
---
--- The mapping function has a few constraints on it for correct operation.
--- The mapping function /may/ change the 'UnitId' of the package, but it
--- /must/ also remap the 'UnitId's of its dependencies using ths supplied
--- remapping function. Apart from this consistent remapping it /may not/
--- change the structure of the dependencies.
---
-mapPreservingGraph :: (HasUnitId ipkg,
-                       HasUnitId srcpkg,
-                       HasUnitId ipkg',   PackageFixedDeps ipkg',
-                       HasUnitId srcpkg', PackageFixedDeps srcpkg')
-                   => (  (UnitId -> UnitId)
-                      -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
-                      -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
-                   -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
-                   -> GenericInstallPlan ipkg' srcpkg' iresult' ifailure'
-mapPreservingGraph f plan =
-    mkInstallPlan (PackageIndex.fromList pkgs')
-                  (planIndepGoals plan)
-  where
-    -- The package mapping function may change the UnitId. So we
-    -- walk over the packages in dependency order keeping track of these
-    -- package id changes and use it to supply the correct set of package
-    -- dependencies as an extra input to the package mapping function.
-
-    (_, pkgs') = foldl' f' (Map.empty, []) (reverseTopologicalOrder plan)
-
-    f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
-      where
-       pkg' = f (mapDep ipkgidMap) pkg
-
-       ipkgidMap'
-         | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
-         | otherwise         =                           ipkgidMap
-         where
-           ipkgid  = installedUnitId pkg
-           ipkgid' = installedUnitId pkg'
-
-    mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
-
 
 -- ------------------------------------------------------------
 -- * Checking validity of plans
@@ -583,38 +524,6 @@ data PlanProblem ipkg srcpkg iresult ifailure =
    | PackageInconsistency PackageName [(PackageIdentifier, Version)]
    | PackageStateInvalid  (GenericPlanPackage ipkg srcpkg iresult ifailure)
                           (GenericPlanPackage ipkg srcpkg iresult ifailure)
-
-showPlanProblem :: (Package ipkg, Package srcpkg)
-                => PlanProblem ipkg srcpkg iresult ifailure -> String
-showPlanProblem (PackageMissingDeps pkg missingDeps) =
-     "Package " ++ display (packageId pkg)
-  ++ " depends on the following packages which are missing from the plan: "
-  ++ intercalate ", " (map display missingDeps)
-
-showPlanProblem (PackageCycle cycleGroup) =
-     "The following packages are involved in a dependency cycle "
-  ++ intercalate ", " (map (display.packageId) cycleGroup)
-
-showPlanProblem (PackageInconsistency name inconsistencies) =
-     "Package " ++ display name
-  ++ " is required by several packages,"
-  ++ " but they require inconsistent versions:\n"
-  ++ unlines [ "  package " ++ display pkg ++ " requires "
-                            ++ display (PackageIdentifier name ver)
-             | (pkg, ver) <- inconsistencies ]
-
-showPlanProblem (PackageStateInvalid pkg pkg') =
-     "Package " ++ display (packageId pkg)
-  ++ " is in the " ++ showPlanState pkg
-  ++ " state but it depends on package " ++ display (packageId pkg')
-  ++ " which is in the " ++ showPlanState pkg'
-  ++ " state"
-  where
-    showPlanState (PreExisting _)   = "pre-existing"
-    showPlanState (Configured  _)   = "configured"
-    showPlanState (Processing  _)   = "processing"
-    showPlanState (Installed _ _ _) = "installed"
-    showPlanState (Failed    _   _) = "failed"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
@@ -646,49 +555,6 @@ problems indepGoals index =
      , Just pkg' <- map (PackageIndex.lookupUnitId index)
                     (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
-
--- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
---
--- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
---   which packages are involved in dependency cycles.
---
-acyclic :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-            HasUnitId srcpkg, PackageFixedDeps srcpkg)
-        => PlanIndex ipkg srcpkg iresult ifailure -> Bool
-acyclic = null . PlanIndex.dependencyCycles
-
--- | An installation plan is closed if for every package in the set, all of
--- its dependencies are also in the set. That is, the set is closed under the
--- dependency relation.
---
--- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
---   which packages depend on packages not in the index.
---
-closed :: (PackageFixedDeps ipkg,
-           PackageFixedDeps srcpkg)
-       => PlanIndex ipkg srcpkg iresult ifailure -> Bool
-closed = null . PlanIndex.brokenPackages
-
--- | An installation plan is consistent if all dependencies that target a
--- single package name, target the same version.
---
--- This is slightly subtle. It is not the same as requiring that there be at
--- most one version of any package in the set. It only requires that of
--- packages which have more than one other package depending on them. We could
--- actually make the condition even more precise and say that different
--- versions are OK so long as they are not both in the transitive closure of
--- any other package (or equivalently that their inverse closures do not
--- intersect). The point is we do not want to have any packages depending
--- directly or indirectly on two different versions of the same package. The
--- current definition is just a safe approximation of that.
---
--- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
---   find out which packages are.
---
-consistent :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-               HasUnitId srcpkg, PackageFixedDeps srcpkg)
-           => PlanIndex ipkg srcpkg iresult ifailure -> Bool
-consistent = null . PlanIndex.dependencyInconsistencies (IndependentGoals False)
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
@@ -722,34 +588,6 @@ stateDependencyRelation (Failed    _ _) (Failed    _   _) = True
 stateDependencyRelation _               _                 = False
 
 
--- | Compute the dependency closure of a package in a install plan
---
-dependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                  -> [UnitId]
-                  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-dependencyClosure plan =
-    map (planPkgOf plan)
-  . concatMap Tree.flatten
-  . Graph.dfs (planGraph plan)
-  . map (planVertexOf plan)
-
-
-reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                         -> [UnitId]
-                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-reverseDependencyClosure plan =
-    map (planPkgOf plan)
-  . concatMap Tree.flatten
-  . Graph.dfs (planGraphRev plan)
-  . map (planVertexOf plan)
-
-
-topologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                 -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-topologicalOrder plan =
-    map (planPkgOf plan)
-  . Graph.topSort
-  $ planGraph plan
 
 
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
