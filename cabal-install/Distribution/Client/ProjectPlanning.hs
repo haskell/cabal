@@ -118,11 +118,13 @@ import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text
 
+import qualified Distribution.Compat.Graph as Graph
+
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
-import qualified Data.Graph as Graph
+import qualified Data.Graph as OldGraph
 import qualified Data.Tree  as Tree
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
@@ -1433,7 +1435,7 @@ pruneInstallPlanToTargets :: Map InstalledPackageId [PackageTarget]
 pruneInstallPlanToTargets perPkgTargetsMap =
     either (\_ -> assert False undefined) id
   . InstallPlan.new (IndependentGoals False)
-  . PackageIndex.fromList
+  . Graph.fromList
     -- We have to do this in two passes
   . pruneInstallPlanPass2
   . pruneInstallPlanPass1 perPkgTargetsMap
@@ -1650,22 +1652,24 @@ dependencyClosure :: (pkg -> InstalledPackageId)
 dependencyClosure pkgid deps allpkgs =
     map vertexToPkg
   . concatMap Tree.flatten
-  . Graph.dfs graph
+  . OldGraph.dfs graph
   . map pkgidToVertex
   where
     (graph, vertexToPkg, pkgidToVertex) = dependencyGraph pkgid deps allpkgs
 
+-- TODO: Convert this to use Distribution.Compat.Graph, via a newtype
+-- which explicitly carries the accessors.
 dependencyGraph :: (pkg -> InstalledPackageId)
                 -> (pkg -> [InstalledPackageId])
                 -> [pkg]
-                -> (Graph.Graph,
-                    Graph.Vertex -> pkg,
-                    InstalledPackageId -> Graph.Vertex)
+                -> (OldGraph.Graph,
+                    OldGraph.Vertex -> pkg,
+                    InstalledPackageId -> OldGraph.Vertex)
 dependencyGraph pkgid deps pkgs =
     (graph, vertexToPkg', pkgidToVertex')
   where
     (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
+      OldGraph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
                            | pkg <- pkgs ]
     vertexToPkg'   = (\(pkg,_,_) -> pkg)
                    . vertexToPkg

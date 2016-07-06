@@ -112,6 +112,7 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+import qualified Distribution.Compat.Graph as Graph
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -724,7 +725,7 @@ validateSolverResult platform comp indepGoals pkgs =
       problems               -> error (formatPkgProblems problems)
 
   where
-    index = InstalledPackageIndex.fromList (map toPlanPackage pkgs)
+    index = Graph.fromList (map toPlanPackage pkgs)
 
     toPlanPackage (PreExisting pkg) = SolverInstallPlan.PreExisting pkg
     toPlanPackage (Configured  pkg) = SolverInstallPlan.Configured  pkg

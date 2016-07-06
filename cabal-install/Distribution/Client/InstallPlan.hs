@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.InstallPlan
@@ -49,15 +51,9 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
-         ( PackageIdentifier(..), PackageName(..), Package(..)
+         ( PackageIdentifier(..), Package(..)
          , HasUnitId(..), UnitId(..) )
 import Distribution.Solver.Types.SolverPackage
-import Distribution.Version
-         ( Version )
-import Distribution.Simple.PackageIndex
-         ( PackageIndex )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -74,9 +70,9 @@ import           Distribution.Solver.Types.Settings
 import Data.List
          ( foldl', intercalate )
 import Data.Maybe
-         ( fromMaybe, catMaybes )
-import qualified Data.Graph as Graph
-import Data.Graph (Graph)
+         ( catMaybes )
+import qualified Distribution.Compat.Graph as Graph
+import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Exception
@@ -146,6 +142,13 @@ data GenericPlanPackage ipkg srcpkg iresult ifailure
    | Failed      srcpkg ifailure
   deriving (Eq, Show, Generic)
 
+instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
+          HasUnitId srcpkg, PackageFixedDeps srcpkg)
+         => IsNode (GenericPlanPackage ipkg srcpkg iresult ifailure) where
+    type Key (GenericPlanPackage ipkg srcpkg iresult ifailure) = UnitId -- TODO: change me
+    nodeKey = installedUnitId
+    nodeNeighbors = CD.flatDeps . depends
+
 instance (Binary ipkg, Binary srcpkg, Binary  iresult, Binary  ifailure)
       => Binary (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
@@ -181,32 +184,10 @@ instance (HasUnitId ipkg, HasUnitId srcpkg) =>
   installedUnitId (Installed rpkg _        _) = installedUnitId rpkg
   installedUnitId (Failed      spkg        _) = installedUnitId spkg
 
-
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
-    planIndepGoals :: !IndependentGoals,
-
-    -- | Cached (lazily) graph
-    --
-    -- The 'Graph' representation works in terms of integer node ids, so we
-    -- have to keep mapping to and from our meaningful nodes, which of course
-    -- are package ids.
-    --
-    planGraph      :: Graph,
-    planGraphRev   :: Graph,  -- ^ Reverse deps, transposed
-    planPkgIdOf    :: Graph.Vertex -> UnitId, -- ^ mapping back to package ids
-    planVertexOf   :: UnitId -> Graph.Vertex  -- ^ mapping into node ids
+    planIndepGoals :: !IndependentGoals
   }
-
--- | Much like 'planPkgIdOf', but mapping back to full packages.
-planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
-          -> Graph.Vertex
-          -> GenericPlanPackage ipkg srcpkg iresult ifailure
-planPkgOf plan v =
-    case PackageIndex.lookupUnitId (planIndex plan)
-                                   (planPkgIdOf plan v) of
-      Just pkg -> pkg
-      Nothing  -> error "InstallPlan: internal error: planPkgOf lookup failed"
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
@@ -214,7 +195,7 @@ type InstallPlan = GenericInstallPlan
                    BuildSuccess BuildFailure
 
 type PlanIndex ipkg srcpkg iresult ifailure =
-     PackageIndex (GenericPlanPackage ipkg srcpkg iresult ifailure)
+     Graph (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
 invariant :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
               HasUnitId srcpkg, PackageFixedDeps srcpkg)
@@ -225,26 +206,14 @@ invariant plan =
 
 -- | Smart constructor that deals with caching the 'Graph' representation.
 --
-mkInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-                  HasUnitId srcpkg, PackageFixedDeps srcpkg)
-              => PlanIndex ipkg srcpkg iresult ifailure
+mkInstallPlan :: PlanIndex ipkg srcpkg iresult ifailure
               -> IndependentGoals
               -> GenericInstallPlan ipkg srcpkg iresult ifailure
 mkInstallPlan index indepGoals =
     GenericInstallPlan {
       planIndex      = index,
-      planIndepGoals = indepGoals,
-
-      -- lazily cache the graph stuff:
-      planGraph      = graph,
-      planGraphRev   = Graph.transposeG graph,
-      planPkgIdOf    = vertexToPkgId,
-      planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex
+      planIndepGoals = indepGoals
     }
-  where
-    (graph, vertexToPkgId, pkgIdToVertex) =
-      PlanIndex.dependencyGraph index
-    noSuchPkgId = internalError "package is not in the graph"
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
@@ -265,7 +234,7 @@ instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
 showPlanIndex :: (HasUnitId ipkg, HasUnitId srcpkg)
               => PlanIndex ipkg srcpkg iresult ifailure -> String
 showPlanIndex index =
-    intercalate "\n" (map showPlanPackage (PackageIndex.allPackages index))
+    intercalate "\n" (map showPlanPackage (Graph.toList index))
   where showPlanPackage p =
             showPlanPackageTag p ++ " "
                 ++ display (packageId p) ++ " ("
@@ -297,7 +266,7 @@ new indepGoals index =
 
 toList :: GenericInstallPlan ipkg srcpkg iresult ifailure
        -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-toList = PackageIndex.allPackages . planIndex
+toList = Graph.toList . planIndex
 
 -- | Remove packages from the install plan. This will result in an
 -- error if there are remaining packages that depend on any matching
@@ -314,14 +283,16 @@ remove :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
 remove shouldRemove plan =
     new (planIndepGoals plan) newIndex
   where
-    newIndex = PackageIndex.fromList $
+    newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
 
 -- | The packages that are ready to be installed. That is they are in the
 -- configured state and have all their dependencies installed already.
 -- The plan is complete if the result is @[]@.
 --
-ready :: forall ipkg srcpkg iresult ifailure. PackageFixedDeps srcpkg
+ready :: forall ipkg srcpkg iresult ifailure.
+         (HasUnitId ipkg,   PackageFixedDeps ipkg,
+          HasUnitId srcpkg, PackageFixedDeps srcpkg)
       => GenericInstallPlan ipkg srcpkg iresult ifailure
       -> [GenericReadyPackage srcpkg]
 ready plan = assert check readyPackages
@@ -336,7 +307,8 @@ ready plan = assert check readyPackages
     readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
 
 lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
-                      PackageFixedDeps srcpkg
+                      (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                       HasUnitId srcpkg, PackageFixedDeps srcpkg)
                    => GenericInstallPlan ipkg srcpkg iresult ifailure
                    -> srcpkg
                    -> Maybe (GenericReadyPackage srcpkg)
@@ -350,7 +322,7 @@ lookupReadyPackage plan pkg = do
 
     isInstalledDep :: UnitId -> Maybe ipkg
     isInstalledDep pkgid =
-      case PackageIndex.lookupUnitId (planIndex plan) pkgid of
+      case Graph.lookup pkgid (planIndex plan) of
         Just (PreExisting ipkg)            -> Just ipkg
         Just (Configured  _)               -> Nothing
         Just (Processing  _)               -> Nothing
@@ -369,7 +341,8 @@ lookupReadyPackage plan pkg = do
 --
 -- * The package must exist in the graph and be in the configured state.
 --
-processing :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+processing :: forall ipkg srcpkg iresult ifailure.
+              (HasUnitId ipkg,   PackageFixedDeps ipkg,
                HasUnitId srcpkg, PackageFixedDeps srcpkg)
            => [GenericReadyPackage srcpkg]
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -377,9 +350,10 @@ processing :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
 processing pkgs plan = assert (invariant plan') plan'
   where
     plan' = plan {
-              planIndex = PackageIndex.merge (planIndex plan) processingPkgs
+              planIndex = Graph.unionRight (planIndex plan) processingPkgs
             }
-    processingPkgs = PackageIndex.fromList [Processing pkg | pkg <- pkgs]
+    processingPkgs :: PlanIndex ipkg srcpkg iresult ifailure
+    processingPkgs = Graph.fromList [Processing pkg | pkg <- pkgs]
 
 -- | Marks a package in the graph as completed. Also saves the build result for
 -- the completed package in the plan.
@@ -396,8 +370,8 @@ completed :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
 completed pkgid mipkg buildResult plan = assert (invariant plan') plan'
   where
     plan'     = plan {
-                  planIndex = PackageIndex.insert installed
-                            . PackageIndex.deleteUnitId pkgid
+                  planIndex = Graph.insert installed
+                            . Graph.deleteKey pkgid
                             $ planIndex plan
                 }
     installed = Installed (lookupProcessingPackage plan pkgid) mipkg buildResult
@@ -419,10 +393,10 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
   where
     -- NB: failures don't update IPIDs
     plan'    = plan {
-                 planIndex = PackageIndex.merge (planIndex plan) failures
+                 planIndex = Graph.unionRight (planIndex plan) failures
                }
     ReadyPackage srcpkg = lookupProcessingPackage plan pkgid
-    failures = PackageIndex.fromList
+    failures = Graph.fromList
              $ Failed srcpkg buildResult
              : [ Failed pkg' buildResult'
                | Just pkg' <- map checkConfiguredPackage
@@ -433,19 +407,19 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 packagesThatDependOn :: GenericInstallPlan ipkg srcpkg iresult ifailure
                      -> UnitId
                      -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-packagesThatDependOn plan pkgid = map (planPkgOf plan)
-                          . tail
-                          . Graph.reachable (planGraphRev plan)
-                          . planVertexOf plan
-                          $ pkgid
+packagesThatDependOn plan pkgid = case Graph.revClosure (planIndex plan) [pkgid] of
+                                    Nothing -> []
+                                    Just r -> r
 
 -- | Lookup a package that we expect to be in the processing state.
 --
-lookupProcessingPackage :: GenericInstallPlan ipkg srcpkg iresult ifailure
+lookupProcessingPackage :: (PackageFixedDeps ipkg, PackageFixedDeps srcpkg,
+                            HasUnitId ipkg, HasUnitId srcpkg)
+                        => GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> UnitId
                         -> GenericReadyPackage srcpkg
 lookupProcessingPackage plan pkgid =
-  case PackageIndex.lookupUnitId (planIndex plan) pkgid of
+  case Graph.lookup pkgid (planIndex plan) of
     Just (Processing pkg) -> pkg
     _  -> internalError $ "not in processing state or no such pkg " ++
                           display pkgid
@@ -473,10 +447,10 @@ preexisting :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
 preexisting pkgid ipkg plan = assert (invariant plan') plan'
   where
     plan' = plan {
-      planIndex   = PackageIndex.insert (PreExisting ipkg)
+      planIndex   = Graph.insert (PreExisting ipkg)
                     -- ...but be sure to use the *old* IPID for the lookup for
                     -- the preexisting record
-                  . PackageIndex.deleteUnitId pkgid
+                  . Graph.deleteKey pkgid
                   $ planIndex plan
     }
 
@@ -492,9 +466,9 @@ preinstalled :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
              -> GenericInstallPlan ipkg srcpkg iresult ifailure
 preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
   where
-    plan' = plan { planIndex = PackageIndex.insert installed (planIndex plan) }
+    plan' = plan { planIndex = Graph.insert installed (planIndex plan) }
     Just installed = do
-      Configured pkg <- PackageIndex.lookupUnitId (planIndex plan) pkgid
+      Configured pkg <- Graph.lookup pkgid (planIndex plan)
       rpkg <- lookupReadyPackage plan pkg
       return (Installed rpkg mipkg buildResult)
 
@@ -521,7 +495,6 @@ data PlanProblem ipkg srcpkg iresult ifailure =
      PackageMissingDeps   (GenericPlanPackage ipkg srcpkg iresult ifailure)
                           [PackageIdentifier]
    | PackageCycle         [GenericPlanPackage ipkg srcpkg iresult ifailure]
-   | PackageInconsistency PackageName [(PackageIdentifier, Version)]
    | PackageStateInvalid  (GenericPlanPackage ipkg srcpkg iresult ifailure)
                           (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
@@ -534,25 +507,21 @@ problems :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
          => IndependentGoals
          -> PlanIndex ipkg srcpkg iresult ifailure
          -> [PlanProblem ipkg srcpkg iresult ifailure]
-problems indepGoals index =
+problems _indepGoals index =
 
      [ PackageMissingDeps pkg
        (catMaybes
         (map
-         (fmap packageId . PackageIndex.lookupUnitId index)
+         (fmap packageId . flip Graph.lookup index)
          missingDeps))
-     | (pkg, missingDeps) <- PlanIndex.brokenPackages index ]
+     | (pkg, missingDeps) <- Graph.broken index ]
 
   ++ [ PackageCycle cycleGroup
-     | cycleGroup <- PlanIndex.dependencyCycles index ]
-
-  ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <-
-       PlanIndex.dependencyInconsistencies indepGoals index ]
+     | cycleGroup <- Graph.cycles index ]
 
   ++ [ PackageStateInvalid pkg pkg'
-     | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PackageIndex.lookupUnitId index)
+     | pkg <- Graph.toList index
+     , Just pkg' <- map (flip Graph.lookup index)
                     (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
@@ -592,10 +561,7 @@ stateDependencyRelation _               _                 = False
 
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-reverseTopologicalOrder plan =
-    map (planPkgOf plan)
-  . Graph.topSort
-  $ planGraphRev plan
+reverseTopologicalOrder plan = Graph.revTopSort (planIndex plan)
 
 
 fromSolverInstallPlan ::
@@ -605,7 +571,7 @@ fromSolverInstallPlan ::
     -> SolverInstallPlan
     -> GenericInstallPlan ipkg srcpkg iresult ifailure
 fromSolverInstallPlan f plan =
-    mkInstallPlan (PackageIndex.fromList pkgs')
+    mkInstallPlan (Graph.fromList pkgs')
                   (SolverInstallPlan.planIndepGoals plan)
   where
     (_, pkgs') = foldl' f' (Map.empty, []) (SolverInstallPlan.reverseTopologicalOrder plan)
