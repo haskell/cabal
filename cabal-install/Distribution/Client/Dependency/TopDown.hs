@@ -305,8 +305,12 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
       $ finaliseSelectedPackages preferences selected' constraints'
 
     toResolverPackage :: FinalSelectedPackage -> ResolverPackage UnresolvedPkgLoc
-    toResolverPackage (SelectedInstalled (InstalledPackage pkg _))
-                                              = PreExisting pkg
+    toResolverPackage (SelectedInstalled (InstalledPackage pkg pid_deps))
+                                              = PreExisting pkg deps
+        where deps = CD.fromLibraryDeps lib
+                   . zipWith PreExistingId pid_deps
+                   $ InstalledPackageInfo.depends pkg
+              lib = display (packageName pkg)
     toResolverPackage (SelectedSource    pkg) = Configured  pkg
 
 addTopLevelTargets :: [PackageName]

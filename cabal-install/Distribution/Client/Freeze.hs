@@ -41,7 +41,7 @@ import Distribution.Solver.Types.PkgConfigDb
 import Distribution.Solver.Types.SolverId
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion, installedUnitId )
+         ( Package, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -227,7 +227,7 @@ pruneInstallPlan :: SolverInstallPlan
                  -> [SolverPlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     removeSelf pkgIds $
-    SolverInstallPlan.dependencyClosure installPlan (map installedUnitId pkgIds)
+    SolverInstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds = [ PlannedId (packageId pkg)
              | SpecificSourcePackage pkg <- pkgSpecifiers ]

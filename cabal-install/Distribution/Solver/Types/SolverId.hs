@@ -17,7 +17,7 @@ import GHC.Generics (Generic)
 --
 data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
               | PlannedId     { solverSrcId :: PackageId }
-  deriving (Eq, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Binary SolverId
 

@@ -595,7 +595,7 @@ configureInstallPlan :: SolverInstallPlan -> InstallPlan
 configureInstallPlan solverPlan =
     flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
       case planpkg of
-        SolverInstallPlan.PreExisting pkg ->
+        SolverInstallPlan.PreExisting pkg _ ->
           PreExisting pkg
 
         SolverInstallPlan.Configured  pkg ->

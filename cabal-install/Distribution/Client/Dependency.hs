@@ -725,10 +725,7 @@ validateSolverResult platform comp indepGoals pkgs =
       problems               -> error (formatPkgProblems problems)
 
   where
-    index = Graph.fromList (map toPlanPackage pkgs)
-
-    toPlanPackage (PreExisting pkg) = SolverInstallPlan.PreExisting pkg
-    toPlanPackage (Configured  pkg) = SolverInstallPlan.Configured  pkg
+    index = Graph.fromList pkgs
 
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map SolverInstallPlan.showPlanProblem

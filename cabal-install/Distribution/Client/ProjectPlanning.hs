@@ -1020,7 +1020,7 @@ elaborateInstallPlan platform compiler compilerprogdb
     elaboratedInstallPlan =
       flip InstallPlan.fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
         case planpkg of
-          SolverInstallPlan.PreExisting pkg ->
+          SolverInstallPlan.PreExisting pkg _ ->
             InstallPlan.PreExisting pkg
 
           SolverInstallPlan.Configured  pkg ->
@@ -1258,7 +1258,7 @@ elaborateInstallPlan platform compiler compilerprogdb
       $ map installedPackageId
       $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
-          [ installedPackageId (PlannedId (packageId pkg))
+          [ PlannedId (packageId pkg)
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
@@ -1306,7 +1306,7 @@ elaborateInstallPlan platform compiler compilerprogdb
       $ map packageId
       $ SolverInstallPlan.dependencyClosure
           solverPlan
-          [ installedPackageId pkg
+          [ Graph.nodeKey pkg
           | pkg <- SolverInstallPlan.toList solverPlan
           , property pkg ] -- just the packages that satisfy the propety
       --TODO: [nice to have] this does not check the config consistency,

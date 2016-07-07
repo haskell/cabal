@@ -51,7 +51,7 @@ module Distribution.Client.SolverInstallPlan(
 
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName(..)
-         , HasUnitId(..), UnitId(..), PackageId, packageVersion, packageName )
+         , HasUnitId(..), PackageId, packageVersion, packageName )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Text
          ( display )
@@ -64,6 +64,7 @@ import Distribution.Version
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.ResolverPackage
+import           Distribution.Solver.Types.SolverId
 
 import Data.List
          ( intercalate )
@@ -129,7 +130,7 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . planIndex
 
 showPlanPackageTag :: SolverPlanPackage -> String
-showPlanPackageTag (PreExisting _)   = "PreExisting"
+showPlanPackageTag (PreExisting _ _) = "PreExisting"
 showPlanPackageTag (Configured  _)   = "Configured"
 
 -- | Build an installation plan from a valid set of resolved packages.
@@ -209,7 +210,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
   ++ " which is in the " ++ showPlanState pkg'
   ++ " state"
   where
-    showPlanState (PreExisting _)   = "pre-existing"
+    showPlanState (PreExisting _ _) = "pre-existing"
     showPlanState (Configured  _)   = "configured"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
@@ -238,7 +239,7 @@ problems indepGoals index =
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- Graph.toList index
      , Just pkg' <- map (flip Graph.lookup index)
-                    (CD.flatDeps (depends pkg))
+                    (nodeNeighbors pkg)
      , not (stateDependencyRelation pkg pkg') ]
 
 
@@ -266,7 +267,7 @@ dependencyInconsistencies indepGoals index  =
 -- This is the set of all top-level library roots (taken together normally, or
 -- as singletons sets if we are considering them as independent goals), along
 -- with all setup dependencies of all packages.
-rootSets :: IndependentGoals -> SolverPlanIndex -> [[UnitId]]
+rootSets :: IndependentGoals -> SolverPlanIndex -> [[SolverId]]
 rootSets (IndependentGoals indepGoals) index =
        if indepGoals then map (:[]) libRoots else [libRoots]
     ++ setupRoots index
@@ -277,7 +278,7 @@ rootSets (IndependentGoals indepGoals) index =
 --
 -- The library roots are the set of packages with no reverse dependencies
 -- (no reverse library dependencies but also no reverse setup dependencies).
-libraryRoots :: SolverPlanIndex -> [UnitId]
+libraryRoots :: SolverPlanIndex -> [SolverId]
 libraryRoots index =
     map (nodeKey . toPkgId) roots
   where
@@ -287,9 +288,9 @@ libraryRoots index =
     isRoot v = indegree ! v == 0
 
 -- | The setup dependencies of each package in the plan
-setupRoots :: SolverPlanIndex -> [[UnitId]]
+setupRoots :: SolverPlanIndex -> [[SolverId]]
 setupRoots = filter (not . null)
-           . map (CD.setupDeps . depends)
+           . map (CD.setupDeps . resolverPackageDeps)
            . Graph.toList
 
 -- | Given a package index where we assume we want to use all the packages
@@ -315,15 +316,15 @@ dependencyInconsistencies' index =
     --   and each installed ID of that that package
     --     the associated package instance
     --     and a list of reverse dependencies (as source IDs)
-    inverseIndex :: Map PackageName (Map UnitId (SolverPlanPackage, [PackageId]))
+    inverseIndex :: Map PackageName (Map SolverId (SolverPlanPackage, [PackageId]))
     inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
-      [ (packageName dep, Map.fromList [(ipid,(dep,[packageId pkg]))])
+      [ (packageName dep, Map.fromList [(sid,(dep,[packageId pkg]))])
       | -- For each package @pkg@
         pkg <- Graph.toList index
-        -- Find out which @ipid@ @pkg@ depends on
-      , ipid <- CD.nonSetupDeps (depends pkg)
-        -- And look up those @ipid@ (i.e., @ipid@ is the ID of @dep@)
-      , Just dep <- [Graph.lookup ipid index]
+        -- Find out which @sid@ @pkg@ depends on
+      , sid <- CD.nonSetupDeps (resolverPackageDeps pkg)
+        -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
+      , Just dep <- [Graph.lookup sid index]
       ]
 
     -- If, in a single install plan, we depend on more than one version of a
@@ -386,9 +387,9 @@ consistent = null . dependencyInconsistencies (IndependentGoals False)
 stateDependencyRelation :: SolverPlanPackage
                         -> SolverPlanPackage
                         -> Bool
-stateDependencyRelation (PreExisting _) (PreExisting _)   = True
+stateDependencyRelation PreExisting{}   PreExisting{}     = True
 
-stateDependencyRelation (Configured  _) (PreExisting _)   = True
+stateDependencyRelation (Configured  _) PreExisting{}     = True
 stateDependencyRelation (Configured  _) (Configured  _)   = True
 
 stateDependencyRelation _               _                 = False
@@ -397,13 +398,13 @@ stateDependencyRelation _               _                 = False
 -- | Compute the dependency closure of a package in a install plan
 --
 dependencyClosure :: SolverInstallPlan
-                  -> [UnitId]
+                  -> [SolverId]
                   -> [SolverPlanPackage]
 dependencyClosure plan = fromMaybe [] . Graph.closure (planIndex plan)
 
 
 reverseDependencyClosure :: SolverInstallPlan
-                         -> [UnitId]
+                         -> [SolverId]
                          -> [SolverPlanPackage]
 reverseDependencyClosure plan = fromMaybe [] . Graph.revClosure (planIndex plan)
 
