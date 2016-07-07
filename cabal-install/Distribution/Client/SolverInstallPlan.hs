@@ -19,7 +19,8 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.SolverInstallPlan(
   SolverInstallPlan(..),
-  SolverPlanPackage(..),
+  SolverPlanPackage,
+  ResolverPackage(..),
 
   -- * Operations on 'SolverInstallPlan's
   new,
@@ -48,9 +49,6 @@ module Distribution.Client.SolverInstallPlan(
   reverseTopologicalOrder,
 ) where
 
-import Distribution.Solver.Types.SolverPackage
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Package
          ( PackageIdentifier(..), Package(..), PackageName(..)
          , HasUnitId(..), UnitId(..), PackageId, packageVersion, packageName )
@@ -65,6 +63,7 @@ import Distribution.Version
 
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.ResolverPackage
 
 import Data.List
          ( intercalate )
@@ -77,35 +76,8 @@ import qualified Distribution.Compat.Graph as Graph
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Array ((!))
-import GHC.Generics hiding (packageName)
 
--- | The dependency solver produces two types of packages: pre-existing
--- packages that it selected from the installed package database, and
--- "configured" packages which need to be installed.
-data SolverPlanPackage
-   = PreExisting InstalledPackageInfo
-   | Configured  (SolverPackage UnresolvedPkgLoc)
-  deriving (Eq, Show, Generic)
-
-instance Binary SolverPlanPackage
-
-instance Package SolverPlanPackage where
-  packageId (PreExisting ipkg)     = packageId ipkg
-  packageId (Configured  spkg)     = packageId spkg
-
-instance PackageFixedDeps SolverPlanPackage where
-  depends (PreExisting pkg)     = depends pkg
-  depends (Configured  pkg)     = depends pkg
-
-instance HasUnitId SolverPlanPackage where
-  installedUnitId (PreExisting ipkg ) = installedUnitId ipkg
-  installedUnitId (Configured  spkg)  = installedUnitId spkg
-
-instance IsNode SolverPlanPackage where
-  type Key SolverPlanPackage = UnitId -- TODO: change me
-  nodeKey = installedUnitId
-  -- Use dependencies for ALL components
-  nodeNeighbors = CD.flatDeps . depends
+type SolverPlanPackage = ResolverPackage UnresolvedPkgLoc
 
 type SolverPlanIndex = Graph SolverPlanPackage
 
