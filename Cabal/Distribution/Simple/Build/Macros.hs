@@ -12,10 +12,13 @@
 --
 -- > VERSION_<package>
 -- > MIN_VERSION_<package>(A,B,C)
+-- > MIN_VERSION_EXACT_<package>(A,B,C)
 --
--- for each /package/ in @build-depends@, which is true if the version of
--- /package/ in use is @>= A.B.C@, using the normal ordering on version
--- numbers.
+-- for each /package/ in @build-depends@. @MIN_VERSION_<package>(A,B,C)@ which
+-- is true if the version of /package/ in use is @>= A.B.C@, using the normal
+-- ordering on version numbers. @MIN_VERSION_EXACT_<package>(A,B,C)@ let you
+-- specify variants @>= A@ and @>= A.B@, by using @-1@ for missing version
+-- components.
 --
 module Distribution.Simple.Build.Macros (
     generate,
@@ -101,7 +104,7 @@ generateMacros macro_prefix name version =
   where
     versionMacro     = macro_prefix ++ "VERSION_" ++ name
     minVersionMacro  = "MIN_" ++ macro_prefix ++ "VERSION_" ++ name
-    min2VersionMacro = "MIN2_" ++ macro_prefix ++ "VERSION_" ++ name
+    min2VersionMacro = "MIN_" ++ macro_prefix ++ "VERSION_EXACT_" ++ name
     (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
     (major1':major2':minor':_) = map show (versionBranch version ++ repeat (-1))
 
