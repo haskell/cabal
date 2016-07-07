@@ -7,7 +7,6 @@ module Distribution.Solver.Types.ResolverPackage
 
 import Distribution.Solver.Types.SolverId
 import Distribution.Solver.Types.SolverPackage
-import Distribution.Solver.Types.PackageFixedDeps
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 import Distribution.Compat.Binary (Binary(..))
@@ -30,14 +29,6 @@ instance Binary loc => Binary (ResolverPackage loc)
 instance Package (ResolverPackage loc) where
   packageId (PreExisting ipkg _)   = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
-
-instance PackageFixedDeps (ResolverPackage loc) where
-  depends (PreExisting pkg _)   = depends pkg
-  depends (Configured  pkg)     = depends pkg
-
-instance HasUnitId (ResolverPackage loc) where
-  installedUnitId (PreExisting ipkg _) = installedUnitId ipkg
-  installedUnitId (Configured  spkg)  = installedUnitId spkg
 
 resolverPackageDeps :: ResolverPackage loc -> CD.ComponentDeps [SolverId]
 resolverPackageDeps (PreExisting _ deps) = deps

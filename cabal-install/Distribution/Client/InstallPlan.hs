@@ -63,6 +63,7 @@ import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.Settings
+import           Distribution.Solver.Types.SolverId
 
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
@@ -567,7 +568,10 @@ reverseTopologicalOrder plan = Graph.revTopSort (planIndex plan)
 fromSolverInstallPlan ::
       (HasUnitId ipkg,   PackageFixedDeps ipkg,
        HasUnitId srcpkg, PackageFixedDeps srcpkg)
-    => ((UnitId -> UnitId) -> SolverInstallPlan.SolverPlanPackage -> GenericPlanPackage ipkg srcpkg iresult ifailure)
+    -- Maybe this should be a UnitId not ConfiguredId?
+    => (   (SolverId -> ConfiguredId)
+        -> SolverInstallPlan.SolverPlanPackage
+        -> GenericPlanPackage ipkg srcpkg iresult ifailure    )
     -> SolverInstallPlan
     -> GenericInstallPlan ipkg srcpkg iresult ifailure
 fromSolverInstallPlan f plan =
@@ -576,18 +580,30 @@ fromSolverInstallPlan f plan =
   where
     (_, pkgs') = foldl' f' (Map.empty, []) (SolverInstallPlan.reverseTopologicalOrder plan)
 
-    f' (ipkgidMap, pkgs) pkg = (ipkgidMap', pkg' : pkgs)
+    f' (pidMap, pkgs) pkg = (pidMap', pkg' : pkgs)
       where
-       pkg' = f (mapDep ipkgidMap) pkg
+       pkg' = f (mapDep pidMap) pkg
 
-       ipkgidMap'
-         | ipkgid /= ipkgid' = Map.insert ipkgid ipkgid' ipkgidMap
-         | otherwise         =                           ipkgidMap
+       pidMap'
+         = case sid of
+            PreExistingId _pid uid ->
+                assert (uid == uid') pidMap
+            PlannedId pid ->
+                Map.insert pid uid' pidMap
          where
-           ipkgid  = installedUnitId pkg
-           ipkgid' = installedUnitId pkg'
+           sid  = nodeKey pkg
+           uid' = nodeKey pkg'
 
-    mapDep ipkgidMap ipkgid = Map.findWithDefault ipkgid ipkgid ipkgidMap
+    mapDep _ (PreExistingId pid uid) = ConfiguredId pid uid
+    mapDep pidMap (PlannedId pid)
+        | Just uid <- Map.lookup pid pidMap
+        = ConfiguredId pid uid
+        -- This shouldn't happen, since mapDep should only be called
+        -- on neighbor SolverId, which must have all been done already
+        -- by the reverse top-sort (this also assumes that the graph
+        -- is not broken).
+        | otherwise
+        = error ("fromSolverInstallPlan mapDep: " ++ display pid)
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
@@ -601,7 +617,7 @@ configureInstallPlan solverPlan =
         SolverInstallPlan.Configured  pkg ->
           Configured (configureSolverPackage mapDep pkg)
   where
-    configureSolverPackage :: (UnitId -> UnitId)
+    configureSolverPackage :: (SolverId -> ConfiguredId)
                            -> SolverPackage UnresolvedPkgLoc
                            -> ConfiguredPackage UnresolvedPkgLoc
     configureSolverPackage mapDep spkg =
@@ -621,10 +637,4 @@ configureInstallPlan solverPlan =
         confPkgDeps   = deps
       }
       where
-        deps = fmap (map (configureSolverId mapDep)) (solverPkgDeps spkg)
-
-    configureSolverId mapDep sid =
-      ConfiguredId {
-        confSrcId  = packageId sid, -- accurate!
-        confInstId = mapDep (installedUnitId sid)
-      }
+        deps = fmap (map mapDep) (solverPkgDeps spkg)

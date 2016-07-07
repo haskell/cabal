@@ -61,7 +61,6 @@ import Distribution.Client.Types
 import Distribution.Version
          ( Version )
 
-import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.SolverId
@@ -121,17 +120,15 @@ instance Binary SolverInstallPlan where
 showPlanIndex :: SolverPlanIndex -> String
 showPlanIndex index =
     intercalate "\n" (map showPlanPackage (Graph.toList index))
-  where showPlanPackage p =
-            showPlanPackageTag p ++ " "
-                ++ display (packageId p) ++ " ("
-                ++ display (installedUnitId p) ++ ")"
 
 showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . planIndex
 
-showPlanPackageTag :: SolverPlanPackage -> String
-showPlanPackageTag (PreExisting _ _) = "PreExisting"
-showPlanPackageTag (Configured  _)   = "Configured"
+showPlanPackage :: SolverPlanPackage -> String
+showPlanPackage (PreExisting ipkg _) = "PreExisting " ++ display (packageId ipkg)
+                                            ++ " (" ++ display (installedUnitId ipkg)
+                                            ++ ")"
+showPlanPackage (Configured  spkg)   = "Configured " ++ display (packageId spkg)
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
@@ -336,10 +333,10 @@ dependencyInconsistencies' index =
     reallyIsInconsistent []       = False
     reallyIsInconsistent [_p]     = False
     reallyIsInconsistent [p1, p2] =
-      let pid1 = installedUnitId p1
-          pid2 = installedUnitId p2
-      in pid1 `notElem` CD.nonSetupDeps (depends p2)
-      && pid2 `notElem` CD.nonSetupDeps (depends p1)
+      let pid1 = nodeKey p1
+          pid2 = nodeKey p2
+      in pid1 `notElem` CD.nonSetupDeps (resolverPackageDeps p2)
+      && pid2 `notElem` CD.nonSetupDeps (resolverPackageDeps p1)
     reallyIsInconsistent _ = True
 
 

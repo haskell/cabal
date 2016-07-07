@@ -1027,7 +1027,7 @@ elaborateInstallPlan platform compiler compilerprogdb
             InstallPlan.Configured
               (elaborateSolverPackage mapDep pkg)
 
-    elaborateSolverPackage :: (UnitId -> UnitId)
+    elaborateSolverPackage :: (SolverId -> ConfiguredId)
                            -> SolverPackage UnresolvedPkgLoc
                            -> ElaboratedConfiguredPackage
     elaborateSolverPackage
@@ -1044,12 +1044,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
         deps = fmap (map elaborateSolverId) deps0
 
-        elaborateSolverId sid =
-            ConfiguredId {
-                confSrcId  = packageId sid,
-                -- Update the 'UnitId' to the final nix-style hashed ID
-                confInstId = mapDep (installedPackageId sid)
-            }
+        elaborateSolverId = mapDep
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
@@ -1178,7 +1173,7 @@ elaborateInstallPlan platform compiler compilerprogdb
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               (installedUnitId pkg)
+               pkgInstalledId
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1248,14 +1243,14 @@ elaborateInstallPlan platform compiler compilerprogdb
     -- dir (as opposed to a tarball), or depends on such a package, will be
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
-    shouldBuildInplaceOnly :: HasUnitId pkg => pkg -> Bool
-    shouldBuildInplaceOnly pkg = Set.member (installedPackageId pkg)
+    shouldBuildInplaceOnly :: SolverPackage loc -> Bool
+    shouldBuildInplaceOnly pkg = Set.member (packageId pkg)
                                             pkgsToBuildInplaceOnly
 
-    pkgsToBuildInplaceOnly :: Set InstalledPackageId
+    pkgsToBuildInplaceOnly :: Set PackageId
     pkgsToBuildInplaceOnly =
         Set.fromList
-      $ map installedPackageId
+      $ map packageId
       $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
           [ PlannedId (packageId pkg)
