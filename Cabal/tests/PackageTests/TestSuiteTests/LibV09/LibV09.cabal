@@ -14,6 +14,12 @@ library
   exposed-modules: Lib
   build-depends: base, Cabal
 
+test-suite LibV09-PassesTrivially
+  type: detailed-0.9
+  hs-source-dirs: tests
+  test-module: PassesTrivially
+  build-depends: base, Cabal
+
 test-suite LibV09-Deadlock
   type: detailed-0.9
   hs-source-dirs: tests

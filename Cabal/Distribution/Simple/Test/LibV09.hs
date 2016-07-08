@@ -99,8 +99,15 @@ runTest pkg_descr lbi flags suite = do
                                                    lbi
                                                    (LBI.CTestName
                                                       (PD.testName suite))
+                                      (_, _, _, _, _, _, exeClbi) =
+                                          testSuiteLibV09AsLibAndExe
+                                              pkg_descr suite clbi lbi
+                                              distPref pwd
+                                  -- Get the dependencies of the stub
+                                  -- executable. They should include the test
+                                  -- library itself (#2039).
                                   paths <- LBI.depLibraryPaths
-                                             True False lbi clbi
+                                             True False lbi exeClbi
                                   return (addLibraryPath os paths shellEnv)
                                 else return shellEnv
                 createProcessWithEnv verbosity cmd opts Nothing (Just shellEnv')

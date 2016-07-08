@@ -160,7 +160,7 @@ cabal_dependencies() {
 
 cabal_build() {
     ./dist/setup/setup configure \
-        --user --ghc-option=-Werror --enable-tests --enable-benchmarks \
+        --user --ghc-option=-Werror --enable-tests --enable-benchmarks --enable-shared \
         -v2 # -v2 provides useful information for debugging
 
     # Build all libraries and executables (including tests/benchmarks)

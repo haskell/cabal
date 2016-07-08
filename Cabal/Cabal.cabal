@@ -203,6 +203,7 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
   tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/TestSuiteTests/LibV09/tests/PassesTrivially.hs
   tests/PackageTests/Tests.hs
   tests/PackageTests/UniqueIPID/P1/M.hs
   tests/PackageTests/UniqueIPID/P1/my.cabal

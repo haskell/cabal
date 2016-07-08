@@ -51,12 +51,20 @@ tests config = do
   testWhen (hasCabalForGhc config)
    . tcs "TestSuiteTests/LibV09" "Build" $ cabal_build ["--enable-tests"]
 
+  -- Test for #2039: `-enable-tests --enable-executable-dynamic` should work.
+  testWhen (hasCabalForGhc config && hasSharedLibraries config)
+   . tcs "TestSuiteTests/LibV09" "ExecutableDynamic" $ do
+        cabal "configure" ["--enable-tests", "--enable-executable-dynamic"]
+        cabal "build" ["LibV09-PassesTrivially"]
+        cabal "test"  ["LibV09-PassesTrivially"]
+
   -- Tests for #2489, stdio deadlock
   testWhen (hasCabalForGhc config)
    . mapTestTrees (localOption (mkTimeout $ 10 ^ (8 :: Int)))
    . tcs "TestSuiteTests/LibV09" "Deadlock" $ do
-      cabal_build ["--enable-tests"]
-      shouldFail $ cabal "test" []
+      cabal "configure" ["--enable-tests"]
+      cabal "build" ["LibV09-Deadlock"]
+      shouldFail $ cabal "test" ["LibV09-Deadlock"]
 
   ---------------------------------------------------------------------
   -- * Inline tests
