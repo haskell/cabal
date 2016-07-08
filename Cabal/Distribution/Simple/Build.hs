@@ -37,7 +37,6 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.PackageDescription hiding (Flag)
-import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -47,7 +46,6 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.BuildPaths
-import Distribution.Simple.Configure
 import Distribution.Simple.Register
 import Distribution.Simple.Test.LibV09
 import Distribution.Simple.Utils
@@ -56,7 +54,6 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity
 
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List
          ( intersect )
@@ -387,84 +384,6 @@ testSuiteExeV10AsExe test@TestSuite { testInterface = TestSuiteExeV10 _ mainFile
     }
 testSuiteExeV10AsExe TestSuite{} = error "testSuiteExeV10AsExe: wrong kind"
 
--- | Translate a lib-style 'TestSuite' component into a lib + exe for building
-testSuiteLibV09AsLibAndExe :: PackageDescription
-                           -> TestSuite
-                           -> ComponentLocalBuildInfo
-                           -> LocalBuildInfo
-                           -> FilePath
-                           -> FilePath
-                           -> (PackageDescription,
-                               Library, ComponentLocalBuildInfo,
-                               LocalBuildInfo,
-                               IPI.InstalledPackageInfo,
-                               Executable, ComponentLocalBuildInfo)
-testSuiteLibV09AsLibAndExe pkg_descr
-                     test@TestSuite { testInterface = TestSuiteLibV09 _ m }
-                     clbi lbi distPref pwd =
-    (pkg, lib, libClbi, lbi, ipi, exe, exeClbi)
-  where
-    bi  = testBuildInfo test
-    lib = Library {
-            libName = testName test,
-            exposedModules = [ m ],
-            reexportedModules = [],
-            requiredSignatures = [],
-            exposedSignatures = [],
-            libExposed     = True,
-            libBuildInfo   = bi
-          }
-    -- This is, like, the one place where we use a CTestName for a library.
-    -- Should NOT use library name, since that could conflict!
-    PackageIdentifier pkg_name pkg_ver = package pkg_descr
-    compat_name = computeCompatPackageName pkg_name (CTestName (testName test))
-    compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
-    libClbi = LibComponentLocalBuildInfo
-                { componentPackageDeps = componentPackageDeps clbi
-                , componentLocalName = CLibName (testName test)
-                , componentIsPublic = False
-                , componentIncludes = componentIncludes clbi
-                , componentUnitId = componentUnitId clbi
-                , componentCompatPackageName = compat_name
-                , componentCompatPackageKey = compat_key
-                , componentExposedModules = [IPI.ExposedModule m Nothing]
-                }
-    pkg = pkg_descr {
-            package      = (package pkg_descr) { pkgName = compat_name }
-          , buildDepends = targetBuildDepends $ testBuildInfo test
-          , executables  = []
-          , testSuites   = []
-          , libraries    = [lib]
-          }
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (AbiHash "") lib lbi libClbi
-    testDir = buildDir lbi </> stubName test
-          </> stubName test ++ "-tmp"
-    testLibDep = thisPackageVersion $ package pkg
-    exe = Executable {
-            exeName    = stubName test,
-            modulePath = stubFilePath test,
-            buildInfo  = (testBuildInfo test) {
-                           hsSourceDirs       = [ testDir ],
-                           targetBuildDepends = testLibDep
-                             : (targetBuildDepends $ testBuildInfo test),
-                           targetBuildRenaming = Map.empty
-                         }
-          }
-    -- | The stub executable needs a new 'ComponentLocalBuildInfo'
-    -- that exposes the relevant test suite library.
-    deps = (IPI.installedUnitId ipi, packageId ipi)
-         : (filter (\(_, x) -> let PackageName name = pkgName x
-                               in name == "Cabal" || name == "base")
-                   (componentPackageDeps clbi))
-    exeClbi = ExeComponentLocalBuildInfo {
-                -- TODO: this is a hack, but as long as this is unique
-                -- (doesn't clobber something) we won't run into trouble
-                componentUnitId = mkUnitId (stubName test),
-                componentLocalName = CExeName (stubName test),
-                componentPackageDeps = deps,
-                componentIncludes = zip (map fst deps) (repeat defaultRenaming)
-              }
-testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
 
 -- | Translate a exe-style 'Benchmark' component into an exe for building

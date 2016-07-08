@@ -4,21 +4,30 @@ module Distribution.Simple.Test.LibV09
        , simpleTestStub
        , stubFilePath, stubMain, stubName, stubWriteLog
        , writeSimpleTestStub
+       , testSuiteLibV09AsLibAndExe 
        ) where
 
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
+import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.ModuleName
+import Distribution.Package
+import Distribution.PackageDescription hiding (options)
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
+import Distribution.Simple.Configure
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
+import Distribution.Simple.LocalBuildInfo hiding (substPathTemplate)
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Register
 import Distribution.Simple.Setup
-import Distribution.Simple.Test.Log
+import Distribution.Simple.Test.Log hiding
+    ( package, testSuites, compiler, testName )
+import qualified Distribution.Simple.Test.Log as TestLog
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
@@ -27,6 +36,7 @@ import Distribution.Verbosity
 
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless )
+import qualified Data.Map as Map
 import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
@@ -236,7 +246,7 @@ stubRunTests tests = do
       where
         finish (Finished result) =
             return TestLog
-                { testName = name t
+                { TestLog.testName = name t
                 , testOptionsReturned = defaultOptions t
                 , testResult = result
                 }
@@ -258,3 +268,82 @@ stubWriteLog f n logs = do
     when (suiteError logs) $ exitWith $ ExitFailure 2
     when (suiteFailed logs) $ exitWith $ ExitFailure 1
     exitWith ExitSuccess
+
+-- | Translate a lib-style 'TestSuite' component into a lib + exe for building
+testSuiteLibV09AsLibAndExe :: PackageDescription
+                           -> TestSuite
+                           -> ComponentLocalBuildInfo
+                           -> LocalBuildInfo
+                           -> FilePath
+                           -> FilePath
+                           -> (PackageDescription,
+                               Library, ComponentLocalBuildInfo,
+                               LocalBuildInfo,
+                               IPI.InstalledPackageInfo,
+                               Executable, ComponentLocalBuildInfo)
+testSuiteLibV09AsLibAndExe pkg_descr
+                     test@TestSuite { testInterface = TestSuiteLibV09 _ m }
+                     clbi lbi distPref pwd =
+    (pkg, lib, libClbi, lbi, ipi, exe, exeClbi)
+  where
+    bi  = testBuildInfo test
+    lib = Library {
+            libName = testName test,
+            exposedModules = [ m ],
+            reexportedModules = [],
+            requiredSignatures = [],
+            exposedSignatures = [],
+            libExposed     = True,
+            libBuildInfo   = bi
+          }
+    -- This is, like, the one place where we use a CTestName for a library.
+    -- Should NOT use library name, since that could conflict!
+    PackageIdentifier pkg_name pkg_ver = package pkg_descr
+    compat_name = computeCompatPackageName pkg_name (CTestName (testName test))
+    compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
+    libClbi = LibComponentLocalBuildInfo
+                { componentPackageDeps = componentPackageDeps clbi
+                , componentLocalName = CLibName (testName test)
+                , componentIsPublic = False
+                , componentIncludes = componentIncludes clbi
+                , componentUnitId = componentUnitId clbi
+                , componentCompatPackageName = compat_name
+                , componentCompatPackageKey = compat_key
+                , componentExposedModules = [IPI.ExposedModule m Nothing]
+                }
+    pkg = pkg_descr {
+            package      = (package pkg_descr) { pkgName = compat_name }
+          , buildDepends = targetBuildDepends $ testBuildInfo test
+          , executables  = []
+          , testSuites   = []
+          , libraries    = [lib]
+          }
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (AbiHash "") lib lbi libClbi
+    testDir = buildDir lbi </> stubName test
+          </> stubName test ++ "-tmp"
+    testLibDep = thisPackageVersion $ package pkg
+    exe = Executable {
+            exeName    = stubName test,
+            modulePath = stubFilePath test,
+            buildInfo  = (testBuildInfo test) {
+                           hsSourceDirs       = [ testDir ],
+                           targetBuildDepends = testLibDep
+                             : (targetBuildDepends $ testBuildInfo test),
+                           targetBuildRenaming = Map.empty
+                         }
+          }
+    -- | The stub executable needs a new 'ComponentLocalBuildInfo'
+    -- that exposes the relevant test suite library.
+    deps = (IPI.installedUnitId ipi, packageId ipi)
+         : (filter (\(_, x) -> let PackageName pname = pkgName x
+                               in pname == "Cabal" || pname == "base")
+                   (componentPackageDeps clbi))
+    exeClbi = ExeComponentLocalBuildInfo {
+                -- TODO: this is a hack, but as long as this is unique
+                -- (doesn't clobber something) we won't run into trouble
+                componentUnitId = mkUnitId (stubName test),
+                componentLocalName = CExeName (stubName test),
+                componentPackageDeps = deps,
+                componentIncludes = zip (map fst deps) (repeat defaultRenaming)
+              }
+testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"

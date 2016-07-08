@@ -45,11 +45,9 @@ module Distribution.Simple.Configure (configure,
                                       configCompiler, configCompilerAux,
                                       configCompilerEx, configCompilerAuxEx,
                                       ccLdOptionsBuildInfo,
-                                      checkForeignDeps,
                                       interpretPackageDbFlags,
                                       ConfigStateFileError(..),
                                       tryGetConfigStateFile,
-                                      platformDefines,
                                       relaxPackageDeps,
                                      )
     where
@@ -57,7 +55,6 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Compiler
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler hiding (Flag)
-import Distribution.Simple.PreProcess
 import Distribution.Package
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo
@@ -91,14 +88,14 @@ import Control.Exception
     ( Exception, evaluate, throw, throwIO, try )
 import Control.Exception ( ErrorCall )
 import Control.Monad
-    ( liftM, when, unless, foldM, filterM, mplus )
+    ( liftM, when, unless, foldM, mplus )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
+    ( (\\), nub, partition, isPrefixOf, stripPrefix )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe, mapMaybe, isJust )
 import Data.Either
@@ -113,13 +110,11 @@ import Data.Typeable
 import Data.Char ( chr, isAlphaNum )
 import Numeric ( showIntAtBase )
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing )
 import System.FilePath
     ( (</>), isAbsolute )
 import qualified System.Info
     ( compilerName, compilerVersion )
-import System.IO
-    ( hPutStrLn, hClose )
 import Distribution.Text
     ( Text(disp), defaultStyle, display, simpleParse )
 import Text.PrettyPrint
@@ -1896,164 +1891,6 @@ reportModuleReexportProblems reexportProblems =
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies
-
--- Try to build a test C program which includes every header and links every
--- lib. If that fails, try to narrow it down by preprocessing (only) and linking
--- with individual headers and libs.  If none is the obvious culprit then give a
--- generic error message.
--- TODO: produce a log file from the compiler errors, if any.
-checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-checkForeignDeps pkg lbi verbosity = do
-  ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling
-                                                               -- lucky
-           (return ())
-           (do missingLibs <- findMissingLibs
-               missingHdr  <- findOffendingHdr
-               explainErrors missingHdr missingLibs)
-      where
-        allHeaders = collectField PD.includes
-        allLibs    = collectField PD.extraLibs
-
-        ifBuildsWith headers args success failure = do
-            ok <- builds (makeProgram headers) args
-            if ok then success else failure
-
-        findOffendingHdr =
-            ifBuildsWith allHeaders ccArgs
-                         (return Nothing)
-                         (go . tail . inits $ allHeaders)
-            where
-              go [] = return Nothing       -- cannot happen
-              go (hdrs:hdrsInits) =
-                    -- Try just preprocessing first
-                    ifBuildsWith hdrs cppArgs
-                      -- If that works, try compiling too
-                      (ifBuildsWith hdrs ccArgs
-                        (go hdrsInits)
-                        (return . Just . Right . last $ hdrs))
-                      (return . Just . Left . last $ hdrs)
-
-              cppArgs = "-E":commonCppArgs -- preprocess only
-              ccArgs  = "-c":commonCcArgs  -- don't try to link
-
-        findMissingLibs = ifBuildsWith [] (makeLdArgs allLibs)
-                                       (return [])
-                                       (filterM (fmap not . libExists) allLibs)
-
-        libExists lib = builds (makeProgram []) (makeLdArgs [lib])
-
-        commonCppArgs = platformDefines lbi
-                     -- TODO: This is a massive hack, to work around the
-                     -- fact that the test performed here should be
-                     -- PER-component (c.f. the "I'm Feeling Lucky"; we
-                     -- should NOT be glomming everything together.)
-                     ++ [ "-I" ++ buildDir lbi </> "autogen" ]
-                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
-                     ++ ["-I."]
-                     ++ collectField PD.cppOptions
-                     ++ collectField PD.ccOptions
-                     ++ [ "-I" ++ dir
-                        | dep <- deps
-                        , dir <- Installed.includeDirs dep ]
-                     ++ [ opt
-                        | dep <- deps
-                        , opt <- Installed.ccOptions dep ]
-
-        commonCcArgs  = commonCppArgs
-                     ++ collectField PD.ccOptions
-                     ++ [ opt
-                        | dep <- deps
-                        , opt <- Installed.ccOptions dep ]
-
-        commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
-                     ++ collectField PD.ldOptions
-                     ++ [ "-L" ++ dir
-                        | dep <- deps
-                        , dir <- Installed.libraryDirs dep ]
-                     --TODO: do we also need dependent packages' ld options?
-        makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
-
-        makeProgram hdrs = unlines $
-                           [ "#include \""  ++ hdr ++ "\"" | hdr <- hdrs ] ++
-                           ["int main(int argc, char** argv) { return 0; }"]
-
-        collectField f = concatMap f allBi
-        allBi = allBuildInfo pkg
-        deps = PackageIndex.topologicalOrder (installedPkgs lbi)
-
-        builds program args = do
-            tempDir <- getTemporaryDirectory
-            withTempFile tempDir ".c" $ \cName cHnd ->
-              withTempFile tempDir "" $ \oNname oHnd -> do
-                hPutStrLn cHnd program
-                hClose cHnd
-                hClose oHnd
-                _ <- rawSystemProgramStdoutConf verbosity
-                  gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
-                return True
-           `catchIO`   (\_ -> return False)
-           `catchExit` (\_ -> return False)
-
-        explainErrors Nothing [] = return () -- should be impossible!
-        explainErrors _ _
-           | isNothing . lookupProgram gccProgram . withPrograms $ lbi
-
-                              = die $ unlines $
-              [ "No working gcc",
-                  "This package depends on foreign library but we cannot "
-               ++ "find a working C compiler. If you have it in a "
-               ++ "non-standard location you can use the --with-gcc "
-               ++ "flag to specify it." ]
-
-        explainErrors hdr libs = die $ unlines $
-             [ if plural
-                 then "Missing dependencies on foreign libraries:"
-                 else "Missing dependency on a foreign library:"
-             | missing ]
-          ++ case hdr of
-               Just (Left h) -> ["* Missing (or bad) header file: " ++ h ]
-               _             -> []
-          ++ case libs of
-               []    -> []
-               [lib] -> ["* Missing C library: " ++ lib]
-               _     -> ["* Missing C libraries: " ++ intercalate ", " libs]
-          ++ [if plural then messagePlural else messageSingular | missing]
-          ++ case hdr of
-               Just (Left  _) -> [ headerCppMessage ]
-               Just (Right h) -> [ (if missing then "* " else "")
-                                   ++ "Bad header file: " ++ h
-                                 , headerCcMessage ]
-               _              -> []
-
-          where
-            plural  = length libs >= 2
-            -- Is there something missing? (as opposed to broken)
-            missing = not (null libs)
-                   || case hdr of Just (Left _) -> True; _ -> False
-
-        messageSingular =
-             "This problem can usually be solved by installing the system "
-          ++ "package that provides this library (you may need the "
-          ++ "\"-dev\" version). If the library is already installed "
-          ++ "but in a non-standard location then you can use the flags "
-          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
-          ++ "where it is."
-        messagePlural =
-             "This problem can usually be solved by installing the system "
-          ++ "packages that provide these libraries (you may need the "
-          ++ "\"-dev\" versions). If the libraries are already installed "
-          ++ "but in a non-standard location then you can use the flags "
-          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
-          ++ "where they are."
-        headerCppMessage =
-             "If the header file does exist, it may contain errors that "
-          ++ "are caught by the C compiler at the preprocessing stage. "
-          ++ "In this case you can re-run configure with the verbosity "
-          ++ "flag -v3 to see the error messages."
-        headerCcMessage =
-             "The header file contains a compile error. "
-          ++ "You can re-run configure with the verbosity flag "
-          ++ "-v3 to see the error messages from the C compiler."
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
