@@ -254,9 +254,32 @@ dependencyInconsistencies indepGoals index  =
     concatMap dependencyInconsistencies' subplans
   where
     subplans :: [SolverPlanIndex]
-    subplans = catMaybes $
-                 map (fmap Graph.fromList . Graph.closure index)
-                     (rootSets indepGoals index)
+    subplans = -- Not Graph.closure!!
+               map (nonSetupClosure index)
+                   (rootSets indepGoals index)
+
+-- NB: When we check for inconsistencies, packages from the setup
+-- scripts don't count as part of the closure (this way, we
+-- can build, e.g., Cabal-1.24.1 even if its setup script is
+-- built with Cabal-1.24.0).
+--
+-- This is a best effort function that swallows any non-existent
+-- SolverIds.
+nonSetupClosure :: SolverPlanIndex
+                -> [SolverId]
+                -> SolverPlanIndex
+nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
+ where
+    closure completed []             = completed
+    closure completed (pkgid:pkgids) =
+      case Graph.lookup pkgid index of
+        Nothing   -> closure completed pkgids
+        Just pkg  ->
+          case Graph.lookup (nodeKey pkg) completed of
+            Just _  -> closure completed  pkgids
+            Nothing -> closure completed' pkgids'
+              where completed' = Graph.insert pkg completed
+                    pkgids'    = CD.nonSetupDeps (resolverPackageDeps pkg) ++ pkgids
 
 -- | Compute the root sets of a plan
 --
