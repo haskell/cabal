@@ -51,7 +51,7 @@ module Distribution.Compat.Graph (
     empty,
     insert,
     deleteKey,
-    updateLookup,
+    deleteLookup,
     -- * Combine
     unionLeft,
     unionRight,
@@ -218,11 +218,11 @@ insert !n g = fromMap (Map.insert (nodeKey n) n (toMap g))
 deleteKey :: IsNode a => Key a -> Graph a -> Graph a
 deleteKey k g = fromMap (Map.delete k (toMap g))
 
--- | /O(log V)/. Lookup and update.  This function returns the changed
--- value if updated, and the original value if it was deleted.
-updateLookup :: IsNode a => (a -> Maybe a) -> Key a -> Graph a -> (Maybe a, Graph a)
-updateLookup f k g =
-    let (r, m') = Map.updateLookupWithKey (const f) k (toMap g)
+-- | /O(log V)/. Lookup and delete.  This function returns the deleted
+-- value if it existed.
+deleteLookup :: IsNode a => Key a -> Graph a -> (Maybe a, Graph a)
+deleteLookup k g =
+    let (r, m') = Map.updateLookupWithKey (\_ _ -> Nothing) k (toMap g)
     in (r, fromMap m')
 
 -- Combining
