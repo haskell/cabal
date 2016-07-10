@@ -347,6 +347,10 @@ relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
 -- should be updated.
 data ConfigFlags = ConfigFlags {
+    -- This is the same hack as in 'buildArgs' and 'copyArgs'.
+    -- TODO: Stop using this eventually when 'UserHooks' gets changed
+    configArgs :: [String],
+
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
@@ -435,6 +439,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
+    configArgs         = [],
     configPrograms_    = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
@@ -875,6 +880,7 @@ data CopyFlags = CopyFlags {
     copyAssumeDepsUpToDate   :: Flag Bool,
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
+    -- TODO: Stop using this eventually when 'UserHooks' gets changed
     copyArgs :: [String]
   }
   deriving (Show, Generic)

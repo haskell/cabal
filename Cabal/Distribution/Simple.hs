@@ -187,7 +187,8 @@ allSuffixHandlers hooks
 configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
-    let flags' = flags { configDistPref = toFlag distPref }
+    let flags' = flags { configDistPref = toFlag distPref
+                       , configArgs = args }
 
     -- See docs for 'HookedBuildInfo'
     pbi <- preConf hooks args flags'

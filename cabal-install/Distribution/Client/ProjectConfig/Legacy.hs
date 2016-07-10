@@ -532,6 +532,7 @@ convertToLegacyAllPackageConfig
     }
   where
     configFlags = ConfigFlags {
+      configArgs                = mempty,
       configPrograms_           = mempty,
       configProgramPaths        = mempty,
       configProgramArgs         = mempty,
@@ -595,6 +596,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
     }
   where
     configFlags = ConfigFlags {
+      configArgs                = mempty,
       configPrograms_           = configPrograms_ mempty,
       configProgramPaths        = Map.toList (getMapLast packageConfigProgramPaths),
       configProgramArgs         = Map.toList (getMapMappend packageConfigProgramArgs),
