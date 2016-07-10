@@ -1935,6 +1935,7 @@ setupHsConfigureFlags (ReadyPackage
     sanityCheckElaboratedConfiguredPackage sharedConfig pkg
         (Cabal.ConfigFlags {..})
   where
+    configArgs                = []
     configDistPref            = toFlag builddir
     configCabalFilePath       = mempty
     configVerbosity           = toFlag verbosity
