@@ -66,17 +66,17 @@ addLinking = (`runReader` M.empty) .  cata go
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
       env <- ask
-      cs' <- T.sequence $ P.mapWithKey (goP qpn) cs
-      let newCs = concatMap (linkChoices env qpn) (P.toList cs')
-      return $ PChoice qpn gr (cs' `P.union` P.fromList newCs)
+      let linkedCs = concatMap (linkChoices env qpn) (P.toList cs)
+          allCs = cs `P.union` P.fromList linkedCs
+      allCs' <- T.sequence $ P.mapWithKey (goP qpn) allCs
+      return $ PChoice qpn gr allCs'
     go _otherwise =
       innM _otherwise
 
     -- Recurse underneath package choices. Here we just need to make sure
     -- that we record the package choice so that it is available below
     goP :: QPN -> POption -> Linker (Tree a) -> Linker (Tree a)
-    goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
-    goP _ _ = alreadyLinked
+    goP (Q pp pn) (POption i _) = local (M.insertWith (++) (pn, i) [pp])
 
 linkChoices :: forall a. RelatedGoals -> QPN -> (POption, a) -> [(POption, a)]
 linkChoices related (Q _pp pn) (POption i Nothing, subtree) =
