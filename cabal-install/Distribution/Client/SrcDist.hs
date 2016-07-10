@@ -33,7 +33,7 @@ import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text ( display )
 import Distribution.Verbosity (Verbosity, normal, lessVerbose)
-import Distribution.Version   (Version(..), orLaterVersion)
+import Distribution.Version   (Version(..), orLaterVersion, intersectVersionRanges)
 
 import Distribution.Client.Utils
   (tryFindAddSourcePackageDesc)
@@ -147,8 +147,8 @@ createZipArchive verbosity pkg tmpDir targetPref = do
 
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
-allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
-allPackageSourceFiles verbosity packageDir = do
+allPackageSourceFiles :: Verbosity -> SetupScriptOptions -> FilePath -> IO [FilePath]
+allPackageSourceFiles verbosity setupOpts0 packageDir = do
   pkg <- do
     let err = "Error reading source files of package."
     desc <- tryFindAddSourcePackageDesc packageDir err
@@ -161,9 +161,11 @@ allPackageSourceFiles verbosity packageDir = do
                                   then lessVerbose verbosity else verbosity,
         sDistListSources = Flag file
         }
-      setupOpts = defaultSetupScriptOptions {
+      setupOpts = setupOpts0 {
         -- 'sdist --list-sources' was introduced in Cabal 1.18.
-        useCabalVersion = orLaterVersion $ Version [1,18,0] [],
+        useCabalVersion = intersectVersionRanges
+                            (orLaterVersion $ Version [1,18,0] [])
+                            (useCabalVersion setupOpts0),
         useWorkingDir = Just packageDir
         }
 
