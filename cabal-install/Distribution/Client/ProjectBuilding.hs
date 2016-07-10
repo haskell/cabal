@@ -1197,7 +1197,7 @@ buildInplaceUnpackedPackage verbosity
           --TODO: [required eventually] this doesn't track file
           --non-existence, so we could fail to rebuild if someone
           --adds a new file which changes behavior.
-          allSrcFiles <- allPackageSourceFiles verbosity srcdir
+          allSrcFiles <- allPackageSourceFiles verbosity scriptOptions srcdir
 
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus

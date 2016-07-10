@@ -38,6 +38,7 @@ import Distribution.Client.SrcDist (allPackageSourceFiles)
 import Distribution.Client.Sandbox.Index
   (ListIgnoredBuildTreeRefs (ListIgnored), RefTypesToList(OnlyLinks)
   ,listBuildTreeRefs)
+import Distribution.Client.SetupWrapper
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Compat.Time               (ModTime, getCurTime,
@@ -227,7 +228,9 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 isDepModified :: Verbosity -> ModTime -> AddSourceTimestamp -> IO Bool
 isDepModified verbosity now (packageDir, timestamp) = do
   debug verbosity ("Checking whether the dependency is modified: " ++ packageDir)
-  depSources <- allPackageSourceFiles verbosity packageDir
+  -- TODO: we should properly plumb the correct options through
+  -- instead of using defaultSetupScriptOptions
+  depSources <- allPackageSourceFiles verbosity defaultSetupScriptOptions packageDir
   go depSources
 
   where
