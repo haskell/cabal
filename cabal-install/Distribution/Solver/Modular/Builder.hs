@@ -102,17 +102,18 @@ data BuildType =
   | Instance QPN I PInfo QGoalReason  -- ^ build a tree for a concrete instance
   deriving Show
 
-build :: BuildState -> Tree QGoalReason
-build = ana go
+build :: BuildState -> Tree' QGoalReason
+build = ana' go
   where
-    go :: BuildState -> TreeF QGoalReason BuildState
+    go :: BuildState -> TreeF QGoalReason (() -> BuildState)
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
     -- it from the queue of open goals.
     go bs@(BS { rdeps = rds, open = gs, next = Goals })
       | P.null gs = DoneF rds
-      | otherwise = GoalChoiceF $ P.mapKeys close
+      | otherwise = GoalChoiceF $ addDummyArgs
+                                $ P.mapKeys close
                                 $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
                                 $ P.splits gs
 
@@ -135,7 +136,7 @@ build = ana go
       -- messages though.
       case M.lookup pn idx of
         Nothing  -> PChoiceF qpn gr (P.fromList [])
-        Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
+        Just pis -> PChoiceF qpn gr $ addDummyArgs (P.fromList (L.map (\ (i, info) ->
                                                            (POption i Nothing, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
@@ -145,7 +146,7 @@ build = ana go
     --
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-      FChoiceF qfn gr weak m (P.fromList (reorder b
+      FChoiceF qfn gr weak m $ addDummyArgs (P.fromList (reorder b
         [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
          (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })]))
       where
@@ -160,7 +161,7 @@ build = ana go
     -- (try enabling the stanza if possible by moving the True branch first).
 
     go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
-      SChoiceF qsn gr trivial (P.fromList
+      SChoiceF qsn gr trivial $ addDummyArgs $ (P.fromList
         [(False,                                                             bs  { next = Goals }),
          (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
       where
@@ -174,9 +175,14 @@ build = ana go
       go ((scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs)
              { next = Goals })
 
+    addDummyArgs :: P.PSQ k v -> P.PSQ k (() -> v)
+    addDummyArgs = P.map const
+
 -- | Interface to the tree builder. Just takes an index and a list of package names,
--- and computes the initial state and then the tree from there.
-buildTree :: Index -> IndependentGoals -> [PN] -> Tree QGoalReason
+-- and computes the initial state and then the tree from there. All subtrees
+-- take dummy arguments, so that they can be copied in later traversals without
+-- sharing data.
+buildTree :: Index -> IndependentGoals -> [PN] -> Tree' QGoalReason
 buildTree idx (IndependentGoals ind) igs =
     build BS {
         index = idx

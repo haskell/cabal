@@ -58,20 +58,34 @@ type Linker       = Reader RelatedGoals
 -- package instance. Whenever we make a choice, we extend the map. Whenever we
 -- find a choice, we look into the map in order to find out what link options we
 -- have to add.
-addLinking :: Tree a -> Tree a
-addLinking = (`runReader` M.empty) .  cata go
+--
+-- All subtrees of the input tree are functions. 'addLinking' creates linked
+-- nodes from unlinked nodes before applying the functions, which ensures that
+-- the subtrees do not share data. Otherwise, the sharing could cause a space
+-- leak.
+addLinking :: Tree' a -> Tree a
+addLinking = (`runReader` M.empty) . cata' go
   where
-    go :: TreeF a (Linker (Tree a)) -> Linker (Tree a)
+    go :: TreeF a (() -> Linker (Tree a)) -> Linker (Tree a)
 
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
       env <- ask
       let linkedCs = concatMap (linkChoices env qpn) (P.toList cs)
           allCs = cs `P.union` P.fromList linkedCs
-      allCs' <- T.sequence $ P.mapWithKey (goP qpn) allCs
+      allCs' <- T.sequence $ P.mapWithKey (goP qpn) $ applyChildren allCs
       return $ PChoice qpn gr allCs'
-    go _otherwise =
-      innM _otherwise
+    go (FChoiceF qfn gr t m cs) =
+      FChoice qfn gr t m <$> T.sequence (applyChildren cs)
+    go (SChoiceF qsn gr t   cs) =
+      SChoice qsn gr t   <$> T.sequence (applyChildren cs)
+    go (GoalChoiceF         cs)       =
+      GoalChoice         <$> T.sequence (applyChildren cs)
+    go (DoneF revDepMap)              = return $ Done revDepMap
+    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+
+    applyChildren :: P.PSQ k (() -> v) -> P.PSQ k v
+    applyChildren = P.map ($ ())
 
     -- Recurse underneath package choices. Here we just need to make sure
     -- that we record the package choice so that it is available below
