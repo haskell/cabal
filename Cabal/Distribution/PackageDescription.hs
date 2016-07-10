@@ -975,6 +975,23 @@ data ComponentName = CLibName   String
 
 instance Binary ComponentName
 
+-- Build-target-ish syntax
+instance Text ComponentName where
+    disp (CLibName str) = Disp.text ("lib:" ++ str)
+    disp (CExeName str) = Disp.text ("exe:" ++ str)
+    disp (CTestName str) = Disp.text ("test:" ++ str)
+    disp (CBenchName str) = Disp.text ("bench:" ++ str)
+
+    parse = do
+        ctor <- Parse.choice [ Parse.string "lib:" >> return CLibName
+                             , Parse.string "exe:" >> return CExeName
+                             , Parse.string "bench:" >> return CBenchName
+                             , Parse.string "test:" >> return CTestName ]
+        -- For now, component names coincide with package name syntax
+        -- (since they can show up in build-depends, which are parsed
+        -- as package names.)
+        fmap (ctor . unPackageName) parse
+
 defaultLibName :: PackageIdentifier -> ComponentName
 defaultLibName pid = CLibName (display (pkgName pid))
 
