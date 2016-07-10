@@ -404,11 +404,14 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
                             $ packagesThatDependOn plan pkgid ]
 
 -- | Lookup the reachable packages in the reverse dependency graph.
+-- Does NOT include the package for @pkgid@!
 --
-packagesThatDependOn :: GenericInstallPlan ipkg srcpkg iresult ifailure
+packagesThatDependOn :: (HasUnitId ipkg, HasUnitId srcpkg)
+                     => GenericInstallPlan ipkg srcpkg iresult ifailure
                      -> UnitId
                      -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-packagesThatDependOn plan pkgid = case Graph.revClosure (planIndex plan) [pkgid] of
+packagesThatDependOn plan pkgid = filter ((/= pkgid) . installedUnitId)
+                                $ case Graph.revClosure (planIndex plan) [pkgid] of
                                     Nothing -> []
                                     Just r -> r
 

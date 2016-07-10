@@ -7,4 +7,3 @@ library
   exposed-modules: Q
   build-depends: base
   -- missing a dep on p here, so expect failure initially
-
