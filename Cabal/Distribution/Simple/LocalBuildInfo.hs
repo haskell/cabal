@@ -38,9 +38,11 @@ module Distribution.Simple.LocalBuildInfo (
         foldComponent,
         componentName,
         componentBuildInfo,
-        componentBuildable,
+        componentEnabled,
+        componentDisabledReason,
+        ComponentDisabledReason(..),
         pkgComponents,
-        pkgBuildableComponents,
+        pkgEnabledComponents,
         lookupComponent,
         getComponent,
         maybeGetDefaultLibraryLocalBuildInfo,
@@ -57,7 +59,6 @@ module Distribution.Simple.LocalBuildInfo (
         withLibLBI,
         withExeLBI,
         withTestLBI,
-        testLBIs,
 
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -257,11 +258,28 @@ pkgComponents pkg =
 -- Thus this excludes non-buildable components and test suites or benchmarks
 -- that have been disabled.
 --
-pkgBuildableComponents :: PackageDescription -> [Component]
-pkgBuildableComponents = filter componentBuildable . pkgComponents
+pkgEnabledComponents :: PackageDescription -> [Component]
+pkgEnabledComponents = filter componentEnabled . pkgComponents
 
-componentBuildable :: Component -> Bool
-componentBuildable = buildable . componentBuildInfo
+componentEnabled :: Component -> Bool
+componentEnabled = isNothing . componentDisabledReason
+
+data ComponentDisabledReason = DisabledComponent
+                             | DisabledAllTests
+                             | DisabledAllBenchmarks
+
+componentDisabledReason :: Component -> Maybe ComponentDisabledReason
+componentDisabledReason (CLib  lib)
+  | not (buildable (libBuildInfo lib))      = Just DisabledComponent
+componentDisabledReason (CExe  exe)
+  | not (buildable (buildInfo exe))         = Just DisabledComponent
+componentDisabledReason (CTest tst)
+  | not (buildable (testBuildInfo tst))     = Just DisabledComponent
+  | not (testEnabled tst)                   = Just DisabledAllTests
+componentDisabledReason (CBench bm)
+  | not (buildable (benchmarkBuildInfo bm)) = Just DisabledComponent
+  | not (benchmarkEnabled bm)               = Just DisabledAllBenchmarks
+componentDisabledReason _                   = Nothing
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg (CLibName "") = lookupComponent pkg (defaultLibName (package pkg))
@@ -427,9 +445,6 @@ withTestLBI pkg lbi f =
         [ f test clbi
         | (clbi@TestComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
         , CTest test <- [getComponent pkg (componentLocalName clbi)] ]
-
-testLBIs :: LocalBuildInfo -> [ComponentLocalBuildInfo]
-testLBIs lbi = [ clbi | (clbi@TestComponentLocalBuildInfo{}, _) <- componentsConfigs lbi ]
 
 {-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
 withComponentsLBI :: PackageDescription -> LocalBuildInfo
