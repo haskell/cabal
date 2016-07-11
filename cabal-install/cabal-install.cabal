@@ -101,6 +101,14 @@ Extra-Source-Files:
   tests/IntegrationTests/regression/t3199/Main.hs
   tests/IntegrationTests/regression/t3199/Setup.hs
   tests/IntegrationTests/regression/t3199/test-3199.cabal
+  tests/IntegrationTests/regression/t3532.sh
+  tests/IntegrationTests/regression/t3532/cabal.project
+  tests/IntegrationTests/regression/t3532/p/P.hs
+  tests/IntegrationTests/regression/t3532/p/Setup.hs
+  tests/IntegrationTests/regression/t3532/p/p.cabal
+  tests/IntegrationTests/regression/t3532/q/Q.hs
+  tests/IntegrationTests/regression/t3532/q/Setup.hs
+  tests/IntegrationTests/regression/t3532/q/q.cabal
   tests/IntegrationTests/sandbox-reinstalls/p/Main.hs
   tests/IntegrationTests/sandbox-reinstalls/p/p.cabal
   tests/IntegrationTests/sandbox-reinstalls/q/Q.hs
