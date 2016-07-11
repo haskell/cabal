@@ -260,10 +260,10 @@ instance Semigroup GlobalFlags where
 -- * Config flags
 -- ------------------------------------------------------------
 
--- | Policy for relaxing upper bounds in dependencies. For example, given
--- 'build-depends: array >= 0.3 && < 0.5', are we allowed to relax the upper
--- bound and choose a version of 'array' that is greater or equal to 0.5? By
--- default the upper bounds are always strictly honored.
+-- | Generic data type for policy when relaxing bounds in dependencies.
+-- Don't use this directly: use 'AllowOlder' or 'AllowNewer' depending
+-- on whether or not you are relaxing an lower or upper bound
+-- (respectively).
 data RelaxDeps =
 
   -- | Default: honor the upper bounds in all dependencies, never choose
