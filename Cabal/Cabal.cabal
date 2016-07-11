@@ -273,6 +273,7 @@ library
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
+    Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
@@ -377,6 +378,7 @@ test-suite unit-tests
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
     UnitTests.Distribution.Compat.Time
+    UnitTests.Distribution.Compat.Graph
     UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
@@ -384,7 +386,9 @@ test-suite unit-tests
     UnitTests.Distribution.Version
   main-is: UnitTests.hs
   build-depends:
+    array,
     base,
+    containers,
     directory,
     filepath,
     tasty,
