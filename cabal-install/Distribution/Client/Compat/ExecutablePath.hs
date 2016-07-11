@@ -33,6 +33,7 @@ import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Foreign.Storable
 import System.Posix.Internals
+import System.Directory
 #endif
 
 -- GHC 7.0.* compatibility. 'System.Posix.Internals' in base-4.3.* doesn't
@@ -174,6 +175,7 @@ getExecutablePath =
             -- If argc > 0 then argv[0] is guaranteed by the standard
             -- to be a pointer to a null-terminated string.
             then peek p_argv >>= peek >>= peekFilePath
+                 >>= canonicalizePath
             else error $ "getExecutablePath: " ++ msg
   where msg = "no OS specific implementation and program name couldn't be " ++
               "found in argv"
