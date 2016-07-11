@@ -254,7 +254,11 @@ guessAuthorNameMail = fmap authorGuessPure authorGuessIO
 -- Ordered in increasing preference, since Flag-as-monoid is identical to
 -- Last.
 authorGuessPure :: AuthorGuessIO -> AuthorGuess
-authorGuessPure (AuthorGuessIO env darcsLocalF darcsGlobalF gitLocal gitGlobal)
+authorGuessPure (AuthorGuessIO { authorGuessEnv = env
+                               , authorGuessLocalDarcs = darcsLocalF
+                               , authorGuessGlobalDarcs = darcsGlobalF
+                               , authorGuessLocalGit = gitLocal
+                               , authorGuessGlobalGit = gitGlobal })
     = mconcat
         [ emailEnv env
         , gitGlobal

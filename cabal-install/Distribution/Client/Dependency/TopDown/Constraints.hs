@@ -96,7 +96,7 @@ data Constraints installed source reason
        constraintsPaired :: !(Map PackageName (Version, Version)),
 
        -- | Purely for the invariant, we keep a copy of the original index
-       constraintsIndex :: !(PackageIndex (InstalledOrSource installed source))
+       constraintsOriginal :: !(PackageIndex (InstalledOrSource installed source))
 
     }
 
@@ -110,13 +110,13 @@ data Constraints installed source reason
 data ExcludedPkg pkg reason
    = ExcludedPkg {
        excludedPkg :: pkg,
-       excludedPkgSrcInstReasons :: [reason], -- ^ reasons for excluding both source and installed instances
-       excludedPkgInstReasons    :: [reason], -- ^ reasons for excluding the installed instance
-       excludedPkgSrcReasons     :: [reason] -- ^ reasons for excluding the source instance
+       _excludedPkgSrcInstReasons :: [reason], -- ^ reasons for excluding both source and installed instances
+       _excludedPkgInstReasons    :: [reason], -- ^ reasons for excluding the installed instance
+       _excludedPkgSrcReasons     :: [reason] -- ^ reasons for excluding the source instance
        }
 
 instance Package pkg => Package (ExcludedPkg pkg reason) where
-  packageId (ExcludedPkg p _ _ _) = packageId p
+  packageId = packageId . excludedPkg
 
 
 -- | There is a conservation of packages property. Packages are never gained or
@@ -124,7 +124,10 @@ instance Package pkg => Package (ExcludedPkg pkg reason) where
 --
 invariant :: (Package installed, Package source)
           => Constraints installed source a -> Bool
-invariant (Constraints targets available excluded _ original) =
+invariant (Constraints { constraintsTargets = targets
+                       , constraintsAvailable = available
+                       , constraintsExcluded = excluded
+                       , constraintsOriginal = original }) =
 
     -- Relationship between available, excluded and original
     all check merged
@@ -186,8 +189,7 @@ invariant (Constraints targets available excluded _ original) =
 transitionsTo :: (Package installed, Package source)
               => Constraints installed source a
               -> Constraints installed source a -> Bool
-transitionsTo constraints @(Constraints _ available  excluded  _ _)
-              constraints'@(Constraints _ available' excluded' _ _) =
+transitionsTo constraints constraints' =
 
      invariant constraints && invariant constraints'
   && null availableGained  && null excludedLost
@@ -203,13 +205,13 @@ transitionsTo constraints @(Constraints _ available  excluded  _ _)
 
     availableChange =
       mergeBy (\a b -> packageId a `compare` packageId b)
-        (PackageIndex.allPackages available)
-        (PackageIndex.allPackages available')
+        (PackageIndex.allPackages (constraintsAvailable constraints))
+        (PackageIndex.allPackages (constraintsAvailable constraints'))
 
     excludedChange =
       mergeBy (\a b -> packageId a `compare` packageId b)
-        [ pkg | ExcludedPkg pkg _ _ _ <- PackageIndex.allPackages excluded  ]
-        [ pkg | ExcludedPkg pkg _ _ _ <- PackageIndex.allPackages excluded' ]
+        (map excludedPkg (PackageIndex.allPackages (constraintsExcluded constraints)))
+        (map excludedPkg (PackageIndex.allPackages (constraintsExcluded constraints')))
 
     lostAndGained mr rest = case mr of
       OnlyInLeft pkg                    -> Left pkg : rest
@@ -236,7 +238,13 @@ empty :: PackageIndex InstalledPackageEx
       -> PackageIndex UnconfiguredPackage
       -> Constraints InstalledPackageEx UnconfiguredPackage reason
 empty installed source =
-    Constraints targets pkgs excluded pairs pkgs
+    Constraints {
+        constraintsTargets = targets,
+        constraintsAvailable = pkgs,
+        constraintsExcluded = excluded,
+        constraintsPaired = pairs,
+        constraintsOriginal = pkgs
+    }
   where
     targets  = mempty
     excluded = mempty
@@ -260,23 +268,26 @@ empty installed source =
         || any ((pkgid2==) . packageId) (sourceDeps pkg1) ]
 
 
+-- NB: we don't export the record fields directly to prevent users from
+-- being to apply a record update.
+
 -- | The package targets.
 --
 packages :: Constraints installed source reason
          -> Set PackageName
-packages (Constraints ts _ _ _ _) = ts
+packages = constraintTargets
 
 
 -- | The package choices that are still available.
 --
 choices :: Constraints installed source reason
         -> PackageIndex (InstalledOrSource installed source)
-choices (Constraints _ available _ _ _) = available
+choices = constraintsAvailable
 
 isPaired :: Constraints installed source reason
          -> PackageId -> Maybe PackageId
-isPaired (Constraints _ _ _ pairs _) (PackageIdentifier name version) =
-  case Map.lookup name pairs of
+isPaired constraints (PackageIdentifier name version) =
+  case Map.lookup name (constraintsPairs constraints) of
     Just (v1, v2)
       | version == v1 -> Just (PackageIdentifier name v2)
       | version == v2 -> Just (PackageIdentifier name v1)
@@ -597,7 +608,7 @@ conflicting :: (Package installed, Package source)
             => Constraints installed source reason
             -> Dependency
             -> [(PackageId, [reason])]
-conflicting (Constraints _ _ excluded _ _) dep =
+conflicting constraints dep =
   [ (packageId pkg, reasonsAll ++ reasonsAvail ++ reasonsInstalled) --TODO
   | ExcludedPkg pkg reasonsAll reasonsAvail reasonsInstalled <-
-      PackageIndex.lookupDependency excluded dep ]
+      PackageIndex.lookupDependency (constraintsExcluded constraints) dep ]
