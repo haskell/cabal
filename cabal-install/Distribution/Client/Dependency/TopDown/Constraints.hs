@@ -93,7 +93,7 @@ data Constraints installed source reason
        constraintsExcluded :: !(PackageIndex (ExcludedPkg (InstalledOrSource installed source) reason)),
 
        -- | Paired choices, this is an ugly hack.
-       constraintsPaired :: !(Map PackageName (Version, Version)),
+       constraintsPairs :: !(Map PackageName (Version, Version)),
 
        -- | Purely for the invariant, we keep a copy of the original index
        constraintsOriginal :: !(PackageIndex (InstalledOrSource installed source))
@@ -242,7 +242,7 @@ empty installed source =
         constraintsTargets = targets,
         constraintsAvailable = pkgs,
         constraintsExcluded = excluded,
-        constraintsPaired = pairs,
+        constraintsPairs = pairs,
         constraintsOriginal = pkgs
     }
   where
@@ -275,7 +275,7 @@ empty installed source =
 --
 packages :: Constraints installed source reason
          -> Set PackageName
-packages = constraintTargets
+packages = constraintsTargets
 
 
 -- | The package choices that are still available.
