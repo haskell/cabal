@@ -87,10 +87,10 @@ import qualified Data.Map as Map
 import qualified Data.Array as Array
 import Data.Array ((!))
 import qualified Data.Tree as Tree
-import Data.Either
-import Data.Typeable
+import Data.Either (partitionEithers)
+import Data.Typeable (Typeable)
 import qualified Data.Foldable as Foldable
-import Control.DeepSeq
+import Control.DeepSeq (NFData(..))
 import Distribution.Compat.Binary (Binary(..))
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
@@ -186,7 +186,7 @@ instance Ord k => IsNode (Node k a) where
     nodeKey (N _ k _) = k
     nodeNeighbors (N _ _ ks) = ks
 
--- TODO: Maybe introduce a typeclass for items with just
+-- TODO: Maybe introduce a typeclass for items which just
 -- keys (so, Key associated type, and nodeKey method).  But
 -- I didn't need it here, so I didn't introduce it.
 
@@ -236,7 +236,7 @@ unionRight g g' = fromMap (Map.union (toMap g') (toMap g))
 -- | /O(V + V')/. Left-biased union, preferring entries from
 -- the first map when conflicts occur.
 unionLeft :: IsNode a => Graph a -> Graph a -> Graph a
-unionLeft g g' = fromMap (Map.union (toMap g) (toMap g'))
+unionLeft = flip unionRight
 
 -- Graph-like operations
 
