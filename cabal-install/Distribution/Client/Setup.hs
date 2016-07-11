@@ -353,7 +353,7 @@ configureOptions = commandOptions configureCommand
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion >= Version [1,23,0] [] = flags_latest
-  -- ^ NB: we expect the latest version to be the most common case.
+  -- NB: we expect the latest version to be the most common case.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,12,0] [] = flags_1_12_0
@@ -1717,7 +1717,7 @@ data SDistExFlags = SDistExFlags {
   }
   deriving (Show, Generic)
 
-data ArchiveFormat = TargzFormat | ZipFormat -- | ...
+data ArchiveFormat = TargzFormat | ZipFormat -- ...
   deriving (Show, Eq)
 
 defaultSDistExFlags :: SDistExFlags
