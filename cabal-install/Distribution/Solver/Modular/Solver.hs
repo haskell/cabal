@@ -87,14 +87,14 @@ data SolverConfig = SolverConfig {
 -- seems to be no statistically significant performance impact of cycle
 -- detection in the common case where there are no cycles.
 --
-solve :: SolverConfig ->                      -- ^ solver parameters
-         CompilerInfo ->
-         Index ->                             -- ^ all available packages as an index
-         PkgConfigDb ->                       -- ^ available pkg-config pkgs
-         (PN -> PackagePreferences) ->        -- ^ preferences
-         Map PN [LabeledPackageConstraint] -> -- ^ global constraints
-         [PN] ->                              -- ^ global goals
-         Log Message (Assignment, RevDepMap)
+solve :: SolverConfig                         -- ^ solver parameters
+      -> CompilerInfo
+      -> Index                                -- ^ all available packages as an index
+      -> PkgConfigDb                          -- ^ available pkg-config pkgs
+      -> (PN -> PackagePreferences)           -- ^ preferences
+      -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
+      -> [PN]                                 -- ^ global goals
+      -> Log Message (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
   detectCycles     $

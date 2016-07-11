@@ -598,7 +598,7 @@ loadConfigOrSandboxConfig verbosity globalFlags = do
     -- A @cabal.sandbox.config@ file (and possibly @cabal.config@) is present.
     SandboxPackageEnvironment -> do
       (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
-                              -- ^ Prints an error message and exits on error.
+                              -- Prints an error message and exits on error.
       let config = pkgEnvSavedConfig pkgEnv
       return (UseSandbox sandboxDir, config)
 

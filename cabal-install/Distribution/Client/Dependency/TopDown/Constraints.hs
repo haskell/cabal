@@ -76,27 +76,29 @@ import Control.Exception
 -- constraints.
 --
 data Constraints installed source reason
-   = Constraints
+   = Constraints {
 
        -- | Targets that we know we need. This is the set for which we
        -- guarantee the constraints are satisfiable.
-       !(Set PackageName)
+       constraintsTargets :: !(Set PackageName),
 
        -- | The available/remaining set. These are packages that have available
        -- choices remaining. This is guaranteed to cover the target packages,
        -- but can also cover other packages in the environment. New targets can
        -- only be added if there are available choices remaining for them.
-       !(PackageIndex (InstalledOrSource installed source))
+       constraintsAvailable :: !(PackageIndex (InstalledOrSource installed source)),
 
        -- | The excluded set. Choices that we have excluded by applying
        -- constraints. Excluded choices are tagged with the reason.
-       !(PackageIndex (ExcludedPkg (InstalledOrSource installed source) reason))
+       constraintsExcluded :: !(PackageIndex (ExcludedPkg (InstalledOrSource installed source) reason)),
 
        -- | Paired choices, this is an ugly hack.
-       !(Map PackageName (Version, Version))
+       constraintsPaired :: !(Map PackageName (Version, Version)),
 
        -- | Purely for the invariant, we keep a copy of the original index
-       !(PackageIndex (InstalledOrSource installed source))
+       constraintsIndex :: !(PackageIndex (InstalledOrSource installed source))
+
+    }
 
 
 -- | Reasons for excluding all, or some choices for a package version.
@@ -106,10 +108,12 @@ data Constraints installed source reason
 -- from reasons for constraints that excluded just one instance.
 --
 data ExcludedPkg pkg reason
-   = ExcludedPkg pkg
-       [reason] -- ^ reasons for excluding both source and installed instances
-       [reason] -- ^ reasons for excluding the installed instance
-       [reason] -- ^ reasons for excluding the source instance
+   = ExcludedPkg {
+       excludedPkg :: pkg,
+       excludedPkgSrcInstReasons :: [reason], -- ^ reasons for excluding both source and installed instances
+       excludedPkgInstReasons    :: [reason], -- ^ reasons for excluding the installed instance
+       excludedPkgSrcReasons     :: [reason] -- ^ reasons for excluding the source instance
+       }
 
 instance Package pkg => Package (ExcludedPkg pkg reason) where
   packageId (ExcludedPkg p _ _ _) = packageId p
