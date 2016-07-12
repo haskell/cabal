@@ -4,8 +4,11 @@ module Distribution.Solver.Modular.Tree
     , POption(..)
     , Tree(..)
     , TreeF(..)
+    , Tree'(..)
     , ana
+    , ana'
     , cata
+    , cata'
     , choices
     , dchoices
     , inn
@@ -111,6 +114,8 @@ data TreeF a b =
   | FailF       (ConflictSet QPN) FailReason
   deriving (Functor, Foldable, Traversable)
 
+newtype Tree' a = Tree' (TreeF a (() -> Tree' a))
+
 out :: Tree a -> TreeF a (Tree a)
 out (PChoice    p i     ts) = PChoiceF    p i     ts
 out (FChoice    p i b m ts) = FChoiceF    p i b m ts
@@ -119,6 +124,14 @@ out (GoalChoice         ts) = GoalChoiceF         ts
 out (Done       x         ) = DoneF       x
 out (Fail       c x       ) = FailF       c x
 
+out' :: Tree' a -> TreeF a (() -> Tree' a)
+out' (Tree' (PChoiceF    p i     ts)) = PChoiceF    p i     ts
+out' (Tree' (FChoiceF    p i b m ts)) = FChoiceF    p i b m ts
+out' (Tree' (SChoiceF    p i b   ts)) = SChoiceF    p i b   ts
+out' (Tree' (GoalChoiceF         ts)) = GoalChoiceF         ts
+out' (Tree' (DoneF       x         )) = DoneF       x
+out' (Tree' (FailF       c x       )) = FailF       c x
+
 inn :: TreeF a (Tree a) -> Tree a
 inn (PChoiceF    p i     ts) = PChoice    p i     ts
 inn (FChoiceF    p i b m ts) = FChoice    p i b m ts
@@ -126,6 +139,14 @@ inn (SChoiceF    p i b   ts) = SChoice    p i b   ts
 inn (GoalChoiceF         ts) = GoalChoice         ts
 inn (DoneF       x         ) = Done       x
 inn (FailF       c x       ) = Fail       c x
+
+inn' :: TreeF a (() -> Tree' a) -> Tree' a
+inn' (PChoiceF    p i     ts) = Tree' $ PChoiceF    p i     ts
+inn' (FChoiceF    p i b m ts) = Tree' $ FChoiceF    p i b m ts
+inn' (SChoiceF    p i b   ts) = Tree' $ SChoiceF    p i b   ts
+inn' (GoalChoiceF         ts) = Tree' $ GoalChoiceF         ts
+inn' (DoneF       x         ) = Tree' $ DoneF       x
+inn' (FailF       c x       ) = Tree' $ FailF       c x
 
 innM :: Monad m => TreeF a (m (Tree a)) -> m (Tree a)
 innM (PChoiceF    p i     ts) = liftM (PChoice    p i    ) (sequence ts)
@@ -172,6 +193,9 @@ zeroOrOneChoices (Fail       _ _       ) = True
 cata :: (TreeF a b -> b) -> Tree a -> b
 cata phi x = (phi . fmap (cata phi) . out) x
 
+cata' :: (TreeF a (() -> b) -> b) -> Tree' a -> b
+cata' phi x = (phi . fmap (cata' phi .) . out') x
+
 trav :: (TreeF a (Tree b) -> TreeF b (Tree b)) -> Tree a -> Tree b
 trav psi x = cata (inn . psi) x
 
@@ -182,3 +206,6 @@ para phi = phi . fmap (\ x -> (para phi x, x)) . out
 -- | Anamorphism on trees.
 ana :: (b -> TreeF a b) -> b -> Tree a
 ana psi = inn . fmap (ana psi) . psi
+
+ana' :: (b -> TreeF a (() -> b)) -> b -> Tree' a
+ana' psi = inn' . fmap (ana' psi .) . psi
