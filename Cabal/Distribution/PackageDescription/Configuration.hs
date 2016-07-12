@@ -48,6 +48,7 @@ import Distribution.Text
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Compat.Semigroup as Semi
+import Distribution.Simple.LocalBuildInfo
 
 import Control.Arrow (first)
 import Data.Char ( isAlphaNum )
@@ -211,6 +212,7 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
 resolveWithFlags ::
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
+  -> ComponentEnabledSpec
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerInfo  -- ^ Compiler information
@@ -220,7 +222,7 @@ resolveWithFlags ::
   -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
-resolveWithFlags dom os arch impl constrs trees checkDeps =
+resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
     either (Left . fromDepMapUnion) Right $ explore (build [] dom)
   where
     extraConstrs = toDepMap constrs
@@ -245,7 +247,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
                 -- apply additional constraints to all dependencies
                 first (`constrainBy` extraConstrs) .
                 simplifyCondTree (env flags)
-            deps = overallDependencies targetSet
+            deps = overallDependencies enabled targetSet
         in case checkDeps (fromDepMap deps) of
              DepOk | null ts   -> Right (targetSet, flags)
                    | otherwise -> tryAll $ map explore ts
@@ -416,15 +418,15 @@ newtype TargetSet a = TargetSet [(DependencyMap, a)]
 
 -- | Combine the target-specific dependencies in a TargetSet to give the
 -- dependencies for the package as a whole.
-overallDependencies :: TargetSet PDTagged -> DependencyMap
-overallDependencies (TargetSet targets) = mconcat depss
+overallDependencies :: ComponentEnabledSpec -> TargetSet PDTagged -> DependencyMap
+overallDependencies enabled (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
     removeDisabledSections :: PDTagged -> Bool
-    removeDisabledSections (Lib _ l)     = buildable (libBuildInfo l)
-    removeDisabledSections (Exe _ e)   = buildable (buildInfo e)
-    removeDisabledSections (Test _ t)  = testEnabled t && buildable (testBuildInfo t)
-    removeDisabledSections (Bench _ b) = benchmarkEnabled b && buildable (benchmarkBuildInfo b)
+    removeDisabledSections (Lib _ l)   = componentEnabled enabled (CLib l)
+    removeDisabledSections (Exe _ e)   = componentEnabled enabled (CExe e)
+    removeDisabledSections (Test _ t)  = componentEnabled enabled (CTest t)
+    removeDisabledSections (Bench _ b) = componentEnabled enabled (CBench b)
     removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.
@@ -505,6 +507,10 @@ flattenTaggedTargets (TargetSet targets) = foldr untag ([], [], [], []) targets
 -- Convert GenericPackageDescription to PackageDescription
 --
 
+-- ezyang: Arguably, this should be:
+--      data PDTagged = PDComp String Component
+--                    | PDNull
+-- Also, what the heck is the String? The componentName?
 data PDTagged = Lib String Library
               | Exe String Executable
               | Test String TestSuite
@@ -549,6 +555,7 @@ instance Semigroup PDTagged where
 --
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
+  -> ComponentEnabledSpec
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
                           -- available packages?  If this is unknown then use
                           -- True.
@@ -560,7 +567,7 @@ finalizePackageDescription ::
             (PackageDescription, FlagAssignment)
              -- ^ Either missing dependencies or the resolved package
              -- description along with the flag assignments chosen.
-finalizePackageDescription userflags satisfyDep
+finalizePackageDescription userflags enabled satisfyDep
         (Platform arch os) impl constraints
         (GenericPackageDescription pkg flags libs0 exes0 tests0 bms0) =
     case resolveFlags of
@@ -569,7 +576,7 @@ finalizePackageDescription userflags satisfyDep
                     , executables = exes'
                     , testSuites = tests'
                     , benchmarks = bms'
-                    , buildDepends = fromDepMap (overallDependencies targetSet)
+                    , buildDepends = fromDepMap (overallDependencies enabled targetSet)
                     }
               , flagVals )
 
@@ -582,7 +589,7 @@ finalizePackageDescription userflags satisfyDep
                 ++ map (\(name,tree) -> mapTreeData (Bench name) tree) bms0
 
     resolveFlags =
-        case resolveWithFlags flagChoices os arch impl constraints condTrees check of
+        case resolveWithFlags flagChoices enabled os arch impl constraints condTrees check of
           Right (targetSet, fs) ->
               let (libs, exes, tests, bms) = flattenTaggedTargets targetSet in
               Right ( (map (\(n,l) -> (libFillInDefaults l) { libName = n }) libs,

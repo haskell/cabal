@@ -38,11 +38,9 @@ module Distribution.Simple.LocalBuildInfo (
         foldComponent,
         componentName,
         componentBuildInfo,
-        componentEnabled,
-        componentDisabledReason,
-        ComponentDisabledReason(..),
+        componentBuildable,
         pkgComponents,
-        pkgEnabledComponents,
+        pkgBuildableComponents,
         lookupComponent,
         getComponent,
         maybeGetDefaultLibraryLocalBuildInfo,
@@ -58,7 +56,19 @@ module Distribution.Simple.LocalBuildInfo (
         withComponentsLBI,
         withLibLBI,
         withExeLBI,
+        withBenchLBI,
         withTestLBI,
+        enabledTestLBIs,
+        enabledBenchLBIs,
+        enabledComponents,
+
+        -- $buildable_vs_enabled_components
+
+        ComponentEnabledSpec(..),
+        defaultComponentEnabled,
+        componentEnabled,
+        componentDisabledReason,
+        ComponentDisabledReason(..),
 
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -102,6 +112,8 @@ data LocalBuildInfo = LocalBuildInfo {
         -- Needed to re-run configuration when .cabal is out of date
         flagAssignment :: FlagAssignment,
         -- ^ The final set of flags which were picked for this package
+        componentEnabledSpec :: ComponentEnabledSpec,
+        -- ^ What components were enabled during configuration, and why.
         extraConfigArgs     :: [String],
         -- ^ Extra args on the command line for the configuration step.
         -- Needed to re-run configuration when .cabal is out of date
@@ -151,6 +163,76 @@ data LocalBuildInfo = LocalBuildInfo {
   } deriving (Generic, Read, Show)
 
 instance Binary LocalBuildInfo
+
+-- $buildable_vs_enabled_components
+-- #buildable_vs_enabled_components#
+--
+-- = Note: Buildable versus enabled components
+-- What's the difference between a buildable component (ala
+-- 'componentBuildable') versus enabled component (ala
+-- 'componentEnabled')?
+--
+-- A component is __buildable__ if, after resolving flags and
+-- conditionals, there is no @buildable: False@ property in it.
+-- This is a /static/ property that arises from the
+-- Cabal file and the package description flattening; once we have
+-- a 'PackageDescription' buildability is known.
+--
+-- A component is __enabled__ if it is buildable, and the user
+-- configured (@./Setup configure@) the package to build it,
+-- e.g., using @--enable-tests@ or @--enable-benchmarks@.
+-- Once we have a 'LocalBuildInfo', whether or not a component
+-- is enabled is known.
+--
+-- Generally speaking, most Cabal API code cares if a component
+-- is enabled, as opposed to buildable. (For example, if you
+-- want to run a preprocessor on each component prior to building
+-- them, you want to run this on each /enabled/ component.)
+
+-- | Describes what components are enabled by user-interaction.
+-- See also this note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+--
+-- @since 1.26.0.0
+data ComponentEnabledSpec
+    = ComponentEnabledSpec {
+        testsEnabled :: Bool,
+        benchmarksEnabled :: Bool
+   }
+  deriving (Generic, Read, Show)
+instance Binary ComponentEnabledSpec
+
+-- | The default set of enabled components.  Historically tests and
+-- benchmarks are NOT enabled by default.
+--
+-- @since 1.26.0.0
+defaultComponentEnabled :: ComponentEnabledSpec
+defaultComponentEnabled = ComponentEnabledSpec False False
+
+-- | Is this component enabled?  See also this note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+--
+-- @since 1.26.0.0
+componentEnabled :: ComponentEnabledSpec -> Component -> Bool
+componentEnabled enabled = isNothing . componentDisabledReason enabled
+
+-- | Is this component disabled, and if so, why?
+--
+-- @since 1.26.0.0
+componentDisabledReason :: ComponentEnabledSpec -> Component
+                        -> Maybe ComponentDisabledReason
+componentDisabledReason enabled (CTest _)
+    | not (testsEnabled enabled) = Just DisabledAllTests
+componentDisabledReason enabled (CBench _)
+    | not (benchmarksEnabled enabled) = Just DisabledAllBenchmarks
+componentDisabledReason _ _ = Nothing
+
+-- | A reason explaining why a component is disabled.
+--
+-- @since 1.26.0.0
+data ComponentDisabledReason = DisabledComponent
+                             | DisabledAllTests
+                             | DisabledAllBenchmarks
 
 -- TODO: Get rid of these functions, as much as possible.  They are
 -- a bit useful in some cases, but you should be very careful!
@@ -245,7 +327,7 @@ componentName =
                 (CTestName . testName)
                 (CBenchName . benchmarkName)
 
--- | All the components in the package (libs, exes, or test suites).
+-- | All the components in the package.
 --
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
@@ -254,32 +336,24 @@ pkgComponents pkg =
  ++ [ CTest tst | tst <- testSuites  pkg ]
  ++ [ CBench bm | bm  <- benchmarks  pkg ]
 
--- | All the components in the package that are buildable and enabled.
--- Thus this excludes non-buildable components and test suites or benchmarks
--- that have been disabled.
+-- | A list of all components in the package that are buildable,
+-- i.e., were not marked with @buildable: False@.  This does NOT
+-- indicate if we are actually going to build the component,
+-- see 'enabledComponents' instead.
 --
-pkgEnabledComponents :: PackageDescription -> [Component]
-pkgEnabledComponents = filter componentEnabled . pkgComponents
+-- @since 1.26.0.0
+--
+pkgBuildableComponents :: PackageDescription -> [Component]
+pkgBuildableComponents = filter componentBuildable . pkgComponents
 
-componentEnabled :: Component -> Bool
-componentEnabled = isNothing . componentDisabledReason
-
-data ComponentDisabledReason = DisabledComponent
-                             | DisabledAllTests
-                             | DisabledAllBenchmarks
-
-componentDisabledReason :: Component -> Maybe ComponentDisabledReason
-componentDisabledReason (CLib  lib)
-  | not (buildable (libBuildInfo lib))      = Just DisabledComponent
-componentDisabledReason (CExe  exe)
-  | not (buildable (buildInfo exe))         = Just DisabledComponent
-componentDisabledReason (CTest tst)
-  | not (buildable (testBuildInfo tst))     = Just DisabledComponent
-  | not (testEnabled tst)                   = Just DisabledAllTests
-componentDisabledReason (CBench bm)
-  | not (buildable (benchmarkBuildInfo bm)) = Just DisabledComponent
-  | not (benchmarkEnabled bm)               = Just DisabledAllBenchmarks
-componentDisabledReason _                   = Nothing
+-- | Is a component buildable (i.e., not marked with @buildable: False@)?
+-- See also this note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+--
+-- @since 1.26.0.0
+--
+componentBuildable :: Component -> Bool
+componentBuildable = buildable . componentBuildInfo
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg (CLibName "") = lookupComponent pkg (defaultLibName (package pkg))
@@ -416,9 +490,8 @@ componentNameToUnitIds lbi cname =
     | (clbi, _) <- componentsConfigs lbi
     , componentName (getLocalComponent (localPkgDescr lbi) clbi) == cname ]
 
--- | Perform the action on each buildable 'library' in the package
--- description.  Extended version of 'withLib' that also gives
--- corresponding build info.
+-- | Perform the action on each enabled 'library' in the package
+-- description with the 'ComponentLocalBuildInfo'.
 withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withLibLBI pkg lbi f =
@@ -427,7 +500,7 @@ withLibLBI pkg lbi f =
         | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
         , CLib lib <- [getComponent pkg (componentLocalName clbi)] ]
 
--- | Perform the action on each buildable 'Executable' in the package
+-- | Perform the action on each enabled 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
 -- build info.
 withExeLBI :: PackageDescription -> LocalBuildInfo
@@ -438,13 +511,42 @@ withExeLBI pkg lbi f =
         | (clbi@ExeComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
         , CExe exe <- [getComponent pkg (componentLocalName clbi)] ]
 
+-- | Perform the action on each enabled 'Benchmark' in the package
+-- description.
+withBenchLBI :: PackageDescription -> LocalBuildInfo
+            -> (Benchmark -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+withBenchLBI pkg lbi f =
+    sequence_ [ f test clbi | (test, clbi) <- enabledBenchLBIs pkg lbi ]
+
 withTestLBI :: PackageDescription -> LocalBuildInfo
             -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withTestLBI pkg lbi f =
-    sequence_
-        [ f test clbi
+    sequence_ [ f test clbi | (test, clbi) <- enabledTestLBIs pkg lbi ]
+
+enabledTestLBIs :: PackageDescription -> LocalBuildInfo
+             -> [(TestSuite, ComponentLocalBuildInfo)]
+enabledTestLBIs pkg lbi =
+        [ (test, clbi)
         | (clbi@TestComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
         , CTest test <- [getComponent pkg (componentLocalName clbi)] ]
+
+enabledBenchLBIs :: PackageDescription -> LocalBuildInfo
+             -> [(Benchmark, ComponentLocalBuildInfo)]
+enabledBenchLBIs pkg lbi =
+        [ (test, clbi)
+        | (clbi@BenchComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
+        , CBench test <- [getComponent pkg (componentLocalName clbi)] ]
+
+-- | Get a list of all enabled 'Component's (both buildable and
+-- requested by the user at configure-time).
+--
+-- @since 1.26.0.0
+enabledComponents :: PackageDescription -> LocalBuildInfo
+                  -> [Component]
+enabledComponents pkg lbi =
+        [ getComponent pkg (componentLocalName clbi)
+        | (clbi, _) <- componentsConfigs lbi ]
+
 
 {-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
 withComponentsLBI :: PackageDescription -> LocalBuildInfo

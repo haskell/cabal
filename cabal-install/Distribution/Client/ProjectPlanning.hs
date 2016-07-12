@@ -1066,7 +1066,7 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgSourceId         = pkgid
         pkgDescription      = let Right (desc, _) =
                                     PD.finalizePackageDescription
-                                    flags (const True)
+                                    flags enabled (const True)
                                     platform (compilerInfo compiler)
                                     [] gdesc
                                in desc
@@ -1074,6 +1074,7 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgFlagDefaults     = [ (Cabal.flagName flag, Cabal.flagDefault flag)
                               | flag <- PD.genPackageFlags gdesc ]
         pkgDependencies     = deps
+        enabled = enableStanzas stanzas
         pkgStanzasAvailable = Set.fromList stanzas
         pkgStanzasRequested =
             -- NB: even if a package stanza is requested, if the package

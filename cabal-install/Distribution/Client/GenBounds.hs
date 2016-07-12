@@ -33,6 +33,8 @@ import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
+import Distribution.Simple.LocalBuildInfo
+         ( defaultComponentEnabled )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
 import Distribution.Simple.Program
@@ -107,7 +109,10 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
     cwd <- getCurrentDirectory
     path <- tryFindPackageDesc cwd
     gpd <- readPackageDescription verbosity path
-    let epd = finalizePackageDescription [] (const True) platform cinfo [] gpd
+    -- NB: We don't enable tests or benchmarks, since often they
+    -- don't really have useful bounds.
+    let epd = finalizePackageDescription [] defaultComponentEnabled
+                    (const True) platform cinfo [] gpd
     case epd of
       Left _ -> putStrLn "finalizePackageDescription failed"
       Right (pd,_) -> do

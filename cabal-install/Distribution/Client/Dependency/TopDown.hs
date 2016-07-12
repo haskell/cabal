@@ -21,7 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( UnresolvedPkgLoc
-         , UnresolvedSourcePackage, enableStanzas )
+         , UnresolvedSourcePackage )
 
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -54,6 +54,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.DependencyResolver
 import           Distribution.Solver.Types.InstalledPreference
 import           Distribution.Solver.Types.LabeledPackageConstraint
+import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
@@ -395,8 +396,8 @@ pruneBottomUp platform comp constraints =
                               | dep <- missing ]
 
     configure cs (UnconfiguredPackage (SourcePackage _ pkg _ _) _ flags stanzas) =
-      finalizePackageDescription flags (dependencySatisfiable cs)
-                                 platform comp [] (enableStanzas stanzas pkg)
+      finalizePackageDescription flags (enableStanzas stanzas) (dependencySatisfiable cs)
+                                 platform comp [] pkg
     dependencySatisfiable cs =
       not . null . PackageIndex.lookupDependency (Constraints.choices cs)
 
@@ -424,9 +425,8 @@ configurePackage platform cinfo available spkg = case spkg of
                                        (configure apkg)
   where
   configure (UnconfiguredPackage apkg@(SourcePackage _ p _ _) _ flags stanzas) =
-    case finalizePackageDescription flags dependencySatisfiable
-                                    platform cinfo []
-                                    (enableStanzas stanzas p) of
+    case finalizePackageDescription flags (enableStanzas stanzas) dependencySatisfiable
+                                    platform cinfo [] p of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $
         SemiConfiguredPackage apkg flags' stanzas (externalBuildDepends pkg)

@@ -373,6 +373,12 @@ configure (pkg_descr0', pbi) cfg = do
     let internalPackageSet :: InstalledPackageIndex
         internalPackageSet = getInternalPackages pkg_descr0
 
+    -- Make a data structure describing what components are enabled.
+    let enabled :: ComponentEnabledSpec
+        enabled = ComponentEnabledSpec
+                    { testsEnabled = fromFlag (configTests cfg)
+                    , benchmarksEnabled = fromFlag (configBenchmarks cfg) }
+
     -- allConstraints:  The set of all 'Dependency's we have.  Used ONLY
     --                  to 'configureFinalizedPackage'.
     -- requiredDepsMap: A map from 'PackageName' to the specifically
@@ -410,7 +416,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- cleaner to then configure the dependencies afterwards.
     (pkg_descr :: PackageDescription,
      flags     :: FlagAssignment)
-        <- configureFinalizedPackage verbosity cfg
+        <- configureFinalizedPackage verbosity cfg enabled
                 allConstraints
                 (dependencySatisfiable
                     (fromFlagOrDefault False (configExactConfiguration cfg))
@@ -571,7 +577,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- From there, we build a ComponentLocalBuildInfo for each of the
     -- components, which lets us actually build each component.
     buildComponents <-
-      case mkComponentsGraph pkg_descr internalPkgDeps of
+      case mkComponentsGraph enabled pkg_descr internalPkgDeps of
         Left  componentCycle -> reportComponentCycle componentCycle
         Right comps          ->
           mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
@@ -668,6 +674,7 @@ configure (pkg_descr0', pbi) cfg = do
     let lbi = LocalBuildInfo {
                 configFlags         = cfg',
                 flagAssignment      = flags,
+                componentEnabledSpec = enabled,
                 extraConfigArgs     = [],  -- Currently configure does not
                                            -- take extra args, but if it
                                            -- did they would go here.
@@ -892,6 +899,7 @@ relaxPackageDeps (RelaxDepsSome allowNewerDeps') gpd =
 configureFinalizedPackage
     :: Verbosity
     -> ConfigFlags
+    -> ComponentEnabledSpec
     -> [Dependency]
     -> (Dependency -> Bool) -- ^ tests if a dependency is satisfiable.
                             -- Might say it's satisfiable even when not.
@@ -899,27 +907,18 @@ configureFinalizedPackage
     -> Platform
     -> GenericPackageDescription
     -> IO (PackageDescription, FlagAssignment)
-configureFinalizedPackage verbosity cfg
+configureFinalizedPackage verbosity cfg enabled
   allConstraints satisfies comp compPlatform pkg_descr0 = do
-    let enableTest t = t { testEnabled = fromFlag (configTests cfg) }
-        flaggedTests = map (\(n, t) -> (n, mapTreeData enableTest t))
-                           (condTestSuites pkg_descr0)
-        enableBenchmark bm = bm { benchmarkEnabled =
-                                     fromFlag (configBenchmarks cfg) }
-        flaggedBenchmarks = map (\(n, bm) ->
-                                  (n, mapTreeData enableBenchmark bm))
-                           (condBenchmarks pkg_descr0)
-        pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
-                                  , condBenchmarks = flaggedBenchmarks }
 
     (pkg_descr0', flags) <-
             case finalizePackageDescription
                    (configConfigurationsFlags cfg)
+                   enabled
                    satisfies
                    compPlatform
                    (compilerInfo comp)
                    allConstraints
-                   pkg_descr0''
+                   pkg_descr0
             of Right r -> return r
                Left missing ->
                    die $ "Encountered missing dependencies:\n"
@@ -1435,13 +1434,15 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 -- (although it is in the absence of Backpack.)
 --
 -- TODO: tighten up the type of 'internalPkgDeps'
-mkComponentsGraph :: PackageDescription
+mkComponentsGraph :: ComponentEnabledSpec
+                  -> PackageDescription
                   -> [PackageId]
                   -> Either [ComponentName]
                             [(Component, [ComponentName])]
-mkComponentsGraph pkg_descr internalPkgDeps =
+mkComponentsGraph enabled pkg_descr internalPkgDeps =
     let graph = [ (c, componentName c, componentDeps c)
-                | c <- pkgEnabledComponents pkg_descr ]
+                | c <- pkgBuildableComponents pkg_descr
+                , componentEnabled enabled c ]
      in case checkComponentsCyclic graph of
           Just ccycle -> Left  [ cname | (_,cname,_) <- ccycle ]
           Nothing     -> Right [ (c, cdeps) | (c, _, cdeps) <- topSortFromEdges graph ]

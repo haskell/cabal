@@ -91,7 +91,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
   -- packages, we'll have to relax this.
   doRegister = do
     targets <- readBuildTargets pkg_descr (regArgs flags)
-    targets' <- checkBuildTargets verbosity pkg_descr targets
+    targets' <- checkBuildTargets verbosity pkg_descr lbi targets
 
     -- It's important to register in build order, because ghc-pkg
     -- will complain if a dependency is not registered.

@@ -43,6 +43,7 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Simple.LocalBuildInfo hiding (compiler)
 import Language.Haskell.Extension
 
 import Data.Maybe
@@ -1283,7 +1284,7 @@ checkPackageVersions pkg =
     -- open upper bound. To get a typical configuration we finalise
     -- using no package index and the current platform.
     finalised = finalizePackageDescription
-                              [] (const True) buildPlatform
+                              [] defaultComponentEnabled (const True) buildPlatform
                               (unknownCompilerInfo
                                 (CompilerId buildCompilerFlavor (Version [] [])) NoAbiTag)
                               [] pkg

@@ -81,7 +81,7 @@ build pkg_descr lbi flags suffixes
   -- a --assume-deps-up-to-date with multiple arguments. Arguably, we should
   -- error early in this case.
   targets <- readBuildTargets pkg_descr (buildArgs flags)
-  (cname, _) <- checkBuildTargets verbosity pkg_descr targets >>= \r -> case r of
+  (cname, _) <- checkBuildTargets verbosity pkg_descr lbi targets >>= \r -> case r of
               [] -> die "In --assume-deps-up-to-date mode you must specify a target"
               [target'] -> return target'
               _ -> die "In --assume-deps-up-to-date mode you can only build a single target"
@@ -106,7 +106,7 @@ build pkg_descr lbi flags suffixes
                  lbi' suffixes comp clbi distPref
  | otherwise = do
   targets  <- readBuildTargets pkg_descr (buildArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr targets
+  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
   let componentsToBuild = componentsInBuildOrder lbi (map fst targets')
   info verbosity $ "Component build order: "
                 ++ intercalate ", " (map (showComponentName . componentLocalName) componentsToBuild)
@@ -145,9 +145,10 @@ repl pkg_descr lbi flags suffixes args = do
 
   targets  <- readBuildTargets pkg_descr args
   targets' <- case targets of
+    -- This seems DEEPLY questionable.
     []       -> return $ take 1 [ componentName c
-                                | c <- pkgEnabledComponents pkg_descr ]
-    [target] -> fmap (map fst) (checkBuildTargets verbosity pkg_descr [target])
+                                | c <- pkgBuildableComponents pkg_descr ]
+    [target] -> fmap (map fst) (checkBuildTargets verbosity pkg_descr lbi [target])
     _        -> die $ "The 'repl' command does not support multiple targets at once."
   let componentsToBuild = componentsInBuildOrder lbi targets'
       componentForRepl  = last componentsToBuild

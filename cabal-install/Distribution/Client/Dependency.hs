@@ -74,8 +74,7 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
-         , UnresolvedPkgLoc, UnresolvedSourcePackage
-         , enableStanzas )
+         , UnresolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
          , PackagesPreferenceDefault(..) )
@@ -850,10 +849,11 @@ configuredPackageProblems platform cinfo
     requiredDeps =
       --TODO: use something lower level than finalizePackageDescription
       case finalizePackageDescription specifiedFlags
+         (enableStanzas stanzas)
          (const True)
          platform cinfo
          []
-         (enableStanzas stanzas $ packageDescription pkg) of
+         (packageDescription pkg) of
         Right (resolvedPkg, _) ->
              externalBuildDepends resolvedPkg
           ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)

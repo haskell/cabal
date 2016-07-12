@@ -386,8 +386,8 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configTests              = toFlag (TestStanzas `elem` stanzas)
     }
 
-    pkg = case finalizePackageDescription flags
+    pkg = case finalizePackageDescription flags (enableStanzas stanzas)
            (const True)
-           platform comp [] (enableStanzas stanzas gpkg) of
+           platform comp [] gpkg of
       Left _ -> error "finalizePackageDescription ReadyPackage failed"
       Right (desc, _) -> desc

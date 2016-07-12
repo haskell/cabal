@@ -1302,9 +1302,9 @@ installReadyPackage platform cinfo configFlags
     configTests              = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
   where
-    pkg = case finalizePackageDescription flags
+    pkg = case finalizePackageDescription flags (enableStanzas stanzas)
            (const True)
-           platform cinfo [] (enableStanzas stanzas gpkg) of
+           platform cinfo [] gpkg of
       Left _ -> error "finalizePackageDescription ReadyPackage failed"
       Right (desc, _) -> desc
 

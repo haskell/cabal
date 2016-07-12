@@ -40,9 +40,7 @@ bench args pkg_descr lbi flags = do
     let verbosity         = fromFlag $ benchmarkVerbosity flags
         benchmarkNames    = args
         pkgBenchmarks     = PD.benchmarks pkg_descr
-        enabledBenchmarks = [ t | t <- pkgBenchmarks
-                            , PD.benchmarkEnabled t
-                            , PD.buildable (PD.benchmarkBuildInfo t) ]
+        enabledBenchmarks = map fst (LBI.enabledBenchLBIs pkg_descr lbi)
 
         -- Run the benchmark
         doBench :: PD.Benchmark -> IO ExitCode

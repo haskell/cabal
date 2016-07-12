@@ -21,7 +21,6 @@ suite = do
                             [ Dependency (PackageName "base") anyVersion ]
                     , hsSourceDirs = ["."]
                     }
-            , testEnabled = False
             }
         gotTestSuite = head $ testSuites (localPkgDescr lbi)
     assertEqual "parsed test-suite stanza does not match anticipated"

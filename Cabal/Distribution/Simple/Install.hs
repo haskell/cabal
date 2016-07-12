@@ -61,7 +61,7 @@ install pkg_descr lbi flags
  | fromFlag (copyAssumeDepsUpToDate flags) = do
   checkHasLibsOrExes
   targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr targets
+  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
   case targets' of
     _ | null (copyArgs flags)
       -> copyPackage verbosity pkg_descr lbi distPref copydest
@@ -74,7 +74,7 @@ install pkg_descr lbi flags
  | otherwise = do
   checkHasLibsOrExes
   targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr targets
+  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
 
   copyPackage verbosity pkg_descr lbi distPref copydest
 
