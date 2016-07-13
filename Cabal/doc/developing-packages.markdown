@@ -1651,9 +1651,9 @@ following fields.
 `default:` _boolean_ (default: `True`)
 :   The default value of this flag.
 
-    Note that this value may be [overridden in several
-    ways](installing-packages.html#controlling-flag-assignments"). The
-    rationale for having flags default to True is that users usually
+    Note that this value may be
+    [overridden in several ways](installing-packages.html#controlling-flag-assignments).
+    The rationale for having flags default to True is that users usually
     want new features as soon as they are available. Flags representing
     features that are not (yet) recommended for most users (such as
     experimental features or debugging support) should therefore
@@ -1672,17 +1672,17 @@ section.  They have to follow rather strict formatting rules.
 Conditional blocks must always be of the shape
 
 ~~~~~~~~~~~~~~~~
-  `if `_condition_
-       _property-descriptions-or-conditionals*_
+  if condition
+     property-descriptions-or-conditionals
 ~~~~~~~~~~~~~~~~
 
 or
 
 ~~~~~~~~~~~~~~~~
-  `if `_condition_
-       _property-descriptions-or-conditionals*_
-  `else`
-       _property-descriptions-or-conditionals*_
+  if condition
+       property-descriptions-or-conditionals
+  else
+       property-descriptions-or-conditionals
 ~~~~~~~~~~~~~~~~
 
 Note that the `if` and the condition have to be all on the same line.
