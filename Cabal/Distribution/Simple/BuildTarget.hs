@@ -12,6 +12,7 @@
 module Distribution.Simple.BuildTarget (
     -- * Main interface
     readTargetInfos,
+    readBuildTargets, -- in case you don't have LocalBuildInfo
 
     -- * Build targets
     BuildTarget(..),
@@ -998,3 +999,7 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
     formatReason cn DisabledAllBenchmarks =
         "Cannot process the " ++ cn ++ " because benchmarks are not "
      ++ "enabled. Re-run configure with the flag --enable-benchmarks"
+    formatReason cn (DisabledAllButOne cn') =
+        "Cannot process the " ++ cn ++ " because this package was "
+     ++ "configured only to build " ++ cn' ++ ". Re-run configure "
+     ++ "with the argument " ++ cn

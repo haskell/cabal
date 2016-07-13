@@ -285,11 +285,12 @@ showPackageDescription pkg = render $
   $$ (case library pkg of
         Nothing -> mempty
         Just lib -> ppLibrary' lib)
-  $$ vcat [ space $$ ppLibrary' lib | lib <- subLibraries pkg ]
+  $$ vcat [ space $$ ppSubLibrary lib | lib <- subLibraries pkg ]
   $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
   where
     ppPackage    = ppFields pkgDescrFieldDescrs
     ppLibrary'   = ppFields libFieldDescrs
+    ppSubLibrary = ppFields subLibFieldDescrs
     ppExecutable = ppFields executableFieldDescrs
 
 -- | @since 1.26.0.0@

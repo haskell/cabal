@@ -15,6 +15,7 @@ module Distribution.Types.ComponentEnabledSpec (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Text
 
 import Distribution.Types.Component -- TODO: maybe remove me?
 import Distribution.Types.ComponentName
@@ -50,10 +51,9 @@ import Distribution.Types.ComponentName
 --
 -- @since 2.0.0.0
 data ComponentEnabledSpec
-    = ComponentEnabledSpec {
-        testsEnabled :: Bool,
-        benchmarksEnabled :: Bool
-   }
+    = ComponentEnabledSpec { testsEnabled :: Bool,
+                             benchmarksEnabled :: Bool }
+    | OneComponentEnabledSpec ComponentName
   deriving (Generic, Read, Show)
 instance Binary ComponentEnabledSpec
 
@@ -91,11 +91,16 @@ componentDisabledReason enabled comp
 -- @since 2.0.0.0
 componentNameDisabledReason :: ComponentEnabledSpec -> ComponentName
                             -> Maybe ComponentDisabledReason
-componentNameDisabledReason enabled (CTestName _)
-    | not (testsEnabled enabled) = Just DisabledAllTests
-componentNameDisabledReason enabled (CBenchName _)
-    | not (benchmarksEnabled enabled) = Just DisabledAllBenchmarks
-componentNameDisabledReason _ _ = Nothing
+componentNameDisabledReason
+    ComponentEnabledSpec{ testsEnabled      = False } (CTestName _)
+    = Just DisabledAllTests
+componentNameDisabledReason
+    ComponentEnabledSpec{ benchmarksEnabled = False } (CBenchName _)
+    = Just DisabledAllBenchmarks
+componentNameDisabledReason ComponentEnabledSpec{} _ = Nothing
+componentNameDisabledReason (OneComponentEnabledSpec cname) c
+    | c == cname = Nothing
+    | otherwise = Just (DisabledAllButOne (display cname))
 
 -- | A reason explaining why a component is disabled.
 --
@@ -103,3 +108,4 @@ componentNameDisabledReason _ _ = Nothing
 data ComponentDisabledReason = DisabledComponent
                              | DisabledAllTests
                              | DisabledAllBenchmarks
+                             | DisabledAllButOne String

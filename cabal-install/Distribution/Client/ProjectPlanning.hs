@@ -1941,6 +1941,7 @@ setupHsConfigureFlags (ReadyPackage
     configVerbosity           = toFlag verbosity
 
     configIPID                = toFlag (display (installedUnitId pkg))
+    configCID                 = mempty
 
     configProgramPaths        = Map.toList pkgProgramPaths
     configProgramArgs         = Map.toList pkgProgramArgs
