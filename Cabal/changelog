@@ -66,6 +66,10 @@
 	internal use.
 	* Macros in 'cabal_macros.h' are now ifndef'd, so that they
 	don't cause an error if the macro is already defined. (#3041)
+	* './Setup configure' now accepts a single argument specifying
+	  the component to be configured.  The semantics of this mode
+	  of operation are described in
+	  <https://github.com/ghc-proposals/ghc-proposals/pull/4>
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

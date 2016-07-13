@@ -88,12 +88,13 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
+register pkg_descr lbi flags =
+   -- Duncan originally asked for us to not register/install files
+   -- when there was no public library.  But with per-component
+   -- configure, we legitimately need to install internal libraries
+   -- so that we can get them.  So just unconditionally install.
+   doRegister
  where
-  -- We do NOT register libraries outside of the inplace database
-  -- if there is no public library, since no one else can use it
-  -- usefully (they're not public.)  If we start supporting scoped
-  -- packages, we'll have to relax this.
   doRegister = do
     targets <- readTargetInfos verbosity pkg_descr lbi (regArgs flags)
 

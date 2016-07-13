@@ -302,6 +302,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
         configIPID                = combine configIPID,
+        configCID                 = combine configCID,
         configDistPref            = combine configDistPref,
         configCabalFilePath       = combine configCabalFilePath,
         configVerbosity           = combine configVerbosity,

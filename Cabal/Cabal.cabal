@@ -108,6 +108,17 @@ extra-source-files:
   tests/PackageTests/Configure/include/HsZlibConfig.h.in
   tests/PackageTests/Configure/zlib.buildinfo.in
   tests/PackageTests/Configure/zlib.cabal
+  tests/PackageTests/ConfigureComponent/Exe/Bad.hs
+  tests/PackageTests/ConfigureComponent/Exe/Exe.cabal
+  tests/PackageTests/ConfigureComponent/Exe/Good.hs
+  tests/PackageTests/ConfigureComponent/SubLib/Lib.cabal
+  tests/PackageTests/ConfigureComponent/SubLib/Lib.hs
+  tests/PackageTests/ConfigureComponent/SubLib/exe/Exe.hs
+  tests/PackageTests/ConfigureComponent/Test/Lib.hs
+  tests/PackageTests/ConfigureComponent/Test/Test.cabal
+  tests/PackageTests/ConfigureComponent/Test/testlib/TestLib.hs
+  tests/PackageTests/ConfigureComponent/Test/testlib/testlib.cabal
+  tests/PackageTests/ConfigureComponent/Test/tests/Test.hs
   tests/PackageTests/CopyAssumeDepsUpToDate/CopyAssumeDepsUpToDate.cabal
   tests/PackageTests/CopyAssumeDepsUpToDate/Main.hs
   tests/PackageTests/CopyAssumeDepsUpToDate/P.hs

@@ -391,6 +391,7 @@ data ConfigFlags = ConfigFlags {
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
     configIPID          :: Flag String, -- ^ explicit IPID to be used
+    configCID           :: Flag ComponentId, -- ^ explicit CID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
@@ -676,6 +677,11 @@ configureOptions showOrParseArgs =
          "Installed package ID to compile this package as"
          configIPID (\v flags -> flags {configIPID = v})
          (reqArgFlag "IPID")
+
+      ,option "" ["cid"]
+         "Installed component ID to compile this component as"
+         (fmap display . configCID) (\v flags -> flags {configCID = fmap ComponentId v})
+         (reqArgFlag "CID")
 
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"

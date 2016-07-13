@@ -410,6 +410,35 @@ is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
 value of the `--with-compiler` option is passed in a `--with-hc` option
 and all options specified with `--configure-option=` are passed on.
 
+In Cabal 2.0, support for a single positional argument was added to `setup configure`
+This makes Cabal configure a the specific component to be
+configured.  Specified names can be qualified with `lib:` or
+`exe:` in case just a name is ambiguous (as would be the case
+for a package named `p` which has a library and an executable
+named `p`.)  This has the following effects:
+
+* Subsequent invocations of `build`, `register`, etc. operate only
+  on the configured component.
+
+* Cabal requires all "internal" dependencies (e.g., an executable
+  depending on a library defined in the same package) must be
+  found in the set of databases via `--package-db` (and related flags):
+  these dependencies are assumed to be up-to-date.  A dependency can
+  be explicitly specified using `--dependency` simply by giving
+  the name of the internal library; e.g., the dependency for an
+  internal library named `foo` is given as `--dependency=pkg-internal=pkg-1.0-internal-abcd`.
+
+* Only the dependencies needed for the requested component are
+  required.  Similarly, when `--exact-configuration` is specified,
+  it's only necessary to specify `--dependency` for the component.
+  (As mentioned previously, you *must* specify internal dependencies
+  as well.)
+
+* Internal `build-tools` dependencies are expected to be in the `PATH`
+  upon subsequent invocations of `setup`.
+
+Full details can be found in the [Componentized Cabal proposal](https://github.com/ezyang/ghc-proposals/blob/master/proposals/0000-componentized-cabal.rst).
+
 ### Programs used for building ###
 
 The following options govern the programs used to process the source
@@ -753,6 +782,19 @@ be controlled with the following command line options.
 
     To reset the stack, use `--package-db=clear`.
 
+`--ipid=`_ipid_
+:   Specifies the _installed package identifier_ of the package to be
+    built; this identifier is passed on to GHC and serves as the basis
+    for linker symbols and the `id` field in a `ghc-pkg` registration.
+    When a package has multiple components, the actual component
+    identifiers are derived off of this identifier (e.g., an
+    internal library `foo` from package `p-0.1-abcd` will get the
+    identifier `p-0.1-abcd-foo`.
+
+`--cid=`_cid_
+:   Specifies the _component identifier_ of the component being built;
+    this is only valid if you are configuring a single component.
+
 `--default-user-config=` _file_
 :   Allows a "default" `cabal.config` freeze file to be passed in
     manually. This file will only be used if one does not exist in the
@@ -953,6 +995,18 @@ be controlled with the following command line options.
     These extra directories will be used while building the package and
     for libraries it is also saved in the package registration
     information and used when compiling modules that use the library.
+
+`--dependency`[=_pkgname_=_ipid_]
+:   Specify that a particular dependency should used for a particular
+    package name. In particular, it declares that any reference to
+    _pkgname_ in a `build-depends` should be resolved to _ipid_.
+
+`--exact-configuration`
+:   This changes Cabal to require every dependency be explicitly
+    specified using `--dependency`, rather than use Cabal's
+    (very simple) dependency solver.  This is useful for programmatic
+    use of Cabal's API, where you want to error if you didn't
+    specify enough `--dependency` flags.
 
 `--allow-newer`[=_pkgs_], `--allow-older`[=_pkgs_]
 :   Selectively relax upper or lower bounds in dependencies without

@@ -579,7 +579,6 @@ defaultUserHooks = autoconfUserHooks {
     -- https://github.com/haskell/cabal/issues/158
     where oldCompatPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
                        runConfigureScript verbosity
@@ -610,7 +609,6 @@ autoconfUserHooks
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    if confExists
                      then runConfigureScript verbosity

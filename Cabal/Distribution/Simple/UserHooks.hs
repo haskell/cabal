@@ -164,7 +164,7 @@ emptyUserHooks
       readDesc  = return Nothing,
       hookedPreProcessors = [],
       hookedPrograms      = [],
-      preConf   = rn,
+      preConf   = rn',
       confHook  = (\_ _ -> return (error "No local build info generated during configure. Over-ride empty configure hook.")),
       postConf  = ru,
       preBuild  = rn',
