@@ -83,12 +83,21 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
+register pkg_descr lbi flags =
+   -- We do NOT register libraries outside of the inplace database
+   -- if there is no public library, since no one else can use it
+   -- usefully (they're not public.)  If we start supporting scoped
+   -- packages, we'll have to relax this.
+   --
+   -- HOWEVER, we ALWAYS do work if we are asked to generate
+   -- a file or script.
+   when (hasPublicLib pkg_descr || modeGenerateRegFile
+                                || modeGenerateRegScript) doRegister
  where
-  -- We do NOT register libraries outside of the inplace database
-  -- if there is no public library, since no one else can use it
-  -- usefully (they're not public.)  If we start supporting scoped
-  -- packages, we'll have to relax this.
+  -- Urk, duplicate with 'registerAll'
+  modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf flags))
+  modeGenerateRegScript = fromFlag (regGenScript flags)
+
   doRegister = do
     targets <- readBuildTargets pkg_descr (regArgs flags)
     targets' <- checkBuildTargets verbosity pkg_descr targets
