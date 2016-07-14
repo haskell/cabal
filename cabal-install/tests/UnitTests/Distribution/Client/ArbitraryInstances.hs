@@ -67,6 +67,7 @@ instance Arbitrary ShortToken where
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
 
+#if !MIN_VERSION_QuickCheck(2,9,0)
 instance Arbitrary Version where
   arbitrary = do
     branch <- shortListOf1 4 $
@@ -81,6 +82,7 @@ instance Arbitrary Version where
     [ Version branch' [] | branch' <- shrink branch, not (null branch') ]
   shrink (Version branch _tags) =
     [ Version branch [] ]
+#endif
 
 instance Arbitrary VersionRange where
   arbitrary = canonicaliseVersionRange <$> sized verRangeExp

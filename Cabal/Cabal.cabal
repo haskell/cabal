@@ -334,7 +334,7 @@ test-suite unit-tests
     tasty-hunit,
     tasty-quickcheck,
     pretty,
-    QuickCheck >= 2.7 && < 2.9,
+    QuickCheck >= 2.7 && < 2.10,
     Cabal
   ghc-options: -Wall
   default-language: Haskell98
