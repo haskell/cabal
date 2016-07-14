@@ -207,6 +207,11 @@ extra-source-files:
   tests/PackageTests/PreProcessExtraSources/Foo.hsc
   tests/PackageTests/PreProcessExtraSources/Main.hs
   tests/PackageTests/PreProcessExtraSources/my.cabal
+  tests/PackageTests/ReexportedModules/containers-dupe/Data/Map.hs
+  tests/PackageTests/ReexportedModules/containers-dupe/containers-dupe.cabal
+  tests/PackageTests/ReexportedModules/p/fail-ambiguous.cabal
+  tests/PackageTests/ReexportedModules/p/fail-missing.cabal
+  tests/PackageTests/ReexportedModules/p/fail-other.cabal
   tests/PackageTests/ReexportedModules/p/p.cabal
   tests/PackageTests/ReexportedModules/q/A.hs
   tests/PackageTests/ReexportedModules/q/q.cabal
