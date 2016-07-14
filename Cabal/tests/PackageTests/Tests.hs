@@ -206,11 +206,25 @@ tests config = do
   tc "OrderFlags" $ cabal_build []
 
   -- Test that reexported modules build correctly
-  tc "ReexportedModules" . whenGhcVersion (>= mkVersion [7,9]) $ do
+  tcs "ReexportedModules" "p" . whenGhcVersion (>= mkVersion [7,9]) $ do
       withPackageDb $ do
-        withPackage "p" $ cabal_install []
+        withPackage "p" $ cabal_install ["--cabal-file", "p.cabal"]
         withPackage "q" $ do
             cabal_build []
+  tcs "ReexportedModules" "fail-other" . whenGhcVersion (>= Version [7,9] []) $ do
+      withPackage "p" $ do
+          r <- shouldFail $ cabal' "configure" ["--cabal-file", "fail-other.cabal"]
+          assertOutputContains "Private" r
+  tcs "ReexportedModules" "fail-ambiguous" . whenGhcVersion (>= Version [7,9] []) $ do
+      withPackageDb $ do
+        withPackage "containers-dupe" $ cabal_install []
+        withPackage "p" $ do
+            r <- shouldFail $ cabal' "configure" ["--cabal-file", "fail-ambiguous.cabal"]
+            assertOutputContains "Data.Map" r
+  tcs "ReexportedModules" "fail-missing" . whenGhcVersion (>= Version [7,9] []) $ do
+      withPackage "p" $ do
+          r <- shouldFail $ cabal' "configure" ["--cabal-file", "fail-missing.cabal"]
+          assertOutputContains "Missing" r
 
   -- Test that Cabal computes different IPIDs when the source changes.
   tc "UniqueIPID" . withPackageDb $ do
