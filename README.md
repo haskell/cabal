@@ -33,7 +33,7 @@ Building Cabal for hacking
 --------------------------
 
 The current recommended way of developing Cabal is to use the
-`new-build` feature which shipped in cabal-install-1.24.  Assuming
+`new-build` feature which [shipped in cabal-install-1.24](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/).  Assuming
 that you have a sufficiently recent cabal-install (see above),
 it is sufficient to run:
 
