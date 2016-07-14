@@ -54,7 +54,7 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
-TMPDIR=$(mktemp -d -p /tmp -t cabal-XXXXXXX)
+TMPDIR=$(mktemp -d -p /tmp -t cabal-XXXXXXX || mktemp -d -t cabal-XXXXXXX)
 export TMPDIR
 
 # Check for a C compiler, using user-set $CC, if any, first.
