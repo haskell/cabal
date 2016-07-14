@@ -1947,6 +1947,7 @@ setupHsConfigureFlags (ReadyPackage
         (Cabal.ConfigFlags {..})
   where
     configDistPref            = toFlag builddir
+    configCabalFilePath       = mempty
     configVerbosity           = toFlag verbosity
 
     configIPID                = toFlag (display (installedUnitId pkg))

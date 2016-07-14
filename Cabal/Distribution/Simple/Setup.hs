@@ -393,6 +393,7 @@ data ConfigFlags = ConfigFlags {
     configIPID          :: Flag String, -- ^ explicit IPID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
+    configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
     configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDBs :: [Maybe PackageDB], -- ^Which package DBs to use
@@ -452,6 +453,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
     configDistPref     = NoFlag,
+    configCabalFilePath = NoFlag,
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
 #if defined(mingw32_HOST_OS)
@@ -517,6 +519,11 @@ configureOptions showOrParseArgs =
                     -- by a more specific one during the configure stage
                     , (Flag (HaskellSuite "haskell-suite"), ([] , ["haskell-suite"]),
                         "compile with a haskell-suite compiler")])
+
+      ,option "" ["cabal-file"]
+         "use this Cabal file"
+         configCabalFilePath (\v flags -> flags { configCabalFilePath = v })
+         (reqArgFlag "PATH")
 
       ,option "w" ["with-compiler"]
          "give the path to a particular compiler"

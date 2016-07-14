@@ -192,6 +192,7 @@ configureAction hooks flags args = do
     pbi <- preConf hooks args flags'
 
     (mb_pd_file, pkg_descr0) <- confPkgDescr hooks verbosity
+                                    (flagToMaybe (configCabalFilePath flags))
 
     let epkg_descr = (pkg_descr0, pbi)
 
@@ -211,13 +212,15 @@ configureAction hooks flags args = do
   where
     verbosity = fromFlag (configVerbosity flags)
 
-confPkgDescr :: UserHooks -> Verbosity -> IO (Maybe FilePath, GenericPackageDescription)
-confPkgDescr hooks verbosity = do
+confPkgDescr :: UserHooks -> Verbosity -> Maybe FilePath -> IO (Maybe FilePath, GenericPackageDescription)
+confPkgDescr hooks verbosity mb_path = do
   mdescr <- readDesc hooks
   case mdescr of
     Just descr -> return (Nothing, descr)
     Nothing -> do
-        pdfile <- defaultPackageDesc verbosity
+        pdfile <- case mb_path of
+                    Nothing -> defaultPackageDesc verbosity
+                    Just path -> return path
         descr  <- readPackageDescription verbosity pdfile
         return (Just pdfile, descr)
 
@@ -293,7 +296,7 @@ cleanAction hooks flags args = do
 
     pbi <- preClean hooks args flags'
 
-    (_, ppd) <- confPkgDescr hooks verbosity
+    (_, ppd) <- confPkgDescr hooks verbosity Nothing
     -- It might seem like we are doing something clever here
     -- but we're really not: if you look at the implementation
     -- of 'clean' in the end all the package description is
@@ -337,7 +340,18 @@ sdistAction hooks flags args = do
 
     mlbi <- maybeGetPersistBuildConfig distPref
 
-    (_, ppd) <- confPkgDescr hooks verbosity
+    -- NB: It would be TOTALLY WRONG to use the 'PackageDescription'
+    -- store in the 'LocalBuildInfo' for the rest of @sdist@, because
+    -- that would result in only the files that would be built
+    -- according to the user's configure being packaged up.
+    -- In fact, it is not obvious why we need to read the
+    -- 'LocalBuildInfo' in the first place, except that we want
+    -- to do some architecture-independent preprocessing which
+    -- needs to be configured.  This is totally awful, see
+    -- GH#130.
+
+    (_, ppd) <- confPkgDescr hooks verbosity Nothing
+
     let pkg_descr0 = flattenPackageDescription ppd
     sanityCheckHookedBuildInfo pkg_descr0 pbi
     let pkg_descr = updatePackageDescription pbi pkg_descr0
