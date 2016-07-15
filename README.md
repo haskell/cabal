@@ -78,6 +78,11 @@ several.  In general, the test executable for
   `Cabal/tests/PackageTests` under folders named `dist-test` and
   `dist-test.$subname`.
 
+  Handy command line spell to find test logs is:
+  ```sh
+  find . -name test.log|grep test-name
+  ```
+
 * `Cabal:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
   on some utility functions in the Cabal library you should run this
