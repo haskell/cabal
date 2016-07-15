@@ -69,6 +69,8 @@ several.  In general, the test executable for
 `{Cabal,cabal-install}:$TESTNAME` will be stored at
 `dist-newstyle/build/{Cabal,cabal-install}-$VERSION/build/$TESTNAME/$TESTNAME`.
 
+To run a single test, use `-p` which applies a regex filter to the test names.
+
 * `Cabal:package-tests` are out-of-process integration tests on the top-level `Setup`
   command line interface.  If you are hacking on the Cabal library you
   want to run this test suite.  It must be run from the `Cabal` subdirectory
@@ -82,6 +84,10 @@ several.  In general, the test executable for
   ```sh
   find . -name test.log|grep test-name
   ```
+
+  `test.sh` in the same directory as `test.log` is intended to let you rerun
+  the test without running the actual test driver.
+
 
 * `Cabal:unit-tests` are small, quick-running unit tests
   on small pieces of functionality in Cabal.  If you are working
