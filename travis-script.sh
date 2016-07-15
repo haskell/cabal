@@ -123,7 +123,9 @@ generated_files() {
     ./Cabal/misc/travis-diff-files.sh
 }
 
-timed "Generated files check" generated_files
+if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+  timed "Generated files check" generated_files
+fi
 
 # ---------------------------------------------------------------------
 # Cabal
