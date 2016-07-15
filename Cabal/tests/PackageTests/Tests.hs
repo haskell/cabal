@@ -313,7 +313,7 @@ tests config = do
         cabal "register" ["--gen-script"]
         _ <- if buildOS == Windows
                 then shell "cmd" ["/C", "register.bat"]
-                else shell "./register.sh" []
+                else shell "sh" ["register.sh"]
         return ()
       -- Make sure we can see p
       withPackage "r" $ cabal_install []
