@@ -27,7 +27,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag, HaddockTarget(ForDevelopment) )
+         ( CopyFlags(..), fromFlag, getVerbosity, HaddockTarget(ForDevelopment) )
 import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -83,7 +83,7 @@ install pkg_descr lbi flags
     copyComponent verbosity pkg_descr lbi comp clbi copydest
  where
   distPref  = fromFlag (copyDistPref flags)
-  verbosity = fromFlag (copyVerbosity flags)
+  verbosity = getVerbosity copyVerbosity flags
   copydest  = fromFlag (copyDest flags)
 
   checkHasLibsOrExes =

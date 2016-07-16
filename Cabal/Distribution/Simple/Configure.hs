@@ -739,7 +739,7 @@ configure (pkg_descr0', pbi) cfg = do
     return lbi
 
     where
-      verbosity = fromFlag (configVerbosity cfg)
+      verbosity = getVerbosity configVerbosity cfg
 
       checkProfDetail (Flag (ProfDetailOther other)) = do
         warn verbosity $
@@ -1386,7 +1386,7 @@ configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            (flagToMaybe $ configHcPath cfg)
                                            (flagToMaybe $ configHcPkg cfg)
                                            programsConfig
-                                           (fromFlag (configVerbosity cfg))
+                                           (getVerbosity configVerbosity cfg)
   where
     programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
 

@@ -130,7 +130,7 @@ build pkg_descr lbi flags suffixes
                    lbi' suffixes comp clbi distPref
  where
   distPref  = fromFlag (buildDistPref flags)
-  verbosity = fromFlag (buildVerbosity flags)
+  verbosity = getVerbosity buildVerbosity flags
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
@@ -141,7 +141,7 @@ repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> IO ()
 repl pkg_descr lbi flags suffixes args = do
   let distPref  = fromFlag (replDistPref flags)
-      verbosity = fromFlag (replVerbosity flags)
+      verbosity = getVerbosity replVerbosity flags
 
   targets  <- readBuildTargets pkg_descr args
   targets' <- case targets of
