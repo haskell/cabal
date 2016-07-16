@@ -95,7 +95,7 @@ solve :: EnableBackjumping -> ReorderGoals -> IndependentGoals
       -> Solver -> [PN] -> TestDb -> Result
 solve enableBj reorder indep solver targets (TestDb db) =
   let (lg, result) =
-        exResolve db Nothing Nothing
+        runProgress $ exResolve db Nothing Nothing
                   (pkgConfigDbFromList [])
                   (map unPN targets)
                   solver

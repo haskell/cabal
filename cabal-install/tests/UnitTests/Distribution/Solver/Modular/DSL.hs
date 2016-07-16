@@ -21,6 +21,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , withSetupDeps
   , withTest
   , withTests
+  , runProgress
   ) where
 
 -- base
@@ -416,13 +417,10 @@ exResolve :: ExampleDb
           -> EnableBackjumping
           -> Maybe [ExampleVar]
           -> [ExPreference]
-          -> ([String], Either String CI.InstallPlan.SolverInstallPlan)
+          -> Progress String String CI.InstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
           enableBj vars prefs
-    = runProgress $ resolveDependencies C.buildPlatform
-                        compiler pkgConfigDb
-                        solver
-                        params
+    = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
     compiler = defaultCompiler { C.compilerInfoExtensions = exts
@@ -491,8 +489,6 @@ extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
 -------------------------------------------------------------------------------}
 
 -- | Run Progress computation
---
--- Like `runLog`, but for the more general `Progress` type.
 runProgress :: Progress step e a -> ([step], Either e a)
 runProgress = go
   where

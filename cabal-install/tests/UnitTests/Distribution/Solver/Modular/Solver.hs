@@ -3,7 +3,6 @@ module UnitTests.Distribution.Solver.Modular.Solver (tests)
        where
 
 -- base
-import Control.Monad
 import Data.List (isInfixOf)
 
 import qualified Data.Version         as V
@@ -21,6 +20,7 @@ import Language.Haskell.Extension ( Extension(..)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigDbFromList)
 import Distribution.Solver.Types.Settings
+import Distribution.Client.Dependency (foldProgress)
 import Distribution.Client.Dependency.Types
          ( Solver(Modular) )
 import UnitTests.Distribution.Solver.Modular.DSL
@@ -268,11 +268,14 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let (_msgs, result) = exResolve testDb testSupportedExts
-                            testSupportedLangs testPkgConfigDb testTargets
-                            Modular Nothing testIndepGoals (ReorderGoals False)
-                            (EnableBackjumping True) testGoalOrder testSoftConstraints
-      when showSolverLog $ mapM_ putStrLn _msgs
+      let lg = exResolve testDb testSupportedExts
+               testSupportedLangs testPkgConfigDb testTargets
+               Modular Nothing testIndepGoals (ReorderGoals False)
+               (EnableBackjumping True) testGoalOrder testSoftConstraints
+          logMsg msg = if showSolverLog
+                       then putStrLn msg
+                       else return ()
+      result <- foldProgress ((>>) . logMsg) (return . Left) (return . Right) lg
       case result of
         Left  err  -> assertBool ("Unexpected error:\n" ++ err) (check testResult err)
         Right plan -> assertEqual "" (toMaybe testResult) (Just (extractInstallPlan plan))
