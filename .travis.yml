@@ -1,26 +1,47 @@
 # NB: don't set `language: haskell` here
+# We specify language: c, so it doesn't default to e.g. ruby
+language: c
+
+sudo: required
 
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
 # lines listings versions you don't need/want testing for.
-env:
- - GHCVER=7.4.2
- - GHCVER=7.6.3
- - GHCVER=7.8.4
- - GHCVER=7.10.3
- - GHCVER=8.0.1 TEST_OLDER=NO
+matrix:
+  include:
+   - env: GHCVER=7.4.2
+     os: linux
+   - env: GHCVER=7.6.3
+     os: linux
+   - env: GHCVER=7.8.4
+     os: linux
+   - env: GHCVER=7.10.3
+     os: linux
+   - env: GHCVER=8.0.1 TEST_OLDER=NO
+     os: linux
+   # It's not worth the trouble to make older GHC work with clang's cpp
+   # Obviously TEST_OLDER doesn't work with OSX
+   #
+   # Also we might want to specify OSX version
+   # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
+   - env: GHCVER=7.8.4
+     os: osx
+   - env: GHCVER=7.10.3
+     os: osx
+   - env: GHCVER=8.0.1
+     os: osx
+  allow_failures:
+   - env: GHCVER=head
+
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
  #- GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install --force-yes ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
- - if [ "$TEST_OLDER" == "YES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn; fi
- - export PATH=$HOME/.cabal/bin:/opt/ghc/$GHCVER/bin:/opt/cabal/1.24/bin:$PATH
- - git version
+ - ./travis-install.sh
+ - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+ - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH;
 
  # Set up deployment to the haskell/cabal-website repo.
  - ./travis-deploy.sh setup
@@ -39,10 +60,6 @@ script:
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
  - ./travis-deploy.sh deploy
-
-matrix:
-  allow_failures:
-   - env: GHCVER=head
 
 notifications:
   irc:

@@ -171,7 +171,7 @@ cabal_build() {
     ./dist/setup/setup test --show-details=streaming --test-option=--hide-successes
 
     # Redo the package tests with different versions of GHC
-    if [ "x$TEST_OLDER" = "xYES" ]; then
+    if [ "x$TEST_OLDER" = "xYES" -a "x$TRAVIS_OS_NAME" = "xlinux" ]; then
         CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc \
             ./dist/setup/setup test package-tests --show-details=streaming
         CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc \
