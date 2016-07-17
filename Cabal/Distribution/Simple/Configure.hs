@@ -660,10 +660,7 @@ configure (pkg_descr0', pbi) cfg = do
 
         cfg' = cfg { configCoverage = configCoverage_ }
 
-    reloc <-
-       if not (fromFlag $ configRelocatable cfg)
-            then return False
-            else return True
+    let reloc = fromFlagOrDefault True (configRelocatable cfg)
 
     let lbi = LocalBuildInfo {
                 configFlags         = cfg',
