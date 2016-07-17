@@ -62,17 +62,14 @@ module Distribution.Simple.Setup (
 
   defaultDistPref, optionDistPref,
 
-  Flag(..),
-  toFlag,
-  fromFlag,
-  fromFlagOrDefault,
-  flagToMaybe,
-  flagToList,
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
-  optionVerbosity, optionNumJobs, readPToMaybe ) where
+  optionVerbosity, optionNumJobs, readPToMaybe,
+  module Distribution.Flag
+  ) where
 
 import Distribution.Compiler
+import Distribution.Flag
 import Distribution.ReadE
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
@@ -104,79 +101,6 @@ defaultDistPref = "dist"
 -- ------------------------------------------------------------
 -- * Flag type
 -- ------------------------------------------------------------
-
--- | All flags are monoids, they come in two flavours:
---
--- 1. list flags eg
---
--- > --ghc-option=foo --ghc-option=bar
---
--- gives us all the values ["foo", "bar"]
---
--- 2. singular value flags, eg:
---
--- > --enable-foo --disable-foo
---
--- gives us Just False
--- So this Flag type is for the latter singular kind of flag.
--- Its monoid instance gives us the behaviour where it starts out as
--- 'NoFlag' and later flags override earlier ones.
---
-data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read)
-
-instance Binary a => Binary (Flag a)
-
-instance Functor Flag where
-  fmap f (Flag x) = Flag (f x)
-  fmap _ NoFlag  = NoFlag
-
-instance Monoid (Flag a) where
-  mempty = NoFlag
-  mappend = (Semi.<>)
-
-instance Semigroup (Flag a) where
-  _ <> f@(Flag _) = f
-  f <> NoFlag     = f
-
-instance Bounded a => Bounded (Flag a) where
-  minBound = toFlag minBound
-  maxBound = toFlag maxBound
-
-instance Enum a => Enum (Flag a) where
-  fromEnum = fromEnum . fromFlag
-  toEnum   = toFlag   . toEnum
-  enumFrom (Flag a) = map toFlag . enumFrom $ a
-  enumFrom _        = []
-  enumFromThen (Flag a) (Flag b) = toFlag `map` enumFromThen a b
-  enumFromThen _        _        = []
-  enumFromTo   (Flag a) (Flag b) = toFlag `map` enumFromTo a b
-  enumFromTo   _        _        = []
-  enumFromThenTo (Flag a) (Flag b) (Flag c) = toFlag `map` enumFromThenTo a b c
-  enumFromThenTo _        _        _        = []
-
-toFlag :: a -> Flag a
-toFlag = Flag
-
-fromFlag :: Flag a -> a
-fromFlag (Flag x) = x
-fromFlag NoFlag   = error "fromFlag NoFlag. Use fromFlagOrDefault"
-
-fromFlagOrDefault :: a -> Flag a -> a
-fromFlagOrDefault _   (Flag x) = x
-fromFlagOrDefault def NoFlag   = def
-
-flagToMaybe :: Flag a -> Maybe a
-flagToMaybe (Flag x) = Just x
-flagToMaybe NoFlag   = Nothing
-
-flagToList :: Flag a -> [a]
-flagToList (Flag x) = [x]
-flagToList NoFlag   = []
-
-allFlags :: [Flag Bool] -> Flag Bool
-allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
-                 then Flag True
-                 else NoFlag
 
 -- | Types that represent boolean flags.
 class BooleanFlag a where

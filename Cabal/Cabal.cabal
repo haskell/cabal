@@ -279,6 +279,7 @@ library
     Distribution.Compat.Semigroup
     Distribution.Compat.Time
     Distribution.Compiler
+    Distribution.Flag
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.Make
