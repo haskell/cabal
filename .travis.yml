@@ -23,12 +23,7 @@ before_install:
  - git version
 
  # Set up deployment to the haskell/cabal-website repo.
- - git clone --depth=50 --branch=gh-pages https://github.com/haskell/cabal-website.git ../cabal-website
- - cd ../cabal-website
- - openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_ed25519_cabal_website.aes256.enc -out id_ed25519 -d
- - mv id_ed25519 ~/.ssh/id_ed25519
- - chmod 400 ~/.ssh/id_ed25519
- - cd -
+ - ./travis-deploy.sh setup
 
 install:
  # We intentionally do not install anything before trying to build Cabal because
@@ -43,14 +38,7 @@ script:
 
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
- - git config --global user.email "builds@travis-ci.org"
- - git config --global user.name "Travis CI User"
- - mkdir -p ../cabal-website/doc/html
- - mv Cabal/dist/doc/html/Cabal ../cabal-website/doc/html/Cabal
- - cd ../cabal-website
- - git add .
- - git commit --amend --reset-author -m "Deploy to GitHub ($(date))."
- - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && git push --force --quiet git@github.com:haskell/haskell-website.git gh-pages
+ - ./travis-deploy.sh deploy
 
 matrix:
   allow_failures:
