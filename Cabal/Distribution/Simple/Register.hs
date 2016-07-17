@@ -117,7 +117,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
     registerAll pkg_descr lbi flags ipis
     return ()
    where
-    verbosity = fromFlag (regVerbosity flags)
+    verbosity = getVerbosity regVerbosity flags
 
 generateOne :: PackageDescription -> Library -> LocalBuildInfo -> ComponentLocalBuildInfo
             -> RegisterFlags
@@ -138,8 +138,8 @@ generateOne pkg lib lbi clbi regFlags
     -- fail if dependencies cannot be satisfied.
     packageDbs = nub $ withPackageDB lbi
                     ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
-    distPref  = fromFlag (regDistPref regFlags)
-    verbosity = fromFlag (regVerbosity regFlags)
+    distPref  = getDistPref regDistPref regFlags
+    verbosity = getVerbosity regVerbosity regFlags
 
 registerAll :: PackageDescription -> LocalBuildInfo -> RegisterFlags
             -> [InstalledPackageInfo]
@@ -174,7 +174,7 @@ registerAll pkg lbi regFlags ipis
     -- fail if dependencies cannot be satisfied.
     packageDbs = nub $ withPackageDB lbi
                     ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
-    verbosity = fromFlag (regVerbosity regFlags)
+    verbosity = getVerbosity regVerbosity regFlags
 
     writeRegistrationFileOrDirectory = do
       -- Handles overwriting both directory and file
@@ -513,7 +513,7 @@ unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg lbi regFlags = do
   let pkgid     = packageId pkg
       genScript = fromFlag (regGenScript regFlags)
-      verbosity = fromFlag (regVerbosity regFlags)
+      verbosity = getVerbosity regVerbosity regFlags
       packageDb = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
                                     (regPackageDB regFlags)
       unreg hpi =

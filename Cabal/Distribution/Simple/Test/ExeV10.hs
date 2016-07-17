@@ -127,8 +127,8 @@ runTest pkg_descr lbi flags suite = do
 
     return suiteLog
   where
-    distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
+    distPref = getDistPref testDistPref flags
+    verbosity = getVerbosity testVerbosity flags
     details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> "test"
 

@@ -37,7 +37,7 @@ bench :: Args                    -- ^positional command-line arguments
       -> BenchmarkFlags          -- ^flags sent to benchmark
       -> IO ()
 bench args pkg_descr lbi flags = do
-    let verbosity         = fromFlag $ benchmarkVerbosity flags
+    let verbosity         = getVerbosity benchmarkVerbosity flags
         benchmarkNames    = args
         pkgBenchmarks     = PD.benchmarks pkg_descr
         enabledBenchmarks = [ t | t <- pkgBenchmarks

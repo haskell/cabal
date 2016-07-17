@@ -125,7 +125,7 @@ haddock pkg_descr _ _ haddockFlags
     && not (fromFlag $ haddockExecutables haddockFlags)
     && not (fromFlag $ haddockTestSuites  haddockFlags)
     && not (fromFlag $ haddockBenchmarks  haddockFlags) =
-      warn (fromFlag $ haddockVerbosity haddockFlags) $
+      warn (getVerbosity haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
         ++ "a library. Perhaps you want to use the --executables, --tests or"
         ++ " --benchmarks flags."
@@ -203,7 +203,7 @@ haddock pkg_descr lbi suffixes flags' = do
                 runHaddock verbosity tmpFileOpts comp platform
                   confHaddock exeArgs'
           Nothing -> do
-           warn (fromFlag $ haddockVerbosity flags)
+           warn (getVerbosity haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
       case component of
@@ -676,7 +676,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
                               </> exeName exe </> "src"
               runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
             Nothing -> do
-              warn (fromFlag $ hscolourVerbosity flags)
+              warn (getVerbosity hscolourVerbosity flags)
                 "Unsupported component, skipping..."
               return ()
         case comp of
@@ -689,7 +689,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
     stylesheet = flagToMaybe (hscolourCSS flags)
 
-    verbosity  = fromFlag (hscolourVerbosity flags)
+    verbosity  = getVerbosity hscolourVerbosity flags
     distPref   = fromFlag (hscolourDistPref flags)
 
     runHsColour prog outputDir moduleFiles = do

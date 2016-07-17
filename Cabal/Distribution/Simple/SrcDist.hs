@@ -115,10 +115,10 @@ sdist pkg mb_lbi flags mkTmpDir pps =
       when snapshot $
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
-    verbosity = fromFlag (sDistVerbosity flags)
+    verbosity = getVerbosity sDistVerbosity flags
     snapshot  = fromFlag (sDistSnapshot flags)
 
-    distPref     = fromFlag $ sDistDistPref flags
+    distPref     = getDistPref sDistDistPref flags
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
 

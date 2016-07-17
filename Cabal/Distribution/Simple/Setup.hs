@@ -66,6 +66,7 @@ module Distribution.Simple.Setup (
   toFlag,
   fromFlag,
   fromFlagOrDefault,
+  getVerbosity, getDistPref,
   flagToMaybe,
   flagToList,
   BooleanFlag(..),
@@ -164,6 +165,12 @@ fromFlag NoFlag   = error "fromFlag NoFlag. Use fromFlagOrDefault"
 fromFlagOrDefault :: a -> Flag a -> a
 fromFlagOrDefault _   (Flag x) = x
 fromFlagOrDefault def NoFlag   = def
+
+getVerbosity :: (a -> Flag Verbosity) -> a -> Verbosity
+getVerbosity f = fromFlagOrDefault normal . f
+
+getDistPref :: (a -> Flag FilePath) -> a -> FilePath
+getDistPref f = fromFlagOrDefault defaultDistPref . f
 
 flagToMaybe :: Flag a -> Maybe a
 flagToMaybe (Flag x) = Just x
