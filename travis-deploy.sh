@@ -2,8 +2,7 @@
 set -ex
 
 setup() {
-    git clone --depth=50 --branch=gh-pages \
-        https://github.com/haskell/cabal-website.git ../cabal-website
+    git https://github.com/haskell/cabal-website.git ../cabal-website
     cd ../cabal-website
     openssl aes-256-cbc -K $encrypted_edaf6551664d_key \
             -iv $encrypted_edaf6551664d_iv \
@@ -11,6 +10,8 @@ setup() {
     mv id_ed25519 ~/.ssh/id_ed25519
     mv id_ed25519_cabal_website.pub ~/.ssh/id_ed25519.pub
     chmod 400 ~/.ssh/id_ed25519
+    chmod 400 ~/.ssh/id_ed25519.pub
+    git checkout --track -b gh-pages origin/gh-pages
     cd -
 }
 
