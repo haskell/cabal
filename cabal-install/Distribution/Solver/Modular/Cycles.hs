@@ -14,11 +14,11 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Types.PackagePath
 
 -- | Find and reject any solutions that are cyclic
-detectCyclesPhase :: Tree QGoalReason -> Tree QGoalReason
+detectCyclesPhase :: Tree a -> Tree a
 detectCyclesPhase = cata go
   where
     -- The only node of interest is DoneF
-    go :: TreeF QGoalReason (Tree QGoalReason) -> Tree QGoalReason
+    go :: TreeF a (Tree a) -> Tree a
     go (PChoiceF qpn gr     cs) = PChoice qpn gr     cs
     go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m cs
     go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   cs
