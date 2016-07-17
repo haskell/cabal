@@ -82,7 +82,7 @@ install pkg_descr lbi flags
   withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
     copyComponent verbosity pkg_descr lbi comp clbi copydest
  where
-  distPref  = fromFlag (copyDistPref flags)
+  distPref  = fromDistPrefFlag copyDistPref flags
   verbosity = fromVerbosityFlag copyVerbosity flags
   copydest  = fromFlag (copyDest flags)
 

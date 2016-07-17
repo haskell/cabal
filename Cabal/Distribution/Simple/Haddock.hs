@@ -690,7 +690,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     stylesheet = flagToMaybe (hscolourCSS flags)
 
     verbosity  = fromVerbosityFlag hscolourVerbosity flags
-    distPref   = fromFlag (hscolourDistPref flags)
+    distPref   = fromDistPrefFlag hscolourDistPref flags
 
     runHsColour prog outputDir moduleFiles = do
          createDirectoryIfMissingVerbose verbosity True outputDir

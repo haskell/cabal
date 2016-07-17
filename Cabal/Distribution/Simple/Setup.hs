@@ -60,7 +60,7 @@ module Distribution.Simple.Setup (
   programConfigurationOptions, programConfigurationPaths',
   splitArgs,
 
-  defaultDistPref, optionDistPref,
+  defaultDistPref, optionDistPref, fromDistPrefFlag,
 
   BooleanFlag(..),
   boolOpt, boolOpt', trueArg, falseArg,
@@ -97,6 +97,9 @@ import GHC.Generics             ( Generic )
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
+
+fromDistPrefFlag :: (a -> Flag FilePath) -> a -> FilePath
+fromDistPrefFlag f = fromFlagOrDefault defaultDistPref . f
 
 -- ------------------------------------------------------------
 -- * Flag type

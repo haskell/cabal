@@ -334,7 +334,7 @@ configure (pkg_descr0', pbi) cfg = do
 
     -- Where to build the package
     let distPref :: FilePath -- e.g. dist
-        distPref = fromFlag (configDistPref cfg)
+        distPref = fromDistPrefFlag configDistPref cfg
         buildDir :: FilePath -- e.g. dist/build
         -- fromFlag OK due to Distribution.Simple calling
         -- findDistPrefOrDefault to fill it in

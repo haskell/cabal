@@ -519,7 +519,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       -- now, but it would probably be better for this to be the
       -- component ID instead...
       pkg_name = display $ PD.package $ localPkgDescr lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
+      distPref = fromDistPrefFlag configDistPref (configFlags lbi)
       hpcdir way
         | forRepl = Mon.mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
@@ -809,7 +809,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-      distPref = fromFlag $ configDistPref $ configFlags lbi
+      distPref = fromDistPrefFlag configDistPref (configFlags lbi)
       hpcdir way
         | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'

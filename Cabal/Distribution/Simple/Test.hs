@@ -44,7 +44,7 @@ test :: Args                    -- ^positional command-line arguments
 test args pkg_descr lbi flags = do
     let verbosity = fromVerbosityFlag testVerbosity flags
         machineTemplate = fromFlag $ testMachineLog flags
-        distPref = fromFlag $ testDistPref flags
+        distPref = fromDistPrefFlag testDistPref flags
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
