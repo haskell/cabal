@@ -66,7 +66,7 @@ module Distribution.Simple.Setup (
   toFlag,
   fromFlag,
   fromFlagOrDefault,
-  getVerbosity,
+  getVerbosity, getDistPref,
   flagToMaybe,
   flagToList,
   BooleanFlag(..),
@@ -168,6 +168,9 @@ fromFlagOrDefault def NoFlag   = def
 
 getVerbosity :: (a -> Flag Verbosity) -> a -> Verbosity
 getVerbosity f = fromFlagOrDefault normal . f
+
+getDistPref :: (a -> Flag FilePath) -> a -> FilePath
+getDistPref f = fromFlagOrDefault defaultDistPref . f
 
 flagToMaybe :: Flag a -> Maybe a
 flagToMaybe (Flag x) = Just x

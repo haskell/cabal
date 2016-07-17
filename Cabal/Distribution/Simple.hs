@@ -469,7 +469,7 @@ getBuildConfig hooks verbosity distPref = do
 
 clean :: PackageDescription -> CleanFlags -> IO ()
 clean pkg_descr flags = do
-    let distPref = fromFlagOrDefault defaultDistPref $ cleanDistPref flags
+    let distPref = getDistPref cleanDistPref flags
     notice verbosity "cleaning..."
 
     maybeConfig <- if fromFlag (cleanSaveConf flags)

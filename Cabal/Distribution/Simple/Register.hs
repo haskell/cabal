@@ -138,7 +138,7 @@ generateOne pkg lib lbi clbi regFlags
     -- fail if dependencies cannot be satisfied.
     packageDbs = nub $ withPackageDB lbi
                     ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
-    distPref  = fromFlag (regDistPref regFlags)
+    distPref  = getDistPref regDistPref regFlags
     verbosity = getVerbosity regVerbosity regFlags
 
 registerAll :: PackageDescription -> LocalBuildInfo -> RegisterFlags

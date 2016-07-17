@@ -155,7 +155,7 @@ runTest pkg_descr lbi flags suite = do
         (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
         hClose h >> return f
 
-    distPref = fromFlag $ testDistPref flags
+    distPref = getDistPref testDistPref flags
     verbosity = getVerbosity testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't

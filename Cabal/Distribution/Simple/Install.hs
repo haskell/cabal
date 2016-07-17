@@ -27,7 +27,8 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag, getVerbosity, HaddockTarget(ForDevelopment) )
+         ( CopyFlags(..), fromFlag, getDistPref, getVerbosity
+         , HaddockTarget(ForDevelopment) )
 import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -82,7 +83,7 @@ install pkg_descr lbi flags
   withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
     copyComponent verbosity pkg_descr lbi comp clbi copydest
  where
-  distPref  = fromFlag (copyDistPref flags)
+  distPref  = getDistPref copyDistPref flags
   verbosity = getVerbosity copyVerbosity flags
   copydest  = fromFlag (copyDest flags)
 
