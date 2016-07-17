@@ -9,6 +9,7 @@ setup() {
             -iv $encrypted_edaf6551664d_iv \
             -in id_ed25519_cabal_website.aes256.enc -out id_ed25519 -d
     mv id_ed25519 ~/.ssh/id_ed25519
+    mv id_ed25519_cabal_website.pub ~/.ssh/id_ed25519.pub
     chmod 400 ~/.ssh/id_ed25519
     cd -
 }
