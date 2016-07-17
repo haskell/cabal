@@ -63,7 +63,7 @@ module Distribution.Simple.Command (
   reqArg, reqArg', optArg, optArg', noArg,
   boolOpt, boolOpt', trueArg, falseArg,
   reqArgFlag, optionVerbosity, optionNumJobs,
-  optionDistPref, defaultDistPref, fromDistPrefFlag, finalizeDistPref
+  optionDistPref, defaultDistPref, fromDistPrefFlag, finalizeDistPref,
   choiceOpt, choiceOptFromEnum,
 
   -- * Other helpers
