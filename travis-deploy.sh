@@ -26,7 +26,8 @@ deploy() {
                git@github.com:haskell/haskell-website.git gh-pages
 }
 
-if [ "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" ]
+if [ "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" \
+                             -a "x$DEPLOY_DOCS" = "xYES" ]
 then
     case "${1}" in
         "setup")

@@ -17,7 +17,7 @@ matrix:
      os: linux
    - env: GHCVER=7.10.3
      os: linux
-   - env: GHCVER=8.0.1 TEST_OLDER=NO
+   - env: GHCVER=8.0.1 TEST_OLDER=NO DEPLOY_DOCS=YES
      os: linux
    # It's not worth the trouble to make older GHC work with clang's cpp
    # Obviously TEST_OLDER doesn't work with OSX
