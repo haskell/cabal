@@ -63,7 +63,7 @@ module Distribution.Simple.Command (
   reqArg, reqArg', optArg, optArg', noArg,
   boolOpt, boolOpt', trueArg, falseArg,
   reqArgFlag, optionVerbosity, optionNumJobs,
-  optionDistPref, defaultDistPref, fromDistPrefFlag,
+  optionDistPref, defaultDistPref, fromDistPrefFlag, finalizeDistPref
   choiceOpt, choiceOptFromEnum,
 
   -- * Other helpers
@@ -233,8 +233,13 @@ optionDistPref get set = \showOrParseArgs ->
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
 
+-- | Given an accessor, get a definite \"dist\/\" path from a 'Flag'.
 fromDistPrefFlag :: (a -> Flag FilePath) -> a -> FilePath
 fromDistPrefFlag f = fromFlagOrDefault defaultDistPref . f
+
+-- | As 'fromDistPrefFlag', but return a 'Final FilePath' value.
+finalizeDistPref :: (a -> Flag FilePath) -> a -> Final FilePath
+finalizeDistPref get = Final . fromDistPrefFlag get
 
 optionVerbosity :: (flags -> Flag Verbosity)
                 -> (Flag Verbosity -> flags -> flags)
