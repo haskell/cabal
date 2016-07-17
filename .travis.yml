@@ -1,4 +1,7 @@
 # NB: don't set `language: haskell` here
+language: c
+
+sudo: required
 
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
