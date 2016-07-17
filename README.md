@@ -163,3 +163,8 @@ There are a few main venues of communication:
   also a decently good bet.
 
 * If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
+
+API Documentation
+-----------------
+
+Auto-generated API documentation for the `master` branch of Cabal is automatically uploaded here: http://haskell.github.io/cabal-website/doc/html/Cabal/.
