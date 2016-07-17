@@ -214,6 +214,7 @@ cabalinstall_build() {
     ./dist/setup/setup sdist
     install_from_tarball
 
+    cd ..
 }
 
 timed "cabal-install dependencies" cabalinstall_dependencies
