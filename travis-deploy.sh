@@ -1,4 +1,5 @@
 #!/bin/sh
+set -ex
 
 setup() {
     git clone --depth=50 --branch=gh-pages \
