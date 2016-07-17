@@ -3,19 +3,30 @@
 # The following enables several GHC versions to be tested; often it's enough to
 # test only against the last release in a major GHC version. Feel free to omit
 # lines listings versions you don't need/want testing for.
-env:
- - GHCVER=7.4.2
- - GHCVER=7.6.3
- - GHCVER=7.8.4
- - GHCVER=7.10.3
- - GHCVER=8.0.1 TEST_OLDER=NO
+matrix:
+  include:
+   - env: GHCVER=7.4.2
+     os: linux
+   - env: GHCVER=7.6.3
+     os: linux
+   - env: GHCVER=7.8.4
+     os: linux
+   - env: GHCVER=7.10.3
+     os: linux
+   - env: GHCVER=8.0.1 TEST_OLDER=NO
+     os: linux
+   - env: GHCVER=7.8.4
+     os: osx
+   - env: GHCVER=7.10.3
+     os: osx
+   - env: GHCVER=8.0.1 TEST_OLDER=NO
+     os: osx
+  allow_failures:
+   - env: GHCVER=head
+
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
  #- GHCVER=head
-
-os:
- - linux
- - osx
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -40,10 +51,6 @@ script:
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
  - ./travis-deploy.sh deploy
-
-matrix:
-  allow_failures:
-   - env: GHCVER=head
 
 notifications:
   irc:
