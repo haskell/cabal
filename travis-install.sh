@@ -46,7 +46,7 @@ elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
     fi
 
     cd ghc-*;
-    ./configure --prefix=$HOME/.ghc-install/
+    ./configure --prefix=$HOME/.ghc-install/$GHCVER
     make install;
     cd ..;
 

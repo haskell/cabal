@@ -1,4 +1,5 @@
 # NB: don't set `language: haskell` here
+# We specify language: c, so it doesn't default to e.g. ruby
 language: c
 
 sudo: required
@@ -18,11 +19,16 @@ matrix:
      os: linux
    - env: GHCVER=8.0.1 TEST_OLDER=NO
      os: linux
+   # It's not worth the trouble to make older GHC work with clang's cpp
+   # Obviously TEST_OLDER doesn't work with OSX
+   #
+   # Also we might want to specify OSX version
+   # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
    - env: GHCVER=7.8.4
      os: osx
    - env: GHCVER=7.10.3
      os: osx
-   - env: GHCVER=8.0.1 TEST_OLDER=NO
+   - env: GHCVER=8.0.1
      os: osx
   allow_failures:
    - env: GHCVER=head
@@ -35,7 +41,7 @@ matrix:
 before_install:
  - ./travis-install.sh
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
- - export PATH=$HOME/.ghc-install//bin:$PATH;
+ - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH;
 
  # Set up deployment to the haskell/cabal-website repo.
  - ./travis-deploy.sh setup
