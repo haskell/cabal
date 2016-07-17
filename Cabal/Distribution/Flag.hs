@@ -19,6 +19,7 @@ module Distribution.Flag
     ( Flag(..), toFlag
     , fromFlag, fromFlagOrDefault, flagToMaybe, flagToList
     , allFlags
+    , Final(..)
     ) where
 
 import GHC.Generics             ( Generic )
@@ -93,3 +94,6 @@ allFlags :: [Flag Bool] -> Flag Bool
 allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
                  then Flag True
                  else NoFlag
+
+newtype Final a = Final { fromFinal :: a }
+  deriving (Eq, Generic, Read, Show)

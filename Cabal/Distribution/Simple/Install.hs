@@ -27,7 +27,8 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag, HaddockTarget(ForDevelopment) )
+         ( CopyFlags(..), fromDistPrefFlag, fromFlag
+         , HaddockTarget(ForDevelopment) )
 import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC

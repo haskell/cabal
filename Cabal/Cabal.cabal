@@ -302,6 +302,7 @@ library
     Distribution.Simple.BuildTarget
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
+    Distribution.Simple.Command.Test
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.GHC

@@ -65,6 +65,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.PreProcess
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
+import Distribution.Simple.Command.Test
 
 import Distribution.Simple.Build
 import Distribution.Simple.SrcDist
@@ -342,8 +343,8 @@ sdistAction hooks flags args = do
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
 testAction hooks flags args = do
     distPref <- findDistPrefOrDefault (testDistPref flags)
-    let verbosity = fromVerbosityFlag testVerbosity flags
-        flags' = flags { testDistPref = toFlag distPref }
+    let config = (finalizeTestFlags flags) { testDistPref = Final distPref }
+        Final verbosity = testVerbosity config
 
     localBuildInfo <- getBuildConfig hooks verbosity distPref
     let pkg_descr = localPkgDescr localBuildInfo
@@ -353,7 +354,7 @@ testAction hooks flags args = do
     runTests hooks args False pkg_descr localBuildInfo
     hookedActionWithArgs preTest testHook postTest
             (getBuildConfig hooks verbosity distPref)
-            hooks flags' args
+            hooks (testConfigToFlags config) args
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
 benchAction hooks flags args = do
@@ -655,7 +656,7 @@ getHookedBuildInfo verbosity = do
 defaultTestHook :: Args -> PackageDescription -> LocalBuildInfo
                 -> UserHooks -> TestFlags -> IO ()
 defaultTestHook args pkg_descr localbuildinfo _ flags =
-    test args pkg_descr localbuildinfo flags
+    test args pkg_descr localbuildinfo (finalizeTestFlags flags)
 
 defaultBenchHook :: Args -> PackageDescription -> LocalBuildInfo
                  -> UserHooks -> BenchmarkFlags -> IO ()

@@ -30,7 +30,7 @@ import System.IO ( hGetContents, hPutStr, stdout, stderr )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
-        -> TestFlags
+        -> TestConfig Final
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
@@ -49,7 +49,7 @@ runTest pkg_descr lbi flags suite = do
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (fromFlag $ testKeepTix flags) $ do
+    unless (fromFinal $ testKeepTix flags) $ do
         exists' <- doesDirectoryExist tixDir_
         when exists' $ removeDirectoryRecursive tixDir_
 
@@ -127,9 +127,9 @@ runTest pkg_descr lbi flags suite = do
 
     return suiteLog
   where
-    distPref = fromDistPrefFlag testDistPref flags
-    verbosity = fromVerbosityFlag testVerbosity flags
-    details = fromFlag $ testShowDetails flags
+    Final distPref = testDistPref flags
+    Final verbosity = testVerbosity flags
+    Final details = testShowDetails flags
     testLogDir = distPref </> "test"
 
     buildLog exit =
@@ -147,7 +147,7 @@ runTest pkg_descr lbi flags suite = do
                 , testLogs = l
                 , logFile =
                     testLogDir
-                    </> testSuiteLogPath (fromFlag $ testHumanLog flags)
+                    </> testSuiteLogPath (fromFinal $ testHumanLog flags)
                                          pkg_descr lbi n l
                 }
 

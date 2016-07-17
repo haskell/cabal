@@ -50,7 +50,7 @@ module Distribution.Simple.Setup (
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
-  TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
+  TestConfig(..), TestFlags, emptyTestFlags, defaultTestFlags, testCommand,
   TestShowDetails(..),
   BenchmarkFlags(..), emptyBenchmarkFlags,
   defaultBenchmarkFlags, benchmarkCommand,
@@ -76,8 +76,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
-import Distribution.Simple.Command hiding (boolOpt, boolOpt')
-import qualified Distribution.Simple.Command as Command
+import Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Utils
 import Distribution.Simple.Program
@@ -87,19 +86,14 @@ import Distribution.Utils.NubList
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
 
+import Distribution.Simple.Command.Test
+
 import Control.Applicative as A ( Applicative(..), (<*) )
 import Control.Monad            ( liftM )
 import Data.List                ( sort )
 import Data.Maybe               ( listToMaybe )
-import Data.Char                ( isSpace, isAlpha )
+import Data.Char                ( isSpace )
 import GHC.Generics             ( Generic )
-
--- FIXME Not sure where this should live
-defaultDistPref :: FilePath
-defaultDistPref = "dist"
-
-fromDistPrefFlag :: (a -> Flag FilePath) -> a -> FilePath
-fromDistPrefFlag f = fromFlagOrDefault defaultDistPref . f
 
 -- ------------------------------------------------------------
 -- * Flag type
@@ -1631,142 +1625,6 @@ replCommand progConf = CommandUI
   }
 
 -- ------------------------------------------------------------
--- * Test flags
--- ------------------------------------------------------------
-
-data TestShowDetails = Never | Failures | Always | Streaming | Direct
-    deriving (Eq, Ord, Enum, Bounded, Show)
-
-knownTestShowDetails :: [TestShowDetails]
-knownTestShowDetails = [minBound..maxBound]
-
-instance Text TestShowDetails where
-    disp  = Disp.text . lowercase . show
-
-    parse = maybe Parse.pfail return . classify =<< ident
-      where
-        ident        = Parse.munch1 (\c -> isAlpha c || c == '_' || c == '-')
-        classify str = lookup (lowercase str) enumMap
-        enumMap     :: [(String, TestShowDetails)]
-        enumMap      = [ (display x, x)
-                       | x <- knownTestShowDetails ]
-
---TODO: do we need this instance?
-instance Monoid TestShowDetails where
-    mempty = Never
-    mappend = (Semi.<>)
-
-instance Semigroup TestShowDetails where
-    a <> b = if a < b then b else a
-
-data TestFlags = TestFlags {
-    testDistPref    :: Flag FilePath,
-    testVerbosity   :: Flag Verbosity,
-    testHumanLog    :: Flag PathTemplate,
-    testMachineLog  :: Flag PathTemplate,
-    testShowDetails :: Flag TestShowDetails,
-    testKeepTix     :: Flag Bool,
-    -- TODO: think about if/how options are passed to test exes
-    testOptions     :: [PathTemplate]
-  } deriving (Generic)
-
-defaultTestFlags :: TestFlags
-defaultTestFlags  = TestFlags {
-    testDistPref    = NoFlag,
-    testVerbosity   = Flag normal,
-    testHumanLog    = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
-    testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
-    testShowDetails = toFlag Failures,
-    testKeepTix     = toFlag False,
-    testOptions     = []
-  }
-
-testCommand :: CommandUI TestFlags
-testCommand = CommandUI
-  { commandName         = "test"
-  , commandSynopsis     =
-      "Run all/specific tests in the test suite."
-  , commandDescription  = Just $ \pname -> wrapText $
-         "If necessary (re)configures with `--enable-tests` flag and builds"
-      ++ " the test suite.\n"
-      ++ "\n"
-      ++ "Remember that the tests' dependencies must be installed if there"
-      ++ " are additional ones; e.g. with `" ++ pname
-      ++ " install --only-dependencies --enable-tests`.\n"
-      ++ "\n"
-      ++ "By defining UserHooks in a custom Setup.hs, the package can"
-      ++ " define actions to be executed before and after running tests.\n"
-  , commandNotes        = Nothing
-  , commandUsage        = usageAlternatives "test"
-      [ "[FLAGS]"
-      , "TESTCOMPONENTS [FLAGS]"
-      ]
-  , commandDefaultFlags = defaultTestFlags
-  , commandOptions = \showOrParseArgs ->
-      [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
-      , optionDistPref
-            testDistPref (\d flags -> flags { testDistPref = d })
-            showOrParseArgs
-      , option [] ["log"]
-            ("Log all test suite results to file (name template can use "
-            ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result)")
-            testHumanLog (\v flags -> flags { testHumanLog = v })
-            (reqArg' "TEMPLATE"
-                (toFlag . toPathTemplate)
-                (flagToList . fmap fromPathTemplate))
-      , option [] ["machine-log"]
-            ("Produce a machine-readable log file (name template can use "
-            ++ "$pkgid, $compiler, $os, $arch, $result)")
-            testMachineLog (\v flags -> flags { testMachineLog = v })
-            (reqArg' "TEMPLATE"
-                (toFlag . toPathTemplate)
-                (flagToList . fmap fromPathTemplate))
-      , option [] ["show-details"]
-            ("'always': always show results of individual test cases. "
-             ++ "'never': never show results of individual test cases. "
-             ++ "'failures': show results of failing test cases. "
-             ++ "'streaming': show results of test cases in real time."
-             ++ "'direct': send results of test cases in real time; no log file.")
-            testShowDetails (\v flags -> flags { testShowDetails = v })
-            (reqArg "FILTER"
-                (readP_to_E (\_ -> "--show-details flag expects one of "
-                              ++ intercalate ", "
-                                   (map display knownTestShowDetails))
-                            (fmap toFlag parse))
-                (flagToList . fmap display))
-      , option [] ["keep-tix-files"]
-            "keep .tix files for HPC between test runs"
-            testKeepTix (\v flags -> flags { testKeepTix = v})
-            trueArg
-      , option [] ["test-options"]
-            ("give extra options to test executables "
-             ++ "(name templates can use $pkgid, $compiler, "
-             ++ "$os, $arch, $test-suite)")
-            testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "TEMPLATES" (map toPathTemplate . splitArgs)
-                (const []))
-      , option [] ["test-option"]
-            ("give extra option to test executables "
-             ++ "(no need to quote options containing spaces, "
-             ++ "name template can use $pkgid, $compiler, "
-             ++ "$os, $arch, $test-suite)")
-            testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
-                (map fromPathTemplate))
-      ]
-  }
-
-emptyTestFlags :: TestFlags
-emptyTestFlags  = mempty
-
-instance Monoid TestFlags where
-  mempty = gmempty
-  mappend = (Semi.<>)
-
-instance Semigroup TestFlags where
-  (<>) = gmappend
-
--- ------------------------------------------------------------
 -- * Benchmark flags
 -- ------------------------------------------------------------
 
@@ -1930,72 +1788,6 @@ programConfigurationOptions progConf showOrParseArgs get set =
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
 -- ------------------------------------------------------------
--- * GetOpt Utils
--- ------------------------------------------------------------
-
-boolOpt :: SFlags -> SFlags
-           -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-boolOpt  = Command.boolOpt  flagToMaybe Flag
-
-boolOpt' :: OptFlags -> OptFlags
-            -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-boolOpt' = Command.boolOpt' flagToMaybe Flag
-
-trueArg, falseArg :: MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-trueArg  sfT lfT = boolOpt' (sfT, lfT) ([], [])   sfT lfT
-falseArg sfF lfF = boolOpt' ([],  [])  (sfF, lfF) sfF lfF
-
-reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
-              (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
-reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
-
-optionDistPref :: (flags -> Flag FilePath)
-               -> (Flag FilePath -> flags -> flags)
-               -> ShowOrParseArgs
-               -> OptionField flags
-optionDistPref get set = \showOrParseArgs ->
-  option "" (distPrefFlagName showOrParseArgs)
-    (   "The directory where Cabal puts generated build files "
-     ++ "(default " ++ defaultDistPref ++ ")")
-    get set
-    (reqArgFlag "DIR")
-  where
-    distPrefFlagName ShowArgs  = ["builddir"]
-    distPrefFlagName ParseArgs = ["builddir", "distdir", "distpref"]
-
-optionVerbosity :: (flags -> Flag Verbosity)
-                -> (Flag Verbosity -> flags -> flags)
-                -> OptionField flags
-optionVerbosity get set =
-  option "v" ["verbose"]
-    "Control verbosity (n is 0--3, default verbosity level is 1)"
-    get set
-    (optArg "n" (fmap Flag flagToVerbosity)
-                (Flag verbose) -- default Value if no n is given
-                (fmap (Just . showForCabal) . flagToList))
-
-optionNumJobs :: (flags -> Flag (Maybe Int))
-              -> (Flag (Maybe Int) -> flags -> flags)
-              -> OptionField flags
-optionNumJobs get set =
-  option "j" ["jobs"]
-    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
-    get set
-    (optArg "NUM" (fmap Flag numJobsParser)
-                  (Flag Nothing)
-                  (map (Just . maybe "$ncpus" show) . flagToList))
-  where
-    numJobsParser :: ReadE (Maybe Int)
-    numJobsParser = ReadE $ \s ->
-      case s of
-        "$ncpus" -> Right Nothing
-        _        -> case reads s of
-          [(n, "")]
-            | n < 1     -> Left "The number of jobs should be 1 or more."
-            | otherwise -> Right (Just n)
-          _             -> Left "The jobs value should be a number or '$ncpus'"
-
--- ------------------------------------------------------------
 -- * Other Utils
 -- ------------------------------------------------------------
 
@@ -2045,35 +1837,6 @@ configureProg verbosity programConfig prog = do
     (p, _) <- requireProgram verbosity prog programConfig
     let pInv = programInvocation p []
     return (progInvokePath pInv, progInvokeArgs pInv)
-
--- | Helper function to split a string into a list of arguments.
--- It's supposed to handle quoted things sensibly, eg:
---
--- > splitArgs "--foo=\"C:\Program Files\Bar\" --baz"
--- >   = ["--foo=C:\Program Files\Bar", "--baz"]
---
-splitArgs :: String -> [String]
-splitArgs  = space []
-  where
-    space :: String -> String -> [String]
-    space w []      = word w []
-    space w ( c :s)
-        | isSpace c = word w (space [] s)
-    space w ('"':s) = string w s
-    space w s       = nonstring w s
-
-    string :: String -> String -> [String]
-    string w []      = word w []
-    string w ('"':s) = space w s
-    string w ( c :s) = string (c:w) s
-
-    nonstring :: String -> String -> [String]
-    nonstring w  []      = word w []
-    nonstring w  ('"':s) = string w s
-    nonstring w  ( c :s) = space (c:w) s
-
-    word [] s = s
-    word w  s = reverse w : s
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 --hunitTests :: [Test]

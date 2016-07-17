@@ -26,7 +26,6 @@ import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.TestSuite
 import Distribution.Text
-import Distribution.Verbosity
 
 import Control.Monad ( when, unless, filterM )
 import System.Directory
@@ -36,15 +35,15 @@ import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>) )
 
 -- |Perform the \"@.\/setup test@\" action.
-test :: Args                    -- ^positional command-line arguments
-     -> PD.PackageDescription   -- ^information from the .cabal file
-     -> LBI.LocalBuildInfo      -- ^information from the configure step
-     -> TestFlags               -- ^flags sent to test
+test :: Args                    -- ^ positional command-line arguments
+     -> PD.PackageDescription   -- ^ information from the .cabal file
+     -> LBI.LocalBuildInfo      -- ^ information from the configure step
+     -> TestConfig Final        -- ^ flags sent to test
      -> IO ()
 test args pkg_descr lbi flags = do
-    let verbosity = fromVerbosityFlag testVerbosity flags
-        machineTemplate = fromFlag $ testMachineLog flags
-        distPref = fromDistPrefFlag testDistPref flags
+    let Final verbosity = testVerbosity flags
+        Final machineTemplate = testMachineLog flags
+        Final distPref = testDistPref flags
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
@@ -110,7 +109,7 @@ test args pkg_descr lbi flags = do
     allOk <- summarizePackage verbosity packageLog
     writeFile packageLogFile $ show packageLog
 
-    let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
+    let isCoverageEnabled = fromFlagOrDefault False $ configCoverage $ LBI.configFlags lbi
     when isCoverageEnabled $
         markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
             map fst testsToRun

@@ -39,7 +39,7 @@ import System.Process (StdStream(..), waitForProcess)
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
-        -> TestFlags
+        -> TestConfig Final
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
@@ -57,7 +57,7 @@ runTest pkg_descr lbi flags suite = do
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (fromFlag $ testKeepTix flags) $ do
+    unless (fromFinal $ testKeepTix flags) $ do
         let tDir = tixDir distPref way $ PD.testName suite
         exists' <- doesDirectoryExist tDir
         when exists' $ removeDirectoryRecursive tDir
@@ -113,7 +113,7 @@ runTest pkg_descr lbi flags suite = do
         -- Generate final log file name
         let finalLogName l = testLogDir
                              </> testSuiteLogPath
-                                 (fromFlag $ testHumanLog flags) pkg_descr lbi
+                                 (fromFinal $ testHumanLog flags) pkg_descr lbi
                                  (testSuiteName l) (testLogs l)
         -- Generate TestSuiteLog from executable exit code and a machine-
         -- readable test log
@@ -130,7 +130,7 @@ runTest pkg_descr lbi flags suite = do
 
         -- Show the contents of the human-readable log file on the terminal
         -- if there is a failure and/or detailed output is requested
-        let details = fromFlag $ testShowDetails flags
+        let Final details = testShowDetails flags
             whenPrinting = when $ (details > Never)
                 && (not (suitePassed $ testLogs suiteLog) || details == Always)
                 && verbosity >= normal
@@ -155,8 +155,8 @@ runTest pkg_descr lbi flags suite = do
         (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
         hClose h >> return f
 
-    distPref = fromDistPrefFlag testDistPref flags
-    verbosity = fromVerbosityFlag testVerbosity flags
+    Final distPref = testDistPref flags
+    Final verbosity = testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
