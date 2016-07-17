@@ -76,7 +76,7 @@ build    :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes
- | fromFlag (buildAssumeDepsUpToDate flags) = do
+ | fromFlagOrDefault False (buildAssumeDepsUpToDate flags) = do
   -- TODO: if checkBuildTargets ignores a target we may accept
   -- a --assume-deps-up-to-date with multiple arguments. Arguably, we should
   -- error early in this case.
