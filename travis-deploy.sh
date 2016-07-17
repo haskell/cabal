@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 setup() {
     git clone --depth=50 --branch=gh-pages \
@@ -24,7 +24,7 @@ deploy() {
                git@github.com:haskell/haskell-website.git gh-pages
 }
 
-if [[ "$TRAVIS_PULL_REQUEST" == "false" && "$TRAVIS_BRANCH" == "master" ]]
+if [ "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" ]
 then
     case "${1}" in
         "setup")
