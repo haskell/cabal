@@ -11,9 +11,7 @@
 -- package. It performs the \"@.\/setup bench@\" action. It runs
 -- benchmarks designated in the package description.
 
-module Distribution.Simple.Bench
-    ( bench
-    ) where
+module Distribution.Simple.Bench ( bench ) where
 
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
@@ -24,6 +22,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.Text
+import Distribution.Verbosity
 
 import Control.Monad ( when, unless, forM )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
@@ -37,7 +36,7 @@ bench :: Args                    -- ^positional command-line arguments
       -> BenchmarkFlags          -- ^flags sent to benchmark
       -> IO ()
 bench args pkg_descr lbi flags = do
-    let verbosity         = fromFlag $ benchmarkVerbosity flags
+    let verbosity         = fromVerbosityFlag benchmarkVerbosity flags
         benchmarkNames    = args
         pkgBenchmarks     = PD.benchmarks pkg_descr
         enabledBenchmarks = [ t | t <- pkgBenchmarks

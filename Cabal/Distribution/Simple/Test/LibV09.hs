@@ -156,7 +156,7 @@ runTest pkg_descr lbi flags suite = do
         hClose h >> return f
 
     distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
+    verbosity = fromVerbosityFlag testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.

@@ -11,9 +11,7 @@
 -- \"@.\/setup test@\" action. It runs test suites designated in the package
 -- description and reports on the results.
 
-module Distribution.Simple.Test
-    ( test
-    ) where
+module Distribution.Simple.Test ( test ) where
 
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
@@ -28,6 +26,7 @@ import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.TestSuite
 import Distribution.Text
+import Distribution.Verbosity
 
 import Control.Monad ( when, unless, filterM )
 import System.Directory
@@ -43,7 +42,7 @@ test :: Args                    -- ^positional command-line arguments
      -> TestFlags               -- ^flags sent to test
      -> IO ()
 test args pkg_descr lbi flags = do
-    let verbosity = fromFlag $ testVerbosity flags
+    let verbosity = fromVerbosityFlag testVerbosity flags
         machineTemplate = fromFlag $ testMachineLog flags
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"

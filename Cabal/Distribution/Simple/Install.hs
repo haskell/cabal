@@ -83,7 +83,7 @@ install pkg_descr lbi flags
     copyComponent verbosity pkg_descr lbi comp clbi copydest
  where
   distPref  = fromFlag (copyDistPref flags)
-  verbosity = fromFlag (copyVerbosity flags)
+  verbosity = fromVerbosityFlag copyVerbosity flags
   copydest  = fromFlag (copyDest flags)
 
   checkHasLibsOrExes =
