@@ -78,7 +78,7 @@ import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
-         , TestFlags(..), BenchmarkFlags(..)
+         , TestFlags, BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList
@@ -97,7 +97,7 @@ import Distribution.PackageDescription
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), readP_to_E, succeedReadE )
+         ( ReadE(..), readP_to_E )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
@@ -2068,17 +2068,13 @@ userConfigCommand = CommandUI {
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-reqArgFlag :: ArgPlaceHolder ->
-              MkOptDescr (b -> Flag String) (Flag String -> b -> b) b
-reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
-
 liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
-yesNoOpt _        sf lf = Command.boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
+yesNoOpt _        sf lf = Command.boolOpt' (sf, lf) ([], map ("no-" ++) lf) sf lf
 
 optionSolver :: (flags -> Flag PreSolver)
              -> (Flag PreSolver -> flags -> flags)

@@ -53,7 +53,7 @@ import Distribution.Simple.Setup
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
-         , TestFlags(..), BenchmarkFlags(..)
+         , TestFlags, TestConfig(..), BenchmarkFlags(..)
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
          , configAbsolutePaths
          )
