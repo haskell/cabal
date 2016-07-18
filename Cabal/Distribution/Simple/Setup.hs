@@ -86,8 +86,7 @@ import Distribution.Utils.NubList
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
 
-import Distribution.Simple.Command.Test
-import Distribution.Simple.Command.Test.Flags
+import Distribution.Simple.Command.Test hiding ( TestConfig(..) )
 
 import Control.Applicative as A ( Applicative(..), (<*) )
 import Control.Monad            ( liftM )

@@ -303,8 +303,6 @@ library
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
     Distribution.Simple.Command.Test
-    Distribution.Simple.Command.Test.Config
-    Distribution.Simple.Command.Test.Flags
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.GHC

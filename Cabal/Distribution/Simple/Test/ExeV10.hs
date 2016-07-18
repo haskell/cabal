@@ -1,25 +1,6 @@
-module Distribution.Simple.Test.ExeV10
-       ( runTest
-       ) where
+{-# LANGUAGE RecordWildCards #-}
 
-import Distribution.Compat.CreatePipe
-import Distribution.Compat.Environment
-import Distribution.Flag
-import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Build.PathsModule
-import Distribution.Simple.BuildPaths
-import Distribution.Simple.Command.Test.Config
-import Distribution.Simple.Compiler
-import Distribution.Simple.Hpc
-import Distribution.Simple.InstallDirs
-import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( configCoverage )
-import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils
-import Distribution.System
-import Distribution.TestSuite
-import Distribution.Text
-import Distribution.Verbosity
+module Distribution.Simple.Test.ExeV10 ( runTest ) where
 
 import Control.Concurrent (forkIO)
 import Control.Monad ( unless, void, when )
@@ -30,12 +11,33 @@ import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hGetContents, hPutStr, stdout, stderr )
 
+import Distribution.Compat.CreatePipe
+import Distribution.Compat.Environment
+
+import Distribution.Flag
+import qualified Distribution.PackageDescription as PD
+import Distribution.System
+import Distribution.TestSuite
+import Distribution.Text
+import Distribution.Verbosity
+
+import Distribution.Simple.Build.PathsModule
+import Distribution.Simple.BuildPaths
+import Distribution.Simple.Command.Test
+import Distribution.Simple.Compiler
+import Distribution.Simple.Hpc
+import Distribution.Simple.InstallDirs
+import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Setup ( configCoverage )
+import Distribution.Simple.Test.Log
+import Distribution.Simple.Utils
+
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
         -> TestConfig
         -> PD.TestSuite
         -> IO TestSuiteLog
-runTest pkg_descr lbi flags suite = do
+runTest pkg_descr lbi (TestConfig {..}) suite = do
     let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
         way = guessWay lbi
         tixDir_ = tixDir distPref way $ PD.testName suite
@@ -44,14 +46,14 @@ runTest pkg_descr lbi flags suite = do
     existingEnv <- getEnvironment
 
     let cmd = LBI.buildDir lbi </> PD.testName suite
-                  </> PD.testName suite <.> exeExtension
+              </> PD.testName suite <.> exeExtension
     -- Check that the test executable exists.
     exists <- doesFileExist cmd
     unless exists $ die $ "Error: Could not find test program \"" ++ cmd
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (testKeepTix flags) $ do
+    unless keepTix $ do
         exists' <- doesDirectoryExist tixDir_
         when exists' $ removeDirectoryRecursive tixDir_
 
@@ -77,8 +79,7 @@ runTest pkg_descr lbi flags suite = do
             return (wOut, wOut, logText)
 
     -- Run the test executable
-    let opts = map (testOption pkg_descr lbi suite)
-                   (testOptions flags)
+    let opts = map (testOption pkg_descr lbi suite) options
         dataDirPath = pwd </> PD.dataDir pkg_descr
         tixFile = pwd </> tixFilePath distPref way (PD.testName suite)
         pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
@@ -129,9 +130,7 @@ runTest pkg_descr lbi flags suite = do
 
     return suiteLog
   where
-    distPref = testDistPref flags
-    verbosity = testVerbosity flags
-    details = testShowDetails flags
+    details = showDetails
     testLogDir = distPref </> "test"
 
     buildLog exit =
@@ -144,13 +143,11 @@ runTest pkg_descr lbi flags suite = do
                 , testOptionsReturned = []
                 , testResult = r
                 }
+            lf = testLogDir </> testSuiteLogPath humanLog pkg_descr lbi n l
         in TestSuiteLog
                 { testSuiteName = n
                 , testLogs = l
-                , logFile =
-                    testLogDir
-                    </> testSuiteLogPath (testHumanLog flags)
-                                         pkg_descr lbi n l
+                , logFile = lf
                 }
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
