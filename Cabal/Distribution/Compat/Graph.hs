@@ -170,6 +170,13 @@ class Ord (Key a) => IsNode a where
     nodeKey :: a -> Key a
     nodeNeighbors :: a -> [Key a]
 
+instance (IsNode a, IsNode b, Key a ~ Key b) => IsNode (Either a b) where
+    type Key (Either a b) = Key a
+    nodeKey (Left x)  = nodeKey x
+    nodeKey (Right x) = nodeKey x
+    nodeNeighbors (Left x)  = nodeNeighbors x
+    nodeNeighbors (Right x) = nodeNeighbors x
+
 -- | A simple, trivial data type which admits an 'IsNode' instance.
 data Node k a = N a k [k]
     deriving (Show, Eq)
