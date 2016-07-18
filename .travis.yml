@@ -46,7 +46,7 @@ before_install:
  # Set up deployment to the haskell/cabal-website repo.
  # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
  # leaked! See https://github.com/travis-ci/travis.rb/issues/423.
- - openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.enc -out id_rsa -d
+ - openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.aes256.enc -out id_rsa -d
  - mv id_rsa ~/.ssh/id_rsa
  - chmod 400 ~/.ssh/id_rsa
 
