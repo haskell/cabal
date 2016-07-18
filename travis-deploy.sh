@@ -2,7 +2,7 @@
 set -ex
 
 setup() {
-    git https://github.com/haskell/cabal-website.git ../cabal-website
+    git clone https://github.com/haskell/cabal-website.git ../cabal-website
     cd ../cabal-website
     openssl aes-256-cbc -K $encrypted_edaf6551664d_key \
             -iv $encrypted_edaf6551664d_iv \
@@ -24,7 +24,7 @@ deploy() {
     git add .
     git commit --amend --reset-author -m "Deploy to GitHub ($(date))."
     git push --force --quiet \
-               git@github.com:haskell/haskell-website.git gh-pages
+               git@github.com:haskell/cabal-website.git gh-pages
 }
 
 if [ "x$TRAVIS_PULL_REQUEST" = "xfalse" -a "x$TRAVIS_BRANCH" = "xmaster" \
