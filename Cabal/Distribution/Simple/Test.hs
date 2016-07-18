@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Test
@@ -11,23 +13,7 @@
 -- \"@.\/setup test@\" action. It runs test suites designated in the package
 -- description and reports on the results.
 
-module Distribution.Simple.Test
-    ( test
-    ) where
-
-import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Compiler
-import Distribution.Simple.Hpc
-import Distribution.Simple.InstallDirs
-import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
-import Distribution.Simple.UserHooks
-import qualified Distribution.Simple.Test.ExeV10 as ExeV10
-import qualified Distribution.Simple.Test.LibV09 as LibV09
-import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils
-import Distribution.TestSuite
-import Distribution.Text
+module Distribution.Simple.Test ( test ) where
 
 import Control.Monad ( when, unless, filterM )
 import System.Directory
@@ -36,17 +22,31 @@ import System.Directory
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>) )
 
+import Distribution.Flag
+import qualified Distribution.PackageDescription as PD
+import Distribution.TestSuite
+import Distribution.Text
+
+import Distribution.Simple.Command.Test
+import Distribution.Simple.Compiler
+import Distribution.Simple.Hpc
+import Distribution.Simple.InstallDirs
+import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Setup ( configCoverage )
+import qualified Distribution.Simple.Test.ExeV10 as ExeV10
+import qualified Distribution.Simple.Test.LibV09 as LibV09
+import Distribution.Simple.Test.Log
+import Distribution.Simple.UserHooks
+import Distribution.Simple.Utils
+
 -- |Perform the \"@.\/setup test@\" action.
-test :: Args                    -- ^positional command-line arguments
-     -> PD.PackageDescription   -- ^information from the .cabal file
-     -> LBI.LocalBuildInfo      -- ^information from the configure step
-     -> TestFlags               -- ^flags sent to test
+test :: Args                    -- ^ positional command-line arguments
+     -> PD.PackageDescription   -- ^ information from the .cabal file
+     -> LBI.LocalBuildInfo      -- ^ information from the configure step
+     -> TestConfig              -- ^ flags sent to test
      -> IO ()
-test args pkg_descr lbi flags = do
-    let verbosity = fromFlag $ testVerbosity flags
-        machineTemplate = fromFlag $ testMachineLog flags
-        distPref = fromFlag $ testDistPref flags
-        testLogDir = distPref </> "test"
+test args pkg_descr lbi config@(TestConfig {..}) = do
+    let testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
         enabledTests = [ t | t <- pkgTests
@@ -57,10 +57,10 @@ test args pkg_descr lbi flags = do
         doTest (suite, _) =
             case PD.testInterface suite of
               PD.TestSuiteExeV10 _ _ ->
-                  ExeV10.runTest pkg_descr lbi flags suite
+                  ExeV10.runTest pkg_descr lbi config suite
 
               PD.TestSuiteLibV09 _ _ ->
-                  LibV09.runTest pkg_descr lbi flags suite
+                  LibV09.runTest pkg_descr lbi config suite
 
               _ -> return TestSuiteLog
                   { testSuiteName = PD.testName suite
@@ -106,12 +106,11 @@ test args pkg_descr lbi flags = do
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
     suites <- mapM doTest testsToRun
     let packageLog = (localPackageLog pkg_descr lbi) { testSuites = suites }
-        packageLogFile = (</>) testLogDir
-            $ packageLogPath machineTemplate pkg_descr lbi
+        packageLogFile = testLogDir </> packageLogPath machineLog pkg_descr lbi
     allOk <- summarizePackage verbosity packageLog
     writeFile packageLogFile $ show packageLog
 
-    let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
+    let isCoverageEnabled = fromFlagOrDefault False $ configCoverage $ LBI.configFlags lbi
     when isCoverageEnabled $
         markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
             map fst testsToRun

@@ -62,17 +62,17 @@ module Distribution.Make (
 
 -- local
 import Distribution.Compat.Exception
-import Distribution.Package
-import Distribution.Simple.Program
-import Distribution.PackageDescription
-import Distribution.Simple.Setup
-import Distribution.Simple.Command
-
-import Distribution.Simple.Utils
-
 import Distribution.License
-import Distribution.Version
+import Distribution.Package
+import Distribution.PackageDescription
 import Distribution.Text
+import Distribution.Verbosity
+import Distribution.Version
+
+import Distribution.Simple.Command
+import Distribution.Simple.Program
+import Distribution.Simple.Setup
+import Distribution.Simple.Utils
 
 import System.Environment (getArgs, getProgName)
 import System.Exit
@@ -128,7 +128,7 @@ defaultMainHelper args =
 configureAction :: ConfigFlags -> [String] -> IO ()
 configureAction flags args = do
   noExtraFlags args
-  let verbosity = fromFlag (configVerbosity flags)
+  let verbosity = fromVerbosityFlag configVerbosity flags
   rawSystemExit verbosity "sh" $
     "configure"
     : configureArgs backwardsCompatHack flags
@@ -140,42 +140,42 @@ copyAction flags args = do
   let destArgs = case fromFlag $ copyDest flags of
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
-  rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
+  rawSystemExit (fromVerbosityFlag copyVerbosity flags) "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
 installAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ installVerbosity flags) "make" ["install"]
-  rawSystemExit (fromFlag $ installVerbosity flags) "make" ["register"]
+  rawSystemExit (fromVerbosityFlag installVerbosity flags) "make" ["install"]
+  rawSystemExit (fromVerbosityFlag installVerbosity flags) "make" ["register"]
 
 haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
+  rawSystemExit (fromVerbosityFlag haddockVerbosity flags) "make" ["docs"]
     `catchIO` \_ ->
-    rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
+    rawSystemExit (fromVerbosityFlag haddockVerbosity flags) "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()
 buildAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ buildVerbosity flags) "make" []
+  rawSystemExit (fromVerbosityFlag buildVerbosity flags) "make" []
 
 cleanAction :: CleanFlags -> [String] -> IO ()
 cleanAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ cleanVerbosity flags) "make" ["clean"]
+  rawSystemExit (fromVerbosityFlag cleanVerbosity flags) "make" ["clean"]
 
 sdistAction :: SDistFlags -> [String] -> IO ()
 sdistAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ sDistVerbosity flags) "make" ["dist"]
+  rawSystemExit (fromVerbosityFlag sDistVerbosity flags) "make" ["dist"]
 
 registerAction :: RegisterFlags -> [String] -> IO ()
 registerAction  flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ regVerbosity flags) "make" ["register"]
+  rawSystemExit (fromVerbosityFlag regVerbosity flags) "make" ["register"]
 
 unregisterAction :: RegisterFlags -> [String] -> IO ()
 unregisterAction flags args = do
   noExtraFlags args
-  rawSystemExit (fromFlag $ regVerbosity flags) "make" ["unregister"]
+  rawSystemExit (fromVerbosityFlag regVerbosity flags) "make" ["unregister"]

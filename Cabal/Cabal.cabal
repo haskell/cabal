@@ -279,6 +279,7 @@ library
     Distribution.Compat.Semigroup
     Distribution.Compat.Time
     Distribution.Compiler
+    Distribution.Flag
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.Make
@@ -301,6 +302,7 @@ library
     Distribution.Simple.BuildTarget
     Distribution.Simple.CCompiler
     Distribution.Simple.Command
+    Distribution.Simple.Command.Test
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.GHC

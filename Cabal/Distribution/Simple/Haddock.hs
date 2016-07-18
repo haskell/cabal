@@ -203,7 +203,7 @@ haddock pkg_descr lbi suffixes flags' = do
                 runHaddock verbosity tmpFileOpts comp platform
                   confHaddock exeArgs'
           Nothing -> do
-           warn (fromFlag $ haddockVerbosity flags)
+           warn (fromVerbosityFlag haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
       case component of
@@ -676,7 +676,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
                               </> exeName exe </> "src"
               runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
             Nothing -> do
-              warn (fromFlag $ hscolourVerbosity flags)
+              warn (fromVerbosityFlag hscolourVerbosity flags)
                 "Unsupported component, skipping..."
               return ()
         case comp of
@@ -689,8 +689,8 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
     stylesheet = flagToMaybe (hscolourCSS flags)
 
-    verbosity  = fromFlag (hscolourVerbosity flags)
-    distPref   = fromFlag (hscolourDistPref flags)
+    verbosity  = fromVerbosityFlag hscolourVerbosity flags
+    distPref   = fromDistPrefFlag hscolourDistPref flags
 
     runHsColour prog outputDir moduleFiles = do
          createDirectoryIfMissingVerbose verbosity True outputDir

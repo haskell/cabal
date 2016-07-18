@@ -2068,17 +2068,13 @@ userConfigCommand = CommandUI {
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-reqArgFlag :: ArgPlaceHolder ->
-              MkOptDescr (b -> Flag String) (Flag String -> b -> b) b
-reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
-
 liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
-yesNoOpt _        sf lf = Command.boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
+yesNoOpt _        sf lf = Command.boolOpt' (sf, lf) ([], map ("no-" ++) lf) sf lf
 
 optionSolver :: (flags -> Flag PreSolver)
              -> (Flag PreSolver -> flags -> flags)

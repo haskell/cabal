@@ -46,33 +46,40 @@ module Distribution.Simple.Command (
   -- ** Running commands
   commandsRun,
 
--- * Option Fields
+  -- * Option Fields
   OptionField(..), Name,
 
--- ** Constructing Option Fields
+  -- ** Constructing Option Fields
   option, multiOption,
 
--- ** Liftings & Projections
+  -- ** Liftings & Projections
   liftOption, viewAsFieldDescr,
 
--- * Option Descriptions
+  -- * Option Descriptions
   OptDescr(..), Description, SFlags, LFlags, OptFlags, ArgPlaceHolder,
 
--- ** OptDescr 'smart' constructors
+  -- ** OptDescr 'smart' constructors
   MkOptDescr,
   reqArg, reqArg', optArg, optArg', noArg,
-  boolOpt, boolOpt', choiceOpt, choiceOptFromEnum
+  boolOpt, boolOpt', trueArg, falseArg,
+  reqArgFlag, optionVerbosity, optionNumJobs,
+  optionDistPref, defaultDistPref, fromDistPrefFlag,
+  choiceOpt, choiceOptFromEnum,
 
+  -- * Other helpers
+  splitArgs
   ) where
 
+import Distribution.Flag
 import qualified Distribution.GetOpt as GetOpt
-import Distribution.Text
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils
+import Distribution.Text
+import Distribution.Verbosity
 
 import Control.Monad
-import Data.Char (isAlpha, toLower)
+import Data.Char (isAlpha, isSpace, toLower)
 import Data.List (sortBy)
 import Data.Maybe
 import Data.Monoid as Mon
@@ -184,16 +191,83 @@ optArg' ad mkflag showflag =
 noArg :: (Eq b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
 
-boolOpt :: (b -> Maybe Bool) -> (Bool -> b) -> SFlags -> SFlags
+boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt  = boolOpt_ flagToMaybe Flag where
+  boolOpt_ :: (b -> Maybe Bool) -> (Bool -> b) -> SFlags -> SFlags
            -> MkOptDescr (a -> b) (b -> a -> a) a
-boolOpt g s sfT sfF _sf _lf@(n:_) d get set =
-    BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g.get)
-boolOpt _ _ _ _ _ _ _ _ _ = error
-                            "Distribution.Simple.Setup.boolOpt: unreachable"
+  boolOpt_ g s sfT sfF _sf _lf@(n:_) d get set =
+      BoolOpt d (sfT, ["enable-"++n]) (sfF, ["disable-"++n]) (set.s) (g.get)
+  boolOpt_ _ _ _ _ _ _ _ _ _ =
+      error "Distribution.Simple.Setup.boolOpt: unreachable"
 
-boolOpt' :: (b -> Maybe Bool) -> (Bool -> b) -> OptFlags -> OptFlags
-            -> MkOptDescr (a -> b) (b -> a -> a) a
-boolOpt' g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g . get)
+boolOpt' :: OptFlags -> OptFlags
+            -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt' = boolOpt_ flagToMaybe Flag where
+  boolOpt_ :: (b -> Maybe Bool) -> (Bool -> b) -> OptFlags -> OptFlags
+           -> MkOptDescr (a -> b) (b -> a -> a) a
+  boolOpt_ g s ffT ffF _sf _lf d get set = BoolOpt d ffT ffF (set.s) (g . get)
+
+trueArg, falseArg :: MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+trueArg  sfT lfT = boolOpt' (sfT, lfT) ([], [])   sfT lfT
+falseArg sfF lfF = boolOpt' ([],  [])  (sfF, lfF) sfF lfF
+
+reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
+              (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
+reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
+
+optionDistPref :: (flags -> Flag FilePath)
+               -> (Flag FilePath -> flags -> flags)
+               -> ShowOrParseArgs
+               -> OptionField flags
+optionDistPref get set = \showOrParseArgs ->
+  option "" (distPrefFlagName showOrParseArgs)
+    (   "The directory where Cabal puts generated build files "
+     ++ "(default " ++ defaultDistPref ++ ")")
+    get set
+    (reqArgFlag "DIR")
+  where
+    distPrefFlagName ShowArgs  = ["builddir"]
+    distPrefFlagName ParseArgs = ["builddir", "distdir", "distpref"]
+
+-- FIXME Not sure where this should live
+defaultDistPref :: FilePath
+defaultDistPref = "dist"
+
+-- | Given an accessor, get a definite \"dist\/\" path from a 'Flag'.
+fromDistPrefFlag :: (a -> Flag FilePath) -> a -> FilePath
+fromDistPrefFlag f = fromFlagOrDefault defaultDistPref . f
+
+optionVerbosity :: (flags -> Flag Verbosity)
+                -> (Flag Verbosity -> flags -> flags)
+                -> OptionField flags
+optionVerbosity get set =
+  option "v" ["verbose"]
+    "Control verbosity (n is 0--3, default verbosity level is 1)"
+    get set
+    (optArg "n" (fmap Flag flagToVerbosity)
+                (Flag verbose) -- default Value if no n is given
+                (fmap (Just . showForCabal) . flagToList))
+
+optionNumJobs :: (flags -> Flag (Maybe Int))
+              -> (Flag (Maybe Int) -> flags -> flags)
+              -> OptionField flags
+optionNumJobs get set =
+  option "j" ["jobs"]
+    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+    get set
+    (optArg "NUM" (fmap Flag numJobsParser)
+                  (Flag Nothing)
+                  (map (Just . maybe "$ncpus" show) . flagToList))
+  where
+    numJobsParser :: ReadE (Maybe Int)
+    numJobsParser = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _        -> case reads s of
+          [(n, "")]
+            | n < 1     -> Left "The number of jobs should be 1 or more."
+            | otherwise -> Right (Just n)
+          _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- | create a Choice option
 choiceOpt :: Eq b => [(b,OptFlags,Description)]
@@ -618,3 +692,32 @@ data CommandSpec action
 
 commandFromSpec :: CommandSpec a -> Command a
 commandFromSpec (CommandSpec ui action _) = action ui
+
+-- | Helper function to split a string into a list of arguments.
+-- It's supposed to handle quoted things sensibly, eg:
+--
+-- > splitArgs "--foo=\"C:\Program Files\Bar\" --baz"
+-- >   = ["--foo=C:\Program Files\Bar", "--baz"]
+--
+splitArgs :: String -> [String]
+splitArgs  = space []
+  where
+    space :: String -> String -> [String]
+    space w []      = word w []
+    space w ( c :s)
+        | isSpace c = word w (space [] s)
+    space w ('"':s) = string w s
+    space w s       = nonstring w s
+
+    string :: String -> String -> [String]
+    string w []      = word w []
+    string w ('"':s) = space w s
+    string w ( c :s) = string (c:w) s
+
+    nonstring :: String -> String -> [String]
+    nonstring w  []      = word w []
+    nonstring w  ('"':s) = string w s
+    nonstring w  ( c :s) = space (c:w) s
+
+    word [] s = s
+    word w  s = reverse w : s

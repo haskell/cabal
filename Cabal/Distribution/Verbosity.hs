@@ -15,40 +15,41 @@
 
 -- Verbosity for Cabal functions.
 
-module Distribution.Verbosity (
-  -- * Verbosity
-  Verbosity,
-  silent, normal, verbose, deafening,
-  moreVerbose, lessVerbose,
-  intToVerbosity, flagToVerbosity,
-  showForCabal, showForGHC
- ) where
+module Distribution.Verbosity
+    ( -- * Verbosity
+      Verbosity, silent, normal, verbose, deafening
+    , moreVerbose, lessVerbose
+    , intToVerbosity, flagToVerbosity
+    , showForCabal, showForGHC
+    , fromVerbosityFlag
+    ) where
 
-import Distribution.Compat.Binary
+import Distribution.Compat.Binary (Binary)
+import Distribution.Flag
 import Distribution.ReadE
 
 import Data.List (elemIndex)
-import GHC.Generics
+import GHC.Generics (Generic)
 
 data Verbosity = Silent | Normal | Verbose | Deafening
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
 instance Binary Verbosity
 
--- We shouldn't print /anything/ unless an error occurs in silent mode
+-- | Print /nothing/ unless an error occurs. silent mode
 silent :: Verbosity
 silent = Silent
 
--- Print stuff we want to see by default
+-- | Print messages that should be shown by default.
 normal :: Verbosity
 normal = Normal
 
--- Be more verbose about what's going on
+-- | Print messages more verbosely than 'normal'.
 verbose :: Verbosity
 verbose = Verbose
 
--- Not only are we verbose ourselves (perhaps even noisier than when
--- being "verbose"), but we tell everything we run to be verbose too
+-- | Be more verbose than 'verbose' /and/ tell child processes to be
+-- verbose, too.
 deafening :: Verbosity
 deafening = Deafening
 
@@ -88,3 +89,7 @@ showForCabal v = maybe (error "unknown verbosity") show $
 showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
+
+-- | Given an accessor, get a definite 'Verbosity' from a 'Flag'.
+fromVerbosityFlag :: (a -> Flag Verbosity) -> a -> Verbosity
+fromVerbosityFlag get = fromFlagOrDefault normal . get

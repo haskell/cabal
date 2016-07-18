@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Distribution.Simple.Test.LibV09
        ( runTest
          -- Test stub
@@ -5,25 +7,6 @@ module Distribution.Simple.Test.LibV09
        , stubFilePath, stubMain, stubName, stubWriteLog
        , writeSimpleTestStub
        ) where
-
-import Distribution.Compat.CreatePipe
-import Distribution.Compat.Environment
-import Distribution.Compat.Internal.TempFile
-import Distribution.ModuleName
-import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Build.PathsModule
-import Distribution.Simple.BuildPaths
-import Distribution.Simple.Compiler
-import Distribution.Simple.Hpc
-import Distribution.Simple.InstallDirs
-import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
-import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils
-import Distribution.System
-import Distribution.TestSuite
-import Distribution.Text
-import Distribution.Verbosity
 
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless )
@@ -37,12 +20,35 @@ import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, hGetContents, hPutStr )
 import System.Process (StdStream(..), waitForProcess)
 
+import Distribution.Compat.CreatePipe
+import Distribution.Compat.Environment
+import Distribution.Compat.Internal.TempFile
+
+import Distribution.Flag
+import Distribution.ModuleName
+import qualified Distribution.PackageDescription as PD
+import Distribution.System
+import Distribution.TestSuite as TestSuite
+import Distribution.Text
+import Distribution.Verbosity
+
+import Distribution.Simple.Build.PathsModule
+import Distribution.Simple.BuildPaths
+import Distribution.Simple.Command.Test
+import Distribution.Simple.Compiler
+import Distribution.Simple.Hpc
+import Distribution.Simple.InstallDirs
+import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Setup ( configCoverage )
+import Distribution.Simple.Test.Log
+import Distribution.Simple.Utils
+
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
-        -> TestFlags
+        -> TestConfig
         -> PD.TestSuite
         -> IO TestSuiteLog
-runTest pkg_descr lbi flags suite = do
+runTest pkg_descr lbi (TestConfig {..}) suite = do
     let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
         way = guessWay lbi
 
@@ -57,7 +63,7 @@ runTest pkg_descr lbi flags suite = do
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (fromFlag $ testKeepTix flags) $ do
+    unless keepTix $ do
         let tDir = tixDir distPref way $ PD.testName suite
         exists' <- doesDirectoryExist tDir
         when exists' $ removeDirectoryRecursive tDir
@@ -74,7 +80,7 @@ runTest pkg_descr lbi flags suite = do
 
         -- Run test executable
         (Just wIn, _, _, process) <- do
-                let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
+                let opts = map (testOption pkg_descr lbi suite) options
                     dataDirPath = pwd </> PD.dataDir pkg_descr
                     tixFile = pwd </> tixFilePath distPref way (PD.testName suite)
                     pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
@@ -112,8 +118,8 @@ runTest pkg_descr lbi flags suite = do
 
         -- Generate final log file name
         let finalLogName l = testLogDir
-                             </> testSuiteLogPath
-                                 (fromFlag $ testHumanLog flags) pkg_descr lbi
+                             </> testSuiteLogPath humanLog
+                                 pkg_descr lbi
                                  (testSuiteName l) (testLogs l)
         -- Generate TestSuiteLog from executable exit code and a machine-
         -- readable test log
@@ -130,7 +136,7 @@ runTest pkg_descr lbi flags suite = do
 
         -- Show the contents of the human-readable log file on the terminal
         -- if there is a failure and/or detailed output is requested
-        let details = fromFlag $ testShowDetails flags
+        let details = showDetails
             whenPrinting = when $ (details > Never)
                 && (not (suitePassed $ testLogs suiteLog) || details == Always)
                 && verbosity >= normal
@@ -154,9 +160,6 @@ runTest pkg_descr lbi flags suite = do
     openCabalTemp = do
         (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
         hClose h >> return f
-
-    distPref = fromFlag $ testDistPref flags
-    verbosity = fromFlag $ testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.
@@ -247,7 +250,7 @@ stubRunTests tests = do
     stubRunTests' (ExtraOptions _ t) = stubRunTests' t
     maybeDefaultOption opt =
         maybe Nothing (\d -> Just (optionName opt, d)) $ optionDefault opt
-    defaultOptions testInst = mapMaybe maybeDefaultOption $ options testInst
+    defaultOptions testInst = mapMaybe maybeDefaultOption $ TestSuite.options testInst
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
 -- Cabal process to read.
