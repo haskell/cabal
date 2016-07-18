@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command.Test
@@ -12,72 +9,50 @@
 --
 -- This module defines command-line interface to the @test@ action.
 
-module Distribution.Simple.Command.Test where
+module Distribution.Simple.Command.Test
+    ( testCommand
+    , finalizeTestFlags, testConfigToFlags
+    , defaultTestFlags, emptyTestFlags
+    ) where
 
-import GHC.Generics ( Generic )
-import qualified Text.PrettyPrint as Disp
-
-import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Semigroup
 import Distribution.Flag
 import Distribution.ReadE
 import Distribution.Simple.Command
+import Distribution.Simple.Command.Test.Config ( TestConfig(TestConfig) )
+import qualified Distribution.Simple.Command.Test.Config as Config
+import Distribution.Simple.Command.Test.Flags
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Verbosity
 
-import Data.Char ( isAlpha )
-
-
-data TestConfig a = TestFlags { testDistPref    :: a FilePath
-                              , testVerbosity   :: a Verbosity
-                              , testHumanLog    :: a PathTemplate
-                              , testMachineLog  :: a PathTemplate
-                              , testShowDetails :: a TestShowDetails
-                              , testKeepTix     :: a Bool
-                              , testOptions     :: [PathTemplate]
-                                -- TODO: think about if/how options are
-                                -- passed to test exes
-                              }
-  deriving (Generic)
-
-type TestFlags = TestConfig Flag
-
-instance Monoid (TestConfig Flag) where
-    mempty = gmempty
-    mappend = (<>)
-
-instance Semigroup (TestConfig Flag) where
-    (<>) = gmappend
-
-finalizeTestFlags :: TestFlags -> TestConfig Final
+finalizeTestFlags :: TestFlags -> TestConfig
 finalizeTestFlags flags =
-    TestFlags { testDistPref = finalizeDistPref testDistPref flags
-              , testVerbosity = finalizeVerbosity testVerbosity flags
-              , testHumanLog = finalize testHumanLog defaultHumanLog
-              , testMachineLog = finalize testMachineLog defaultMachineLog
-              , testShowDetails = finalize testShowDetails Failures
-              , testKeepTix = finalize testKeepTix False
-              , testOptions = testOptions flags
-              }
+    TestConfig { Config.testDistPref = fromDistPrefFlag testDistPref flags
+               , Config.testVerbosity = fromVerbosityFlag testVerbosity flags
+               , Config.testHumanLog = finalize testHumanLog defaultHumanLog
+               , Config.testMachineLog = finalize testMachineLog defaultMachineLog
+               , Config.testShowDetails = finalize testShowDetails Failures
+               , Config.testKeepTix = finalize testKeepTix False
+               , Config.testOptions = testOptions flags
+               }
   where
-    finalize get def = Final (fromFlagOrDefault def (get flags))
+    finalize get def = fromFlagOrDefault def (get flags)
     defaultHumanLog = toPathTemplate "$pkgid-$test-suite.log"
     defaultMachineLog = toPathTemplate "$pkgid.log"
 
-testConfigToFlags :: TestConfig Final -> TestFlags
+testConfigToFlags :: TestConfig -> TestFlags
 testConfigToFlags config =
-    TestFlags { testDistPref = unfinalize testDistPref
-              , testVerbosity = unfinalize testVerbosity
-              , testHumanLog = unfinalize testHumanLog
-              , testMachineLog = unfinalize testMachineLog
-              , testShowDetails = unfinalize testShowDetails
-              , testKeepTix = unfinalize testKeepTix
-              , testOptions = testOptions config
+    TestFlags { testDistPref = unfinalize Config.testDistPref
+              , testVerbosity = unfinalize Config.testVerbosity
+              , testHumanLog = unfinalize Config.testHumanLog
+              , testMachineLog = unfinalize Config.testMachineLog
+              , testShowDetails = unfinalize Config.testShowDetails
+              , testKeepTix = unfinalize Config.testKeepTix
+              , testOptions = Config.testOptions config
               }
   where
-    unfinalize get = (toFlag . fromFinal) (get config)
+    unfinalize get = toFlag (get config)
 
 {-# DEPRECATED emptyTestFlags "Use mempty instead." #-}
 emptyTestFlags :: TestFlags
@@ -86,31 +61,6 @@ emptyTestFlags = mempty
 {-# DEPRECATED defaultTestFlags "Use finalizeTestFlags instead." #-}
 defaultTestFlags :: TestFlags
 defaultTestFlags = testConfigToFlags (finalizeTestFlags emptyTestFlags)
-
-data TestShowDetails = Never | Failures | Always | Streaming | Direct
-    deriving (Eq, Ord, Enum, Bounded, Show)
-
-knownTestShowDetails :: [TestShowDetails]
-knownTestShowDetails = [minBound..maxBound]
-
-instance Text TestShowDetails where
-    disp  = Disp.text . lowercase . show
-
-    parse = maybe Parse.pfail return . classify =<< ident
-      where
-        ident        = Parse.munch1 (\c -> isAlpha c || c == '_' || c == '-')
-        classify str = lookup (lowercase str) enumMap
-        enumMap     :: [(String, TestShowDetails)]
-        enumMap      = [ (display x, x)
-                       | x <- knownTestShowDetails ]
-
---TODO: do we need this instance?
-instance Monoid TestShowDetails where
-    mempty = Never
-    mappend = (<>)
-
-instance Semigroup TestShowDetails where
-    a <> b = if a < b then b else a
 
 testCommand :: CommandUI TestFlags
 testCommand = CommandUI

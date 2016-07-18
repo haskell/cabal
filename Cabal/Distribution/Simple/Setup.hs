@@ -50,7 +50,7 @@ module Distribution.Simple.Setup (
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
-  TestConfig(..), TestFlags, emptyTestFlags, defaultTestFlags, testCommand,
+  TestFlags(..), emptyTestFlags, defaultTestFlags, testCommand,
   TestShowDetails(..),
   BenchmarkFlags(..), emptyBenchmarkFlags,
   defaultBenchmarkFlags, benchmarkCommand,
@@ -87,6 +87,7 @@ import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup as Semi
 
 import Distribution.Simple.Command.Test
+import Distribution.Simple.Command.Test.Flags
 
 import Control.Applicative as A ( Applicative(..), (<*) )
 import Control.Monad            ( liftM )

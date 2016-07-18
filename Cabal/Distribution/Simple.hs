@@ -63,9 +63,12 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
 import Distribution.Simple.PreProcess
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup hiding ( TestFlags(..) )
 import Distribution.Simple.Command
 import Distribution.Simple.Command.Test
+import qualified Distribution.Simple.Command.Test.Config as TestConfig
+import Distribution.Simple.Command.Test.Flags ( TestFlags )
+import qualified Distribution.Simple.Command.Test.Flags as TestFlags
 
 import Distribution.Simple.Build
 import Distribution.Simple.SrcDist
@@ -342,9 +345,9 @@ sdistAction hooks flags args = do
 
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
 testAction hooks flags args = do
-    distPref <- findDistPrefOrDefault (testDistPref flags)
-    let config = (finalizeTestFlags flags) { testDistPref = Final distPref }
-        Final verbosity = testVerbosity config
+    distPref <- findDistPrefOrDefault (TestFlags.testDistPref flags)
+    let config = (finalizeTestFlags flags) { TestConfig.testDistPref = distPref }
+        verbosity = TestConfig.testVerbosity config
 
     localBuildInfo <- getBuildConfig hooks verbosity distPref
     let pkg_descr = localPkgDescr localBuildInfo

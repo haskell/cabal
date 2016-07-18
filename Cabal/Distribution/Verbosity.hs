@@ -21,7 +21,7 @@ module Distribution.Verbosity
     , moreVerbose, lessVerbose
     , intToVerbosity, flagToVerbosity
     , showForCabal, showForGHC
-    , fromVerbosityFlag, finalizeVerbosity
+    , fromVerbosityFlag
     ) where
 
 import Distribution.Compat.Binary (Binary)
@@ -93,7 +93,3 @@ showForGHC   v = maybe (error "unknown verbosity") show $
 -- | Given an accessor, get a definite 'Verbosity' from a 'Flag'.
 fromVerbosityFlag :: (a -> Flag Verbosity) -> a -> Verbosity
 fromVerbosityFlag get = fromFlagOrDefault normal . get
-
--- | As 'fromVerbosityFlag', but returns a 'Final Verbosity' value.
-finalizeVerbosity :: (a -> Flag Verbosity) -> a -> Final Verbosity
-finalizeVerbosity get = Final . fromVerbosityFlag get

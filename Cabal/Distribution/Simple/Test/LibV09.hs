@@ -9,15 +9,17 @@ module Distribution.Simple.Test.LibV09
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
+import Distribution.Flag
 import Distribution.ModuleName
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.Command.Test.Config
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup ( configCoverage )
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
@@ -39,7 +41,7 @@ import System.Process (StdStream(..), waitForProcess)
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
-        -> TestConfig Final
+        -> TestConfig
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
@@ -57,7 +59,7 @@ runTest pkg_descr lbi flags suite = do
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (fromFinal $ testKeepTix flags) $ do
+    unless (testKeepTix flags) $ do
         let tDir = tixDir distPref way $ PD.testName suite
         exists' <- doesDirectoryExist tDir
         when exists' $ removeDirectoryRecursive tDir
@@ -113,7 +115,7 @@ runTest pkg_descr lbi flags suite = do
         -- Generate final log file name
         let finalLogName l = testLogDir
                              </> testSuiteLogPath
-                                 (fromFinal $ testHumanLog flags) pkg_descr lbi
+                                 (testHumanLog flags) pkg_descr lbi
                                  (testSuiteName l) (testLogs l)
         -- Generate TestSuiteLog from executable exit code and a machine-
         -- readable test log
@@ -130,7 +132,7 @@ runTest pkg_descr lbi flags suite = do
 
         -- Show the contents of the human-readable log file on the terminal
         -- if there is a failure and/or detailed output is requested
-        let Final details = testShowDetails flags
+        let details = testShowDetails flags
             whenPrinting = when $ (details > Never)
                 && (not (suitePassed $ testLogs suiteLog) || details == Always)
                 && verbosity >= normal
@@ -155,8 +157,8 @@ runTest pkg_descr lbi flags suite = do
         (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
         hClose h >> return f
 
-    Final distPref = testDistPref flags
-    Final verbosity = testVerbosity flags
+    distPref = testDistPref flags
+    verbosity = testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
 -- necessarily a path.

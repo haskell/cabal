@@ -13,16 +13,18 @@
 
 module Distribution.Simple.Test ( test ) where
 
+import Distribution.Flag
 import qualified Distribution.PackageDescription as PD
+import Distribution.Simple.Command.Test.Config
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
-import Distribution.Simple.UserHooks
+import Distribution.Simple.Setup ( configCoverage )
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
 import qualified Distribution.Simple.Test.LibV09 as LibV09
 import Distribution.Simple.Test.Log
+import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.TestSuite
 import Distribution.Text
@@ -38,12 +40,12 @@ import System.FilePath ( (</>) )
 test :: Args                    -- ^ positional command-line arguments
      -> PD.PackageDescription   -- ^ information from the .cabal file
      -> LBI.LocalBuildInfo      -- ^ information from the configure step
-     -> TestConfig Final        -- ^ flags sent to test
+     -> TestConfig              -- ^ flags sent to test
      -> IO ()
 test args pkg_descr lbi flags = do
-    let Final verbosity = testVerbosity flags
-        Final machineTemplate = testMachineLog flags
-        Final distPref = testDistPref flags
+    let verbosity = testVerbosity flags
+        machineTemplate = testMachineLog flags
+        distPref = testDistPref flags
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr

@@ -4,14 +4,16 @@ module Distribution.Simple.Test.ExeV10
 
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
+import Distribution.Flag
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.Command.Test.Config
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup
+import Distribution.Simple.Setup ( configCoverage )
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
 import Distribution.System
@@ -30,7 +32,7 @@ import System.IO ( hGetContents, hPutStr, stdout, stderr )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
-        -> TestConfig Final
+        -> TestConfig
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
@@ -49,7 +51,7 @@ runTest pkg_descr lbi flags suite = do
                           ++ "\". Did you build the package first?"
 
     -- Remove old .tix files if appropriate.
-    unless (fromFinal $ testKeepTix flags) $ do
+    unless (testKeepTix flags) $ do
         exists' <- doesDirectoryExist tixDir_
         when exists' $ removeDirectoryRecursive tixDir_
 
@@ -127,9 +129,9 @@ runTest pkg_descr lbi flags suite = do
 
     return suiteLog
   where
-    Final distPref = testDistPref flags
-    Final verbosity = testVerbosity flags
-    Final details = testShowDetails flags
+    distPref = testDistPref flags
+    verbosity = testVerbosity flags
+    details = testShowDetails flags
     testLogDir = distPref </> "test"
 
     buildLog exit =
@@ -147,7 +149,7 @@ runTest pkg_descr lbi flags suite = do
                 , testLogs = l
                 , logFile =
                     testLogDir
-                    </> testSuiteLogPath (fromFinal $ testHumanLog flags)
+                    </> testSuiteLogPath (testHumanLog flags)
                                          pkg_descr lbi n l
                 }
 
