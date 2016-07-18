@@ -78,7 +78,7 @@ import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
-         , TestFlags, BenchmarkFlags(..)
+         , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, flagToMaybe, flagToList
@@ -97,7 +97,7 @@ import Distribution.PackageDescription
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
-         ( ReadE(..), readP_to_E )
+         ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup

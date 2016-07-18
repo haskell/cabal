@@ -136,7 +136,7 @@ import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
          , copyCommand, CopyFlags(..), emptyCopyFlags
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
-         , testCommand, TestFlags, TestConfig(..), emptyTestFlags )
+         , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, comparing
          , writeFileAtomic, withUTF8FileContents )
