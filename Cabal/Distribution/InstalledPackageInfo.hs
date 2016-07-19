@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -49,6 +50,7 @@ import Distribution.Version
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Binary
+import Distribution.Compat.Graph
 
 import Text.PrettyPrint as Disp
 import Data.Maybe   (fromMaybe)
@@ -119,6 +121,11 @@ instance Package.HasUnitId InstalledPackageInfo where
 
 instance Package.PackageInstalled InstalledPackageInfo where
    installedDepends = depends
+
+instance IsNode InstalledPackageInfo where
+    type Key InstalledPackageInfo = UnitId
+    nodeKey       = installedUnitId
+    nodeNeighbors = depends
 
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
