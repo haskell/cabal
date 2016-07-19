@@ -361,7 +361,7 @@ getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
-                   | x <- libModules lib ]
+                   | x <- allLibModules lib clbi ]
         objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -370,7 +370,9 @@ getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules lib ]
+               | x <- allLibModules lib clbi ]
+ where
+  clbi = getComponentLocalBuildInfo lbi CLibName
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
                  -> [(UnitId, ModuleRenaming)]

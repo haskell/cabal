@@ -433,7 +433,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
   where
     bi = libBuildInfo lib
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
-    hasModules = not $ null (libModules lib)
+    hasModules = not $ null (allLibModules lib clbi)
     hasLibrary = hasModules || not (null (cSources bi))
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)

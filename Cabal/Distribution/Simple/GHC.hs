@@ -528,7 +528,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
-                      ghcOptInputModules = toNubListR $ libModules lib,
+                      ghcOptInputModules = toNubListR $ allLibModules lib clbi,
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
 
@@ -580,7 +580,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptHPCDir       = hpcdir Hpc.Dyn
                     }
 
-  unless (forRepl || null (libModules lib)) $
+  unless (forRepl || null (allLibModules lib clbi)) $
     do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = whenSharedLib  forceSharedLib  (runGhcProg sharedOpts)
            useDynToo = dynamicTooSupported &&
@@ -641,7 +641,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   -- exports.
 
   ifReplLib $ do
-    when (null (libModules lib)) $ warn verbosity "No exposed modules"
+    when (null (allLibModules lib clbi)) $ warn verbosity "No exposed modules"
     ifReplLib (runGhcProg replOpts)
 
   -- link:
@@ -663,17 +663,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       [ findFileWithExtension [objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-      , x <- libModules lib ]
+      , x <- allLibModules lib clbi ]
     stubProfObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-      , x <- libModules lib ]
+      , x <- allLibModules lib clbi ]
     stubSharedObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
-      , x <- libModules lib ]
+      , x <- allLibModules lib clbi ]
 
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi
                       libTargetDir objExtension True
@@ -1169,7 +1169,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     installShared   = install True
 
     copyModuleFiles ext =
-      findModuleFiles [builtDir] [ext] (libModules lib)
+      findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
       >>= installOrdinaryFiles verbosity targetDir
 
     compiler_id = compilerId (compiler lbi)
@@ -1179,7 +1179,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
     ghciLibName    = Internal.mkGHCiLibName uid
     sharedLibName  = (mkSharedLibName compiler_id) uid
 
-    hasLib    = not $ null (libModules lib)
+    hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
     whenVanilla = when (hasLib && withVanillaLib lbi)
     whenProf    = when (hasLib && withProfLib    lbi)

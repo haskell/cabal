@@ -4,7 +4,7 @@
 module Distribution.Types.Library (
     Library(..),
     emptyLibrary,
-    libModules,
+    explicitLibModules,
     libModulesAutogen
 ) where
 
@@ -54,9 +54,10 @@ emptyLibrary = mempty
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which need to be compiled.  (This does not include reexports, which
--- do not need to be compiled.)
-libModules :: Library -> [ModuleName]
-libModules lib = exposedModules lib
+-- do not need to be compiled.)  This may not include all modules for which
+-- GHC generated interface files (i.e., implicit modules.)
+explicitLibModules :: Library -> [ModuleName]
+explicitLibModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
               ++ requiredSignatures lib
 
