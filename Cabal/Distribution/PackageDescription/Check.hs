@@ -227,11 +227,6 @@ checkLibrary pkg lib =
       PackageDistInexcusable $
            "To use the 'required-signatures' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.21'."
-
-  , checkVersion [1,21] (not (null (exposedSignatures lib))) $
-      PackageDistInexcusable $
-           "To use the 'exposed-signatures' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.21'."
   ]
 
   where
