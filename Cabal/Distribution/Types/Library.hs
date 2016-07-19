@@ -5,7 +5,8 @@ module Distribution.Types.Library (
     Library(..),
     emptyLibrary,
     explicitLibModules,
-    libModulesAutogen
+    libModulesAutogen,
+    libModules,
 ) where
 
 import Prelude ()
@@ -53,7 +54,8 @@ emptyLibrary :: Library
 emptyLibrary = mempty
 
 -- | Get all the module names from the library (exposed and internal modules)
--- which need to be compiled.  (This does not include reexports, which
+-- which are explicitly listed in the package description which would
+-- need to be compiled.  (This does not include reexports, which
 -- do not need to be compiled.)  This may not include all modules for which
 -- GHC generated interface files (i.e., implicit modules.)
 explicitLibModules :: Library -> [ModuleName]
@@ -65,3 +67,13 @@ explicitLibModules lib = exposedModules lib
 -- This are a subset of 'libModules'.
 libModulesAutogen :: Library -> [ModuleName]
 libModulesAutogen lib = autogenModules (libBuildInfo lib)
+
+-- | Backwards-compatibility shim for 'explicitLibModules'.  In most cases,
+-- you actually want 'allLibModules', which returns all modules that will
+-- actually be compiled, as opposed to those which are explicitly listed
+-- in the package description ('explicitLibModules'); unfortunately, the
+-- type signature for 'allLibModules' is incompatible since we need a
+-- 'ComponentLocalBuildInfo'.
+{-# DEPRECATED libModules "If you want all modules that are built with a library, use 'allLibModules'.  Otherwise, use 'explicitLibModules' for ONLY the modules explicitly mentioned in the package description." #-}
+libModules :: Library -> [ModuleName]
+libModules = explicitLibModules
