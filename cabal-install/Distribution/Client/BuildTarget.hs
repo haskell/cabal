@@ -51,7 +51,7 @@ import Distribution.PackageDescription
          , Executable(..)
          , TestSuite(..), TestSuiteInterface(..), testModules
          , Benchmark(..), BenchmarkInterface(..), benchmarkModules
-         , BuildInfo(..), libModules, exeModules )
+         , BuildInfo(..), explicitLibModules, exeModules )
 import Distribution.ModuleName
          ( ModuleName, toFilePath )
 import Distribution.Simple.LocalBuildInfo
@@ -1100,7 +1100,9 @@ componentStringName _ (CTestName  name) = name
 componentStringName _ (CBenchName name) = name
 
 componentModules :: Component -> [ModuleName]
-componentModules (CLib   lib)   = libModules lib
+-- I think it's unlikely users will ask to build a requirement
+-- which is not mentioned locally.
+componentModules (CLib   lib)   = explicitLibModules lib
 componentModules (CExe   exe)   = exeModules exe
 componentModules (CTest  test)  = testModules test
 componentModules (CBench bench) = benchmarkModules bench

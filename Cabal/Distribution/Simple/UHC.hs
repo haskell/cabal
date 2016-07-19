@@ -185,7 +185,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                    -- suboptimal: UHC does not understand module names, so
                    -- we replace periods by path separators
                 ++ map (map (\ c -> if c == '.' then pathSeparator else c))
-                       (map display (libModules lib))
+                       (map display (allLibModules lib clbi))
 
   runUhcProg uhcArgs
 

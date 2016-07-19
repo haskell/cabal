@@ -47,6 +47,7 @@ module Distribution.Simple.LocalBuildInfo (
         allComponentsInBuildOrder,
         componentsInBuildOrder,
         depLibraryPaths,
+        allLibModules,
 
         withAllComponentsInBuildOrder,
         withComponentsInBuildOrder,
@@ -82,6 +83,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
+import Distribution.ModuleName
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
@@ -287,6 +289,11 @@ depLibraryPaths inplace relative lbi clbi = do
          then canonicalizePath p
          else return p
 
+-- TODO: doc
+allLibModules :: Library -> ComponentLocalBuildInfo -> [ModuleName]
+allLibModules lib clbi =
+    explicitLibModules lib
+    -- TODO: add more stuff
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
