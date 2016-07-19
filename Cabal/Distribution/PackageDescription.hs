@@ -37,6 +37,7 @@ module Distribution.PackageDescription (
         hasLibs,
         explicitLibModules,
         libModulesAutogen,
+        libModules,
 
         -- ** Executables
         Executable(..),
