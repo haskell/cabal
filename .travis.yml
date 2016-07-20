@@ -31,12 +31,22 @@ matrix:
 #
 # Clearly xz is superior
 #
+# In comparison using legacy container with sudo seems to take 42s (so
+# this is x2 improvement).
+# Maybe possibility to cache what we unpack here too.
+#
+# Since download speed is REALLY fast off downloads.haskell.org, you
+# might wonder if gzip is also fast.  Unfortunately I don't have
+# access to server with as fast a pipe as downloads.haskell.org
+#
 
 before_install:
  - mkdir $HOME/usr
- - wget http://web.mit.edu/~ezyang/Public/ghc-7.10.3b-x86_64-deb7-linux.tar.gz
- - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.$SUFFIX
- - cd ghc-7.10.3*
+ - wget http://hs01.scs.stanford.edu/ghc-7.10.3b-x86_64-deb7-linux.tar.gz
+ - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.gz
+   # - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-i386-deb7-linux.tar.xz
+   # - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - cd ghc-7.10.3
  - ./configure --prefix=$HOME/usr
  - make install
  - export PATH=$HOME/usr/bin:$PATH
