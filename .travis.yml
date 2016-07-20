@@ -1,69 +1,58 @@
-# NB: don't set `language: haskell` here
-# We specify language: c, so it doesn't default to e.g. ruby
 language: c
 
-sudo: required
+# container boots up faster than legacy; problem is no sudo
+sudo: false
 
-# The following enables several GHC versions to be tested; often it's enough to
-# test only against the last release in a major GHC version. Feel free to omit
-# lines listings versions you don't need/want testing for.
 matrix:
   include:
-   - env: GHCVER=7.4.2
+   - env: RUN=1 SUFFIX=gz
      os: linux
-   - env: GHCVER=7.6.3
+   - env: RUN=2 SUFFIX=gz
      os: linux
-   - env: GHCVER=7.8.4
+   - env: RUN=3 SUFFIX=gz
      os: linux
-   - env: GHCVER=7.10.3
+   - env: RUN=4 SUFFIX=gz
      os: linux
-   - env: GHCVER=8.0.1 TEST_OLDER=NO DEPLOY_DOCS=YES
-     os: linux
-   # It's not worth the trouble to make older GHC work with clang's cpp
-   # Obviously TEST_OLDER doesn't work with OSX
-   #
-   # Also we might want to specify OSX version
-   # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
-   - env: GHCVER=7.8.4
-     os: osx
-   - env: GHCVER=7.10.3
-     os: osx
-   - env: GHCVER=8.0.1
-     os: osx
-  allow_failures:
-   - env: GHCVER=head
 
- # TODO add PARSEC_BUNDLED=YES when it's so
- # It seems pointless to run head if we're going to ignore the results.
- #- GHCVER=head
+# Can't use apt plugin because dyn/prof GHC are not whitelisted
+# Also, download from Haskell website much faster than Launchpad
+# Can't download deb and install manually because dpkg --force-no-root does not work
+# bz2/xz comparison: xz 0.81s download, 10.85s unpack
+#                    bz2 0.64s download, 33.60s 28.71s unpack!!
+#
+# xz 0.46 10.38 1.44 11.79
+# xz 0.43 10.12 3.12 13.02
+# xz 0.33 9.56 1.36 11.23
+# xz 1.22 11.43 2.39 14.38
+# bz2 0.67 29.01 2.37 10.91
+# bz2 0.93 30.03 1.51 13.27
+# bz2 0.67 26.03 1.24 10.96
+# bz2 0.63 31.19 2.20 11.15
+#
+# Clearly xz is superior
+#
+# In comparison using legacy container with sudo seems to take 42s (so
+# this is x2 improvement).
+# Maybe possibility to cache what we unpack here too.
+#
+# Since download speed is REALLY fast off downloads.haskell.org, you
+# might wonder if gzip is also fast.  Unfortunately I don't have
+# access to server with as fast a pipe as downloads.haskell.org
+#
 
-# Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - ./travis-install.sh
- - export PATH=/opt/ghc/$GHCVER/bin:$PATH
- - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH;
+ - mkdir $HOME/usr
+ - wget http://hs01.scs.stanford.edu/ghc-7.10.3b-x86_64-deb7-linux.tar.gz
+ - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.gz
+   # - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-i386-deb7-linux.tar.xz
+   # - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - cd ghc-7.10.3
+ - ./configure --prefix=$HOME/usr
+ - make install
+ - export PATH=$HOME/usr/bin:$PATH
 
- # Set up deployment to the haskell/cabal-website repo.
- # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
- # leaked! See https://github.com/travis-ci/travis.rb/issues/423.
- - openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.aes256.enc -out id_rsa -d
- - mv id_rsa ~/.ssh/id_rsa
- - chmod 400 ~/.ssh/id_rsa
-
-install:
- # We intentionally do not install anything before trying to build Cabal because
- # it should build with each supported GHC version out-of-the-box.
-
-# Here starts the actual work to be performed for the package under test; any
-# command which exits with a non-zero exit code causes the build to fail. Using
-# ./dist/setup/setup here instead of cabal-install to avoid breakage when the
-# build config format changed.
 script:
- - ./travis-script.sh -j
-
-# Deploy Haddocks to the haskell/cabal-website repo.
-after_success:
- - ./travis-deploy.sh
+ - ghc --version
 
 notifications:
   irc:
