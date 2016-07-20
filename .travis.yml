@@ -5,21 +5,13 @@ sudo: false
 
 matrix:
   include:
-   - env: RUN=1 SUFFIX=xz
+   - env: RUN=1 SUFFIX=gz
      os: linux
-   - env: RUN=2 SUFFIX=xz
+   - env: RUN=2 SUFFIX=gz
      os: linux
-   - env: RUN=3 SUFFIX=xz
+   - env: RUN=3 SUFFIX=gz
      os: linux
-   - env: RUN=4 SUFFIX=xz
-     os: linux
-   - env: RUN=1 SUFFIX=bz2
-     os: linux
-   - env: RUN=2 SUFFIX=bz2
-     os: linux
-   - env: RUN=3 SUFFIX=bz2
-     os: linux
-   - env: RUN=4 SUFFIX=bz2
+   - env: RUN=4 SUFFIX=gz
      os: linux
 
 # Can't use apt plugin because dyn/prof GHC are not whitelisted
@@ -27,11 +19,22 @@ matrix:
 # Can't download deb and install manually because dpkg --force-no-root does not work
 # bz2/xz comparison: xz 0.81s download, 10.85s unpack
 #                    bz2 0.64s download, 33.60s 28.71s unpack!!
-# Trivial edit to try again
+#
+# xz 0.46 10.38 1.44 11.79
+# xz 0.43 10.12 3.12 13.02
+# xz 0.33 9.56 1.36 11.23
+# xz 1.22 11.43 2.39 14.38
+# bz2 0.67 29.01 2.37 10.91
+# bz2 0.93 30.03 1.51 13.27
+# bz2 0.67 26.03 1.24 10.96
+# bz2 0.63 31.19 2.20 11.15
+#
+# Clearly xz is superior
+#
 
 before_install:
  - mkdir $HOME/usr
- - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.$SUFFIX
+ - wget http://web.mit.edu/~ezyang/Public/ghc-7.10.3b-x86_64-deb7-linux.tar.gz
  - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.$SUFFIX
  - cd ghc-7.10.3*
  - ./configure --prefix=$HOME/usr
