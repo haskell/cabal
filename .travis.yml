@@ -7,13 +7,10 @@ matrix:
   include:
    - env: RUN=1
      os: linux
-  include:
    - env: RUN=2
      os: linux
-  include:
    - env: RUN=3
      os: linux
-  include:
    - env: RUN=4
      os: linux
 
@@ -21,13 +18,14 @@ matrix:
 # Also, download from Haskell website much faster than Launchpad
 # Can't download deb and install manually because dpkg --force-no-root does not work
 # bz2/xz comparison: xz 0.81s download, 10.85s unpack
-#                    bz2 0.64s download, 33.60s unpack!!
+#                    bz2 0.64s download, 33.60s 28.71s unpack!!
 # Trivial edit to try again
 
 before_install:
  - mkdir $HOME/usr
- - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.bz2
- - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.bz2
+ - SUFFIX=xz
+ - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.$SUFFIX
+ - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.$SUFFIX
  - cd ghc-7.10.3*
  - ./configure --prefix=$HOME/usr
  - make install
