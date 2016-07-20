@@ -9,7 +9,7 @@ matrix:
 
 before_install:
  - mkdir $HOME/usr
- - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.bz2
  - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.xz
  - (cd ghc-7.10.3* && ./configure --prefix=$HOME/usr && make install)
  - export PATH=$HOME/usr/bin:$PATH
