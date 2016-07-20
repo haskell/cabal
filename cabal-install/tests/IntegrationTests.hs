@@ -9,7 +9,7 @@ module Main
 
 -- Modules from Cabal.
 import Distribution.Compat.CreatePipe (createPipe)
-import Distribution.Compat.Environment (setEnv)
+import Distribution.Compat.Environment (setEnv, getEnvironment)
 import Distribution.Compat.Internal.TempFile (createTempDirectory)
 import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Program.Builtin (ghcPkgProgram)
@@ -100,7 +100,11 @@ run cwd path args = do
     (hReadStdOut, hWriteStdOut) <- createPipe
     (hReadStdErr, hWriteStdErr) <- createPipe
     -- Run the process
-    pid <- runProcess path' args (Just cwd) Nothing Nothing (Just hWriteStdOut) (Just hWriteStdErr)
+    env0 <- getEnvironment
+    -- CABAL_BUILDDIR can interfere with test running, so
+    -- be sure to clear it out.
+    let env = filter ((/= "CABAL_BUILDDIR") . fst) env0
+    pid <- runProcess path' args (Just cwd) (Just env) Nothing (Just hWriteStdOut) (Just hWriteStdErr)
     -- Return the pid and read ends of the pipes
     return (pid, hReadStdOut, hReadStdErr)
   -- Read subprocess output using asynchronous threads; we need to
