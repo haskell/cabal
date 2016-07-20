@@ -9,8 +9,9 @@ matrix:
 
 before_install:
  - mkdir $HOME/usr
- - wget https://launchpad.net/~hvr/+archive/ubuntu/ghc/+files/ghc-7.10.3_7.10.3-10~precise_amd64.deb
- - dpkg -i ghc-7.10.3_7.10.3-10~precise_amd64.deb --force-not-root --root=$HOME/usr
+ - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - (cd ghc-7.10.3* && ./configure --prefix=$HOME/usr && make install)
  - export PATH=$HOME/usr/bin:$PATH
 
 script:
