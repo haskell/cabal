@@ -1,69 +1,16 @@
-# NB: don't set `language: haskell` here
-# We specify language: c, so it doesn't default to e.g. ruby
 language: c
 
-sudo: required
+sudo: false
 
-# The following enables several GHC versions to be tested; often it's enough to
-# test only against the last release in a major GHC version. Feel free to omit
-# lines listings versions you don't need/want testing for.
 matrix:
   include:
-   - env: GHCVER=7.4.2
-     os: linux
-   - env: GHCVER=7.6.3
-     os: linux
-   - env: GHCVER=7.8.4
-     os: linux
    - env: GHCVER=7.10.3
      os: linux
-   - env: GHCVER=8.0.1 TEST_OLDER=NO DEPLOY_DOCS=YES
-     os: linux
-   # It's not worth the trouble to make older GHC work with clang's cpp
-   # Obviously TEST_OLDER doesn't work with OSX
-   #
-   # Also we might want to specify OSX version
-   # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
-   - env: GHCVER=7.8.4
-     os: osx
-   - env: GHCVER=7.10.3
-     os: osx
-   - env: GHCVER=8.0.1
-     os: osx
-  allow_failures:
-   - env: GHCVER=head
 
- # TODO add PARSEC_BUNDLED=YES when it's so
- # It seems pointless to run head if we're going to ignore the results.
- #- GHCVER=head
-
-# Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - ./travis-install.sh
- - export PATH=/opt/ghc/$GHCVER/bin:$PATH
- - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH;
 
- # Set up deployment to the haskell/cabal-website repo.
- # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
- # leaked! See https://github.com/travis-ci/travis.rb/issues/423.
- - openssl aes-256-cbc -K $encrypted_edaf6551664d_key -iv $encrypted_edaf6551664d_iv -in id_rsa_cabal_website.aes256.enc -out id_rsa -d
- - mv id_rsa ~/.ssh/id_rsa
- - chmod 400 ~/.ssh/id_rsa
-
-install:
- # We intentionally do not install anything before trying to build Cabal because
- # it should build with each supported GHC version out-of-the-box.
-
-# Here starts the actual work to be performed for the package under test; any
-# command which exits with a non-zero exit code causes the build to fail. Using
-# ./dist/setup/setup here instead of cabal-install to avoid breakage when the
-# build config format changed.
 script:
- - ./travis-script.sh -j
-
-# Deploy Haddocks to the haskell/cabal-website repo.
-after_success:
- - ./travis-deploy.sh
+ - ghc --version
 
 notifications:
   irc:
