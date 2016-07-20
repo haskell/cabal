@@ -6,15 +6,12 @@ matrix:
   include:
    - env: GHCVER=7.10.3
      os: linux
-     addons:
-       apt:
-         sources:
-           - hvr-ghc
-         packages:
-           - ghc-7.8.4-dyn
-           - ghc-7.8.4-prof
 
 before_install:
+ - mkdir $HOME/usr
+ - wget https://launchpad.net/~hvr/+archive/ubuntu/ghc/+files/ghc-7.10.3_7.10.3-10~precise_amd64.deb
+ - dpkg -i ghc-7.10.3_7.10.3-10~precise_amd64.deb --force-not-root --root=$HOME/usr
+ - export PATH=$HOME/usr/bin:$PATH
 
 script:
  - ghc --version
