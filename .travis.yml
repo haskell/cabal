@@ -1,5 +1,6 @@
 language: c
 
+# container boots up faster than legacy; problem is no sudo
 sudo: false
 
 matrix:
@@ -7,10 +8,15 @@ matrix:
    - env: GHCVER=7.10.3
      os: linux
 
+# Can't use apt plugin because dyn/prof GHC are not whitelisted
+# Can't download deb and install manually because dpkg --force-no-root
+#   does not work
+# 
+
 before_install:
  - mkdir $HOME/usr
  - wget http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3b-x86_64-deb7-linux.tar.bz2
- - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.xz
+ - tar xf ghc-7.10.3b-x86_64-deb7-linux.tar.bz2
  - (cd ghc-7.10.3* && ./configure --prefix=$HOME/usr && make install)
  - export PATH=$HOME/usr/bin:$PATH
 
