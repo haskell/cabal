@@ -38,7 +38,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( GenericReadyPackage(..), ReadyPackage, enableStanzas
+         ( GenericReadyPackage(..), ReadyPackage
          , ConfiguredPackage(..))
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
@@ -46,6 +46,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Package
          ( PackageIdentifier, Package(packageId), UnitId(..), installedUnitId )
@@ -55,7 +56,7 @@ import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -144,10 +145,10 @@ symlinkBinaries platform comp configFlags installFlags plan =
     pkgDescription (ReadyPackage (ConfiguredPackage
                                     _ (SourcePackage _ pkg _ _)
                                     flags stanzas _)) =
-      case finalizePackageDescription flags
+      case finalizePD flags (enableStanzas stanzas)
              (const True)
-             platform cinfo [] (enableStanzas stanzas pkg) of
-        Left _ -> error "finalizePackageDescription ReadyPackage failed"
+             platform cinfo [] pkg of
+        Left _ -> error "finalizePD ReadyPackage failed"
         Right (desc, _) -> desc
 
     -- This is sadly rather complicated. We're kind of re-doing part of the

@@ -152,10 +152,10 @@ ppTestSuites suites =
         maybeTestType | testInterface testsuite == mempty = Nothing
                       | otherwise = Just (testType testsuite)
 
-    ppTestSuite (TestSuite _ _ buildInfo' _)
-                    (Just (TestSuite _ _ buildInfo2 _)) =
-            ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
-            $+$ ppCustomFields (customFieldsBI buildInfo')
+    ppTestSuite test' (Just test2) =
+            ppDiffFields binfoFieldDescrs
+                (testBuildInfo test') (testBuildInfo test2)
+            $+$ ppCustomFields (customFieldsBI (testBuildInfo test'))
 
     testSuiteMainIs test = case testInterface test of
       TestSuiteExeV10 _ f -> Just f
@@ -182,10 +182,10 @@ ppBenchmarks suites =
         maybeBenchmarkType | benchmarkInterface benchmark == mempty = Nothing
                            | otherwise = Just (benchmarkType benchmark)
 
-    ppBenchmark (Benchmark _ _ buildInfo' _)
-                    (Just (Benchmark _ _ buildInfo2 _)) =
-            ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
-            $+$ ppCustomFields (customFieldsBI buildInfo')
+    ppBenchmark bench' (Just bench2) =
+            ppDiffFields binfoFieldDescrs
+                (benchmarkBuildInfo bench') (benchmarkBuildInfo bench2)
+            $+$ ppCustomFields (customFieldsBI (benchmarkBuildInfo bench'))
 
     benchmarkMainIs benchmark = case benchmarkInterface benchmark of
       BenchmarkExeV10 _ f -> Just f

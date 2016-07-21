@@ -24,10 +24,7 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
-         ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
-         , TestSuite(..) )
-import Distribution.PackageDescription.Configuration
-         ( mapTreeData )
+         ( FlagAssignment )
 import Distribution.Version
          ( VersionRange )
 
@@ -147,20 +144,6 @@ type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
 -- | Convenience alias for 'SourcePackage UnresolvedPkgLoc'.
 type UnresolvedSourcePackage = SourcePackage UnresolvedPkgLoc
-
-enableStanzas
-    :: [OptionalStanza]
-    -> GenericPackageDescription
-    -> GenericPackageDescription
-enableStanzas stanzas gpkg = gpkg
-    { condBenchmarks = flagBenchmarks $ condBenchmarks gpkg
-    , condTestSuites = flagTests $ condTestSuites gpkg
-    }
-  where
-    enableTest t = t { testEnabled = TestStanzas `elem` stanzas }
-    enableBenchmark bm = bm { benchmarkEnabled = BenchStanzas `elem` stanzas }
-    flagBenchmarks = map (\(n, bm) -> (n, mapTreeData enableBenchmark bm))
-    flagTests = map (\(n, t) -> (n, mapTreeData enableTest t))
 
 -- ------------------------------------------------------------
 -- * Package locations and repositories

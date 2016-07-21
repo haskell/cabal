@@ -947,16 +947,17 @@ caseFold = lowercase
 --
 -- Also swizzle into a more convenient form.
 --
-checkBuildTargets :: Verbosity -> PackageDescription -> [BuildTarget]
+checkBuildTargets :: Verbosity -> PackageDescription -> LocalBuildInfo -> [BuildTarget]
                   -> IO [(ComponentName, Maybe (Either ModuleName FilePath))]
-checkBuildTargets _ pkg []      =
-    return [ (componentName c, Nothing) | c <- pkgEnabledComponents pkg ]
+checkBuildTargets _ pkg lbi []      =
+    return [ (componentName c, Nothing) | c <- enabledComponents pkg lbi ]
 
-checkBuildTargets verbosity pkg targets = do
+checkBuildTargets verbosity pkg lbi targets = do
 
     let (enabled, disabled) =
           partitionEithers
-            [ case componentDisabledReason (getComponent pkg cname) of
+            [ case componentDisabledReason (componentEnabledSpec lbi)
+                                           (getComponent pkg cname) of
                 Nothing     -> Left  target'
                 Just reason -> Right (cname, reason)
             | target <- targets

@@ -74,8 +74,7 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
-         , UnresolvedPkgLoc, UnresolvedSourcePackage
-         , enableStanzas )
+         , UnresolvedPkgLoc, UnresolvedSourcePackage )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..)
          , PackagesPreferenceDefault(..) )
@@ -90,7 +89,7 @@ import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
@@ -848,12 +847,13 @@ configuredPackageProblems platform cinfo
     -- of the `nubOn` in `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
-      --TODO: use something lower level than finalizePackageDescription
-      case finalizePackageDescription specifiedFlags
+      --TODO: use something lower level than finalizePD
+      case finalizePD specifiedFlags
+         (enableStanzas stanzas)
          (const True)
          platform cinfo
          []
-         (enableStanzas stanzas $ packageDescription pkg) of
+         (packageDescription pkg) of
         Right (resolvedPkg, _) ->
              externalBuildDepends resolvedPkg
           ++ maybe [] PD.setupDepends (PD.setupBuildInfo resolvedPkg)

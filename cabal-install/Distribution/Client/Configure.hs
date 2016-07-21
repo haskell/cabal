@@ -62,7 +62,7 @@ import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -386,8 +386,8 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configTests              = toFlag (TestStanzas `elem` stanzas)
     }
 
-    pkg = case finalizePackageDescription flags
+    pkg = case finalizePD flags (enableStanzas stanzas)
            (const True)
-           platform comp [] (enableStanzas stanzas gpkg) of
-      Left _ -> error "finalizePackageDescription ReadyPackage failed"
+           platform comp [] gpkg of
+      Left _ -> error "finalizePD ReadyPackage failed"
       Right (desc, _) -> desc

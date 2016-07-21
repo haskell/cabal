@@ -22,7 +22,6 @@ suite = do
                             [ Dependency (PackageName "base") anyVersion ]
                     , hsSourceDirs = ["."]
                     }
-            , benchmarkEnabled = False
             }
         gotBenchmark = head $ benchmarks (localPkgDescr lbi)
     assertEqual "parsed benchmark stanza does not match anticipated"

@@ -43,6 +43,7 @@ import Distribution.Simple.Utils hiding (findPackageDesc, notice)
 import Distribution.Version
 import Distribution.Package
 import Distribution.Text
+import Distribution.Simple.LocalBuildInfo hiding (compiler)
 import Language.Haskell.Extension
 
 import Data.Maybe
@@ -1282,8 +1283,8 @@ checkPackageVersions pkg =
     -- pick a single "typical" configuration and check if that has an
     -- open upper bound. To get a typical configuration we finalise
     -- using no package index and the current platform.
-    finalised = finalizePackageDescription
-                              [] (const True) buildPlatform
+    finalised = finalizePD
+                              [] defaultComponentEnabled (const True) buildPlatform
                               (unknownCompilerInfo
                                 (CompilerId buildCompilerFlavor (Version [] [])) NoAbiTag)
                               [] pkg
@@ -1294,7 +1295,7 @@ checkPackageVersions pkg =
           baseDeps =
             [ vr | Dependency (PackageName "base") vr <- buildDepends pkg' ]
 
-      -- Just in case finalizePackageDescription fails for any reason,
+      -- Just in case finalizePD fails for any reason,
       -- or if the package doesn't depend on the base package at all,
       -- then we will just skip the check, since boundedAbove noVersion = True
       _          -> noVersion

@@ -49,9 +49,7 @@ test args pkg_descr lbi flags = do
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
-        enabledTests = [ t | t <- pkgTests
-                           , PD.testEnabled t
-                           , PD.buildable (PD.testBuildInfo t) ]
+        enabledTests = (map fst) (LBI.enabledTestLBIs pkg_descr lbi)
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, _) =

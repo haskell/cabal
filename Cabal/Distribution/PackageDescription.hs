@@ -64,7 +64,6 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
-        enabledTests,
 
         -- * Benchmarks
         Benchmark(..),
@@ -76,7 +75,6 @@ module Distribution.PackageDescription (
         hasBenchmarks,
         withBenchmark,
         benchmarkModules,
-        enabledBenchmarks,
 
         -- * Build information
         BuildInfo(..),
@@ -176,7 +174,7 @@ data PackageDescription
         -- PackageDescription we are, the contents of this field are
         -- either nonsense, or the collected dependencies of *all* the
         -- components in this package.  buildDepends is initialized by
-        -- 'finalizePackageDescription' and 'flattenPackageDescription';
+        -- 'finalizePD' and 'flattenPackageDescription';
         -- prior to that, dependency info is stored in the 'CondTree'
         -- built around a 'GenericPackageDescription'.  When this
         -- resolution is done, dependency info is written to the inner
@@ -447,8 +445,12 @@ hasPublicLib p = any f (libraries p)
 hasLibs :: PackageDescription -> Bool
 hasLibs p = any (buildable . libBuildInfo) (libraries p)
 
--- |If the package description has a library section, call the given
---  function with the library build info as argument.
+-- | If the package description has a buildable library section,
+-- call the given function with the library build info as argument.
+-- You probably want 'withLibLBI' if you have a 'LocalBuildInfo',
+-- see the note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- for more information.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
    sequence_ [f lib | lib <- libraries pkg_descr, buildable (libBuildInfo lib)]
@@ -532,7 +534,10 @@ hasExes :: PackageDescription -> Bool
 hasExes p = any (buildable . buildInfo) (executables p)
 
 -- | Perform the action on each buildable 'Executable' in the package
--- description.
+-- description.  You probably want 'withExeLBI' if you have a
+-- 'LocalBuildInfo', see the note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- for more information.
 withExe :: PackageDescription -> (Executable -> IO ()) -> IO ()
 withExe pkg_descr f =
   sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
@@ -549,13 +554,7 @@ exeModules exe = otherModules (buildInfo exe)
 data TestSuite = TestSuite {
         testName      :: String,
         testInterface :: TestSuiteInterface,
-        testBuildInfo :: BuildInfo,
-        testEnabled   :: Bool
-        -- TODO: By having a 'testEnabled' field in the PackageDescription, we
-        -- are mixing build status information (i.e., arguments to 'configure')
-        -- with static package description information. This is undesirable, but
-        -- a better solution is waiting on the next overhaul to the
-        -- GenericPackageDescription -> PackageDescription resolution process.
+        testBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -593,8 +592,7 @@ instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,
         testInterface = mempty,
-        testBuildInfo = mempty,
-        testEnabled   = False
+        testBuildInfo = mempty
     }
     mappend = (Semi.<>)
 
@@ -602,8 +600,7 @@ instance Semigroup TestSuite where
     a <> b = TestSuite {
         testName      = combine' testName,
         testInterface = combine  testInterface,
-        testBuildInfo = combine  testBuildInfo,
-        testEnabled   = testEnabled a || testEnabled b
+        testBuildInfo = combine  testBuildInfo
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -627,14 +624,14 @@ emptyTestSuite = mempty
 hasTests :: PackageDescription -> Bool
 hasTests = any (buildable . testBuildInfo) . testSuites
 
--- | Get all the enabled test suites from a package.
-enabledTests :: PackageDescription -> [TestSuite]
-enabledTests = filter testEnabled . testSuites
-
 -- | Perform an action on each buildable 'TestSuite' in a package.
+-- You probably want 'withTestLBI' if you have a 'LocalBuildInfo', see the note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- for more information.
+
 withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
 withTest pkg_descr f =
-    mapM_ f $ filter (buildable . testBuildInfo) $ enabledTests pkg_descr
+    sequence_ [ f test | test <- testSuites pkg_descr, buildable (testBuildInfo test) ]
 
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
@@ -695,9 +692,7 @@ testType test = case testInterface test of
 data Benchmark = Benchmark {
         benchmarkName      :: String,
         benchmarkInterface :: BenchmarkInterface,
-        benchmarkBuildInfo :: BuildInfo,
-        benchmarkEnabled   :: Bool
-        -- TODO: See TODO for 'testEnabled'.
+        benchmarkBuildInfo :: BuildInfo
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -731,8 +726,7 @@ instance Monoid Benchmark where
     mempty = Benchmark {
         benchmarkName      = mempty,
         benchmarkInterface = mempty,
-        benchmarkBuildInfo = mempty,
-        benchmarkEnabled   = False
+        benchmarkBuildInfo = mempty
     }
     mappend = (Semi.<>)
 
@@ -740,8 +734,7 @@ instance Semigroup Benchmark where
     a <> b = Benchmark {
         benchmarkName      = combine' benchmarkName,
         benchmarkInterface = combine  benchmarkInterface,
-        benchmarkBuildInfo = combine  benchmarkBuildInfo,
-        benchmarkEnabled   = benchmarkEnabled a || benchmarkEnabled b
+        benchmarkBuildInfo = combine  benchmarkBuildInfo
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -765,14 +758,14 @@ emptyBenchmark = mempty
 hasBenchmarks :: PackageDescription -> Bool
 hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
 
--- | Get all the enabled benchmarks from a package.
-enabledBenchmarks :: PackageDescription -> [Benchmark]
-enabledBenchmarks = filter benchmarkEnabled . benchmarks
-
 -- | Perform an action on each buildable 'Benchmark' in a package.
+-- You probably want 'withBenchLBI' if you have a 'LocalBuildInfo', see the note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- for more information.
+
 withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()
 withBenchmark pkg_descr f =
-    mapM_ f $ filter (buildable . benchmarkBuildInfo) $ enabledBenchmarks pkg_descr
+    sequence_ [f bench | bench <- benchmarks pkg_descr, buildable (benchmarkBuildInfo bench)]
 
 -- | Get all the module names from a benchmark.
 benchmarkModules :: Benchmark -> [ModuleName]
@@ -935,12 +928,10 @@ allBuildInfo pkg_descr = [ bi | lib <- libraries pkg_descr
                               , buildable bi ]
                       ++ [ bi | tst <- testSuites pkg_descr
                               , let bi = testBuildInfo tst
-                              , buildable bi
-                              , testEnabled tst ]
+                              , buildable bi ]
                       ++ [ bi | tst <- benchmarks pkg_descr
                               , let bi = benchmarkBuildInfo tst
-                              , buildable bi
-                              , benchmarkEnabled tst ]
+                              , buildable bi ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
 
