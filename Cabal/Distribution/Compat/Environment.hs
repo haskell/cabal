@@ -51,7 +51,7 @@ lookupEnv name = (Just `fmap` System.getEnv name) `catchIO` const (return Nothin
 -- empty string or contains an equals sign.
 setEnv :: String -> String -> IO ()
 setEnv key value_
-  | null value = error "Distribuiton.Compat.setEnv: empty string"
+  | null value = error "Distribution.Compat.setEnv: empty string"
   | otherwise  = setEnv_ key value
   where
     -- NOTE: Anything that follows NUL is ignored on both POSIX and Windows. We
