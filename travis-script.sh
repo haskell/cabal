@@ -74,7 +74,7 @@ timed cabal new-build cabal-install:cabal \
 (cd cabal-install && timed ../${CABAL_INSTALL_SETUP} haddock --builddir=../${CABAL_INSTALL_BUILDDIR} )
 
 (cd cabal-install && timed cabal check)
-(cd cabal-install && timed cabal sdist --builddir=../${CABAL_BUILDDIR})
+(cd cabal-install && timed cabal sdist -v3 --builddir=../${CABAL_BUILDDIR})
 
 # Check what we got
 ${CABAL_INSTALL_BUILDDIR}/build/cabal/cabal --version
