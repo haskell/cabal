@@ -29,6 +29,8 @@ install_from_tarball() {
    fi
 }
 
+timed cabal update
+
 echo Cabal
 (cd Cabal && timed cabal sdist)
 (cd Cabal && timed install_from_tarball)

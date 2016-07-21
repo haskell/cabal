@@ -59,9 +59,6 @@ elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
     mkdir "${HOME}/bin"
     (cd "${HOME}/bin" && tar -xzf "$TAR")
     "${HOME}/bin/cabal" --version
-    if ! command -v happy; then
-        "${HOME}/bin/cabal" install happy
-    fi
 
 else
     echo "Not linux or osx: $TRAVIS_OS_NAME"
