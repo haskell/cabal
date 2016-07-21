@@ -604,29 +604,29 @@ renderBuildTarget ql t =
 
       BuildTargetComponent p c ->
         case ql of
-          QL1 -> [t1                     (dispC c)]
-          QL2 -> [t2 (dispP p)           (dispC c),
-                  t2           (dispK c) (dispC c)]
-          QL3 -> [t3 (dispP p) (dispK c) (dispC c)]
+          QL1 -> [t1                     (dispC p c)]
+          QL2 -> [t2 (dispP p)           (dispC p c),
+                  t2           (dispK c) (dispC p c)]
+          QL3 -> [t3 (dispP p) (dispK c) (dispC p c)]
           QL4 -> []
 
       BuildTargetModule p c m ->
         case ql of
           QL1 -> [t1                                 (dispM m)]
           QL2 -> [t2 (dispP p)                       (dispM m),
-                  t2                     (dispC c) (dispM m)]
-          QL3 -> [t3 (dispP p)           (dispC c) (dispM m),
-                  t3           (dispK c) (dispC c) (dispM m)]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC c) (dispM m)]
+                  t2                     (dispC p c) (dispM m)]
+          QL3 -> [t3 (dispP p)           (dispC p c) (dispM m),
+                  t3           (dispK c) (dispC p c) (dispM m)]
+          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) (dispM m)]
 
       BuildTargetFile p c f ->
         case ql of
           QL1 -> [t1                                 f]
           QL2 -> [t2 (dispP p)                       f,
-                  t2                     (dispC c) f]
-          QL3 -> [t3 (dispP p)           (dispC c) f,
-                  t3           (dispK c) (dispC c) f]
-          QL4 -> [t4 (dispP p) (dispK c) (dispC c) f]
+                  t2                     (dispC p c) f]
+          QL3 -> [t3 (dispP p)           (dispC p c) f,
+                  t3           (dispK c) (dispC p c) f]
+          QL4 -> [t4 (dispP p) (dispK c) (dispC p c) f]
   where
     t1  s1 = UserBuildTargetFileStatus1 s1 none
     t1' s1 = UserBuildTargetFileStatus1 s1
@@ -1062,7 +1062,7 @@ selectComponentInfo :: PackageInfo -> PackageDescription -> [ComponentInfo]
 selectComponentInfo pinfo pkg =
     [ ComponentInfo {
         cinfoName    = componentName c,
-        cinfoStrName = componentStringName (componentName c),
+        cinfoStrName = componentStringName pkg (componentName c),
         cinfoPackage = pinfo,
         cinfoSrcDirs = hsSourceDirs bi,
 --                       [ pkgroot </> srcdir
@@ -1077,11 +1077,12 @@ selectComponentInfo pinfo pkg =
     , let bi = componentBuildInfo c ]
 
 
-componentStringName :: ComponentName -> ComponentStringName
-componentStringName (CLibName   name) = name
-componentStringName (CExeName   name) = name
-componentStringName (CTestName  name) = name
-componentStringName (CBenchName name) = name
+componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
+componentStringName pkg CLibName          = display (packageName pkg)
+componentStringName _ (CSubLibName name) = name
+componentStringName _ (CExeName   name) = name
+componentStringName _ (CTestName  name) = name
+componentStringName _ (CBenchName name) = name
 
 componentModules :: Component -> [ModuleName]
 componentModules (CLib   lib)   = libModules lib
@@ -1108,7 +1109,8 @@ data ComponentKind = LibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
-componentKind (CLibName   _) = LibKind
+componentKind  CLibName      = LibKind
+componentKind (CSubLibName _) = LibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
 componentKind (CBenchName _) = BenchKind

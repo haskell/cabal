@@ -206,7 +206,9 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CLib lib) clbi distPref = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building library " ++ libName lib ++ "..."
+    case libName lib of
+        Nothing -> info verbosity $ "Building library..."
+        Just n -> info verbosity $ "Building library " ++ n ++ "..."
     let libbi = libBuildInfo lib
         lib' = lib { libBuildInfo = addExtraCSources libbi extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
@@ -407,7 +409,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
   where
     bi  = testBuildInfo test
     lib = Library {
-            libName = testName test,
+            libName = Nothing,
             exposedModules = [ m ],
             reexportedModules = [],
             requiredSignatures = [],
@@ -421,7 +423,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
-                , componentLocalName = CLibName (testName test)
+                , componentLocalName = CSubLibName (testName test)
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi
@@ -434,7 +436,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , buildDepends = targetBuildDepends $ testBuildInfo test
           , executables  = []
           , testSuites   = []
-          , libraries    = [lib]
+          , subLibraries = [lib]
           }
     ipi    = inplaceInstalledPackageInfo pwd distPref pkg (AbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test

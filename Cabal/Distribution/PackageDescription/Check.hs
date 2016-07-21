@@ -47,7 +47,7 @@ import Distribution.Simple.LocalBuildInfo hiding (compiler)
 import Language.Haskell.Extension
 
 import Data.Maybe
-         ( isNothing, isJust, catMaybes, mapMaybe, fromMaybe )
+         ( isNothing, isJust, catMaybes, mapMaybe, fromMaybe, maybeToList )
 import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Monad
          ( filterM, liftM )
@@ -174,7 +174,7 @@ checkSanity pkg =
   , check (all ($ pkg) [ null . executables
                        , null . testSuites
                        , null . benchmarks
-                       , null . libraries ]) $
+                       , null . allLibraries ]) $
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
@@ -182,11 +182,18 @@ checkSanity pkg =
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
         ++ ". The name of every library, executable, test suite, and benchmark section in"
         ++ " the package must be unique."
+
+  -- NB: but it's OK for executables to have the same name!
+  , check (any (== display (packageName pkg)) subLibNames) $
+      PackageBuildImpossible $ "Illegal internal library name " ++ display (packageName pkg)
+        ++ ". Internal libraries cannot have the same name as the package.  Maybe"
+        ++ " you wanted a non-internal library?  If so, rewrite the section stanza"
+        ++ " from 'library: '" ++ display (packageName pkg) ++ "' to 'library'."
   ]
   --TODO: check for name clashes case insensitively: windows file systems cannot
   --cope.
 
-  ++ concatMap (checkLibrary    pkg) (libraries pkg)
+  ++ concatMap (checkLibrary    pkg) (allLibraries pkg)
   ++ concatMap (checkExecutable pkg) (executables pkg)
   ++ concatMap (checkTestSuite  pkg) (testSuites pkg)
   ++ concatMap (checkBenchmark  pkg) (benchmarks pkg)
@@ -200,15 +207,14 @@ checkSanity pkg =
         ++ "tool only supports up to version " ++ display cabalVersion ++ "."
   ]
   where
-    -- The public library gets special dispensation, because it
+    -- The public 'library' gets special dispensation, because it
     -- is common practice to export a library and name the executable
-    -- the same as the package.  We always put the public library
-    -- in the top-level directory in dist, so no conflicts either.
-    libNames = filter (/= unPackageName (packageName pkg)) . map libName $ libraries pkg
+    -- the same as the package.
+    subLibNames = catMaybes . map libName $ subLibraries pkg
     exeNames = map exeName $ executables pkg
     testNames = map testName $ testSuites pkg
     bmNames = map benchmarkName $ benchmarks pkg
-    duplicateNames = dups $ libNames ++ exeNames ++ testNames ++ bmNames
+    duplicateNames = dups $ subLibNames ++ exeNames ++ testNames ++ bmNames
 
 checkLibrary :: PackageDescription -> Library -> [PackageCheck]
 checkLibrary pkg lib =
@@ -221,7 +227,10 @@ checkLibrary pkg lib =
 
   , check (null (libModules lib) && null (reexportedModules lib)) $
       PackageDistSuspiciousWarn $
-           "Library " ++ libName lib ++ " does not expose any modules"
+           "Library " ++ (case libName lib of
+                            Nothing -> ""
+                            Just n -> n
+                            ) ++ "does not expose any modules"
 
     -- check use of required-signatures/exposed-signatures sections
   , checkVersion [1,21] (not (null (requiredSignatures lib))) $
@@ -691,7 +700,7 @@ checkGhcOptions pkg =
 
   where
     all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo) (libraries pkg)
+    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo) (allLibraries pkg)
     get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
                          ++ hcSharedOptions GHC bi
 
@@ -915,17 +924,14 @@ checkCabalVersion pkg =
         ++ "'other-languages' field."
 
   , checkVersion [1,23]
-    (case libraries pkg of
-        [lib] -> libName lib /= unPackageName (packageName pkg)
-        [] -> False
-        _ -> True) $
+    (not (null (subLibraries pkg))) $
       PackageDistInexcusable $
            "To use multiple 'library' sections or a named library section "
         ++ "the package needs to specify at least 'cabal-version >= 1.23'."
 
     -- check use of reexported-modules sections
   , checkVersion [1,21]
-    (any (not.null.reexportedModules) (libraries pkg)) $
+    (any (not.null.reexportedModules) (allLibraries pkg)) $
       PackageDistInexcusable $
            "To use the 'reexported-module' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.21'."
@@ -1331,8 +1337,11 @@ checkConditionals pkg =
     unknownOSs    = [ os   | OS   (OtherOS os)           <- conditions ]
     unknownArches = [ arch | Arch (OtherArch arch)       <- conditions ]
     unknownImpls  = [ impl | Impl (OtherCompiler impl) _ <- conditions ]
-    conditions = concatMap (fvs . snd) (condLibraries pkg)
+    conditions = concatMap fvs (maybeToList (condLibrary pkg))
+              ++ concatMap (fvs . snd) (condSubLibraries pkg)
               ++ concatMap (fvs . snd) (condExecutables pkg)
+              ++ concatMap (fvs . snd) (condTestSuites pkg)
+              ++ concatMap (fvs . snd) (condBenchmarks pkg)
     fvs (CondNode _ _ ifs) = concatMap compfv ifs -- free variables
     compfv (c, ct, mct) = condfv c ++ fvs ct ++ maybe [] fvs mct
     condfv c = case c of
@@ -1435,8 +1444,11 @@ checkDevelopmentOnlyFlags pkg =
 
     allConditionalBuildInfo :: [([Condition ConfVar], BuildInfo)]
     allConditionalBuildInfo =
-        concatMap (collectCondTreePaths libBuildInfo . snd)
-                  (condLibraries pkg)
+        concatMap (collectCondTreePaths libBuildInfo)
+                  (maybeToList (condLibrary pkg))
+
+     ++ concatMap (collectCondTreePaths libBuildInfo . snd)
+                  (condSubLibraries pkg)
 
      ++ concatMap (collectCondTreePaths buildInfo . snd)
                   (condExecutables pkg)

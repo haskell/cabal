@@ -46,8 +46,8 @@ ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
         ppPackageDescription (packageDescription gpd)
         $+$ ppGenPackageFlags (genPackageFlags gpd)
-        $+$ ppLibraries (unPackageName (packageName (packageDescription gpd)))
-                        (condLibraries gpd)
+        $+$ ppLibrary (condLibrary gpd)
+        $+$ ppSubLibraries (condSubLibraries gpd)
         $+$ ppExecutables (condExecutables gpd)
         $+$ ppTestSuites (condTestSuites gpd)
         $+$ ppBenchmarks (condBenchmarks gpd)
@@ -107,15 +107,22 @@ ppFlag flag@(MkFlag name _ _ _)    =
   where
     fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
-ppLibraries :: String -> [(String, CondTree ConfVar [Dependency] Library)] -> Doc
-ppLibraries pn libs                           =
-    vcat [emptyLine $ text (if n == pn then "library" else "library " ++ n)
+ppLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
+ppLibrary Nothing = empty
+ppLibrary (Just condTree) =
+    emptyLine $ text "library"
+        $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
+
+ppSubLibraries :: [(String, CondTree ConfVar [Dependency] Library)] -> Doc
+ppSubLibraries libs                           =
+    vcat [emptyLine $ text ("library " ++ n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppLib)| (n,condTree) <- libs]
-  where
-    ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
-                            $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
-    ppLib lib (Just plib) = ppDiffFields libFieldDescrs lib plib
-                            $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
+
+ppLib :: Library -> Maybe Library -> Doc
+ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
+                        $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
+ppLib lib (Just plib) = ppDiffFields libFieldDescrs lib plib
+                        $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
 
 ppExecutables :: [(String, CondTree ConfVar [Dependency] Executable)] -> Doc
 ppExecutables exes                       =

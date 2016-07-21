@@ -7,7 +7,7 @@ maintainer:          ezyang@cs.stanford.edu
 build-type:          Simple
 cabal-version:       >=1.10
 
-library macros
+library
   exposed-modules:     C
   hs-source-dirs:      src
   build-depends:       base, filepath

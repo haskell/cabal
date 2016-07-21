@@ -34,6 +34,7 @@ module Distribution.Simple.BuildTarget (
     checkBuildTargets
   ) where
 
+import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
@@ -231,9 +232,9 @@ showUserBuildTarget = intercalate ":" . getComponents
     getComponents (UserBuildTargetDouble s1 s2)    = [s1,s2]
     getComponents (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
 
-showBuildTarget :: QualLevel -> BuildTarget -> String
-showBuildTarget ql bt =
-    showUserBuildTarget (renderBuildTarget ql bt)
+showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget ql pkgid bt =
+    showUserBuildTarget (renderBuildTarget ql bt pkgid)
 
 
 -- ------------------------------------------------------------
@@ -270,6 +271,7 @@ resolveBuildTarget pkg userTarget fexists =
       Unambiguous target  -> Right target
       Ambiguous   targets -> Left (BuildTargetAmbiguous userTarget targets')
                                where targets' = disambiguateBuildTargets
+                                                    (packageId pkg)
                                                     userTarget
                                                     targets
       None        errs    -> Left (classifyMatchErrors errs)
@@ -294,9 +296,9 @@ data BuildTargetProblem
   deriving Show
 
 
-disambiguateBuildTargets :: UserBuildTarget -> [BuildTarget]
+disambiguateBuildTargets :: PackageId -> UserBuildTarget -> [BuildTarget]
                          -> [(UserBuildTarget, BuildTarget)]
-disambiguateBuildTargets original =
+disambiguateBuildTargets pkgid original =
     disambiguate (userTargetQualLevel original)
   where
     disambiguate ql ts
@@ -315,13 +317,13 @@ disambiguateBuildTargets original =
             . partition (\g -> length g > 1)
             . groupBy (equating fst)
             . sortBy (comparing fst)
-            . map (\t -> (renderBuildTarget ql t, t))
+            . map (\t -> (renderBuildTarget ql t pkgid, t))
 
 data QualLevel = QL1 | QL2 | QL3
   deriving (Enum, Show)
 
-renderBuildTarget :: QualLevel -> BuildTarget -> UserBuildTarget
-renderBuildTarget ql target =
+renderBuildTarget :: QualLevel -> BuildTarget -> PackageId -> UserBuildTarget
+renderBuildTarget ql target pkgid =
     case ql of
       QL1 -> UserBuildTargetSingle s1        where  s1          = single target
       QL2 -> UserBuildTargetDouble s1 s2     where (s1, s2)     = double target
@@ -340,7 +342,7 @@ renderBuildTarget ql target =
     triple (BuildTargetModule    cn m) = (dispKind cn, dispCName cn, display m)
     triple (BuildTargetFile      cn f) = (dispKind cn, dispCName cn, f)
 
-    dispCName = componentStringName
+    dispCName = componentStringName pkgid
     dispKind  = showComponentKindShort . componentKind
 
 reportBuildTargetProblems :: [BuildTargetProblem] -> IO ()
@@ -443,7 +445,7 @@ pkgComponentInfo :: PackageDescription -> [ComponentInfo]
 pkgComponentInfo pkg =
     [ ComponentInfo {
         cinfoName    = componentName c,
-        cinfoStrName = componentStringName (componentName c),
+        cinfoStrName = componentStringName pkg (componentName c),
         cinfoSrcDirs = hsSourceDirs bi,
         cinfoModules = componentModules c,
         cinfoHsFiles = componentHsFiles c,
@@ -453,11 +455,12 @@ pkgComponentInfo pkg =
     | c <- pkgComponents pkg
     , let bi = componentBuildInfo c ]
 
-componentStringName :: ComponentName -> ComponentStringName
-componentStringName (CLibName   name) = name
-componentStringName (CExeName   name) = name
-componentStringName (CTestName  name) = name
-componentStringName (CBenchName name) = name
+componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
+componentStringName pkg CLibName          = display (packageName pkg)
+componentStringName _   (CSubLibName name) = name
+componentStringName _   (CExeName   name) = name
+componentStringName _   (CTestName  name) = name
+componentStringName _   (CBenchName name) = name
 
 componentModules :: Component -> [ModuleName]
 componentModules (CLib   lib)   = libModules lib
@@ -497,7 +500,8 @@ data ComponentKind = LibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
-componentKind (CLibName   _) = LibKind
+componentKind CLibName = LibKind
+componentKind (CSubLibName _) = LibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
 componentKind (CBenchName _) = BenchKind

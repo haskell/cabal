@@ -291,16 +291,17 @@ data Component = CLib   Library
 -- | This gets the 'String' component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning
 -- @Nothing@ if the 'ComponentName' was for the public
--- library (which CAN conflict with an executable name.)
-componentNameString :: PackageName -> ComponentName -> Maybe String
-componentNameString (PackageName pkg_name) (CLibName n) | pkg_name == n = Nothing
-componentNameString _ (CLibName   n) = Just n
-componentNameString _ (CExeName   n) = Just n
-componentNameString _ (CTestName  n) = Just n
-componentNameString _ (CBenchName n) = Just n
+-- library.
+componentNameString :: ComponentName -> Maybe String
+componentNameString CLibName = Nothing
+componentNameString (CSubLibName n) = Just n
+componentNameString (CExeName   n) = Just n
+componentNameString (CTestName  n) = Just n
+componentNameString (CBenchName n) = Just n
 
 showComponentName :: ComponentName -> String
-showComponentName (CLibName   name) = "library '" ++ name ++ "'"
+showComponentName CLibName          = "library"
+showComponentName (CSubLibName name) = "library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
@@ -322,16 +323,20 @@ componentBuildInfo =
 
 componentName :: Component -> ComponentName
 componentName =
-  foldComponent (CLibName . libName)
+  foldComponent getLibName
                 (CExeName . exeName)
                 (CTestName . testName)
                 (CBenchName . benchmarkName)
+ where
+  getLibName lib = case libName lib of
+                    Nothing -> CLibName
+                    Just n -> CSubLibName n
 
 -- | All the components in the package.
 --
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
-    [ CLib  lib | lib <- libraries pkg ]
+    [ CLib  lib | lib <- allLibraries pkg ]
  ++ [ CExe  exe | exe <- executables pkg ]
  ++ [ CTest tst | tst <- testSuites  pkg ]
  ++ [ CBench bm | bm  <- benchmarks  pkg ]
@@ -356,9 +361,9 @@ componentBuildable :: Component -> Bool
 componentBuildable = buildable . componentBuildInfo
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
-lookupComponent pkg (CLibName "") = lookupComponent pkg (defaultLibName (package pkg))
-lookupComponent pkg (CLibName name) =
-    fmap CLib $ find ((name ==) . libName) (libraries pkg)
+lookupComponent pkg CLibName = fmap CLib (library pkg)
+lookupComponent pkg (CSubLibName name) =
+    fmap CLib $ find ((Just name ==) . libName) (subLibraries pkg)
 lookupComponent pkg (CExeName name) =
     fmap CExe $ find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =
@@ -443,14 +448,13 @@ componentComponentId clbi = case componentUnitId clbi of
                                 SimpleUnitId cid -> cid
 
 componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
-componentBuildDir lbi LibComponentLocalBuildInfo{ componentIsPublic = True }
-    = buildDir lbi
 -- For now, we assume that libraries/executables/test-suites/benchmarks
 -- are only ever built once.  With Backpack, we need a special case for
 -- libraries so that we can handle building them multiple times.
 componentBuildDir lbi clbi
     = buildDir lbi </> case componentLocalName clbi of
-                        CLibName s   -> s
+                        CLibName     -> ""
+                        CSubLibName s -> s
                         CExeName s   -> s
                         CTestName s  -> s
                         CBenchName s -> s

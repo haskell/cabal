@@ -169,9 +169,9 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     -- For the moment use dynlibdir = libdir
         dynlibPref = libPref
 
-    if componentUnitId clbi == localUnitId lbi
-        then notice verbosity ("Installing library in " ++ libPref)
-        else notice verbosity ("Installing internal library " ++ libName lib ++ " in " ++ libPref)
+    case libName lib of
+        Nothing -> notice verbosity ("Installing library in " ++ libPref)
+        Just n -> notice verbosity ("Installing internal library " ++ n ++ " in " ++ libPref)
 
     -- install include files for all compilers - they may be needed to compile
     -- haskell files (using the CPP extension)

@@ -308,10 +308,9 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
     toResolverPackage :: FinalSelectedPackage -> ResolverPackage UnresolvedPkgLoc
     toResolverPackage (SelectedInstalled (InstalledPackage pkg pid_deps))
                                               = PreExisting pkg deps
-        where deps = CD.fromLibraryDeps lib
+        where deps = CD.fromLibraryDeps
                    . zipWith PreExistingId pid_deps
                    $ InstalledPackageInfo.depends pkg
-              lib = display (packageName pkg)
     toResolverPackage (SelectedSource    pkg) = Configured  pkg
 
 addTopLevelTargets :: [PackageName]
@@ -624,8 +623,7 @@ finaliseSelectedPackages pref selected constraints =
         -- We cheat in the cabal solver, and classify all dependencies as
         -- library dependencies.
         deps' :: ComponentDeps [SolverId]
-        deps' = CD.fromLibraryDeps (unPackageName (packageName pkg))
-                                   (map (confId . pickRemaining mipkg) deps)
+        deps' = CD.fromLibraryDeps (map (confId . pickRemaining mipkg) deps)
 
     -- InstalledOrSource indicates that we either have a source package
     -- available, or an installed one, or both. In the case that we have both

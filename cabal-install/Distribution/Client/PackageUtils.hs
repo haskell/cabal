@@ -32,5 +32,5 @@ externalBuildDepends pkg = filter (not . internal) (buildDepends pkg)
     internal (Dependency depName versionRange) =
            (depName == packageName pkg &&
             packageVersion pkg `withinRange` versionRange) ||
-           (unPackageName depName `elem` map libName (libraries pkg) &&
+           (Just (unPackageName depName) `elem` map libName (subLibraries pkg) &&
             isAnyVersion versionRange)

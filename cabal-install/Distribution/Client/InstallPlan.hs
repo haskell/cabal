@@ -629,7 +629,7 @@ configureInstallPlan solverPlan =
                   $ Configure.computeComponentId
                         Cabal.NoFlag
                         (packageId spkg)
-                        (PD.CLibName (display (pkgName (packageId spkg))))
+                        PD.CLibName
                         -- TODO: this is a hack that won't work for Backpack.
                         (map ((\(SimpleUnitId cid0) -> cid0) . confInstId)
                              (CD.libraryDeps deps))

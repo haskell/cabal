@@ -10,7 +10,7 @@ import qualified PackageTests.TestSuiteTests.ExeV10.Check
 import Distribution.Simple.LocalBuildInfo
   ( LocalBuildInfo(localPkgDescr, compiler), absoluteComponentInstallDirs
   , InstallDirs(libdir), maybeGetComponentLocalBuildInfo
-  , ComponentLocalBuildInfo(componentUnitId), ComponentName(CLibName) )
+  , ComponentLocalBuildInfo(componentUnitId), ComponentName(..) )
 import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
 import Distribution.Simple.Compiler    ( compilerId )
@@ -540,7 +540,7 @@ tests config = do
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
-                cname = (CLibName "foo-internal")
+                cname = CSubLibName "foo-internal"
                 Just clbi = maybeGetComponentLocalBuildInfo lbi cname
                 uid = componentUnitId clbi
                 dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid

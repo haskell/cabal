@@ -53,7 +53,8 @@ import Data.Traversable (Traversable(traverse))
 
 -- | Component of a package.
 data Component =
-    ComponentLib   String
+    ComponentLib
+  | ComponentSubLib String
   | ComponentExe   String
   | ComponentTest  String
   | ComponentBench String
@@ -113,8 +114,8 @@ filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
 filterDeps p = ComponentDeps . Map.filterWithKey p . unComponentDeps
 
 -- | ComponentDeps containing library dependencies only
-fromLibraryDeps :: String -> a -> ComponentDeps a
-fromLibraryDeps n = singleton (ComponentLib n)
+fromLibraryDeps :: a -> ComponentDeps a
+fromLibraryDeps = singleton ComponentLib
 
 -- | ComponentDeps containing setup dependencies only.
 fromSetupDeps :: a -> ComponentDeps a
@@ -123,7 +124,7 @@ fromSetupDeps = singleton ComponentSetup
 -- | ComponentDeps for installed packages.
 --
 -- We assume that installed packages only record their library dependencies.
-fromInstalled :: String -> a -> ComponentDeps a
+fromInstalled :: a -> ComponentDeps a
 fromInstalled = fromLibraryDeps
 
 {-------------------------------------------------------------------------------
@@ -148,9 +149,11 @@ flatDeps = fold
 nonSetupDeps :: Monoid a => ComponentDeps a -> a
 nonSetupDeps = select (/= ComponentSetup)
 
--- | Library dependencies proper only.
+-- | Library dependencies proper only.  (Includes dependencies
+-- of internal libraries.)
 libraryDeps :: Monoid a => ComponentDeps a -> a
-libraryDeps = select (\c -> case c of ComponentLib _ -> True
+libraryDeps = select (\c -> case c of ComponentSubLib _ -> True
+                                      ComponentLib -> True
                                       _ -> False)
 
 -- | Setup dependencies.

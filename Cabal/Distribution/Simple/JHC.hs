@@ -154,10 +154,9 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
-      lib pd' = case libraries pd' of
-                [lib'] -> lib'
-                [] -> error "no library available"
-                _ -> error "JHC does not support multiple libraries (yet)"
+      lib pd' = case library pd' of
+                Just lib' -> lib'
+                Nothing -> error "no library available"
       comma = intercalate "," . map display
   in unlines [sline "name" (display . pkgName . packageId)
              ,sline "version" (display . pkgVersion . packageId)

@@ -230,7 +230,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   where
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
-    withAllLib       action = mapM action (libraries pkg_descr)
+    withAllLib       action = mapM action (allLibraries pkg_descr)
     withAllExe       action = mapM action (executables pkg_descr)
     withAllTest      action = mapM action (testSuites pkg_descr)
     withAllBenchmark action = mapM action (benchmarks pkg_descr)
@@ -311,7 +311,8 @@ filterAutogenModule :: PackageDescription -> PackageDescription
 filterAutogenModule pkg_descr0 = mapLib filterAutogenModuleLib $
                                  mapAllBuildInfo filterAutogenModuleBI pkg_descr0
   where
-    mapLib f pkg = pkg { libraries = map f (libraries pkg) }
+    mapLib f pkg = pkg { library      = fmap f (library pkg)
+                       , subLibraries = map f (subLibraries pkg) }
     filterAutogenModuleLib lib = lib {
       exposedModules = filter (/=autogenModule) (exposedModules lib)
     }
@@ -467,7 +468,8 @@ tarBallName = display . packageId
 mapAllBuildInfo :: (BuildInfo -> BuildInfo)
                 -> (PackageDescription -> PackageDescription)
 mapAllBuildInfo f pkg = pkg {
-    libraries   = fmap mapLibBi (libraries pkg),
+    library     = fmap mapLibBi (library pkg),
+    subLibraries = fmap mapLibBi (subLibraries pkg),
     executables = fmap mapExeBi (executables pkg),
     testSuites  = fmap mapTestBi (testSuites pkg),
     benchmarks  = fmap mapBenchBi (benchmarks pkg)

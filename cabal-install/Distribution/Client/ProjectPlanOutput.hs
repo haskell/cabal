@@ -90,7 +90,8 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
     comp2str c = case c of
-        ComponentDeps.ComponentLib s   -> "lib:"   <> s
+        ComponentDeps.ComponentLib     -> "lib"
+        ComponentDeps.ComponentSubLib s -> "lib:"   <> s
         ComponentDeps.ComponentExe s   -> "exe:"   <> s
         ComponentDeps.ComponentTest s  -> "test:"  <> s
         ComponentDeps.ComponentBench s -> "bench:" <> s
