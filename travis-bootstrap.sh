@@ -22,14 +22,17 @@ install_from_tarball() {
    SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    export SRC_TGZ
    if [ -f "dist/$SRC_TGZ" ]; then
-      cabal install --force-reinstall $jobs "dist/$SRC_TGZ" -v2;
+      cabal install --force-reinstalls $jobs "dist/$SRC_TGZ" -v2;
    else
       echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;
    fi
 }
 
+echo Cabal
 (cd Cabal && timed cabal sdist)
 (cd Cabal && timed install_from_tarball)
+
+echo cabal-install
 (cd cabal-install && timed cabal sdist)
 (cd cabal-install && timed install_from_tarball)
