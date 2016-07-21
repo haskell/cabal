@@ -22,7 +22,9 @@
 #endif
 #endif
 
-#if !MIN_VERSION_binary_0_8_0
+#if !MIN_VERSION_binary_0_8_0 || __GLASGOW_HASKELL__ < 707
+-- instance Binary Version for !MIN_VERSION_binary_0_8_0
+-- instance Data Version for __GLASGOW_HASKELL__ < 707
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 #endif
 
