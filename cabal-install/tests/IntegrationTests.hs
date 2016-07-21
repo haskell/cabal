@@ -288,6 +288,7 @@ main = do
   -- Define default arguments
   setEnv "CABAL_ARGS" $ "--config-file=config-file"
   setEnv "CABAL_ARGS_NO_CONFIG_FILE" " "
+  setEnv "CABAL_BUILDDIR" ""
   -- Discover all the test categories
   categories <- discoverTestCategories baseDirectory
   -- Discover tests in each category
