@@ -84,6 +84,10 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck
 
+# custom/plain.sh in integration-tests seems to fail if you keep this
+# around
+unset CABAL_BUILDDIR
+
 # Run tests
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
@@ -95,8 +99,6 @@ timed cabal new-build cabal-install:cabal \
 
 (cd cabal-install && timed cabal check)
 (cd cabal-install && timed cabal sdist -v3 --builddir=${CABAL_INSTALL_BDIR})
-
-unset CABAL_BUILDDIR
 
 # Check what we got
 ${CABAL_INSTALL_BDIR}/build/cabal/cabal --version
