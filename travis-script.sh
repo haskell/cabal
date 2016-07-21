@@ -75,6 +75,7 @@ unset CABAL_BUILDDIR
 # cabal-install
 # ---------------------------------------------------------------------
 
+# Setting the build directory here helps avoid sdist bugs.
 export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
 
 timed cabal new-build cabal-install:cabal \
@@ -84,13 +85,13 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:solver-quickcheck
 
 # Run tests
-(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
-(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
-(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS)
-(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS)
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS)
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS)
 
 # Haddock
-(cd cabal-install && timed ../${CABAL_INSTALL_SETUP} haddock --builddir=../${CABAL_INSTALL_BDIR} )
+(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} )
 
 (cd cabal-install && timed cabal check)
 (cd cabal-install && timed cabal sdist -v3 --builddir=${CABAL_INSTALL_BDIR})
