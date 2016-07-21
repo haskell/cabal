@@ -58,11 +58,28 @@ cabal new-build cabal-install:integration-tests # etc...
 Running tests
 -------------
 
+**Using Travis and AppVeyor.**
 The easiest way to run tests on Cabal is to make a branch on GitHub
 and then open a pull request; our continuous integration service on
 Travis and AppVeyor will build and test your code.  Title your PR
-with WIP so we know that it does not need code review.
+with WIP so we know that it does not need code review.  Alternately,
+you can enable Travis on your fork in your own username and Travis
+should build your local branches.
 
+Some tips for using Travis effectively:
+
+* Watch over your jobs on the [Travis website](http://travis-ci.org).
+  If you know a build of yours is going to fail (because one job has
+  already failed), be nice to others and cancel the rest of the jobs,
+  so that other commits on the build queue can be processed.
+
+* If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
+
+* If you enable Travis for the fork of Cabal in your local GitHub, you
+  can have builds done automatically for your local branch seperate
+  from Cabal. This is an alternative to opening a PR.
+
+**Running tests locally.**
 To run tests locally with `new-build`, you will need to know the
 name of the test suite you want.  Cabal and cabal-install have
 several.  In general, the test executable for
@@ -161,8 +178,6 @@ There are a few main venues of communication:
 
 * Many developers idle on `#hackage` on `irc.freenode.net`.  `#ghc` is
   also a decently good bet.
-
-* If you want realtime notification when builds of your PRs finish, we have a [Slack team](https://haskell-cabal.slack.com/). To get issued an invite, fill in your email at [this sign up page](https://haskell-cabal.herokuapp.com).
 
 API Documentation
 -----------------
