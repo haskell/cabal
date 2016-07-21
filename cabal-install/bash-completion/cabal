@@ -25,11 +25,12 @@ _cabal_targets()
     # targets of according type.
     local comp
     for comp in "$@"; do
-        [ "$comp" == build ] && _cabal_list "executable|test-suite|benchmark" && break
-        [ "$comp" == repl  ] && _cabal_list "executable|test-suite|benchmark" && break
-        [ "$comp" == run   ] && _cabal_list "executable"                      && break
-        [ "$comp" == test  ] && _cabal_list            "test-suite"           && break
-        [ "$comp" == bench ] && _cabal_list                       "benchmark" && break
+        [ "$comp" == new-build ] && _cabal_list "executable|test-suite|benchmark" && break
+        [ "$comp" == build     ] && _cabal_list "executable|test-suite|benchmark" && break
+        [ "$comp" == repl      ] && _cabal_list "executable|test-suite|benchmark" && break
+        [ "$comp" == run       ] && _cabal_list "executable"                      && break
+        [ "$comp" == test      ] && _cabal_list            "test-suite"           && break
+        [ "$comp" == bench     ] && _cabal_list                       "benchmark" && break
     done
 }
 
