@@ -40,12 +40,12 @@ cp cabal.project.travis cabal.project.local
 # Cabal
 # ---------------------------------------------------------------------
 
+export CABAL_BUILDDIR="${CABAL_BDIR}"
+
 # NB: Best to do everything for a single package together as it's
 # more efficient (since new-build will uselessly try to rebuild
 # Cabal otherwise).
 timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
-
-export CABAL_BUILDDIR="${CABAL_BDIR}"
 
 # Run tests
 (cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
@@ -75,13 +75,13 @@ unset CABAL_BUILDDIR
 # cabal-install
 # ---------------------------------------------------------------------
 
+export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
+
 timed cabal new-build cabal-install:cabal \
                       cabal-install:integration-tests \
                       cabal-install:integration-tests2 \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck
-
-export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
 
 # Run tests
 (cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
