@@ -56,13 +56,13 @@ matrix:
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
- - ./travis-install.sh
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
  - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH
  - export PATH=$HOME/bin:$PATH
  - export PATH=$HOME/.cabal/bin:$PATH
  - export PATH=/opt/cabal/1.24/bin:$PATH
  - export PATH=/opt/happy/1.19.5/bin:$PATH
+ - ./travis-install.sh
 
  # Set up deployment to the haskell/cabal-website repo.
  # NB: these commands MUST be in .travis.yml, otherwise the secret key can be
