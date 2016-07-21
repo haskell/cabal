@@ -29,8 +29,8 @@ import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.Tree
-import qualified Distribution.Solver.Modular.PSQ as P
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackagePath
@@ -69,9 +69,9 @@ addLinking = (`runReader` M.empty) .  cata go
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
       env <- ask
-      let linkedCs = P.fromList $ concatMap (linkChoices env qpn) (P.toList cs)
-          unlinkedCs = P.mapWithKey (goP qpn) cs
-      allCs <- T.sequence $ unlinkedCs `P.union` linkedCs
+      let linkedCs = W.fromList $ concatMap (linkChoices env qpn) (W.toList cs)
+          unlinkedCs = W.mapWithKey (goP qpn) cs
+      allCs <- T.sequence $ unlinkedCs `W.union` linkedCs
       return $ PChoice qpn gr allCs
     go _otherwise =
       innM _otherwise
@@ -82,13 +82,16 @@ addLinking = (`runReader` M.empty) .  cata go
     goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
     goP _ _ = alreadyLinked
 
-linkChoices :: forall a . RelatedGoals -> QPN -> (POption, a) -> [(POption, a)]
-linkChoices related (Q _pp pn) (POption i Nothing, subtree) =
+linkChoices :: forall a w . RelatedGoals
+            -> QPN
+            -> (w, POption, a)
+            -> [(w, POption, a)]
+linkChoices related (Q _pp pn) (weight, POption i Nothing, subtree) =
     map aux (M.findWithDefault [] (pn, i) related)
   where
-    aux :: PackagePath -> (POption, a)
-    aux pp = (POption i (Just pp), subtree)
-linkChoices _ _ (POption _ (Just _), _) =
+    aux :: PackagePath -> (w, POption, a)
+    aux pp = (weight, POption i (Just pp), subtree)
+linkChoices _ _ (_, POption _ (Just _), _) =
     alreadyLinked
 
 alreadyLinked :: a
@@ -140,11 +143,11 @@ validateLinking index = (`runReader` initVS) . cata go
     go :: TreeF a (Validate (Tree a)) -> Validate (Tree a)
 
     go (PChoiceF qpn gr cs) =
-      PChoice qpn gr     <$> T.sequence (P.mapWithKey (goP qpn) cs)
+      PChoice qpn gr     <$> T.sequence (W.mapWithKey (goP qpn) cs)
     go (FChoiceF qfn gr t m cs) =
-      FChoice qfn gr t m <$> T.sequence (P.mapWithKey (goF qfn) cs)
+      FChoice qfn gr t m <$> T.sequence (W.mapWithKey (goF qfn) cs)
     go (SChoiceF qsn gr t cs) =
-      SChoice qsn gr t   <$> T.sequence (P.mapWithKey (goS qsn) cs)
+      SChoice qsn gr t   <$> T.sequence (W.mapWithKey (goS qsn) cs)
 
     -- For the other nodes we just recurse
     go (GoalChoiceF         cs)       = GoalChoice          <$> T.sequence cs

@@ -335,6 +335,7 @@ executable cabal
         Distribution.Solver.Modular.Validate
         Distribution.Solver.Modular.Var
         Distribution.Solver.Modular.Version
+        Distribution.Solver.Modular.WeightedPSQ
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps

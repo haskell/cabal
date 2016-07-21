@@ -4,6 +4,7 @@ module Distribution.Solver.Modular.Tree
     , POption(..)
     , Tree(..)
     , TreeF(..)
+    , Weight
     , ana
     , cata
     , choices
@@ -26,21 +27,25 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.PSQ (PSQ)
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Version
+import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
+
+type Weight = Double
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
     -- | Choose a version for a package (or choose to link)
-    PChoice QPN a (PSQ POption (Tree a))
+    PChoice QPN a (WeightedPSQ [Weight] POption (Tree a))
 
     -- | Choose a value for a flag
     --
     -- The Bool indicates whether it's manual.
-  | FChoice QFN a WeakOrTrivial Bool (PSQ Bool (Tree a))
+  | FChoice QFN a WeakOrTrivial Bool (WeightedPSQ [Weight] Bool (Tree a))
 
     -- | Choose whether or not to enable a stanza
-  | SChoice QSN a WeakOrTrivial (PSQ Bool (Tree a))
+  | SChoice QSN a WeakOrTrivial (WeightedPSQ [Weight] Bool (Tree a))
 
     -- | Choose which choice to make next
     --
@@ -103,9 +108,9 @@ data FailReason = InconsistentInitialConstraints
 
 -- | Functor for the tree type.
 data TreeF a b =
-    PChoiceF    QPN a                    (PSQ POption    b)
-  | FChoiceF    QFN a WeakOrTrivial Bool (PSQ Bool       b)
-  | SChoiceF    QSN a WeakOrTrivial      (PSQ Bool       b)
+    PChoiceF    QPN a                    (WeightedPSQ [Weight] POption b)
+  | FChoiceF    QFN a WeakOrTrivial Bool (WeightedPSQ [Weight] Bool    b)
+  | SChoiceF    QSN a WeakOrTrivial      (WeightedPSQ [Weight] Bool    b)
   | GoalChoiceF                          (PSQ (Goal QPN) b)
   | DoneF       RevDepMap
   | FailF       (ConflictSet QPN) FailReason
@@ -143,27 +148,27 @@ active _          = True
 -- | Determines how many active choices are available in a node. Note that we
 -- count goal choices as having one choice, always.
 choices :: Tree a -> Int
-choices (PChoice    _ _     ts) = P.length (P.filter active ts)
-choices (FChoice    _ _ _ _ ts) = P.length (P.filter active ts)
-choices (SChoice    _ _ _   ts) = P.length (P.filter active ts)
+choices (PChoice    _ _     ts) = W.length (W.filter active ts)
+choices (FChoice    _ _ _ _ ts) = W.length (W.filter active ts)
+choices (SChoice    _ _ _   ts) = W.length (W.filter active ts)
 choices (GoalChoice         _ ) = 1
 choices (Done       _         ) = 1
 choices (Fail       _ _       ) = 0
 
 -- | Variant of 'choices' that only approximates the number of choices.
 dchoices :: Tree a -> P.Degree
-dchoices (PChoice    _ _     ts) = P.degree (P.filter active ts)
-dchoices (FChoice    _ _ _ _ ts) = P.degree (P.filter active ts)
-dchoices (SChoice    _ _ _   ts) = P.degree (P.filter active ts)
+dchoices (PChoice    _ _     ts) = W.degree (W.filter active ts)
+dchoices (FChoice    _ _ _ _ ts) = W.degree (W.filter active ts)
+dchoices (SChoice    _ _ _   ts) = W.degree (W.filter active ts)
 dchoices (GoalChoice         _ ) = P.ZeroOrOne
 dchoices (Done       _         ) = P.ZeroOrOne
 dchoices (Fail       _ _       ) = P.ZeroOrOne
 
 -- | Variant of 'choices' that only approximates the number of choices.
 zeroOrOneChoices :: Tree a -> Bool
-zeroOrOneChoices (PChoice    _ _     ts) = P.isZeroOrOne (P.filter active ts)
-zeroOrOneChoices (FChoice    _ _ _ _ ts) = P.isZeroOrOne (P.filter active ts)
-zeroOrOneChoices (SChoice    _ _ _   ts) = P.isZeroOrOne (P.filter active ts)
+zeroOrOneChoices (PChoice    _ _     ts) = W.isZeroOrOne (W.filter active ts)
+zeroOrOneChoices (FChoice    _ _ _ _ ts) = W.isZeroOrOne (W.filter active ts)
+zeroOrOneChoices (SChoice    _ _ _   ts) = W.isZeroOrOne (W.filter active ts)
 zeroOrOneChoices (GoalChoice         _ ) = True
 zeroOrOneChoices (Done       _         ) = True
 zeroOrOneChoices (Fail       _ _       ) = True

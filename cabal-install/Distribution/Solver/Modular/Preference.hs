@@ -22,12 +22,12 @@ import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
 import Control.Applicative
 #endif
 import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
 import Data.Map (Map)
+import Data.Maybe (fromJust)
 import Data.Traversable (sequence)
 
 import Distribution.Solver.Types.ConstraintSource
@@ -46,71 +46,94 @@ import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
--- | Generic abstraction for strategies that just rearrange the package order.
--- Only packages that match the given predicate are reordered.
-packageOrderFor :: (PN -> Bool) -> (PN -> I -> I -> Ordering) -> Tree a -> Tree a
-packageOrderFor p cmp' = trav go
+-- | Update the weights of children under 'PChoice' nodes. 'addWeights' takes a
+-- list of weight-calculating functions in order to avoid sorting the package
+-- choices multiple times.
+addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree a -> Tree a
+addWeights fs = trav go
   where
-    go (PChoiceF v@(Q _ pn) r cs)
-      | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
-      | otherwise                   = PChoiceF v r                               cs
+    go (PChoiceF qpn@(Q _ pn) x cs) =
+      -- TODO: Inputs to 'f' shouldn't depend on the node's position in the
+      -- tree. If we continue using a list of all versions as an input, it
+      -- should come from the package index, not from the node's siblings.
+      let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
+          weights k = [f pn sortedVersions k | f <- fs]
+      in  PChoiceF qpn x $
+          W.mapWeightsWithKey (\k w -> weights k ++ w) cs
     go x                            = x
 
-    cmp :: PN -> POption -> POption -> Ordering
-    cmp pn (POption i _) (POption i' _) = cmp' pn i i'
+addWeight :: (PN -> [Ver] -> POption -> Weight) -> Tree a -> Tree a
+addWeight f = addWeights [f]
 
--- | Prefer to link packages whenever possible
+version :: POption -> Ver
+version (POption (I v _) _) = v
+
+-- | Prefer to link packages whenever possible.
+-- TODO: I'm not sure how to handle the linking preference. It is tricky because
+-- the set of available linking choices depends on goal order, yet we need
+-- to ensure that goal order does not affect the overall install plan score.
+-- Additionally, giving linked and unlinked packages different scores doesn't
+-- seem quite right. Without the Single Instance Restriction, choosing to not
+-- link a package doesn't necessarily give a different install plan than
+-- linking the package. The solver could happen to make the same exact choices
+-- for the unlinked package as the package that it could have been linked to.
+-- At least the accidental linking can't happen as long as the solver always
+-- prefers to link.
+--
+-- An implementation that adds a constant penalty to non-linked choices might
+-- work, because every path that the solver could follow through the search tree
+-- to find a given install plan should involve the same total number of link
+-- choices. 'preferLinked' would add the same penalty along each path.
 preferLinked :: Tree a -> Tree a
-preferLinked = trav go
+preferLinked = addWeight (const (const linked))
   where
-    go (PChoiceF qn a  cs) = PChoiceF qn a (P.sortByKeys cmp cs)
-    go x                   = x
+    linked (POption _ Nothing)  = 1
+    linked (POption _ (Just _)) = 0
 
-    cmp (POption _ linkedTo) (POption _ linkedTo') = cmpL linkedTo linkedTo'
-
-    cmpL Nothing  Nothing  = EQ
-    cmpL Nothing  (Just _) = GT
-    cmpL (Just _) Nothing  = LT
-    cmpL (Just _) (Just _) = EQ
-
--- | Ordering that treats versions satisfying more preferred ranges as greater
---   than versions satisfying less preferred ranges.
-preferredVersionsOrdering :: [VR] -> Ver -> Ver -> Ordering
-preferredVersionsOrdering vrs v1 v2 = compare (check v1) (check v2)
-  where
-     check v = Prelude.length . Prelude.filter (==True) .
-               Prelude.map (flip checkVR v) $ vrs
-
--- | Traversal that tries to establish package preferences (not constraints).
--- Works by reordering choice nodes. Also applies stanza preferences.
+-- Works by setting weights on choice nodes. Also applies stanza preferences.
 preferPackagePreferences :: (PN -> PackagePreferences) -> Tree a -> Tree a
-preferPackagePreferences pcs = preferPackageStanzaPreferences pcs
-                             . packageOrderFor (const True) preference
+preferPackagePreferences pcs =
+    preferPackageStanzaPreferences pcs .
+    addWeights [
+          \pn _  opt -> preferred pn opt
+
+        -- Note that we always rank installed before uninstalled, and later
+        -- versions before earlier, but we can change the priority of the
+        -- two orderings.
+        , \pn vs opt -> case preference pn of
+                          PreferInstalled -> installed opt
+                          PreferLatest    -> latest vs opt
+        , \pn vs opt -> case preference pn of
+                          PreferInstalled -> latest vs opt
+                          PreferLatest    -> installed opt
+        ]
   where
-    preference pn i1@(I v1 _) i2@(I v2 _) =
-      let PackagePreferences vrs ipref _ = pcs pn
-      in  preferredVersionsOrdering vrs v1 v2 `mappend` -- combines lexically
-          locationsOrdering ipref i1 i2
+    -- Prefer packages with higher version numbers over packages with
+    -- lower version numbers.
+    latest :: [Ver] -> POption -> Weight
+    latest sortedVersions opt =
+      -- TODO: We should probably score versions based on their release dates.
+      let index = fromJust $ L.elemIndex (version opt) sortedVersions
+      in  fromIntegral index / L.genericLength sortedVersions
 
-    -- Note that we always rank installed before uninstalled, and later
-    -- versions before earlier, but we can change the priority of the
-    -- two orderings.
-    locationsOrdering PreferInstalled v1 v2 =
-      preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v1 v2
-    locationsOrdering PreferLatest v1 v2 =
-      preferLatestOrdering v1 v2 `mappend` preferInstalledOrdering v1 v2
+    preference :: PN -> InstalledPreference
+    preference pn =
+      let PackagePreferences _ ipref _ = pcs pn
+      in  ipref
 
--- | Ordering that treats installed instances as greater than uninstalled ones.
-preferInstalledOrdering :: I -> I -> Ordering
-preferInstalledOrdering (I _ (Inst _)) (I _ (Inst _)) = EQ
-preferInstalledOrdering (I _ (Inst _)) _              = GT
-preferInstalledOrdering _              (I _ (Inst _)) = LT
-preferInstalledOrdering _              _              = EQ
+    -- | Prefer versions satisfying more preferred version ranges.
+    preferred :: PN -> POption -> Weight
+    preferred pn opt =
+      let PackagePreferences vrs _ _ = pcs pn
+      in fromIntegral . negate . L.length $
+         L.filter (flip checkVR (version opt)) vrs
 
--- | Compare instances by their version numbers.
-preferLatestOrdering :: I -> I -> Ordering
-preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
+    -- Prefer installed packages over non-installed packages.
+    installed :: POption -> Weight
+    installed (POption (I _ (Inst _)) _) = 0
+    installed _                          = 1
 
 -- | Traversal that tries to establish package stanza enable\/disable
 -- preferences. Works by reordering the branches of stanza choices.
@@ -120,7 +143,8 @@ preferPackageStanzaPreferences pcs = trav go
     go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts)
       | primaryPP pp && enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
-          let ts' = P.sortByKeys (flip compare) ts
+          let ts' = W.mapWeightsWithKey (\k w -> score k : w) ts
+              score k = if k then 0 else 1
           -- defer the choice by setting it to weak
           in  SChoiceF qsn gr (WeakOrTrivial True) ts'
     go x = x
@@ -207,19 +231,19 @@ enforcePackageConstraints pcs = trav go
           -- compose the transformation functions for each of the relevant constraint
           g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
-      in PChoiceF qpn gr      (P.mapWithKey g ts)
+      in PChoiceF qpn gr      (W.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
       let c = varToConflictSet (F qfn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in FChoiceF qfn gr tr m (P.mapWithKey g ts)
+      in FChoiceF qfn gr tr m (W.mapWithKey g ts)
     go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr   ts) =
       let c = varToConflictSet (S qsn)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in SChoiceF qsn gr tr   (P.mapWithKey g ts)
+      in SChoiceF qsn gr tr   (W.mapWithKey g ts)
     go x = x
 
 -- | Transformation that tries to enforce manual flags. Manual flags
@@ -232,12 +256,12 @@ enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
       let c = varToConflictSet (F qfn)
-      in  case span isDisabled (P.toList ts) of
-            ([], y : ys) -> P.fromList (y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
+      in  case span isDisabled (W.toList ts) of
+            ([], y : ys) -> W.fromList (y : L.map (\ (w, b, _) -> (w, b, Fail c ManualFlag)) ys)
             _            -> ts -- something has been manually selected, leave things alone
       where
-        isDisabled (_, Fail _ (GlobalConstraintFlag _)) = True
-        isDisabled _                                    = False
+        isDisabled (_, _, Fail _ (GlobalConstraintFlag _)) = True
+        isDisabled _                                       = False
     go x                                                   = x
 
 -- | Require installed packages.
@@ -245,7 +269,7 @@ requireInstalled :: (PN -> Bool) -> Tree a -> Tree a
 requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) gr cs)
-      | p pn      = PChoiceF v gr (P.mapWithKey installed cs)
+      | p pn      = PChoiceF v gr (W.mapWithKey installed cs)
       | otherwise = PChoiceF v gr                         cs
       where
         installed (POption (I _ (Inst _)) _) x = x
@@ -273,8 +297,8 @@ avoidReinstalls p = trav go
       | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
-          let installed = [ v | (POption (I v (Inst _)) _, _) <- P.toList cs ]
-          in  P.mapWithKey (notReinstall installed) cs
+          let installed = [ v | (_, POption (I v (Inst _)) _, _) <- W.toList cs ]
+          in  W.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
           Fail (varToConflictSet (P qpn)) CannotReinstall
@@ -408,7 +432,7 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
 
     -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
-      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
+      PChoice qpn gr <$> sequence (W.mapWithKey (goP qpn) cs)
     go _otherwise =
       innM _otherwise
 

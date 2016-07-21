@@ -42,6 +42,7 @@ import Distribution.Simple.Setup (BooleanFlag(..))
 #ifdef DEBUG_TRACETREE
 import Distribution.Solver.Modular.Flag
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Debug.Trace.Tree (gtraceJson)
 import Debug.Trace.Tree.Simple
@@ -186,12 +187,15 @@ instance GSimpleTree (Tree QGoalReason) where
   fromGeneric = go
     where
       go :: Tree QGoalReason -> SimpleTree
-      go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ PSQ.toList psq
-      go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ PSQ.toList psq
-      go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ PSQ.toList psq
+      go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
+      go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
       go (GoalChoice        psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
       go (Done _rdm)             = Node "D" $ Assoc []
       go (Fail cs _reason)       = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
+
+      psqToList :: W.WeightedPSQ w k v -> [(k, v)]
+      psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
 
       -- Show package choice
       goP :: QPN -> POption -> Tree QGoalReason -> (String, SimpleTree)
