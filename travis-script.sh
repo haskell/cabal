@@ -9,9 +9,9 @@
 
 . ./travis-common.sh
 
-CABAL_BUILDDIR="dist-newstyle/build/Cabal-${CABAL_VERSION}"
-CABAL_INSTALL_BUILDDIR="dist-newstyle/build/cabal-install-${CABAL_VERSION}"
-CABAL_INSTALL_SETUP="${CABAL_INSTALL_BUILDDIR}/setup/setup"
+CABAL_BDIR="${PWD}/dist-newstyle/build/Cabal-${CABAL_VERSION}"
+CABAL_INSTALL_BDIR="${PWD}/dist-newstyle/build/cabal-install-${CABAL_VERSION}"
+CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
 # --hide-successes uses terminal control characters which mess up
 # Travis's log viewer.  So just print them all!
 TEST_OPTIONS=""
@@ -45,12 +45,14 @@ cp cabal.project.travis cabal.project.local
 # Cabal otherwise).
 timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 
+export CABAL_BUILDDIR="${CABAL_BDIR}"
+
 # Run tests
-(cd Cabal && timed ../${CABAL_BUILDDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-(cd Cabal && timed ../${CABAL_BUILDDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS)
+(cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+(cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS)
 
 # Run haddock (hack: use the Setup script from package-tests!)
-(cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=../${CABAL_BUILDDIR})
+(cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR})
 
 # Redo the package tests with different versions of GHC
 # TODO: reenable me
@@ -65,7 +67,9 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 (cd Cabal && timed cabal check)
 
 # Test that an sdist can be created
-(cd Cabal && timed cabal sdist --builddir=../${CABAL_BUILDDIR})
+(cd Cabal && timed cabal sdist --builddir=${CABAL_BDIR})
+
+unset CABAL_BUILDDIR
 
 # ---------------------------------------------------------------------
 # cabal-install
@@ -77,17 +81,21 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck
 
+export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
+
 # Run tests
-(cd cabal-install && timed ../${CABAL_INSTALL_BUILDDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
-(cd cabal-install && timed ../${CABAL_INSTALL_BUILDDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
-(cd cabal-install && timed ../${CABAL_INSTALL_BUILDDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS)
-(cd cabal-install && timed ../${CABAL_INSTALL_BUILDDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS)
+(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
+(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
+(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS)
+(cd cabal-install && timed ../${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS)
 
 # Haddock
-(cd cabal-install && timed ../${CABAL_INSTALL_SETUP} haddock --builddir=../${CABAL_INSTALL_BUILDDIR} )
+(cd cabal-install && timed ../${CABAL_INSTALL_SETUP} haddock --builddir=../${CABAL_INSTALL_BDIR} )
 
 (cd cabal-install && timed cabal check)
-(cd cabal-install && timed cabal sdist -v3 --builddir=../${CABAL_BUILDDIR})
+(cd cabal-install && timed cabal sdist -v3 --builddir=${CABAL_INSTALL_BDIR})
+
+unset CABAL_BUILDDIR
 
 # Check what we got
-${CABAL_INSTALL_BUILDDIR}/build/cabal/cabal --version
+${CABAL_INSTALL_BDIR}/build/cabal/cabal --version
