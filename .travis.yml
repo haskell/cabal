@@ -46,6 +46,8 @@ matrix:
      os: osx
    - env: GHCVER=8.0.1 SCRIPT=script
      os: osx
+   - env: GHCVER=8.0.1 SCRIPT=bootstrap
+     os: osx
   allow_failures:
    - env: GHCVER=head
      sudo: required
