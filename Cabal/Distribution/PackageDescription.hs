@@ -174,7 +174,7 @@ data PackageDescription
         -- PackageDescription we are, the contents of this field are
         -- either nonsense, or the collected dependencies of *all* the
         -- components in this package.  buildDepends is initialized by
-        -- 'finalizePackageDescription' and 'flattenPackageDescription';
+        -- 'finalizePD' and 'flattenPackageDescription';
         -- prior to that, dependency info is stored in the 'CondTree'
         -- built around a 'GenericPackageDescription'.  When this
         -- resolution is done, dependency info is written to the inner

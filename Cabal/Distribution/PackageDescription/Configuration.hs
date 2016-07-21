@@ -11,12 +11,13 @@
 -- Portability :  portable
 --
 -- This is about the cabal configurations feature. It exports
--- 'finalizePackageDescription' and 'flattenPackageDescription' which are
+-- 'finalizePD' and 'flattenPackageDescription' which are
 -- functions for converting 'GenericPackageDescription's down to
 -- 'PackageDescription's. It has code for working with the tree of conditions
 -- and resolving or flattening conditions.
 
 module Distribution.PackageDescription.Configuration (
+    finalizePD,
     finalizePackageDescription,
     flattenPackageDescription,
 
@@ -553,7 +554,7 @@ instance Semigroup PDTagged where
 -- On success, it will return the package description and the full flag
 -- assignment chosen.
 --
-finalizePackageDescription ::
+finalizePD ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> ComponentEnabledSpec
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
@@ -567,7 +568,7 @@ finalizePackageDescription ::
             (PackageDescription, FlagAssignment)
              -- ^ Either missing dependencies or the resolved package
              -- description along with the flag assignments chosen.
-finalizePackageDescription userflags enabled satisfyDep
+finalizePD userflags enabled satisfyDep
         (Platform arch os) impl constraints
         (GenericPackageDescription pkg flags libs0 exes0 tests0 bms0) =
     case resolveFlags of
@@ -610,6 +611,20 @@ finalizePackageDescription userflags enabled satisfyDep
                    in if null missingDeps
                       then DepOk
                       else MissingDeps missingDeps
+
+{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentEnabledSpec to specify something more specific." #-}
+finalizePackageDescription ::
+     FlagAssignment  -- ^ Explicitly specified flag assignments
+  -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
+                          -- available packages?  If this is unknown then use
+                          -- True.
+  -> Platform      -- ^ The 'Arch' and 'OS'
+  -> CompilerInfo  -- ^ Compiler information
+  -> [Dependency]  -- ^ Additional constraints
+  -> GenericPackageDescription
+  -> Either [Dependency]
+            (PackageDescription, FlagAssignment)
+finalizePackageDescription flags = finalizePD flags defaultComponentEnabled
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])

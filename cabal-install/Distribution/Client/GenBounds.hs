@@ -30,7 +30,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( buildDepends )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.LocalBuildInfo
@@ -111,10 +111,10 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
     gpd <- readPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.
-    let epd = finalizePackageDescription [] defaultComponentEnabled
+    let epd = finalizePD [] defaultComponentEnabled
                     (const True) platform cinfo [] gpd
     case epd of
-      Left _ -> putStrLn "finalizePackageDescription failed"
+      Left _ -> putStrLn "finalizePD failed"
       Right (pd,_) -> do
         let needBounds = filter (not . hasUpperBound . depVersion) $
                          buildDepends pd

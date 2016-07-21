@@ -159,7 +159,7 @@ import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
@@ -1302,10 +1302,10 @@ installReadyPackage platform cinfo configFlags
     configTests              = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
   where
-    pkg = case finalizePackageDescription flags (enableStanzas stanzas)
+    pkg = case finalizePD flags (enableStanzas stanzas)
            (const True)
            platform cinfo [] gpkg of
-      Left _ -> error "finalizePackageDescription ReadyPackage failed"
+      Left _ -> error "finalizePD ReadyPackage failed"
       Right (desc, _) -> desc
 
 fetchSourcePackage

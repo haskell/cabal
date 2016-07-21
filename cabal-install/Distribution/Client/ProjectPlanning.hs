@@ -1065,7 +1065,7 @@ elaborateInstallPlan platform compiler compilerprogdb
         --
         pkgSourceId         = pkgid
         pkgDescription      = let Right (desc, _) =
-                                    PD.finalizePackageDescription
+                                    PD.finalizePD
                                     flags enabled (const True)
                                     platform (compilerInfo compiler)
                                     [] gdesc

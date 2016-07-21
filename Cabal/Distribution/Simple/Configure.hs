@@ -807,7 +807,7 @@ checkExactConfiguration pkg_descr0 cfg = do
 --
 -- It must be *any libraries that might be* defined rather than the
 -- actual definitions, because these depend on conditionals in the .cabal
--- file, and we haven't resolved them yet.  finalizePackageDescription
+-- file, and we haven't resolved them yet.  finalizePD
 -- does the resolution of conditionals, and it takes internalPackageSet
 -- as part of its input.
 getInternalPackages :: GenericPackageDescription
@@ -832,7 +832,7 @@ getInternalPackages pkg_descr0 =
 
 
 -- | Returns true if a dependency is satisfiable.  This is to be passed
--- to finalizePackageDescription.
+-- to finalizePD.
 dependencySatisfiable
     :: Bool
     -> InstalledPackageIndex -- ^ installed set
@@ -848,7 +848,7 @@ dependencySatisfiable
         -- line. Thus we only consult the 'requiredDepsMap'. Note that
         -- we're not doing the version range check, so if there's some
         -- dependency that wasn't specified on the command line,
-        -- 'finalizePackageDescription' will fail.
+        -- 'finalizePD' will fail.
         --
         -- TODO: mention '--exact-configuration' in the error message
         -- when this fails?
@@ -891,7 +891,7 @@ relaxPackageDeps (RelaxDepsSome allowNewerDeps') gpd =
       else d
 
 -- | Finalize a generic package description.  The workhorse is
--- 'finalizePackageDescription' but there's a bit of other nattering
+-- 'finalizePD' but there's a bit of other nattering
 -- about necessary.
 --
 -- TODO: what exactly is the business with @flaggedTests@ and
@@ -911,7 +911,7 @@ configureFinalizedPackage verbosity cfg enabled
   allConstraints satisfies comp compPlatform pkg_descr0 = do
 
     (pkg_descr0', flags) <-
-            case finalizePackageDescription
+            case finalizePD
                    (configConfigurationsFlags cfg)
                    enabled
                    satisfies

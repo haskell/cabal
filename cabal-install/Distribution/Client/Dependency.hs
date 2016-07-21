@@ -89,7 +89,7 @@ import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePD )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
@@ -847,8 +847,8 @@ configuredPackageProblems platform cinfo
     -- of the `nubOn` in `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
-      --TODO: use something lower level than finalizePackageDescription
-      case finalizePackageDescription specifiedFlags
+      --TODO: use something lower level than finalizePD
+      case finalizePD specifiedFlags
          (enableStanzas stanzas)
          (const True)
          platform cinfo

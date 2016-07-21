@@ -101,7 +101,7 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
   in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
 
--- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
+-- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 

@@ -36,7 +36,7 @@ import Distribution.PackageDescription
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription, flattenPackageDescription )
+         ( finalizePD, flattenPackageDescription )
 import Distribution.Version
          ( Version(..), VersionRange, withinRange, simplifyVersionRange
          , UpperBound(..), asVersionIntervals )
@@ -396,7 +396,7 @@ pruneBottomUp platform comp constraints =
                               | dep <- missing ]
 
     configure cs (UnconfiguredPackage (SourcePackage _ pkg _ _) _ flags stanzas) =
-      finalizePackageDescription flags (enableStanzas stanzas) (dependencySatisfiable cs)
+      finalizePD flags (enableStanzas stanzas) (dependencySatisfiable cs)
                                  platform comp [] pkg
     dependencySatisfiable cs =
       not . null . PackageIndex.lookupDependency (Constraints.choices cs)
@@ -425,7 +425,7 @@ configurePackage platform cinfo available spkg = case spkg of
                                        (configure apkg)
   where
   configure (UnconfiguredPackage apkg@(SourcePackage _ p _ _) _ flags stanzas) =
-    case finalizePackageDescription flags (enableStanzas stanzas) dependencySatisfiable
+    case finalizePD flags (enableStanzas stanzas) dependencySatisfiable
                                     platform cinfo [] p of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $

@@ -89,7 +89,7 @@ import           Distribution.Solver.Types.Variable
     `GenericPackageDescription` can be turned into a `PackageDescription` in
     two ways:
 
-      a. `finalizePackageDescription` does the proper translation, by taking
+      a. `finalizePD` does the proper translation, by taking
          into account the platform, available dependencies, etc. and picks a
          flag assignment (or gives an error if no flag assignment can be found)
       b. `flattenPackageDescription` ignores flag assignment and just joins all
