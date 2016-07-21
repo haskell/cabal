@@ -70,8 +70,8 @@ import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan)
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , UnresolvedPkgLoc, UnresolvedSourcePackage
@@ -112,6 +112,7 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+import qualified Distribution.Compat.Graph as Graph
 
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -718,19 +719,16 @@ validateSolverResult :: Platform
                      -> SolverInstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
-      [] -> case InstallPlan.new indepGoals index of
+      [] -> case SolverInstallPlan.new indepGoals index of
               Right plan     -> plan
               Left  problems -> error (formatPlanProblems problems)
       problems               -> error (formatPkgProblems problems)
 
   where
-    index = InstalledPackageIndex.fromList (map toPlanPackage pkgs)
-
-    toPlanPackage (PreExisting pkg) = InstallPlan.PreExisting pkg
-    toPlanPackage (Configured  pkg) = InstallPlan.Configured  pkg
+    index = Graph.fromList pkgs
 
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
-    formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
+    formatPlanProblems = formatProblemMessage . map SolverInstallPlan.showPlanProblem
 
     formatProblemMessage problems =
       unlines $
@@ -738,7 +736,7 @@ validateSolverResult platform comp indepGoals pkgs =
       : "The proposed (invalid) plan contained the following problems:"
       : problems
       ++ "Proposed plan:"
-      : [InstallPlan.showPlanIndex index]
+      : [SolverInstallPlan.showPlanIndex index]
 
 
 data PlanPackageProblem =

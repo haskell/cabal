@@ -81,7 +81,9 @@ import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan, InstallPlan)
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
+import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..), RepoContext(..)
          , ConfigFlags(..), configureCommand, filterConfigureFlags
@@ -453,9 +455,9 @@ pruneInstallPlan pkgSpecifiers =
   -- Also, the InstallPlan.remove should return info more precise to the
   -- problem, rather than the very general PlanProblem type.
   either (Fail . explain) Done
-  . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
+  . SolverInstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
   where
-    explain :: [InstallPlan.PlanProblem ipkg srcpkg iresult ifailure] -> String
+    explain :: [SolverInstallPlan.SolverPlanProblem] -> String
     explain problems =
       "Cannot select only the dependencies (as requested by the "
       ++ "'--only-dependencies' flag), "
@@ -467,7 +469,7 @@ pruneInstallPlan pkgSpecifiers =
       where
         pkgids =
           nub [ depid
-              | InstallPlan.PackageMissingDeps _ depids <- problems
+              | SolverInstallPlan.PackageMissingDeps _ depids <- problems
               , depid <- depids
               , packageName depid `elem` targetnames ]
 

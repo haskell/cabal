@@ -41,7 +41,9 @@ import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
                           , DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
-                   ( GenericInstallPlan, SolverInstallPlan, GenericPlanPackage )
+                   ( GenericInstallPlan, GenericPlanPackage )
+import           Distribution.Client.SolverInstallPlan
+                   ( SolverInstallPlan )
 
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)

@@ -20,7 +20,7 @@ module Distribution.Client.Configure (
 
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan (SolverInstallPlan)
+import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup

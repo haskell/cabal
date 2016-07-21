@@ -64,6 +64,7 @@ import           Distribution.Client.Types
                    hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
                           , DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
 import           Distribution.Client.Dependency.Types
 import qualified Distribution.Client.IndexUtils as IndexUtils
@@ -117,11 +118,13 @@ import           Distribution.Version
 import           Distribution.Verbosity
 import           Distribution.Text
 
+import qualified Distribution.Compat.Graph as Graph
+
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
-import qualified Data.Graph as Graph
+import qualified Data.Graph as OldGraph
 import qualified Data.Tree  as Tree
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
@@ -697,8 +700,8 @@ packageLocationsSignature :: SolverInstallPlan
                           -> [(PackageId, PackageLocation (Maybe FilePath))]
 packageLocationsSignature solverPlan =
     [ (packageId pkg, packageSource pkg)
-    | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
-        <- InstallPlan.toList solverPlan
+    | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+        <- SolverInstallPlan.toList solverPlan
     ]
 
 
@@ -718,8 +721,8 @@ getPackageSourceHashes verbosity withRepoCtx solverPlan = do
     let allPkgLocations :: [(PackageId, PackageLocation (Maybe FilePath))]
         allPkgLocations =
           [ (packageId pkg, packageSource pkg)
-          | InstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
-              <- InstallPlan.toList solverPlan ]
+          | SolverInstallPlan.Configured (SolverPackage { solverPkgSource = pkg})
+              <- SolverInstallPlan.toList solverPlan ]
 
         -- Tarballs that were local in the first place.
         -- We'll hash these tarball files directly.
@@ -1015,18 +1018,16 @@ elaborateInstallPlan platform compiler compilerprogdb
       }
 
     elaboratedInstallPlan =
-      flip InstallPlan.mapPreservingGraph solverPlan $ \mapDep planpkg ->
+      flip InstallPlan.fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
         case planpkg of
-          InstallPlan.PreExisting pkg ->
+          SolverInstallPlan.PreExisting pkg _ ->
             InstallPlan.PreExisting pkg
 
-          InstallPlan.Configured  pkg ->
+          SolverInstallPlan.Configured  pkg ->
             InstallPlan.Configured
               (elaborateSolverPackage mapDep pkg)
 
-          _ -> error "elaborateInstallPlan: unexpected package state"
-
-    elaborateSolverPackage :: (UnitId -> UnitId)
+    elaborateSolverPackage :: (SolverId -> ConfiguredId)
                            -> SolverPackage UnresolvedPkgLoc
                            -> ElaboratedConfiguredPackage
     elaborateSolverPackage
@@ -1043,12 +1044,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
         deps = fmap (map elaborateSolverId) deps0
 
-        elaborateSolverId sid =
-            ConfiguredId {
-                confSrcId  = packageId sid,
-                -- Update the 'UnitId' to the final nix-style hashed ID
-                confInstId = mapDep (installedPackageId sid)
-            }
+        elaborateSolverId = mapDep
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
@@ -1177,7 +1173,7 @@ elaborateInstallPlan platform compiler compilerprogdb
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               (installedUnitId pkg)
+               pkgInstalledId
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1247,17 +1243,17 @@ elaborateInstallPlan platform compiler compilerprogdb
     -- dir (as opposed to a tarball), or depends on such a package, will be
     -- built inplace into a shared dist dir. Tarball packages that depend on
     -- source dir packages will also get unpacked locally.
-    shouldBuildInplaceOnly :: HasUnitId pkg => pkg -> Bool
-    shouldBuildInplaceOnly pkg = Set.member (installedPackageId pkg)
+    shouldBuildInplaceOnly :: SolverPackage loc -> Bool
+    shouldBuildInplaceOnly pkg = Set.member (packageId pkg)
                                             pkgsToBuildInplaceOnly
 
-    pkgsToBuildInplaceOnly :: Set InstalledPackageId
+    pkgsToBuildInplaceOnly :: Set PackageId
     pkgsToBuildInplaceOnly =
         Set.fromList
-      $ map installedPackageId
-      $ InstallPlan.reverseDependencyClosure
+      $ map packageId
+      $ SolverInstallPlan.reverseDependencyClosure
           solverPlan
-          [ installedPackageId (PlannedId (packageId pkg))
+          [ PlannedId (packageId pkg)
           | pkg <- localPackages ]
 
     isLocalToProject :: Package pkg => pkg -> Bool
@@ -1303,10 +1299,10 @@ elaborateInstallPlan platform compiler compilerprogdb
     packagesWithDownwardClosedProperty property =
         Set.fromList
       $ map packageId
-      $ InstallPlan.dependencyClosure
+      $ SolverInstallPlan.dependencyClosure
           solverPlan
-          [ installedPackageId pkg
-          | pkg <- InstallPlan.toList solverPlan
+          [ Graph.nodeKey pkg
+          | pkg <- SolverInstallPlan.toList solverPlan
           , property pkg ] -- just the packages that satisfy the propety
       --TODO: [nice to have] this does not check the config consistency,
       -- e.g. a package explicitly turning off profiling, but something
@@ -1434,7 +1430,7 @@ pruneInstallPlanToTargets :: Map InstalledPackageId [PackageTarget]
 pruneInstallPlanToTargets perPkgTargetsMap =
     either (\_ -> assert False undefined) id
   . InstallPlan.new (IndependentGoals False)
-  . PackageIndex.fromList
+  . Graph.fromList
     -- We have to do this in two passes
   . pruneInstallPlanPass2
   . pruneInstallPlanPass1 perPkgTargetsMap
@@ -1651,22 +1647,24 @@ dependencyClosure :: (pkg -> InstalledPackageId)
 dependencyClosure pkgid deps allpkgs =
     map vertexToPkg
   . concatMap Tree.flatten
-  . Graph.dfs graph
+  . OldGraph.dfs graph
   . map pkgidToVertex
   where
     (graph, vertexToPkg, pkgidToVertex) = dependencyGraph pkgid deps allpkgs
 
+-- TODO: Convert this to use Distribution.Compat.Graph, via a newtype
+-- which explicitly carries the accessors.
 dependencyGraph :: (pkg -> InstalledPackageId)
                 -> (pkg -> [InstalledPackageId])
                 -> [pkg]
-                -> (Graph.Graph,
-                    Graph.Vertex -> pkg,
-                    InstalledPackageId -> Graph.Vertex)
+                -> (OldGraph.Graph,
+                    OldGraph.Vertex -> pkg,
+                    InstalledPackageId -> OldGraph.Vertex)
 dependencyGraph pkgid deps pkgs =
     (graph, vertexToPkg', pkgidToVertex')
   where
     (graph, vertexToPkg, pkgidToVertex) =
-      Graph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
+      OldGraph.graphFromEdges [ ( pkg, pkgid pkg, deps pkg )
                            | pkg <- pkgs ]
     vertexToPkg'   = (\(pkg,_,_) -> pkg)
                    . vertexToPkg

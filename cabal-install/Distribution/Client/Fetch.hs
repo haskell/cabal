@@ -21,7 +21,7 @@ import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
-import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..), RepoContext(..) )
 
@@ -141,8 +141,8 @@ planPackages verbosity comp platform fetchFlags
       -- that are in the 'InstallPlan.Configured' state.
       return
         [ solverPkgSource cpkg
-        | (InstallPlan.Configured cpkg)
-            <- InstallPlan.toList installPlan ]
+        | (SolverInstallPlan.Configured cpkg)
+            <- SolverInstallPlan.toList installPlan ]
 
   | otherwise =
       either (die . unlines . map show) return $

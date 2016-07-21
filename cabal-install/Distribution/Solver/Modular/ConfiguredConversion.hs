@@ -29,7 +29,7 @@ convCP :: SI.InstalledPackageIndex ->
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting
-                  (fromJust $ SI.lookupUnitId iidx pi)
+                  (fromJust $ SI.lookupUnitId iidx pi) ds'
     Right pi -> Configured $ SolverPackage
                   srcpkg
                   fa

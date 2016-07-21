@@ -6,8 +6,7 @@ module Distribution.Solver.Types.SolverId
 where
 
 import Distribution.Compat.Binary (Binary(..))
-import Distribution.Package (PackageId, Package(..), UnitId(..), HasUnitId(..))
-import Distribution.Solver.Types.Internal.Utils (unsafeInternalFakeUnitId)
+import Distribution.Package (PackageId, Package(..), UnitId(..))
 import GHC.Generics (Generic)
 
 -- | The solver can produce references to existing packages or
@@ -17,7 +16,7 @@ import GHC.Generics (Generic)
 --
 data SolverId = PreExistingId { solverSrcId :: PackageId, solverInstId :: UnitId }
               | PlannedId     { solverSrcId :: PackageId }
-  deriving (Eq, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Binary SolverId
 
@@ -26,7 +25,3 @@ instance Show SolverId where
 
 instance Package SolverId where
   packageId = solverSrcId
-
-instance HasUnitId SolverId where
-  installedUnitId (PreExistingId _ instId) = instId
-  installedUnitId (PlannedId pid) = unsafeInternalFakeUnitId pid

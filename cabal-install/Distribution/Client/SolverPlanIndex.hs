@@ -4,7 +4,7 @@
 -- PackageInstalled.
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
-module Distribution.Client.PlanIndex (
+module Distribution.Client.SolverPlanIndex (
     -- * Graph traversal functions
     brokenPackages
   , dependencyCycles

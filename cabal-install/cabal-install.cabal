@@ -229,7 +229,6 @@ executable cabal
         Distribution.Client.PackageHash
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
-        Distribution.Client.PlanIndex
         Distribution.Client.ProjectBuilding
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Types
@@ -249,6 +248,8 @@ executable cabal
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
+        Distribution.Client.SolverInstallPlan
+        Distribution.Client.SolverPlanIndex
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.Types
@@ -265,7 +266,6 @@ executable cabal
         Distribution.Solver.Types.ComponentDeps
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver
-        Distribution.Solver.Types.Internal.Utils
         Distribution.Solver.Types.InstalledPreference
         Distribution.Solver.Types.LabeledPackageConstraint
         Distribution.Solver.Types.OptionalStanza

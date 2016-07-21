@@ -410,7 +410,6 @@ testSuiteLibV09AsLibAndExe pkg_descr
             exposedModules = [ m ],
             reexportedModules = [],
             requiredSignatures = [],
-            exposedSignatures = [],
             libExposed     = True,
             libBuildInfo   = bi
           }
