@@ -225,7 +225,7 @@ allLibraries p = maybeToList (library p) ++ subLibraries p
 -- call the given function with the library build info as argument.
 -- You probably want 'withLibLBI' if you have a 'LocalBuildInfo',
 -- see the note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
 -- for more information.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
@@ -241,7 +241,7 @@ hasExes p = any (buildable . buildInfo) (executables p)
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  You probably want 'withExeLBI' if you have a
 -- 'LocalBuildInfo', see the note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
 -- for more information.
 withExe :: PackageDescription -> (Executable -> IO ()) -> IO ()
 withExe pkg_descr f =
@@ -256,7 +256,7 @@ hasTests = any (buildable . testBuildInfo) . testSuites
 
 -- | Perform an action on each buildable 'TestSuite' in a package.
 -- You probably want 'withTestLBI' if you have a 'LocalBuildInfo', see the note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
 -- for more information.
 
 withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
@@ -272,7 +272,7 @@ hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
 
 -- | Perform an action on each buildable 'Benchmark' in a package.
 -- You probably want 'withBenchLBI' if you have a 'LocalBuildInfo', see the note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
 -- for more information.
 
 withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()

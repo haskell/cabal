@@ -48,7 +48,7 @@ import Data.Maybe (isNothing)
 
 -- | Describes what components are enabled by user-interaction.
 -- See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
 -- @since 1.26.0.0
 data ComponentEnabledSpec
@@ -67,14 +67,14 @@ defaultComponentEnabled :: ComponentEnabledSpec
 defaultComponentEnabled = ComponentEnabledSpec False False
 
 -- | Is this component enabled?  See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
 -- @since 1.26.0.0
 componentEnabled :: ComponentEnabledSpec -> Component -> Bool
 componentEnabled enabled = isNothing . componentDisabledReason enabled
 
 -- | Is this component name enabled?  See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
 -- @since 1.26.0.0
 componentNameEnabled :: ComponentEnabledSpec -> ComponentName -> Bool

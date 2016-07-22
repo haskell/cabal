@@ -39,7 +39,7 @@ componentBuildInfo =
 
 -- | Is a component buildable (i.e., not marked with @buildable: False@)?
 -- See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+-- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
 -- @since 1.26.0.0
 --
