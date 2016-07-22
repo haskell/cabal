@@ -76,7 +76,6 @@ import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
-import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.Setup (HaddockFlags)
 
 import           Distribution.Simple.Utils (die, notice)
@@ -399,7 +398,7 @@ printPlan verbosity
        ++ " be built (use -v for more details):")
     : map showPkg pkgs
   where
-    pkgs = linearizeInstallPlan elaboratedPlan
+    pkgs = InstallPlan.executionOrder elaboratedPlan
 
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
@@ -460,24 +459,6 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
-linearizeInstallPlan :: ElaboratedInstallPlan -> [ElaboratedReadyPackage]
-linearizeInstallPlan =
-    unfoldr next
-  where
-    next plan = case InstallPlan.ready plan of
-      []      -> Nothing
-      (pkg:_) -> Just (pkg, plan')
-        where
-          ipkgid = installedPackageId pkg
-          ipkg   = Installed.emptyInstalledPackageInfo {
-                     Installed.sourcePackageId    = packageId pkg,
-                     Installed.installedUnitId = ipkgid
-                   }
-          plan'  = InstallPlan.completed ipkgid (Just ipkg)
-                     (BuildOk DocsNotTried TestsNotTried)
-                     (InstallPlan.processing [pkg] plan)
-    --TODO: [code cleanup] This is a bit of a hack, pretending that each package is installed
-    -- could we use InstallPlan.topologicalOrder?
 
 
 reportBuildFailures :: ElaboratedInstallPlan -> IO ()
