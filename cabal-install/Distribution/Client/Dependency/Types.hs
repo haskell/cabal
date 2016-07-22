@@ -22,26 +22,22 @@ import Distribution.Compat.Binary (Binary(..))
 
 
 -- | All the solvers that can be selected.
-data PreSolver = AlwaysTopDown | AlwaysModular | Choose
+data PreSolver = AlwaysModular
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 -- | All the solvers that can be used.
-data Solver = TopDown | Modular
+data Solver = Modular
   deriving (Eq, Ord, Show, Bounded, Enum, Generic)
 
 instance Binary PreSolver
 instance Binary Solver
 
 instance Text PreSolver where
-  disp AlwaysTopDown = text "topdown"
   disp AlwaysModular = text "modular"
-  disp Choose        = text "choose"
   parse = do
     name <- Parse.munch1 isAlpha
     case map toLower name of
-      "topdown" -> return AlwaysTopDown
       "modular" -> return AlwaysModular
-      "choose"  -> return Choose
       _         -> Parse.pfail
 
 -- | Global policy for all packages to say if we prefer package versions that

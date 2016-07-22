@@ -1214,7 +1214,7 @@ defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 2000
 
 defaultSolver :: PreSolver
-defaultSolver = Choose
+defaultSolver = AlwaysModular
 
 allSolvers :: String
 allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
@@ -2086,7 +2086,7 @@ optionSolver :: (flags -> Flag PreSolver)
              -> OptionField flags
 optionSolver get set =
   option [] ["solver"]
-    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ", where 'choose' chooses between 'topdown' and 'modular' based on compiler version.")
+    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
     get set
     (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
                                  (toFlag `fmap` parse))

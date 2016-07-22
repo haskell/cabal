@@ -65,8 +65,6 @@ module Distribution.Client.Dependency (
     addDefaultSetupDependencies,
   ) where
 
-import Distribution.Client.Dependency.TopDown
-         ( topDownResolver )
 import Distribution.Solver.Modular
          ( modularResolver, SolverConfig(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -104,7 +102,7 @@ import Distribution.System
 import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
-         ( comparing, warn, info )
+         ( comparing )
 import Distribution.Simple.Configure
          ( relaxPackageDeps )
 import Distribution.Simple.Setup
@@ -610,19 +608,12 @@ applySandboxInstallPolicy
 -- ------------------------------------------------------------
 
 chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver verbosity preSolver _cinfo =
+chooseSolver _verbosity preSolver _cinfo =
     case preSolver of
-      AlwaysTopDown -> do
-        warn verbosity "Topdown solver is deprecated"
-        return TopDown
       AlwaysModular -> do
-        return Modular
-      Choose -> do
-        info verbosity "Choosing modular solver."
         return Modular
 
 runSolver :: Solver -> SolverConfig -> DependencyResolver UnresolvedPkgLoc
-runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
 runSolver Modular = modularResolver
 
 -- | Run the dependency solver.

@@ -273,11 +273,9 @@ instance Arbitrary IndependentGoals where
   shrink (IndependentGoals indep) = [IndependentGoals False | indep]
 
 instance Arbitrary Solver where
-  arbitrary = frequency [ (1, return TopDown)
-                        , (5, return Modular) ]
+  arbitrary = return Modular
 
   shrink Modular = []
-  shrink TopDown = [Modular]
 
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
