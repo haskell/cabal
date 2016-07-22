@@ -50,7 +50,7 @@ import Data.Maybe (isNothing)
 -- See also this note in
 -- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 data ComponentEnabledSpec
     = ComponentEnabledSpec {
         testsEnabled :: Bool,
@@ -62,27 +62,27 @@ instance Binary ComponentEnabledSpec
 -- | The default set of enabled components.  Historically tests and
 -- benchmarks are NOT enabled by default.
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 defaultComponentEnabled :: ComponentEnabledSpec
 defaultComponentEnabled = ComponentEnabledSpec False False
 
 -- | Is this component enabled?  See also this note in
 -- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 componentEnabled :: ComponentEnabledSpec -> Component -> Bool
 componentEnabled enabled = isNothing . componentDisabledReason enabled
 
 -- | Is this component name enabled?  See also this note in
 -- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 componentNameEnabled :: ComponentEnabledSpec -> ComponentName -> Bool
 componentNameEnabled enabled = isNothing . componentNameDisabledReason enabled
 
 -- | Is this component disabled, and if so, why?
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 componentDisabledReason :: ComponentEnabledSpec -> Component
                         -> Maybe ComponentDisabledReason
 componentDisabledReason enabled comp
@@ -90,7 +90,7 @@ componentDisabledReason enabled comp
 
 -- | Is this component name disabled, and if so, why?
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 componentNameDisabledReason :: ComponentEnabledSpec -> ComponentName
                             -> Maybe ComponentDisabledReason
 componentNameDisabledReason enabled (CTestName _)
@@ -101,7 +101,7 @@ componentNameDisabledReason _ _ = Nothing
 
 -- | A reason explaining why a component is disabled.
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 data ComponentDisabledReason = DisabledComponent
                              | DisabledAllTests
                              | DisabledAllBenchmarks

@@ -358,7 +358,7 @@ pkgComponents pkg =
 -- indicate if we are actually going to build the component,
 -- see 'enabledComponents' instead.
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 --
 pkgBuildableComponents :: PackageDescription -> [Component]
 pkgBuildableComponents = filter componentBuildable . pkgComponents

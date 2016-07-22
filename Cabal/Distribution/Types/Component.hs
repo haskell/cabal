@@ -41,7 +41,7 @@ componentBuildInfo =
 -- See also this note in
 -- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 --
 componentBuildable :: Component -> Bool
 componentBuildable = buildable . componentBuildInfo

@@ -208,7 +208,7 @@ enabledBenchLBIs pkg lbi =
 -- | Get a list of all enabled 'Component's (both buildable and
 -- requested by the user at configure-time).
 --
--- @since 1.26.0.0
+-- @since 2.0.0.0
 enabledComponents :: PackageDescription -> LocalBuildInfo
                   -> [Component]
 enabledComponents pkg lbi =
