@@ -32,7 +32,7 @@ module Distribution.Client.Install (
 import Data.Foldable
          ( traverse_ )
 import Data.List
-         ( isPrefixOf, unfoldr, nub, sort, (\\), find )
+         ( isPrefixOf, nub, sort, (\\), find )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Data.Maybe
@@ -512,9 +512,15 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
        : map (display . packageId) preExistingTargets
       ++ ["Use --reinstall if you want to reinstall anyway."]
 
-  let lPlan = linearizeInstallPlan installed installPlan
+  let lPlan =
+        [ (pkg, status)
+        | pkg <- InstallPlan.executionOrder installPlan
+        , let status = packageStatus installed pkg ]
   -- Are any packages classified as reinstalls?
-  let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
+  let reinstalledPkgs =
+        [ ipkg
+        | (_pkg, status) <- lPlan
+        , ipkg <- extractReinstalls status ]
   -- Packages that are already broken.
   let oldBrokenPkgs =
           map Installed.installedUnitId
@@ -579,39 +585,6 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
 
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
-
--- | Given an 'InstallPlan', perform a dry run, producing the sequence
--- of 'ReadyPackage's which would be compiled in order to carry
--- out this plan.  This function is not actually used to execute a plan;
--- presently, it is used only to (1) determine if the installation
--- plan would cause reinstalls and (2) to print out what would be
--- installed.
---
--- TODO: this type is too specific
-linearizeInstallPlan :: InstalledPackageIndex
-                     -> InstallPlan
-                     -> [(ReadyPackage, PackageStatus)]
-linearizeInstallPlan installedPkgIndex plan =
-    unfoldr next plan
-  where
-    next plan' = case InstallPlan.ready plan' of
-      []      -> Nothing
-      (pkg:_) -> Just ((pkg, status), plan'')
-        where
-          pkgid  = installedUnitId pkg
-          status = packageStatus installedPkgIndex pkg
-          ipkg   = Installed.emptyInstalledPackageInfo {
-                     Installed.sourcePackageId = packageId pkg,
-                     Installed.installedUnitId = pkgid
-                   }
-          plan'' = InstallPlan.completed pkgid (Just ipkg)
-                     (BuildOk DocsNotTried TestsNotTried [ipkg])
-                     (InstallPlan.processing [pkg] plan')
-          --FIXME: This is a bit of a hack,
-          -- pretending that each package is installed
-          -- It's doubly a hack because the installed package ID
-          -- didn't get updated.  But it doesn't really matter
-          -- because we're not going to use this for anything real.
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
