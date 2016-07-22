@@ -242,10 +242,25 @@ depLibraryPaths inplace relative lbi clbi = do
         relDir | executable = bindir installDirs
                | otherwise  = libdir installDirs
 
+    let -- TODO: this is kind of inefficient
+        internalDeps = [ uid
+                       | (uid, _) <- componentPackageDeps clbi
+                       -- Test that it's internal
+                       , sub_target <- allTargetsInBuildOrder lbi
+                       , componentUnitId (targetCLBI (sub_target)) == uid ]
+        internalLibs = [ getLibDir (targetCLBI sub_target)
+                       | sub_target <- neededTargetsInBuildOrder
+                                        lbi internalDeps ]
+    {-
+    -- This is better, but it doesn't work, because we may be passed a
+    -- CLBI which doesn't actually exist, and was faked up when we
+    -- were building a test suite/benchmark.  See #3599 for proposal
+    -- to fix this.
     let internalCLBIs = filter ((/= componentUnitId clbi) . componentUnitId)
                       . map targetCLBI
                       $ neededTargetsInBuildOrder lbi [componentUnitId clbi]
         internalLibs = map getLibDir internalCLBIs
+    -}
         getLibDir sub_clbi
           | inplace    = componentBuildDir lbi sub_clbi
           | otherwise  = libdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
