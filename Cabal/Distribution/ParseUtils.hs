@@ -65,7 +65,6 @@ import Data.List (sortBy)
 -- -----------------------------------------------------------------------------
 
 type LineNo    = Int
-type Separator = ([Doc] -> Doc)
 
 data PError = AmbiguousParse String LineNo
             | NoParse String LineNo

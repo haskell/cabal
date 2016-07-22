@@ -10,6 +10,8 @@
 -- Utilities for pretty printing.
 {-# OPTIONS_HADDOCK hide #-}
 module Distribution.PrettyUtils (
+    Separator,
+    -- * Internal
     showFilePath,
     showToken,
     showTestedWith,
@@ -23,6 +25,8 @@ import Distribution.Version  (VersionRange)
 import Data.Char             (isSpace)
 import Distribution.Text     (disp)
 import Text.PrettyPrint      (Doc, empty, text, vcat, (<+>))
+
+type Separator = ([Doc] -> Doc)
 
 showFilePath :: FilePath -> Doc
 showFilePath "" = empty

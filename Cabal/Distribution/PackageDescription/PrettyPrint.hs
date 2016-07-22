@@ -13,8 +13,17 @@
 -----------------------------------------------------------------------------
 
 module Distribution.PackageDescription.PrettyPrint (
+    -- * Generic package descriptions
     writeGenericPackageDescription,
     showGenericPackageDescription,
+
+    -- * Package descriptions
+     writePackageDescription,
+     showPackageDescription,
+
+     -- ** Supplementary build information
+     writeHookedBuildInfo,
+     showHookedBuildInfo,
 ) where
 
 import Distribution.PackageDescription
@@ -27,8 +36,10 @@ import Distribution.Text
 import Data.Monoid as Mon (Monoid(mempty))
 import Data.Maybe (isJust)
 import Text.PrettyPrint
-       (hsep, parens, char, nest, empty, isEmpty, ($$), (<+>),
+       (hsep, space, parens, char, nest, empty, isEmpty, ($$), (<+>),
         colon, (<>), text, vcat, ($+$), Doc, render)
+
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- | Recompile with false for regression testing
 simplifiedPrinting :: Bool
@@ -258,3 +269,45 @@ ppIfElse it ppIt c thenTree elseTree =
 emptyLine :: Doc -> Doc
 emptyLine d                              = text "" $+$ d
 
+-- | @since 1.26.0.0@
+writePackageDescription :: FilePath -> PackageDescription -> IO ()
+writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
+
+--TODO: make this use section syntax
+-- add equivalent for GenericPackageDescription
+
+-- | @since 1.26.0.0@
+showPackageDescription :: PackageDescription -> String
+showPackageDescription pkg = render $
+     ppPackage pkg
+  $$ ppCustomFields (customFieldsPD pkg)
+  $$ (case library pkg of
+        Nothing -> empty
+        Just lib -> ppLibrary' lib)
+  $$ vcat [ space $$ ppLibrary' lib | lib <- subLibraries pkg ]
+  $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
+  where
+    ppPackage    = ppFields pkgDescrFieldDescrs
+    ppLibrary'   = ppFields libFieldDescrs
+    ppExecutable = ppFields executableFieldDescrs
+
+-- | @since 1.26.0.0@
+writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
+writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
+                             . showHookedBuildInfo
+
+-- | @since 1.26.0.0@
+showHookedBuildInfo :: HookedBuildInfo -> String
+showHookedBuildInfo bis = render $
+     vcat [    space
+            $$ ppName name
+            $$ ppBuildInfo bi
+          | (name, bi) <- bis ]
+  where
+    ppName CLibName = text "library"
+    ppName (CSubLibName name) = text "library:" <+> text name
+    ppName (CExeName name) = text "executable:" <+> text name
+    ppName (CTestName name) = text "test-suite:" <+> text name
+    ppName (CBenchName name) = text "benchmark:" <+> text name
+    ppBuildInfo bi = ppFields binfoFieldDescrs bi
+                  $$ ppCustomFields (customFieldsBI bi)
