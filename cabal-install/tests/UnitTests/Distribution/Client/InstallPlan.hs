@@ -5,9 +5,11 @@ import           Distribution.Version
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.InstallPlan (GenericInstallPlan)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import           Distribution.Client.Types
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Client.JobControl
 import           Distribution.Text
 
 import Data.Graph
@@ -16,7 +18,10 @@ import Data.List
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (Set)
+import Data.IORef
 import Control.Monad
+import Control.Concurrent (threadDelay)
+import System.Random
 import Test.QuickCheck
 
 import Test.Tasty
@@ -28,6 +33,9 @@ tests =
   [ testProperty "topologicalOrder"        prop_topologicalOrder
   , testProperty "reverseTopologicalOrder" prop_reverseTopologicalOrder
   , testProperty "executionOrder"          prop_executionOrder
+  , testProperty "execute serial"          prop_execute_serial
+  , testProperty "execute parallel"        prop_execute_parallel
+  , testProperty "execute/executionOrder"  prop_execute_vs_executionOrder
   ]
 
 prop_topologicalOrder :: TestInstallPlan -> Bool
@@ -44,12 +52,57 @@ prop_reverseTopologicalOrder (TestInstallPlan plan graph toVertex _) =
       (map (toVertex . installedUnitId)
            (InstallPlan.reverseTopologicalOrder plan))
 
+-- | @executionOrder@ is in reverse topological order
 prop_executionOrder :: TestInstallPlan -> Bool
 prop_executionOrder (TestInstallPlan plan graph toVertex _) =
     isReversePartialTopologicalOrder graph (map toVertex pkgids)
  && allConfiguredPackages plan == Set.fromList pkgids
   where
     pkgids = map installedUnitId (InstallPlan.executionOrder plan)
+
+-- | @execute@ is in reverse topological order
+prop_execute_serial :: TestInstallPlan -> Property
+prop_execute_serial tplan@(TestInstallPlan plan graph toVertex _) =
+    ioProperty $ do
+      jobCtl <- newSerialJobControl
+      pkgids <- executeTestInstallPlan jobCtl tplan (\_ -> return ())
+      return $ isReversePartialTopologicalOrder graph (map toVertex pkgids)
+            && allConfiguredPackages plan == Set.fromList pkgids
+
+prop_execute_parallel :: Positive (Small Int) -> TestInstallPlan -> Property
+prop_execute_parallel (Positive (Small maxJobLimit))
+                      tplan@(TestInstallPlan plan graph toVertex _) =
+    ioProperty $ do
+      jobCtl <- newParallelJobControl maxJobLimit
+      pkgids <- executeTestInstallPlan jobCtl tplan $ \_ -> do
+                  delay <- randomRIO (0,1000)
+                  threadDelay delay
+      return $ isReversePartialTopologicalOrder graph (map toVertex pkgids)
+            && allConfiguredPackages plan == Set.fromList pkgids
+
+-- | return the packages that are visited by execute, in order.
+executeTestInstallPlan :: JobControl IO (UnitId, Either () ())
+                       -> TestInstallPlan
+                       -> (TestPkg -> IO ())
+                       -> IO [UnitId]
+executeTestInstallPlan jobCtl (TestInstallPlan plan _ _ _) visit = do
+    resultsRef <- newIORef []
+    _ <- InstallPlan.execute jobCtl False (const ())
+                             plan $ \(ReadyPackage pkg) -> do
+           visit pkg
+           atomicModifyIORef resultsRef $ \pkgs -> (installedUnitId pkg:pkgs, ())
+           return (Right ())
+    fmap reverse (readIORef resultsRef)
+
+-- | @execute@ visits the packages in the same order as @executionOrder@
+prop_execute_vs_executionOrder :: TestInstallPlan -> Property
+prop_execute_vs_executionOrder tplan@(TestInstallPlan plan _ _ _) =
+    ioProperty $ do
+      jobCtl <- newSerialJobControl
+      pkgids <- executeTestInstallPlan jobCtl tplan (\_ -> return ())
+      let pkgids' = map installedUnitId (InstallPlan.executionOrder plan)
+      return (pkgids == pkgids')
+
 
 --------------------------
 -- Property helper utils
