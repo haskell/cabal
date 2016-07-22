@@ -49,16 +49,17 @@ test args pkg_descr lbi flags = do
         testLogDir = distPref </> "test"
         testNames = args
         pkgTests = PD.testSuites pkg_descr
-        enabledTests = (map fst) (LBI.enabledTestLBIs pkg_descr lbi)
+        enabledTests = LBI.enabledTestLBIs pkg_descr lbi
 
-        doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
-        doTest (suite, _) =
+        doTest :: ((PD.TestSuite, LBI.ComponentLocalBuildInfo),
+                    Maybe TestSuiteLog) -> IO TestSuiteLog
+        doTest ((suite, clbi), _) =
             case PD.testInterface suite of
               PD.TestSuiteExeV10 _ _ ->
-                  ExeV10.runTest pkg_descr lbi flags suite
+                  ExeV10.runTest pkg_descr lbi clbi flags suite
 
               PD.TestSuiteLibV09 _ _ ->
-                  LibV09.runTest pkg_descr lbi flags suite
+                  LibV09.runTest pkg_descr lbi clbi flags suite
 
               _ -> return TestSuiteLog
                   { testSuiteName = PD.testName suite
@@ -84,7 +85,7 @@ test args pkg_descr lbi flags = do
             [] -> return $ zip enabledTests $ repeat Nothing
             names -> flip mapM names $ \tName ->
                 let testMap = zip enabledNames enabledTests
-                    enabledNames = map PD.testName enabledTests
+                    enabledNames = map (PD.testName . fst) enabledTests
                     allNames = map PD.testName pkgTests
                 in case lookup tName testMap of
                     Just t -> return (t, Nothing)
@@ -112,7 +113,7 @@ test args pkg_descr lbi flags = do
     let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
     when isCoverageEnabled $
         markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
-            map fst testsToRun
+            map (fst . fst) testsToRun
 
     unless allOk exitFailure
 

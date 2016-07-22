@@ -2,16 +2,36 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Distribution.Types.LocalBuildInfo (
+    -- * The type
+
     LocalBuildInfo(..),
+
+    -- * Convenience accessors
+
     localComponentId,
     localUnitId,
     localCompatPackageKey,
+
+    -- * Build targets of the 'LocalBuildInfo'.
+
+    mkTargetInfo,
+
+    componentNameTargets,
+    allTargetsInBuildOrder,
+    withAllTargetsInBuildOrder,
+    neededTargetsInBuildOrder,
+    withNeededTargetsInBuildOrder,
+
+    -- * Backwards compatibility.
+
+    componentsConfigs,
     externalPackageDeps,
   ) where
 
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentEnabledSpec
+import Distribution.Types.TargetInfo
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
@@ -25,9 +45,14 @@ import Distribution.Simple.Setup
 import Distribution.Text
 import Distribution.System
 
+import Distribution.Compat.Graph (Graph)
+import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Binary (Binary)
-import Data.List (nub)
+import Data.List (nub, intercalate)
+import qualified Data.Map as Map
+import Data.Map (Map)
 import GHC.Generics (Generic)
+import Data.Maybe (mapMaybe)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -52,12 +77,15 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
-        componentsConfigs   :: [(ComponentLocalBuildInfo, [UnitId])],
+        componentGraph :: Graph ComponentLocalBuildInfo,
                 -- ^ All the components to build, ordered by topological
                 -- sort, and with their INTERNAL dependencies over the
                 -- intrapackage dependency graph.
                 -- TODO: this is assumed to be short; otherwise we want
                 -- some sort of ordered map.
+        componentNameMap :: Map ComponentName [ComponentLocalBuildInfo],
+                -- ^ A map from component name to all matching
+                -- components.  These coincide with 'componentGraph'
         installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
@@ -89,6 +117,9 @@ data LocalBuildInfo = LocalBuildInfo {
 
 instance Binary LocalBuildInfo
 
+-------------------------------------------------------------------------------
+-- Accessor functions
+
 -- TODO: Get rid of these functions, as much as possible.  They are
 -- a bit useful in some cases, but you should be very careful!
 
@@ -104,10 +135,11 @@ localComponentId lbi
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
-localUnitId lbi
-    = case maybeGetDefaultLibraryLocalBuildInfo lbi of
-        Just LibComponentLocalBuildInfo { componentUnitId = uid } -> uid
-        -- Something fake:
+localUnitId lbi = 
+    case componentNameTargets lbi CLibName of
+        [target] | LibComponentLocalBuildInfo { componentUnitId = uid }
+                     <- targetCLBI target
+                -> uid
         _ -> mkLegacyUnitId (package (localPkgDescr lbi))
 
 -- | Extract the compatibility package key from the public library component of a
@@ -115,33 +147,84 @@ localUnitId lbi
 -- on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
-    case maybeGetDefaultLibraryLocalBuildInfo lbi of
-        Just LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
-        -- Something fake:
+    case componentNameTargets lbi CLibName of
+        [target] | LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
+                    <- targetCLBI target
+                -> pk
         _ -> display (package (localPkgDescr lbi))
 
--- TODO: Private for now!  We will refactor this.
-maybeGetDefaultLibraryLocalBuildInfo
-    :: LocalBuildInfo
-    -> Maybe ComponentLocalBuildInfo
-maybeGetDefaultLibraryLocalBuildInfo lbi =
-    case [ clbi
-         | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-         , componentIsPublic clbi
-         ] of
-      [clbi] -> Just clbi
-      _ -> Nothing
+-- | Generate a default 'TargetInfo' from a 'ComponentLocalBuildInfo'.
+-- The idea is to call this once, and then use 'TargetInfo' everywhere
+-- else.
+mkTargetInfo :: LocalBuildInfo -> ComponentLocalBuildInfo -> TargetInfo
+mkTargetInfo lbi clbi =
+    TargetInfo {
+        targetCLBI = clbi,
+        targetComponent = getComponent (localPkgDescr lbi)
+                                       (componentLocalName clbi)
+     }
+
+-- | Return all 'TargetInfo's associated with 'ComponentName'.
+-- In the presence of Backpack there may be more than one!
+componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
+componentNameTargets lbi cname =
+    case Map.lookup cname (componentNameMap lbi) of
+        Just clbis -> map (mkTargetInfo lbi) clbis
+        Nothing -> []
+
+-- TODO: Maybe cache topsort (Graph can do this)
+
+-- | Return the list of default 'TargetInfo's associated with a
+-- configured package, in the order they need to be built.
+allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
+allTargetsInBuildOrder lbi
+    = map (mkTargetInfo lbi) (Graph.revTopSort (componentGraph lbi))
+
+-- | Execute @f@ for every 'TargetInfo' in the package, respecting the
+-- build dependency order.  (TODO: We should use Shake!)
+withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
+withAllTargetsInBuildOrder lbi f
+    = sequence_ [ f target | target <- allTargetsInBuildOrder lbi ]
+
+-- | Return the list of all targets needed to build the @uids@, in
+-- the order they need to be built.
+neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
+neededTargetsInBuildOrder lbi uids =
+  case Graph.closure (componentGraph lbi) uids of
+    Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map display uids)
+    Just clos -> map (mkTargetInfo lbi) (Graph.revTopSort (Graph.fromList clos))
+
+-- | Execute @f@ for every 'TargetInfo' needed to build @uid@s, respecting
+-- the build dependency order.
+withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
+withNeededTargetsInBuildOrder lbi uids f
+    = sequence_ [ f target | target <- neededTargetsInBuildOrder lbi uids ]
+
+-------------------------------------------------------------------------------
+-- Backwards compatibility
+
+{-# DEPRECATED componentsConfigs "Use 'componentGraph' instead; you can get a list of 'ComponentLocalBuildInfo' with 'Distribution.Compat.Graph.toList'. There's not a good way to get the list of 'ComponentName's the 'ComponentLocalBuildInfo' depends on because this query doesn't make sense; the graph is indexed by 'UnitId' not 'ComponentName'.  Given a 'UnitId' you can lookup the 'ComponentLocalBuildInfo' ('getCLBI') and then get the 'ComponentName' ('componentLocalName]). To be removed in Cabal 2.2" #-}
+componentsConfigs :: LocalBuildInfo -> [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+componentsConfigs lbi =
+    [ (componentLocalName clbi,
+       clbi,
+       mapMaybe (fmap componentLocalName . flip Graph.lookup g)
+                (componentInternalDeps clbi))
+    | clbi <- Graph.toList g ]
+  where
+    g = componentGraph lbi
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
+{-# DEPRECATED externalPackageDeps "You almost certainly don't want this function, which agglomerates the dependencies of ALL enabled components.  If you're using this to write out information on your dependencies, read off the dependencies directly from the actual component in question.  To be removed in Cabal 2.2" #-}
 externalPackageDeps :: LocalBuildInfo -> [(UnitId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)
-        | (clbi,_)      <- componentsConfigs lbi
+        | clbi            <- Graph.toList (componentGraph lbi)
         , (ipkgid, pkgid) <- componentPackageDeps clbi
         , not (internal ipkgid) ]
   where
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
-    internal ipkgid = any ((==ipkgid) . componentUnitId . fst) (componentsConfigs lbi)
+    internal ipkgid = any ((==ipkgid) . componentUnitId) (Graph.toList (componentGraph lbi))

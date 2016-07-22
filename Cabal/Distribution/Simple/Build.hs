@@ -23,6 +23,9 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
+import Distribution.Types.LocalBuildInfo
+import Distribution.Types.TargetInfo
+
 import Distribution.Package
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -56,12 +59,14 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity
 
+import Distribution.Compat.Graph (IsNode(..))
+
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List
          ( intersect )
 import Control.Monad
-         ( when, unless )
+         ( when, unless, forM_ )
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
@@ -80,18 +85,17 @@ build pkg_descr lbi flags suffixes
   -- TODO: if checkBuildTargets ignores a target we may accept
   -- a --assume-deps-up-to-date with multiple arguments. Arguably, we should
   -- error early in this case.
-  targets <- readBuildTargets pkg_descr (buildArgs flags)
-  (cname, _) <- checkBuildTargets verbosity pkg_descr lbi targets >>= \r -> case r of
-              [] -> die "In --assume-deps-up-to-date mode you must specify a target"
-              [target'] -> return target'
-              _ -> die "In --assume-deps-up-to-date mode you can only build a single target"
+  target <- readTargetInfos verbosity lbi (buildArgs flags) >>= \r -> case r of
+      [] -> die "In --assume-deps-up-to-date mode you must specify a target"
+      [target] -> return target
+      _ -> die "In --assume-deps-up-to-date mode you can only build a single target"
   -- NB: do NOT 'createInternalPackageDB'; we don't want to delete it.
   -- But this means we have to be careful about unregistering
   -- ourselves.
   let dbPath = internalPackageDBPath lbi distPref
       internalPackageDB = SpecificPackageDB dbPath
-      clbi = getComponentLocalBuildInfo lbi cname
-      comp = getComponent pkg_descr cname
+      clbi = targetCLBI target
+      comp = targetComponent target
   -- TODO: do we need to unregister libraries?  In any case, this would
   -- need to be done in the buildLib functionality.
   -- Do the build
@@ -105,11 +109,12 @@ build pkg_descr lbi flags suffixes
   buildComponent verbosity (buildNumJobs flags) pkg_descr
                  lbi' suffixes comp clbi distPref
  | otherwise = do
-  targets  <- readBuildTargets pkg_descr (buildArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
-  let componentsToBuild = componentsInBuildOrder lbi (map fst targets')
+  targets <- readTargetInfos verbosity lbi (buildArgs flags)
+  let componentsToBuild = neededTargetsInBuildOrder lbi (map nodeKey targets)
   info verbosity $ "Component build order: "
-                ++ intercalate ", " (map (showComponentName . componentLocalName) componentsToBuild)
+                ++ intercalate ", "
+                    (map (showComponentName . componentLocalName . targetCLBI)
+                        componentsToBuild)
 
   when (null targets) $
     -- Only bother with this message if we're building the whole package
@@ -117,8 +122,9 @@ build pkg_descr lbi flags suffixes
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  -- TODO: we're computing this twice, do it once!
-  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi -> do
+  forM_ componentsToBuild $ \target -> do
+    let comp = targetComponent target
+        clbi = targetCLBI target
     initialBuildSteps distPref pkg_descr lbi clbi verbosity
     let bi     = componentBuildInfo comp
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
@@ -143,18 +149,16 @@ repl pkg_descr lbi flags suffixes args = do
   let distPref  = fromFlag (replDistPref flags)
       verbosity = fromFlag (replVerbosity flags)
 
-  targets  <- readBuildTargets pkg_descr args
-  targets' <- case targets of
+  target <- readTargetInfos verbosity lbi args >>= \r -> case r of
     -- This seems DEEPLY questionable.
-    []       -> return $ take 1 [ componentName c
-                                | c <- pkgBuildableComponents pkg_descr ]
-    [target] -> fmap (map fst) (checkBuildTargets verbosity pkg_descr lbi [target])
+    []       -> return (head (allTargetsInBuildOrder lbi))
+    [target] -> return target
     _        -> die $ "The 'repl' command does not support multiple targets at once."
-  let componentsToBuild = componentsInBuildOrder lbi targets'
-      componentForRepl  = last componentsToBuild
+  let componentsToBuild = neededTargetsInBuildOrder lbi [nodeKey target]
   debug verbosity $ "Component build order: "
                  ++ intercalate ", "
-                      [ showComponentName (componentLocalName clbi) | clbi <- componentsToBuild ]
+                      (map (showComponentName . componentLocalName . targetCLBI)
+                           componentsToBuild)
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
@@ -167,18 +171,17 @@ repl pkg_descr lbi flags suffixes args = do
 
   -- build any dependent components
   sequence_
-    [ do let cname = componentLocalName clbi
-             comp = getComponent pkg_descr cname
+    [ do let clbi = targetCLBI subtarget
+             comp = targetComponent subtarget
              lbi' = lbiForComponent comp lbi
          initialBuildSteps distPref pkg_descr lbi clbi verbosity
          buildComponent verbosity NoFlag
                         pkg_descr lbi' suffixes comp clbi distPref
-    | clbi <- init componentsToBuild ]
+    | subtarget <- init componentsToBuild ]
 
   -- REPL for target components
-  let clbi = componentForRepl
-      cname = componentLocalName clbi
-      comp = getComponent pkg_descr cname
+  let clbi = targetCLBI target
+      comp = targetComponent target
       lbi' = lbiForComponent comp lbi
   initialBuildSteps distPref pkg_descr lbi clbi verbosity
   replComponent verbosity pkg_descr lbi' suffixes comp clbi distPref
@@ -423,6 +426,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
+                , componentInternalDeps = componentInternalDeps clbi
                 , componentLocalName = CSubLibName (testName test)
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
@@ -462,6 +466,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 -- TODO: this is a hack, but as long as this is unique
                 -- (doesn't clobber something) we won't run into trouble
                 componentUnitId = mkUnitId (stubName test),
+                componentInternalDeps = [componentUnitId clbi],
                 componentLocalName = CExeName (stubName test),
                 componentPackageDeps = deps,
                 componentIncludes = zip (map fst deps) (repeat defaultRenaming)
@@ -484,6 +489,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
     exeClbi = ExeComponentLocalBuildInfo {
                 componentUnitId = componentUnitId clbi,
                 componentLocalName = CExeName (benchmarkName bm),
+                componentInternalDeps = componentInternalDeps clbi,
                 componentPackageDeps = componentPackageDeps clbi,
                 componentIncludes = componentIncludes clbi
               }

@@ -7,9 +7,12 @@ import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
 
+import Distribution.Types.TargetInfo
+import Distribution.Types.LocalBuildInfo
+
 import Distribution.Simple.LocalBuildInfo
-  ( LocalBuildInfo(localPkgDescr, compiler), absoluteComponentInstallDirs
-  , InstallDirs(libdir), maybeGetComponentLocalBuildInfo
+  ( absoluteComponentInstallDirs
+  , InstallDirs(libdir)
   , ComponentLocalBuildInfo(componentUnitId), ComponentName(..) )
 import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
@@ -566,8 +569,8 @@ tests config = do
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
                 cname = CSubLibName "foo-internal"
-                Just clbi = maybeGetComponentLocalBuildInfo lbi cname
-                uid = componentUnitId clbi
+                [target] = componentNameTargets lbi cname
+                uid = componentUnitId (targetCLBI target)
                 dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
                               NoCopyDest)
             assertBool "interface files should NOT be installed" . not

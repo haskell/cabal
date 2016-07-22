@@ -39,10 +39,11 @@ import System.Process (StdStream(..), waitForProcess)
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
+        -> LBI.ComponentLocalBuildInfo
         -> TestFlags
         -> PD.TestSuite
         -> IO TestSuiteLog
-runTest pkg_descr lbi flags suite = do
+runTest pkg_descr lbi clbi flags suite = do
     let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
         way = guessWay lbi
 
@@ -85,10 +86,6 @@ runTest pkg_descr lbi flags suite = do
                 shellEnv' <- if LBI.withDynExe lbi
                                 then do
                                   let (Platform _ os) = LBI.hostPlatform lbi
-                                      clbi = LBI.getComponentLocalBuildInfo
-                                                   lbi
-                                                   (LBI.CTestName
-                                                      (PD.testName suite))
                                   paths <- LBI.depLibraryPaths
                                              True False lbi clbi
                                   return (addLibraryPath os paths shellEnv)

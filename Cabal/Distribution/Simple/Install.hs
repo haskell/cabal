@@ -16,6 +16,9 @@ module Distribution.Simple.Install (
         install,
   ) where
 
+import Distribution.Types.TargetInfo
+import Distribution.Types.LocalBuildInfo
+
 import Distribution.PackageDescription
 import Distribution.Package (Package(..))
 import Distribution.Simple.LocalBuildInfo
@@ -36,6 +39,7 @@ import qualified Distribution.Simple.JHC   as JHC
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
+import Distribution.Compat.Graph (IsNode(..))
 
 import Control.Monad (when, unless)
 import System.Directory
@@ -60,27 +64,27 @@ install :: PackageDescription -- ^information from the .cabal file
 install pkg_descr lbi flags
  | fromFlag (copyAssumeDepsUpToDate flags) = do
   checkHasLibsOrExes
-  targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
-  case targets' of
+  targets <- readTargetInfos verbosity lbi (copyArgs flags)
+  case targets of
     _ | null (copyArgs flags)
       -> copyPackage verbosity pkg_descr lbi distPref copydest
-    [(cname, _)] ->
-      let clbi = getComponentLocalBuildInfo lbi cname
-          comp = getComponent pkg_descr cname
+    [target] ->
+      let clbi = targetCLBI target
+          comp = targetComponent target
       in copyComponent verbosity pkg_descr lbi comp clbi copydest
     _ -> die "In --assume-deps-up-to-date mode you can only copy a single target"
 
  | otherwise = do
   checkHasLibsOrExes
-  targets <- readBuildTargets pkg_descr (copyArgs flags)
-  targets' <- checkBuildTargets verbosity pkg_descr lbi targets
+  targets <- readTargetInfos verbosity lbi (copyArgs flags)
 
   copyPackage verbosity pkg_descr lbi distPref copydest
 
   -- It's not necessary to do these in build-order, but it's harmless
-  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
-    copyComponent verbosity pkg_descr lbi comp clbi copydest
+  withNeededTargetsInBuildOrder lbi (map nodeKey targets) $ \target ->
+    let comp = targetComponent target
+        clbi = targetCLBI target
+    in copyComponent verbosity pkg_descr lbi comp clbi copydest
  where
   distPref  = fromFlag (copyDistPref flags)
   verbosity = fromFlag (copyVerbosity flags)

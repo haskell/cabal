@@ -77,6 +77,8 @@ import Distribution.Simple.Register (createInternalPackageDB)
 import Distribution.System
 import Distribution.Version
 import Distribution.Verbosity
+import qualified Distribution.Compat.Graph as Graph
+import Distribution.Compat.Graph (Node(..))
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -98,7 +100,7 @@ import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
+    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix, foldl' )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe, mapMaybe, isJust )
 import Data.Either
@@ -127,8 +129,6 @@ import Text.PrettyPrint
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
-
-import Data.Graph (graphFromEdges, topSort)
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
@@ -673,6 +673,10 @@ configure (pkg_descr0', pbi) cfg = do
             then return False
             else return True
 
+    let buildComponentsMap =
+            foldl' (\m clbi -> Map.insertWith (++) (componentLocalName clbi) [clbi] m)
+                   Map.empty buildComponents
+
     let lbi = LocalBuildInfo {
                 configFlags         = cfg',
                 flagAssignment      = flags,
@@ -684,7 +688,8 @@ configure (pkg_descr0', pbi) cfg = do
                 compiler            = comp,
                 hostPlatform        = compPlatform,
                 buildDir            = buildDir,
-                componentsConfigs   = buildComponents,
+                componentGraph      = Graph.fromList buildComponents,
+                componentNameMap    = buildComponentsMap,
                 installedPkgs       = packageDependsIndex,
                 pkgDescrFile        = Nothing,
                 localPkgDescr       = pkg_descr',
@@ -1449,12 +1454,12 @@ mkComponentsGraph :: ComponentEnabledSpec
                   -> Either [ComponentName]
                             [(Component, [ComponentName])]
 mkComponentsGraph enabled pkg_descr internalPkgDeps =
-    let graph = [ (c, componentName c, componentDeps c)
-                | c <- pkgBuildableComponents pkg_descr
-                , componentEnabled enabled c ]
-     in case checkComponentsCyclic graph of
-          Just ccycle -> Left  [ cname | (_,cname,_) <- ccycle ]
-          Nothing     -> Right [ (c, cdeps) | (c, _, cdeps) <- topSortFromEdges graph ]
+    let g = Graph.fromList [ N c (componentName c) (componentDeps c)
+                           | c <- pkgBuildableComponents pkg_descr
+                           , componentEnabled enabled c ]
+    in case Graph.cycles g of
+          []     -> Right (map (\(N c _ cs) -> (c, cs)) (Graph.revTopSort g))
+          ccycles -> Left  [ componentName c | N c _ _ <- concat ccycles ]
   where
     -- The dependencies for the given component
     componentDeps component =
@@ -1640,13 +1645,6 @@ computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId (ComponentId str
         in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
     | otherwise = str
 
-
-topSortFromEdges :: Ord key => [(node, key, [key])]
-                            -> [(node, key, [key])]
-topSortFromEdges es =
-    let (graph, vertexToNode, _) = graphFromEdges es
-    in reverse (map vertexToNode (topSort graph))
-
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> Compiler
                            -> InstalledPackageIndex
@@ -1655,32 +1653,32 @@ mkComponentsLocalBuildInfo :: ConfigFlags
                            -> [InstalledPackageInfo] -- external package deps
                            -> [(Component, [ComponentName])]
                            -> FlagAssignment
-                           -> IO [(ComponentLocalBuildInfo,
-                                   [UnitId])]
+                           -> IO [ComponentLocalBuildInfo]
 mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps
                            graph flagAssignment =
     foldM go [] graph
   where
     go z (component, dep_cnames) = do
-        clbi <- componentLocalBuildInfo z component
         -- NB: We want to preserve cdeps because it contains extra
         -- information like build-tools ordering
         let dep_uids = [ componentUnitId dep_clbi
                        | cname <- dep_cnames
                        -- Being in z relies on topsort!
-                       , (dep_clbi, _) <- z
+                       , dep_clbi <- z
                        , componentLocalName dep_clbi == cname ]
-        return ((clbi, dep_uids):z)
+        clbi <- componentLocalBuildInfo z component dep_uids
+        return (clbi:z)
 
     -- The allPkgDeps contains all the package deps for the whole package
     -- but we need to select the subset for this specific component.
     -- we just take the subset for the package names this component
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
-    componentLocalBuildInfo :: [(ComponentLocalBuildInfo, [UnitId])]
-                            -> Component -> IO ComponentLocalBuildInfo
-    componentLocalBuildInfo internalComps component =
+    componentLocalBuildInfo :: [ComponentLocalBuildInfo]
+                            -> Component -> [UnitId] -> IO ComponentLocalBuildInfo
+    componentLocalBuildInfo internalComps component dep_uids =
+      -- (putStrLn $ "configuring " ++ display (componentName component)) >>
       case component of
       CLib lib -> do
         let exports = map (\n -> Installed.ExposedModule n Nothing)
@@ -1695,6 +1693,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
 
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
+          componentInternalDeps = dep_uids,
           componentUnitId = uid,
           componentLocalName = componentName component,
           componentIsPublic = libName lib == Nothing,
@@ -1706,6 +1705,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
       CExe _ ->
         return ExeComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentInternalDeps = dep_uids,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes
@@ -1713,6 +1713,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
       CTest _ ->
         return TestComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentInternalDeps = dep_uids,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes
@@ -1720,6 +1721,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
       CBench _ ->
         return BenchComponentLocalBuildInfo {
           componentUnitId = uid,
+          componentInternalDeps = dep_uids,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes
@@ -1740,7 +1742,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
 
         lookupInternalPkg :: PackageId -> UnitId
         lookupInternalPkg pkgid = do
-            let matcher (clbi, _)
+            let matcher clbi
                     | CLibName <- componentLocalName clbi
                     , pkgName pkgid == packageName pkg_descr
                     = Just (componentUnitId clbi)
@@ -1750,7 +1752,9 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                 matcher _ = Nothing
             case catMaybes (map matcher internalComps) of
                 [x] -> x
-                _ -> error "lookupInternalPkg"
+                _ -> error $ "lookupInternalPkg " ++ display pkgid
+                          ++ " " ++ intercalate ", "
+                            (map (display . componentUnitId) internalComps)
 
         cpds = if newPackageDepsBehaviour pkg_descr
                then dedup $
