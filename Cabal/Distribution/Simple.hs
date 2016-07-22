@@ -187,16 +187,13 @@ configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
+
+    -- See docs for 'HookedBuildInfo'
     pbi <- preConf hooks args flags'
 
     (mb_pd_file, pkg_descr0) <- confPkgDescr hooks verbosity
 
-    --get_pkg_descr (configVerbosity flags')
-    --let pkg_descr = updatePackageDescription pbi pkg_descr0
     let epkg_descr = (pkg_descr0, pbi)
-
-    --(warns, ers) <- sanityCheckPackage pkg_descr
-    --errorOut (configVerbosity flags') warns ers
 
     localbuildinfo0 <- confHook hooks epkg_descr flags'
 
@@ -252,10 +249,15 @@ replAction hooks flags args = do
              (replProgramArgs flags')
              (withPrograms lbi)
 
+  -- As far as I can tell, the only reason this doesn't use
+  -- 'hookedActionWithArgs' is because the arguments of 'replHook'
+  -- takes the args explicitly.  UGH.   -- ezyang
   pbi <- preRepl hooks args flags'
-  let lbi' = lbi { withPrograms = progs }
-      pkg_descr0 = localPkgDescr lbi'
-      pkg_descr = updatePackageDescription pbi pkg_descr0
+  let pkg_descr0 = localPkgDescr lbi
+  sanityCheckHookedBuildInfo pkg_descr0 pbi
+  let pkg_descr = updatePackageDescription pbi pkg_descr0
+      lbi' = lbi { withPrograms = progs
+                 , localPkgDescr = pkg_descr }
   replHook hooks pkg_descr lbi' hooks flags' args
   postRepl hooks args flags' pkg_descr lbi'
 
@@ -292,6 +294,12 @@ cleanAction hooks flags args = do
     pbi <- preClean hooks args flags'
 
     (_, ppd) <- confPkgDescr hooks verbosity
+    -- It might seem like we are doing something clever here
+    -- but we're really not: if you look at the implementation
+    -- of 'clean' in the end all the package description is
+    -- used for is to clear out @extra-tmp-files@.  IMO,
+    -- the configure script goo should go into @dist@ too!
+    --          -- ezyang
     let pkg_descr0 = flattenPackageDescription ppd
     -- We don't sanity check for clean as an error
     -- here would prevent cleaning:
@@ -333,9 +341,10 @@ sdistAction hooks flags args = do
     let pkg_descr0 = flattenPackageDescription ppd
     sanityCheckHookedBuildInfo pkg_descr0 pbi
     let pkg_descr = updatePackageDescription pbi pkg_descr0
+        mlbi' = fmap (\lbi -> lbi { localPkgDescr = pkg_descr }) mlbi
 
-    sDistHook hooks pkg_descr mlbi hooks flags'
-    postSDist hooks args flags' pkg_descr mlbi
+    sDistHook hooks pkg_descr mlbi' hooks flags'
+    postSDist hooks args flags' pkg_descr mlbi'
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
@@ -401,15 +410,13 @@ hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
         -> UserHooks -> flags -> Args -> IO ()
 hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    pbi <- pre_hook hooks args flags
-   localbuildinfo <- get_build_config
-   let pkg_descr0 = localPkgDescr localbuildinfo
-   --pkg_descr0 <- get_pkg_descr (get_verbose flags)
+   lbi0 <- get_build_config
+   let pkg_descr0 = localPkgDescr lbi0
    sanityCheckHookedBuildInfo pkg_descr0 pbi
    let pkg_descr = updatePackageDescription pbi pkg_descr0
-   -- TODO: should we write the modified package descr back to the
-   -- localbuildinfo?
-   cmd_hook hooks args pkg_descr localbuildinfo hooks flags
-   post_hook hooks args flags pkg_descr localbuildinfo
+       lbi = lbi0 { localPkgDescr = pkg_descr }
+   cmd_hook hooks args pkg_descr lbi hooks flags
+   post_hook hooks args flags pkg_descr lbi
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
 sanityCheckHookedBuildInfo pkg_descr hooked_bis
@@ -562,7 +569,8 @@ defaultUserHooks = autoconfUserHooks {
                    pbi <- getHookedBuildInfo verbosity
                    sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
-                   postConf simpleUserHooks args flags pkg_descr' lbi
+                       lbi' = lbi { localPkgDescr = pkg_descr' }
+                   postConf simpleUserHooks args flags pkg_descr' lbi'
 
           backwardsCompatHack = True
 
@@ -593,7 +601,8 @@ autoconfUserHooks
                    pbi <- getHookedBuildInfo verbosity
                    sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
-                   postConf simpleUserHooks args flags pkg_descr' lbi
+                       lbi' = lbi { localPkgDescr = pkg_descr' }
+                   postConf simpleUserHooks args flags pkg_descr' lbi'
 
           backwardsCompatHack = False
 
