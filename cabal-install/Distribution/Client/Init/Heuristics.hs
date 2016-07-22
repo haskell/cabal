@@ -254,7 +254,11 @@ guessAuthorNameMail = fmap authorGuessPure authorGuessIO
 -- Ordered in increasing preference, since Flag-as-monoid is identical to
 -- Last.
 authorGuessPure :: AuthorGuessIO -> AuthorGuess
-authorGuessPure (AuthorGuessIO env darcsLocalF darcsGlobalF gitLocal gitGlobal)
+authorGuessPure (AuthorGuessIO { authorGuessEnv = env
+                               , authorGuessLocalDarcs = darcsLocalF
+                               , authorGuessGlobalDarcs = darcsGlobalF
+                               , authorGuessLocalGit = gitLocal
+                               , authorGuessGlobalGit = gitGlobal })
     = mconcat
         [ emailEnv env
         , gitGlobal
@@ -278,12 +282,13 @@ authorGuessIO = AuthorGuessIO
 type AuthorGuess   = (Flag String, Flag String)
 type Enviro        = [(String, String)]
 data GitLoc        = Local | Global
-data AuthorGuessIO = AuthorGuessIO
-    Enviro         -- ^ Environment lookup table
-    (Maybe String) -- ^ Contents of local darcs author info
-    (Maybe String) -- ^ Contents of global darcs author info
-    AuthorGuess    -- ^ Git config --local
-    AuthorGuess    -- ^ Git config --global
+data AuthorGuessIO = AuthorGuessIO {
+    authorGuessEnv         :: Enviro,         -- ^ Environment lookup table
+    authorGuessLocalDarcs  :: (Maybe String), -- ^ Contents of local darcs author info
+    authorGuessGlobalDarcs :: (Maybe String), -- ^ Contents of global darcs author info
+    authorGuessLocalGit    :: AuthorGuess,   -- ^ Git config --local
+    authorGuessGlobalGit   :: AuthorGuess    -- ^ Git config --global
+  }
 
 darcsEnv :: Enviro -> AuthorGuess
 darcsEnv = maybe mempty nameAndMail . lookup "DARCS_EMAIL"
