@@ -72,7 +72,7 @@ convIP idx ipi =
   ipid = IPI.installedUnitId ipi
   i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
   pn = pkgName (sourcePackageId ipi)
-  setComp = setCompFlaggedDeps (ComponentLib (unPackageName pn))
+  setComp = setCompFlaggedDeps ComponentLib
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -108,8 +108,8 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- | Convert a generic package description to a solver-specific 'PInfo'.
 convGPD :: OS -> Arch -> CompilerInfo -> StrongFlags ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cinfo strfl pi@(PI pn _)
-        (GenericPackageDescription pkg flags libs exes tests benchs) =
+convGPD os arch cinfo strfl pi
+        (GenericPackageDescription pkg flags mlib sub_libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -119,12 +119,7 @@ convGPD os arch cinfo strfl pi@(PI pn _)
     -- by creating a set of package names which are "internal"
     -- and dropping them as we convert.
     ipns = S.fromList [ PackageName nm
-                      | (nm, _) <- libs
-                      -- Don't include the true package name;
-                      -- qualification could make this relevant.
-                      -- TODO: Can we qualify over internal
-                      -- dependencies? Not for now!
-                      , PackageName nm /= pn ]
+                      | (nm, _) <- sub_libs ]
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
@@ -132,7 +127,8 @@ convGPD os arch cinfo strfl pi@(PI pn _)
                         PDC.addBuildableCondition getInfo
 
     flagged_deps
-        = concatMap (\(nm, ds) -> conv (ComponentLib nm)   libBuildInfo       ds) libs
+        = concatMap (\ds -> conv ComponentLib libBuildInfo ds) (maybeToList mlib)
+       ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm)   libBuildInfo       ds) sub_libs
        ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes
        ++ prefix (Stanza (SN pi TestStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)

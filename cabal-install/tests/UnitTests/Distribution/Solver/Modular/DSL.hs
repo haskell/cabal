@@ -172,7 +172,7 @@ data ExampleQualifier =
 exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
      -> ExampleAvailable
 exAv n v ds = ExAv { exAvName = n, exAvVersion = v
-                   , exAvDeps = CD.fromLibraryDeps n ds }
+                   , exAvDeps = CD.fromLibraryDeps ds }
 
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps = ex {
@@ -231,7 +231,8 @@ exAvSrcPkg ex =
          , packageDescription   = C.GenericPackageDescription {
                C.packageDescription = C.emptyPackageDescription {
                    C.package        = exAvPkgId ex
-                 , C.libraries      = error "not yet configured: library"
+                 , C.library        = error "not yet configured: library"
+                 , C.subLibraries   = error "not yet configured: subLibraries"
                  , C.executables    = error "not yet configured: executables"
                  , C.testSuites     = error "not yet configured: testSuites"
                  , C.benchmarks     = error "not yet configured: benchmarks"
@@ -243,9 +244,10 @@ exAvSrcPkg ex =
                  }
              , C.genPackageFlags = nub $ concatMap extractFlags $
                                    CD.libraryDeps (exAvDeps ex) ++ concatMap snd testSuites
-             , C.condLibraries   = [(exAvName ex, mkCondTree (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs)
+             , C.condLibrary = Just (mkCondTree (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs)
                                                      disableLib
-                                                     (Buildable libraryDeps))]
+                                                     (Buildable libraryDeps))
+             , C.condSubLibraries = []
              , C.condExecutables = []
              , C.condTestSuites  =
                  let mkTree = mkCondTree mempty disableTest . Buildable

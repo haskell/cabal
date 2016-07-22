@@ -280,15 +280,16 @@ instance Arbitrary Solver where
   shrink TopDown = [Modular]
 
 instance Arbitrary Component where
-  arbitrary = oneof [ ComponentLib <$> arbitraryComponentName
+  arbitrary = oneof [ return ComponentLib
+                    , ComponentSubLib <$> arbitraryComponentName
                     , ComponentExe <$> arbitraryComponentName
                     , ComponentTest <$> arbitraryComponentName
                     , ComponentBench <$> arbitraryComponentName
                     , return ComponentSetup
                     ]
 
-  shrink (ComponentLib "") = []
-  shrink _ = [ComponentLib ""]
+  shrink ComponentLib = []
+  shrink _ = [ComponentLib]
 
 instance Arbitrary ExampleInstalled where
   arbitrary = error "arbitrary not implemented: ExampleInstalled"

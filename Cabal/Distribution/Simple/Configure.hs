@@ -820,15 +820,18 @@ getInternalPackages pkg_descr0 =
             --      for the internal package set.  What we do here
             --      is skeevy, but we're highly unlikely to accidentally
             --      shadow something legitimate.
-            Installed.installedUnitId = mkUnitId (libName lib),
+            Installed.installedUnitId = mkUnitId n,
             -- NB: we TEMPORARILY set the package name to be the
             -- library name.  When we actually register, it won't
             -- look like this; this is just so that internal
             -- build-depends get resolved correctly.
-            Installed.sourcePackageId = PackageIdentifier (PackageName (libName lib))
+            Installed.sourcePackageId = PackageIdentifier (PackageName n)
                                             (pkgVersion (package pkg_descr))
           }
-    in PackageIndex.fromList (map mkInternalPackage (libraries pkg_descr))
+         where n = case libName lib of
+                    Nothing -> display (packageName pkg_descr)
+                    Just n' -> n'
+    in PackageIndex.fromList (map mkInternalPackage (allLibraries pkg_descr))
 
 
 -- | Returns true if a dependency is satisfiable.  This is to be passed
@@ -945,7 +948,8 @@ configureFinalizedPackage verbosity cfg enabled
                                                    `mappend` extraBi }
             modifyExecutable e = e{ buildInfo    = buildInfo e
                                                    `mappend` extraBi}
-        in pkg_descr{ libraries   = modifyLib         `map` libraries pkg_descr
+        in pkg_descr{ library = modifyLib `fmap` library pkg_descr
+                    , subLibraries = modifyLib `map` subLibraries pkg_descr
                     , executables = modifyExecutable  `map`
                                       executables pkg_descr}
 
@@ -960,7 +964,7 @@ checkCompilerProblems comp pkg_descr = do
            ++ "package flags.  To use this feature you probably must use "
            ++ "GHC 7.9 or later."
 
-    when (any (not.null.PD.reexportedModules) (PD.libraries pkg_descr)
+    when (any (not.null.PD.reexportedModules) (PD.allLibraries pkg_descr)
           && not (reexportedModulesSupported comp)) $ do
         die $ "Your compiler does not support module re-exports. To use "
            ++ "this feature you probably must use GHC 7.9 or later."
@@ -1288,11 +1292,13 @@ configurePkgconfigPackages verbosity pkg_descr conf
                        (lessVerbose verbosity) pkgConfigProgram
                        (orLaterVersion $ Version [0,9,0] []) conf
     mapM_ requirePkg allpkgs
-    libs' <- mapM addPkgConfigBILib (libraries pkg_descr)
+    mlib' <- mapM addPkgConfigBILib (library pkg_descr)
+    libs' <- mapM addPkgConfigBILib (subLibraries pkg_descr)
     exes' <- mapM addPkgConfigBIExe (executables pkg_descr)
     tests' <- mapM addPkgConfigBITest (testSuites pkg_descr)
     benches' <- mapM addPkgConfigBIBench (benchmarks pkg_descr)
-    let pkg_descr' = pkg_descr { libraries = libs', executables = exes',
+    let pkg_descr' = pkg_descr { library = mlib',
+                                 subLibraries = libs', executables = exes',
                                  testSuites = tests', benchmarks = benches' }
     return (pkg_descr', conf')
 
@@ -1454,7 +1460,10 @@ mkComponentsGraph enabled pkg_descr internalPkgDeps =
                              , toolname `elem` map exeName
                                (executables pkg_descr) ]
 
-      ++ [ CLibName toolname | Dependency pkgname@(PackageName toolname) _
+      ++ [ if pkgname == packageName pkg_descr
+            then CLibName
+            else CSubLibName toolname
+            | Dependency pkgname@(PackageName toolname) _
                                <- targetBuildDepends bi
                              , pkgname `elem` map packageName internalPkgDeps ]
       where
@@ -1500,7 +1509,7 @@ computeComponentId mb_explicit pid cname dep_ipids flagAssignment = do
                         Flag cid0 -> explicit_base cid0
                         NoFlag -> generated_base
     ComponentId $ actual_base
-                    ++ (case componentNameString (pkgName pid) cname of
+                    ++ (case componentNameString cname of
                             Nothing -> ""
                             Just s -> "-" ++ s)
 
@@ -1543,7 +1552,7 @@ hashToBase62 s = showFingerprint $ fingerprintString s
 --
 computeCompatPackageName :: PackageName -> ComponentName -> PackageName
 computeCompatPackageName pkg_name cname
-    | Just cname_str <- componentNameString pkg_name cname
+    | Just cname_str <- componentNameString cname
     = let zdashcode s = go s (Nothing :: Maybe Int) []
             where go [] _ r = reverse r
                   go ('-':z) (Just n) r | n > 0 = go z (Just 0) ('-':'z':r)
@@ -1685,7 +1694,7 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
           componentPackageDeps = cpds,
           componentUnitId = uid,
           componentLocalName = componentName component,
-          componentIsPublic = libName lib == display (packageName (package pkg_descr)),
+          componentIsPublic = libName lib == Nothing,
           componentCompatPackageKey = compat_key,
           componentCompatPackageName = compat_name,
           componentIncludes = includes,
@@ -1729,7 +1738,10 @@ mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
         lookupInternalPkg :: PackageId -> UnitId
         lookupInternalPkg pkgid = do
             let matcher (clbi, _)
-                    | CLibName str <- componentLocalName clbi
+                    | CLibName <- componentLocalName clbi
+                    , pkgName pkgid == packageName pkg_descr
+                    = Just (componentUnitId clbi)
+                    | CSubLibName str <- componentLocalName clbi
                     , str == display (pkgName pkgid)
                     = Just (componentUnitId clbi)
                 matcher _ = Nothing

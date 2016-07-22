@@ -32,6 +32,7 @@ module Distribution.PackageDescription (
         descCabalVersion,
         BuildType(..),
         knownBuildTypes,
+        allLibraries,
 
         -- ** Renaming
         ModuleRenaming(..),
@@ -125,7 +126,7 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import Data.Data                  (Data)
-import Data.List                  (nub, intercalate)
+import Data.List                  (nub, intercalate, find)
 import Data.Maybe                 (fromMaybe, maybeToList)
 import Data.Foldable as Fold      (Foldable(foldMap))
 import Data.Traversable as Trav   (Traversable(traverse))
@@ -189,7 +190,8 @@ data PackageDescription
         buildType      :: Maybe BuildType,
         setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
-        libraries      :: [Library],
+        library        :: Maybe Library,
+        subLibraries   :: [Library],
         executables    :: [Executable],
         testSuites     :: [TestSuite],
         benchmarks     :: [Benchmark],
@@ -256,7 +258,8 @@ emptyPackageDescription
                       category     = "",
                       customFieldsPD = [],
                       setupBuildInfo = Nothing,
-                      libraries    = [],
+                      library      = Nothing,
+                      subLibraries = [],
                       executables  = [],
                       testSuites   = [],
                       benchmarks   = [],
@@ -393,7 +396,7 @@ instance Text ModuleRenaming where
 -- The Library type
 
 data Library = Library {
-        libName :: String,
+        libName :: Maybe String,
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
         requiredSignatures:: [ModuleName], -- ^ What sigs need implementations?
@@ -417,7 +420,7 @@ instance Monoid Library where
 
 instance Semigroup Library where
   a <> b = Library {
-    libName = combine' libName,
+    libName = combine libName,
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
     requiredSignatures = combine requiredSignatures,
@@ -425,25 +428,23 @@ instance Semigroup Library where
     libBuildInfo   = combine libBuildInfo
   }
     where combine field = field a `mappend` field b
-          combine' field = case (field a, field b) of
-                      ("","") -> ""
-                      ("", x) -> x
-                      (x, "") -> x
-                      (x, y) -> error $ "Ambiguous values for library field: '"
-                                  ++ x ++ "' and '" ++ y ++ "'"
 
 emptyLibrary :: Library
 emptyLibrary = mempty
 
--- | Does this package have a PUBLIC library?
+-- | Does this package have a buildable PUBLIC library?
 hasPublicLib :: PackageDescription -> Bool
-hasPublicLib p = any f (libraries p)
-    where f lib = buildable (libBuildInfo lib) &&
-                  libName lib == display (packageName (package p))
+hasPublicLib p =
+    case library p of
+        Just lib -> buildable (libBuildInfo lib)
+        Nothing  -> False
 
 -- | Does this package have any libraries?
 hasLibs :: PackageDescription -> Bool
-hasLibs p = any (buildable . libBuildInfo) (libraries p)
+hasLibs p = any (buildable . libBuildInfo) (allLibraries p)
+
+allLibraries :: PackageDescription -> [Library]
+allLibraries p = maybeToList (library p) ++ subLibraries p
 
 -- | If the package description has a buildable library section,
 -- call the given function with the library build info as argument.
@@ -453,7 +454,7 @@ hasLibs p = any (buildable . libBuildInfo) (libraries p)
 -- for more information.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
-   sequence_ [f lib | lib <- libraries pkg_descr, buildable (libBuildInfo lib)]
+   sequence_ [f lib | lib <- allLibraries pkg_descr, buildable (libBuildInfo lib)]
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which need to be compiled.  (This does not include reexports, which
@@ -920,7 +921,7 @@ emptyBuildInfo = mempty
 -- all buildable executables, test suites and benchmarks.  Useful for gathering
 -- dependencies.
 allBuildInfo :: PackageDescription -> [BuildInfo]
-allBuildInfo pkg_descr = [ bi | lib <- libraries pkg_descr
+allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
                               , let bi = libBuildInfo lib
                               , buildable bi ]
                       ++ [ bi | exe <- executables pkg_descr
@@ -954,7 +955,8 @@ usedExtensions bi = oldExtensions bi
                  ++ defaultExtensions bi
 
 -- Libraries live in a separate namespace, so must distinguish
-data ComponentName = CLibName   String
+data ComponentName = CLibName
+                   | CSubLibName String
                    | CExeName   String
                    | CTestName  String
                    | CBenchName String
@@ -964,13 +966,17 @@ instance Binary ComponentName
 
 -- Build-target-ish syntax
 instance Text ComponentName where
-    disp (CLibName str) = Disp.text ("lib:" ++ str)
+    disp CLibName = Disp.text "lib"
+    disp (CSubLibName str) = Disp.text ("lib:" ++ str)
     disp (CExeName str) = Disp.text ("exe:" ++ str)
     disp (CTestName str) = Disp.text ("test:" ++ str)
     disp (CBenchName str) = Disp.text ("bench:" ++ str)
 
-    parse = do
-        ctor <- Parse.choice [ Parse.string "lib:" >> return CLibName
+    parse = parseComposite <++ parseSingle
+     where
+      parseSingle = Parse.string "lib" >> return CLibName
+      parseComposite = do
+        ctor <- Parse.choice [ Parse.string "lib:" >> return CSubLibName
                              , Parse.string "exe:" >> return CExeName
                              , Parse.string "bench:" >> return CBenchName
                              , Parse.string "test:" >> return CTestName ]
@@ -979,8 +985,8 @@ instance Text ComponentName where
         -- as package names.)
         fmap (ctor . unPackageName) parse
 
-defaultLibName :: PackageIdentifier -> ComponentName
-defaultLibName pid = CLibName (display (pkgName pid))
+defaultLibName :: ComponentName
+defaultLibName = CLibName
 
 type HookedBuildInfo = [(ComponentName, BuildInfo)]
 
@@ -1143,11 +1149,16 @@ lowercase = map Char.toLower
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
 updatePackageDescription hooked_bis p
   = p{ executables = updateMany (CExeName . exeName)         updateExecutable (executables p)
-     , libraries   = updateMany (CLibName . libName)         updateLibrary    (libraries   p)
+     , library     = fmap (updateLibrary lib_bi) (library p)
+     , subLibraries = updateMany (maybe CLibName CSubLibName . libName) updateLibrary    (subLibraries   p)
      , benchmarks  = updateMany (CBenchName . benchmarkName) updateBenchmark  (benchmarks p)
      , testSuites  = updateMany (CTestName . testName)       updateTestSuite  (testSuites p)
      }
     where
+      lib_bi = case find ((== CLibName) . fst) hooked_bis of
+                Nothing -> mempty
+                Just (_, bi) -> bi
+
       updateMany :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
                  -> (BuildInfo -> a -> a) -- ^ @updateExecutable@, @updateLibrary@, etc
                  -> [a]          -- ^list of components to update
@@ -1161,11 +1172,7 @@ updatePackageDescription hooked_bis p
                 -> [a]        -- ^list with name component updated
       updateOne _ _ _                 []         = []
       updateOne name_sel update hooked_bi'@(name,bi) (c:cs)
-        | name_sel c == name ||
-          -- Special case: an empty name means "please update the BuildInfo for
-          -- the public library, i.e. the one with the same name as the
-          -- package."  See 'parseHookedBuildInfo'.
-          name == CLibName "" && name_sel c == defaultLibName (package p)
+        | name_sel c == name
           = update bi c : cs
         | otherwise          = c : updateOne name_sel update hooked_bi' cs
 
@@ -1181,7 +1188,8 @@ data GenericPackageDescription =
     GenericPackageDescription {
         packageDescription :: PackageDescription,
         genPackageFlags       :: [Flag],
-        condLibraries      :: [(String, CondTree ConfVar [Dependency] Library)],
+        condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condSubLibraries   :: [(String, CondTree ConfVar [Dependency] Library)],
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]

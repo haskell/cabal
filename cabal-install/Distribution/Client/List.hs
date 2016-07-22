@@ -63,7 +63,7 @@ import Distribution.Client.FetchUtils
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
 import Data.Maybe
-         ( listToMaybe, fromJust, fromMaybe, isJust )
+         ( listToMaybe, fromJust, fromMaybe, isJust, maybeToList )
 import qualified Data.Map as Map
 import Data.Tree as Tree
 import Control.Monad
@@ -458,13 +458,14 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     flags        = maybe [] Source.genPackageFlags sourceGeneric,
     hasLib       = isJust installed
                 || fromMaybe False
-                   (fmap (not . null . Source.condLibraries) sourceGeneric),
+                   (fmap (isJust . Source.condLibrary) sourceGeneric),
     hasExe       = fromMaybe False
                    (fmap (not . null . Source.condExecutables) sourceGeneric),
     executables  = map fst (maybe [] Source.condExecutables sourceGeneric),
     modules      = combine (map Installed.exposedName . Installed.exposedModules)
                            installed
-                           (concatMap getListOfExposedModules . Source.libraries)
+                           -- NB: only for the PUBLIC library
+                           (concatMap getListOfExposedModules . maybeToList . Source.library)
                            source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)

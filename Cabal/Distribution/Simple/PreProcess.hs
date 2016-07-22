@@ -46,7 +46,7 @@ import Distribution.Version
 import Distribution.Verbosity
 
 import Control.Monad
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (nub, isSuffixOf, isPrefixOf)
 import System.Directory (doesFileExist)
 import System.Info (os, arch)
@@ -664,7 +664,7 @@ preprocessExtras comp lbi = case comp of
     component_dirs = component_names (localPkgDescr lbi)
     -- TODO: libify me
     component_names pkg_descr =
-        map libName (libraries pkg_descr) ++
+        mapMaybe libName (subLibraries pkg_descr) ++
         map exeName (executables pkg_descr) ++
         map testName (testSuites pkg_descr) ++
         map benchmarkName (benchmarks pkg_descr)

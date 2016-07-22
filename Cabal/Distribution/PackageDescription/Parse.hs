@@ -56,7 +56,7 @@ import Distribution.Text
 import Distribution.Compat.ReadP hiding (get)
 
 import Data.Char     (isSpace)
-import Data.Maybe    (listToMaybe, isJust)
+import Data.Maybe    (listToMaybe, isJust, maybeToList)
 import Data.List     (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
 #if __GLASGOW_HASKELL__ < 710
@@ -738,14 +738,14 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (repos, flags, mcsetup, libs, exes, tests, bms) <- getBody pkg
+        (repos, flags, mcsetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
         warnIfRest  -- warn if getBody did not parse up to the last field.
           -- warn about using old/new syntax with wrong cabal-version:
         maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
-        checkForUndefinedFlags flags libs exes tests
+        checkForUndefinedFlags flags mlib sub_libs exes tests
         return $ GenericPackageDescription
                    pkg { sourceRepos = repos, setupBuildInfo = mcsetup }
-                   flags libs exes tests bms
+                   flags mlib sub_libs exes tests bms
 
   where
     oldSyntax = all isSimpleField
@@ -852,6 +852,7 @@ parsePackageDescription file = do
     getBody :: PackageDescription
             -> PM ([SourceRepo], [Flag]
                   ,Maybe SetupBuildInfo
+                  ,(Maybe (CondTree ConfVar [Dependency] Library))
                   ,[(String, CondTree ConfVar [Dependency] Library)]
                   ,[(String, CondTree ConfVar [Dependency] Executable)]
                   ,[(String, CondTree ConfVar [Dependency] TestSuite)]
@@ -864,8 +865,8 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
-            return (repos, flags, csetup, lib, (exename, flds): exes, tests, bms)
+            (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+            return (repos, flags, csetup, mlib, sub_libs, (exename, flds): exes, tests, bms)
 
         | sec_type == "test-suite" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -905,8 +906,8 @@ parsePackageDescription file = do
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
-                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
-                    return (repos, flags, csetup, lib, exes,
+                    (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+                    return (repos, flags, csetup, mlib, sub_libs, exes,
                             (testname, flds) : tests, bms)
                 else lift $ syntaxError line_no $
                          "Test suite \"" ++ testname
@@ -953,8 +954,8 @@ parsePackageDescription file = do
             if checkBenchmarkType emptyBenchmark flds
                 then do
                     skipField
-                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
-                    return (repos, flags, csetup, lib, exes,
+                    (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+                    return (repos, flags, csetup, mlib, sub_libs, exes,
                             tests, (benchname, flds) : bms)
                 else lift $ syntaxError line_no $
                          "Benchmark \"" ++ benchname
@@ -964,15 +965,22 @@ parsePackageDescription file = do
                       ++ intercalate ", " (map display knownBenchmarkTypes)
 
         | sec_type == "library" -> do
-            libname <- if null sec_label
-                        then return (unPackageName (packageName pkg))
-                        -- TODO: relax this parsing so that scoping is handled
-                        -- correctly
-                        else lift $ runP line_no "library" parseTokenQ sec_label
+            mb_libname <- if null sec_label
+                            then return Nothing
+                            -- TODO: relax this parsing so that scoping is handled
+                            -- correctly
+                            else fmap Just . lift
+                                  $ runP line_no "library" parseTokenQ sec_label
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (repos, flags, csetup, libs, exes, tests, bms) <- getBody pkg
-            return (repos, flags, csetup, (libname, flds) : libs, exes, tests, bms)
+            (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+            case mb_libname of
+                Just libname ->
+                    return (repos, flags, csetup, mlib, (libname, flds) : sub_libs, exes, tests, bms)
+                Nothing -> do
+                    when (isJust mlib) $ lift $ syntaxError line_no
+                      "There can only be one (public) library section in a package description."
+                    return (repos, flags, csetup, Just flds, sub_libs, exes, tests, bms)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -983,8 +991,8 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
-            return (repos, flag:flags, csetup, lib, exes, tests, bms)
+            (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+            return (repos, flag:flags, csetup, mlib, sub_libs, exes, tests, bms)
 
         | sec_type == "source-repository" -> do
             when (null sec_label) $ lift $ syntaxError line_no $
@@ -1008,8 +1016,8 @@ parsePackageDescription file = do
                     }
                     sec_fields
             skipField
-            (repos, flags, csetup, lib, exes, tests, bms) <- getBody pkg
-            return (repo:repos, flags, csetup, lib, exes, tests, bms)
+            (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
+            return (repo:repos, flags, csetup, mlib, sub_libs, exes, tests, bms)
 
         | sec_type == "custom-setup" -> do
             unless (null sec_label) $ lift $
@@ -1020,10 +1028,10 @@ parsePackageDescription file = do
                              mempty
                              sec_fields
             skipField
-            (repos, flags, csetup0, lib, exes, tests, bms) <- getBody pkg
+            (repos, flags, csetup0, mlib, sub_libs, exes, tests, bms) <- getBody pkg
             when (isJust csetup0) $ lift $ syntaxError line_no
               "There can only be one 'custom-setup' section in a package description."
-            return (repos, flags, Just flds, lib, exes, tests, bms)
+            return (repos, flags, Just flds, mlib, sub_libs, exes, tests, bms)
 
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
@@ -1039,7 +1047,7 @@ parsePackageDescription file = do
               "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
             getBody pkg
-      Nothing -> return ([], [], Nothing, [], [], [], [])
+      Nothing -> return ([], [], Nothing, Nothing, [], [], [], [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
@@ -1116,13 +1124,15 @@ parsePackageDescription file = do
 
     checkForUndefinedFlags ::
         [Flag] ->
+        Maybe (CondTree ConfVar [Dependency] Library) ->
         [(String, CondTree ConfVar [Dependency] Library)] ->
         [(String, CondTree ConfVar [Dependency] Executable)] ->
         [(String, CondTree ConfVar [Dependency] TestSuite)] ->
         PM ()
-    checkForUndefinedFlags flags libs exes tests = do
+    checkForUndefinedFlags flags mlib sub_libs exes tests = do
         let definedFlags = map flagName flags
-        mapM_ (checkCondTreeFlags definedFlags . snd) libs
+        mapM_ (checkCondTreeFlags definedFlags) (maybeToList mlib)
+        mapM_ (checkCondTreeFlags definedFlags . snd) sub_libs
         mapM_ (checkCondTreeFlags definedFlags . snd) exes
         mapM_ (checkCondTreeFlags definedFlags . snd) tests
 
@@ -1213,14 +1223,17 @@ parseHookedBuildInfo inp = do
           lowercase inFieldName /= "library" &&
           lowercase inFieldName /= "benchmark" &&
           lowercase inFieldName /= "test-suite"
-            = liftM (\bis -> [(CLibName "", bis)]) (parseBI bi)
+            = liftM (\bis -> [(CLibName, bis)]) (parseBI bi)
     parseLib _ = return []
 
     parseStanza :: HookedBuildInfo -> [Field] -> ParseResult HookedBuildInfo
     parseStanza bis (F line inFieldName mName:bi)
         | Just k <- case lowercase inFieldName of
                         "executable" -> Just CExeName
-                        "library"    -> Just CLibName
+                        -- An *explicit* library indicates a
+                        -- sub-library; only way to get main
+                        -- library is to have a bare section.
+                        "library"    -> Just CSubLibName
                         "benchmark"  -> Just CBenchName
                         "test-suite" -> Just CTestName
                         _ -> Nothing
@@ -1247,7 +1260,10 @@ showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
      ppPackage pkg
   $$ ppCustomFields (customFieldsPD pkg)
-  $$ vcat [ space $$ ppLibrary lib | lib <- libraries pkg ]
+  $$ (case library pkg of
+        Nothing -> empty
+        Just lib -> ppLibrary lib)
+  $$ vcat [ space $$ ppLibrary lib | lib <- subLibraries pkg ]
   $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
   where
     ppPackage    = ppFields pkgDescrFieldDescrs
@@ -1271,7 +1287,8 @@ showHookedBuildInfo bis = render $
             $$ ppBuildInfo bi
           | (name, bi) <- bis ]
   where
-    ppName (CLibName name) = text "library:" <+> text name
+    ppName CLibName = text "library"
+    ppName (CSubLibName name) = text "library:" <+> text name
     ppName (CExeName name) = text "executable:" <+> text name
     ppName (CTestName name) = text "test-suite:" <+> text name
     ppName (CBenchName name) = text "benchmark:" <+> text name

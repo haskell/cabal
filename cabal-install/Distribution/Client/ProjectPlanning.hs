@@ -1612,7 +1612,7 @@ pruneInstallPlanPass2 pkgs =
         keepNeeded _                     _ = True
 
         targetsRequiredForRevDeps =
-          [ ComponentTarget (Cabal.defaultLibName (pkgSourceId pkg)) WholeComponent
+          [ ComponentTarget Cabal.defaultLibName WholeComponent
           -- if anything needs this pkg, build the library component
           | installedPackageId pkg `Set.member` hasReverseLibDeps
           ]
@@ -2036,11 +2036,11 @@ setupHsBuildArgs pkg =
 
 
 showComponentTarget :: ElaboratedConfiguredPackage -> ComponentTarget -> String
-showComponentTarget _pkg =
+showComponentTarget pkg =
     showBuildTarget . toBuildTarget
   where
     showBuildTarget t =
-      Cabal.showBuildTarget (qlBuildTarget t) t
+      Cabal.showBuildTarget (qlBuildTarget t) (packageId pkg) t
 
     qlBuildTarget Cabal.BuildTargetComponent{} = Cabal.QL2
     qlBuildTarget _                            = Cabal.QL3
@@ -2213,7 +2213,8 @@ packageHashInputs
     }
   where
     -- Obviously the main deps are relevant
-    relevantDeps (CD.ComponentLib _)   = True
+    relevantDeps CD.ComponentLib       = True
+    relevantDeps (CD.ComponentSubLib _) = True
     relevantDeps (CD.ComponentExe _)   = True
     -- Setup deps can affect the Setup.hs behaviour and thus what is built
     relevantDeps  CD.ComponentSetup    = True

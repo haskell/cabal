@@ -4,10 +4,9 @@ module Distribution.Solver.Types.PackageFixedDeps
 
 import           Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import           Distribution.Package
-                   ( Package(..), UnitId(..), pkgName, installedDepends)
+                   ( Package(..), UnitId(..), installedDepends)
 import           Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
-import           Distribution.Text (display)
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
@@ -20,6 +19,5 @@ class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> ComponentDeps [UnitId]
 
 instance PackageFixedDeps InstalledPackageInfo where
-  depends pkg = CD.fromInstalled (display (pkgName (packageId pkg)))
-                                 (installedDepends pkg)
+  depends pkg = CD.fromInstalled (installedDepends pkg)
 
