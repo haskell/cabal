@@ -16,13 +16,15 @@ module Distribution.Text (
   defaultStyle,
   display,
   simpleParse,
+  stdParse,
   ) where
 
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
 import Data.Version (Version(Version))
-import qualified Data.Char as Char (isDigit, isAlphaNum, isSpace)
+import qualified Data.Char as Char
+import Data.List                  (intercalate)
 
 class Text a where
   disp  :: a -> Disp.Doc
@@ -43,6 +45,23 @@ simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str
                        , all Char.isSpace s ] of
   []    -> Nothing
   (p:_) -> Just p
+
+stdParse :: Text ver => (ver -> String -> res) -> Parse.ReadP r res
+stdParse f = do
+  cs   <- Parse.sepBy1 component (Parse.char '-')
+  _    <- Parse.char '-'
+  ver  <- parse
+  let name = intercalate "-" cs
+  return $! f ver (lowercase name)
+  where
+    component = do
+      cs <- Parse.munch1 Char.isAlphaNum
+      if all Char.isDigit cs then Parse.pfail else return cs
+      -- each component must contain an alphabetic character, to avoid
+      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
+lowercase :: String -> String
+lowercase = map Char.toLower
 
 -- -----------------------------------------------------------------------------
 -- Instances for types from the base package

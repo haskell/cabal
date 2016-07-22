@@ -62,12 +62,13 @@ module Distribution.Simple.LocalBuildInfo (
         enabledBenchLBIs,
         enabledComponents,
 
-        -- $buildable_vs_enabled_components
-
+        -- TODO: Don't export me
         ComponentEnabledSpec(..),
         defaultComponentEnabled,
         componentEnabled,
         componentDisabledReason,
+        componentNameEnabled,
+        componentNameDisabledReason,
         ComponentDisabledReason(..),
 
         -- * Installation directories
@@ -77,375 +78,38 @@ module Distribution.Simple.LocalBuildInfo (
         substPathTemplate
   ) where
 
+import Distribution.Types.Component
+import Distribution.Types.ComponentName
+import Distribution.Types.ComponentEnabledSpec
+import Distribution.Types.PackageDescription
+import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Types.LocalBuildInfo
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.Program
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
-import Distribution.Simple.Setup
 import Distribution.Simple.Utils
-import Distribution.Text
-import Distribution.System
 
 import Data.Array ((!))
-import Distribution.Compat.Binary (Binary)
 import Data.Graph
-import Data.List (nub, find, stripPrefix)
+import Data.List (stripPrefix)
 import Data.Maybe
 import Data.Tree  (flatten)
-import GHC.Generics (Generic)
 import System.FilePath
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
 
--- | Data cached after configuration step.  See also
--- 'Distribution.Simple.Setup.ConfigFlags'.
-data LocalBuildInfo = LocalBuildInfo {
-        configFlags   :: ConfigFlags,
-        -- ^ Options passed to the configuration step.
-        -- Needed to re-run configuration when .cabal is out of date
-        flagAssignment :: FlagAssignment,
-        -- ^ The final set of flags which were picked for this package
-        componentEnabledSpec :: ComponentEnabledSpec,
-        -- ^ What components were enabled during configuration, and why.
-        extraConfigArgs     :: [String],
-        -- ^ Extra args on the command line for the configuration step.
-        -- Needed to re-run configuration when .cabal is out of date
-        installDirTemplates :: InstallDirTemplates,
-                -- ^ The installation directories for the various different
-                -- kinds of files
-        --TODO: inplaceDirTemplates :: InstallDirs FilePath
-        compiler      :: Compiler,
-                -- ^ The compiler we're building with
-        hostPlatform  :: Platform,
-                -- ^ The platform we're building for
-        buildDir      :: FilePath,
-                -- ^ Where to build the package.
-        componentsConfigs   :: [(ComponentLocalBuildInfo, [UnitId])],
-                -- ^ All the components to build, ordered by topological
-                -- sort, and with their INTERNAL dependencies over the
-                -- intrapackage dependency graph.
-                -- TODO: this is assumed to be short; otherwise we want
-                -- some sort of ordered map.
-        installedPkgs :: InstalledPackageIndex,
-                -- ^ All the info about the installed packages that the
-                -- current package depends on (directly or indirectly).
-                -- Does NOT include internal dependencies.
-        pkgDescrFile  :: Maybe FilePath,
-                -- ^ the filename containing the .cabal file, if available
-        localPkgDescr :: PackageDescription,
-                -- ^ The resolved package description, that does not contain
-                -- any conditionals.
-        withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
-        withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
-        withVanillaLib:: Bool,  -- ^Whether to build normal libs.
-        withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
-        withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
-        withDynExe    :: Bool,  -- ^Whether to link executables dynamically
-        withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
-        withProfLibDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
-        withProfExeDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
-        withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
-        withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
-        withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
-        splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
-        stripExes     :: Bool,  -- ^Whether to strip executables during install
-        stripLibs     :: Bool,  -- ^Whether to strip libraries during install
-        progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
-        progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
-        relocatable   :: Bool --  ^Whether to build a relocatable package
-  } deriving (Generic, Read, Show)
-
-instance Binary LocalBuildInfo
-
--- $buildable_vs_enabled_components
--- #buildable_vs_enabled_components#
---
--- = Note: Buildable versus enabled components
--- What's the difference between a buildable component (ala
--- 'componentBuildable') versus enabled component (ala
--- 'componentEnabled')?
---
--- A component is __buildable__ if, after resolving flags and
--- conditionals, there is no @buildable: False@ property in it.
--- This is a /static/ property that arises from the
--- Cabal file and the package description flattening; once we have
--- a 'PackageDescription' buildability is known.
---
--- A component is __enabled__ if it is buildable, and the user
--- configured (@./Setup configure@) the package to build it,
--- e.g., using @--enable-tests@ or @--enable-benchmarks@.
--- Once we have a 'LocalBuildInfo', whether or not a component
--- is enabled is known.
---
--- Generally speaking, most Cabal API code cares if a component
--- is enabled, as opposed to buildable. (For example, if you
--- want to run a preprocessor on each component prior to building
--- them, you want to run this on each /enabled/ component.)
-
--- | Describes what components are enabled by user-interaction.
--- See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
---
--- @since 1.26.0.0
-data ComponentEnabledSpec
-    = ComponentEnabledSpec {
-        testsEnabled :: Bool,
-        benchmarksEnabled :: Bool
-   }
-  deriving (Generic, Read, Show)
-instance Binary ComponentEnabledSpec
-
--- | The default set of enabled components.  Historically tests and
--- benchmarks are NOT enabled by default.
---
--- @since 1.26.0.0
-defaultComponentEnabled :: ComponentEnabledSpec
-defaultComponentEnabled = ComponentEnabledSpec False False
-
--- | Is this component enabled?  See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
---
--- @since 1.26.0.0
-componentEnabled :: ComponentEnabledSpec -> Component -> Bool
-componentEnabled enabled = isNothing . componentDisabledReason enabled
-
--- | Is this component disabled, and if so, why?
---
--- @since 1.26.0.0
-componentDisabledReason :: ComponentEnabledSpec -> Component
-                        -> Maybe ComponentDisabledReason
-componentDisabledReason enabled (CTest _)
-    | not (testsEnabled enabled) = Just DisabledAllTests
-componentDisabledReason enabled (CBench _)
-    | not (benchmarksEnabled enabled) = Just DisabledAllBenchmarks
-componentDisabledReason _ _ = Nothing
-
--- | A reason explaining why a component is disabled.
---
--- @since 1.26.0.0
-data ComponentDisabledReason = DisabledComponent
-                             | DisabledAllTests
-                             | DisabledAllBenchmarks
-
--- TODO: Get rid of these functions, as much as possible.  They are
--- a bit useful in some cases, but you should be very careful!
-
--- | Extract the 'ComponentId' from the public library component of a
--- 'LocalBuildInfo' if it exists, or make a fake component ID based
--- on the package ID.
-localComponentId :: LocalBuildInfo -> ComponentId
-localComponentId lbi
-    = case localUnitId lbi of
-        SimpleUnitId cid -> cid
-
--- | Extract the 'UnitId' from the library component of a
--- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
--- the package ID.
-localUnitId :: LocalBuildInfo -> UnitId
-localUnitId lbi
-    = case maybeGetDefaultLibraryLocalBuildInfo lbi of
-        Just LibComponentLocalBuildInfo { componentUnitId = uid } -> uid
-        -- Something fake:
-        _ -> mkLegacyUnitId (package (localPkgDescr lbi))
-
--- | Extract the compatibility package key from the public library component of a
--- 'LocalBuildInfo' if it exists, or make a fake package key based
--- on the package ID.
-localCompatPackageKey :: LocalBuildInfo -> String
-localCompatPackageKey lbi =
-    case maybeGetDefaultLibraryLocalBuildInfo lbi of
-        Just LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
-        -- Something fake:
-        _ -> display (package (localPkgDescr lbi))
-
--- | External package dependencies for the package as a whole. This is the
--- union of the individual 'componentPackageDeps', less any internal deps.
-externalPackageDeps :: LocalBuildInfo -> [(UnitId, PackageId)]
-externalPackageDeps lbi =
-    -- TODO:  what about non-buildable components?
-    nub [ (ipkgid, pkgid)
-        | (clbi,_)      <- componentsConfigs lbi
-        , (ipkgid, pkgid) <- componentPackageDeps clbi
-        , not (internal ipkgid) ]
-  where
-    -- True if this dependency is an internal one (depends on the library
-    -- defined in the same package).
-    internal ipkgid = any ((==ipkgid) . componentUnitId . fst) (componentsConfigs lbi)
-
--- -----------------------------------------------------------------------------
--- Source-representation of buildable components
-
-data Component = CLib   Library
-               | CExe   Executable
-               | CTest  TestSuite
-               | CBench Benchmark
-               deriving (Show, Eq, Read)
-
--- | This gets the 'String' component name. In fact, it is
--- guaranteed to uniquely identify a component, returning
--- @Nothing@ if the 'ComponentName' was for the public
--- library.
-componentNameString :: ComponentName -> Maybe String
-componentNameString CLibName = Nothing
-componentNameString (CSubLibName n) = Just n
-componentNameString (CExeName   n) = Just n
-componentNameString (CTestName  n) = Just n
-componentNameString (CBenchName n) = Just n
-
-showComponentName :: ComponentName -> String
-showComponentName CLibName          = "library"
-showComponentName (CSubLibName name) = "library '" ++ name ++ "'"
-showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
-showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
-showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
-
-foldComponent :: (Library -> a)
-              -> (Executable -> a)
-              -> (TestSuite -> a)
-              -> (Benchmark -> a)
-              -> Component
-              -> a
-foldComponent f _ _ _ (CLib   lib) = f lib
-foldComponent _ f _ _ (CExe   exe) = f exe
-foldComponent _ _ f _ (CTest  tst) = f tst
-foldComponent _ _ _ f (CBench bch) = f bch
-
-componentBuildInfo :: Component -> BuildInfo
-componentBuildInfo =
-  foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
-
-componentName :: Component -> ComponentName
-componentName =
-  foldComponent getLibName
-                (CExeName . exeName)
-                (CTestName . testName)
-                (CBenchName . benchmarkName)
- where
-  getLibName lib = case libName lib of
-                    Nothing -> CLibName
-                    Just n -> CSubLibName n
-
--- | All the components in the package.
---
-pkgComponents :: PackageDescription -> [Component]
-pkgComponents pkg =
-    [ CLib  lib | lib <- allLibraries pkg ]
- ++ [ CExe  exe | exe <- executables pkg ]
- ++ [ CTest tst | tst <- testSuites  pkg ]
- ++ [ CBench bm | bm  <- benchmarks  pkg ]
-
--- | A list of all components in the package that are buildable,
--- i.e., were not marked with @buildable: False@.  This does NOT
--- indicate if we are actually going to build the component,
--- see 'enabledComponents' instead.
---
--- @since 1.26.0.0
---
-pkgBuildableComponents :: PackageDescription -> [Component]
-pkgBuildableComponents = filter componentBuildable . pkgComponents
-
--- | Is a component buildable (i.e., not marked with @buildable: False@)?
--- See also this note in
--- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
---
--- @since 1.26.0.0
---
-componentBuildable :: Component -> Bool
-componentBuildable = buildable . componentBuildInfo
-
-lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
-lookupComponent pkg CLibName = fmap CLib (library pkg)
-lookupComponent pkg (CSubLibName name) =
-    fmap CLib $ find ((Just name ==) . libName) (subLibraries pkg)
-lookupComponent pkg (CExeName name) =
-    fmap CExe $ find ((name ==) . exeName) (executables pkg)
-lookupComponent pkg (CTestName name) =
-    fmap CTest $ find ((name ==) . testName) (testSuites pkg)
-lookupComponent pkg (CBenchName name) =
-    fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
-
-getComponent :: PackageDescription -> ComponentName -> Component
-getComponent pkg cname =
-    case lookupComponent pkg cname of
-      Just cpnt -> cpnt
-      Nothing   -> missingComponent
-  where
-    missingComponent =
-      error $ "internal error: the package description contains no "
-           ++ "component corresponding to " ++ show cname
-
 -- -----------------------------------------------------------------------------
 -- Configuration information of buildable components
 
-data ComponentLocalBuildInfo
-  = LibComponentLocalBuildInfo {
-    -- | It would be very convenient to store the literal Library here,
-    -- but if we do that, it will get serialized (via the Binary)
-    -- instance twice.  So instead we just provide the ComponentName,
-    -- which can be used to find the Component in the
-    -- PackageDescription.  NB: eventually, this will NOT uniquely
-    -- identify the ComponentLocalBuildInfo.
-    componentLocalName :: ComponentName,
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(UnitId, PackageId)],
-    -- | The computed 'UnitId' which uniquely identifies this
-    -- component.
-    componentUnitId :: UnitId,
-    -- | Compatibility "package key" that we pass to older versions of GHC.
-    componentCompatPackageKey :: String,
-    -- | Compatability "package name" that we register this component as.
-    componentCompatPackageName :: PackageName,
-    -- | A list of exposed modules (either defined in this component,
-    -- or reexported from another component.)
-    componentExposedModules :: [Installed.ExposedModule],
-    -- | Convenience field, specifying whether or not this is the
-    -- "public library" that has the same name as the package.
-    componentIsPublic :: Bool,
-    -- | The set of packages that are brought into scope during
-    -- compilation, including a 'ModuleRenaming' which may used
-    -- to hide or rename modules.  This is what gets translated into
-    -- @-package-id@ arguments.  This is a modernized version of
-    -- 'componentPackageDeps', which is kept around for BC purposes.
-    componentIncludes :: [(UnitId, ModuleRenaming)]
-  }
-  | ExeComponentLocalBuildInfo {
-    componentLocalName :: ComponentName,
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)]
-  }
-  | TestComponentLocalBuildInfo {
-    componentLocalName :: ComponentName,
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)]
-  }
-  | BenchComponentLocalBuildInfo {
-    componentLocalName :: ComponentName,
-    componentUnitId :: UnitId,
-    componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)]
-  }
-  deriving (Generic, Read, Show)
-
-instance Binary ComponentLocalBuildInfo
-
 getLocalComponent :: PackageDescription -> ComponentLocalBuildInfo -> Component
 getLocalComponent pkg_descr clbi = getComponent pkg_descr (componentLocalName clbi)
-
-componentComponentId :: ComponentLocalBuildInfo -> ComponentId
-componentComponentId clbi = case componentUnitId clbi of
-                                SimpleUnitId cid -> cid
 
 componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 -- For now, we assume that libraries/executables/test-suites/benchmarks
