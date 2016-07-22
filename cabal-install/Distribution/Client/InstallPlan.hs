@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -36,6 +37,14 @@ module Distribution.Client.InstallPlan (
   preexisting,
   preinstalled,
 
+  -- * Traversal
+  -- $traversal
+  Processing,
+  ready',
+  completed',
+  failed',
+
+  -- * Display
   showPlanIndex,
   showInstallPlan,
 
@@ -71,7 +80,7 @@ import           Distribution.Solver.Types.SolverId
 import Data.List
          ( foldl', intercalate )
 import Data.Maybe
-         ( catMaybes )
+         ( fromMaybe, catMaybes, isJust )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
@@ -79,6 +88,8 @@ import GHC.Generics
 import Control.Exception
          ( assert )
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import           Data.Set (Set)
 import qualified Data.Traversable as T
 
 
@@ -641,3 +652,183 @@ configureInstallPlan solverPlan =
       }
       where
         deps = fmap (map mapDep) (solverPkgDeps spkg)
+
+
+-- ------------------------------------------------------------
+-- * Primitives for traversing plans
+-- ------------------------------------------------------------
+
+-- $traversal
+--
+-- Algorithms to traverse or execute an 'InstallPlan', especially in parallel,
+-- may make use of the 'Processing' type and the associated operations
+-- 'ready', 'completed' and 'failed'.
+--
+-- The 'Processing' type is used to keep track of the state of a traversal and
+-- includes the set of packages that are in the processing state, e.g. in the
+-- process of being installed, plus those that have been completed and those
+-- where processing failed.
+--
+-- Traversal algorithms start with an 'InstallPlan':
+--
+-- * Initially there will be certain packages that can be processed immediately
+--   (since they are configured source packages and have all their dependencies
+--   installed already). The function 'ready' returns these packages plus a
+--   'Processing' state that marks these same packages as being in the
+--   processing state.
+--
+-- * The algorithm must now arrange for these packages to be processed
+--   (possibly in parallel). When a package has completed processing, the
+--   algorithm needs to know which other packages (if any) are now ready to
+--   process as a result. The 'completed' function marks a package as completed
+--   and returns any packages that are newly in the processing state (ie ready
+--   to process), along with the updated 'Processing' state.
+--
+-- * If failure is possible then when processing a package fails, the algorithm
+--   needs to know which other packages have also failed as a result. The
+--   'failed' function marks the given package as failed as well as all the
+--   other packages that depend on the failed package. In addition it returns
+--   the other failed packages.
+
+
+-- | The 'Processing' type is used to keep track of the state of a traversal
+-- and includes the set of packages that are in the processing state, e.g. in
+-- the process of being installed, plus those that have been completed and
+-- those where processing failed.
+--
+data Processing = Processing' !(Set UnitId) !(Set UnitId) !(Set UnitId)
+                            -- processing,   completed,    failed
+
+-- | The packages in the plan that are initially ready to be installed.
+-- That is they are in the configured state and have all their dependencies
+-- installed already.
+--
+-- The result is both the packages that are now ready to be installed and also
+-- a 'Processing' state containing those same packages. The assumption is that
+-- all the packages that are ready will now be processed and so we can consider
+-- them to be in the processing state.
+--
+ready' :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+           HasUnitId srcpkg, PackageFixedDeps srcpkg)
+      => GenericInstallPlan ipkg srcpkg unused1 unused2
+      -> ([GenericReadyPackage srcpkg], Processing)
+ready' plan =
+    assert (processingInvariant plan processing) $
+    (readyPackages, processing)
+  where
+    !processing =
+      Processing'
+        (Set.fromList [ installedUnitId pkg | pkg <- readyPackages ])
+        (Set.fromList [ installedUnitId pkg | PreExisting pkg <- toList plan ])
+        Set.empty
+    readyPackages =
+      [ ReadyPackage pkg
+      | Configured pkg <- toList plan
+      , all isPreExisting (directDeps plan (installedUnitId pkg))
+      ]
+
+    isPreExisting (PreExisting {}) = True
+    isPreExisting _                = False
+
+
+-- | Given a package in the processing state, mark the package as completed
+-- and return any packages that are newly in the processing state (ie ready to
+-- process), along with the updated 'Processing' state.
+--
+completed' :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+               HasUnitId srcpkg, PackageFixedDeps srcpkg)
+          => GenericInstallPlan ipkg srcpkg unused1 unused2
+          -> Processing -> UnitId
+          -> ([GenericReadyPackage srcpkg], Processing)
+completed' plan (Processing' processingSet completedSet failedSet) pkgid =
+    assert (pkgid `Set.member` processingSet) $
+    assert (processingInvariant plan processing') $
+
+    ( map asReadyPackage newlyReady
+    , processing' )
+  where
+    completedSet'  = Set.insert pkgid completedSet
+
+    -- each direct reverse dep where all direct deps are completed
+    newlyReady     = [ dep
+                     | dep <- revDirectDeps plan pkgid
+                     , all ((`Set.member` completedSet') . installedUnitId)
+                           (directDeps plan (installedUnitId dep))
+                     ]
+
+    processingSet' = foldl' (flip Set.insert)
+                            (Set.delete pkgid processingSet)
+                            (map installedUnitId newlyReady)
+    processing'    = Processing' processingSet' completedSet' failedSet
+
+    asReadyPackage (Configured pkg) = ReadyPackage pkg
+    asReadyPackage _ = error "InstallPlan.completed: internal error"
+
+failed' :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+            HasUnitId srcpkg, PackageFixedDeps srcpkg)
+       => GenericInstallPlan ipkg srcpkg unused1 unused2
+       -> Processing -> UnitId
+       -> ([srcpkg], Processing)
+failed' plan (Processing' processingSet completedSet failedSet) pkgid =
+    assert (pkgid `Set.member` processingSet) $
+    assert (all (`Set.notMember` processingSet) (tail newlyFailedIds)) $
+    assert (all (`Set.notMember` completedSet)  (tail newlyFailedIds)) $
+    assert (all (`Set.notMember` failedSet)     (tail newlyFailedIds)) $
+    assert (processingInvariant plan processing') $
+
+    ( map asConfiguredPackage (tail newlyFailed)
+    , processing' )
+  where
+    processingSet' = Set.delete pkgid processingSet
+    failedSet'     = failedSet `Set.union` Set.fromList newlyFailedIds
+    newlyFailedIds = map installedUnitId newlyFailed
+    newlyFailed    = fromMaybe (internalError "package not in graph")
+                   $ Graph.revClosure (planIndex plan) [pkgid]
+    processing'    = Processing' processingSet' completedSet failedSet'
+
+    asConfiguredPackage (Configured pkg) = pkg
+    asConfiguredPackage _ = internalError "not in configured state"
+
+directDeps, revDirectDeps
+  :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+      HasUnitId srcpkg, PackageFixedDeps srcpkg)
+  => GenericInstallPlan ipkg srcpkg iresult ifailure
+  -> UnitId
+  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+
+directDeps plan pkgid =
+  case Graph.neighbors (planIndex plan) pkgid of
+    Just deps -> deps
+    Nothing   -> internalError "directDeps: package not in graph"
+
+revDirectDeps plan pkgid =
+  case Graph.revNeighbors (planIndex plan) pkgid of
+    Just deps -> deps
+    Nothing   -> internalError "directDeps: package not in graph"
+
+processingInvariant :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+                        HasUnitId srcpkg, PackageFixedDeps srcpkg)
+                    => GenericInstallPlan ipkg srcpkg unused1 unused2
+                    -> Processing -> Bool
+processingInvariant plan (Processing' processingSet completedSet failedSet) =
+    all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList processingSet)
+ && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList completedSet)
+ && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList failedSet)
+ && noIntersection processingSet completedSet
+ && noIntersection processingSet failedSet
+ && noIntersection failedSet     completedSet
+ && noIntersection processingClosure completedSet
+ && noIntersection processingClosure failedSet
+ && and [ case Graph.lookup pkgid (planIndex plan) of
+            Just (Configured  _) -> True
+            Just (PreExisting _) -> False
+            _                    -> False
+        | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
+  where
+    processingClosure = Set.fromList
+                      . map installedUnitId
+                      . fromMaybe (internalError "processingClosure")
+                      . Graph.revClosure (planIndex plan)
+                      . Set.toList
+                      $ processingSet
+    noIntersection a b = Set.null (Set.intersection a b)
