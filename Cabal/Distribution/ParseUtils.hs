@@ -49,6 +49,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
 import Distribution.Simple.Utils
+import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
 import Text.PrettyPrint hiding (braces)
@@ -64,7 +65,6 @@ import Data.List (sortBy)
 -- -----------------------------------------------------------------------------
 
 type LineNo    = Int
-type Separator = ([Doc] -> Doc)
 
 data PError = AmbiguousParse String LineNo
             | NoParse String LineNo
@@ -712,39 +712,3 @@ parseQuoted = between (ReadP.char '"') (ReadP.char '"')
 
 parseFreeText :: ReadP.ReadP s String
 parseFreeText = ReadP.munch (const True)
-
--- --------------------------------------------
--- ** Pretty printing
-
-showFilePath :: FilePath -> Doc
-showFilePath "" = empty
-showFilePath x  = showToken x
-
-showToken :: String -> Doc
-showToken str
- | not (any dodgy str) &&
-   not (null str)       = text str
- | otherwise            = text (show str)
-  where dodgy c = isSpace c || c == ','
-
-showTestedWith :: (CompilerFlavor,VersionRange) -> Doc
-showTestedWith (compiler, version) = text (show compiler) <+> disp version
-
--- | Pretty-print free-format text, ensuring that it is vertically aligned,
--- and with blank lines replaced by dots for correct re-parsing.
-showFreeText :: String -> Doc
-showFreeText "" = empty
-showFreeText s  = vcat [text (if null l then "." else l) | l <- lines_ s]
-
--- | 'lines_' breaks a string up into a list of strings at newline
--- characters.  The resulting strings do not contain newlines.
-lines_                   :: String -> [String]
-lines_ []                =  [""]
-lines_ s                 =  let (l, s') = break (== '\n') s
-                            in  l : case s' of
-                                        []    -> []
-                                        (_:s'') -> lines_ s''
-
--- | the indentation used for pretty printing
-indentWith :: Int
-indentWith = 4

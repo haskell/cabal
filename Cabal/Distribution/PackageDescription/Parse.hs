@@ -18,9 +18,7 @@
 module Distribution.PackageDescription.Parse (
         -- * Package descriptions
         readPackageDescription,
-        writePackageDescription,
         parsePackageDescription,
-        showPackageDescription,
 
         -- ** Parsing
         ParseResult(..),
@@ -30,8 +28,6 @@ module Distribution.PackageDescription.Parse (
         -- ** Supplementary build information
         readHookedBuildInfo,
         parseHookedBuildInfo,
-        writeHookedBuildInfo,
-        showHookedBuildInfo,
 
         pkgDescrFieldDescrs,
         libFieldDescrs,
@@ -65,9 +61,10 @@ import Control.Applicative (Applicative(..))
 #endif
 import Control.Arrow    (first)
 import System.Directory (doesFileExist)
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import Text.PrettyPrint
+       (empty, vcat, ($$), (<+>), text, render,
+        comma, fsep, nest, ($+$), punctuate)
 
 
 -- -----------------------------------------------------------------------------
@@ -1247,53 +1244,6 @@ parseHookedBuildInfo inp = do
     parseStanza _ [] = syntaxError 0 "error in parsing buildinfo file. Expected stanza"
 
     parseBI st = parseFields binfoFieldDescrs storeXFieldsBI emptyBuildInfo st
-
--- ---------------------------------------------------------------------------
--- Pretty printing
-
-writePackageDescription :: FilePath -> PackageDescription -> IO ()
-writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
-
---TODO: make this use section syntax
--- add equivalent for GenericPackageDescription
-showPackageDescription :: PackageDescription -> String
-showPackageDescription pkg = render $
-     ppPackage pkg
-  $$ ppCustomFields (customFieldsPD pkg)
-  $$ (case library pkg of
-        Nothing -> empty
-        Just lib -> ppLibrary lib)
-  $$ vcat [ space $$ ppLibrary lib | lib <- subLibraries pkg ]
-  $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
-  where
-    ppPackage    = ppFields pkgDescrFieldDescrs
-    ppLibrary    = ppFields libFieldDescrs
-    ppExecutable = ppFields executableFieldDescrs
-
-ppCustomFields :: [(String,String)] -> Doc
-ppCustomFields flds = vcat (map ppCustomField flds)
-
-ppCustomField :: (String,String) -> Doc
-ppCustomField (name,val) = text name <> colon <+> showFreeText val
-
-writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
-                             . showHookedBuildInfo
-
-showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo bis = render $
-     vcat [    space
-            $$ ppName name
-            $$ ppBuildInfo bi
-          | (name, bi) <- bis ]
-  where
-    ppName CLibName = text "library"
-    ppName (CSubLibName name) = text "library:" <+> text name
-    ppName (CExeName name) = text "executable:" <+> text name
-    ppName (CTestName name) = text "test-suite:" <+> text name
-    ppName (CBenchName name) = text "benchmark:" <+> text name
-    ppBuildInfo bi = ppFields binfoFieldDescrs bi
-                  $$ ppCustomFields (customFieldsBI bi)
 
 -- replace all tabs used as indentation with whitespace, also return where
 -- tabs were found
