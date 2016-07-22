@@ -291,6 +291,7 @@ library
     Distribution.PackageDescription.PrettyPrint
     Distribution.PackageDescription.Utils
     Distribution.ParseUtils
+    Distribution.PrettyUtils
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench
