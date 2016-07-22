@@ -68,6 +68,8 @@ module Distribution.Simple.LocalBuildInfo (
         defaultComponentEnabled,
         componentEnabled,
         componentDisabledReason,
+        componentNameEnabled,
+        componentNameDisabledReason,
         ComponentDisabledReason(..),
 
         -- * Installation directories
@@ -216,16 +218,31 @@ defaultComponentEnabled = ComponentEnabledSpec False False
 componentEnabled :: ComponentEnabledSpec -> Component -> Bool
 componentEnabled enabled = isNothing . componentDisabledReason enabled
 
+-- | Is this component name enabled?  See also this note in
+-- "Distribution.Simple.LocalBuildInfo#buildable_vs_enabled_components".
+--
+-- @since 1.26.0.0
+componentNameEnabled :: ComponentEnabledSpec -> ComponentName -> Bool
+componentNameEnabled enabled = isNothing . componentNameDisabledReason enabled
+
 -- | Is this component disabled, and if so, why?
 --
 -- @since 1.26.0.0
 componentDisabledReason :: ComponentEnabledSpec -> Component
                         -> Maybe ComponentDisabledReason
-componentDisabledReason enabled (CTest _)
+componentDisabledReason enabled comp
+    = componentNameDisabledReason enabled (componentName comp)
+
+-- | Is this component name disabled, and if so, why?
+--
+-- @since 1.26.0.0
+componentNameDisabledReason :: ComponentEnabledSpec -> ComponentName
+                            -> Maybe ComponentDisabledReason
+componentNameDisabledReason enabled (CTestName _)
     | not (testsEnabled enabled) = Just DisabledAllTests
-componentDisabledReason enabled (CBench _)
+componentNameDisabledReason enabled (CBenchName _)
     | not (benchmarksEnabled enabled) = Just DisabledAllBenchmarks
-componentDisabledReason _ _ = Nothing
+componentNameDisabledReason _ _ = Nothing
 
 -- | A reason explaining why a component is disabled.
 --
