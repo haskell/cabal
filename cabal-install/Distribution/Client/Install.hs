@@ -217,9 +217,12 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
   userTargets0 = do
 
     unless (installRootCmd installFlags == Cabal.NoFlag) $
-        die "--root-cmd is no longer supported, see https://github.com/haskell/cabal/issues/3353"
+        die $ "--root-cmd is no longer supported, "
+        ++ "see https://github.com/haskell/cabal/issues/3353"
     unless (fromFlag (configUserInstall configFlags)) $
-        warn verbosity "the --global flag is deprecated--it is generally considered a bad idea to install packages into the global store"
+        warn verbosity $ "the --global flag is deprecated -- "
+        ++ "it is generally considered a bad idea to install packages "
+        ++ "into the global store"
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
     planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
@@ -443,7 +446,8 @@ planPackages comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
     onlyDeps         = fromFlag (installOnlyDeps          installFlags)
-    allowNewer       = maybe RelaxDepsNone unAllowNewer (configAllowNewer configFlags)
+    allowNewer       = maybe RelaxDepsNone unAllowNewer
+                       (configAllowNewer configFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg
@@ -710,7 +714,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     nonDefaultFlags cpkg =
       let defaultAssignment =
             toFlagAssignment
-             (genPackageFlags (SourcePackage.packageDescription $ confPkgSource cpkg))
+             (genPackageFlags (SourcePackage.packageDescription $
+                               confPkgSource cpkg))
       in  confPkgFlags cpkg \\ defaultAssignment
 
     showStanzas :: [OptionalStanza] -> String
@@ -1489,7 +1494,8 @@ installUnpackedPackage verbosity installLock numJobs
             ipkgs <- genPkgConfs mLogPath
             let ipkgs' = case ipkgs of
                             [ipkg] -> [ipkg { Installed.installedUnitId = ipid }]
-                            _ -> assert (any ((== ipid) . Installed.installedUnitId)
+                            _ -> assert (any ((== ipid)
+                                              . Installed.installedUnitId)
                                              ipkgs) ipkgs
             let packageDBs = interpretPackageDbFlags
                                 (fromFlag (configUserInstall configFlags))
