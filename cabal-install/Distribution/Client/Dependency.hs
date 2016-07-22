@@ -23,11 +23,9 @@ module Distribution.Client.Dependency (
     resolveWithoutDependencies,
 
     -- * Constructing resolver policies
-    DepResolverParams(..),
     PackageConstraint(..),
     PackagesPreferenceDefault(..),
     PackagePreference(..),
-    InstalledPreference(..),
 
     -- ** Standard policy
     basicInstallPolicy,
@@ -38,8 +36,6 @@ module Distribution.Client.Dependency (
     applySandboxInstallPolicy,
 
     -- ** Extra policy options
-    dontUpgradeNonUpgradeablePackages,
-    hideBrokenInstalledPackages,
     upgradeDependencies,
     reinstallTargets,
 
@@ -56,10 +52,6 @@ module Distribution.Client.Dependency (
     setMaxBackjumps,
     setEnableBackjumping,
     setGoalOrder,
-    addSourcePackages,
-    hideInstalledPackagesSpecificByUnitId,
-    hideInstalledPackagesSpecificBySourcePackageId,
-    hideInstalledPackagesAllVersions,
     removeLowerBounds,
     removeUpperBounds,
     addDefaultSetupDependencies,
@@ -80,11 +72,10 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
-import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
-         , UnitId, Dependency(Dependency))
+         , Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import Distribution.PackageDescription.Configuration
@@ -363,17 +354,6 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecificByUnitId :: [UnitId]
-                                                     -> DepResolverParams
-                                                     -> DepResolverParams
-hideInstalledPackagesSpecificByUnitId pkgids params =
-    --TODO: this should work using exclude constraints instead
-    params {
-      depResolverInstalledPkgIndex =
-        foldl' (flip InstalledPackageIndex.deleteUnitId)
-               (depResolverInstalledPkgIndex params) pkgids
-    }
-
 hideInstalledPackagesSpecificBySourcePackageId :: [PackageId]
                                                   -> DepResolverParams
                                                   -> DepResolverParams
@@ -395,17 +375,6 @@ hideInstalledPackagesAllVersions pkgnames params =
                (depResolverInstalledPkgIndex params) pkgnames
     }
 
-
-hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
-hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecificByUnitId pkgids params
-  where
-    pkgids = map Installed.installedUnitId
-           . InstalledPackageIndex.reverseDependencyClosure
-                            (depResolverInstalledPkgIndex params)
-           . map (Installed.installedUnitId . fst)
-           . InstalledPackageIndex.brokenPackages
-           $ depResolverInstalledPkgIndex params
 
 -- | Remove upper bounds in dependencies using the policy specified by the
 -- 'AllowNewer' argument (all/some/none).
@@ -660,15 +629,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       strFlags
       maxBkjumps
       enableBj
-      order) = dontUpgradeNonUpgradeablePackages
-                      -- TODO:
-                      -- The modular solver can properly deal with broken
-                      -- packages and won't select them. So the
-                      -- 'hideBrokenInstalledPackages' function should be moved
-                      -- into a module that is specific to the top-down solver.
-                      . (if solver /= Modular then hideBrokenInstalledPackages
-                                              else id)
-                      $ params
+      order) = dontUpgradeNonUpgradeablePackages params
 
     preferences = interpretPackagesPreference
                     (Set.fromList targets) defpref prefs
