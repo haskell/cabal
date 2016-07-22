@@ -14,6 +14,8 @@ import Data.Graph
 import Data.Array hiding (index)
 import Data.List
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Set (Set)
 import Control.Monad
 import Test.QuickCheck
 
@@ -25,6 +27,7 @@ tests :: [TestTree]
 tests =
   [ testProperty "topologicalOrder"        prop_topologicalOrder
   , testProperty "reverseTopologicalOrder" prop_reverseTopologicalOrder
+  , testProperty "executionOrder"          prop_executionOrder
   ]
 
 prop_topologicalOrder :: TestInstallPlan -> Bool
@@ -41,6 +44,12 @@ prop_reverseTopologicalOrder (TestInstallPlan plan graph toVertex _) =
       (map (toVertex . installedUnitId)
            (InstallPlan.reverseTopologicalOrder plan))
 
+prop_executionOrder :: TestInstallPlan -> Bool
+prop_executionOrder (TestInstallPlan plan graph toVertex _) =
+    isReversePartialTopologicalOrder graph (map toVertex pkgids)
+ && allConfiguredPackages plan == Set.fromList pkgids
+  where
+    pkgids = map installedUnitId (InstallPlan.executionOrder plan)
 
 --------------------------
 -- Property helper utils
@@ -61,6 +70,23 @@ isReverseTopologicalOrder g vs =
     and [ ixs ! u > ixs ! v
         | let ixs = array (bounds g) (zip vs [0::Int ..])
         , (u,v) <- edges g ]
+
+isReversePartialTopologicalOrder :: Graph -> [Vertex] -> Bool
+isReversePartialTopologicalOrder g vs =
+    and [ case (ixs ! u, ixs ! v) of
+            (Just ixu, Just ixv) -> ixu > ixv
+            _                    -> True
+        | let ixs = array (bounds g)
+                          (zip (range (bounds g)) (repeat Nothing) ++ 
+                           zip vs (map Just [0::Int ..]))
+        , (u,v) <- edges g ]
+
+allConfiguredPackages :: HasUnitId srcpkg
+                      => GenericInstallPlan ipkg srcpkg unused1 unused2 -> Set UnitId
+allConfiguredPackages plan =
+    Set.fromList
+      [ installedUnitId pkg
+      | InstallPlan.Configured pkg <- InstallPlan.toList plan ]
 
 
 --------------------

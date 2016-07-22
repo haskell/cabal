@@ -37,6 +37,8 @@ module Distribution.Client.InstallPlan (
   preinstalled,
 
   -- * Traversal
+  executionOrder,
+  -- ** Traversal helpers
   -- $traversal
   Processing,
   ready',
@@ -820,6 +822,14 @@ topologicalOrder plan =
   $ planGraph plan
 
 
+-- | Return all the packages in the 'InstallPlan' in reverse topological order.
+-- That is, for each package, all depencencies of the package appear first.
+--
+-- Compared to 'executionOrder', this function returns all the installed and
+-- source packages rather than just the source ones. Also, while both this
+-- and 'executionOrder' produce reverse topological orderings of the package
+-- dependency graph, it is not necessarily exactly the same order.
+--
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
 reverseTopologicalOrder plan =
@@ -988,3 +998,28 @@ processingInvariant plan (Processing' processingSet completedSet failedSet) =
                   . Graph.dfs (planGraphRev plan)
                   . IntSet.toList
     noIntersection a b = IntSet.null (IntSet.intersection a b)
+
+
+-- | Flatten an 'InstallPlan', producing the sequence of source packages in
+-- the order in which they would be processed when the plan is executed. This
+-- can be used for simultations or presenting execution dry-runs.
+--
+-- It is guaranteed to give the same order as using 'execute' (with a serial
+-- in-order 'JobControl'), which is a reverse topological orderings of the
+-- source packages in the dependency graph, albeit not necessarily exactly the
+-- same ordering as that produced by 'reverseTopologicalOrder'.
+--
+executionOrder :: (HasUnitId ipkg, HasUnitId srcpkg, PackageFixedDeps srcpkg)
+        => GenericInstallPlan ipkg srcpkg unused1 unused2
+        -> [GenericReadyPackage srcpkg]
+executionOrder plan =
+    let (newpkgs, processing) = ready' plan
+     in tryNewTasks processing newpkgs
+  where
+    tryNewTasks _processing []       = []
+    tryNewTasks  processing (p:todo) = waitForTasks processing p todo
+
+    waitForTasks processing p todo =
+        p : tryNewTasks processing' (todo++nextpkgs)
+      where
+        (nextpkgs, processing') = completed' plan processing (installedUnitId p)
