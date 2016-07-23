@@ -178,16 +178,23 @@ checkSanity pkg =
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
+  , check (any isNothing (map libName $ subLibraries pkg)) $
+      PackageBuildImpossible $ "Found one or more unnamed internal libraries. "
+        ++ "Only the non-internal library can have the same name as the package."
+
   , check (not (null duplicateNames)) $
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
-        ++ ". The name of every library, executable, test suite, and benchmark section in"
+        ++ ". The name of every library, executable, test suite,"
+        ++ " and benchmark section in"
         ++ " the package must be unique."
 
   -- NB: but it's OK for executables to have the same name!
   , check (any (== display (packageName pkg)) subLibNames) $
-      PackageBuildImpossible $ "Illegal internal library name " ++ display (packageName pkg)
-        ++ ". Internal libraries cannot have the same name as the package.  Maybe"
-        ++ " you wanted a non-internal library?  If so, rewrite the section stanza"
+      PackageBuildImpossible $ "Illegal internal library name "
+        ++ display (packageName pkg)
+        ++ ". Internal libraries cannot have the same name as the package."
+        ++ " Maybe you wanted a non-internal library?"
+        ++ " If so, rewrite the section stanza"
         ++ " from 'library: '" ++ display (packageName pkg) ++ "' to 'library'."
   ]
   --TODO: check for name clashes case insensitively: windows file systems cannot
@@ -716,7 +723,8 @@ checkGhcOptions pkg =
 
   where
     all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
-    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo) (allLibraries pkg)
+    lib_ghc_options    = concatMap (get_ghc_options . libBuildInfo)
+                         (allLibraries pkg)
     get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
                          ++ hcSharedOptions GHC bi
 
@@ -805,7 +813,8 @@ checkCPPOptions pkg =
   where all_cppOptions = [ opts | bi <- allBuildInfo pkg
                                 , opts <- cppOptions bi ]
 
-checkAlternatives :: String -> String -> [(String, String)] -> Maybe PackageCheck
+checkAlternatives :: String -> String -> [(String, String)]
+                  -> Maybe PackageCheck
 checkAlternatives badField goodField flags =
   check (not (null badFlags)) $
     PackageBuildWarning $
@@ -1306,9 +1315,11 @@ checkPackageVersions pkg =
     -- open upper bound. To get a typical configuration we finalise
     -- using no package index and the current platform.
     finalised = finalizePD
-                              [] defaultComponentEnabled (const True) buildPlatform
+                              [] defaultComponentEnabled (const True)
+                              buildPlatform
                               (unknownCompilerInfo
-                                (CompilerId buildCompilerFlavor (Version [] [])) NoAbiTag)
+                                (CompilerId buildCompilerFlavor (Version [] []))
+                                NoAbiTag)
                               [] pkg
     baseDependency = case finalised of
       Right (pkg', _) | not (null baseDeps) ->
@@ -1509,7 +1520,8 @@ checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg
       doesFileExist        = System.doesFileExist                  . relative,
       doesDirectoryExist   = System.doesDirectoryExist             . relative,
       getDirectoryContents = System.Directory.getDirectoryContents . relative,
-      getFileContents      = \f -> openBinaryFile (relative f) ReadMode >>= hGetContents
+      getFileContents      = \f -> openBinaryFile (relative f) ReadMode
+                                   >>= hGetContents
     }
     relative path = root </> path
 
@@ -1552,9 +1564,11 @@ checkCabalFileBOM ops = do
   epdfile <- findPackageDesc ops
   case epdfile of
     Left pc      -> return $ Just pc
-    Right pdfile -> (flip check pc . startsWithBOM . fromUTF8) `liftM` (getFileContents ops pdfile)
-                       where pc = PackageDistInexcusable $
-                                    pdfile ++ " starts with an Unicode byte order mark (BOM). This may cause problems with older cabal versions."
+    Right pdfile -> (flip check pc . startsWithBOM . fromUTF8)
+                    `liftM` (getFileContents ops pdfile)
+      where pc = PackageDistInexcusable $
+                 pdfile ++ " starts with an Unicode byte order mark (BOM)."
+                 ++ " This may cause problems with older cabal versions."
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.  Like 'Distribution.Simple.Utils.findPackageDesc',
@@ -1574,7 +1588,8 @@ findPackageDesc ops
       case cabalFiles of
         []          -> return (Left $ PackageBuildImpossible noDesc)
         [cabalFile] -> return (Right cabalFile)
-        multiple    -> return (Left $ PackageBuildImpossible $ multiDesc multiple)
+        multiple    -> return (Left $ PackageBuildImpossible
+                               $ multiDesc multiple)
 
   where
     noDesc :: String
