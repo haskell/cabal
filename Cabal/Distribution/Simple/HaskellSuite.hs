@@ -165,7 +165,9 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   runDbProgram verbosity haskellSuiteProgram conf $
     [ "compile", "--build-dir", odir ] ++
     concat [ ["-i", d] | d <- srcDirs ] ++
-    concat [ ["-I", d] | d <- [autogenModulesDir lbi clbi, odir] ++ includeDirs bi ] ++
+    concat [ ["-I", d] | d <- [autogenComponentModulesDir lbi clbi
+                              ,autogenPackageModulesDir lbi
+                              ,odir] ++ includeDirs bi ] ++
     [ packageDbOpt pkgDb | pkgDb <- dbStack ] ++
     [ "--package-name", display pkgid ] ++
     concat [ ["--package-id", display ipkgid ]

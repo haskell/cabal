@@ -576,11 +576,11 @@ writeAutogenFiles :: Verbosity
                   -> ComponentLocalBuildInfo
                   -> IO ()
 writeAutogenFiles verbosity pkg lbi clbi = do
-  createDirectoryIfMissingVerbose verbosity True (autogenModulesDir lbi clbi)
+  createDirectoryIfMissingVerbose verbosity True (autogenComponentModulesDir lbi clbi)
 
-  let pathsModulePath = autogenModulesDir lbi clbi
+  let pathsModulePath = autogenComponentModulesDir lbi clbi
                     </> ModuleName.toFilePath (autogenModuleName pkg) <.> "hs"
   rewriteFile pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
 
-  let cppHeaderPath = autogenModulesDir lbi clbi </> cppHeaderName
+  let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
   rewriteFile cppHeaderPath (Build.Macros.generate pkg lbi clbi)

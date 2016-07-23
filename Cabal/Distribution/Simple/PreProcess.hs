@@ -146,13 +146,15 @@ preprocessComponent :: PackageDescription
                     -> IO ()
 preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = hsSourceDirs bi ++ [autogenModulesDir lbi clbi]
+    let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+                                  ,autogenPackageModulesDir lbi]
     setupMessage verbosity "Preprocessing library" (packageId pd)
     forM_ (map ModuleName.toFilePath $ libModules lib) $
       pre dirs (buildDir lbi) (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
-        dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi clbi]
+        dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+                                    ,autogenPackageModulesDir lbi]
     setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
     forM_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
@@ -192,7 +194,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
                          (benchmarkModules bm)
     preProcessComponent bi modules exePath dir = do
         let biHandlers = localHandlers bi
-            sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi clbi ]
+            sourceDirs = hsSourceDirs bi ++ [ autogenComponentModulesDir lbi clbi
+                                            , autogenPackageModulesDir lbi ]
         sequence_ [ preprocessFile sourceDirs dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
@@ -343,7 +346,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
           -- double-unlitted. In the future we might switch to
           -- using cpphs --unlit instead.
        ++ (if xHs version then ["-x", "hs"] else [])
-       ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi clbi </> cppHeaderName) ]
+       ++ [ "-optP-include", "-optP"++ (autogenComponentModulesDir lbi clbi </> cppHeaderName) ]
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
@@ -359,7 +362,7 @@ ppCpphs extraArgs _bi lbi clbi =
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
         : (if cpphsVersion >= Version [1,6] []
-             then ["--include="++ (autogenModulesDir lbi clbi </> cppHeaderName)]
+             then ["--include="++ (autogenComponentModulesDir lbi clbi </> cppHeaderName)]
              else [])
         ++ extraArgs
   }
@@ -402,8 +405,9 @@ ppHsc2hs bi lbi clbi =
        ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                       ++ PD.cppOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-
-               [ "-I" ++ autogenModulesDir lbi clbi,
-                 "-include", autogenModulesDir lbi clbi </> cppHeaderName ] ]
+               [ "-I" ++ autogenComponentModulesDir lbi clbi,
+                 "-I" ++ autogenPackageModulesDir lbi,
+                 "-include", autogenComponentModulesDir lbi clbi </> cppHeaderName ] ]
        ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
        ++ [ "--lflag=-Wl,-R," ++ opt | isELF
                                 , opt <- PD.extraLibDirs bi ]
@@ -467,7 +471,7 @@ ppC2hs bi lbi clbi =
           -- Options from the current package:
            [ "--cpp=" ++ programPath gccProg, "--cppopts=-E" ]
         ++ [ "--cppopts=" ++ opt | opt <- getCppOptions bi lbi ]
-        ++ [ "--cppopts=-include" ++ (autogenModulesDir lbi clbi </> cppHeaderName) ]
+        ++ [ "--cppopts=-include" ++ (autogenComponentModulesDir lbi clbi </> cppHeaderName) ]
         ++ [ "--include=" ++ outBaseDir ]
 
           -- Options from dependent packages
