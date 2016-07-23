@@ -40,6 +40,8 @@ module Distribution.Solver.Modular.PSQ
 -- (inefficiently implemented) lookup, because I think that queue-based
 -- operations and sorting turn out to be more efficiency-critical in practice.
 
+import Distribution.Solver.Modular.Degree
+
 import Control.Arrow (first, second)
 
 import qualified Data.Foldable as F
@@ -172,26 +174,6 @@ filter p (PSQ xs) = PSQ (S.filter (p . snd) xs)
 
 length :: PSQ k a -> Int
 length (PSQ xs) = S.length xs
-
--- | Approximation of the branching degree.
---
--- This is designed for computing the branching degree of a goal choice
--- node. If the degree is 0 or 1, it is always good to take that goal,
--- because we can either abort immediately, or have no other choice anyway.
---
--- So we do not actually want to compute the full degree (which is
--- somewhat costly) in cases where we have such an easy choice.
---
-data Degree = ZeroOrOne | Two | Other
-  deriving (Show, Eq)
-
-instance Ord Degree where
-  compare ZeroOrOne _         = LT -- lazy approximation
-  compare _         ZeroOrOne = GT -- approximation
-  compare Two       Two       = EQ
-  compare Two       Other     = LT
-  compare Other     Two       = GT
-  compare Other     Other     = EQ
 
 degree :: PSQ k a -> Degree
 degree (PSQ [])     = ZeroOrOne

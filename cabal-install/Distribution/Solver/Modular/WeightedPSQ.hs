@@ -23,7 +23,7 @@ import Data.Ord (comparing)
 import qualified Data.Traversable as T
 import Prelude hiding (filter, length, lookup)
 
-import Distribution.Solver.Modular.PSQ (Degree(..))
+import Distribution.Solver.Modular.Degree
 
 newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
   deriving (Eq, Show, Functor, F.Foldable, T.Traversable)

@@ -21,6 +21,7 @@ import Data.Foldable
 import Data.Traversable
 import Prelude hiding (foldr, mapM, sequence)
 
+import Distribution.Solver.Modular.Degree
 import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
@@ -156,7 +157,7 @@ choices (Done       _         ) = 1
 choices (Fail       _ _       ) = 0
 
 -- | Variant of 'choices' that only approximates the number of choices.
-dchoices :: Tree a -> P.Degree
+dchoices :: Tree a -> Degree
 dchoices (PChoice    _ _     ts) = W.degree (W.filter active ts)
 dchoices (FChoice    _ _ _ _ ts) = W.degree (W.filter active ts)
 dchoices (SChoice    _ _ _   ts) = W.degree (W.filter active ts)
