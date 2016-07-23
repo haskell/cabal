@@ -455,8 +455,8 @@ checkFields pkg =
       PackageDistSuspicious $
            "The 'description' field should be longer than the 'synopsis' "
         ++ "field. "
-        ++ "It's important to provide an informative 'description' to allow "
-        ++ "Haskell programmer who never heard about your package to "
+        ++ "It's useful to provide an informative 'description' to allow "
+        ++ "Haskell programmers who have never heard about your package to "
         ++ "understand the purpose of your package. "
         ++ "The 'description' field content is typically shown by tooling "
         ++ "(e.g. 'cabal info', Haddock, Hackage) below the 'synopsis' which "
