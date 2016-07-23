@@ -14,7 +14,7 @@
 module Distribution.Simple.BuildPaths (
     defaultDistPref, srcPref,
     haddockDirName, hscolourPref, haddockPref,
-    autogenModulesDir,
+    autogenComponentModulesDir,
 
     autogenModuleName,
     cppHeaderName,
@@ -63,8 +63,8 @@ haddockPref haddockTarget distPref pkg_descr
     = distPref </> "doc" </> "html" </> haddockDirName haddockTarget pkg_descr
 
 -- |The directory in which we put auto-generated modules
-autogenModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
-autogenModulesDir lbi clbi = componentBuildDir lbi clbi </> "autogen"
+autogenComponentModulesDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
+autogenComponentModulesDir lbi clbi = componentBuildDir lbi clbi </> "autogen"
 -- NB: Look at 'checkForeignDeps' for where a simplified version of this
 -- has been copy-pasted.
 

@@ -730,7 +730,7 @@ getLibSourceFiles lbi lib clbi = getSourceFiles searchpaths modules
   where
     bi               = libBuildInfo lib
     modules          = PD.exposedModules lib ++ otherModules bi
-    searchpaths      = autogenModulesDir lbi clbi : buildDir lbi : hsSourceDirs bi
+    searchpaths      = autogenComponentModulesDir lbi clbi : buildDir lbi : hsSourceDirs bi
 
 getExeSourceFiles :: LocalBuildInfo
                      -> Executable
@@ -743,7 +743,7 @@ getExeSourceFiles lbi exe clbi = do
   where
     bi          = buildInfo exe
     modules     = otherModules bi
-    searchpaths = autogenModulesDir lbi clbi : exeBuildDir lbi exe : hsSourceDirs bi
+    searchpaths = autogenComponentModulesDir lbi clbi : exeBuildDir lbi exe : hsSourceDirs bi
 
 getSourceFiles :: [FilePath]
                   -> [ModuleName.ModuleName]
