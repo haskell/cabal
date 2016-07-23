@@ -249,7 +249,9 @@ componentCcGhcOptions _verbosity _implInfo lbi bi clbi odir filename =
       ghcOptMode           = toFlag GhcModeCompile,
       ghcOptInputFiles     = toNubListR [filename],
 
-      ghcOptCppIncludePath = toNubListR $ [autogenComponentModulesDir lbi clbi, odir]
+      ghcOptCppIncludePath = toNubListR $ [autogenComponentModulesDir lbi clbi
+                                          ,autogenPackageModulesDir lbi
+                                          ,odir]
                                           ++ PD.includeDirs bi,
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
@@ -284,8 +286,11 @@ componentGhcOptions _verbosity lbi bi clbi odir =
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
       ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)
-                                           ++ [autogenComponentModulesDir lbi clbi],
-      ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi, odir]
+                                           ++ [autogenComponentModulesDir lbi clbi]
+                                           ++ [autogenPackageModulesDir lbi],
+      ghcOptCppIncludePath  = toNubListR $ [autogenComponentModulesDir lbi clbi
+                                           ,autogenPackageModulesDir lbi
+                                           ,odir]
                                            ++ PD.includeDirs bi,
       ghcOptCppOptions      = toNubListR $ cppOptions bi,
       ghcOptCppIncludes     = toNubListR $

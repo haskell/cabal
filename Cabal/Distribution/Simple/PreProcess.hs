@@ -146,13 +146,15 @@ preprocessComponent :: PackageDescription
                     -> IO ()
 preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
   (CLib lib@Library{ libBuildInfo = bi }) -> do
-    let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi]
+    let dirs = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+                                  ,autogenPackageModulesDir lbi]
     setupMessage verbosity "Preprocessing library" (packageId pd)
     forM_ (map ModuleName.toFilePath $ libModules lib) $
       pre dirs (buildDir lbi) (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
-        dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi]
+        dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+                                    ,autogenPackageModulesDir lbi]
     setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
     forM_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
@@ -192,7 +194,8 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
                          (benchmarkModules bm)
     preProcessComponent bi modules exePath dir = do
         let biHandlers = localHandlers bi
-            sourceDirs = hsSourceDirs bi ++ [ autogenComponentModulesDir lbi clbi ]
+            sourceDirs = hsSourceDirs bi ++ [ autogenComponentModulesDir lbi clbi
+                                            , autogenPackageModulesDir lbi ]
         sequence_ [ preprocessFile sourceDirs dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
@@ -403,6 +406,7 @@ ppHsc2hs bi lbi clbi =
                                       ++ PD.cppOptions   bi ]
        ++ [ "--cflag="   ++ opt | opt <-
                [ "-I" ++ autogenComponentModulesDir lbi clbi,
+                 "-I" ++ autogenPackageModulesDir lbi,
                  "-include", autogenComponentModulesDir lbi clbi </> cppHeaderName ] ]
        ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
        ++ [ "--lflag=-Wl,-R," ++ opt | isELF

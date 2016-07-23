@@ -144,6 +144,7 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
      ++ ["--noauto","-i-"]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenComponentModulesDir lbi clbi]
+     ++ ["-i", autogenPackageModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      -- It would be better if JHC would accept package names with versions,
      -- but JHC-0.7.2 doesn't accept this.
