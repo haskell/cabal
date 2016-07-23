@@ -62,7 +62,7 @@ import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
-         , AllowNewer(..), RelaxDeps(..)
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
@@ -323,6 +323,8 @@ instance Semigroup SavedConfig where
         configExactConfiguration  = combine configExactConfiguration,
         configFlagError           = combine configFlagError,
         configRelocatable         = combine configRelocatable,
+        configAllowOlder          = combineMonoid savedConfigureFlags
+                                    configAllowOlder,
         configAllowNewer          = combineMonoid savedConfigureFlags
                                     configAllowNewer
         }
@@ -631,7 +633,8 @@ commentSavedConfig = do
     savedConfigureExFlags  = defaultConfigExFlags,
     savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
       configUserInstall    = toFlag defaultUserInstall,
-      configAllowNewer     = Just (AllowNewer RelaxDepsNone)
+      configAllowNewer     = Just (AllowNewer RelaxDepsNone),
+      configAllowOlder     = Just (AllowOlder RelaxDepsNone)
     },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
@@ -660,17 +663,15 @@ configFieldDescriptions src =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
-       ,let showAllowNewer Nothing               = mempty
-            showAllowNewer (Just (AllowNewer RelaxDepsNone)) = Disp.text "False"
-            showAllowNewer (Just _)              = Disp.text "True"
-
-            toAllowNewer True  = Just (AllowNewer RelaxDepsAll)
-            toAllowNewer False = Just (AllowNewer RelaxDepsNone)
-
-            pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
-            parseAllowNewer = (toAllowNewer `fmap` Text.parse) Parse.<++ pkgs in
+       ,let pkgs = (Just . AllowOlder . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
+            parseAllowOlder = ((Just . AllowOlder . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
+        simpleField "allow-older"
+        (showRelaxDeps . fmap unAllowOlder) parseAllowOlder
+        configAllowOlder (\v flags -> flags { configAllowOlder = v })
+       ,let pkgs = (Just . AllowNewer . RelaxDepsSome) `fmap` parseOptCommaList Text.parse
+            parseAllowNewer = ((Just . AllowNewer . toRelaxDeps) `fmap` Text.parse) Parse.<++ pkgs in
         simpleField "allow-newer"
-        showAllowNewer parseAllowNewer
+        (showRelaxDeps . fmap unAllowNewer) parseAllowNewer
         configAllowNewer (\v flags -> flags { configAllowNewer = v })
         -- TODO: The following is a temporary fix. The "optimization"
         -- and "debug-info" fields are OptArg, and viewAsFieldDescr
@@ -769,6 +770,15 @@ configFieldDescriptions src =
             replacement = find ((== name) . fieldName) replacements
       , name `notElem` exclusions ]
     optional = Parse.option mempty . fmap toFlag
+
+
+    showRelaxDeps Nothing              = mempty
+    showRelaxDeps (Just RelaxDepsNone) = Disp.text "False"
+    showRelaxDeps (Just _)             = Disp.text "True"
+
+    toRelaxDeps True  = RelaxDepsAll
+    toRelaxDeps False = RelaxDepsNone
+
 
 -- TODO: next step, make the deprecated fields elicit a warning.
 --

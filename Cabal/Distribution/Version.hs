@@ -73,6 +73,7 @@ module Distribution.Version (
 
   -- ** Modification
   removeUpperBound,
+  removeLowerBound,
 
   -- * Version intervals view
   asVersionIntervals,
@@ -300,6 +301,18 @@ removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
     relaxLastInterval' []      = []
     relaxLastInterval' [(l,_)] = [(l, NoUpperBound)]
     relaxLastInterval' (i:is)  = i : relaxLastInterval' is
+
+-- | Given a version range, remove the lowest lower bound.
+-- Example: @(>= 1 && < 3) || (>= 4 && < 5)@ is converted to
+-- @(>= 0 && < 3) || (>= 4 && < 5)@.
+removeLowerBound :: VersionRange -> VersionRange
+removeLowerBound = fromVersionIntervals . relaxHeadInterval . toVersionIntervals
+  where
+    relaxHeadInterval (VersionIntervals intervals) =
+      VersionIntervals (relaxHeadInterval' intervals)
+
+    relaxHeadInterval' []         = []
+    relaxHeadInterval' ((_,u):is) = (minLowerBound,u) : is
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --

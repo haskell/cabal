@@ -886,7 +886,8 @@ planPackages comp platform solver SolverSettings{..}
                                 then PreferAllLatest
                                 else PreferLatestForSelected)-}
 
-      . removeUpperBounds (Cabal.unAllowNewer solverSettingAllowNewer)
+      . removeLowerBounds solverSettingAllowOlder
+      . removeUpperBounds solverSettingAllowNewer
 
       . addDefaultSetupDependencies (defaultSetupDeps comp platform
                                    . PD.packageDescription
@@ -1978,6 +1979,7 @@ setupHsConfigureFlags (ReadyPackage
     configStripExes           = toFlag pkgStripExes
     configStripLibs           = toFlag pkgStripLibs
     configDebugInfo           = toFlag pkgDebugInfo
+    configAllowOlder          = mempty -- we use configExactConfiguration True
     configAllowNewer          = mempty -- we use configExactConfiguration True
 
     configConfigurationsFlags = pkgFlagAssignment

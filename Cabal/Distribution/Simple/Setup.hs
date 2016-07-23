@@ -416,6 +416,7 @@ data ConfigFlags = ConfigFlags {
       -- ^Halt and show an error message indicating an error in flag assignment
     configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
     configDebugInfo :: Flag DebugInfoLevel,  -- ^ Emit debug info.
+    configAllowOlder :: Maybe AllowOlder, -- ^ dual to 'configAllowNewer'
     configAllowNewer :: Maybe AllowNewer
     -- ^ Ignore upper bounds on all or some dependencies. Wrapped in 'Maybe' to
     -- distinguish between "default" and "explicitly disabled".
@@ -712,6 +713,14 @@ configureOptions showOrParseArgs =
          "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
+
+      ,option [] ["allow-older"]
+       ("Ignore upper bounds in all dependencies or DEPS")
+       (fmap unAllowOlder . configAllowOlder)
+       (\v flags -> flags { configAllowOlder = fmap AllowOlder v})
+       (optArg "DEPS"
+        (readP_to_E ("Cannot parse the list of packages: " ++) relaxDepsParser)
+        (Just RelaxDepsAll) relaxDepsPrinter)
 
       ,option [] ["allow-newer"]
        ("Ignore upper bounds in all dependencies or DEPS")

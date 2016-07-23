@@ -40,7 +40,7 @@ import Distribution.Simple.Setup
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , programConfigurationPaths', splitArgs
-         , AllowNewer(..), RelaxDeps(..) )
+         , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -285,6 +285,7 @@ convertLegacyAllPackageFlags globalFlags configFlags
     --configInstallDirs         = projectConfigInstallDirs,
     --configUserInstall         = projectConfigUserInstall,
     --configPackageDBs          = projectConfigPackageDBs,
+      configAllowOlder          = projectConfigAllowOlder,
       configAllowNewer          = projectConfigAllowNewer
     } = configFlags
 
@@ -476,6 +477,7 @@ convertToLegacySharedConfig
 
     configFlags = mempty {
       configVerbosity     = projectConfigVerbosity,
+      configAllowOlder    = projectConfigAllowOlder,
       configAllowNewer    = projectConfigAllowNewer
     }
 
@@ -574,6 +576,7 @@ convertToLegacyAllPackageConfig
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = mempty,
       configDebugInfo           = mempty,
+      configAllowOlder          = mempty,
       configAllowNewer          = mempty
     }
 
@@ -635,6 +638,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configFlagError           = mempty,                --TODO: ???
       configRelocatable         = packageConfigRelocatable,
       configDebugInfo           = packageConfigDebugInfo,
+      configAllowOlder          = mempty,
       configAllowNewer          = mempty
     }
 
@@ -785,6 +789,12 @@ legacySharedConfigFieldDescrs =
   ( liftFields
       legacyConfigureShFlags
       (\flags conf -> conf { legacyConfigureShFlags = flags })
+  . addFields
+      [ simpleField "allow-older"
+        (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)
+        (fmap unAllowOlder . configAllowOlder)
+        (\v conf -> conf { configAllowOlder = fmap AllowOlder v })
+      ]
   . addFields
       [ simpleField "allow-newer"
         (maybe mempty dispRelaxDeps) (fmap Just parseRelaxDeps)

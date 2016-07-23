@@ -954,9 +954,14 @@ be controlled with the following command line options.
     for libraries it is also saved in the package registration
     information and used when compiling modules that use the library.
 
-`--allow-newer`[=_pkgs_]
-:   Selectively relax upper bounds in dependencies without editing the
-    package description.
+`--allow-newer`[=_pkgs_], `--allow-older`[=_pkgs_]
+:   Selectively relax upper or lower bounds in dependencies without
+    editing the package description respectively.
+
+    The following description focuses on upper bounds and the
+    `--allow-newer` flag, but applies analogously to `--allow-older`
+    and lower bounds. `--allow-newer` and `--allow-older` can be used
+    at the same time.
 
     If you want to install a package A that depends on B >= 1.0 && < 2.0, but
     you have the version 2.0 of B installed, you can compile A against B 2.0 by
