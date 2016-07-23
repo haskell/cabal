@@ -48,6 +48,7 @@ import Distribution.Utils.NubList
 import Distribution.Verbosity
          ( Verbosity )
 
+import Data.Int (Int64)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Distribution.Compat.Binary (Binary)
@@ -153,6 +154,9 @@ data ProjectConfigShared
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalRepos        :: NubList FilePath,
+
+       -- TODO/FIXME
+       projectConfigIndexSnapshot     :: Flag Int,
 
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
@@ -316,7 +320,8 @@ data SolverSettings
        solverSettingAllowNewer        :: AllowNewer,
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: Bool,
-       solverSettingStrongFlags       :: Bool
+       solverSettingStrongFlags       :: Bool,
+       solverSettingIndexSnapshot     :: Maybe Int64
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
      --solverSettingIndependentGoals  :: Bool,
