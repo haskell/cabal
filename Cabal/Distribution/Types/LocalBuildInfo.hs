@@ -11,10 +11,31 @@ module Distribution.Types.LocalBuildInfo (
     localComponentId,
     localUnitId,
     localCompatPackageKey,
+    localPackage,
 
     -- * Build targets of the 'LocalBuildInfo'.
 
-    mkTargetInfo,
+    componentNameCLBIs,
+
+    -- NB: the primes mean that they take a 'PackageDescription'
+    -- which may not match 'localPkgDescr' in 'LocalBuildInfo'.
+    -- More logical types would drop this argument, but
+    -- at the moment, this is the ONLY supported function, because
+    -- 'localPkgDescr' is not guaranteed to match.  At some point
+    -- we will fix it and then we can use the (free) unprimed
+    -- namespace for the correct commands.
+    --
+    -- See https://github.com/haskell/cabal/issues/3606 for more
+    -- details.
+
+    componentNameTargets',
+    allTargetsInBuildOrder',
+    withAllTargetsInBuildOrder',
+    neededTargetsInBuildOrder',
+    withNeededTargetsInBuildOrder',
+
+    -- * Functions you SHOULD NOT USE (yet), but are defined here to
+    -- prevent someone from accidentally defining them
 
     componentNameTargets,
     allTargetsInBuildOrder,
@@ -93,8 +114,18 @@ data LocalBuildInfo = LocalBuildInfo {
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
         localPkgDescr :: PackageDescription,
-                -- ^ The resolved package description, that does not contain
-                -- any conditionals.
+                -- ^ WARNING WARNING WARNING Be VERY careful about using
+                -- this function; we haven't deprecated it but using it
+                -- could introduce subtle bugs related to
+                -- 'HookedBuildInfo'.
+                --
+                -- In principle, this is supposed to contain the
+                -- resolved package description, that does not contain
+                -- any conditionals.  However, it MAY NOT contain
+                -- the description wtih a 'HookedBuildInfo' applied
+                -- to it; see 'HookedBuildInfo' for the whole sordid saga.
+                -- As much as possible, Cabal library should avoid using
+                -- this parameter.
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
@@ -131,74 +162,116 @@ localComponentId lbi
     = case localUnitId lbi of
         SimpleUnitId cid -> cid
 
+-- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
+-- This is a "safe" use of 'localPkgDescr'
+localPackage :: LocalBuildInfo -> PackageId
+localPackage lbi = package (localPkgDescr lbi)
+
 -- | Extract the 'UnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake unit ID based on
 -- the package ID.
 localUnitId :: LocalBuildInfo -> UnitId
-localUnitId lbi = 
-    case componentNameTargets lbi CLibName of
-        [target] | LibComponentLocalBuildInfo { componentUnitId = uid }
-                     <- targetCLBI target
-                -> uid
-        _ -> mkLegacyUnitId (package (localPkgDescr lbi))
+localUnitId lbi =
+    case componentNameCLBIs lbi CLibName of
+        [LibComponentLocalBuildInfo { componentUnitId = uid }]
+          -> uid
+        _ -> mkLegacyUnitId (localPackage lbi)
 
 -- | Extract the compatibility package key from the public library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
 localCompatPackageKey :: LocalBuildInfo -> String
 localCompatPackageKey lbi =
-    case componentNameTargets lbi CLibName of
-        [target] | LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
-                    <- targetCLBI target
-                -> pk
-        _ -> display (package (localPkgDescr lbi))
+    case componentNameCLBIs lbi CLibName of
+        [LibComponentLocalBuildInfo { componentCompatPackageKey = pk }]
+          -> pk
+        _ -> display (localPackage lbi)
 
--- | Generate a default 'TargetInfo' from a 'ComponentLocalBuildInfo'.
--- The idea is to call this once, and then use 'TargetInfo' everywhere
--- else.
-mkTargetInfo :: LocalBuildInfo -> ComponentLocalBuildInfo -> TargetInfo
-mkTargetInfo lbi clbi =
+-- | Convenience function to generate a default 'TargetInfo' from a
+-- 'ComponentLocalBuildInfo'.  The idea is to call this once, and then
+-- use 'TargetInfo' everywhere else.  Private to this module.
+mkTargetInfo :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> TargetInfo
+mkTargetInfo pkg_descr _lbi clbi =
     TargetInfo {
         targetCLBI = clbi,
-        targetComponent = getComponent (localPkgDescr lbi)
+        -- NB: @pkg_descr@, not @localPkgDescr lbi@!
+        targetComponent = getComponent pkg_descr
                                        (componentLocalName clbi)
      }
 
 -- | Return all 'TargetInfo's associated with 'ComponentName'.
 -- In the presence of Backpack there may be more than one!
-componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
-componentNameTargets lbi cname =
+-- Has a prime because it takes a 'PackageDescription' argument
+-- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
+componentNameTargets' :: PackageDescription -> LocalBuildInfo -> ComponentName -> [TargetInfo]
+componentNameTargets' pkg_descr lbi cname =
     case Map.lookup cname (componentNameMap lbi) of
-        Just clbis -> map (mkTargetInfo lbi) clbis
+        Just clbis -> map (mkTargetInfo pkg_descr lbi) clbis
+        Nothing -> []
+
+-- | Return all 'ComponentLocalBuildInfo's associated with 'ComponentName'.
+-- In the presence of Backpack there may be more than one!
+componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
+componentNameCLBIs lbi cname =
+    case Map.lookup cname (componentNameMap lbi) of
+        Just clbis -> clbis
         Nothing -> []
 
 -- TODO: Maybe cache topsort (Graph can do this)
 
 -- | Return the list of default 'TargetInfo's associated with a
 -- configured package, in the order they need to be built.
-allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
-allTargetsInBuildOrder lbi
-    = map (mkTargetInfo lbi) (Graph.revTopSort (componentGraph lbi))
+-- Has a prime because it takes a 'PackageDescription' argument
+-- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
+allTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [TargetInfo]
+allTargetsInBuildOrder' pkg_descr lbi
+    = map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (componentGraph lbi))
 
 -- | Execute @f@ for every 'TargetInfo' in the package, respecting the
 -- build dependency order.  (TODO: We should use Shake!)
-withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
-withAllTargetsInBuildOrder lbi f
-    = sequence_ [ f target | target <- allTargetsInBuildOrder lbi ]
+-- Has a prime because it takes a 'PackageDescription' argument
+-- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
+withAllTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
+withAllTargetsInBuildOrder' pkg_descr lbi f
+    = sequence_ [ f target | target <- allTargetsInBuildOrder' pkg_descr lbi ]
 
 -- | Return the list of all targets needed to build the @uids@, in
 -- the order they need to be built.
-neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
-neededTargetsInBuildOrder lbi uids =
+-- Has a prime because it takes a 'PackageDescription' argument
+-- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
+neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> [TargetInfo]
+neededTargetsInBuildOrder' pkg_descr lbi uids =
   case Graph.closure (componentGraph lbi) uids of
     Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map display uids)
-    Just clos -> map (mkTargetInfo lbi) (Graph.revTopSort (Graph.fromList clos))
+    Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromList clos))
 
 -- | Execute @f@ for every 'TargetInfo' needed to build @uid@s, respecting
 -- the build dependency order.
+-- Has a prime because it takes a 'PackageDescription' argument
+-- which may disagree with 'localPkgDescr' in 'LocalBuildInfo'.
+withNeededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
+withNeededTargetsInBuildOrder' pkg_descr lbi uids f
+    = sequence_ [ f target | target <- neededTargetsInBuildOrder' pkg_descr lbi uids ]
+
+-------------------------------------------------------------------------------
+-- Stub functions to prevent someone from accidentally defining them
+
+{-# WARNING componentNameTargets, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PakcageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
+
+componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
+componentNameTargets lbi = componentNameTargets' (localPkgDescr lbi) lbi
+
+allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
+allTargetsInBuildOrder lbi = allTargetsInBuildOrder' (localPkgDescr lbi) lbi
+
+withAllTargetsInBuildOrder :: LocalBuildInfo -> (TargetInfo -> IO ()) -> IO ()
+withAllTargetsInBuildOrder lbi = withAllTargetsInBuildOrder' (localPkgDescr lbi) lbi
+
+neededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> [TargetInfo]
+neededTargetsInBuildOrder lbi = neededTargetsInBuildOrder' (localPkgDescr lbi) lbi
+
 withNeededTargetsInBuildOrder :: LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
-withNeededTargetsInBuildOrder lbi uids f
-    = sequence_ [ f target | target <- neededTargetsInBuildOrder lbi uids ]
+withNeededTargetsInBuildOrder lbi = withNeededTargetsInBuildOrder' (localPkgDescr lbi) lbi
 
 -------------------------------------------------------------------------------
 -- Backwards compatibility

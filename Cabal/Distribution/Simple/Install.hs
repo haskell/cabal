@@ -64,7 +64,7 @@ install :: PackageDescription -- ^information from the .cabal file
 install pkg_descr lbi flags
  | fromFlag (copyAssumeDepsUpToDate flags) = do
   checkHasLibsOrExes
-  targets <- readTargetInfos verbosity lbi (copyArgs flags)
+  targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
   case targets of
     _ | null (copyArgs flags)
       -> copyPackage verbosity pkg_descr lbi distPref copydest
@@ -76,12 +76,12 @@ install pkg_descr lbi flags
 
  | otherwise = do
   checkHasLibsOrExes
-  targets <- readTargetInfos verbosity lbi (copyArgs flags)
+  targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
 
   copyPackage verbosity pkg_descr lbi distPref copydest
 
   -- It's not necessary to do these in build-order, but it's harmless
-  withNeededTargetsInBuildOrder lbi (map nodeKey targets) $ \target ->
+  withNeededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets) $ \target ->
     let comp = targetComponent target
         clbi = targetCLBI target
     in copyComponent verbosity pkg_descr lbi comp clbi copydest

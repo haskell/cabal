@@ -7,9 +7,9 @@ import System.FilePath
 import Test.Tasty.HUnit (testCase)
 
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
-import Distribution.PackageDescription (package)
 import Distribution.Simple.Compiler (compilerId)
-import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, localCompatPackageKey)
+import Distribution.Types.LocalBuildInfo (localPackage)
+import Distribution.Simple.LocalBuildInfo (compiler, localCompatPackageKey)
 import Distribution.Simple.Hpc
 import Distribution.Simple.Program.Builtin (hpcProgram)
 import Distribution.Simple.Program.Db
@@ -98,7 +98,7 @@ hpcTestMatrix config = forM_ (choose4 [True, False]) $
                 subdir
                   | comp == GHC && version >= Version [7, 10] [] =
                       localCompatPackageKey lbi
-                  | otherwise = display (package $ localPkgDescr lbi)
+                  | otherwise = display (localPackage lbi)
             mapM_ shouldExist
                 [ mixDir dist_dir way "my-0.1" </> subdir </> "Foo.mix"
                 , mixDir dist_dir way "test-Short" </> "Main.mix"

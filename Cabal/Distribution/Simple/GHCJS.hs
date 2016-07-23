@@ -266,7 +266,7 @@ replLib  = buildOrReplLib True
 buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
+buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   let uid = componentUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
@@ -294,7 +294,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-      pkg_name = display $ PD.package $ localPkgDescr lbi
+      pkg_name = display $ PD.package pkg_descr
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name

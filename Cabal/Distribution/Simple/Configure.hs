@@ -72,6 +72,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup as Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.LocalBuildInfo
 import Distribution.Simple.Utils
 import Distribution.Simple.Register (createInternalPackageDB)
 import Distribution.System
@@ -237,7 +238,7 @@ writePersistBuildConfig distPref lbi = do
     writeFileAtomic (localBuildInfoFile distPref) $
       BLC8.unlines [showHeader pkgId, encode lbi]
   where
-    pkgId = packageId $ localPkgDescr lbi
+    pkgId = localPackage lbi
 
 -- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier

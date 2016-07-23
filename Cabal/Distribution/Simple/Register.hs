@@ -94,7 +94,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
   -- usefully (they're not public.)  If we start supporting scoped
   -- packages, we'll have to relax this.
   doRegister = do
-    targets <- readTargetInfos verbosity lbi (regArgs flags)
+    targets <- readTargetInfos verbosity pkg_descr lbi (regArgs flags)
 
     -- It's important to register in build order, because ghc-pkg
     -- will complain if a dependency is not registered.
@@ -117,7 +117,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
             _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
         else fmap catMaybes
            . mapM maybeGenerateOne
-           $ neededTargetsInBuildOrder lbi (map nodeKey targets)
+           $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
     registerAll pkg_descr lbi flags ipis
     return ()
    where

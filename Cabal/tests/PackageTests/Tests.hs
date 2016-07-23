@@ -569,7 +569,7 @@ tests config = do
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
                 cname = CSubLibName "foo-internal"
-                [target] = componentNameTargets lbi cname
+                [target] = componentNameTargets' pkg_descr lbi cname
                 uid = componentUnitId (targetCLBI target)
                 dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
                               NoCopyDest)

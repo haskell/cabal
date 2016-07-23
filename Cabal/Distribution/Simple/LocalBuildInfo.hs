@@ -93,7 +93,6 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
 import Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compat.Graph (IsNode(..))
 
 import Data.List (stripPrefix)
 import Data.Maybe
@@ -120,22 +119,22 @@ componentBuildDir lbi clbi
 {-# DEPRECATED getComponentLocalBuildInfo "This function is not well-defined, because a 'ComponentName' does not uniquely identify a 'ComponentLocalBuildInfo'.  If you have a 'TargetInfo', you should use 'targetCLBI' to get the 'ComponentLocalBuildInfo'.  Otherwise, use 'componentNameTargets' to get all possible 'ComponentLocalBuildInfo's.  This will be removed in Cabal 2.2." #-}
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
 getComponentLocalBuildInfo lbi cname =
-    case componentNameTargets lbi cname of
-      [target] -> targetCLBI target
+    case componentNameCLBIs lbi cname of
+      [clbi] -> clbi
       [] ->
           error $ "internal error: there is no configuration data "
                ++ "for component " ++ show cname
-      targets ->
+      clbis ->
           error $ "internal error: the component name " ++ show cname
                ++ "is ambiguous.  Refers to: "
-               ++ intercalate ", " (map (display . nodeKey) targets)
+               ++ intercalate ", " (map (display . componentUnitId) clbis)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
 withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withLibLBI _pkg lbi f =
-    withAllTargetsInBuildOrder lbi $ \target ->
+withLibLBI pkg lbi f =
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
         case targetComponent target of
             CLib lib -> f lib (targetCLBI target)
             _ -> return ()
@@ -145,8 +144,8 @@ withLibLBI _pkg lbi f =
 -- build info.
 withExeLBI :: PackageDescription -> LocalBuildInfo
            -> (Executable -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withExeLBI _pkg lbi f =
-    withAllTargetsInBuildOrder lbi $ \target ->
+withExeLBI pkg lbi f =
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
         case targetComponent target of
             CExe exe -> f exe (targetCLBI target)
             _ -> return ()
@@ -165,16 +164,16 @@ withTestLBI pkg lbi f =
 
 enabledTestLBIs :: PackageDescription -> LocalBuildInfo
              -> [(TestSuite, ComponentLocalBuildInfo)]
-enabledTestLBIs _pkg lbi =
+enabledTestLBIs pkg lbi =
     [ (test, targetCLBI target)
-    | target <- allTargetsInBuildOrder lbi
+    | target <- allTargetsInBuildOrder' pkg lbi
     , CTest test <- [targetComponent target] ]
 
 enabledBenchLBIs :: PackageDescription -> LocalBuildInfo
              -> [(Benchmark, ComponentLocalBuildInfo)]
-enabledBenchLBIs _pkg lbi =
+enabledBenchLBIs pkg lbi =
     [ (bench, targetCLBI target)
-    | target <- allTargetsInBuildOrder lbi
+    | target <- allTargetsInBuildOrder' pkg lbi
     , CBench bench <- [targetComponent target] ]
 
 {-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
@@ -189,8 +188,8 @@ withComponentsLBI = withAllComponentsInBuildOrder
 withAllComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                               -> (Component -> ComponentLocalBuildInfo -> IO ())
                               -> IO ()
-withAllComponentsInBuildOrder _pkg lbi f =
-    withAllTargetsInBuildOrder lbi $ \target ->
+withAllComponentsInBuildOrder pkg lbi f =
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
         f (targetComponent target) (targetCLBI target)
 
 {-# DEPRECATED withComponentsInBuildOrder "You have got a 'TargetInfo' right? Use 'withNeededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
@@ -198,8 +197,8 @@ withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                            -> [ComponentName]
                            -> (Component -> ComponentLocalBuildInfo -> IO ())
                            -> IO ()
-withComponentsInBuildOrder _pkg lbi cnames f =
-    withNeededTargetsInBuildOrder lbi uids $ \target ->
+withComponentsInBuildOrder pkg lbi cnames f =
+    withNeededTargetsInBuildOrder' pkg lbi uids $ \target ->
         f (targetComponent target) (targetCLBI target)
   where uids = concatMap (componentNameToUnitIds lbi) cnames
 
@@ -218,7 +217,10 @@ componentNameToUnitIds lbi cname =
 {-# DEPRECATED componentsInBuildOrder "You've got 'TargetInfo' right? Use 'neededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
 componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]
                        -> [ComponentLocalBuildInfo]
-componentsInBuildOrder lbi cnames = map targetCLBI (neededTargetsInBuildOrder lbi uids)
+componentsInBuildOrder lbi cnames
+    -- NB: use of localPkgDescr here is safe because we throw out the
+    -- result immediately afterwards
+    = map targetCLBI (neededTargetsInBuildOrder' (localPkgDescr lbi) lbi uids)
   where uids = concatMap (componentNameToUnitIds lbi) cnames
 
 -- -----------------------------------------------------------------------------
@@ -246,11 +248,11 @@ depLibraryPaths inplace relative lbi clbi = do
         internalDeps = [ uid
                        | (uid, _) <- componentPackageDeps clbi
                        -- Test that it's internal
-                       , sub_target <- allTargetsInBuildOrder lbi
+                       , sub_target <- allTargetsInBuildOrder' pkgDescr lbi
                        , componentUnitId (targetCLBI (sub_target)) == uid ]
         internalLibs = [ getLibDir (targetCLBI sub_target)
-                       | sub_target <- neededTargetsInBuildOrder
-                                        lbi internalDeps ]
+                       | sub_target <- neededTargetsInBuildOrder'
+                                        pkgDescr lbi internalDeps ]
     {-
     -- This is better, but it doesn't work, because we may be passed a
     -- CLBI which doesn't actually exist, and was faked up when we

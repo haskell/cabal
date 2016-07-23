@@ -85,7 +85,7 @@ build pkg_descr lbi flags suffixes
   -- TODO: if checkBuildTargets ignores a target we may accept
   -- a --assume-deps-up-to-date with multiple arguments. Arguably, we should
   -- error early in this case.
-  target <- readTargetInfos verbosity lbi (buildArgs flags) >>= \r -> case r of
+  target <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags) >>= \r -> case r of
       [] -> die "In --assume-deps-up-to-date mode you must specify a target"
       [target] -> return target
       _ -> die "In --assume-deps-up-to-date mode you can only build a single target"
@@ -109,8 +109,8 @@ build pkg_descr lbi flags suffixes
   buildComponent verbosity (buildNumJobs flags) pkg_descr
                  lbi' suffixes comp clbi distPref
  | otherwise = do
-  targets <- readTargetInfos verbosity lbi (buildArgs flags)
-  let componentsToBuild = neededTargetsInBuildOrder lbi (map nodeKey targets)
+  targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
+  let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
   info verbosity $ "Component build order: "
                 ++ intercalate ", "
                     (map (showComponentName . componentLocalName . targetCLBI)
@@ -149,12 +149,12 @@ repl pkg_descr lbi flags suffixes args = do
   let distPref  = fromFlag (replDistPref flags)
       verbosity = fromFlag (replVerbosity flags)
 
-  target <- readTargetInfos verbosity lbi args >>= \r -> case r of
+  target <- readTargetInfos verbosity pkg_descr lbi args >>= \r -> case r of
     -- This seems DEEPLY questionable.
-    []       -> return (head (allTargetsInBuildOrder lbi))
+    []       -> return (head (allTargetsInBuildOrder' pkg_descr lbi))
     [target] -> return target
     _        -> die $ "The 'repl' command does not support multiple targets at once."
-  let componentsToBuild = neededTargetsInBuildOrder lbi [nodeKey target]
+  let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi [nodeKey target]
   debug verbosity $ "Component build order: "
                  ++ intercalate ", "
                       (map (showComponentName . componentLocalName . targetCLBI)

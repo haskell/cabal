@@ -68,10 +68,10 @@ import System.Directory
 
 -- | Take a list of 'String' build targets, and parse and validate them
 -- into actual 'TargetInfo's to be built/registered/whatever.
-readTargetInfos :: Verbosity -> LocalBuildInfo -> [String] -> IO [TargetInfo]
-readTargetInfos verbosity lbi args = do
-    build_targets <- readBuildTargets (localPkgDescr lbi) args
-    checkBuildTargets verbosity lbi build_targets
+readTargetInfos :: Verbosity -> PackageDescription -> LocalBuildInfo -> [String] -> IO [TargetInfo]
+readTargetInfos verbosity pkg_descr lbi args = do
+    build_targets <- readBuildTargets pkg_descr args
+    checkBuildTargets verbosity pkg_descr lbi build_targets
 
 -- ------------------------------------------------------------
 -- * User build targets
@@ -959,12 +959,12 @@ caseFold = lowercase
 --
 -- Also swizzle into a more convenient form.
 --
-checkBuildTargets :: Verbosity -> LocalBuildInfo -> [BuildTarget]
+checkBuildTargets :: Verbosity -> PackageDescription -> LocalBuildInfo -> [BuildTarget]
                   -> IO [TargetInfo]
-checkBuildTargets _ lbi []      =
-    return (allTargetsInBuildOrder lbi)
+checkBuildTargets _ pkg_descr lbi []      =
+    return (allTargetsInBuildOrder' pkg_descr lbi)
 
-checkBuildTargets verbosity lbi targets = do
+checkBuildTargets verbosity pkg_descr lbi targets = do
 
     let (enabled, disabled) =
           partitionEithers
@@ -985,10 +985,10 @@ checkBuildTargets verbosity lbi targets = do
 
     -- Pick out the actual CLBIs for each of these cnames
     enabled' <- forM enabled $ \(cname, _) -> do
-        case Map.lookup cname (componentNameMap lbi) of
-            Nothing -> error "checkBuildTargets: nothing enabled"
-            Just [clbi] -> return (mkTargetInfo lbi clbi)
-            Just _clbis -> error "checkBuildTargets: multiple copies enabled"
+        case componentNameTargets' pkg_descr lbi cname of
+            [] -> error "checkBuildTargets: nothing enabled"
+            [target] -> return target
+            _targets -> error "checkBuildTargets: multiple copies enabled"
 
     return enabled'
 

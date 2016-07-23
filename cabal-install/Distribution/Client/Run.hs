@@ -12,7 +12,7 @@ module Distribution.Client.Run ( run, splitRunArgs )
        where
 
 import Distribution.Types.TargetInfo     (targetCLBI)
-import Distribution.Types.LocalBuildInfo (componentNameTargets)
+import Distribution.Types.LocalBuildInfo (componentNameTargets')
 
 import Distribution.Client.Utils             (tryCanonicalizePath)
 
@@ -132,7 +132,7 @@ run verbosity lbi exe exeArgs = do
   -- Add (DY)LD_LIBRARY_PATH if needed
   env' <- if withDynExe lbi
              then do let (Platform _ os) = hostPlatform lbi
-                     clbi <- case componentNameTargets lbi (CExeName (exeName exe)) of
+                     clbi <- case componentNameTargets' pkg_descr lbi (CExeName (exeName exe)) of
                                 [target] -> return (targetCLBI target)
                                 [] -> die "run: Could not find executable in LocalBuildInfo"
                                 _ -> die "run: Found multiple matching exes in LocalBuildInfo"
