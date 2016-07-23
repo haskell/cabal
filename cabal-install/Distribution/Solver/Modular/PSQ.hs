@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Solver.Modular.PSQ
     ( PSQ(..)  -- Unit test needs constructor access
-    , Degree(..)
     , casePSQ
     , cons
     , degree

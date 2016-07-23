@@ -26,7 +26,6 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.PSQ (PSQ)
-import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Version
 import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
@@ -161,9 +160,9 @@ dchoices :: Tree a -> Degree
 dchoices (PChoice    _ _     ts) = W.degree (W.filter active ts)
 dchoices (FChoice    _ _ _ _ ts) = W.degree (W.filter active ts)
 dchoices (SChoice    _ _ _   ts) = W.degree (W.filter active ts)
-dchoices (GoalChoice         _ ) = P.ZeroOrOne
-dchoices (Done       _         ) = P.ZeroOrOne
-dchoices (Fail       _ _       ) = P.ZeroOrOne
+dchoices (GoalChoice         _ ) = ZeroOrOne
+dchoices (Done       _         ) = ZeroOrOne
+dchoices (Fail       _ _       ) = ZeroOrOne
 
 -- | Variant of 'choices' that only approximates the number of choices.
 zeroOrOneChoices :: Tree a -> Bool
