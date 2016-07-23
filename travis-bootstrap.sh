@@ -31,10 +31,22 @@ install_from_tarball() {
 
 timed cabal update
 
+# NB: The cabal cleans here hack around an sdist bug where
+# the bootstrapped Cabal/cabal-install may be built
+# without a Paths_* module available.  Under some situations
+# which I have not been able to reproduce except on Travis,
+# cabal sdist will incorrectly pick up the left over dist
+# directory from the bootstrap and then try to package
+# up the Paths module, but to no avail because it is not
+# available.  I ran out of patience trying to debug this
+# issue, and it is easy enough to work around: clean first.
+
 echo Cabal
+(cd Cabal && timed cabal clean)
 (cd Cabal && timed cabal sdist)
 (cd Cabal && timed install_from_tarball)
 
 echo cabal-install
+(cd cabal-install && timed cabal clean)
 (cd cabal-install && timed cabal sdist)
 (cd cabal-install && timed install_from_tarball)
