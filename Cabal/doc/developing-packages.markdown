@@ -2153,6 +2153,10 @@ Since version 1.20, there is also the `MIN_TOOL_VERSION_`_`tool`_ family of
 macros for conditioning on the version of build tools used to build the program
 (e.g. `hsc2hs`).
 
+Since version 1.26, there is also `MIN_VERSION_EXACT_`_`package`_ and
+`MIN_TOOL_VERSION_EXACT_`_`tool`_ version, which let you differntiate between
+`1`, `1.0`, and `1.0.0` versions.
+
 Cabal places the definitions of these macros into an
 automatically-generated header file, which is included when
 preprocessing Haskell source code by passing options to the C
