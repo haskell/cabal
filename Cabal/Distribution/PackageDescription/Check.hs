@@ -178,6 +178,10 @@ checkSanity pkg =
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
+  , check (any isNothing (map libName $ subLibraries pkg)) $
+      PackageBuildImpossible $ "Found one or more unnamed internal libraries. "
+        ++ "Only the non-internal library can have the same name as the package."
+
   , check (not (null duplicateNames)) $
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
         ++ ". The name of every library, executable, test suite, and benchmark section in"
