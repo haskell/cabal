@@ -8,9 +8,8 @@ import Distribution.Client.ProjectPlanning
 import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.ProjectBuilding
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.Types (GenericReadyPackage(..), installedPackageId)
 
-import Distribution.Package hiding (installedPackageId)
+import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag)
@@ -93,9 +92,8 @@ testExceptionInFindingPackage2 config = do
 
 testExceptionInConfigureStep :: ProjectConfig -> Assertion
 testExceptionInConfigureStep config = do
-    plan  <- planProject testdir config
-    plan' <- executePlan plan
-    (_pkga1, failure) <- expectPackageFailed plan' pkgidA1
+    (plan, res) <- executePlan =<< planProject testdir config
+    (_pkga1, failure) <- expectPackageFailed plan res pkgidA1
     case failure of
       ConfigureFailed _str -> return ()
       _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure 
@@ -107,9 +105,8 @@ testExceptionInConfigureStep config = do
 
 testExceptionInBuildStep :: ProjectConfig -> Assertion
 testExceptionInBuildStep config = do
-    plan  <- planProject testdir config
-    plan' <- executePlan plan
-    (_pkga1, failure) <- expectPackageFailed plan' pkgidA1
+    (plan, res) <- executePlan =<< planProject testdir config
+    (_pkga1, failure) <- expectPackageFailed plan res pkgidA1
     expectBuildFailed failure
   where
     testdir = "exception/build"
@@ -119,8 +116,8 @@ testSetupScriptStyles :: ProjectConfig -> (String -> IO ()) -> Assertion
 testSetupScriptStyles config reportSubCase = do
 
     reportSubCase (show SetupCustomExplicitDeps)
-    plan1  <- executePlan =<< planProject testdir1 config
-    (pkg1, _, _) <- expectPackageInstalled plan1 pkgidA
+    (plan1, res1) <- executePlan =<< planProject testdir1 config
+    (pkg1,  _)    <- expectPackageInstalled plan1 res1 pkgidA
     pkgSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
     hasDefaultSetupDeps pkg1 @?= Just False
     marker1 <- readFile (basedir </> testdir1 </> "marker")
@@ -128,8 +125,8 @@ testSetupScriptStyles config reportSubCase = do
     removeFile (basedir </> testdir1 </> "marker")
 
     reportSubCase (show SetupCustomImplicitDeps)
-    plan2  <- executePlan =<< planProject testdir2 config
-    (pkg2, _, _) <- expectPackageInstalled plan2 pkgidA
+    (plan2, res2) <- executePlan =<< planProject testdir2 config
+    (pkg2,  _)    <- expectPackageInstalled plan2 res2 pkgidA
     pkgSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
     hasDefaultSetupDeps pkg2 @?= Just True
     marker2 <- readFile (basedir </> testdir2 </> "marker")
@@ -137,8 +134,8 @@ testSetupScriptStyles config reportSubCase = do
     removeFile (basedir </> testdir2 </> "marker")
 
     reportSubCase (show SetupNonCustomInternalLib)
-    plan3  <- executePlan =<< planProject testdir3 config
-    (pkg3, _, _) <- expectPackageInstalled plan3 pkgidA
+    (plan3, res3) <- executePlan =<< planProject testdir3 config
+    (pkg3,  _)    <- expectPackageInstalled plan3 res3 pkgidA
     pkgSetupScriptStyle pkg3 @?= SetupNonCustomInternalLib
 {-
     --TODO: the SetupNonCustomExternalLib case is hard to test since it
@@ -147,8 +144,8 @@ testSetupScriptStyles config reportSubCase = do
     -- and a corresponding Cabal package that we can use to try and build a
     -- default Setup.hs.
     reportSubCase (show SetupNonCustomExternalLib)
-    plan4  <- executePlan =<< planProject testdir4 config
-    (pkg4, _, _) <- expectPackageInstalled plan4 pkgidA
+    (plan4, res4) <- executePlan =<< planProject testdir4 config
+    (pkg4,  _)    <- expectPackageInstalled plan4 res4 pkgidA
     pkgSetupScriptStyle pkg4 @?= SetupNonCustomExternalLib
 -}
   where
@@ -166,16 +163,17 @@ testBuildKeepGoing :: ProjectConfig -> Assertion
 testBuildKeepGoing config = do
     -- P is expected to fail, Q does not depend on P but without
     -- parallel build and without keep-going then we don't build Q yet.
-    plan1 <- executePlan =<< planProject testdir (config  <> keepGoing False)
-    (_, failure1) <- expectPackageFailed plan1 pkgidP
+    (plan1, res1) <- executePlan =<< planProject testdir (config  <> keepGoing False)
+    (_, failure1) <- expectPackageFailed plan1 res1 pkgidP
     expectBuildFailed failure1
-    _ <- expectPackageProcessing plan1 pkgidQ
+    _ <- expectPackageConfigured plan1 res1 pkgidQ
 
     -- With keep-going then we should go on to sucessfully build Q
-    plan2 <- executePlan =<< planProject testdir (config  <> keepGoing True)
-    (_, failure2) <- expectPackageFailed plan2 pkgidP
+    (plan2, res2) <- executePlan
+                 =<< planProject testdir (config <> keepGoing True)
+    (_, failure2) <- expectPackageFailed plan2 res2 pkgidP
     expectBuildFailed failure2
-    _ <- expectPackageInstalled plan2 pkgidQ
+    _ <- expectPackageInstalled plan2 res2 pkgidQ
     return ()
   where
     testdir = "build/keep-going"
@@ -193,17 +191,17 @@ testBuildKeepGoing config = do
 testRegressionIssue3324 :: ProjectConfig -> Assertion
 testRegressionIssue3324 config = do
     -- expected failure first time due to missing dep
-    plan1 <- executePlan =<< planProject testdir config
-    (_pkgq, failure) <- expectPackageFailed plan1 pkgidQ
+    (plan1, res1) <- executePlan =<< planProject testdir config
+    (_pkgq, failure) <- expectPackageFailed plan1 res1 pkgidQ
     expectBuildFailed failure
 
     -- add the missing dep, now it should work
     let qcabal  = basedir </> testdir </> "q" </> "q.cabal"
     withFileFinallyRestore qcabal $ do
       appendFile qcabal ("  build-depends: p\n")
-      plan2 <- executePlan =<< planProject testdir config
-      _ <- expectPackageInstalled plan2 pkgidP
-      _ <- expectPackageInstalled plan2 pkgidQ
+      (plan2, res2) <- executePlan =<< planProject testdir config
+      _ <- expectPackageInstalled plan2 res2 pkgidP
+      _ <- expectPackageInstalled plan2 res2 pkgidQ
       return ()
   where
     testdir = "regression/3324"
@@ -238,7 +236,7 @@ planProject testdir cliConfig = do
 
     let targets =
           Map.fromList
-            [ (installedPackageId pkg, [BuildDefaultComponents])
+            [ (installedUnitId pkg, [BuildDefaultComponents])
             | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedPlan
             , pkgBuildStyle pkg == BuildInplaceOnly ]
         elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
@@ -265,12 +263,13 @@ type PlanDetails = (DistDirLayout,
                     BuildStatusMap,
                     BuildTimeSettings)
 
-executePlan :: PlanDetails -> IO ElaboratedInstallPlan
+executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildResults)
 executePlan (distDirLayout,
              elaboratedPlan,
              elaboratedShared,
              pkgsBuildStatus,
              buildSettings) =
+    fmap ((,) elaboratedPlan) $
     rebuildTargets verbosity
                    distDirLayout
                    elaboratedPlan
@@ -341,66 +340,55 @@ expectException expected action = do
       Left  e -> return e
       Right _ -> throwIO $ HUnitFailure $ "expected an exception " ++ expected
 
-expectPackagePreExisting :: ElaboratedInstallPlan -> PackageId
+expectPackagePreExisting :: ElaboratedInstallPlan -> BuildResults -> PackageId
                          -> IO InstalledPackageInfo
-expectPackagePreExisting plan pkgid = do
+expectPackagePreExisting plan buildResults pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case planpkg of
-      InstallPlan.PreExisting pkg
-        -> return pkg
-      _ -> unexpectedPackageState "PreExisting" planpkg
+    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+      (InstallPlan.PreExisting pkg, Nothing)
+                       -> return pkg
+      (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
 
-expectPackageConfigured :: ElaboratedInstallPlan -> PackageId
+expectPackageConfigured :: ElaboratedInstallPlan -> BuildResults -> PackageId
                         -> IO ElaboratedConfiguredPackage
-expectPackageConfigured plan pkgid = do
+expectPackageConfigured plan buildResults pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case planpkg of
-      InstallPlan.Configured pkg
-        -> return pkg
-      _ -> unexpectedPackageState "Configured" planpkg
+    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+      (InstallPlan.Configured pkg, Nothing)
+                       -> return pkg
+      (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
 
-expectPackageProcessing :: ElaboratedInstallPlan -> PackageId
-                        -> IO ElaboratedConfiguredPackage
-expectPackageProcessing plan pkgid = do
+expectPackageInstalled :: ElaboratedInstallPlan -> BuildResults -> PackageId
+                       -> IO (ElaboratedConfiguredPackage, BuildSuccess)
+expectPackageInstalled plan buildResults pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case planpkg of
-      InstallPlan.Processing (ReadyPackage pkg)
-        -> return pkg
-      _ -> unexpectedPackageState "Processing" planpkg
+    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+      (InstallPlan.Configured pkg, Just (Right result))
+                       -> return (pkg, result)
+      (_, buildResult) -> unexpectedBuildResult "Installed" planpkg buildResult
 
-expectPackageInstalled :: ElaboratedInstallPlan -> PackageId
-                       -> IO (ElaboratedConfiguredPackage,
-                              Maybe InstalledPackageInfo,
-                              BuildSuccess)
-expectPackageInstalled plan pkgid = do
+expectPackageFailed :: ElaboratedInstallPlan -> BuildResults -> PackageId
+                    -> IO (ElaboratedConfiguredPackage, BuildFailure)
+expectPackageFailed plan buildResults pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case planpkg of
-      InstallPlan.Installed (ReadyPackage pkg) mipkg result
-        -> return (pkg, mipkg, result)
-      _ -> unexpectedPackageState "Installed" planpkg
+    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+      (InstallPlan.Configured pkg, Just (Left failure))
+                       -> return (pkg, failure)
+      (_, buildResult) -> unexpectedBuildResult "Failed" planpkg buildResult
 
-expectPackageFailed :: ElaboratedInstallPlan -> PackageId
-                    -> IO (ElaboratedConfiguredPackage,
-                           BuildFailure)
-expectPackageFailed plan pkgid = do
-    planpkg <- expectPlanPackage plan pkgid
-    case planpkg of
-      InstallPlan.Failed pkg failure
-        -> return (pkg, failure)
-      _ -> unexpectedPackageState "Failed" planpkg
-
-unexpectedPackageState :: String -> ElaboratedPlanPackage -> IO a
-unexpectedPackageState expected planpkg =
+unexpectedBuildResult :: String -> ElaboratedPlanPackage
+                      -> Maybe (Either BuildFailure BuildSuccess) -> IO a
+unexpectedBuildResult expected planpkg buildResult =
     throwIO $ HUnitFailure $
          "expected to find " ++ display (packageId planpkg) ++ " in the "
       ++ expected ++ " state, but it is actually in the " ++ actual ++ " state."
   where
-    actual = case planpkg of
-      InstallPlan.PreExisting{} -> "PreExisting"
-      InstallPlan.Configured{}  -> "Configured"
-      InstallPlan.Processing{}  -> "Processing"
-      InstallPlan.Installed{}   -> "Installed"
-      InstallPlan.Failed{}      -> "Failed"
+    actual = case (buildResult, planpkg) of
+      (Nothing, InstallPlan.PreExisting{})       -> "PreExisting"
+      (Nothing, InstallPlan.Configured{})        -> "Configured"
+      (Just (Right _), InstallPlan.Configured{}) -> "Installed"
+      (Just (Left  _), InstallPlan.Configured{}) -> "Failed"
+      _                                          -> "Impossible!"
 
 expectPlanPackage :: ElaboratedInstallPlan -> PackageId
                   -> IO ElaboratedPlanPackage

@@ -60,8 +60,8 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
-                          , DocsResult(..), TestsResult(..) )
+                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
+                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -195,14 +195,22 @@ runProjectPreBuildPhase
 --
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
-                     -> IO ElaboratedInstallPlan
+                     -> IO BuildResults
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
+    fmap (Map.union (previousBuildResults pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
                    elaboratedPlan
                    elaboratedShared
                    pkgsBuildStatus
                    buildSettings
+  where
+    previousBuildResults :: BuildStatusMap -> BuildResults
+    previousBuildResults =
+      Map.mapMaybe $ \status -> case status of
+        BuildStatusUpToDate _ buildSuccess -> Just (Right buildSuccess)
+        --TODO: [nice to have] record build failures persistently
+        _                                  -> Nothing
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -460,12 +468,11 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-
-reportBuildFailures :: ElaboratedInstallPlan -> IO ()
+reportBuildFailures :: BuildResults -> IO ()
 reportBuildFailures plan =
 
-  case [ (pkg, reason)
-       | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
+  case [ (pkgid, reason)
+       | (pkgid, Left reason) <- Map.toList plan ] of
     []      -> return ()
     _failed -> exitFailure
     --TODO: [required eventually] see the old printBuildFailures for an example
