@@ -38,9 +38,9 @@ module Distribution.Client.InstallPlan (
   -- ** Traversal helpers
   -- $traversal
   Processing,
-  ready',
-  completed',
-  failed',
+  ready,
+  completed,
+  failed,
 
   -- * Display
   showPlanIndex,
@@ -729,10 +729,10 @@ data Processing = Processing' !IntSet !IntSet !IntSet
 -- all the packages that are ready will now be processed and so we can consider
 -- them to be in the processing state.
 --
-ready' :: (HasUnitId ipkg, HasUnitId srcpkg)
+ready :: (HasUnitId ipkg, HasUnitId srcpkg)
       => GenericInstallPlan ipkg srcpkg unused1 unused2
       -> ([GenericReadyPackage srcpkg], Processing)
-ready' plan =
+ready plan =
     assert (processingInvariant plan processing) $
     (readyPackages, processing)
   where
@@ -762,10 +762,10 @@ ready' plan =
 -- and return any packages that are newly in the processing state (ie ready to
 -- process), along with the updated 'Processing' state.
 --
-completed' :: GenericInstallPlan ipkg srcpkg unused1 unused2
+completed :: GenericInstallPlan ipkg srcpkg unused1 unused2
           -> Processing -> UnitId
           -> ([GenericReadyPackage srcpkg], Processing)
-completed' plan (Processing' processingSet completedSet failedSet) pkgid =
+completed plan (Processing' processingSet completedSet failedSet) pkgid =
     assert (pkgv `IntSet.member` processingSet) $
     assert (processingInvariant plan processing') $
 
@@ -790,10 +790,10 @@ completed' plan (Processing' processingSet completedSet failedSet) pkgid =
     asReadyPackage (Configured pkg) = ReadyPackage pkg
     asReadyPackage _ = error "InstallPlan.completed: internal error"
 
-failed' :: GenericInstallPlan ipkg srcpkg unused1 unused2
+failed :: GenericInstallPlan ipkg srcpkg unused1 unused2
        -> Processing -> UnitId
        -> ([srcpkg], Processing)
-failed' plan (Processing' processingSet completedSet failedSet) pkgid =
+failed plan (Processing' processingSet completedSet failedSet) pkgid =
     assert (pkgv `IntSet.member` processingSet) $
     assert (all (`IntSet.notMember` processingSet) (tail newlyFailed)) $
     assert (all (`IntSet.notMember` completedSet)  (tail newlyFailed)) $
@@ -854,7 +854,7 @@ executionOrder :: (HasUnitId ipkg, HasUnitId srcpkg, PackageFixedDeps srcpkg)
         => GenericInstallPlan ipkg srcpkg unused1 unused2
         -> [GenericReadyPackage srcpkg]
 executionOrder plan =
-    let (newpkgs, processing) = ready' plan
+    let (newpkgs, processing) = ready plan
      in tryNewTasks processing newpkgs
   where
     tryNewTasks _processing []       = []
@@ -863,7 +863,7 @@ executionOrder plan =
     waitForTasks processing p todo =
         p : tryNewTasks processing' (todo++nextpkgs)
       where
-        (nextpkgs, processing') = completed' plan processing (installedUnitId p)
+        (nextpkgs, processing') = completed plan processing (installedUnitId p)
 
 
 -- ------------------------------------------------------------
@@ -902,7 +902,7 @@ execute :: forall m ipkg srcpkg result failure unused1 unused2.
         -> (GenericReadyPackage srcpkg -> m (Either failure result))
         -> m (BuildResults failure result)
 execute jobCtl keepGoing depFailure plan installPkg =
-    let (newpkgs, processing) = ready' plan
+    let (newpkgs, processing) = ready plan
      in tryNewTasks Map.empty False False processing newpkgs
   where
     tryNewTasks :: BuildResults failure result
@@ -949,7 +949,7 @@ execute jobCtl keepGoing depFailure plan installPkg =
                         processing' nextpkgs
           where
             results' = Map.insert pkgid result results
-            (nextpkgs, processing') = completed' plan processing pkgid
+            (nextpkgs, processing') = completed plan processing pkgid
 
         Left _failure -> do
             -- if this is the first failure and we're not trying to keep going
@@ -960,7 +960,7 @@ execute jobCtl keepGoing depFailure plan installPkg =
             tasksRemaining <- remainingJobs jobCtl
             tryNewTasks results' True tasksRemaining processing' []
           where
-            (depsfailed, processing') = failed' plan processing pkgid
+            (depsfailed, processing') = failed plan processing pkgid
             results'   = Map.insert pkgid result results `Map.union` depResults
             depResults = Map.fromList
                            [ (installedUnitId deppkg, Left (depFailure deppkg))
