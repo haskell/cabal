@@ -58,6 +58,7 @@ module Distribution.Simple.Compiler (
         packageKeySupported,
         unitIdSupported,
         coverageSupported,
+        profilingSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -323,6 +324,15 @@ coverageSupported comp =
   case compilerFlavor comp of
     GHC -> True
     GHCJS -> True
+    _ -> False
+
+-- | Does this compiler support profiling?
+profilingSupported :: Compiler -> Bool
+profilingSupported comp =
+  case compilerFlavor comp of
+    GHC -> True
+    GHCJS -> True
+    LHC -> True
     _ -> False
 
 -- | Utility function for GHC only features
