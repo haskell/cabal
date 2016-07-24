@@ -661,7 +661,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
 -- source packages in the dependency graph, albeit not necessarily exactly the
 -- same ordering as that produced by 'reverseTopologicalOrder'.
 --
-executionOrder :: (HasUnitId ipkg, HasUnitId srcpkg, PackageFixedDeps srcpkg)
+executionOrder :: (HasUnitId ipkg, HasUnitId srcpkg)
         => GenericInstallPlan ipkg srcpkg
         -> [GenericReadyPackage srcpkg]
 executionOrder plan =
@@ -701,8 +701,7 @@ lookupBuildResult = Map.lookup . installedUnitId
 -- can be reversed to keep going and build as many packages as possible.
 --
 execute :: forall m ipkg srcpkg result failure.
-           (HasUnitId ipkg,   PackageFixedDeps ipkg,
-            HasUnitId srcpkg, PackageFixedDeps srcpkg,
+           (HasUnitId ipkg, HasUnitId srcpkg,
             Monad m)
         => JobControl m (UnitId, Either failure result)
         -> Bool                -- ^ Keep going after failure
