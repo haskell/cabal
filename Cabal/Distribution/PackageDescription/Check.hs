@@ -1563,7 +1563,13 @@ checkCabalFileBOM :: Monad m => CheckPackageContentOps m
 checkCabalFileBOM ops = do
   epdfile <- findPackageDesc ops
   case epdfile of
-    Left pc      -> return $ Just pc
+    -- MASSIVE HACK.  If the Cabal file doesn't exist, that is
+    -- a very strange situation to be in, because the driver code
+    -- in 'Distribution.Setup' ought to have noticed already!
+    -- But this can be an issue, see #3552 and also when
+    -- --cabal-file is specified.  So if you can't find the file,
+    -- just don't bother with this check.
+    Left _       -> return $ Nothing
     Right pdfile -> (flip check pc . startsWithBOM . fromUTF8)
                     `liftM` (getFileContents ops pdfile)
       where pc = PackageDistInexcusable $
@@ -1597,7 +1603,7 @@ findPackageDesc ops
              ++ "Please create a package description file <pkgname>.cabal"
 
     multiDesc :: [String] -> String
-    multiDesc l = "Multiple cabal files found.\n"
+    multiDesc l = "Multiple cabal files found while checking.\n"
                   ++ "Please use only one of: "
                   ++ intercalate ", " l
 
