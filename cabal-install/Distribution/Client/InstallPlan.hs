@@ -57,7 +57,7 @@ module Distribution.Client.InstallPlan (
   reverseTopologicalOrder,
   ) where
 
-import Distribution.Client.Types
+import Distribution.Client.Types hiding (BuildResults)
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.Simple.Configure as Configure
 import qualified Distribution.Simple.Setup as Cabal
