@@ -32,7 +32,6 @@ module Distribution.Simple.LocalBuildInfo (
         showComponentName,
         componentNameString,
         ComponentLocalBuildInfo(..),
-        getLocalComponent,
         componentComponentId,
         componentBuildDir,
         foldComponent,
@@ -43,12 +42,9 @@ module Distribution.Simple.LocalBuildInfo (
         pkgBuildableComponents,
         lookupComponent,
         getComponent,
-        maybeGetDefaultLibraryLocalBuildInfo,
-        maybeGetComponentLocalBuildInfo,
         getComponentLocalBuildInfo,
         allComponentsInBuildOrder,
         componentsInBuildOrder,
-        checkComponentsCyclic,
         depLibraryPaths,
 
         withAllComponentsInBuildOrder,
@@ -60,7 +56,6 @@ module Distribution.Simple.LocalBuildInfo (
         withTestLBI,
         enabledTestLBIs,
         enabledBenchLBIs,
-        enabledComponents,
 
         -- TODO: Don't export me
         ComponentEnabledSpec(..),
@@ -84,6 +79,7 @@ import Distribution.Types.ComponentEnabledSpec
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.TargetInfo
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
@@ -95,21 +91,18 @@ import Distribution.Package
 import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
+import Distribution.Text
+import qualified Distribution.Compat.Graph as Graph
 
-import Data.Array ((!))
-import Data.Graph
 import Data.List (stripPrefix)
 import Data.Maybe
-import Data.Tree  (flatten)
 import System.FilePath
+import qualified Data.Map as Map
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
 
 -- -----------------------------------------------------------------------------
 -- Configuration information of buildable components
-
-getLocalComponent :: PackageDescription -> ComponentLocalBuildInfo -> Component
-getLocalComponent pkg_descr clbi = getComponent pkg_descr (componentLocalName clbi)
 
 componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 -- For now, we assume that libraries/executables/test-suites/benchmarks
@@ -123,50 +116,28 @@ componentBuildDir lbi clbi
                         CTestName s  -> s
                         CBenchName s -> s
 
+{-# DEPRECATED getComponentLocalBuildInfo "This function is not well-defined, because a 'ComponentName' does not uniquely identify a 'ComponentLocalBuildInfo'.  If you have a 'TargetInfo', you should use 'targetCLBI' to get the 'ComponentLocalBuildInfo'.  Otherwise, use 'componentNameTargets' to get all possible 'ComponentLocalBuildInfo's.  This will be removed in Cabal 2.2." #-}
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
 getComponentLocalBuildInfo lbi cname =
-    case maybeGetComponentLocalBuildInfo lbi cname of
-      Just clbi -> clbi
-      Nothing   ->
+    case componentNameCLBIs lbi cname of
+      [clbi] -> clbi
+      [] ->
           error $ "internal error: there is no configuration data "
                ++ "for component " ++ show cname
-
-maybeGetComponentLocalBuildInfo
-    :: LocalBuildInfo -> ComponentName -> Maybe ComponentLocalBuildInfo
-maybeGetComponentLocalBuildInfo lbi cname =
-    case [ clbi
-         | (clbi, _) <- componentsConfigs lbi
-         , cid <- componentNameToUnitIds lbi cname
-         , cid == componentUnitId clbi ] of
-      [clbi] -> Just clbi
-      _      -> Nothing
-
-maybeGetDefaultLibraryLocalBuildInfo
-    :: LocalBuildInfo
-    -> Maybe ComponentLocalBuildInfo
-maybeGetDefaultLibraryLocalBuildInfo lbi =
-    case [ clbi
-         | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-         , componentIsPublic clbi
-         ] of
-      [clbi] -> Just clbi
-      _ -> Nothing
-
-componentNameToUnitIds :: LocalBuildInfo -> ComponentName -> [UnitId]
-componentNameToUnitIds lbi cname =
-    [ componentUnitId clbi
-    | (clbi, _) <- componentsConfigs lbi
-    , componentName (getLocalComponent (localPkgDescr lbi) clbi) == cname ]
+      clbis ->
+          error $ "internal error: the component name " ++ show cname
+               ++ "is ambiguous.  Refers to: "
+               ++ intercalate ", " (map (display . componentUnitId) clbis)
 
 -- | Perform the action on each enabled 'library' in the package
 -- description with the 'ComponentLocalBuildInfo'.
 withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withLibLBI pkg lbi f =
-    sequence_
-        [ f lib clbi
-        | (clbi@LibComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-        , CLib lib <- [getComponent pkg (componentLocalName clbi)] ]
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
+        case targetComponent target of
+            CLib lib -> f lib (targetCLBI target)
+            _ -> return ()
 
 -- | Perform the action on each enabled 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
@@ -174,10 +145,10 @@ withLibLBI pkg lbi f =
 withExeLBI :: PackageDescription -> LocalBuildInfo
            -> (Executable -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withExeLBI pkg lbi f =
-    sequence_
-        [ f exe clbi
-        | (clbi@ExeComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-        , CExe exe <- [getComponent pkg (componentLocalName clbi)] ]
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
+        case targetComponent target of
+            CExe exe -> f exe (targetCLBI target)
+            _ -> return ()
 
 -- | Perform the action on each enabled 'Benchmark' in the package
 -- description.
@@ -194,27 +165,16 @@ withTestLBI pkg lbi f =
 enabledTestLBIs :: PackageDescription -> LocalBuildInfo
              -> [(TestSuite, ComponentLocalBuildInfo)]
 enabledTestLBIs pkg lbi =
-        [ (test, clbi)
-        | (clbi@TestComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-        , CTest test <- [getComponent pkg (componentLocalName clbi)] ]
+    [ (test, targetCLBI target)
+    | target <- allTargetsInBuildOrder' pkg lbi
+    , CTest test <- [targetComponent target] ]
 
 enabledBenchLBIs :: PackageDescription -> LocalBuildInfo
              -> [(Benchmark, ComponentLocalBuildInfo)]
 enabledBenchLBIs pkg lbi =
-        [ (test, clbi)
-        | (clbi@BenchComponentLocalBuildInfo{}, _) <- componentsConfigs lbi
-        , CBench test <- [getComponent pkg (componentLocalName clbi)] ]
-
--- | Get a list of all enabled 'Component's (both buildable and
--- requested by the user at configure-time).
---
--- @since 2.0.0.0
-enabledComponents :: PackageDescription -> LocalBuildInfo
-                  -> [Component]
-enabledComponents pkg lbi =
-        [ getComponent pkg (componentLocalName clbi)
-        | (clbi, _) <- componentsConfigs lbi ]
-
+    [ (bench, targetCLBI target)
+    | target <- allTargetsInBuildOrder' pkg lbi
+    , CBench bench <- [targetComponent target] ]
 
 {-# DEPRECATED withComponentsLBI "Use withAllComponentsInBuildOrder" #-}
 withComponentsLBI :: PackageDescription -> LocalBuildInfo
@@ -229,66 +189,42 @@ withAllComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                               -> (Component -> ComponentLocalBuildInfo -> IO ())
                               -> IO ()
 withAllComponentsInBuildOrder pkg lbi f =
-    sequence_
-      [ f (getLocalComponent pkg clbi) clbi
-      | clbi <- allComponentsInBuildOrder lbi ]
+    withAllTargetsInBuildOrder' pkg lbi $ \target ->
+        f (targetComponent target) (targetCLBI target)
 
+{-# DEPRECATED withComponentsInBuildOrder "You have got a 'TargetInfo' right? Use 'withNeededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
 withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                            -> [ComponentName]
                            -> (Component -> ComponentLocalBuildInfo -> IO ())
                            -> IO ()
 withComponentsInBuildOrder pkg lbi cnames f =
-    sequence_
-      [ f (getLocalComponent pkg clbi) clbi
-      | clbi <- componentsInBuildOrder lbi cnames ]
+    withNeededTargetsInBuildOrder' pkg lbi uids $ \target ->
+        f (targetComponent target) (targetCLBI target)
+  where uids = concatMap (componentNameToUnitIds lbi) cnames
 
 allComponentsInBuildOrder :: LocalBuildInfo
                           -> [ComponentLocalBuildInfo]
 allComponentsInBuildOrder lbi =
-    componentsInBuildOrder' lbi
-      [ componentUnitId clbi | (clbi, _) <- componentsConfigs lbi ]
+    Graph.topSort (componentGraph lbi)
 
+-- | Private helper function for some of the deprecated implementations.
+componentNameToUnitIds :: LocalBuildInfo -> ComponentName -> [UnitId]
+componentNameToUnitIds lbi cname =
+    case Map.lookup cname (componentNameMap lbi) of
+        Just clbis -> map componentUnitId clbis
+        Nothing -> error $ "componentNameToUnitIds " ++ display cname
+
+{-# DEPRECATED componentsInBuildOrder "You've got 'TargetInfo' right? Use 'neededTargetsInBuildOrder' on the 'UnitId's you can 'nodeKey' out." #-}
 componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]
                        -> [ComponentLocalBuildInfo]
-componentsInBuildOrder lbi cnames =
-    componentsInBuildOrder' lbi
-        (concatMap (componentNameToUnitIds lbi) cnames)
+componentsInBuildOrder lbi cnames
+    -- NB: use of localPkgDescr here is safe because we throw out the
+    -- result immediately afterwards
+    = map targetCLBI (neededTargetsInBuildOrder' (localPkgDescr lbi) lbi uids)
+  where uids = concatMap (componentNameToUnitIds lbi) cnames
 
-componentsInBuildOrder' :: LocalBuildInfo -> [UnitId]
-                       -> [ComponentLocalBuildInfo]
-componentsInBuildOrder' lbi cids =
-      map ((\(clbi,_,_) -> clbi) . vertexToNode)
-    . postOrder graph
-    . map (\cid -> fromMaybe (noSuchComp cid) (keyToVertex cid))
-    $ cids
-  where
-    (graph, vertexToNode, keyToVertex) =
-      graphFromEdges (map (\(clbi,internal_deps) ->
-                            (clbi,componentUnitId clbi,internal_deps)) (componentsConfigs lbi))
-
-    noSuchComp cid = error $ "internal error: componentsInBuildOrder: "
-                            ++ "no such component: " ++ show cid
-
-    postOrder :: Graph -> [Vertex] -> [Vertex]
-    postOrder g vs = postorderF (dfs g vs) []
-
-    postorderF   :: Forest a -> [a] -> [a]
-    postorderF ts = foldr (.) id $ map postorderT ts
-
-    postorderT :: Tree a -> [a] -> [a]
-    postorderT (Node a ts) = postorderF ts . (a :)
-
-checkComponentsCyclic :: Ord key => [(node, key, [key])]
-                      -> Maybe [(node, key, [key])]
-checkComponentsCyclic es =
-    let (graph, vertexToNode, _) = graphFromEdges es
-        cycles                   = [ flatten c | c <- scc graph, isCycle c ]
-        isCycle (Node v [])      = selfCyclic v
-        isCycle _                = True
-        selfCyclic v             = v `elem` graph ! v
-     in case cycles of
-         []    -> Nothing
-         (c:_) -> Just (map vertexToNode c)
+-- -----------------------------------------------------------------------------
+-- A random function that has no business in this module
 
 -- | Determine the directories containing the dynamic libraries of the
 -- transitive dependencies of the component we are building.
@@ -309,14 +245,24 @@ depLibraryPaths inplace relative lbi clbi = do
                | otherwise  = libdir installDirs
 
     let -- TODO: this is kind of inefficient
-        internalDeps = [ cid
-                       | (cid, _) <- componentPackageDeps clbi
+        internalDeps = [ uid
+                       | (uid, _) <- componentPackageDeps clbi
                        -- Test that it's internal
-                       , (sub_clbi, _) <- componentsConfigs lbi
-                       , componentUnitId sub_clbi == cid ]
-        internalLibs = [ getLibDir sub_clbi
-                       | sub_clbi <- componentsInBuildOrder'
-                                        lbi internalDeps ]
+                       , sub_target <- allTargetsInBuildOrder' pkgDescr lbi
+                       , componentUnitId (targetCLBI (sub_target)) == uid ]
+        internalLibs = [ getLibDir (targetCLBI sub_target)
+                       | sub_target <- neededTargetsInBuildOrder'
+                                        pkgDescr lbi internalDeps ]
+    {-
+    -- This is better, but it doesn't work, because we may be passed a
+    -- CLBI which doesn't actually exist, and was faked up when we
+    -- were building a test suite/benchmark.  See #3599 for proposal
+    -- to fix this.
+    let internalCLBIs = filter ((/= componentUnitId clbi) . componentUnitId)
+                      . map targetCLBI
+                      $ neededTargetsInBuildOrder lbi [componentUnitId clbi]
+        internalLibs = map getLibDir internalCLBIs
+    -}
         getLibDir sub_clbi
           | inplace    = componentBuildDir lbi sub_clbi
           | otherwise  = libdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)

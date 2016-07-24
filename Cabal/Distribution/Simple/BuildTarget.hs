@@ -10,10 +10,11 @@
 -- Handling for user-specified build targets
 -----------------------------------------------------------------------------
 module Distribution.Simple.BuildTarget (
+    -- * Main interface
+    readTargetInfos,
 
     -- * Build targets
     BuildTarget(..),
-    readBuildTargets,
     showBuildTarget,
     QualLevel(..),
     buildTargetComponentName,
@@ -29,10 +30,10 @@ module Distribution.Simple.BuildTarget (
     resolveBuildTargets,
     BuildTargetProblem(..),
     reportBuildTargetProblems,
-
-    -- * Checking build targets
-    checkBuildTargets
   ) where
+
+import Distribution.Types.TargetInfo
+import Distribution.Types.LocalBuildInfo
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -64,6 +65,13 @@ import System.FilePath as FilePath
          , hasTrailingPathSeparator )
 import System.Directory
          ( doesFileExist, doesDirectoryExist )
+
+-- | Take a list of 'String' build targets, and parse and validate them
+-- into actual 'TargetInfo's to be built/registered/whatever.
+readTargetInfos :: Verbosity -> PackageDescription -> LocalBuildInfo -> [String] -> IO [TargetInfo]
+readTargetInfos verbosity pkg_descr lbi args = do
+    build_targets <- readBuildTargets pkg_descr args
+    checkBuildTargets verbosity pkg_descr lbi build_targets
 
 -- ------------------------------------------------------------
 -- * User build targets
@@ -952,16 +960,15 @@ caseFold = lowercase
 -- Also swizzle into a more convenient form.
 --
 checkBuildTargets :: Verbosity -> PackageDescription -> LocalBuildInfo -> [BuildTarget]
-                  -> IO [(ComponentName, Maybe (Either ModuleName FilePath))]
-checkBuildTargets _ pkg lbi []      =
-    return [ (componentName c, Nothing) | c <- enabledComponents pkg lbi ]
+                  -> IO [TargetInfo]
+checkBuildTargets _ pkg_descr lbi []      =
+    return (allTargetsInBuildOrder' pkg_descr lbi)
 
-checkBuildTargets verbosity pkg lbi targets = do
+checkBuildTargets verbosity pkg_descr lbi targets = do
 
     let (enabled, disabled) =
           partitionEithers
-            [ case componentDisabledReason (componentEnabledSpec lbi)
-                                           (getComponent pkg cname) of
+            [ case componentNameDisabledReason (componentEnabledSpec lbi) cname of
                 Nothing     -> Left  target'
                 Just reason -> Right (cname, reason)
             | target <- targets
@@ -976,7 +983,14 @@ checkBuildTargets verbosity pkg lbi targets = do
                     ++ showComponentName c ++ " will be processed. (Support for "
                     ++ "module and file targets has not been implemented yet.)"
 
-    return enabled
+    -- Pick out the actual CLBIs for each of these cnames
+    enabled' <- forM enabled $ \(cname, _) -> do
+        case componentNameTargets' pkg_descr lbi cname of
+            [] -> error "checkBuildTargets: nothing enabled"
+            [target] -> return target
+            _targets -> error "checkBuildTargets: multiple copies enabled"
+
+    return enabled'
 
   where
     swizzleTarget (BuildTargetComponent c)   = (c, Nothing)

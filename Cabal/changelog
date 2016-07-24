@@ -47,6 +47,9 @@
 	* Add support for `--allow-older` (dual to `--allow-newer`) (#3466)
 	* Improved an error message for process output decoding errors
 	(#3408).
+	* 'getComponentLocalBuildInfo', 'withComponentsInBuildOrder'
+	  and 'componentsInBuildOrder' are deprecated in favor of a
+	  new interface in "Distribution.Types.LocalBuildInfo".
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

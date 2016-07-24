@@ -36,15 +36,16 @@ import Distribution.Types.BuildInfo
 --         'sanityCheckHookedBuildInfo'.
 --      3. We update our 'PackageDescription' (either freshly read
 --         or cached from 'LocalBuildInfo') with 'updatePackageDescription'.
---         In doing so, we must be careful to also update it in
---         'localPkgDescr' in 'LocalBuildInfo', where a user can
---         also get to it.  In practice the code also passes around
---         the updated 'PackageDescription' around explicitly (redundantly)
---         which is what everyone used to get the actual 'Component'.
---         And that's a good thing because up until recently
---         'localPkgDescr' was NOT updated.  Although, it doesn't
---         look like anyone saw a bug because of this, thanks to
---         1c20a6328579af9e37677d507e2e9836ef70ab9d.
+--
+--         In principle, we are also supposed to update the copy of
+--         the 'PackageDescription' stored in 'LocalBuildInfo'
+--         at 'localPkgDescr'.  Unfortunately, in practice, there
+--         are lots of Custom setup scripts which fail to update
+--         'localPkgDescr' so you really shouldn't rely on it.
+--         It's not DEPRECATED because there are legitimate uses
+--         for it, but... yeah.  Sharp knife.  See
+--         <https://github.com/haskell/cabal/issues/3606>
+--         for more information on the issue.
 --
 -- It is not well-specified whether or not a 'HookedBuildInfo' applied
 -- at configure time is persistent to the 'LocalBuildInfo'.  The

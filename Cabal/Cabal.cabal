@@ -370,6 +370,7 @@ library
     Distribution.Types.ComponentLocalBuildInfo
     Distribution.Types.LocalBuildInfo
     Distribution.Types.ComponentEnabledSpec
+    Distribution.Types.TargetInfo
     Distribution.Utils.NubList
     Distribution.Verbosity
     Distribution.Version

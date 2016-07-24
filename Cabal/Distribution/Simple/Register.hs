@@ -44,6 +44,9 @@ module Distribution.Simple.Register (
     generalInstalledPackageInfo,
   ) where
 
+import Distribution.Types.TargetInfo
+import Distribution.Types.LocalBuildInfo
+
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 
@@ -67,6 +70,7 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity as Verbosity
+import Distribution.Compat.Graph (IsNode(nodeKey))
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
@@ -90,22 +94,22 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
   -- usefully (they're not public.)  If we start supporting scoped
   -- packages, we'll have to relax this.
   doRegister = do
-    targets <- readBuildTargets pkg_descr (regArgs flags)
-    targets' <- checkBuildTargets verbosity pkg_descr lbi targets
+    targets <- readTargetInfos verbosity pkg_descr lbi (regArgs flags)
 
     -- It's important to register in build order, because ghc-pkg
     -- will complain if a dependency is not registered.
-    let maybeGenerateOne clbi
-            | CLib lib <- getLocalComponent pkg_descr clbi
+    let maybeGenerateOne target
+            | CLib lib <- targetComponent target
             = fmap Just (generateOne pkg_descr lib lbi clbi flags)
             | otherwise = return Nothing
+          where clbi = targetCLBI target
 
     ipis <-
       if fromFlag (regAssumeDepsUpToDate flags)
         then
-          case targets' of
-            [(cname, _)] -> do
-                mb_ipi <- maybeGenerateOne (getComponentLocalBuildInfo lbi cname)
+          case targets of
+            [target] -> do
+                mb_ipi <- maybeGenerateOne target
                 case mb_ipi of
                     Nothing -> die "Cannot --assume-deps-up-to-date register non-library target"
                     Just ipi -> return [ipi]
@@ -113,7 +117,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
             _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
         else fmap catMaybes
            . mapM maybeGenerateOne
-           $ componentsInBuildOrder lbi (map fst targets')
+           $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
     registerAll pkg_descr lbi flags ipis
     return ()
    where
