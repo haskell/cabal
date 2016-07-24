@@ -664,10 +664,7 @@ configure (pkg_descr0', pbi) cfg = do
         ++ "profiling is disabled. Linking will fail if any executables "
         ++ "depend on the library."
 
-    let configCoverage_ =
-          mappend (configCoverage cfg) (configLibCoverage cfg)
-
-        cfg' = cfg { configCoverage = configCoverage_ }
+    configCoverage <- configureCoverage verbosity cfg comp
 
     reloc <-
        if not (fromFlag $ configRelocatable cfg)
@@ -678,8 +675,9 @@ configure (pkg_descr0', pbi) cfg = do
             foldl' (\m clbi -> Map.insertWith (++) (componentLocalName clbi) [clbi] m)
                    Map.empty buildComponents
 
-    let lbi = LocalBuildInfo {
-                configFlags         = cfg',
+    let lbi = configCoverage
+              LocalBuildInfo {
+                configFlags         = cfg,
                 flagAssignment      = flags,
                 componentEnabledSpec = enabled,
                 extraConfigArgs     = [],  -- Currently configure does not
@@ -709,6 +707,8 @@ configure (pkg_descr0', pbi) cfg = do
                 splitObjs           = split_objs,
                 stripExes           = fromFlag $ configStripExes cfg,
                 stripLibs           = fromFlag $ configStripLibs cfg,
+                exeCoverage         = False,
+                libCoverage         = False,
                 withPackageDB       = packageDbs,
                 progPrefix          = fromFlag $ configProgPrefix cfg,
                 progSuffix          = fromFlag $ configProgSuffix cfg,
@@ -1015,6 +1015,29 @@ configureDependencies verbosity
     reportSelectedDependencies verbosity allPkgDeps
 
     return (internalPkgDeps, externalPkgDeps)
+
+-- | Select and apply coverage settings for the build based on the
+-- 'ConfigFlags' and 'Compiler'.
+configureCoverage :: Verbosity -> ConfigFlags -> Compiler
+                  -> IO (LocalBuildInfo -> LocalBuildInfo)
+configureCoverage verbosity cfg comp = do
+    let tryExeCoverage = fromFlagOrDefault False (configCoverage cfg)
+        tryLibCoverage = fromFlagOrDefault tryExeCoverage
+                         (mappend (configCoverage cfg) (configLibCoverage cfg))
+    if coverageSupported comp
+      then do
+        let apply lbi = lbi { libCoverage = tryLibCoverage
+                            , exeCoverage = tryExeCoverage
+                            }
+        return apply
+      else do
+        let apply lbi = lbi { libCoverage = False
+                            , exeCoverage = False
+                            }
+        when (tryExeCoverage || tryLibCoverage) $ warn verbosity
+          ("The compiler " ++ showCompilerId comp ++ " does not support "
+           ++ "program coverage. Program coverage has been disabled.")
+        return apply
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies

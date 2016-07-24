@@ -293,7 +293,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
-  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+  let isCoverageEnabled = libCoverage lbi
       pkg_name = display $ PD.package pkg_descr
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
@@ -534,7 +534,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
-  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+  let isCoverageEnabled = exeCoverage lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'

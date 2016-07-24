@@ -57,6 +57,7 @@ module Distribution.Simple.Compiler (
         unifiedIPIDRequired,
         packageKeySupported,
         unitIdSupported,
+        coverageSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -315,6 +316,14 @@ packageKeySupported = ghcSupported "Uses package keys"
 -- | Does this compiler support unit IDs?
 unitIdSupported :: Compiler -> Bool
 unitIdSupported = ghcSupported "Uses unit IDs"
+
+-- | Does this compiler support Haskell program coverage?
+coverageSupported :: Compiler -> Bool
+coverageSupported comp =
+  case compilerFlavor comp of
+    GHC -> True
+    GHCJS -> True
+    _ -> False
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool
