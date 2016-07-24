@@ -51,7 +51,7 @@ module Distribution.Client.InstallPlan (
   reverseTopologicalOrder,
   ) where
 
-import Distribution.Client.Types
+import Distribution.Client.Types hiding (BuildResults)
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.Simple.Configure as Configure
 import qualified Distribution.Simple.Setup as Cabal
@@ -79,15 +79,17 @@ import           Distribution.Solver.Types.SolverId
 import Data.List
          ( foldl', intercalate )
 import Data.Maybe
-         ( catMaybes )
+         ( catMaybes, fromMaybe )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
+import qualified Data.Graph as OldGraph
 import Data.Array ((!), inRange, bounds)
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Monad
 import Control.Exception
          ( assert )
+import qualified Data.Tree as Tree
 import qualified Data.Map as Map
 import           Data.Map (Map)
 import qualified Data.IntSet as IntSet
@@ -178,12 +180,12 @@ instance (PackageFixedDeps srcpkg,
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId
-         (GenericPlanPackage ipkg srcpkg iresult ifailure) where
+         (GenericPlanPackage ipkg srcpkg) where
   installedUnitId (PreExisting ipkg ) = installedUnitId ipkg
   installedUnitId (Configured  spkg)  = installedUnitId spkg
 
-data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
-    planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
+data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
+    planIndex      :: !(PlanIndex ipkg srcpkg),
     planIndepGoals :: !IndependentGoals
   }
 
@@ -211,9 +213,6 @@ mkInstallPlan index indepGoals =
       planIndex      = index,
       planIndepGoals = indepGoals
     }
-
-internalError :: String -> a
-internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
 instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
           HasUnitId srcpkg, PackageFixedDeps srcpkg,
@@ -335,7 +334,7 @@ problems :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
          => IndependentGoals
          -> PlanIndex ipkg srcpkg
          -> [PlanProblem ipkg srcpkg]
-problems indepGoals index =
+problems _indepGoals index =
 
      [ PackageMissingDeps pkg
        (catMaybes
@@ -493,6 +492,19 @@ configureInstallPlan solverPlan =
 data Processing = Processing !IntSet !IntSet !IntSet
                           -- processing, completed, failed
 
+planVertexOf :: GenericInstallPlan ipkg srcpkg -> UnitId -> OldGraph.Vertex
+planVertexOf plan uid = fromMaybe (error "planVertexOf")
+                                  (Graph.toVertex (planIndex plan) uid)
+
+planPkgOf :: GenericInstallPlan ipkg srcpkg -> OldGraph.Vertex -> GenericPlanPackage ipkg srcpkg
+planPkgOf plan v = Graph.fromVertex (planIndex plan) v
+
+planGraph :: GenericInstallPlan ipkg srcpkg -> OldGraph.Graph
+planGraph plan = let (g, _, _) = Graph.toGraph (planIndex plan) in g
+
+planGraphRev :: GenericInstallPlan ipkg srcpkg -> OldGraph.Graph
+planGraphRev plan = let (g, _, _) = Graph.toRevGraph (planIndex plan) in g
+
 -- | The packages in the plan that are initially ready to be installed.
 -- That is they are in the configured state and have all their dependencies
 -- installed already.
@@ -579,7 +591,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     pkgv           = planVertexOf plan pkgid
     processingSet' = IntSet.delete pkgv processingSet
     failedSet'     = failedSet `IntSet.union` IntSet.fromList newlyFailed
-    newlyFailed    = Graph.reachable (planGraphRev plan) pkgv
+    newlyFailed    = OldGraph.reachable (planGraphRev plan) pkgv
     processing'    = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg
@@ -604,7 +616,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     revDepClosure :: IntSet -> IntSet
     revDepClosure = IntSet.fromList
                   . concatMap Tree.flatten
-                  . Graph.dfs (planGraphRev plan)
+                  . OldGraph.dfs (planGraphRev plan)
                   . IntSet.toList
     noIntersection a b = IntSet.null (IntSet.intersection a b)
 
@@ -642,8 +654,6 @@ executionOrder plan =
 -- * Executing plans
 -- ------------------------------------------------------------
 
--- | The set of results we get from executing an install plan.
---
 type BuildResults failure result = Map UnitId (Either failure result)
 
 -- | Lookup the build result for a single package.

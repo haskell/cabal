@@ -1029,7 +1029,7 @@ elaborateInstallPlan platform compiler compilerprogdb
             InstallPlan.Configured
               (elaborateSolverPackage mapDep pkg)
 
-    elaborateSolverPackage :: (SolverId -> UnitId)
+    elaborateSolverPackage :: (SolverId -> ConfiguredId)
                            -> SolverPackage UnresolvedPkgLoc
                            -> ElaboratedConfiguredPackage
     elaborateSolverPackage

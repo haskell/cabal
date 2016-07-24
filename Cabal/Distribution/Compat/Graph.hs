@@ -73,6 +73,9 @@ module Distribution.Compat.Graph (
     keys,
     -- ** Graphs
     toGraph,
+    toRevGraph,
+    fromVertex,
+    toVertex,
     -- * Node type
     Node(..),
     nodeValue,
@@ -368,3 +371,12 @@ toMap = graphMap
 -- Requires amortized construction of graph.
 toGraph :: Graph a -> (G.Graph, G.Vertex -> a, Key a -> Maybe G.Vertex)
 toGraph g = (graphForward g, graphVertexToNode g, graphKeyToVertex g)
+
+toRevGraph :: Graph a -> (G.Graph, G.Vertex -> a, Key a -> Maybe G.Vertex)
+toRevGraph g = (graphAdjoint g, graphVertexToNode g, graphKeyToVertex g)
+
+fromVertex :: Graph a -> G.Vertex -> a
+fromVertex = graphVertexToNode
+
+toVertex :: Graph a -> Key a -> Maybe G.Vertex
+toVertex = graphKeyToVertex
