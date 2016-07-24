@@ -5,16 +5,12 @@ module Distribution.Types.TestSuiteInterface (
     TestSuiteInterface(..),
 ) where
 
-import Distribution.Types.TestType
+import Prelude ()
+import Distribution.Compat.Prelude
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
+import Distribution.Types.TestType
 import Distribution.ModuleName
 import Distribution.Version
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 -- | The test suite interfaces that are currently defined. Each test suite must
 -- specify which interface it supports.

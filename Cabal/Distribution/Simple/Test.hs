@@ -15,6 +15,9 @@ module Distribution.Simple.Test
     ( test
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
@@ -30,7 +33,6 @@ import Distribution.Simple.Utils
 import Distribution.TestSuite
 import Distribution.Text
 
-import Control.Monad ( when, unless, filterM )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )

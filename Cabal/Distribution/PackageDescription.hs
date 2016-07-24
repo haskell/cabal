@@ -100,6 +100,9 @@ module Distribution.PackageDescription (
         SetupBuildInfo(..),
   ) where
 
+import Prelude ()
+--import Distribution.Compat.Prelude
+
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable

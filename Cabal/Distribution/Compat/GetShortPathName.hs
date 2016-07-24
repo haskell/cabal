@@ -12,8 +12,10 @@
 module Distribution.Compat.GetShortPathName ( getShortPathName )
     where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 #ifdef mingw32_HOST_OS
-import Control.Monad         (void)
 
 import qualified System.Win32 as Win32
 import System.Win32          (LPCTSTR, LPTSTR, DWORD)

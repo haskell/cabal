@@ -6,17 +6,17 @@ module Distribution.Compat.Time
        , calibrateMtimeChangeDelay )
        where
 
-import Control.Arrow    ( first )
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Data.Int         ( Int64 )
 import Data.Word        ( Word64 )
 import System.Directory ( getModificationTime )
 
-import Distribution.Compat.Binary ( Binary )
 import Distribution.Simple.Utils ( withTempDirectory )
 import Distribution.Verbosity ( silent )
 
 import System.FilePath
-import Control.Monad
 
 import Data.Time.Clock.POSIX ( POSIXTime, getPOSIXTime )
 import Data.Time             ( diffUTCTime, getCurrentTime )
@@ -179,10 +179,10 @@ getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 -- The returned delay is never smaller
 -- than 10 ms, but never larger than 1 second.
 calibrateMtimeChangeDelay :: IO (Int, Int)
-calibrateMtimeChangeDelay = do
+calibrateMtimeChangeDelay =
   withTempDirectory silent "." "calibration-" $ \dir -> do
     let fileName = dir </> "probe"
-    mtimes <- forM [1..25] $ \(i::Int) -> time $ do
+    mtimes <- for [1..25] $ \(i::Int) -> time $ do
       writeFile fileName $ show i
       t0 <- getModTime fileName
       let spin j = do

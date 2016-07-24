@@ -55,6 +55,9 @@ module Distribution.Simple.Program.Db (
 
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Builtin
@@ -62,16 +65,10 @@ import Distribution.Simple.Utils
 import Distribution.Version
 import Distribution.Text
 import Distribution.Verbosity
-import Distribution.Compat.Binary
 
-import Data.List
-         ( foldl' )
-import Data.Maybe
-         ( catMaybes )
+import Control.Monad (join)
 import Data.Tuple (swap)
 import qualified Data.Map as Map
-import Control.Monad
-         ( join, foldM )
 
 -- ------------------------------------------------------------
 -- * Programs database

@@ -8,16 +8,13 @@ module Distribution.Types.SourceRepo (
     knownRepoTypes,
   ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 
-import Data.Data                  (Data)
-import Data.Maybe                 (fromMaybe)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
-import qualified Data.Char as Char (isAlphaNum, toLower)
 
 -- ------------------------------------------------------------
 -- * Source repos
@@ -147,8 +144,8 @@ classifyRepoType s =
                   , name <- display repoType' : repoTypeAliases repoType' ]
 
 ident :: Parse.ReadP r String
-ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
+ident = Parse.munch1 (\c -> isAlphaNum c || c == '_' || c == '-')
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower
 

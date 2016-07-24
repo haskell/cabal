@@ -6,6 +6,9 @@ module Distribution.Simple.Test.LibV09
        , writeSimpleTestStub
        ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
@@ -27,8 +30,6 @@ import Distribution.Text
 import Distribution.Verbosity
 
 import Control.Exception ( bracket )
-import Control.Monad ( when, unless )
-import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile

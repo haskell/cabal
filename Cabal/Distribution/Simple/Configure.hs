@@ -54,6 +54,9 @@ module Distribution.Simple.Configure (configure,
                                      )
     where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compiler
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler hiding (Flag)
@@ -88,32 +91,19 @@ import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
--- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
-import Prelude hiding ( mapM )
 import Control.Exception
-    ( Exception, evaluate, throw, throwIO, try )
-import Control.Exception ( ErrorCall )
-import Control.Monad
-    ( liftM, when, unless, foldM, filterM, mplus )
+    ( ErrorCall, Exception, evaluate, throw, throwIO, try )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix, foldl' )
-import Data.Maybe
-    ( isNothing, catMaybes, fromMaybe, mapMaybe, isJust )
+    ( (\\), partition, inits, stripPrefix )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
-import Data.Monoid as Mon ( Monoid(..) )
 import qualified Data.Map as Map
-import Data.Map (Map)
-import Data.Traversable
-    ( mapM )
-import Data.Typeable
-import Data.Char ( chr, isAlphaNum )
 import Numeric ( showIntAtBase )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
@@ -126,7 +116,7 @@ import System.IO
 import Distribution.Text
     ( Text(disp), defaultStyle, display, simpleParse )
 import Text.PrettyPrint
-    ( Doc, (<>), (<+>), ($+$), char, comma, empty, hsep, nest
+    ( Doc, (<+>), ($+$), char, comma, hsep, nest
     , punctuate, quotes, render, renderStyle, sep, text )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
@@ -163,7 +153,7 @@ dispConfigStateFileError (ConfigStateFileBadVersion oldCabal oldCompiler _) =
           text "• the Cabal version changed from"
           <+> disp oldCabal <+> "to" <+> disp currentCabalId
       badCompiler
-        | oldCompiler == currentCompilerId = empty
+        | oldCompiler == currentCompilerId = mempty
         | otherwise =
             text "• the compiler changed from"
             <+> disp oldCompiler <+> "to" <+> disp currentCompilerId
@@ -1315,7 +1305,7 @@ combinedConstraints constraints dependencies installedPackages = do
 
     dispDependencies deps =
       hsep [    text "--dependency="
-             <> quotes (disp pkgname <> char '=' <> disp ipkgid)
+             <<>> quotes (disp pkgname <<>> char '=' <<>> disp ipkgid)
            | (pkgname, ipkgid) <- deps ]
 
 -- -----------------------------------------------------------------------------
@@ -1416,7 +1406,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
                           \bench bi -> bench { benchmarkBuildInfo = bi }
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
-    pkgconfigBuildInfo []      = return Mon.mempty
+    pkgconfigBuildInfo []      = return mempty
     pkgconfigBuildInfo pkgdeps = do
       let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)

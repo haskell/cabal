@@ -19,12 +19,13 @@ module Distribution.Text (
   stdParse,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
 import Data.Version (Version(Version))
-import qualified Data.Char as Char
-import Data.List                  (intercalate)
 
 class Text a where
   disp  :: a -> Disp.Doc
@@ -42,7 +43,7 @@ display = Disp.renderStyle defaultStyle . disp
 
 simpleParse :: Text a => String -> Maybe a
 simpleParse str = case [ p | (p, s) <- Parse.readP_to_S parse str
-                       , all Char.isSpace s ] of
+                       , all isSpace s ] of
   []    -> Nothing
   (p:_) -> Just p
 
@@ -55,13 +56,13 @@ stdParse f = do
   return $! f ver (lowercase name)
   where
     component = do
-      cs <- Parse.munch1 Char.isAlphaNum
-      if all Char.isDigit cs then Parse.pfail else return cs
+      cs <- Parse.munch1 isAlphaNum
+      if all isDigit cs then Parse.pfail else return cs
       -- each component must contain an alphabetic character, to avoid
       -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower
 
 -- -----------------------------------------------------------------------------
 -- Instances for types from the base package
@@ -79,7 +80,7 @@ instance Text Int where
 
 -- | Parser for non-negative integers.
 parseNat :: Parse.ReadP r Int
-parseNat = read `fmap` Parse.munch1 Char.isDigit
+parseNat = read `fmap` Parse.munch1 isDigit
 
 instance Text Version where
   disp (Version branch _tags)     -- Death to version tags!!
@@ -88,5 +89,5 @@ instance Text Version where
   parse = do
       branch <- Parse.sepBy1 parseNat (Parse.char '.')
                 -- allow but ignore tags:
-      _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
+      _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 isAlphaNum)
       return (Version branch [])

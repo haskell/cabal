@@ -14,6 +14,9 @@ module Distribution.Simple.GHC.ImplInfo (
         ghcVersionImplInfo, ghcjsVersionImplInfo, lhcVersionImplInfo
         ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Compiler
 import Distribution.Version
 

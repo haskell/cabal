@@ -11,8 +11,8 @@ module Distribution.Simple.Program.Internal (
     stripExtractVersion,
   ) where
 
-import Data.Char (isDigit)
-import Data.List (isPrefixOf, isSuffixOf)
+import Prelude ()
+import Distribution.Compat.Prelude
 
 -- | Extract the version number from the output of 'strip --version'.
 --

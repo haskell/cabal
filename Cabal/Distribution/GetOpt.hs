@@ -50,8 +50,8 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-import Data.List ( isPrefixOf, intercalate, find )
-import Data.Maybe ( isJust )
+import Prelude ()
+import Distribution.Compat.Prelude
 
 -- |What to do with options following non-options
 data ArgOrder a

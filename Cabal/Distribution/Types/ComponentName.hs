@@ -8,13 +8,14 @@ module Distribution.Types.ComponentName (
   componentNameString,
   ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.Package
 import Distribution.Text
 
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 
 -- Libraries live in a separate namespace, so must distinguish

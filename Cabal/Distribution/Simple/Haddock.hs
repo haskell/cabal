@@ -22,11 +22,13 @@ module Distribution.Simple.Haddock (
   haddockPackagePaths
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
-import Distribution.Compat.Semigroup as Semi
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -50,13 +52,9 @@ import Distribution.Version
 import Distribution.Verbosity
 import Language.Haskell.Extension
 
+import Distribution.Compat.Semigroup (All (..), Any (..))
 
-import Control.Monad    ( when, forM_ )
-import Data.Char        ( isSpace )
 import Data.Either      ( rights )
-import Data.Foldable    ( traverse_, foldl' )
-import Data.Maybe       ( fromMaybe, listToMaybe )
-import GHC.Generics     ( Generic )
 
 import System.Directory (doesFileExist)
 import System.FilePath  ( (</>), (<.>)
@@ -218,9 +216,9 @@ haddock pkg_descr lbi suffixes flags' = do
         CTest  _ -> when (flag haddockTestSuites)  $ doExe component
         CBench _ -> when (flag haddockBenchmarks)  $ doExe component
 
-    forM_ (extraDocFiles pkg_descr) $ \ fpath -> do
+    for_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
-      forM_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
+      for_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
@@ -702,7 +700,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
                    | otherwise -> return ()
            Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
 
-         forM_ moduleFiles $ \(m, inFile) ->
+         for_ moduleFiles $ \(m, inFile) ->
              rawSystemProgram verbosity prog
                     ["-css", "-anchor", "-o" ++ outFile m, inFile]
         where
@@ -766,14 +764,14 @@ exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
 -- Boilerplate Monoid instance.
 instance Monoid HaddockArgs where
     mempty = gmempty
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup HaddockArgs where
     (<>) = gmappend
 
 instance Monoid Directory where
     mempty = Dir "."
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup Directory where
     Dir m <> Dir n = Dir $ m </> n

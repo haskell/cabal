@@ -38,6 +38,9 @@ module Distribution.PackageDescription.Parse (
         flagFieldDescrs
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
@@ -51,19 +54,11 @@ import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Compat.ReadP hiding (get)
 
-import Data.Char     (isSpace)
-import Data.Maybe    (listToMaybe, isJust, maybeToList)
-import Data.List     (nub, unfoldr, partition, (\\))
-import Control.Monad (liftM, foldM, when, unless, ap)
-#if __GLASGOW_HASKELL__ < 710
-import Data.Monoid         (Monoid(..))
-import Control.Applicative (Applicative(..))
-#endif
-import Control.Arrow    (first)
+import Data.List        (partition, (\\))
 import System.Directory (doesFileExist)
 
 import Text.PrettyPrint
-       (empty, vcat, ($$), (<+>), text, render,
+       (vcat, ($$), (<+>), text, render,
         comma, fsep, nest, ($+$), punctuate)
 
 
@@ -82,7 +77,7 @@ pkgDescrFieldDescrs =
            (either disp disp)     (liftM Left parse +++ liftM Right parse)
            specVersionRaw         (\v pkg -> pkg{specVersionRaw=v})
  , simpleField "build-type"
-           (maybe empty disp)     (fmap Just parse)
+           (maybe mempty disp)  (fmap Just parse)
            buildType              (\t pkg -> pkg{buildType=t})
  , simpleField "license"
            disp                   parseLicenseQ
@@ -229,13 +224,13 @@ emptyTestStanza = TestSuiteStanza Nothing Nothing Nothing mempty
 testSuiteFieldDescrs :: [FieldDescr TestSuiteStanza]
 testSuiteFieldDescrs =
     [ simpleField "type"
-        (maybe empty disp)    (fmap Just parse)
+        (maybe mempty disp) (fmap Just parse)
         testStanzaTestType    (\x suite -> suite { testStanzaTestType = x })
     , simpleField "main-is"
-        (maybe empty showFilePath)  (fmap Just parseFilePathQ)
+        (maybe mempty showFilePath)  (fmap Just parseFilePathQ)
         testStanzaMainIs      (\x suite -> suite { testStanzaMainIs = x })
     , simpleField "test-module"
-        (maybe empty disp)    (fmap Just parseModuleNameQ)
+        (maybe mempty disp) (fmap Just parseModuleNameQ)
         testStanzaTestModule  (\x suite -> suite { testStanzaTestModule = x })
     ]
     ++ map biToTest binfoFieldDescrs
@@ -314,11 +309,11 @@ emptyBenchmarkStanza = BenchmarkStanza Nothing Nothing Nothing mempty
 benchmarkFieldDescrs :: [FieldDescr BenchmarkStanza]
 benchmarkFieldDescrs =
     [ simpleField "type"
-        (maybe empty disp)    (fmap Just parse)
+        (maybe mempty disp)    (fmap Just parse)
         benchmarkStanzaBenchmarkType
         (\x suite -> suite { benchmarkStanzaBenchmarkType = x })
     , simpleField "main-is"
-        (maybe empty showFilePath)  (fmap Just parseFilePathQ)
+        (maybe mempty showFilePath)  (fmap Just parseFilePathQ)
         benchmarkStanzaMainIs
         (\x suite -> suite { benchmarkStanzaMainIs = x })
     ]
@@ -409,7 +404,7 @@ binfoFieldDescrs =
            showFilePath       parseFilePathQ
            jsSources          (\paths binfo -> binfo{jsSources=paths})
  , simpleField "default-language"
-           (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
+           (maybe mempty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
  , listField   "other-languages"
            disp               parseLanguageQ
@@ -493,22 +488,22 @@ flagFieldDescrs =
 sourceRepoFieldDescrs :: [FieldDescr SourceRepo]
 sourceRepoFieldDescrs =
     [ simpleField "type"
-        (maybe empty disp)         (fmap Just parse)
+        (maybe mempty disp)         (fmap Just parse)
         repoType                   (\val repo -> repo { repoType = val })
     , simpleField "location"
-        (maybe empty showFreeText) (fmap Just parseFreeText)
+        (maybe mempty showFreeText) (fmap Just parseFreeText)
         repoLocation               (\val repo -> repo { repoLocation = val })
     , simpleField "module"
-        (maybe empty showToken)    (fmap Just parseTokenQ)
+        (maybe mempty showToken)    (fmap Just parseTokenQ)
         repoModule                 (\val repo -> repo { repoModule = val })
     , simpleField "branch"
-        (maybe empty showToken)    (fmap Just parseTokenQ)
+        (maybe mempty showToken)    (fmap Just parseTokenQ)
         repoBranch                 (\val repo -> repo { repoBranch = val })
     , simpleField "tag"
-        (maybe empty showToken)    (fmap Just parseTokenQ)
+        (maybe mempty showToken)    (fmap Just parseTokenQ)
         repoTag                    (\val repo -> repo { repoTag = val })
     , simpleField "subdir"
-        (maybe empty showFilePath) (fmap Just parseFilePathQ)
+        (maybe mempty showFilePath) (fmap Just parseFilePathQ)
         repoSubdir                 (\val repo -> repo { repoSubdir = val })
     ]
 
@@ -636,8 +631,8 @@ instance Monad m => Monad (StT s m) where
                         (a,s') <- f s
                         runStT (g a) s'
 
-get :: Monad m => StT s m s
-get = StT $ \s -> return (s, s)
+getSt :: Monad m => StT s m s
+getSt = StT $ \s -> return (s, s)
 
 modify :: Monad m => (s -> s) -> StT s m ()
 modify f = StT $ \s -> return ((),f s)
@@ -657,7 +652,7 @@ type PM a = StT [Field] ParseResult a
 
 -- return look-ahead field or nothing if we're at the end of the file
 peekField :: PM (Maybe Field)
-peekField = liftM listToMaybe get
+peekField = liftM listToMaybe getSt
 
 -- Unconditionally discard the first field in our state.  Will error when it
 -- reaches end of file.  (Yes, that's evil.)
@@ -829,7 +824,7 @@ parsePackageDescription file = do
     -- warn if there's something at the end of the file
     warnIfRest :: PM ()
     warnIfRest = do
-      s <- get
+      s <- getSt
       case s of
         [] -> return ()
         _ -> lift $ warning "Ignoring trailing declarations."  -- add line no.

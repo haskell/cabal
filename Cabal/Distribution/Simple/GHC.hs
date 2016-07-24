@@ -53,8 +53,8 @@ module Distribution.Simple.GHC (
         pkgRoot
  ) where
 
-import Control.Applicative -- 7.10 -Werror workaround
-import Prelude             -- https://ghc.haskell.org/trac/ghc/wiki/Migration/7.10#GHCsaysTheimportof...isredundant
+import Prelude ()
+import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -86,12 +86,7 @@ import Distribution.Text
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import Control.Monad            ( unless, when )
-import Data.Char                ( isDigit, isSpace )
-import Data.List
-import qualified Data.Map as M  ( fromList, lookup )
-import Data.Maybe               ( catMaybes )
-import Data.Monoid as Mon       ( Monoid(..) )
+import qualified Data.Map as Map
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
@@ -147,14 +142,14 @@ configure verbosity hcPath hcPkgPath conf0 = do
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
-  let ghcInfoMap = M.fromList ghcInfo
+  let ghcInfoMap = Map.fromList ghcInfo
 
       -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
       -- `--supported-extensions` when it's not available.
       -- for older GHCs we can use the "Have interpreter" property to
       -- filter out `TemplateHaskell`
       extensions | ghcVersion < Version [8] []
-                 , Just "NO" <- M.lookup "Have interpreter" ghcInfoMap
+                 , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap
                    = filter ((/= EnableExtension TemplateHaskell) . fst)
                      extensions0
                  | otherwise = extensions0
@@ -521,7 +516,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       pkg_name = display (PD.package pkg_descr)
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
-        | forRepl = Mon.mempty  -- HPC is not supported in ghci
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
         | otherwise = mempty
 

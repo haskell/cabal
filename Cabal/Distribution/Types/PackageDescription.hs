@@ -47,6 +47,9 @@ module Distribution.Types.PackageDescription (
     getComponent,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable
@@ -60,18 +63,10 @@ import Distribution.Types.BuildType
 import Distribution.Types.SourceRepo
 import Distribution.Types.HookedBuildInfo
 
-import Distribution.Compat.Binary
 import Distribution.Package
 import Distribution.Version
 import Distribution.License
 import Distribution.Compiler
-
-import Data.Monoid as Mon         (mempty, mappend)
-import Data.Data                  (Data)
-import Data.List                  (find)
-import Data.Maybe                 (maybeToList)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -316,7 +311,7 @@ updatePackageDescription hooked_bis p
      }
     where
       lib_bi = case find ((== CLibName) . fst) hooked_bis of
-                Nothing -> Mon.mempty
+                Nothing -> mempty
                 Just (_, bi) -> bi
 
       updateMany :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
@@ -336,7 +331,7 @@ updatePackageDescription hooked_bis p
           = update bi c : cs
         | otherwise          = c : updateOne name_sel update hooked_bi' cs
 
-      updateExecutable bi exe = exe{buildInfo    = bi `Mon.mappend` buildInfo exe}
+      updateExecutable bi exe = exe{buildInfo    = bi `mappend` buildInfo exe}
       updateLibrary    bi lib = lib{libBuildInfo = bi `mappend` libBuildInfo lib}
       updateBenchmark  bi ben = ben{benchmarkBuildInfo = bi `mappend` benchmarkBuildInfo ben}
       updateTestSuite  bi test = test{testBuildInfo = bi `mappend` testBuildInfo test}

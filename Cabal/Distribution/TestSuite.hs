@@ -21,6 +21,9 @@ module Distribution.TestSuite
     , testGroup
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 data TestInstance = TestInstance
     { run       :: IO Progress      -- ^ Perform the test.
     , name      :: String           -- ^ A name for the test, unique within a

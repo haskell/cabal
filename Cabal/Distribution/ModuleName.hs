@@ -21,21 +21,14 @@ module Distribution.ModuleName (
         simple,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Text
-import Distribution.Compat.Binary
 import qualified Distribution.Compat.ReadP as Parse
 
-import qualified Data.Char as Char
-         ( isAlphaNum, isUpper )
-import Control.DeepSeq
-import Data.Data (Data)
-import Data.Typeable (Typeable)
 import qualified Text.PrettyPrint as Disp
-import Data.List
-         ( intercalate, intersperse )
-import GHC.Generics (Generic)
-import System.FilePath
-         ( pathSeparator )
+import System.FilePath ( pathSeparator )
 
 -- | A valid Haskell module name.
 --
@@ -57,16 +50,16 @@ instance Text ModuleName where
 
     where
       component = do
-        c  <- Parse.satisfy Char.isUpper
+        c  <- Parse.satisfy isUpper
         cs <- Parse.munch validModuleChar
         return (c:cs)
 
 validModuleChar :: Char -> Bool
-validModuleChar c = Char.isAlphaNum c || c == '_' || c == '\''
+validModuleChar c = isAlphaNum c || c == '_' || c == '\''
 
 validModuleComponent :: String -> Bool
 validModuleComponent []     = False
-validModuleComponent (c:cs) = Char.isUpper c
+validModuleComponent (c:cs) = isUpper c
                            && all validModuleChar cs
 
 {-# DEPRECATED simple "use ModuleName.fromString instead" #-}

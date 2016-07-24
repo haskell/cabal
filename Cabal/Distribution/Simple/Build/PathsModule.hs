@@ -18,6 +18,9 @@ module Distribution.Simple.Build.PathsModule (
     generate, pkgPathEnvVar
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.System
 import Distribution.Simple.Compiler
 import Distribution.Package
@@ -28,10 +31,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Version
 
-import System.FilePath
-         ( pathSeparator )
-import Data.Maybe
-         ( fromJust, isNothing )
+import System.FilePath ( pathSeparator )
 
 -- ------------------------------------------------------------
 -- * Building Paths_<pkg>.hs
@@ -145,7 +145,7 @@ generate pkg_descr lbi clbi =
         | otherwise =
           "\nprefix, bindirrel :: FilePath" ++
           "\nprefix        = " ++ show flat_prefix ++
-          "\nbindirrel     = " ++ show (fromJust flat_bindirrel) ++
+          "\nbindirrel     = " ++ show (fromMaybe (error "PathsModule.generate") flat_bindirrel) ++
           "\n\n"++
           "getBinDir :: IO FilePath\n"++
           "getBinDir = getPrefixDirRel bindirrel\n\n"++

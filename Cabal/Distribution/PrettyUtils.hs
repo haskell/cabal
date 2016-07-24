@@ -19,17 +19,19 @@ module Distribution.PrettyUtils (
     indentWith,
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.Version  (VersionRange)
 
-import Data.Char             (isSpace)
 import Distribution.Text     (disp)
-import Text.PrettyPrint      (Doc, empty, text, vcat, (<+>))
+import Text.PrettyPrint      (Doc, text, vcat, (<+>))
 
 type Separator = ([Doc] -> Doc)
 
 showFilePath :: FilePath -> Doc
-showFilePath "" = empty
+showFilePath "" = mempty
 showFilePath x  = showToken x
 
 showToken :: String -> Doc
@@ -45,7 +47,7 @@ showTestedWith (compiler, vr) = text (show compiler) <+> disp vr
 -- | Pretty-print free-format text, ensuring that it is vertically aligned,
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
-showFreeText "" = empty
+showFreeText "" = mempty
 showFreeText s  = vcat [text (if null l then "." else l) | l <- lines_ s]
 
 -- | 'lines_' breaks a string up into a list of strings at newline

@@ -21,7 +21,9 @@ module Distribution.Simple.Hpc
     , markupTest
     ) where
 
-import Control.Monad ( when )
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.ModuleName ( main )
 import Distribution.PackageDescription
     ( TestSuite(..)

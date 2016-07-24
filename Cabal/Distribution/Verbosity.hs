@@ -24,11 +24,12 @@ module Distribution.Verbosity (
   showForCabal, showForGHC
  ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.ReadE
 
 import Data.List (elemIndex)
-import GHC.Generics
 
 data Verbosity = Silent | Normal | Verbose | Deafening
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)

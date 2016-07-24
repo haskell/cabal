@@ -6,13 +6,12 @@ module Distribution.Types.BenchmarkType (
     knownBenchmarkTypes,
 ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Version
 import Distribution.Text
 
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 
 -- | The \"benchmark-type\" field in the benchmark stanza.
@@ -29,8 +28,8 @@ knownBenchmarkTypes :: [BenchmarkType]
 knownBenchmarkTypes = [ BenchmarkTypeExe (Version [1,0] []) ]
 
 instance Text BenchmarkType where
-  disp (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <> disp ver
-  disp (BenchmarkTypeUnknown name ver) = text name <> char '-' <> disp ver
+  disp (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver
+  disp (BenchmarkTypeUnknown name ver) = text name <<>> char '-' <<>> disp ver
 
   parse = stdParse $ \ver name -> case name of
     "exitcode-stdio" -> BenchmarkTypeExe ver

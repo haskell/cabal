@@ -13,13 +13,11 @@ module Distribution.Types.ComponentEnabledSpec (
     componentNameDisabledReason,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.Component -- TODO: maybe remove me?
 import Distribution.Types.ComponentName
-
-import Distribution.Compat.Binary
-
-import GHC.Generics (Generic)
-import Data.Maybe (isNothing)
 
 -- $buildable_vs_enabled_components
 -- #buildable_vs_enabled_components#

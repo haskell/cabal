@@ -65,17 +65,15 @@ module Distribution.Simple.Command (
 
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (get)
+
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils
 
-import Control.Monad
-import Data.Char (isAlpha, toLower)
-import Data.List (sortBy)
-import Data.Maybe
-import Data.Monoid as Mon
 import Text.PrettyPrint ( punctuate, cat, comma, text )
 import Text.PrettyPrint as PP ( empty )
 
@@ -174,7 +172,7 @@ reqArg' ad mkflag showflag =
     reqArg ad (succeedReadE mkflag) showflag
 
 -- | (String -> a) variant of "optArg"
-optArg' :: Mon.Monoid b => ArgPlaceHolder -> (Maybe String -> b)
+optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b)
            -> (b -> [Maybe String])
            -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg' ad mkflag showflag =

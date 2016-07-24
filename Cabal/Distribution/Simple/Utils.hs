@@ -142,6 +142,9 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Text
 import Distribution.Package
 import Distribution.ModuleName as ModuleName
@@ -166,18 +169,12 @@ import Distribution.Verbosity
 import qualified Paths_Cabal (version)
 #endif
 
-import Control.Monad
-    ( when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
-import Data.Char as Char
-    ( isDigit, toLower, chr, ord )
-import Data.Foldable
-    ( traverse_ )
 import Data.List
-    ( nub, unfoldr, intercalate, isInfixOf )
+    ( isInfixOf )
 import Data.Typeable
     ( cast )
 import Data.Ord
@@ -279,7 +276,7 @@ topHandlerWith cont prog =
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
               location     = case ioeGetLocation ioe of
-                               l@(n:_) | Char.isDigit n -> ':' : l
+                               l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
           in pname ++ ": " ++ file ++ detail
@@ -1493,4 +1490,4 @@ equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower

@@ -32,6 +32,8 @@ module Distribution.Simple.BuildPaths (
 
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
 
 import Distribution.Package
 import Distribution.ModuleName as ModuleName

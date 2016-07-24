@@ -40,6 +40,9 @@ module Distribution.Simple.SrcDist (
 
   )  where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Package
@@ -55,11 +58,8 @@ import Distribution.Simple.Program
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Monad(when, unless, forM)
-import Data.Char (toLower)
-import Data.List (partition, isPrefixOf)
+import Data.List (partition)
 import qualified Data.Map as Map
-import Data.Maybe (isNothing, catMaybes)
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
@@ -142,7 +142,7 @@ listPackageSources verbosity pkg_descr0 pps = do
 listPackageSourcesMaybeExecutable :: PackageDescription -> IO [FilePath]
 listPackageSourcesMaybeExecutable pkg_descr =
   -- Extra source files.
-  fmap concat . forM (extraSrcFiles pkg_descr) $ \fpath -> matchFileGlob fpath
+  fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchFileGlob fpath
 
 -- | List those source files that should be copied with ordinary permissions.
 listPackageSourcesOrdinary :: Verbosity
@@ -202,12 +202,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
 
     -- Data files.
   , fmap concat
-    . forM (dataFiles pkg_descr) $ \filename ->
+    . for (dataFiles pkg_descr) $ \filename ->
        matchFileGlob (dataDir pkg_descr </> filename)
 
     -- Extra doc files.
   , fmap concat
-    . forM (extraDocFiles pkg_descr) $ \ filename ->
+    . for (extraDocFiles pkg_descr) $ \ filename ->
       matchFileGlob filename
 
     -- License file(s).

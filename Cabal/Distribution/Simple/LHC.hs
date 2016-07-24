@@ -40,6 +40,9 @@ module Distribution.Simple.LHC (
         ghcVerbosityOptions
  ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -60,11 +63,7 @@ import Distribution.Compat.Exception
 import Distribution.System
 import Language.Haskell.Extension
 
-import Control.Monad            ( unless, when )
-import Data.Monoid as Mon
-import Data.List
-import qualified Data.Map as M  ( empty )
-import Data.Maybe               ( catMaybes )
+import qualified Data.Map as Map ( empty )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
@@ -103,7 +102,7 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerCompat         = [],
         compilerLanguages      = languages,
         compilerExtensions     = extensions,
-        compilerProperties     = M.empty
+        compilerProperties     = Map.empty
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
       compPlatform = Nothing
@@ -201,7 +200,7 @@ getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! (Mon.mconcat indexes)
+  return $! (mconcat indexes)
 
   where
     -- On Windows, various fields have $topdir/foo rather than full

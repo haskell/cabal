@@ -30,6 +30,9 @@ module Distribution.Simple.GHC.Internal (
         showOsString,
  ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
 import Distribution.InstalledPackageInfo
@@ -51,11 +54,7 @@ import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Language.Haskell.Extension
 
-import qualified Data.Map as M
-import Data.Char                ( isSpace )
-import Data.Maybe               ( fromMaybe, maybeToList, isJust )
-import Control.Monad            ( unless, when )
-import Data.Monoid as Mon       ( Monoid(..) )
+import qualified Data.Map as Map
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension
@@ -69,7 +68,7 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 --
 configureToolchain :: GhcImplInfo
                    -> ConfiguredProgram
-                   -> M.Map String String
+                   -> Map String String
                    -> ProgramConfiguration
                    -> ProgramConfiguration
 configureToolchain _implInfo ghcProg ghcInfo =
@@ -129,10 +128,10 @@ configureToolchain _implInfo ghcProg ghcInfo =
 
     -- Read tool locations from the 'ghc --info' output. Useful when
     -- cross-compiling.
-    mbGccLocation   = M.lookup "C compiler command" ghcInfo
-    mbLdLocation    = M.lookup "ld command" ghcInfo
-    mbArLocation    = M.lookup "ar command" ghcInfo
-    mbStripLocation = M.lookup "strip command" ghcInfo
+    mbGccLocation   = Map.lookup "C compiler command" ghcInfo
+    mbLdLocation    = Map.lookup "ld command" ghcInfo
+    mbArLocation    = Map.lookup "ar command" ghcInfo
+    mbStripLocation = Map.lookup "strip command" ghcInfo
 
     ccFlags        = getFlags "C compiler flags"
     -- GHC 7.8 renamed "Gcc Linker flags" to "C compiler link flags"
@@ -148,7 +147,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
     -- flags ourself.
     getFlags :: String -> [String]
     getFlags key =
-        case M.lookup key ghcInfo of
+        case Map.lookup key ghcInfo of
           Nothing -> []
           Just flags
             | (flags', ""):_ <- reads flags -> flags'
@@ -280,7 +279,7 @@ componentGhcOptions _verbosity lbi bi clbi odir =
       ghcOptThisUnitId      = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
-        _ -> Mon.mempty,
+        _ -> mempty,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
@@ -306,7 +305,7 @@ componentGhcOptions _verbosity lbi bi clbi odir =
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
       -- Unsupported extensions have already been checked by configure
       ghcOptExtensions      = toNubListR $ usedExtensions bi,
-      ghcOptExtensionMap    = M.fromList . compilerExtensions $ (compiler lbi)
+      ghcOptExtensionMap    = Map.fromList . compilerExtensions $ (compiler lbi)
     }
   where
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
@@ -337,7 +336,7 @@ mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
 ghcLookupProperty prop comp =
-  case M.lookup prop (compilerProperties comp) of
+  case Map.lookup prop (compilerProperties comp) of
     Just "YES" -> True
     _          -> False
 

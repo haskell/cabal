@@ -6,13 +6,12 @@ module Distribution.Types.TestType (
     knownTestTypes,
 ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Version
 import Distribution.Text
 
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 
 -- | The \"test-type\" field in the test suite stanza.
@@ -29,9 +28,9 @@ knownTestTypes = [ TestTypeExe (Version [1,0] [])
                  , TestTypeLib (Version [0,9] []) ]
 
 instance Text TestType where
-  disp (TestTypeExe ver)          = text "exitcode-stdio-" <> disp ver
-  disp (TestTypeLib ver)          = text "detailed-"       <> disp ver
-  disp (TestTypeUnknown name ver) = text name <> char '-' <> disp ver
+  disp (TestTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver
+  disp (TestTypeLib ver)          = text "detailed-"       <<>> disp ver
+  disp (TestTypeUnknown name ver) = text name <<>> char '-' <<>> disp ver
 
   parse = stdParse $ \ver name -> case name of
     "exitcode-stdio" -> TestTypeExe ver

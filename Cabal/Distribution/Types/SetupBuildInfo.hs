@@ -5,13 +5,10 @@ module Distribution.Types.SetupBuildInfo (
     SetupBuildInfo(..)
 ) where
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
-import Distribution.Package
+import Prelude ()
+import Distribution.Compat.Prelude
 
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
+import Distribution.Package
 
 -- ---------------------------------------------------------------------------
 -- The SetupBuildInfo type

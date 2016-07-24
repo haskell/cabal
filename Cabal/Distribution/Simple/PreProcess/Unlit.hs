@@ -15,8 +15,10 @@
 
 module Distribution.Simple.PreProcess.Unlit (unlit,plain) where
 
-import Data.Char
-import Data.List
+import Prelude ()
+import Distribution.Compat.Prelude
+
+import Data.List (mapAccumL)
 
 data Classified = BirdTrack String | Blank String | Ordinary String
                 | Line !Int String | CPP String

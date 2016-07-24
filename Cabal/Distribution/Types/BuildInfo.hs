@@ -14,23 +14,17 @@ module Distribution.Types.BuildInfo (
     hcSharedOptions,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.ModuleRenaming
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Compiler
 import Language.Haskell.Extension
 
-import Data.Data                  (Data)
-import Data.List                  (nub)
-import Data.Typeable               ( Typeable )
-import Control.Monad               (MonadPlus(mplus))
-import GHC.Generics                (Generic)
 import qualified Data.Map as Map
-import Data.Map                    (Map)
-import Data.Maybe                  (maybeToList)
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {

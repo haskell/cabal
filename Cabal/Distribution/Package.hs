@@ -49,6 +49,9 @@ module Distribution.Package (
         PackageInstalled(..),
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion
          , notThisVersion, simplifyVersionRange )
@@ -56,18 +59,10 @@ import Distribution.Version
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.Compat.ReadP
-import Distribution.Compat.Binary
 import Distribution.Text
 import Distribution.ModuleName
 
-import Control.DeepSeq (NFData(..))
-import qualified Data.Char as Char
-    ( isDigit, isAlphaNum, )
-import Data.Data ( Data )
-import Data.List ( intercalate )
-import Data.Typeable ( Typeable )
-import GHC.Generics (Generic)
-import Text.PrettyPrint ((<>), (<+>), text)
+import Text.PrettyPrint ((<+>), text)
 
 newtype PackageName = PackageName { unPackageName :: String }
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
@@ -81,8 +76,8 @@ instance Text PackageName where
     return (PackageName (intercalate "-" ns))
     where
       component = do
-        cs <- Parse.munch1 Char.isAlphaNum
-        if all Char.isDigit cs then Parse.pfail else return cs
+        cs <- Parse.munch1 isAlphaNum
+        if all isDigit cs then Parse.pfail else return cs
         -- each component must contain an alphabetic character, to avoid
         -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
@@ -105,7 +100,7 @@ instance Binary PackageIdentifier
 instance Text PackageIdentifier where
   disp (PackageIdentifier n v) = case v of
     Version [] _ -> disp n -- if no version, don't show version.
-    _            -> disp n <> Disp.char '-' <> disp v
+    _            -> disp n <<>> Disp.char '-' <<>> disp v
 
   parse = do
     n <- parse
@@ -132,7 +127,7 @@ instance Binary Module
 
 instance Text Module where
     disp (Module uid mod_name) =
-        disp uid <> Disp.text ":" <> disp mod_name
+        disp uid <<>> Disp.text ":" <<>> disp mod_name
     parse = do
         uid <- parse
         _ <- Parse.char ':'
@@ -159,7 +154,7 @@ instance Text ComponentId where
   disp (ComponentId str) = text str
 
   parse = ComponentId `fmap` Parse.munch1 abi_char
-   where abi_char c = Char.isAlphaNum c || c `elem` "-_."
+   where abi_char c = isAlphaNum c || c `elem` "-_."
 
 instance NFData ComponentId where
     rnf (ComponentId pk) = rnf pk
@@ -266,4 +261,4 @@ instance Binary AbiHash
 
 instance Text AbiHash where
     disp (AbiHash abi) = Disp.text abi
-    parse = fmap AbiHash (Parse.munch Char.isAlphaNum)
+    parse = fmap AbiHash (Parse.munch isAlphaNum)

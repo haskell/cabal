@@ -8,17 +8,14 @@ module Distribution.Types.Benchmark (
     benchmarkModules,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.BuildInfo
 import Distribution.Types.BenchmarkType
 import Distribution.Types.BenchmarkInterface
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.ModuleName
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 -- | A \"benchmark\" stanza in a cabal file.
 --

@@ -5,15 +5,14 @@ module Distribution.Types.ModuleReexport (
     ModuleReexport(..)
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Binary
 import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Text
 
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 
 -- -----------------------------------------------------------------------------
@@ -30,8 +29,8 @@ instance Binary ModuleReexport
 
 instance Text ModuleReexport where
     disp (ModuleReexport mpkgname origname newname) =
-          maybe Disp.empty (\pkgname -> disp pkgname <> Disp.char ':') mpkgname
-       <> disp origname
+          maybe Disp.empty (\pkgname -> disp pkgname <<>> Disp.char ':') mpkgname
+       <<>> disp origname
       <+> if newname == origname
             then Disp.empty
             else Disp.text "as" <+> disp newname

@@ -39,6 +39,9 @@ module Distribution.ParseUtils (
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (get)
+
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Version
@@ -52,15 +55,15 @@ import Distribution.Simple.Utils
 import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
-import Text.PrettyPrint hiding (braces)
-import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
-import Data.Maybe       (fromMaybe)
+import Text.PrettyPrint
+    ( Doc, render, style, renderStyle
+    , text, colon, nest, punctuate, comma, sep
+    , fsep, hsep, isEmpty, vcat, mode, Mode (..)
+    , ($+$), (<+>)
+    )
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
-import Control.Monad (foldM, ap)
-import Control.Applicative as AP (Applicative(..))
 import System.FilePath (normalise)
-import Data.List (sortBy)
 
 -- -----------------------------------------------------------------------------
 
@@ -96,7 +99,7 @@ instance Applicative ParseResult where
 
 
 instance Monad ParseResult where
-        return = AP.pure
+        return = pure
         ParseFailed err >>= _ = ParseFailed err
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
@@ -268,9 +271,9 @@ ppFields fields x =
 
 ppField :: String -> Doc -> Doc
 ppField name fielddoc
-   | isEmpty fielddoc         = empty
-   | name `elem` nestedFields = text name <> colon $+$ nest indentWith fielddoc
-   | otherwise                = text name <> colon <+> fielddoc
+   | isEmpty fielddoc         = mempty
+   | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
+   | otherwise                = text name <<>> colon <+> fielddoc
    where
       nestedFields =
          [ "description"

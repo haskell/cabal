@@ -40,6 +40,9 @@ module Distribution.Simple.Program.HcPkg (
     listInvocation,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (init)
+
 import Distribution.Package hiding (installedUnitId)
 import Distribution.InstalledPackageInfo
 import Distribution.ParseUtils
@@ -51,9 +54,6 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Exception
 
-import Prelude hiding (init)
-import Data.Char
-         ( isSpace )
 import Data.List
          ( stripPrefix )
 import System.FilePath as FilePath

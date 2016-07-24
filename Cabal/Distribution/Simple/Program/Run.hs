@@ -23,16 +23,15 @@ module Distribution.Simple.Program.Run (
     getEffectiveEnvironment,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Environment
 
-import Data.List
-         ( foldl', unfoldr )
 import qualified Data.Map as Map
-import Control.Monad
-         ( when )
 import System.Exit
          ( ExitCode(..), exitWith )
 

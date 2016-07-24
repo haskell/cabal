@@ -16,6 +16,9 @@ module Distribution.Simple.Install (
         install,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
@@ -41,7 +44,6 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Compat.Graph (IsNode(..))
 
-import Control.Monad (when, unless)
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath

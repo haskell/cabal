@@ -19,6 +19,9 @@ module Distribution.Simple.UHC (
     buildLib, buildExe, installLib, registerPackage, inplacePackageDbPath
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
 import Distribution.Package hiding (installedUnitId)
@@ -35,9 +38,7 @@ import Distribution.Version
 import Distribution.System
 import Language.Haskell.Extension
 
-import Control.Monad
-import Data.List
-import qualified Data.Map as M ( empty )
+import qualified Data.Map as Map ( empty )
 import System.Directory
 import System.FilePath
 
@@ -59,7 +60,7 @@ configure verbosity hcPath _hcPkgPath conf = do
                compilerCompat     =  [],
                compilerLanguages  =  uhcLanguages,
                compilerExtensions =  uhcLanguageExtensions,
-               compilerProperties =  M.empty
+               compilerProperties =  Map.empty
              }
       compPlatform = Nothing
   return (comp, compPlatform, conf')

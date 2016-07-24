@@ -53,6 +53,9 @@ module Distribution.Simple (
         defaultHookedPackageDesc
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 -- local
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
@@ -95,8 +98,6 @@ import System.FilePath                      (searchPathSeparator)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
-import Control.Monad   (when)
-import Data.Foldable   (traverse_)
 import Data.List       (unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.

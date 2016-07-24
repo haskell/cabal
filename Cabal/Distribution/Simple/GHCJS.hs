@@ -15,6 +15,9 @@ module Distribution.Simple.GHCJS (
         runCmd
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.GHC.ImplInfo
 import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.PackageDescription as PD
@@ -42,10 +45,7 @@ import Distribution.Utils.NubList
 import Distribution.Text
 import Language.Haskell.Extension
 
-import Control.Monad            ( unless, when )
-import Data.Char                ( isSpace )
-import qualified Data.Map as M  ( fromList  )
-import Data.Monoid as Mon       ( Monoid(..) )
+import qualified Data.Map as Map
 import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension )
@@ -102,7 +102,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
   extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcjsProg
-  let ghcInfoMap = M.fromList ghcInfo
+  let ghcInfoMap = Map.fromList ghcInfo
 
   let comp = Compiler {
         compilerId         = CompilerId GHCJS ghcjsVersion,
@@ -298,7 +298,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
-        | otherwise = Mon.mempty
+        | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive

@@ -3,6 +3,9 @@ module Distribution.Compat.CreatePipe (createPipe) where
 
 import System.IO (Handle, hSetEncoding, localeEncoding)
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 -- The mingw32_HOST_OS CPP macro is GHC-specific
 #if mingw32_HOST_OS
 import Control.Exception (onException)

@@ -33,6 +33,9 @@ module Distribution.PackageDescription.Check (
         checkPackageFileNames,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.Compiler
@@ -46,17 +49,13 @@ import Distribution.Text
 import Distribution.Simple.LocalBuildInfo hiding (compiler)
 import Language.Haskell.Extension
 
-import Data.Maybe
-         ( isNothing, isJust, catMaybes, mapMaybe, fromMaybe, maybeToList )
-import Data.List  (sort, group, isPrefixOf, nub, find)
-import Control.Monad
-         ( filterM, liftM )
+import Data.List  (group)
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 import qualified Data.Map as Map
 
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>), (<+>))
+import Text.PrettyPrint ((<+>))
 
 import qualified System.Directory (getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
@@ -65,6 +64,7 @@ import System.FilePath
          , splitDirectories,  splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
+
 
 -- | Results of some kind of failed package check.
 --
@@ -1254,12 +1254,12 @@ displayRawVersionRange =
  . foldVersionRange'                         -- precedence:
      -- All the same as the usual pretty printer, except for the parens
      (         Disp.text "-any"                           , 0 :: Int)
-     (\v   -> (Disp.text "==" <> disp v                   , 0))
-     (\v   -> (Disp.char '>'  <> disp v                   , 0))
-     (\v   -> (Disp.char '<'  <> disp v                   , 0))
-     (\v   -> (Disp.text ">=" <> disp v                   , 0))
-     (\v   -> (Disp.text "<=" <> disp v                   , 0))
-     (\v _ -> (Disp.text "==" <> dispWild v               , 0))
+     (\v   -> (Disp.text "==" <<>> disp v                   , 0))
+     (\v   -> (Disp.char '>'  <<>> disp v                   , 0))
+     (\v   -> (Disp.char '<'  <<>> disp v                   , 0))
+     (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
+     (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
+     (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
      (\(r1, p1) (r2, p2) ->
        (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
      (\(r1, p1) (r2, p2) ->
@@ -1269,7 +1269,7 @@ displayRawVersionRange =
   where
     dispWild (Version b _) =
            Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
-        <> Disp.text ".*"
+        <<>> Disp.text ".*"
     punct p p' | p < p'    = Disp.parens
                | otherwise = id
 
@@ -1734,13 +1734,13 @@ checkTarPath path
   | otherwise = case pack nameMax (reverse (splitPath path)) of
     Left err           -> Just err
     Right []           -> Nothing
-    Right (first:rest) -> case pack prefixMax remainder of
+    Right (h:rest) -> case pack prefixMax remainder of
       Left err         -> Just err
       Right []         -> Nothing
       Right (_:_)      -> Just noSplit
      where
         -- drop the '/' between the name and prefix:
-        remainder = init first : rest
+        remainder = init h : rest
 
   where
     nameMax, prefixMax :: Int

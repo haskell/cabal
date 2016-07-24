@@ -32,6 +32,9 @@ module Distribution.Simple.BuildTarget (
     reportBuildTargetProblems,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
@@ -43,28 +46,17 @@ import Distribution.Text
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
-import Distribution.Compat.Binary (Binary)
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP
-         ( (+++), (<++) )
+import Distribution.Compat.ReadP ( (+++), (<++) )
 
-import Data.List
-         ( nub, stripPrefix, sortBy, groupBy, partition )
-import Data.Maybe
-         ( listToMaybe, catMaybes )
-import Data.Either
-         ( partitionEithers )
-import GHC.Generics (Generic)
-import qualified Data.Map as Map
-import Control.Monad
-import Control.Applicative as AP (Alternative(..), Applicative(..))
-import Data.Char
-         ( isSpace, isAlphaNum )
+import Control.Monad ( msum )
+import Data.List ( stripPrefix, groupBy, partition )
+import Data.Either ( partitionEithers )
 import System.FilePath as FilePath
          ( dropExtension, normalise, splitDirectories, joinPath, splitPath
          , hasTrailingPathSeparator )
-import System.Directory
-         ( doesFileExist, doesDirectoryExist )
+import System.Directory ( doesFileExist, doesDirectoryExist )
+import qualified Data.Map as Map
 
 -- | Take a list of 'String' build targets, and parse and validate them
 -- into actual 'TargetInfo's to be built/registered/whatever.
@@ -817,7 +809,7 @@ instance Applicative Match where
   (<*>) = ap
 
 instance Monad Match where
-  return = AP.pure
+  return = pure
 
   NoMatch      d ms >>= _ = NoMatch d ms
   ExactMatch   d xs >>= f = addDepth d
@@ -978,13 +970,13 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
       []                 -> return ()
       ((cname,reason):_) -> die $ formatReason (showComponentName cname) reason
 
-    forM_ [ (c, t) | (c, Just t) <- enabled ] $ \(c, t) ->
+    for_ [ (c, t) | (c, Just t) <- enabled ] $ \(c, t) ->
       warn verbosity $ "Ignoring '" ++ either display id t ++ ". The whole "
                     ++ showComponentName c ++ " will be processed. (Support for "
                     ++ "module and file targets has not been implemented yet.)"
 
     -- Pick out the actual CLBIs for each of these cnames
-    enabled' <- forM enabled $ \(cname, _) -> do
+    enabled' <- for enabled $ \(cname, _) -> do
         case componentNameTargets' pkg_descr lbi cname of
             [] -> error "checkBuildTargets: nothing enabled"
             [target] -> return target

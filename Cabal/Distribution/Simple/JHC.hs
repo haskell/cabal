@@ -16,6 +16,9 @@ module Distribution.Simple.JHC (
         installLib, installExe
  ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -37,9 +40,7 @@ import Distribution.Compat.ReadP
     ( readP_to_S, string, skipSpaces )
 import Distribution.System ( Platform )
 
-import Data.List                ( nub )
-import Data.Char                ( isSpace )
-import qualified Data.Map as M  ( empty )
+import qualified Data.Map as Map  ( empty )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -62,7 +63,7 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerCompat         = [],
         compilerLanguages      = jhcLanguages,
         compilerExtensions     = jhcLanguageExtensions,
-        compilerProperties     = M.empty
+        compilerProperties     = Map.empty
       }
       compPlatform = Nothing
   return (comp, compPlatform, conf')

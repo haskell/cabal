@@ -6,6 +6,9 @@ module Distribution.Compat.Environment
        ( getEnvironment, lookupEnv, setEnv )
        where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified System.Environment as System
 #if __GLASGOW_HASKELL__ >= 706
 import System.Environment (lookupEnv)
@@ -14,8 +17,6 @@ import Distribution.Compat.Exception (catchIO)
 #endif
 
 #ifdef mingw32_HOST_OS
-import Control.Monad
-import qualified Data.Char as Char (toUpper)
 import Foreign.C
 import GHC.Windows
 #else
@@ -33,7 +34,7 @@ getEnvironment :: IO [(String, String)]
 getEnvironment = fmap upcaseVars System.getEnvironment
   where
     upcaseVars = map upcaseVar
-    upcaseVar (var, val) = (map Char.toUpper var, val)
+    upcaseVar (var, val) = (map toUpper var, val)
 #else
 getEnvironment = System.getEnvironment
 #endif

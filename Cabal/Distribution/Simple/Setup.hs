@@ -72,6 +72,9 @@ module Distribution.Simple.Setup (
   boolOpt, boolOpt', trueArg, falseArg,
   optionVerbosity, optionNumJobs, readPToMaybe ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (get)
+
 import Distribution.Compiler
 import Distribution.ReadE
 import Distribution.Text
@@ -87,15 +90,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 import Distribution.Utils.NubList
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup as Semi
 
-import Control.Applicative as A ( Applicative(..), (<*) )
-import Control.Monad            ( liftM )
-import Data.List                ( sort )
-import Data.Maybe               ( listToMaybe )
-import Data.Char                ( isSpace, isAlpha )
-import GHC.Generics             ( Generic )
+import Distribution.Compat.Semigroup (Last' (..))
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -132,7 +128,7 @@ instance Functor Flag where
 
 instance Monoid (Flag a) where
   mempty = NoFlag
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup (Flag a) where
   _ <> f@(Flag _) = f
@@ -251,7 +247,7 @@ emptyGlobalFlags = mempty
 
 instance Monoid GlobalFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup GlobalFlags where
   (<>) = gmappend
@@ -297,7 +293,7 @@ instance Text RelaxedDep where
 
   parse = scopedP Parse.<++ normalP
     where
-      scopedP = RelaxedDepScoped `fmap` parse A.<* Parse.char ':' A.<*> parse
+      scopedP = RelaxedDepScoped `fmap` parse <* Parse.char ':' <*> parse
       normalP = RelaxedDep       `fmap` parse
 
 instance Binary RelaxDeps
@@ -314,7 +310,7 @@ instance Semigroup RelaxDeps where
 
 instance Monoid RelaxDeps where
   mempty  = RelaxDepsNone
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup AllowNewer where
   AllowNewer x <> AllowNewer y = AllowNewer (x <> y)
@@ -324,11 +320,11 @@ instance Semigroup AllowOlder where
 
 instance Monoid AllowNewer where
   mempty  = AllowNewer mempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Monoid AllowOlder where
   mempty  = AllowOlder mempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 -- | Convert 'RelaxDeps' to a boolean.
 isRelaxDeps :: RelaxDeps -> Bool
@@ -862,7 +858,7 @@ emptyConfigFlags = mempty
 
 instance Monoid ConfigFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup ConfigFlags where
   (<>) = gmappend
@@ -936,7 +932,7 @@ emptyCopyFlags = mempty
 
 instance Monoid CopyFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup CopyFlags where
   (<>) = gmappend
@@ -1007,7 +1003,7 @@ emptyInstallFlags = mempty
 
 instance Monoid InstallFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup InstallFlags where
   (<>) = gmappend
@@ -1074,7 +1070,7 @@ emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup SDistFlags where
   (<>) = gmappend
@@ -1199,7 +1195,7 @@ emptyRegisterFlags = mempty
 
 instance Monoid RegisterFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup RegisterFlags where
   (<>) = gmappend
@@ -1233,7 +1229,7 @@ defaultHscolourFlags = HscolourFlags {
 
 instance Monoid HscolourFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup HscolourFlags where
   (<>) = gmappend
@@ -1462,7 +1458,7 @@ emptyHaddockFlags = mempty
 
 instance Monoid HaddockFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup HaddockFlags where
   (<>) = gmappend
@@ -1513,7 +1509,7 @@ emptyCleanFlags = mempty
 
 instance Monoid CleanFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup CleanFlags where
   (<>) = gmappend
@@ -1617,7 +1613,7 @@ emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup BuildFlags where
   (<>) = gmappend
@@ -1646,7 +1642,7 @@ defaultReplFlags  = ReplFlags {
 
 instance Monoid ReplFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup ReplFlags where
   (<>) = gmappend
@@ -1743,7 +1739,7 @@ instance Text TestShowDetails where
 --TODO: do we need this instance?
 instance Monoid TestShowDetails where
     mempty = Never
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup TestShowDetails where
     a <> b = if a < b then b else a
@@ -1850,7 +1846,7 @@ emptyTestFlags  = mempty
 
 instance Monoid TestFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup TestFlags where
   (<>) = gmappend
@@ -1923,7 +1919,7 @@ emptyBenchmarkFlags = mempty
 
 instance Monoid BenchmarkFlags where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup BenchmarkFlags where
   (<>) = gmappend

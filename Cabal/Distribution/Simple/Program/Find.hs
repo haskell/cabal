@@ -31,20 +31,19 @@ module Distribution.Simple.Program.Find (
     getSystemSearchPath,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Verbosity
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Compat.Environment
-import Distribution.Compat.Binary
 
 import qualified System.Directory as Directory
          ( findExecutable )
 import System.FilePath as FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator, getSearchPath
          , takeDirectory )
-import Data.List
-         ( nub )
-import GHC.Generics
 #if defined(mingw32_HOST_OS)
 import qualified System.Win32 as Win32
 #endif
