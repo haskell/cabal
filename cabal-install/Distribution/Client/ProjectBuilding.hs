@@ -262,12 +262,6 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
         Just (RepoTarballPackage _ _ tarball) ->
           dryRunTarballPkg pkg depsBuildStatus tarball
 
-    dryRunPkg (InstallPlan.Processing {}) _ = unexpectedState
-    dryRunPkg (InstallPlan.Installed  {}) _ = unexpectedState
-    dryRunPkg (InstallPlan.Failed     {}) _ = unexpectedState
-
-    unexpectedState = error "rebuildTargetsDryRun: unexpected package state"
-
     dryRunTarballPkg :: ElaboratedConfiguredPackage
                      -> ComponentDeps [BuildStatus]
                      -> FilePath

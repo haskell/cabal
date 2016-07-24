@@ -170,9 +170,6 @@ import           Data.IntSet (IntSet)
 data GenericPlanPackage ipkg srcpkg iresult ifailure
    = PreExisting ipkg
    | Configured  srcpkg
-   | Processing  (GenericReadyPackage srcpkg)
-   | Installed   (GenericReadyPackage srcpkg) (Maybe ipkg) iresult
-   | Failed      srcpkg ifailure
   deriving (Eq, Show, Generic)
 
 instance (Binary ipkg, Binary srcpkg, Binary  iresult, Binary  ifailure)
@@ -190,29 +187,18 @@ instance (Package ipkg, Package srcpkg) =>
          Package (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
-  packageId (Processing  rpkg)     = packageId rpkg
-  packageId (Installed   rpkg _ _) = packageId rpkg
-  packageId (Failed      spkg   _) = packageId spkg
 
 instance (PackageFixedDeps srcpkg,
           PackageFixedDeps ipkg) =>
          PackageFixedDeps (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   depends (PreExisting pkg)     = depends pkg
   depends (Configured  pkg)     = depends pkg
-  depends (Processing  pkg)     = depends pkg
-  depends (Installed   pkg _ _) = depends pkg
-  depends (Failed      pkg   _) = depends pkg
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId
          (GenericPlanPackage ipkg srcpkg iresult ifailure) where
-  installedUnitId (PreExisting ipkg ) = installedUnitId ipkg
-  installedUnitId (Configured  spkg)  = installedUnitId spkg
-  installedUnitId (Processing  rpkg)  = installedUnitId rpkg
-  -- NB: defer to the actual installed package info in this case
-  installedUnitId (Installed _ (Just ipkg) _) = installedUnitId ipkg
-  installedUnitId (Installed rpkg _        _) = installedUnitId rpkg
-  installedUnitId (Failed      spkg        _) = installedUnitId spkg
+  installedUnitId (PreExisting ipkg) = installedUnitId ipkg
+  installedUnitId (Configured  spkg) = installedUnitId spkg
 
 
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
@@ -262,7 +248,6 @@ configureInstallPlan solverPlan =
         Configured  pkg ->
           Configured (configureSolverPackage mapDep pkg)
 
-        _ -> error "configureInstallPlan: unexpected package state"
   where
     configureSolverPackage :: (UnitId -> UnitId)
                            -> SolverPackage UnresolvedPkgLoc
@@ -362,9 +347,6 @@ showInstallPlan = showPlanIndex . planIndex
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg iresult ifailure -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
 showPlanPackageTag (Configured  _)   = "Configured"
-showPlanPackageTag (Processing  _)   = "Processing"
-showPlanPackageTag (Installed _ _ _) = "Installed"
-showPlanPackageTag (Failed    _   _) = "Failed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
@@ -519,9 +501,6 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
   where
     showPlanState (PreExisting _)   = "pre-existing"
     showPlanState (Configured  _)   = "configured"
-    showPlanState (Processing  _)   = "processing"
-    showPlanState (Installed _ _ _) = "installed"
-    showPlanState (Failed    _   _) = "failed"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
@@ -604,29 +583,10 @@ consistent = null . PlanIndex.dependencyInconsistencies (IndependentGoals False)
 stateDependencyRelation :: GenericPlanPackage ipkg srcpkg iresult ifailure
                         -> GenericPlanPackage ipkg srcpkg iresult ifailure
                         -> Bool
-stateDependencyRelation (PreExisting _) (PreExisting _)   = True
-
-stateDependencyRelation (Configured  _) (PreExisting _)   = True
-stateDependencyRelation (Configured  _) (Configured  _)   = True
-stateDependencyRelation (Configured  _) (Processing  _)   = True
-stateDependencyRelation (Configured  _) (Installed _ _ _) = True
-
-stateDependencyRelation (Processing  _) (PreExisting _)   = True
-stateDependencyRelation (Processing  _) (Installed _ _ _) = True
-
-stateDependencyRelation (Installed _ _ _) (PreExisting _)   = True
-stateDependencyRelation (Installed _ _ _) (Installed _ _ _) = True
-
-stateDependencyRelation (Failed    _ _) (PreExisting _)   = True
--- failed can depends on configured because a package can depend on
--- several other packages and if one of the deps fail then we fail
--- but we still depend on the other ones that did not fail:
-stateDependencyRelation (Failed    _ _) (Configured  _)   = True
-stateDependencyRelation (Failed    _ _) (Processing  _)   = True
-stateDependencyRelation (Failed    _ _) (Installed _ _ _) = True
-stateDependencyRelation (Failed    _ _) (Failed    _   _) = True
-
-stateDependencyRelation _               _                 = False
+stateDependencyRelation (PreExisting _) (PreExisting _) = True
+stateDependencyRelation (Configured  _) (PreExisting _) = True
+stateDependencyRelation (Configured  _) (Configured  _) = True
+stateDependencyRelation (PreExisting _) (Configured  _) = False
 
 
 -- | Compute the dependency closure of a package in a install plan
@@ -717,7 +677,7 @@ reverseTopologicalOrder plan =
 -- the process of being installed, plus those that have been completed and
 -- those where processing failed.
 --
-data Processing = Processing' !IntSet !IntSet !IntSet
+data Processing = Processing !IntSet !IntSet !IntSet
                           -- processing, completed, failed
 
 -- | The packages in the plan that are initially ready to be installed.
@@ -737,7 +697,7 @@ ready plan =
     (readyPackages, processing)
   where
     !processing =
-      Processing'
+      Processing
         (IntSet.fromList
           [ planVertexOf plan (installedUnitId pkg)
           | pkg <- readyPackages ])
@@ -765,7 +725,7 @@ ready plan =
 completed :: GenericInstallPlan ipkg srcpkg unused1 unused2
           -> Processing -> UnitId
           -> ([GenericReadyPackage srcpkg], Processing)
-completed plan (Processing' processingSet completedSet failedSet) pkgid =
+completed plan (Processing processingSet completedSet failedSet) pkgid =
     assert (pkgv `IntSet.member` processingSet) $
     assert (processingInvariant plan processing') $
 
@@ -785,7 +745,7 @@ completed plan (Processing' processingSet completedSet failedSet) pkgid =
     processingSet' = foldl' (flip IntSet.insert)
                             (IntSet.delete pkgv processingSet)
                             newlyReady
-    processing'    = Processing' processingSet' completedSet' failedSet
+    processing'    = Processing processingSet' completedSet' failedSet
 
     asReadyPackage (Configured pkg) = ReadyPackage pkg
     asReadyPackage _ = error "InstallPlan.completed: internal error"
@@ -793,7 +753,7 @@ completed plan (Processing' processingSet completedSet failedSet) pkgid =
 failed :: GenericInstallPlan ipkg srcpkg unused1 unused2
        -> Processing -> UnitId
        -> ([srcpkg], Processing)
-failed plan (Processing' processingSet completedSet failedSet) pkgid =
+failed plan (Processing processingSet completedSet failedSet) pkgid =
     assert (pkgv `IntSet.member` processingSet) $
     assert (all (`IntSet.notMember` processingSet) (tail newlyFailed)) $
     assert (all (`IntSet.notMember` completedSet)  (tail newlyFailed)) $
@@ -807,13 +767,13 @@ failed plan (Processing' processingSet completedSet failedSet) pkgid =
     processingSet' = IntSet.delete pkgv processingSet
     failedSet'     = failedSet `IntSet.union` IntSet.fromList newlyFailed
     newlyFailed    = Graph.reachable (planGraphRev plan) pkgv
-    processing'    = Processing' processingSet' completedSet failedSet'
+    processing'    = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg
     asConfiguredPackage _ = error "InstallPlan.failed: internal error"
 
 processingInvariant :: GenericInstallPlan ipkg srcpkg unused1 unused2-> Processing -> Bool
-processingInvariant plan (Processing' processingSet completedSet failedSet) =
+processingInvariant plan (Processing processingSet completedSet failedSet) =
     all (inRange (bounds (planGraph plan))) (IntSet.toList processingSet)
  && all (inRange (bounds (planGraph plan))) (IntSet.toList completedSet)
  && all (inRange (bounds (planGraph plan))) (IntSet.toList failedSet)
@@ -825,7 +785,6 @@ processingInvariant plan (Processing' processingSet completedSet failedSet) =
  && and [ case planPkgOf plan pkgv of
             Configured  _ -> True
             PreExisting _ -> False
-            _             -> False 
         | pkgv <- IntSet.toList processingSet ++ IntSet.toList failedSet ]
   where
     processingClosure = revDepClosure processingSet

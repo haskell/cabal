@@ -85,8 +85,6 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
             [ "depends" J..= map (jdisplay . installedUnitId) v ]
           | (c,v) <- ComponentDeps.toList (pkgDependencies ecp) ]
 
-    toJ _ = error "encodePlanToJson: only expecting PreExisting and Configured"
-
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
     comp2str c = case c of
