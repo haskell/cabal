@@ -46,8 +46,10 @@ module Distribution.Client.InstallPlan (
   -- * Display
   showPlanIndex,
   showInstallPlan,
+  showPlanProblem,
 
   -- * Graph-like operations
+  topologicalOrder,
   reverseTopologicalOrder,
   ) where
 
@@ -325,6 +327,28 @@ data PlanProblem ipkg srcpkg =
    | PackageStateInvalid  (GenericPlanPackage ipkg srcpkg)
                           (GenericPlanPackage ipkg srcpkg)
 
+-- TODO: duplicate with SolverInstallPlan
+showPlanProblem :: (Package ipkg, Package srcpkg) => PlanProblem ipkg srcpkg -> String
+showPlanProblem (PackageMissingDeps pkg missingDeps) =
+     "Package " ++ display (packageId pkg)
+  ++ " depends on the following packages which are missing from the plan: "
+  ++ intercalate ", " (map display missingDeps)
+
+showPlanProblem (PackageCycle cycleGroup) =
+     "The following packages are involved in a dependency cycle "
+  ++ intercalate ", " (map (display.packageId) cycleGroup)
+
+showPlanProblem (PackageStateInvalid pkg pkg') =
+     "Package " ++ display (packageId pkg)
+  ++ " is in the " ++ showPlanState pkg
+  ++ " state but it depends on package " ++ display (packageId pkg')
+  ++ " which is in the " ++ showPlanState pkg'
+  ++ " state"
+  where
+    showPlanState (PreExisting _) = "pre-existing"
+    showPlanState (Configured  _)   = "configured"
+
+
 -- | For an invalid plan, produce a detailed list of problems as human readable
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
@@ -366,6 +390,9 @@ stateDependencyRelation (PreExisting _) (Configured  _) = False
 
 
 
+topologicalOrder :: GenericInstallPlan ipkg srcpkg
+                        -> [GenericPlanPackage ipkg srcpkg]
+topologicalOrder plan = Graph.topSort (planIndex plan)
 
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg
                         -> [GenericPlanPackage ipkg srcpkg]

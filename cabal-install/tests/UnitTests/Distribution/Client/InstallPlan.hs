@@ -4,14 +4,13 @@ import           Distribution.Package
 import           Distribution.Version
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.InstallPlan (GenericInstallPlan)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Client.Types
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Client.JobControl
-import           Distribution.Text
 
+import qualified Distribution.Compat.Graph as Graph
 import Data.Graph
 import Data.Array hiding (index)
 import Data.List
@@ -135,7 +134,7 @@ isReversePartialTopologicalOrder g vs =
         , (u,v) <- edges g ]
 
 allConfiguredPackages :: HasUnitId srcpkg
-                      => GenericInstallPlan ipkg srcpkg unused1 unused2 -> Set UnitId
+                      => GenericInstallPlan ipkg srcpkg -> Set UnitId
 allConfiguredPackages plan =
     Set.fromList
       [ installedUnitId pkg
@@ -147,7 +146,7 @@ allConfiguredPackages plan =
 --
 
 data TestInstallPlan = TestInstallPlan
-                         (GenericInstallPlan TestPkg TestPkg () ())
+                         (GenericInstallPlan TestPkg TestPkg)
                          Graph
                          (UnitId -> Vertex)
                          (Vertex -> UnitId)
@@ -165,8 +164,8 @@ instance HasUnitId TestPkg where
   installedUnitId (TestPkg _ ipkgid _) = ipkgid
 
 instance PackageFixedDeps TestPkg where
-  depends (TestPkg pkgid _ deps) =
-    CD.singleton (CD.ComponentLib (display (packageName pkgid))) deps
+  depends (TestPkg _ _ deps) =
+    CD.singleton CD.ComponentLib deps
 
 instance Arbitrary TestInstallPlan where
   arbitrary = arbitraryTestInstallPlan
@@ -210,7 +209,7 @@ arbitraryInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                      -> (Vertex -> [Vertex] -> Gen srcpkg)
                      -> Float
                      -> Graph
-                     -> Gen (InstallPlan.GenericInstallPlan ipkg srcpkg () ())
+                     -> Gen (InstallPlan.GenericInstallPlan ipkg srcpkg)
 arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
 
     (ipkgvs, srcpkgvs) <-
@@ -233,8 +232,8 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
                  | pkgv <- srcpkgvs
                  , let depvs  = graph ! pkgv
                  ]
-    let index = PackageIndex.fromList (map InstallPlan.PreExisting ipkgs
-                                    ++ map InstallPlan.Configured  srcpkgs)
+    let index = Graph.fromList (map InstallPlan.PreExisting ipkgs
+                             ++ map InstallPlan.Configured  srcpkgs)
     case InstallPlan.new (IndependentGoals False) index of
       Right plan -> return plan
       Left  problems -> fail $ unlines $
