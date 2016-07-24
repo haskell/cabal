@@ -28,9 +28,10 @@ import Distribution.System
 symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan 
+                -> InstallPlan
+                -> BuildResults
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries _ _ _ _ _ = return []
+symlinkBinaries _ _ _ _ _ _ = return []
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
