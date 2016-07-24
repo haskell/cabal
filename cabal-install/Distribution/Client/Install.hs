@@ -340,7 +340,7 @@ processInstallPlan verbosity
   where
     installPlan = InstallPlan.configureInstallPlan installPlan0
     dryRun = fromFlag (installDryRun installFlags)
-    nothingToInstall = null (InstallPlan.ready installPlan)
+    nothingToInstall = null (fst (InstallPlan.ready' installPlan))
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -572,7 +572,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
       ++ "\nTry using 'cabal fetch'."
 
   where
-    nothingToInstall = null (InstallPlan.ready installPlan)
+    nothingToInstall = null (fst (InstallPlan.ready' installPlan))
 
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
