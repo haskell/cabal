@@ -378,6 +378,7 @@ library
     Distribution.Compat.Binary
 
   other-modules:
+    Distribution.Compat.Prelude
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail

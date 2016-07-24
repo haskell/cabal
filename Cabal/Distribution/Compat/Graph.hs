@@ -80,20 +80,18 @@ module Distribution.Compat.Graph (
     nodeValue,
 ) where
 
-import qualified Prelude as Prelude
-import Prelude hiding (lookup, null)
+import Prelude ()
+import qualified Distribution.Compat.Prelude as Prelude
+import Distribution.Compat.Prelude hiding (lookup, null, empty)
+
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
-import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Array as Array
 import Data.Array ((!))
 import qualified Data.Tree as Tree
 import Data.Either (partitionEithers)
-import Data.Typeable (Typeable)
 import qualified Data.Foldable as Foldable
-import Control.DeepSeq (NFData(..))
-import Distribution.Compat.Binary (Binary(..))
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
