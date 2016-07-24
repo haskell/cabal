@@ -161,7 +161,7 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
                                            guessNormal]
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ dir
-       exists <- mapM doesFileExist guesses
+       exists <- traverse doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
                    -- method.
@@ -228,7 +228,7 @@ checkPackageDbStack _ =
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
                       -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' verbosity packagedbs conf =
-  sequence
+  sequenceA
     [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]

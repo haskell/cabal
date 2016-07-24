@@ -387,14 +387,14 @@ fName _ = error "fname: not a field or section"
 
 readFields :: String -> ParseResult [Field]
 readFields input = ifelse
-               =<< mapM (mkField 0)
+               =<< traverse (mkField 0)
                =<< mkTree tokens
 
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLine . trimLines) ls
 
 readFieldsFlat :: String -> ParseResult [Field]
-readFieldsFlat input = mapM (mkField 0)
+readFieldsFlat input = traverse (mkField 0)
                    =<< mkTree tokens
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLineFlat . trimLines) ls
@@ -568,7 +568,7 @@ mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
                         then tabsError n
                         else return $ F n (map toLower name)
                                           (fieldValue rest' followingLines)
-    rest'       -> do ts' <- mapM (mkField (d+1)) ts
+    rest'       -> do ts' <- traverse (mkField (d+1)) ts
                       return (Section n (map toLower name) rest' ts')
  where    fieldValue firstLine followingLines =
             let firstLine' = trimLeading firstLine

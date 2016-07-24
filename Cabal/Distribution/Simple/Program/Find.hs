@@ -132,7 +132,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
 -- algorithm looks at more than just the @%PATH%@.
 programSearchPathAsPATHVar :: ProgramSearchPath -> IO String
 programSearchPathAsPATHVar searchpath = do
-    ess <- mapM getEntries searchpath
+    ess <- traverse getEntries searchpath
     return (intercalate [searchPathSeparator] (concat ess))
   where
     getEntries (ProgramSearchPathDir dir) = return [dir]

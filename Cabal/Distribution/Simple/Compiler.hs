@@ -197,7 +197,7 @@ registrationPackageDB dbs = last dbs
 
 
 absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
-absolutePackageDBPaths = mapM absolutePackageDBPath
+absolutePackageDBPaths = traverse absolutePackageDBPath
 
 absolutePackageDBPath :: PackageDB -> IO PackageDB
 absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB

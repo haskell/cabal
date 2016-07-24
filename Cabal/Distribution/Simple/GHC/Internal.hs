@@ -349,7 +349,7 @@ getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
                    | x <- libModules lib ]
-        objss <- mapM getDirectoryContents dirs
+        objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
                      let obj_ext = takeExtension obj,

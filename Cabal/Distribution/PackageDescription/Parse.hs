@@ -534,7 +534,7 @@ readAndParseFile withFileContents' parser verbosity fpath = do
         let (line, message) = locatedErrorMsg e
         dieWithLocation fpath line message
     ParseOk warnings x -> do
-        mapM_ (warn verbosity . showPWarning fpath) $ reverse warnings
+        traverse_ (warn verbosity . showPWarning fpath) $ reverse warnings
         return x
 
 readHookedBuildInfo :: Verbosity -> FilePath -> IO HookedBuildInfo
@@ -561,15 +561,15 @@ isStanzaHeader _ = False
 
 mapSimpleFields :: (Field -> ParseResult Field) -> [Field]
                 -> ParseResult [Field]
-mapSimpleFields f = mapM walk
+mapSimpleFields f = traverse walk
   where
     walk fld@F{} = f fld
     walk (IfBlock l c fs1 fs2) = do
-      fs1' <- mapM walk fs1
-      fs2' <- mapM walk fs2
+      fs1' <- traverse walk fs1
+      fs2' <- traverse walk fs2
       return (IfBlock l c fs1' fs2')
     walk (Section ln n l fs1) = do
-      fs1' <-  mapM walk fs1
+      fs1' <-  traverse walk fs1
       return (Section ln n l fs1')
 
 -- prop_isMapM fs = mapSimpleFields return fs == return fs
@@ -1053,7 +1053,7 @@ parsePackageDescription file = do
             condFlds = [ f | f@IfBlock{} <- allflds ]
             sections = [ s | s@Section{} <- allflds ]
 
-        mapM_
+        traverse_
             (\(Section l n _ _) -> lift . warning $
                 "Unexpected section '" ++ n ++ "' on line " ++ show l)
             sections
@@ -1073,11 +1073,11 @@ parsePackageDescription file = do
         -- to check the CondTree, rather than grovel everywhere
         -- inside the conditional bits).
         deps <- liftM concat
-              . mapM (lift . parseConstraint)
+              . traverse (lift . parseConstraint)
               . filter isConstraint
               $ simplFlds
 
-        ifs <- mapM processIfs condFlds
+        ifs <- traverse processIfs condFlds
 
         return (CondNode a deps ifs)
       where
@@ -1123,10 +1123,10 @@ parsePackageDescription file = do
         PM ()
     checkForUndefinedFlags flags mlib sub_libs exes tests = do
         let definedFlags = map flagName flags
-        mapM_ (checkCondTreeFlags definedFlags) (maybeToList mlib)
-        mapM_ (checkCondTreeFlags definedFlags . snd) sub_libs
-        mapM_ (checkCondTreeFlags definedFlags . snd) exes
-        mapM_ (checkCondTreeFlags definedFlags . snd) tests
+        traverse_ (checkCondTreeFlags definedFlags) (maybeToList mlib)
+        traverse_ (checkCondTreeFlags definedFlags . snd) sub_libs
+        traverse_ (checkCondTreeFlags definedFlags . snd) exes
+        traverse_ (checkCondTreeFlags definedFlags . snd) tests
 
     checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
     checkCondTreeFlags definedFlags ct = do

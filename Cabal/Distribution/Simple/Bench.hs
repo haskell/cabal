@@ -96,7 +96,7 @@ bench args pkg_descr lbi flags = do
 
     let totalBenchmarks = length bmsToRun
     notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."
-    exitcodes <- mapM doBench bmsToRun
+    exitcodes <- traverse doBench bmsToRun
     let allOk = totalBenchmarks == length (filter (== ExitSuccess) exitcodes)
     unless allOk exitFailure
   where

@@ -139,7 +139,7 @@ readBuildTargets pkg targetStrs = do
     let (uproblems, utargets) = readUserBuildTargets targetStrs
     reportUserBuildTargetProblems uproblems
 
-    utargets' <- mapM checkTargetExistsAsFile utargets
+    utargets' <- traverse checkTargetExistsAsFile utargets
 
     let (bproblems, btargets) = resolveBuildTargets pkg utargets'
     reportBuildTargetProblems bproblems

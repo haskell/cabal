@@ -273,7 +273,7 @@ depLibraryPaths inplace relative lbi clbi = do
         allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
 
         allDepLibDirs' = internalLibs ++ allDepLibDirs
-    allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
+    allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'
 
     let p                = prefix installDirs
         prefixRelative l = isJust (stripPrefix p l)

@@ -36,8 +36,9 @@ import Foreign
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy as L
 
-import Data.Char    (chr,ord)
-import Data.List    (unfoldr)
+import Data.Char     (chr,ord)
+import Data.List     (unfoldr)
+import Data.Foldable (traverse_)
 
 -- And needed for the instances:
 import qualified Data.ByteString as B
@@ -389,7 +390,7 @@ instance (Binary a, Binary b, Binary c, Binary d, Binary e,
 -- Container types
 
 instance Binary a => Binary [a] where
-    put l  = put (length l) >> mapM_ put l
+    put l  = put (length l) >> traverse_ put l
     get    = do n <- get :: Get Int
                 getMany n
 
@@ -444,26 +445,26 @@ instance Binary ByteString where
 -- Maps and Sets
 
 instance (Binary a) => Binary (Set.Set a) where
-    put s = put (Set.size s) >> mapM_ put (Set.toAscList s)
+    put s = put (Set.size s) >> traverse_ put (Set.toAscList s)
     get   = liftM Set.fromDistinctAscList get
 
 instance (Binary k, Binary e) => Binary (Map.Map k e) where
-    put m = put (Map.size m) >> mapM_ put (Map.toAscList m)
+    put m = put (Map.size m) >> traverse_ put (Map.toAscList m)
     get   = liftM Map.fromDistinctAscList get
 
 instance Binary IntSet.IntSet where
-    put s = put (IntSet.size s) >> mapM_ put (IntSet.toAscList s)
+    put s = put (IntSet.size s) >> traverse_ put (IntSet.toAscList s)
     get   = liftM IntSet.fromDistinctAscList get
 
 instance (Binary e) => Binary (IntMap.IntMap e) where
-    put m = put (IntMap.size m) >> mapM_ put (IntMap.toAscList m)
+    put m = put (IntMap.size m) >> traverse_ put (IntMap.toAscList m)
     get   = liftM IntMap.fromDistinctAscList get
 
 ------------------------------------------------------------------------
 -- Queues and Sequences
 
 instance (Binary e) => Binary (Seq.Seq e) where
-    put s = put (Seq.length s) >> Fold.mapM_ put s
+    put s = put (Seq.length s) >> Fold.traverse_ put s
     get = do n <- get :: Get Int
              rep Seq.empty n get
       where rep xs 0 _ = return $! xs
@@ -496,7 +497,7 @@ instance (Binary i, Ix i, Binary e) => Binary (Array i e) where
     put a = do
         put (bounds a)
         put (rangeSize $ bounds a) -- write the length
-        mapM_ put (elems a)        -- now the elems.
+        traverse_ put (elems a)        -- now the elems.
     get = do
         bs <- get
         n  <- get                  -- read the length
@@ -510,7 +511,7 @@ instance (Binary i, Ix i, Binary e, IArray UArray e) => Binary (UArray i e) wher
     put a = do
         put (bounds a)
         put (rangeSize $ bounds a) -- now write the length
-        mapM_ put (elems a)
+        traverse_ put (elems a)
     get = do
         bs <- get
         n  <- get

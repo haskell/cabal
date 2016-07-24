@@ -430,7 +430,7 @@ configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . co
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
-  `liftM` mapM (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
+  `liftM` traverse (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
   (configPackageDBs f)
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags

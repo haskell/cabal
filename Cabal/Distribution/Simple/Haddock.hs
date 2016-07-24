@@ -569,7 +569,7 @@ haddockPackagePaths :: [InstalledPackageInfo]
                     -> Maybe (InstalledPackageInfo -> FilePath)
                     -> IO ([(FilePath, Maybe FilePath)], Maybe String)
 haddockPackagePaths ipkgs mkHtmlPath = do
-  interfaces <- sequence
+  interfaces <- sequenceA
     [ case interfaceAndHtmlPath ipkg of
         Nothing -> return (Left (packageId ipkg))
         Just (interface, html) -> do
@@ -750,7 +750,7 @@ getExeSourceFiles lbi exe clbi = do
 getSourceFiles :: [FilePath]
                   -> [ModuleName.ModuleName]
                   -> IO [(ModuleName.ModuleName, FilePath)]
-getSourceFiles dirs modules = flip mapM modules $ \m -> fmap ((,) m) $
+getSourceFiles dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
     findFileWithExtension ["hs", "lhs"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where

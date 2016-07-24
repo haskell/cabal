@@ -203,7 +203,7 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ given_dir
        debug verbosity $ "candidate locations: " ++ show guesses
-       exists <- mapM doesFileExist guesses
+       exists <- traverse doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
                    -- method.
@@ -397,7 +397,7 @@ getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
                      -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
-  sequence
+  sequenceA
     [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
@@ -415,11 +415,11 @@ getInstalledPackages' verbosity packagedbs conf = do
           (UserPackageDB,  _global:_)      -> return $ Nothing
           (SpecificPackageDB specific, _)  -> return $ Just specific
           _ -> die "cannot read ghc-pkg package listing"
-    pkgFiles' <- mapM dbFile packagedbs
-    sequence [ withFileContents file $ \content -> do
+    pkgFiles' <- traverse dbFile packagedbs
+    sequenceA [ withFileContents file $ \content -> do
                   pkgs <- readPackages file content
                   return (db, pkgs)
-             | (db , Just file) <- zip packagedbs pkgFiles' ]
+              | (db , Just file) <- zip packagedbs pkgFiles' ]
   where
     -- Depending on the version of ghc we use a different type's Read
     -- instance to parse the package file and then convert.
@@ -441,7 +441,7 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> [PackageDB]
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity platform progdb =
-    mapM getPackageDBPath
+    traverse getPackageDBPath
   where
     getPackageDBPath :: PackageDB -> IO FilePath
     getPackageDBPath GlobalPackageDB =
@@ -659,17 +659,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
 
-    stubObjs <- catMaybes <$> sequence
+    stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubProfObjs <- catMaybes <$> sequence
+    stubProfObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubSharedObjs <- catMaybes <$> sequence
+    stubSharedObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files

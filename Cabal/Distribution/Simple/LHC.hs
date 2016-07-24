@@ -225,7 +225,7 @@ getInstalledPackages' :: ConfiguredProgram -> Verbosity
                       -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
-  sequence
+  sequenceA
     [ do str <- rawSystemProgramStdoutConf verbosity lhcPkgProgram conf
                   ["dump", packageDbGhcPkgFlag packagedb]
            `catchExit` \_ -> die $ "ghc-pkg dump failed"
@@ -348,15 +348,15 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       sharedLibFilePath  = libTargetDir </> mkSharedLibName cid lib_name
       ghciLibFilePath    = libTargetDir </> mkGHCiLibName       lib_name
 
-  stubObjs <- fmap catMaybes $ sequence
+  stubObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension [objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
-  stubProfObjs <- fmap catMaybes $ sequence
+  stubProfObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
-  stubSharedObjs <- fmap catMaybes $ sequence
+  stubSharedObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
@@ -538,7 +538,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
                    | x <- libModules lib ]
-        objss <- mapM getDirectoryContents dirs
+        objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
                      let obj_ext = takeExtension obj,
@@ -719,7 +719,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   ifVanilla $ copyModuleFiles "hi"
   ifProf    $ copyModuleFiles "p_hi"
   hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
-  flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
+  flip traverse_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
 
   -- copy the built library files over:
   ifVanilla $ copy builtDir targetDir       vanillaLibName

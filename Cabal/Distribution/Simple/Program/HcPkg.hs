@@ -341,7 +341,7 @@ list hpi verbosity packagedb = do
                   ++ programId (hcPkgProgram hpi) ++ " list'"
 
   where
-    parsePackageIds = sequence . map simpleParse . words
+    parsePackageIds = traverse simpleParse . words
 
 --------------------------
 -- The program invocations

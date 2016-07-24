@@ -1345,12 +1345,12 @@ configurePkgconfigPackages verbosity pkg_descr conf
     (_, _, conf') <- requireProgramVersion
                        (lessVerbose verbosity) pkgConfigProgram
                        (orLaterVersion $ Version [0,9,0] []) conf
-    mapM_ requirePkg allpkgs
-    mlib' <- mapM addPkgConfigBILib (library pkg_descr)
-    libs' <- mapM addPkgConfigBILib (subLibraries pkg_descr)
-    exes' <- mapM addPkgConfigBIExe (executables pkg_descr)
-    tests' <- mapM addPkgConfigBITest (testSuites pkg_descr)
-    benches' <- mapM addPkgConfigBIBench (benchmarks pkg_descr)
+    traverse_ requirePkg allpkgs
+    mlib' <- traverse addPkgConfigBILib (library pkg_descr)
+    libs' <- traverse addPkgConfigBILib (subLibraries pkg_descr)
+    exes' <- traverse addPkgConfigBIExe (executables pkg_descr)
+    tests' <- traverse addPkgConfigBITest (testSuites pkg_descr)
+    benches' <- traverse addPkgConfigBIBench (benchmarks pkg_descr)
     let pkg_descr' = pkg_descr { library = mlib',
                                  subLibraries = libs', executables = exes',
                                  testSuites = tests', benchmarks = benches' }
@@ -2132,7 +2132,7 @@ checkPackageProblems verbosity gpkg pkg = do
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
   if null errors
-    then mapM_ (warn verbosity) warnings
+    then traverse_ (warn verbosity) warnings
     else die (intercalate "\n\n" errors)
 
 -- | Preform checks if a relocatable build is allowed
@@ -2189,11 +2189,11 @@ checkRelocatable verbosity pkg lbi
     -- prefix of the package
     depsPrefixRelative = do
         pkgr <- GHC.pkgRoot verbosity lbi (last (withPackageDB lbi))
-        mapM_ (doCheck pkgr) ipkgs
+        traverse_ (doCheck pkgr) ipkgs
       where
         doCheck pkgr ipkg
           | maybe False (== pkgr) (Installed.pkgRoot ipkg)
-          = mapM_ (\l -> when (isNothing $ stripPrefix p l) (die (msg l)))
+          = traverse_ (\l -> when (isNothing $ stripPrefix p l) (die (msg l)))
                   (Installed.libraryDirs ipkg)
           | otherwise
           = return ()

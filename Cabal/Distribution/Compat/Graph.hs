@@ -293,7 +293,7 @@ revNeighbors g k = do
 -- Requires amortized construction of graph.
 closure :: Graph a -> [Key a] -> Maybe [a]
 closure g ks = do
-    vs <- mapM (graphKeyToVertex g) ks
+    vs <- traverse (graphKeyToVertex g) ks
     return (decodeVertexForest g (G.dfs (graphForward g) vs))
 
 -- | Compute the reverse closure of a graph from some set
@@ -302,7 +302,7 @@ closure g ks = do
 -- Requires amortized construction of graph.
 revClosure :: Graph a -> [Key a] -> Maybe [a]
 revClosure g ks = do
-    vs <- mapM (graphKeyToVertex g) ks
+    vs <- traverse (graphKeyToVertex g) ks
     return (decodeVertexForest g (G.dfs (graphAdjoint g) vs))
 
 flattenForest :: Tree.Forest a -> [a]

@@ -49,6 +49,7 @@ import Distribution.Text
 import Distribution.Simple.LocalBuildInfo hiding (compiler)
 import Language.Haskell.Extension
 
+import Control.Monad (mapM)
 import Data.List  (group)
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )

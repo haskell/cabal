@@ -225,7 +225,7 @@ stubMain tests = do
 -- by the calling Cabal process.
 stubRunTests :: [Test] -> IO TestLogs
 stubRunTests tests = do
-    logs <- mapM stubRunTests' tests
+    logs <- traverse stubRunTests' tests
     return $ GroupLogs "Default" logs
   where
     stubRunTests' (Test t) = do
@@ -241,7 +241,7 @@ stubRunTests tests = do
                 }
         finish (Progress _ next) = next >>= finish
     stubRunTests' g@(Group {}) = do
-        logs <- mapM stubRunTests' $ groupTests g
+        logs <- traverse stubRunTests' $ groupTests g
         return $ GroupLogs (groupName g) logs
     stubRunTests' (ExtraOptions _ t) = stubRunTests' t
     maybeDefaultOption opt =

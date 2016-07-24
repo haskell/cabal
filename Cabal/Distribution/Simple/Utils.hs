@@ -646,7 +646,7 @@ xargs :: Int -> ([String] -> IO ())
 xargs maxSize rawSystemFun fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
-   in mapM_ (rawSystemFun . (fixedArgs ++)) (chunks chunkSize bigArgs)
+   in traverse_ (rawSystemFun . (fixedArgs ++)) (chunks chunkSize bigArgs)
 
   where chunks len = unfoldr $ \s ->
           if null s then Nothing
@@ -733,7 +733,7 @@ findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
                 -> [ModuleName] -- ^ modules
                 -> IO [(FilePath, FilePath)]
 findModuleFiles searchPath extensions moduleNames =
-  mapM (findModuleFile searchPath extensions) moduleNames
+  traverse (findModuleFile searchPath extensions) moduleNames
 
 -- | Find the file corresponding to a Haskell module name.
 --
@@ -979,7 +979,7 @@ copyFilesWith doCopy verbosity targetDir srcFiles = do
 
   -- Create parent directories for everything
   let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
-  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+  traverse_ (createDirectoryIfMissingVerbose verbosity True) dirs
 
   -- Copy all the files
   sequence_ [ let src  = srcBase   </> srcFile

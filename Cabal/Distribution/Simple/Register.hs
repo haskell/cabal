@@ -117,7 +117,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
             [] -> die "In --assume-deps-up-to-date mode you must specify a target"
             _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
         else fmap catMaybes
-           . mapM maybeGenerateOne
+           . traverse maybeGenerateOne
            $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
     registerAll pkg_descr lbi flags ipis
     return ()

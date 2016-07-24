@@ -124,7 +124,7 @@ markupPackage :: Verbosity
               -> IO ()
 markupPackage verbosity lbi distPref libName suites = do
     let tixFiles = map (tixFilePath distPref way . testName) suites
-    tixFilesExist <- mapM doesFileExist tixFiles
+    tixFilesExist <- traverse doesFileExist tixFiles
     when (and tixFilesExist) $ do
         -- behaviour of 'markup' depends on version, so we need *a* version
         -- but no particular one

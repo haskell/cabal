@@ -98,7 +98,7 @@ getInstalledPackages verbosity comp packagedbs conf = do
   let pkgDirs    = nub (concatMap (packageDbPaths userPkgDir systemPkgDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
   pkgs <- liftM (map addBuiltinVersions . concat) $
-          mapM (\ d -> getDirectoryContents d >>= filterM (isPkgDir (display compilerid) d))
+          traverse (\ d -> getDirectoryContents d >>= filterM (isPkgDir (display compilerid) d))
           pkgDirs
   -- putStrLn $ "pkgs: " ++ show pkgs
   let iPkgs =
