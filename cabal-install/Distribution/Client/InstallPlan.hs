@@ -28,8 +28,6 @@ module Distribution.Client.InstallPlan (
 
   fromSolverInstallPlan,
   configureInstallPlan,
-
-  ready,
   remove,
   preexisting,
 
@@ -70,7 +68,6 @@ import Distribution.Text
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 
-import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.Settings
@@ -94,7 +91,6 @@ import qualified Data.Map as Map
 import           Data.Map (Map)
 import qualified Data.Set as Set
 import           Data.Set (Set)
-import qualified Data.Traversable as T
 
 
 -- When cabal tries to install a number of packages, including all their
@@ -301,58 +297,6 @@ remove shouldRemove plan =
   where
     newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
-
--- | The packages that are ready to be installed. That is they are in the
--- configured state and have all their dependencies installed already.
--- The plan is complete if the result is @[]@.
---
-ready :: forall ipkg srcpkg iresult ifailure.
-         (HasUnitId ipkg,   PackageFixedDeps ipkg,
-          HasUnitId srcpkg, PackageFixedDeps srcpkg)
-      => GenericInstallPlan ipkg srcpkg iresult ifailure
-      -> [GenericReadyPackage srcpkg]
-ready plan = assert check readyPackages
-  where
-    check = if null readyPackages && null processingPackages
-              then null configuredPackages
-              else True
-    configuredPackages = [ pkg | Configured pkg <- toList plan ]
-    processingPackages = [ pkg | Processing pkg <- toList plan]
-
-    readyPackages :: [GenericReadyPackage srcpkg]
-    readyPackages = catMaybes (map (lookupReadyPackage plan) configuredPackages)
-
-lookupReadyPackage :: forall ipkg srcpkg iresult ifailure.
-                      (HasUnitId ipkg,   PackageFixedDeps ipkg,
-                       HasUnitId srcpkg, PackageFixedDeps srcpkg)
-                   => GenericInstallPlan ipkg srcpkg iresult ifailure
-                   -> srcpkg
-                   -> Maybe (GenericReadyPackage srcpkg)
-lookupReadyPackage plan pkg = do
-    _ <- hasAllInstalledDeps pkg
-    return (ReadyPackage pkg)
-  where
-
-    hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
-    hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
-
-    isInstalledDep :: UnitId -> Maybe ipkg
-    isInstalledDep pkgid =
-      case Graph.lookup pkgid (planIndex plan) of
-        Just (PreExisting ipkg)            -> Just ipkg
-        Just (Configured  _)               -> Nothing
-        Just (Processing  _)               -> Nothing
-        Just (Installed   _ (Just ipkg) _) -> Just ipkg
-        Just (Installed   _ Nothing     _) -> internalError (depOnNonLib pkgid)
-        Just (Failed      _             _) -> internalError depOnFailed
-        Nothing                            -> internalError incomplete
-    incomplete  = "install plan is not closed"
-    depOnFailed = "configured package depends on failed package"
-    depOnNonLib dep = "the configured package "
-                   ++ display (packageId pkg)
-                   ++ " depends on a non-library package "
-                   ++ display dep
-
 
 -- | Replace a ready package with a pre-existing one. The pre-existing one
 -- must have exactly the same dependencies as the source one was configured

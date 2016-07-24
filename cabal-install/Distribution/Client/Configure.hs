@@ -138,7 +138,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
 
     Right installPlan0 ->
      let installPlan = InstallPlan.configureInstallPlan installPlan0
-     in case InstallPlan.ready installPlan of
+     in case fst (InstallPlan.ready' installPlan) of
       [pkg@(ReadyPackage
               (ConfiguredPackage _ (SourcePackage _ _ (LocalUnpackedPackage _) _)
                                  _ _ _))] -> do
