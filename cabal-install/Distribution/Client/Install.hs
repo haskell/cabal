@@ -955,7 +955,7 @@ symlinkBinaries :: Verbosity
                 -> IO ()
 symlinkBinaries verbosity platform comp configFlags installFlags
                 plan buildResults = do
-  failed <- InstallSymlink.symlinkBinaries verbosity platform comp
+  failed <- InstallSymlink.symlinkBinaries platform comp
                                            configFlags installFlags
                                            plan buildResults
   case failed of
