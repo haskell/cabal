@@ -29,12 +29,8 @@ module Distribution.Client.InstallPlan (
   configureInstallPlan,
 
   ready,
-  processing,
-  completed,
-  failed,
   remove,
   preexisting,
-  preinstalled,
 
   -- * Traversal
   executionOrder,
@@ -457,100 +453,6 @@ lookupReadyPackage plan pkg = do
                    ++ " depends on a non-library package "
                    ++ display dep
 
--- | Marks packages in the graph as currently processing (e.g. building).
---
--- * The package must exist in the graph and be in the configured state.
---
-processing :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-               HasUnitId srcpkg, PackageFixedDeps srcpkg)
-           => [GenericReadyPackage srcpkg]
-           -> GenericInstallPlan ipkg srcpkg iresult ifailure
-           -> GenericInstallPlan ipkg srcpkg iresult ifailure
-processing pkgs plan = assert (invariant plan') plan'
-  where
-    plan' = plan {
-              planIndex = PackageIndex.merge (planIndex plan) processingPkgs
-            }
-    processingPkgs = PackageIndex.fromList [Processing pkg | pkg <- pkgs]
-
--- | Marks a package in the graph as completed. Also saves the build result for
--- the completed package in the plan.
---
--- * The package must exist in the graph and be in the processing state.
--- * The package must have had no uninstalled dependent packages.
---
-completed :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-              HasUnitId srcpkg, PackageFixedDeps srcpkg)
-          => UnitId
-          -> Maybe ipkg -> iresult
-          -> GenericInstallPlan ipkg srcpkg iresult ifailure
-          -> GenericInstallPlan ipkg srcpkg iresult ifailure
-completed pkgid mipkg buildResult plan = assert (invariant plan') plan'
-  where
-    plan'     = plan {
-                  planIndex = PackageIndex.insert installed
-                            . PackageIndex.deleteUnitId pkgid
-                            $ planIndex plan
-                }
-    installed = Installed (lookupProcessingPackage plan pkgid) mipkg buildResult
-
--- | Marks a package in the graph as having failed. It also marks all the
--- packages that depended on it as having failed.
---
--- * The package must exist in the graph and be in the processing
--- state.
---
-failed :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-           HasUnitId srcpkg, PackageFixedDeps srcpkg)
-       => UnitId         -- ^ The id of the package that failed to install
-       -> ifailure           -- ^ The build result to use for the failed package
-       -> ifailure           -- ^ The build result to use for its dependencies
-       -> GenericInstallPlan ipkg srcpkg iresult ifailure
-       -> GenericInstallPlan ipkg srcpkg iresult ifailure
-failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
-  where
-    -- NB: failures don't update IPIDs
-    plan'    = plan {
-                 planIndex = PackageIndex.merge (planIndex plan) failures
-               }
-    ReadyPackage srcpkg = lookupProcessingPackage plan pkgid
-    failures = PackageIndex.fromList
-             $ Failed srcpkg buildResult
-             : [ Failed pkg' buildResult'
-               | Just pkg' <- map checkConfiguredPackage
-                            $ packagesThatDependOn plan pkgid ]
-
--- | Lookup the reachable packages in the reverse dependency graph.
---
-packagesThatDependOn :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                     -> UnitId
-                     -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
-packagesThatDependOn plan pkgid = map (planPkgOf plan)
-                          . tail
-                          . Graph.reachable (planGraphRev plan)
-                          . planVertexOf plan
-                          $ pkgid
-
--- | Lookup a package that we expect to be in the processing state.
---
-lookupProcessingPackage :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                        -> UnitId
-                        -> GenericReadyPackage srcpkg
-lookupProcessingPackage plan pkgid =
-  case PackageIndex.lookupUnitId (planIndex plan) pkgid of
-    Just (Processing pkg) -> pkg
-    _  -> internalError $ "not in processing state or no such pkg " ++
-                          display pkgid
-
--- | Check a package that we expect to be in the configured or failed state.
---
-checkConfiguredPackage :: (Package srcpkg, Package ipkg)
-                       => GenericPlanPackage ipkg srcpkg iresult ifailure
-                       -> Maybe srcpkg
-checkConfiguredPackage (Configured pkg) = Just pkg
-checkConfiguredPackage (Failed     _ _) = Nothing
-checkConfiguredPackage pkg                =
-  internalError $ "not configured or no such pkg " ++ display (packageId pkg)
 
 -- | Replace a ready package with a pre-existing one. The pre-existing one
 -- must have exactly the same dependencies as the source one was configured
@@ -571,24 +473,6 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                   . PackageIndex.deleteUnitId pkgid
                   $ planIndex plan
     }
-
--- | Replace a ready package with an installed one. The installed one
--- must have exactly the same dependencies as the source one was configured
--- with.
---
-preinstalled :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-                 HasUnitId srcpkg, PackageFixedDeps srcpkg)
-             => UnitId
-             -> Maybe ipkg -> iresult
-             -> GenericInstallPlan ipkg srcpkg iresult ifailure
-             -> GenericInstallPlan ipkg srcpkg iresult ifailure
-preinstalled pkgid mipkg buildResult plan = assert (invariant plan') plan'
-  where
-    plan' = plan { planIndex = PackageIndex.insert installed (planIndex plan) }
-    Just installed = do
-      Configured pkg <- PackageIndex.lookupUnitId (planIndex plan) pkgid
-      rpkg <- lookupReadyPackage plan pkg
-      return (Installed rpkg mipkg buildResult)
 
 -- | Transform an install plan by mapping a function over all the packages in
 -- the plan. It can consistently change the 'UnitId' of all the packages,
