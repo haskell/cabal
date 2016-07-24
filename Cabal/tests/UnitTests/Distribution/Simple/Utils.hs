@@ -9,7 +9,7 @@ import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
                         , removeDirectoryRecursive, removeFile )
-import System.IO (hClose, localeEncoding)
+import System.IO (hClose, localeEncoding, hPutStrLn)
 import System.IO.Error
 import qualified Control.Exception as Exception
 
@@ -52,17 +52,34 @@ rawSystemStdInOutTextDecodingTest :: Assertion
 rawSystemStdInOutTextDecodingTest
     -- We can only get this exception when the locale encoding is UTF-8
     -- so skip the test if it's not.
-  | show localeEncoding /= "UTF-8" = return ()
-  | otherwise = do
-  res <- Exception.try $
-    rawSystemStdInOut normal
-      -- hopefully this is sufficiently portable, we just need to execute a
-      -- program that will produce non-unicode output:
-      "ghc" ["-e", "Data.ByteString.putStr (Data.ByteString.pack [255])"]
-      Nothing Nothing Nothing
-      False -- not binary mode output, ie utf8 text mode so try to decode
+    | show localeEncoding /= "UTF-8" = return ()
+    | otherwise = do
+  tempDir  <- getTemporaryDirectory
+  res <- withTempFile tempDir ".hs" $ \filenameHs handleHs -> do
+    withTempFile tempDir ".exe" $ \filenameExe handleExe -> do
+      -- Small program printing not utf8
+      hPutStrLn handleHs "import Data.ByteString"
+      hPutStrLn handleHs "main = Data.ByteString.putStr (Data.ByteString.pack [32, 32, 255])"
+      hClose handleHs
+
+      -- We need to close exe handle as well, otherwise compilation (writing) may fail
+      hClose handleExe
+
+      -- Compile
+      compilationResult <- rawSystemStdInOut normal
+         "ghc" ["-o", filenameExe, filenameHs]
+         Nothing Nothing Nothing
+        False
+      print compilationResult
+
+      -- Execute
+      Exception.try $ do
+        rawSystemStdInOut normal
+           filenameExe []
+           Nothing Nothing Nothing
+           False -- not binary mode output, ie utf8 text mode so try to decode
   case res of
-    Right _ -> assertFailure "expected IO decoding exception"
+    Right x -> assertFailure $ "expected IO decoding exception: " ++ show x
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 
