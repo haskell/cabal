@@ -309,19 +309,19 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
 -- depencencies. This can be used to propagate information from depencencies.
 --
 foldMInstallPlanDepOrder
-  :: forall m ipkg srcpkg iresult ifailure b.
+  :: forall m ipkg srcpkg b.
      (Monad m,
       HasUnitId ipkg,   PackageFixedDeps ipkg,
       HasUnitId srcpkg, PackageFixedDeps srcpkg)
-  => GenericInstallPlan ipkg srcpkg iresult ifailure
-  -> (GenericPlanPackage ipkg srcpkg iresult ifailure ->
+  => GenericInstallPlan ipkg srcpkg
+  -> (GenericPlanPackage ipkg srcpkg ->
       ComponentDeps [b] -> m b)
   -> m (Map InstalledPackageId b)
 foldMInstallPlanDepOrder plan0 visit =
     go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
   where
     go :: Map InstalledPackageId b
-       -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+       -> [GenericPlanPackage ipkg srcpkg]
        -> m (Map InstalledPackageId b)
     go !results [] = return results
 

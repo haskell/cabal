@@ -455,7 +455,7 @@ pruneInstallPlan pkgSpecifiers =
   either (Fail . explain) Done
   . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
   where
-    explain :: [InstallPlan.PlanProblem ipkg srcpkg iresult ifailure] -> String
+    explain :: [InstallPlan.PlanProblem ipkg srcpkg] -> String
     explain problems =
       "Cannot select only the dependencies (as requested by the "
       ++ "'--only-dependencies' flag), "

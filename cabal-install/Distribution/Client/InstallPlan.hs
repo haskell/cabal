@@ -70,8 +70,7 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
          , HasUnitId(..), UnitId(..) )
 import Distribution.Client.Types
-         ( BuildSuccess, BuildFailure
-         , ConfiguredPackage(..), ConfiguredId(..)
+         ( ConfiguredPackage(..), ConfiguredId(..)
          , UnresolvedPkgLoc
          , GenericReadyPackage(..) )
 import Distribution.Version
@@ -167,42 +166,40 @@ import           Data.IntSet (IntSet)
 -- dependencies; if we give a 'PackageInstalled' instance it would be too easy
 -- to get this wrong (and, for instance, call graph traversal functions from
 -- Cabal rather than from cabal-install). Instead, see 'PackageFixedDeps'.
-data GenericPlanPackage ipkg srcpkg iresult ifailure
+data GenericPlanPackage ipkg srcpkg
    = PreExisting ipkg
    | Configured  srcpkg
   deriving (Eq, Show, Generic)
 
-instance (Binary ipkg, Binary srcpkg, Binary  iresult, Binary  ifailure)
-      => Binary (GenericPlanPackage ipkg srcpkg iresult ifailure)
+instance (Binary ipkg, Binary srcpkg)
+      => Binary (GenericPlanPackage ipkg srcpkg)
 
 type PlanPackage = GenericPlanPackage
                    InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
-                   BuildSuccess BuildFailure
 
 type SolverPlanPackage = GenericPlanPackage
                          InstalledPackageInfo (SolverPackage UnresolvedPkgLoc)
-                         BuildSuccess BuildFailure
 
 instance (Package ipkg, Package srcpkg) =>
-         Package (GenericPlanPackage ipkg srcpkg iresult ifailure) where
+         Package (GenericPlanPackage ipkg srcpkg) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
 
 instance (PackageFixedDeps srcpkg,
           PackageFixedDeps ipkg) =>
-         PackageFixedDeps (GenericPlanPackage ipkg srcpkg iresult ifailure) where
+         PackageFixedDeps (GenericPlanPackage ipkg srcpkg) where
   depends (PreExisting pkg)     = depends pkg
   depends (Configured  pkg)     = depends pkg
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId
-         (GenericPlanPackage ipkg srcpkg iresult ifailure) where
+         (GenericPlanPackage ipkg srcpkg) where
   installedUnitId (PreExisting ipkg) = installedUnitId ipkg
   installedUnitId (Configured  spkg) = installedUnitId spkg
 
 
-data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
-    planIndex      :: !(PlanIndex ipkg srcpkg iresult ifailure),
+data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
+    planIndex      :: !(PlanIndex ipkg srcpkg),
     planIndepGoals :: !IndependentGoals,
 
     -- | Cached (lazily) graph
@@ -218,9 +215,9 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
   }
 
 -- | Much like 'planPkgIdOf', but mapping back to full packages.
-planPkgOf :: GenericInstallPlan ipkg srcpkg iresult ifailure
+planPkgOf :: GenericInstallPlan ipkg srcpkg
           -> Graph.Vertex
-          -> GenericPlanPackage ipkg srcpkg iresult ifailure
+          -> GenericPlanPackage ipkg srcpkg
 planPkgOf plan v =
     case PackageIndex.lookupUnitId (planIndex plan)
                                    (planPkgIdOf plan v) of
@@ -231,10 +228,6 @@ planPkgOf plan v =
 -- order to compute the 'UnitId's for everything we want to build.
 type SolverInstallPlan = GenericInstallPlan
                          InstalledPackageInfo (SolverPackage UnresolvedPkgLoc)
-                         -- Technically, these are not used here, but
-                         -- setting the type this way makes it easier
-                         -- to run some operations.
-                         BuildSuccess BuildFailure
 
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
@@ -280,14 +273,13 @@ configureInstallPlan solverPlan =
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
                    InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
-                   BuildSuccess BuildFailure
 
-type PlanIndex ipkg srcpkg iresult ifailure =
-     PackageIndex (GenericPlanPackage ipkg srcpkg iresult ifailure)
+type PlanIndex ipkg srcpkg =
+     PackageIndex (GenericPlanPackage ipkg srcpkg)
 
 invariant :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
               HasUnitId srcpkg, PackageFixedDeps srcpkg)
-          => GenericInstallPlan ipkg srcpkg iresult ifailure -> Bool
+          => GenericInstallPlan ipkg srcpkg -> Bool
 invariant plan =
     valid (planIndepGoals plan)
           (planIndex plan)
@@ -296,9 +288,9 @@ invariant plan =
 --
 mkInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                   HasUnitId srcpkg, PackageFixedDeps srcpkg)
-              => PlanIndex ipkg srcpkg iresult ifailure
+              => PlanIndex ipkg srcpkg
               -> IndependentGoals
-              -> GenericInstallPlan ipkg srcpkg iresult ifailure
+              -> GenericInstallPlan ipkg srcpkg
 mkInstallPlan index indepGoals =
     GenericInstallPlan {
       planIndex      = index,
@@ -320,8 +312,8 @@ internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
 instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
           HasUnitId srcpkg, PackageFixedDeps srcpkg,
-          Binary ipkg, Binary srcpkg, Binary iresult, Binary ifailure)
-       => Binary (GenericInstallPlan ipkg srcpkg iresult ifailure) where
+          Binary ipkg, Binary srcpkg)
+       => Binary (GenericInstallPlan ipkg srcpkg) where
     put GenericInstallPlan {
               planIndex      = index,
               planIndepGoals = indepGoals
@@ -332,7 +324,7 @@ instance (HasUnitId ipkg,   PackageFixedDeps ipkg,
       return $! mkInstallPlan index indepGoals
 
 showPlanIndex :: (HasUnitId ipkg, HasUnitId srcpkg)
-              => PlanIndex ipkg srcpkg iresult ifailure -> String
+              => PlanIndex ipkg srcpkg -> String
 showPlanIndex index =
     intercalate "\n" (map showPlanPackage (PackageIndex.allPackages index))
   where showPlanPackage p =
@@ -341,10 +333,10 @@ showPlanIndex index =
                 ++ display (installedUnitId p) ++ ")"
 
 showInstallPlan :: (HasUnitId ipkg, HasUnitId srcpkg)
-                => GenericInstallPlan ipkg srcpkg iresult ifailure -> String
+                => GenericInstallPlan ipkg srcpkg -> String
 showInstallPlan = showPlanIndex . planIndex
 
-showPlanPackageTag :: GenericPlanPackage ipkg srcpkg iresult ifailure -> String
+showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
 showPlanPackageTag (Configured  _)   = "Configured"
 
@@ -353,16 +345,16 @@ showPlanPackageTag (Configured  _)   = "Configured"
 new :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
         HasUnitId srcpkg, PackageFixedDeps srcpkg)
     => IndependentGoals
-    -> PlanIndex ipkg srcpkg iresult ifailure
-    -> Either [PlanProblem ipkg srcpkg iresult ifailure]
-              (GenericInstallPlan ipkg srcpkg iresult ifailure)
+    -> PlanIndex ipkg srcpkg
+    -> Either [PlanProblem ipkg srcpkg]
+              (GenericInstallPlan ipkg srcpkg)
 new indepGoals index =
   case problems indepGoals index of
     []    -> Right (mkInstallPlan index indepGoals)
     probs -> Left probs
 
-toList :: GenericInstallPlan ipkg srcpkg iresult ifailure
-       -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+toList :: GenericInstallPlan ipkg srcpkg
+       -> [GenericPlanPackage ipkg srcpkg]
 toList = PackageIndex.allPackages . planIndex
 
 -- | Remove packages from the install plan. This will result in an
@@ -373,10 +365,10 @@ toList = PackageIndex.allPackages . planIndex
 --
 remove :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
            HasUnitId srcpkg, PackageFixedDeps srcpkg)
-       => (GenericPlanPackage ipkg srcpkg iresult ifailure -> Bool)
-       -> GenericInstallPlan ipkg srcpkg iresult ifailure
-       -> Either [PlanProblem ipkg srcpkg iresult ifailure]
-                 (GenericInstallPlan ipkg srcpkg iresult ifailure)
+       => (GenericPlanPackage ipkg srcpkg -> Bool)
+       -> GenericInstallPlan ipkg srcpkg
+       -> Either [PlanProblem ipkg srcpkg]
+                 (GenericInstallPlan ipkg srcpkg)
 remove shouldRemove plan =
     new (planIndepGoals plan) newIndex
   where
@@ -391,8 +383,8 @@ preexisting :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                 HasUnitId srcpkg, PackageFixedDeps srcpkg)
             => UnitId
             -> ipkg
-            -> GenericInstallPlan ipkg srcpkg iresult ifailure
-            -> GenericInstallPlan ipkg srcpkg iresult ifailure
+            -> GenericInstallPlan ipkg srcpkg
+            -> GenericInstallPlan ipkg srcpkg
 preexisting pkgid ipkg plan = assert (invariant plan') plan'
   where
     plan' = plan {
@@ -418,10 +410,10 @@ mapPreservingGraph :: (HasUnitId ipkg,
                        HasUnitId ipkg',   PackageFixedDeps ipkg',
                        HasUnitId srcpkg', PackageFixedDeps srcpkg')
                    => (  (UnitId -> UnitId)
-                      -> GenericPlanPackage ipkg  srcpkg  iresult  ifailure
-                      -> GenericPlanPackage ipkg' srcpkg' iresult' ifailure')
-                   -> GenericInstallPlan ipkg  srcpkg  iresult  ifailure
-                   -> GenericInstallPlan ipkg' srcpkg' iresult' ifailure'
+                      -> GenericPlanPackage ipkg  srcpkg
+                      -> GenericPlanPackage ipkg' srcpkg')
+                   -> GenericInstallPlan ipkg  srcpkg
+                   -> GenericInstallPlan ipkg' srcpkg'
 mapPreservingGraph f plan =
     mkInstallPlan (PackageIndex.fromList pkgs')
                   (planIndepGoals plan)
@@ -460,21 +452,21 @@ mapPreservingGraph f plan =
 valid :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
           HasUnitId srcpkg, PackageFixedDeps srcpkg)
       => IndependentGoals
-      -> PlanIndex ipkg srcpkg iresult ifailure
+      -> PlanIndex ipkg srcpkg
       -> Bool
 valid indepGoals index =
     null $ problems indepGoals index
 
-data PlanProblem ipkg srcpkg iresult ifailure =
-     PackageMissingDeps   (GenericPlanPackage ipkg srcpkg iresult ifailure)
+data PlanProblem ipkg srcpkg =
+     PackageMissingDeps   (GenericPlanPackage ipkg srcpkg)
                           [PackageIdentifier]
-   | PackageCycle         [GenericPlanPackage ipkg srcpkg iresult ifailure]
+   | PackageCycle         [GenericPlanPackage ipkg srcpkg]
    | PackageInconsistency PackageName [(PackageIdentifier, Version)]
-   | PackageStateInvalid  (GenericPlanPackage ipkg srcpkg iresult ifailure)
-                          (GenericPlanPackage ipkg srcpkg iresult ifailure)
+   | PackageStateInvalid  (GenericPlanPackage ipkg srcpkg)
+                          (GenericPlanPackage ipkg srcpkg)
 
 showPlanProblem :: (Package ipkg, Package srcpkg)
-                => PlanProblem ipkg srcpkg iresult ifailure -> String
+                => PlanProblem ipkg srcpkg -> String
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
      "Package " ++ display (packageId pkg)
   ++ " depends on the following packages which are missing from the plan: "
@@ -509,8 +501,8 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 problems :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
              HasUnitId srcpkg, PackageFixedDeps srcpkg)
          => IndependentGoals
-         -> PlanIndex ipkg srcpkg iresult ifailure
-         -> [PlanProblem ipkg srcpkg iresult ifailure]
+         -> PlanIndex ipkg srcpkg
+         -> [PlanProblem ipkg srcpkg]
 problems indepGoals index =
 
      [ PackageMissingDeps pkg
@@ -540,7 +532,7 @@ problems indepGoals index =
 --
 acyclic :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
             HasUnitId srcpkg, PackageFixedDeps srcpkg)
-        => PlanIndex ipkg srcpkg iresult ifailure -> Bool
+        => PlanIndex ipkg srcpkg -> Bool
 acyclic = null . PlanIndex.dependencyCycles
 
 -- | An installation plan is closed if for every package in the set, all of
@@ -552,7 +544,7 @@ acyclic = null . PlanIndex.dependencyCycles
 --
 closed :: (PackageFixedDeps ipkg,
            PackageFixedDeps srcpkg)
-       => PlanIndex ipkg srcpkg iresult ifailure -> Bool
+       => PlanIndex ipkg srcpkg -> Bool
 closed = null . PlanIndex.brokenPackages
 
 -- | An installation plan is consistent if all dependencies that target a
@@ -573,15 +565,15 @@ closed = null . PlanIndex.brokenPackages
 --
 consistent :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                HasUnitId srcpkg, PackageFixedDeps srcpkg)
-           => PlanIndex ipkg srcpkg iresult ifailure -> Bool
+           => PlanIndex ipkg srcpkg -> Bool
 consistent = null . PlanIndex.dependencyInconsistencies (IndependentGoals False)
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
 -- package @b@ we require that @dependencyStatesOk a b = True@.
 --
-stateDependencyRelation :: GenericPlanPackage ipkg srcpkg iresult ifailure
-                        -> GenericPlanPackage ipkg srcpkg iresult ifailure
+stateDependencyRelation :: GenericPlanPackage ipkg srcpkg
+                        -> GenericPlanPackage ipkg srcpkg
                         -> Bool
 stateDependencyRelation (PreExisting _) (PreExisting _) = True
 stateDependencyRelation (Configured  _) (PreExisting _) = True
@@ -591,9 +583,9 @@ stateDependencyRelation (PreExisting _) (Configured  _) = False
 
 -- | Compute the dependency closure of a package in a install plan
 --
-dependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+dependencyClosure :: GenericInstallPlan ipkg srcpkg
                   -> [UnitId]
-                  -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+                  -> [GenericPlanPackage ipkg srcpkg]
 dependencyClosure plan =
     map (planPkgOf plan)
   . concatMap Tree.flatten
@@ -601,9 +593,9 @@ dependencyClosure plan =
   . map (planVertexOf plan)
 
 
-reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg iresult ifailure
+reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg
                          -> [UnitId]
-                         -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+                         -> [GenericPlanPackage ipkg srcpkg]
 reverseDependencyClosure plan =
     map (planPkgOf plan)
   . concatMap Tree.flatten
@@ -611,8 +603,8 @@ reverseDependencyClosure plan =
   . map (planVertexOf plan)
 
 
-topologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                 -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+topologicalOrder :: GenericInstallPlan ipkg srcpkg
+                 -> [GenericPlanPackage ipkg srcpkg]
 topologicalOrder plan =
     map (planPkgOf plan)
   . Graph.topSort
@@ -627,8 +619,8 @@ topologicalOrder plan =
 -- and 'executionOrder' produce reverse topological orderings of the package
 -- dependency graph, it is not necessarily exactly the same order.
 --
-reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                        -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg
+                        -> [GenericPlanPackage ipkg srcpkg]
 reverseTopologicalOrder plan =
     map (planPkgOf plan)
   . Graph.topSort
@@ -690,7 +682,7 @@ data Processing = Processing !IntSet !IntSet !IntSet
 -- them to be in the processing state.
 --
 ready :: (HasUnitId ipkg, HasUnitId srcpkg)
-      => GenericInstallPlan ipkg srcpkg unused1 unused2
+      => GenericInstallPlan ipkg srcpkg
       -> ([GenericReadyPackage srcpkg], Processing)
 ready plan =
     assert (processingInvariant plan processing) $
@@ -722,7 +714,7 @@ ready plan =
 -- and return any packages that are newly in the processing state (ie ready to
 -- process), along with the updated 'Processing' state.
 --
-completed :: GenericInstallPlan ipkg srcpkg unused1 unused2
+completed :: GenericInstallPlan ipkg srcpkg
           -> Processing -> UnitId
           -> ([GenericReadyPackage srcpkg], Processing)
 completed plan (Processing processingSet completedSet failedSet) pkgid =
@@ -750,7 +742,7 @@ completed plan (Processing processingSet completedSet failedSet) pkgid =
     asReadyPackage (Configured pkg) = ReadyPackage pkg
     asReadyPackage _ = error "InstallPlan.completed: internal error"
 
-failed :: GenericInstallPlan ipkg srcpkg unused1 unused2
+failed :: GenericInstallPlan ipkg srcpkg
        -> Processing -> UnitId
        -> ([srcpkg], Processing)
 failed plan (Processing processingSet completedSet failedSet) pkgid =
@@ -772,7 +764,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     asConfiguredPackage (Configured pkg) = pkg
     asConfiguredPackage _ = error "InstallPlan.failed: internal error"
 
-processingInvariant :: GenericInstallPlan ipkg srcpkg unused1 unused2-> Processing -> Bool
+processingInvariant :: GenericInstallPlan ipkg srcpkg -> Processing -> Bool
 processingInvariant plan (Processing processingSet completedSet failedSet) =
     all (inRange (bounds (planGraph plan))) (IntSet.toList processingSet)
  && all (inRange (bounds (planGraph plan))) (IntSet.toList completedSet)
@@ -810,7 +802,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
 -- same ordering as that produced by 'reverseTopologicalOrder'.
 --
 executionOrder :: (HasUnitId ipkg, HasUnitId srcpkg, PackageFixedDeps srcpkg)
-        => GenericInstallPlan ipkg srcpkg unused1 unused2
+        => GenericInstallPlan ipkg srcpkg
         -> [GenericReadyPackage srcpkg]
 executionOrder plan =
     let (newpkgs, processing) = ready plan
@@ -850,14 +842,14 @@ lookupBuildResult = Map.lookup . installedUnitId
 -- (using the 'JobControl' to try to cancel in-progress tasks). This behaviour
 -- can be reversed to keep going and build as many packages as possible.
 --
-execute :: forall m ipkg srcpkg result failure unused1 unused2.
+execute :: forall m ipkg srcpkg result failure.
            (HasUnitId ipkg,   PackageFixedDeps ipkg,
             HasUnitId srcpkg, PackageFixedDeps srcpkg,
             Monad m)
         => JobControl m (UnitId, Either failure result)
         -> Bool                -- ^ Keep going after failure
         -> (srcpkg -> failure) -- ^ Value for dependents of failed packages
-        -> GenericInstallPlan ipkg srcpkg unused1 unused2
+        -> GenericInstallPlan ipkg srcpkg
         -> (GenericReadyPackage srcpkg -> m (Either failure result))
         -> m (BuildResults failure result)
 execute jobCtl keepGoing depFailure plan installPkg =
