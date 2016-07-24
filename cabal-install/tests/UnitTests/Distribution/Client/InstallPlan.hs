@@ -123,7 +123,7 @@ isReversePartialTopologicalOrder g vs =
         , (u,v) <- edges g ]
 
 allConfiguredPackages :: HasUnitId srcpkg
-                      => GenericInstallPlan ipkg srcpkg unused1 unused2 -> Set UnitId
+                      => GenericInstallPlan ipkg srcpkg -> Set UnitId
 allConfiguredPackages plan =
     Set.fromList
       [ installedUnitId pkg
@@ -135,7 +135,7 @@ allConfiguredPackages plan =
 --
 
 data TestInstallPlan = TestInstallPlan
-                         (GenericInstallPlan TestPkg TestPkg () ())
+                         (GenericInstallPlan TestPkg TestPkg)
                          Graph
                          (UnitId -> Vertex)
                          (Vertex -> UnitId)
@@ -197,7 +197,7 @@ arbitraryInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                      -> (Vertex -> [Vertex] -> Gen srcpkg)
                      -> Float
                      -> Graph
-                     -> Gen (InstallPlan.GenericInstallPlan ipkg srcpkg () ())
+                     -> Gen (InstallPlan.GenericInstallPlan ipkg srcpkg)
 arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
 
     (ipkgvs, srcpkgvs) <-

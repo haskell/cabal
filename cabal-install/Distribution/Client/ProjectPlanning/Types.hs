@@ -83,12 +83,10 @@ import           Control.Exception
 type ElaboratedInstallPlan
    = GenericInstallPlan InstalledPackageInfo
                         ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
 
 type ElaboratedPlanPackage
    = GenericPlanPackage InstalledPackageInfo
                         ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
 
 --TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
