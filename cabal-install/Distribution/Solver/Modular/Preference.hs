@@ -27,7 +27,7 @@ import Control.Applicative
 import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
 import Data.Map (Map)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
 import Data.Traversable (sequence)
 
 import Distribution.Solver.Types.ConstraintSource
@@ -115,8 +115,9 @@ preferPackagePreferences pcs =
     latest :: [Ver] -> POption -> Weight
     latest sortedVersions opt =
       -- TODO: We should probably score versions based on their release dates.
-      let index = fromJust $ L.elemIndex (version opt) sortedVersions
-      in  fromIntegral index / L.genericLength sortedVersions
+      let l = length sortedVersions
+          index = fromMaybe l $ L.findIndex (<= version opt) sortedVersions
+      in  fromIntegral index / fromIntegral l
 
     preference :: PN -> InstalledPreference
     preference pn =
@@ -143,8 +144,8 @@ preferPackageStanzaPreferences pcs = trav go
     go (SChoiceF qsn@(SN (PI (Q pp pn) _) s) gr _tr ts)
       | primaryPP pp && enableStanzaPref pn s =
           -- move True case first to try enabling the stanza
-          let ts' = W.mapWeightsWithKey (\k w -> score k : w) ts
-              score k = if k then 0 else 1
+          let ts' = W.mapWeightsWithKey (\k w -> weight k : w) ts
+              weight k = if k then 0 else 1
           -- defer the choice by setting it to weak
           in  SChoiceF qsn gr (WeakOrTrivial True) ts'
     go x = x
