@@ -42,11 +42,11 @@ timed cabal update
 # issue, and it is easy enough to work around: clean first.
 
 echo Cabal
-(cd Cabal && timed cabal clean)
-(cd Cabal && timed cabal sdist)
-(cd Cabal && timed install_from_tarball)
+(cd Cabal && timed cabal clean) || exit $?
+(cd Cabal && timed cabal sdist) || exit $?
+(cd Cabal && timed install_from_tarball) || exit $?
 
 echo cabal-install
-(cd cabal-install && timed cabal clean)
-(cd cabal-install && timed cabal sdist)
-(cd cabal-install && timed install_from_tarball)
+(cd cabal-install && timed cabal clean) || exit $?
+(cd cabal-install && timed cabal sdist) || exit $?
+(cd cabal-install && timed install_from_tarball) || exit $?

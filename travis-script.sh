@@ -47,12 +47,15 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # Cabal otherwise).
 timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 
+# Note: http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
+# some osx has broken bash
+
 # Run tests
-(cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-(cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS)
+(cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
+(cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
 
 # Run haddock (hack: use the Setup script from package-tests!)
-(cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR})
+(cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
 
 # Redo the package tests with different versions of GHC
 # TODO: reenable me
@@ -64,10 +67,10 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 #   fi
 
 # Check for package warnings
-(cd Cabal && timed cabal check)
+(cd Cabal && timed cabal check) || exit $?
 
 # Test that an sdist can be created
-(cd Cabal && timed cabal sdist --builddir=${CABAL_BDIR})
+(cd Cabal && timed cabal sdist --builddir=${CABAL_BDIR}) || exit $?
 
 unset CABAL_BUILDDIR
 
@@ -85,16 +88,16 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:solver-quickcheck
 
 # Run tests
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS)
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000)
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS)
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS)
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS) || exit $?
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000) || exit $?
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS) || exit $?
+(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
 
 # Haddock
-(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} )
+(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
 
-(cd cabal-install && timed cabal check)
-(cd cabal-install && timed cabal sdist --builddir=${CABAL_INSTALL_BDIR})
+(cd cabal-install && timed cabal check) || exit $?
+(cd cabal-install && timed cabal sdist --builddir=${CABAL_INSTALL_BDIR}) || exit $?
 
 unset CABAL_BUILDDIR
 
