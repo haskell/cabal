@@ -1354,9 +1354,9 @@ for these fields.
 
     It is only syntactic sugar. It is exactly equivalent to `foo >= 1.2 && < 1.3`.
 
-    Note: Prior to Cabal 1.8, build-depends specified in each section
+    Note: Prior to Cabal 1.8, `build-depends` specified in each section
     were global to all sections. This was unintentional, but some packages
-    were written to depend on it, so if you need your build-depends to
+    were written to depend on it, so if you need your `build-depends` to
     be local to each section, you must specify at least
     `Cabal-Version: >= 1.8` in your `.cabal` file.
 
@@ -1938,6 +1938,22 @@ The `get` command supports the following options:
 :   Fork the package's source repository using the appropriate version control
     system. The optional argument allows to choose a specific repository kind.
 
+## Custom setup scripts
+
+The optional `custom-setup` stanza contains information needed for the
+compilation of custom `Setup.hs` scripts,
+
+~~~~~~~~~~~~~~~~
+custom-setup
+  setup-depends:
+    base >= 4.5 && < 4.11,
+    Cabal < 1.25
+~~~~~~~~~~~~~~~~
+
+`setup-depends:` _package list_
+:   The dependencies needed to compile `Setup.hs`. See the
+    [`build-depends`](#build-information) section for a description of the
+    syntax expected by this field.
 
 ## Accessing data files from package code ##
 
@@ -2186,6 +2202,10 @@ a few options:
     See `UserHooks` in [Distribution.Simple][dist-simple] for the
     details, but note that this interface is experimental, and likely
     to change in future releases.
+
+    If you use a custom `Setup.hs` file you should strongly consider adding a
+    `custom-setup` stanza with a `setup-depends` field to ensure that your
+    setup script does not break with future dependency versions.
 
   * You could delegate all the work to `make`, though this is unlikely
     to be very portable. Cabal supports this with the `build-type`
