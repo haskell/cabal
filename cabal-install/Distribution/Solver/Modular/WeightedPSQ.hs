@@ -5,7 +5,6 @@ module Distribution.Solver.Modular.WeightedPSQ (
   , toList
   , keys
   , weights
-  , length
   , degree
   , isZeroOrOne
   , filter
@@ -19,7 +18,7 @@ import qualified Data.Foldable as F
 import qualified Data.List as L
 import Data.Ord (comparing)
 import qualified Data.Traversable as T
-import Prelude hiding (filter, length, lookup)
+import Prelude hiding (filter, lookup)
 
 import Distribution.Solver.Modular.Degree
 
@@ -33,10 +32,6 @@ newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
 -- | /O(N)/.
 filter :: (v -> Bool) -> WeightedPSQ k w v -> WeightedPSQ k w v
 filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
-
--- | /O(N)/.
-length :: WeightedPSQ k w v -> Int
-length (WeightedPSQ xs) = L.length xs
 
 -- | /O(1)/. Return the length as a 'Degree' after traversing as few elements
 -- as possible.

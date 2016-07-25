@@ -7,7 +7,6 @@ module Distribution.Solver.Modular.Tree
     , Weight
     , ana
     , cata
-    , choices
     , dchoices
     , inn
     , innM
@@ -148,17 +147,8 @@ active :: Tree a -> Bool
 active (Fail _ _) = False
 active _          = True
 
--- | Determines how many active choices are available in a node. Note that we
--- count goal choices as having one choice, always.
-choices :: Tree a -> Int
-choices (PChoice    _ _     ts) = W.length (W.filter active ts)
-choices (FChoice    _ _ _ _ ts) = W.length (W.filter active ts)
-choices (SChoice    _ _ _   ts) = W.length (W.filter active ts)
-choices (GoalChoice         _ ) = 1
-choices (Done       _         ) = 1
-choices (Fail       _ _       ) = 0
-
--- | Variant of 'choices' that only approximates the number of choices.
+-- | Approximates the number of active choices that are available in a node.
+-- Note that we count goal choices as having one choice, always.
 dchoices :: Tree a -> Degree
 dchoices (PChoice    _ _     ts) = W.degree (W.filter active ts)
 dchoices (FChoice    _ _ _ _ ts) = W.degree (W.filter active ts)
@@ -167,7 +157,7 @@ dchoices (GoalChoice         _ ) = ZeroOrOne
 dchoices (Done       _         ) = ZeroOrOne
 dchoices (Fail       _ _       ) = ZeroOrOne
 
--- | Variant of 'choices' that only approximates the number of choices.
+-- | Variant of 'dchoices' that traverses fewer children.
 zeroOrOneChoices :: Tree a -> Bool
 zeroOrOneChoices (PChoice    _ _     ts) = W.isZeroOrOne (W.filter active ts)
 zeroOrOneChoices (FChoice    _ _ _ _ ts) = W.isZeroOrOne (W.filter active ts)
