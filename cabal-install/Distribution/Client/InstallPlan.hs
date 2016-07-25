@@ -39,6 +39,9 @@ module Distribution.Client.InstallPlan (
 
   -- * Traversal
   executionOrder,
+  execute,
+  BuildResults,
+  lookupBuildResult,
   -- ** Traversal helpers
   -- $traversal
   Processing,
@@ -65,6 +68,7 @@ import Distribution.Package
          ( PackageIdentifier(..), Package(..)
          , HasUnitId(..), UnitId(..) )
 import Distribution.Solver.Types.SolverPackage
+import Distribution.Client.JobControl
 import Distribution.Text
          ( display )
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
@@ -87,9 +91,11 @@ import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
+import Control.Monad
 import Control.Exception
          ( assert )
 import qualified Data.Map as Map
+import           Data.Map (Map)
 import qualified Data.Set as Set
 import           Data.Set (Set)
 import qualified Data.Traversable as T
@@ -844,6 +850,10 @@ processingInvariant plan (Processing' processingSet completedSet failedSet) =
     noIntersection a b = Set.null (Set.intersection a b)
 
 
+-- ------------------------------------------------------------
+-- * Traversing plans
+-- ------------------------------------------------------------
+
 -- | Flatten an 'InstallPlan', producing the sequence of source packages in
 -- the order in which they would be processed when the plan is executed. This
 -- can be used for simultations or presenting execution dry-runs.
@@ -868,3 +878,104 @@ executionOrder plan =
         p : tryNewTasks processing' (todo++nextpkgs)
       where
         (nextpkgs, processing') = completed' plan processing (installedUnitId p)
+
+
+-- ------------------------------------------------------------
+-- * Executing plans
+-- ------------------------------------------------------------
+
+-- | The set of results we get from executing an install plan.
+--
+type BuildResults failure result = Map UnitId (Either failure result)
+
+-- | Lookup the build result for a single package.
+--
+lookupBuildResult :: HasUnitId pkg
+                  => pkg -> BuildResults failure result
+                  -> Maybe (Either failure result)
+lookupBuildResult = Map.lookup . installedUnitId
+
+-- | Execute an install plan. This traverses the plan in dependency order.
+--
+-- Executing each individual package can fail and if so all dependents fail
+-- too. The result for each package is collected as a 'BuildResults' map.
+--
+-- Visiting each package happens with optional parallelism, as determined by
+-- the 'JobControl'. By default, after any failure we stop as soon as possible
+-- (using the 'JobControl' to try to cancel in-progress tasks). This behaviour
+-- can be reversed to keep going and build as many packages as possible.
+--
+execute :: forall m ipkg srcpkg result failure unused1 unused2.
+           (HasUnitId ipkg,   PackageFixedDeps ipkg,
+            HasUnitId srcpkg, PackageFixedDeps srcpkg,
+            Monad m)
+        => JobControl m (UnitId, Either failure result)
+        -> Bool                -- ^ Keep going after failure
+        -> (srcpkg -> failure) -- ^ Value for dependents of failed packages
+        -> GenericInstallPlan ipkg srcpkg unused1 unused2
+        -> (GenericReadyPackage srcpkg -> m (Either failure result))
+        -> m (BuildResults failure result)
+execute jobCtl keepGoing depFailure plan installPkg =
+    let (newpkgs, processing) = ready' plan
+     in tryNewTasks Map.empty False False processing newpkgs
+  where
+    tryNewTasks :: BuildResults failure result
+                -> Bool -> Bool -> Processing
+                -> [GenericReadyPackage srcpkg]
+                -> m (BuildResults failure result)
+
+    tryNewTasks !results tasksFailed tasksRemaining !processing newpkgs
+      -- we were in the process of cancelling and now we're finished
+      | tasksFailed && not keepGoing && not tasksRemaining
+      = return results
+
+      -- we are still in the process of cancelling, wait for remaining tasks
+      | tasksFailed && not keepGoing && tasksRemaining
+      = waitForTasks results tasksFailed processing
+
+      -- no new tasks to do and all tasks are done so we're finished
+      | null newpkgs && not tasksRemaining
+      = return results
+
+      -- no new tasks to do, remaining tasks to wait for
+      | null newpkgs
+      = waitForTasks results tasksFailed processing
+
+      -- new tasks to do, spawn them, then wait for tasks to complete
+      | otherwise
+      = do sequence_ [ spawnJob jobCtl $ do
+                         result <- installPkg pkg
+                         return (installedUnitId pkg, result)
+                     | pkg <- newpkgs ]
+           waitForTasks results tasksFailed processing
+
+    waitForTasks :: BuildResults failure result
+                 -> Bool -> Processing
+                 -> m (BuildResults failure result)
+    waitForTasks !results tasksFailed !processing = do
+      (pkgid, result) <- collectJob jobCtl
+
+      case result of
+
+        Right _success -> do
+            tasksRemaining <- remainingJobs jobCtl
+            tryNewTasks results' tasksFailed tasksRemaining
+                        processing' nextpkgs
+          where
+            results' = Map.insert pkgid result results
+            (nextpkgs, processing') = completed' plan processing pkgid
+
+        Left _failure -> do
+            -- if this is the first failure and we're not trying to keep going
+            -- then try to cancel as many of the remaining jobs as possible
+            when (not tasksFailed && not keepGoing) $
+              cancelJobs jobCtl
+
+            tasksRemaining <- remainingJobs jobCtl
+            tryNewTasks results' True tasksRemaining processing' []
+          where
+            (depsfailed, processing') = failed' plan processing pkgid
+            results'   = Map.insert pkgid result results `Map.union` depResults
+            depResults = Map.fromList
+                           [ (installedUnitId deppkg, Left (depFailure deppkg))
+                           | deppkg <- depsfailed ]
