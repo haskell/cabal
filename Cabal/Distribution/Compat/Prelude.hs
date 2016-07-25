@@ -10,6 +10,11 @@
 #define MINVER_base_46 (__GLASGOW_HASKELL__ >= 706)
 #endif
 
+-- | This module does two things:
+--
+-- * Acts as a compatiblity layer, like @base-compat@.
+--
+-- * Provides commonly used imports.
 module Distribution.Compat.Prelude (
     -- * Prelude
     --

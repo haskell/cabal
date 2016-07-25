@@ -162,6 +162,9 @@ Conventions
   must be able to download and install all of the dependencies.
   (This is also checked by CI!)
 
+* `Cabal` has own compat and somehow fat prelude, in
+  `Distribution.Compat.Prelude`, Use it for new modules as well.
+
 We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
