@@ -262,12 +262,6 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
         Just (RepoTarballPackage _ _ tarball) ->
           dryRunTarballPkg pkg depsBuildStatus tarball
 
-    dryRunPkg (InstallPlan.Processing {}) _ = unexpectedState
-    dryRunPkg (InstallPlan.Installed  {}) _ = unexpectedState
-    dryRunPkg (InstallPlan.Failed     {}) _ = unexpectedState
-
-    unexpectedState = error "rebuildTargetsDryRun: unexpected package state"
-
     dryRunTarballPkg :: ElaboratedConfiguredPackage
                      -> ComponentDeps [BuildStatus]
                      -> FilePath
@@ -315,19 +309,19 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
 -- depencencies. This can be used to propagate information from depencencies.
 --
 foldMInstallPlanDepOrder
-  :: forall m ipkg srcpkg iresult ifailure b.
+  :: forall m ipkg srcpkg b.
      (Monad m,
       HasUnitId ipkg,   PackageFixedDeps ipkg,
       HasUnitId srcpkg, PackageFixedDeps srcpkg)
-  => GenericInstallPlan ipkg srcpkg iresult ifailure
-  -> (GenericPlanPackage ipkg srcpkg iresult ifailure ->
+  => GenericInstallPlan ipkg srcpkg
+  -> (GenericPlanPackage ipkg srcpkg ->
       ComponentDeps [b] -> m b)
   -> m (Map InstalledPackageId b)
 foldMInstallPlanDepOrder plan0 visit =
     go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
   where
     go :: Map InstalledPackageId b
-       -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
+       -> [GenericPlanPackage ipkg srcpkg]
        -> m (Map InstalledPackageId b)
     go !results [] = return results
 
@@ -346,20 +340,22 @@ improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
                                        -> BuildStatusMap
                                        -> ElaboratedInstallPlan
 improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
-    replaceWithPreInstalled installPlan
-      [ (installedPackageId pkg, ipkgs, buildSuccess)
+    replaceWithPrePreExisting installPlan
+      [ (installedPackageId pkg, ipkgs)
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
-      , BuildStatusUpToDate ipkgs buildSuccess <- [pkgBuildStatus]
+      , BuildStatusUpToDate ipkgs _buildSuccess <- [pkgBuildStatus]
       ]
   where
-    replaceWithPreInstalled =
-      foldl' (\plan (ipkgid, ipkgs, buildSuccess) ->
-                InstallPlan.preinstalled ipkgid
-                    (find (\ipkg -> installedPackageId ipkg == ipkgid) ipkgs)
-                    buildSuccess plan)
+    replaceWithPrePreExisting =
+      foldl' (\plan (ipkgid, ipkgs) ->
+                case find (\ipkg -> installedPackageId ipkg == ipkgid) ipkgs of
+                  Just ipkg -> InstallPlan.preexisting ipkgid ipkg plan
+                  Nothing   -> unexpected)
+    unexpected =
+      error "improveInstallPlanWithUpToDatePackages: dep on non lib package"
 
 
 -----------------------------
@@ -571,7 +567,7 @@ rebuildTargets :: Verbosity
                -> ElaboratedSharedConfig
                -> BuildStatusMap
                -> BuildTimeSettings
-               -> IO ElaboratedInstallPlan
+               -> IO BuildResults
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
@@ -604,7 +600,10 @@ rebuildTargets verbosity
                           installPlan pkgsBuildStatus $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      executeInstallPlan verbosity jobControl keepGoing installPlan $ \pkg ->
+      InstallPlan.execute jobControl keepGoing (DependentFailed . packageId)
+                          installPlan $ \pkg ->
+        fmap (\x -> case x of BuildFailure f   -> Left f
+                              BuildSuccess _ s -> Right s) $
         handle (return . BuildFailure) $ --TODO: review exception handling
 
         let ipkgid = installedPackageId pkg
@@ -792,94 +791,6 @@ waitAsyncPackageDownload verbosity downloadMap pkg =
         fail "waitAsyncPackageDownload: package not being download"
 
 
-executeInstallPlan
-  :: forall ipkg srcpkg iresult.
-     (HasUnitId ipkg,   PackageFixedDeps ipkg,
-      HasUnitId srcpkg, PackageFixedDeps srcpkg)
-  => Verbosity
-  -> JobControl IO ( GenericReadyPackage srcpkg
-                   , GenericBuildResult ipkg iresult BuildFailure )
-  -> Bool
-  -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-  -> (    GenericReadyPackage srcpkg
-       -> IO (GenericBuildResult ipkg iresult BuildFailure))
-  -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
-executeInstallPlan verbosity jobCtl keepGoing plan0 installPkg =
-    tryNewTasks False False plan0
-  where
-    tryNewTasks :: Bool -> Bool
-                ->     GenericInstallPlan ipkg srcpkg iresult BuildFailure
-                -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
-    tryNewTasks tasksFailed tasksRemaining plan
-      | tasksFailed && not keepGoing && not tasksRemaining
-      = return plan
-
-      | tasksFailed && not keepGoing && tasksRemaining
-      = waitForTasks tasksFailed plan
-
-    tryNewTasks tasksFailed tasksRemaining plan = do
-      case InstallPlan.ready plan of
-        [] | not tasksRemaining -> return plan
-           | otherwise          -> waitForTasks tasksFailed plan
-        pkgs                    -> do
-          sequence_
-            [ do debug verbosity $ "Ready to install " ++ display pkgid
-                 spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg
-                   return (pkg, buildResult)
-            | pkg <- pkgs
-            , let pkgid = packageId pkg
-            ]
-
-          let plan' = InstallPlan.processing pkgs plan
-          waitForTasks tasksFailed plan'
-
-    waitForTasks :: Bool
-                ->     GenericInstallPlan ipkg srcpkg iresult BuildFailure
-                -> IO (GenericInstallPlan ipkg srcpkg iresult BuildFailure)
-    waitForTasks tasksFailed plan = do
-      debug verbosity $ "Waiting for install task to finish..."
-      (pkg, buildResult) <- collectJob jobCtl
-      let plan'         = updatePlan pkg buildResult plan
-          tasksFailed'  = tasksFailed || isBuildFailure buildResult
-      -- if this is the first failure and we're not trying to keep going
-      -- then try to cancel as many of the remaining jobs as possible
-      when (not tasksFailed && isBuildFailure buildResult && not keepGoing) $
-        cancelJobs jobCtl
-      tasksRemaining <- remainingJobs jobCtl
-      tryNewTasks tasksFailed' tasksRemaining plan'
-
-    isBuildFailure (BuildFailure _) = True
-    isBuildFailure _                = False
-
-    updatePlan :: GenericReadyPackage srcpkg
-               -> GenericBuildResult ipkg iresult BuildFailure
-               -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-               -> GenericInstallPlan ipkg srcpkg iresult BuildFailure
-    updatePlan pkg (BuildSuccess ipkgs buildSuccess) =
-        InstallPlan.completed (installedPackageId pkg)
-            mipkg
-            buildSuccess
-      where
-        mipkg = case (ipkgs, find (\ipkg -> installedPackageId ipkg
-                                         == installedPackageId pkg) ipkgs) of
-          ([],    _)         -> Nothing
-          ((_:_), Just ipkg) -> Just ipkg
-          ((_:_), Nothing)   ->
-            error $ "executeInstallPlan: package " ++ display (packageId pkg)
-                 ++ " was expected to register the unit "
-                 ++ display (installedPackageId pkg)
-                 ++ " but is actually registering the unit(s) "
-                 ++ intercalate ", " (map (display . installedPackageId) ipkgs)
-
-    updatePlan pkg (BuildFailure buildFailure) =
-        InstallPlan.failed (installedPackageId pkg) buildFailure depsFailure
-      where
-        depsFailure = DependentFailed (packageId pkg)
-        -- So this first pkgid failed for whatever reason (buildFailure).
-        -- All the other packages that depended on this pkgid, which we
-        -- now cannot build, we mark as failing due to 'DependentFailed'
-        -- which kind of means it was not their fault.
 
 
 -- | Ensure that the package is unpacked in an appropriate directory, either

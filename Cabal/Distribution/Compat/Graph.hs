@@ -73,6 +73,9 @@ module Distribution.Compat.Graph (
     keys,
     -- ** Graphs
     toGraph,
+    toRevGraph,
+    fromVertex,
+    toVertex,
     -- * Node type
     Node(..),
     nodeValue,
@@ -368,3 +371,22 @@ toMap = graphMap
 -- Requires amortized construction of graph.
 toGraph :: Graph a -> (G.Graph, G.Vertex -> a, Key a -> Maybe G.Vertex)
 toGraph g = (graphForward g, graphVertexToNode g, graphKeyToVertex g)
+
+-- | /O(1)/. Convert a graph into a 'Data.Graph.Graph', with
+-- all edges reversed.  Requires amortized construction of graph.
+toRevGraph :: Graph a -> (G.Graph, G.Vertex -> a, Key a -> Maybe G.Vertex)
+toRevGraph g = (graphAdjoint g, graphVertexToNode g, graphKeyToVertex g)
+
+-- | /O(1)/. Convert the integer vertex associated with this graph
+-- back into its corresponding node.  Requires amortized construction
+-- of graph.  Note that these vertex assignments are NOT stable
+-- across updates to the graph.
+fromVertex :: Graph a -> G.Vertex -> a
+fromVertex = graphVertexToNode
+
+-- | /O(log n)/. Convert a node key into the integer vertex that
+-- identifies it in the graph.  Requires amortized construction
+-- of the graph.  Note that these vertex assignments are NOT
+-- stable across updates to the graph.
+toVertex :: Graph a -> Key a -> Maybe G.Vertex
+toVertex = graphKeyToVertex
