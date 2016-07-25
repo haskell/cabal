@@ -513,7 +513,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
-  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+  let isCoverageEnabled = libCoverage lbi
       -- TODO: Historically HPC files have been put into a directory which
       -- has the package name.  I'm going to avoid changing this for
       -- now, but it would probably be better for this to be the
@@ -808,7 +808,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
-  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+  let isCoverageEnabled = exeCoverage lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | forRepl = mempty  -- HPC is not supported in ghci

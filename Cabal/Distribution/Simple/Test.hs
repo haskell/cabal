@@ -20,6 +20,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Simple.Setup
 import Distribution.Simple.UserHooks
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
@@ -110,8 +111,7 @@ test args pkg_descr lbi flags = do
     allOk <- summarizePackage verbosity packageLog
     writeFile packageLogFile $ show packageLog
 
-    let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
-    when isCoverageEnabled $
+    when (LBI.testCoverage lbi) $
         markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
             map (fst . fst) testsToRun
 

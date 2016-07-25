@@ -642,32 +642,9 @@ configure (pkg_descr0', pbi) cfg = do
         ++ "is not being built. Linking will fail if any executables "
         ++ "depend on the library."
 
-    -- The --profiling flag sets the default for both libs and exes,
-    -- but can be overidden by --library-profiling, or the old deprecated
-    -- --executable-profiling flag.
-    let profEnabledLibOnly = configProfLib cfg
-        profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
-        profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
-        profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+    configProf <- configureProfiling verbosity cfg comp
 
-    -- The --profiling-detail and --library-profiling-detail flags behave
-    -- similarly
-    profDetailLibOnly <- checkProfDetail (configProfLibDetail cfg)
-    profDetailBoth    <- liftM (fromFlagOrDefault ProfDetailDefault)
-                               (checkProfDetail (configProfDetail cfg))
-    let profDetailLib = fromFlagOrDefault profDetailBoth profDetailLibOnly
-        profDetailExe = profDetailBoth
-
-    when (profEnabledExe && not profEnabledLib) $
-      warn verbosity $
-           "Executables will be built with profiling, but library "
-        ++ "profiling is disabled. Linking will fail if any executables "
-        ++ "depend on the library."
-
-    let configCoverage_ =
-          mappend (configCoverage cfg) (configLibCoverage cfg)
-
-        cfg' = cfg { configCoverage = configCoverage_ }
+    configCoverage <- configureCoverage verbosity cfg comp
 
     reloc <-
        if not (fromFlag $ configRelocatable cfg)
@@ -678,8 +655,9 @@ configure (pkg_descr0', pbi) cfg = do
             foldl' (\m clbi -> Map.insertWith (++) (componentLocalName clbi) [clbi] m)
                    Map.empty buildComponents
 
-    let lbi = LocalBuildInfo {
-                configFlags         = cfg',
+    let lbi = (configCoverage . configProf)
+              LocalBuildInfo {
+                configFlags         = cfg,
                 flagAssignment      = flags,
                 componentEnabledSpec = enabled,
                 extraConfigArgs     = [],  -- Currently configure does not
@@ -696,12 +674,12 @@ configure (pkg_descr0', pbi) cfg = do
                 localPkgDescr       = pkg_descr',
                 withPrograms        = programsConfig'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
-                withProfLib         = profEnabledLib,
                 withSharedLib       = withSharedLib_,
                 withDynExe          = withDynExe_,
-                withProfExe         = profEnabledExe,
-                withProfLibDetail   = profDetailLib,
-                withProfExeDetail   = profDetailExe,
+                withProfLib         = False,
+                withProfLibDetail   = ProfDetailNone,
+                withProfExe         = False,
+                withProfExeDetail   = ProfDetailNone,
                 withOptimization    = fromFlag $ configOptimization cfg,
                 withDebugInfo       = fromFlag $ configDebugInfo cfg,
                 withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
@@ -709,6 +687,8 @@ configure (pkg_descr0', pbi) cfg = do
                 splitObjs           = split_objs,
                 stripExes           = fromFlag $ configStripExes cfg,
                 stripLibs           = fromFlag $ configStripLibs cfg,
+                exeCoverage         = False,
+                libCoverage         = False,
                 withPackageDB       = packageDbs,
                 progPrefix          = fromFlag $ configProgPrefix cfg,
                 progSuffix          = fromFlag $ configProgSuffix cfg,
@@ -755,15 +735,6 @@ configure (pkg_descr0', pbi) cfg = do
 
     where
       verbosity = fromFlag (configVerbosity cfg)
-
-      checkProfDetail (Flag (ProfDetailOther other)) = do
-        warn verbosity $
-             "Unknown profiling detail level '" ++ other
-          ++ "', using default.\n"
-          ++ "The profiling detail levels are: " ++ intercalate ", "
-             [ name | (name, _, _) <- knownProfDetailLevels ]
-        return (Flag ProfDetailDefault)
-      checkProfDetail other = return other
 
 mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
 mkProgramsConfig cfg initialProgramsConfig = programsConfig
@@ -1015,6 +986,90 @@ configureDependencies verbosity
     reportSelectedDependencies verbosity allPkgDeps
 
     return (internalPkgDeps, externalPkgDeps)
+
+-- | Select and apply coverage settings for the build based on the
+-- 'ConfigFlags' and 'Compiler'.
+configureCoverage :: Verbosity -> ConfigFlags -> Compiler
+                  -> IO (LocalBuildInfo -> LocalBuildInfo)
+configureCoverage verbosity cfg comp = do
+    let tryExeCoverage = fromFlagOrDefault False (configCoverage cfg)
+        tryLibCoverage = fromFlagOrDefault tryExeCoverage
+                         (mappend (configCoverage cfg) (configLibCoverage cfg))
+    if coverageSupported comp
+      then do
+        let apply lbi = lbi { libCoverage = tryLibCoverage
+                            , exeCoverage = tryExeCoverage
+                            }
+        return apply
+      else do
+        let apply lbi = lbi { libCoverage = False
+                            , exeCoverage = False
+                            }
+        when (tryExeCoverage || tryLibCoverage) $ warn verbosity
+          ("The compiler " ++ showCompilerId comp ++ " does not support "
+           ++ "program coverage. Program coverage has been disabled.")
+        return apply
+
+-- | Select and apply profiling settings for the build based on the
+-- 'ConfigFlags' and 'Compiler'.
+configureProfiling :: Verbosity -> ConfigFlags -> Compiler
+                   -> IO (LocalBuildInfo -> LocalBuildInfo)
+configureProfiling verbosity cfg comp = do
+  -- The --profiling flag sets the default for both libs and exes,
+  -- but can be overidden by --library-profiling, or the old deprecated
+  -- --executable-profiling flag.
+  --
+  -- The --profiling-detail and --library-profiling-detail flags behave
+  -- similarly
+  let tryExeProfiling = fromFlagOrDefault False
+                        (mappend (configProf cfg) (configProfExe cfg))
+      tryLibProfiling = fromFlagOrDefault tryExeProfiling
+                        (mappend (configProf cfg) (configProfLib cfg))
+
+      tryExeProfileLevel = fromFlagOrDefault ProfDetailDefault
+                           (configProfDetail cfg)
+      tryLibProfileLevel = fromFlagOrDefault ProfDetailDefault
+                           (mappend
+                            (configProfDetail cfg)
+                            (configProfLibDetail cfg))
+
+      checkProfileLevel (ProfDetailOther other) = do
+        warn verbosity
+          ("Unknown profiling detail level '" ++ other
+           ++ "', using default.\nThe profiling detail levels are: "
+           ++ intercalate ", "
+           [ name | (name, _, _) <- knownProfDetailLevels ])
+        return ProfDetailDefault
+      checkProfileLevel other = return other
+
+  (exeProfWithoutLibProf, applyProfiling) <-
+    if profilingSupported comp
+    then do
+      exeLevel <- checkProfileLevel tryExeProfileLevel
+      libLevel <- checkProfileLevel tryLibProfileLevel
+      let apply lbi = lbi { withProfLib       = tryLibProfiling
+                          , withProfLibDetail = libLevel
+                          , withProfExe       = tryExeProfiling
+                          , withProfExeDetail = exeLevel
+                          }
+      return (tryExeProfiling && not tryLibProfiling, apply)
+    else do
+      let apply lbi = lbi { withProfLib = False
+                          , withProfLibDetail = ProfDetailNone
+                          , withProfExe = False
+                          , withProfExeDetail = ProfDetailNone
+                          }
+      when (tryExeProfiling || tryLibProfiling) $ warn verbosity
+        ("The compiler " ++ showCompilerId comp ++ " does not support "
+         ++ "profiling. Profiling has been disabled.")
+      return (False, apply)
+
+  when exeProfWithoutLibProf $ warn verbosity
+    ("Executables will be built with profiling, but library "
+     ++ "profiling is disabled. Linking will fail if any executables "
+     ++ "depend on the library.")
+
+  return applyProfiling
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies

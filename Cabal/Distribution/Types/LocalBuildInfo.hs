@@ -33,6 +33,7 @@ module Distribution.Types.LocalBuildInfo (
     withAllTargetsInBuildOrder',
     neededTargetsInBuildOrder',
     withNeededTargetsInBuildOrder',
+    testCoverage,
 
     -- * Functions you SHOULD NOT USE (yet), but are defined here to
     -- prevent someone from accidentally defining them
@@ -141,6 +142,8 @@ data LocalBuildInfo = LocalBuildInfo {
         splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
+        exeCoverage :: Bool,  -- ^Whether to enable executable program coverage
+        libCoverage :: Bool,  -- ^Whether to enable library program coverage
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
         relocatable   :: Bool --  ^Whether to build a relocatable package
@@ -252,6 +255,11 @@ neededTargetsInBuildOrder' pkg_descr lbi uids =
 withNeededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -> (TargetInfo -> IO ()) -> IO ()
 withNeededTargetsInBuildOrder' pkg_descr lbi uids f
     = sequence_ [ f target | target <- neededTargetsInBuildOrder' pkg_descr lbi uids ]
+
+-- | Is coverage enabled for test suites? In practice, this requires library
+-- and executable profiling to be enabled.
+testCoverage :: LocalBuildInfo -> Bool
+testCoverage lbi = exeCoverage lbi && libCoverage lbi
 
 -------------------------------------------------------------------------------
 -- Stub functions to prevent someone from accidentally defining them

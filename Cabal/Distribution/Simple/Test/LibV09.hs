@@ -17,6 +17,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
 import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import qualified Distribution.Types.LocalBuildInfo as LBI
 import Distribution.Simple.Setup
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils
@@ -44,7 +45,7 @@ runTest :: PD.PackageDescription
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi clbi flags suite = do
-    let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
+    let isCoverageEnabled = LBI.testCoverage lbi
         way = guessWay lbi
 
     pwd <- getCurrentDirectory
