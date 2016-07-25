@@ -55,9 +55,6 @@ addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree a -> Tree a
 addWeights fs = trav go
   where
     go (PChoiceF qpn@(Q _ pn) x cs) =
-      -- TODO: Inputs to 'f' shouldn't depend on the node's position in the
-      -- tree. If we continue using a list of all versions as an input, it
-      -- should come from the package index, not from the node's siblings.
       let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
           weights k = [f pn sortedVersions k | f <- fs]
       in  PChoiceF qpn x $
@@ -71,21 +68,6 @@ version :: POption -> Ver
 version (POption (I v _) _) = v
 
 -- | Prefer to link packages whenever possible.
--- TODO: I'm not sure how to handle the linking preference. It is tricky because
--- the set of available linking choices depends on goal order, yet we need
--- to ensure that goal order does not affect the overall install plan score.
--- Additionally, giving linked and unlinked packages different scores doesn't
--- seem quite right. Without the Single Instance Restriction, choosing to not
--- link a package doesn't necessarily give a different install plan than
--- linking the package. The solver could happen to make the same exact choices
--- for the unlinked package as the package that it could have been linked to.
--- At least the accidental linking can't happen as long as the solver always
--- prefers to link.
---
--- An implementation that adds a constant penalty to non-linked choices might
--- work, because every path that the solver could follow through the search tree
--- to find a given install plan should involve the same total number of link
--- choices. 'preferLinked' would add the same penalty along each path.
 preferLinked :: Tree a -> Tree a
 preferLinked = addWeight (const (const linked))
   where
@@ -114,7 +96,6 @@ preferPackagePreferences pcs =
     -- lower version numbers.
     latest :: [Ver] -> POption -> Weight
     latest sortedVersions opt =
-      -- TODO: We should probably score versions based on their release dates.
       let l = length sortedVersions
           index = fromMaybe l $ L.findIndex (<= version opt) sortedVersions
       in  fromIntegral index / fromIntegral l
