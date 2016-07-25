@@ -20,6 +20,7 @@ module Distribution.Client.InstallSymlink (
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Types (BuildResults)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
