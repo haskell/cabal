@@ -34,7 +34,10 @@ import Distribution.Solver.Types.PackagePath
 
 type Weight = Double
 
--- | Type of the search tree. Inlining the choice nodes for now.
+-- | Type of the search tree. Inlining the choice nodes for now. Weights on
+-- package, flag, and stanza choices control the traversal order.
+-- TODO: The weight type should be changed from [Double] to Double to avoid
+-- giving too much weight to preferences that are applied later.
 data Tree a =
     -- | Choose a version for a package (or choose to link)
     PChoice QPN a (WeightedPSQ [Weight] POption (Tree a))

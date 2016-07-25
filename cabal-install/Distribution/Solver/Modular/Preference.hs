@@ -50,7 +50,10 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 -- | Update the weights of children under 'PChoice' nodes. 'addWeights' takes a
 -- list of weight-calculating functions in order to avoid sorting the package
--- choices multiple times.
+-- choices multiple times. Each function takes the package name, sorted list of
+-- siblings' versions, and package option. 'addWeights' prepends the new
+-- weights to the existing weights, which gives precedence to preferences that
+-- are applied later.
 addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree a -> Tree a
 addWeights fs = trav go
   where
