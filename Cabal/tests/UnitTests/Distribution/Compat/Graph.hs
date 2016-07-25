@@ -78,9 +78,9 @@ arbitraryGraph len = do
     ks <- vectorOf len arbitrary `suchThat` hasNoDups
     ns <- forM ks $ \k -> do
         a <- arbitrary
-        neighbors <- listOf (elements ks)
+        ns <- listOf (elements ks)
         -- Allow duplicates!
-        return (N a k neighbors)
+        return (N a k ns)
     return (fromList ns)
 
 instance (Ord k, Arbitrary k, Arbitrary a) => Arbitrary (Graph (Node k a)) where
