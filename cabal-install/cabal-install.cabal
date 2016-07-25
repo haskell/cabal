@@ -428,6 +428,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Solver.Modular.RetryLog
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL
+    UnitTests.Distribution.Solver.Modular.WeightedPSQ
     UnitTests.Options
   build-depends:
         base,

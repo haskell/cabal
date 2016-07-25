@@ -67,7 +67,7 @@ mapWeightsWithKey :: Ord w2
 mapWeightsWithKey f (WeightedPSQ xs) = fromList $
                                        L.map (\ (w, k, v) -> (f k w, k, v)) xs
 
-mapWithKey :: (k -> v -> v') -> WeightedPSQ w k v -> WeightedPSQ w k v'
+mapWithKey :: (k -> v1 -> v2) -> WeightedPSQ w k v1 -> WeightedPSQ w k v2
 mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
                                 L.map (\ (w, k, v) -> (w, k, f k v)) xs
 
