@@ -1,21 +1,19 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Solver.Modular.WeightedPSQ (
     WeightedPSQ
-  , filter
   , fromList
+  , toList
   , keys
+  , weights
   , length
   , degree
   , isZeroOrOne
+  , filter
   , lookup
-  , mapWeightsWithKey
   , mapWithKey
-  , toList
+  , mapWeightsWithKey
   , union
-  , weights
   ) where
-
--- Association lists that are always sorted by weight.
 
 import qualified Data.Foldable as F
 import qualified Data.List as L
@@ -25,41 +23,57 @@ import Prelude hiding (filter, length, lookup)
 
 import Distribution.Solver.Modular.Degree
 
+-- | An association list that is sorted by weight.
+--
+-- Each element has a key ('k'), value ('v'), and weight ('w'). All operations
+-- that add elements or modify weights stably sort the elements by weight.
 newtype WeightedPSQ w k v = WeightedPSQ [(w, k, v)]
   deriving (Eq, Show, Functor, F.Foldable, T.Traversable)
 
+-- | /O(N)/.
 filter :: (v -> Bool) -> WeightedPSQ k w v -> WeightedPSQ k w v
 filter p (WeightedPSQ xs) = WeightedPSQ (L.filter (p . triple_3) xs)
 
+-- | /O(N)/.
 length :: WeightedPSQ k w v -> Int
 length (WeightedPSQ xs) = L.length xs
 
+-- | /O(1)/. Return the length as a 'Degree' after traversing as few elements
+-- as possible.
 degree :: WeightedPSQ w k v -> Degree
 degree (WeightedPSQ [])     = ZeroOrOne
 degree (WeightedPSQ [_])    = ZeroOrOne
 degree (WeightedPSQ [_, _]) = Two
 degree (WeightedPSQ _)      = Other
 
+-- | /O(1)/. Return @True@ if the @WeightedPSQ@ contains zero or one elements.
 isZeroOrOne :: WeightedPSQ w k v -> Bool
 isZeroOrOne (WeightedPSQ [])  = True
 isZeroOrOne (WeightedPSQ [_]) = True
 isZeroOrOne _                 = False
 
+-- | /O(1)/. Return the elements in order.
 toList :: WeightedPSQ w k v -> [(w, k, v)]
 toList (WeightedPSQ xs) = xs
 
+-- | /O(N log N)/.
 fromList :: Ord w => [(w, k, v)] -> WeightedPSQ w k v
 fromList = WeightedPSQ . L.sortBy (comparing triple_1)
 
+-- | /O(N)/. Return the weights in order.
 weights :: WeightedPSQ w k v -> [w]
 weights (WeightedPSQ xs) = L.map triple_1 xs
 
+-- | /O(N)/. Return the keys in order.
 keys :: WeightedPSQ w k v -> [k]
 keys (WeightedPSQ xs) = L.map triple_2 xs
 
+-- | /O(N)/. Return the value associated with the first occurrence of the give
+-- key, if it exists.
 lookup :: Eq k => k -> WeightedPSQ w k v -> Maybe v
 lookup k (WeightedPSQ xs) = triple_3 `fmap` L.find ((k ==) . triple_2) xs
 
+-- | /O(N log N)/. Update the weights.
 mapWeightsWithKey :: Ord w2
                   => (k -> w1 -> w2)
                   -> WeightedPSQ w1 k v
@@ -67,10 +81,14 @@ mapWeightsWithKey :: Ord w2
 mapWeightsWithKey f (WeightedPSQ xs) = fromList $
                                        L.map (\ (w, k, v) -> (f k w, k, v)) xs
 
+-- | /O(N)/. Update the values.
 mapWithKey :: (k -> v1 -> v2) -> WeightedPSQ w k v1 -> WeightedPSQ w k v2
 mapWithKey f (WeightedPSQ xs) = WeightedPSQ $
                                 L.map (\ (w, k, v) -> (w, k, f k v)) xs
 
+-- | /O((N + M) log (N + M))/. Combine two @WeightedPSQ@s, preserving all
+-- elements. Elements from the first @WeightedPSQ@ come before elements in the
+-- second when they have the same weight.
 union :: Ord w => WeightedPSQ w k v -> WeightedPSQ w k v -> WeightedPSQ w k v
 union (WeightedPSQ xs) (WeightedPSQ ys) = fromList (xs ++ ys)
 
