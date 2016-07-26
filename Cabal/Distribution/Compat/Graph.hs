@@ -270,14 +270,14 @@ broken g = graphBroken g
 
 -- | Lookup the immediate neighbors from a key in the graph.
 -- Requires amortized construction of graph.
-neighbors :: IsNode a => Graph a -> Key a -> Maybe [a]
+neighbors :: Graph a -> Key a -> Maybe [a]
 neighbors g k = do
     v <- graphKeyToVertex g k
     return (map (graphVertexToNode g) (graphForward g ! v))
 
 -- | Lookup the immediate reverse neighbors from a key in the graph.
 -- Requires amortized construction of graph.
-revNeighbors :: IsNode a => Graph a -> Key a -> Maybe [a]
+revNeighbors :: Graph a -> Key a -> Maybe [a]
 revNeighbors g k = do
     v <- graphKeyToVertex g k
     return (map (graphVertexToNode g) (graphAdjoint g ! v))
