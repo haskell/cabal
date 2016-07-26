@@ -248,7 +248,7 @@ waitAsyncFetchPackage verbosity downloadMap srcloc =
       Just hnd -> do
         debug verbosity $ "Waiting for download of " ++ show srcloc
         either throwIO return =<< takeMVar hnd
-      Nothing -> fail "waitAsyncFetchPackage: package not being download"
+      Nothing -> fail "waitAsyncFetchPackage: package not being downloaded"
 
 
 -- ------------------------------------------------------------
