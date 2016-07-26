@@ -91,9 +91,9 @@ extra-source-files:
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/Configure/A.hs
   tests/PackageTests/Configure/Setup.hs
-  tests/PackageTests/Configure/X11.buildinfo.in
-  tests/PackageTests/Configure/X11.cabal
-  tests/PackageTests/Configure/include/HsX11Config.h.in
+  tests/PackageTests/Configure/include/HsZlibConfig.h.in
+  tests/PackageTests/Configure/zlib.buildinfo.in
+  tests/PackageTests/Configure/zlib.cabal
   tests/PackageTests/CopyAssumeDepsUpToDate/CopyAssumeDepsUpToDate.cabal
   tests/PackageTests/CopyAssumeDepsUpToDate/Main.hs
   tests/PackageTests/CopyAssumeDepsUpToDate/P.hs
