@@ -299,16 +299,14 @@ writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
 
 -- | @since 1.26.0.0@
 showHookedBuildInfo :: HookedBuildInfo -> String
-showHookedBuildInfo bis = render $
-     vcat [    space
-            $$ ppName name
-            $$ ppBuildInfo bi
-          | (name, bi) <- bis ]
+showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
+     (case mb_lib_bi of
+        Nothing -> mempty
+        Just bi -> ppBuildInfo bi)
+   $$ vcat [    space
+             $$ text "executable:" <+> text name
+             $$ ppBuildInfo bi
+           | (name, bi) <- ex_bis ]
   where
-    ppName CLibName = text "library"
-    ppName (CSubLibName name) = text "library:" <+> text name
-    ppName (CExeName name) = text "executable:" <+> text name
-    ppName (CTestName name) = text "test-suite:" <+> text name
-    ppName (CBenchName name) = text "benchmark:" <+> text name
-    ppBuildInfo bi = ppFields binfoFieldDescrs bi
-                  $$ ppCustomFields (customFieldsBI bi)
+     ppBuildInfo bi = ppFields binfoFieldDescrs bi
+                   $$ ppCustomFields (customFieldsBI bi)

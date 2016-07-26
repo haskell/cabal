@@ -98,7 +98,7 @@ import System.FilePath                      (searchPathSeparator)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
-import Data.List       (unionBy)
+import Data.List       (unionBy, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -434,15 +434,18 @@ hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags ar
    post_hook hooks args flags pkg_descr lbi
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
-sanityCheckHookedBuildInfo pkg_descr hooked_bis
-    | not (null nonExistentComponents)
-    = die $ "The buildinfo contains info for these non-existent components:"
-         ++ intercalate ", " (map showComponentName nonExistentComponents)
+sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
+    = die $ "The buildinfo contains info for a library, "
+         ++ "but the package does not have a library."
+
+sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
+    | not (null nonExistant)
+    = die $ "The buildinfo contains info for an executable called '"
+         ++ "executable with that name."
   where
-    nonExistentComponents =
-        [ cname
-        | (cname, _) <- hooked_bis
-        , Nothing <- [lookupComponent pkg_descr cname] ]
+    pkgExeNames  = nub (map exeName (executables pkg_descr))
+    hookExeNames = nub (map fst hookExes)
+    nonExistant  = hookExeNames \\ pkgExeNames
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
