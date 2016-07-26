@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -39,7 +40,8 @@ import Distribution.Solver.Types.SourcePackage
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
 import Control.Exception
-         ( SomeException )
+         ( Exception, SomeException )
+import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Distribution.Compat.Binary (Binary(..))
 
@@ -266,7 +268,7 @@ maybeRepoRemote (RepoSecure r _localDir) = Just r
 -- ------------------------------------------------------------
 
 type BuildResult  = Either BuildFailure BuildSuccess
-type BuildResults = Map UnitId (Either BuildFailure BuildSuccess)
+type BuildResults = Map UnitId BuildResult
 
 data BuildFailure = PlanningFailed
                   | DependentFailed PackageId
@@ -276,7 +278,10 @@ data BuildFailure = PlanningFailed
                   | BuildFailed     SomeException
                   | TestsFailed     SomeException
                   | InstallFailed   SomeException
-  deriving (Show, Generic)
+  deriving (Show, Typeable, Generic)
+
+instance Exception BuildFailure
+
 data BuildSuccess = BuildOk         DocsResult TestsResult
                                     [InstalledPackageInfo]
   deriving (Show, Generic)

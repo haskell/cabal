@@ -12,16 +12,6 @@ module Distribution.Client.ProjectPlanning (
     BuildStyle(..),
     CabalFileText,
 
-    --TODO: [code cleanup] these types should live with execution, not with
-    --      plan definition. Need to better separate InstallPlan definition.
-    GenericBuildResult(..),
-    BuildResult,
-    BuildResults,
-    BuildSuccess(..),
-    BuildFailure(..),
-    DocsResult(..),
-    TestsResult(..),
-
     -- * Producing the elaborated install plan
     rebuildInstallPlan,
 
@@ -62,8 +52,6 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
-                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import           Distribution.Client.Dependency
