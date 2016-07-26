@@ -142,6 +142,9 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Text
 import Distribution.Package
 import Distribution.ModuleName as ModuleName
@@ -166,18 +169,12 @@ import Distribution.Verbosity
 import qualified Paths_Cabal (version)
 #endif
 
-import Control.Monad
-    ( when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
-import Data.Char as Char
-    ( isDigit, toLower, chr, ord )
-import Data.Foldable
-    ( traverse_ )
 import Data.List
-    ( nub, unfoldr, intercalate, isInfixOf )
+    ( isInfixOf )
 import Data.Typeable
     ( cast )
 import Data.Ord
@@ -279,7 +276,7 @@ topHandlerWith cont prog =
                                Nothing   -> ""
                                Just path -> path ++ location ++ ": "
               location     = case ioeGetLocation ioe of
-                               l@(n:_) | Char.isDigit n -> ':' : l
+                               l@(n:_) | isDigit n -> ':' : l
                                _                        -> ""
               detail       = ioeGetErrorString ioe
           in pname ++ ": " ++ file ++ detail
@@ -649,7 +646,7 @@ xargs :: Int -> ([String] -> IO ())
 xargs maxSize rawSystemFun fixedArgs bigArgs =
   let fixedArgSize = sum (map length fixedArgs) + length fixedArgs
       chunkSize = maxSize - fixedArgSize
-   in mapM_ (rawSystemFun . (fixedArgs ++)) (chunks chunkSize bigArgs)
+   in traverse_ (rawSystemFun . (fixedArgs ++)) (chunks chunkSize bigArgs)
 
   where chunks len = unfoldr $ \s ->
           if null s then Nothing
@@ -736,7 +733,7 @@ findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
                 -> [ModuleName] -- ^ modules
                 -> IO [(FilePath, FilePath)]
 findModuleFiles searchPath extensions moduleNames =
-  mapM (findModuleFile searchPath extensions) moduleNames
+  traverse (findModuleFile searchPath extensions) moduleNames
 
 -- | Find the file corresponding to a Haskell module name.
 --
@@ -982,7 +979,7 @@ copyFilesWith doCopy verbosity targetDir srcFiles = do
 
   -- Create parent directories for everything
   let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
-  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+  traverse_ (createDirectoryIfMissingVerbose verbosity True) dirs
 
   -- Copy all the files
   sequence_ [ let src  = srcBase   </> srcFile
@@ -1493,4 +1490,4 @@ equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower

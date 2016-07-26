@@ -60,6 +60,9 @@ module Distribution.Make (
         defaultMain, defaultMainArgs, defaultMainNoRead
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 -- local
 import Distribution.Compat.Exception
 import Distribution.Package

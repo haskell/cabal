@@ -15,10 +15,11 @@ module Distribution.Simple.Program.Ar (
     multiStageProgramInvocation
   ) where
 
-import Control.Monad (unless)
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import Data.Char (isSpace)
 import Distribution.Compat.CopyFile (filesEqual)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program

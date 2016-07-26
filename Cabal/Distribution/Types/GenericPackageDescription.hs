@@ -14,6 +14,9 @@ module Distribution.Types.GenericPackageDescription (
     cNot,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.PackageDescription
 
 import Distribution.Types.Library
@@ -21,20 +24,10 @@ import Distribution.Types.Executable
 import Distribution.Types.TestSuite
 import Distribution.Types.Benchmark
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.Package
 import Distribution.Version
 import Distribution.Compiler
 import Distribution.System
-
-import Data.Data                  (Data)
-import Data.Foldable as Fold      (Foldable(foldMap))
-import Data.Traversable as Trav   (Traversable(traverse))
-import Data.Typeable               ( Typeable )
-import Control.Applicative as AP   (Alternative(..), Applicative(..))
-import Control.Monad               (MonadPlus(mplus,mzero), ap)
-import GHC.Generics                (Generic)
 
 -- ---------------------------------------------------------------------------
 -- The GenericPackageDescription type
@@ -134,14 +127,14 @@ instance Functor Condition where
 instance Foldable Condition where
   f `foldMap` Var c    = f c
   _ `foldMap` Lit _    = mempty
-  f `foldMap` CNot c   = Fold.foldMap f c
+  f `foldMap` CNot c   = foldMap f c
   f `foldMap` COr c d  = foldMap f c `mappend` foldMap f d
   f `foldMap` CAnd c d = foldMap f c `mappend` foldMap f d
 
 instance Traversable Condition where
   f `traverse` Var c    = Var `fmap` f c
   _ `traverse` Lit c    = pure $ Lit c
-  f `traverse` CNot c   = CNot `fmap` Trav.traverse f c
+  f `traverse` CNot c   = CNot `fmap` traverse f c
   f `traverse` COr c d  = COr  `fmap` traverse f c <*> traverse f d
   f `traverse` CAnd c d = CAnd `fmap` traverse f c <*> traverse f d
 
@@ -150,7 +143,7 @@ instance Applicative Condition where
   (<*>) = ap
 
 instance Monad Condition where
-  return = AP.pure
+  return = pure
   -- Terminating cases
   (>>=) (Lit x) _ = Lit x
   (>>=) (Var x) f = f x

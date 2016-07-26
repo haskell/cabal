@@ -2,6 +2,9 @@ module Distribution.Simple.Test.ExeV10
        ( runTest
        ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import qualified Distribution.PackageDescription as PD
@@ -21,7 +24,6 @@ import Distribution.Text
 import Distribution.Verbosity
 
 import Control.Concurrent (forkIO)
-import Control.Monad ( unless, void, when )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )

@@ -8,6 +8,9 @@ module Distribution.Types.Component (
     componentName,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.Library
 import Distribution.Types.Executable
 import Distribution.Types.TestSuite

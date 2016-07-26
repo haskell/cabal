@@ -16,6 +16,9 @@ module Distribution.Simple.Install (
         install,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
@@ -41,7 +44,6 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Compat.Graph (IsNode(..))
 
-import Control.Monad (when, unless)
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath
@@ -226,7 +228,7 @@ copyComponent _ _ _ _ _ _ = return ()
 --
 installDataFiles :: Verbosity -> PackageDescription -> FilePath -> IO ()
 installDataFiles verbosity pkg_descr destDataDir =
-  flip mapM_ (dataFiles pkg_descr) $ \ file -> do
+  flip traverse_ (dataFiles pkg_descr) $ \ file -> do
     let srcDataDir = dataDir pkg_descr
     files <- matchDirFileGlob srcDataDir file
     let dir = takeDirectory file
@@ -241,7 +243,7 @@ installIncludeFiles :: Verbosity -> Library -> FilePath -> IO ()
 installIncludeFiles verbosity lib destIncludeDir = do
     let relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
         lbi = libBuildInfo lib
-    incs <- mapM (findInc relincdirs) (installIncludes lbi)
+    incs <- traverse (findInc relincdirs) (installIncludes lbi)
     sequence_
       [ do createDirectoryIfMissingVerbose verbosity True destDir
            installOrdinaryFile verbosity srcFile destFile

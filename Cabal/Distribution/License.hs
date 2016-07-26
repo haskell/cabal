@@ -47,17 +47,13 @@ module Distribution.License (
     knownLicenses,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Version
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Binary
-
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>))
-import qualified Data.Char as Char (isAlphaNum)
-import Data.Data (Data)
-import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
 
 -- | Indicates the license under which a package's source code is released.
 -- Versions of the licenses not listed here will be rejected by Hackage and
@@ -141,16 +137,16 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
    version   v = Just (Version v [])
 
 instance Text License where
-  disp (GPL  version)         = Disp.text "GPL"    <> dispOptVersion version
-  disp (LGPL version)         = Disp.text "LGPL"   <> dispOptVersion version
-  disp (AGPL version)         = Disp.text "AGPL"   <> dispOptVersion version
-  disp (MPL  version)         = Disp.text "MPL"    <> dispVersion    version
-  disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
+  disp (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version
+  disp (LGPL version)         = Disp.text "LGPL"   <<>> dispOptVersion version
+  disp (AGPL version)         = Disp.text "AGPL"   <<>> dispOptVersion version
+  disp (MPL  version)         = Disp.text "MPL"    <<>> dispVersion    version
+  disp (Apache version)       = Disp.text "Apache" <<>> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
 
   parse = do
-    name    <- Parse.munch1 (\c -> Char.isAlphaNum c && c /= '-')
+    name    <- Parse.munch1 (\c -> isAlphaNum c && c /= '-')
     version <- Parse.option Nothing (Parse.char '-' >> fmap Just parse)
     return $! case (name, version :: Maybe Version) of
       ("GPL",               _      ) -> GPL  version
@@ -174,4 +170,4 @@ dispOptVersion Nothing  = Disp.empty
 dispOptVersion (Just v) = dispVersion v
 
 dispVersion :: Version -> Disp.Doc
-dispVersion v = Disp.char '-' <> disp v
+dispVersion v = Disp.char '-' <<>> disp v

@@ -32,13 +32,14 @@ module Distribution.Simple.Program.Types (
     simpleConfiguredProgram,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Find
 import Distribution.Version
 import Distribution.Verbosity
-import Distribution.Compat.Binary
 
 import qualified Data.Map as Map
-import GHC.Generics (Generic)
 
 -- | Represents a program which can be configured.
 --

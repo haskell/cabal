@@ -11,11 +11,12 @@ module Distribution.Compat.CopyFile (
   setDirOrdinary,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.Exception
 import Distribution.Compat.Internal.TempFile
 
-import Control.Monad
-         ( when, unless )
 import Control.Exception
          ( bracketOnError, throwIO )
 import qualified Data.ByteString.Lazy as BSL

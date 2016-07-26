@@ -6,6 +6,9 @@ module Distribution.Simple.Test.LibV09
        , writeSimpleTestStub
        ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.CreatePipe
 import Distribution.Compat.Environment
 import Distribution.Compat.Internal.TempFile
@@ -27,8 +30,6 @@ import Distribution.Text
 import Distribution.Verbosity
 
 import Control.Exception ( bracket )
-import Control.Monad ( when, unless )
-import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
@@ -224,7 +225,7 @@ stubMain tests = do
 -- by the calling Cabal process.
 stubRunTests :: [Test] -> IO TestLogs
 stubRunTests tests = do
-    logs <- mapM stubRunTests' tests
+    logs <- traverse stubRunTests' tests
     return $ GroupLogs "Default" logs
   where
     stubRunTests' (Test t) = do
@@ -240,7 +241,7 @@ stubRunTests tests = do
                 }
         finish (Progress _ next) = next >>= finish
     stubRunTests' g@(Group {}) = do
-        logs <- mapM stubRunTests' $ groupTests g
+        logs <- traverse stubRunTests' $ groupTests g
         return $ GroupLogs (groupName g) logs
     stubRunTests' (ExtraOptions _ t) = stubRunTests' t
     maybeDefaultOption opt =

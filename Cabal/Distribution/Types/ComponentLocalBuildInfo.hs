@@ -6,15 +6,15 @@ module Distribution.Types.ComponentLocalBuildInfo (
   componentComponentId,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
+import Distribution.Compat.Graph
 import Distribution.Types.ComponentName
 
 import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-
-import Distribution.Compat.Graph (IsNode(..))
-import Distribution.Compat.Binary (Binary)
-import GHC.Generics (Generic)
 
 -- | The first five fields are common across all algebraic variants.
 data ComponentLocalBuildInfo

@@ -23,6 +23,9 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 
@@ -63,14 +66,9 @@ import Distribution.Compat.Graph (IsNode(..))
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.List
-         ( intersect )
-import Control.Monad
-         ( when, unless, forM_ )
-import System.FilePath
-         ( (</>), (<.>) )
-import System.Directory
-         ( getCurrentDirectory )
+import Data.List ( intersect )
+import System.FilePath ( (</>), (<.>) )
+import System.Directory ( getCurrentDirectory )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -122,7 +120,7 @@ build pkg_descr lbi flags suffixes
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  forM_ componentsToBuild $ \target -> do
+  for_ componentsToBuild $ \target -> do
     let comp = targetComponent target
         clbi = targetCLBI target
     initialBuildSteps distPref pkg_descr lbi clbi verbosity

@@ -17,6 +17,10 @@ module Distribution.Compat.Binary
 #endif
        ) where
 
+#if __GLASGOW_HASKELL__ < 706
+import Prelude hiding (catch)
+#endif
+
 import Control.Exception (catch, evaluate)
 #if __GLASGOW_HASKELL__ >= 711
 import Control.Exception (pattern ErrorCall)
@@ -24,10 +28,6 @@ import Control.Exception (pattern ErrorCall)
 import Control.Exception (ErrorCall(..))
 #endif
 import Data.ByteString.Lazy (ByteString)
-
-#if __GLASGOW_HASKELL__ < 706
-import Prelude hiding (catch)
-#endif
 
 #if __GLASGOW_HASKELL__ >= 708 || MIN_VERSION_binary(0,7,0)
 

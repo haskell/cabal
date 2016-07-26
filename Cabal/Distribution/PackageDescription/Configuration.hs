@@ -35,8 +35,8 @@ module Distribution.PackageDescription.Configuration (
     transformAllBuildDepends,
   ) where
 
-import Control.Applicative -- 7.10 -Werror workaround.
-import Prelude
+import Prelude ()
+import Distribution.Compat.Prelude
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -48,13 +48,8 @@ import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
-import Distribution.Compat.Semigroup as Semi
 import Distribution.Simple.LocalBuildInfo
 
-import Control.Arrow (first)
-import Data.Char ( isAlphaNum )
-import Data.Maybe ( mapMaybe, maybeToList )
-import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
 
@@ -181,7 +176,7 @@ data DepTestRslt d = DepOk | MissingDeps d
 
 instance Semigroup d => Monoid (DepTestRslt d) where
     mempty = DepOk
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup d => Semigroup (DepTestRslt d) where
     DepOk <> x     = x
@@ -353,10 +348,10 @@ newtype DepMapUnion = DepMapUnion { unDepMapUnion :: Map PackageName VersionRang
 
 toDepMapUnion :: [Dependency] -> DepMapUnion
 toDepMapUnion ds =
-  DepMapUnion $ fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DepMapUnion $ Map.fromListWith unionVersionRanges [ (p,vr) | Dependency p vr <- ds ]
 
 fromDepMapUnion :: DepMapUnion -> [Dependency]
-fromDepMapUnion m = [ Dependency p vr | (p,vr) <- toList (unDepMapUnion m) ]
+fromDepMapUnion m = [ Dependency p vr | (p,vr) <- Map.toList (unDepMapUnion m) ]
 
 -- | A map of dependencies.  Newtyped since the default monoid instance is not
 --   appropriate.  The monoid instance uses 'intersectVersionRanges'.
@@ -365,7 +360,7 @@ newtype DependencyMap = DependencyMap { unDependencyMap :: Map PackageName Versi
 
 instance Monoid DependencyMap where
     mempty = DependencyMap Map.empty
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup DependencyMap where
     (DependencyMap a) <> (DependencyMap b) =
@@ -373,10 +368,10 @@ instance Semigroup DependencyMap where
 
 toDepMap :: [Dependency] -> DependencyMap
 toDepMap ds =
-  DependencyMap $ fromListWith intersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
+  DependencyMap $ Map.fromListWith intersectVersionRanges [ (p,vr) | Dependency p vr <- ds ]
 
 fromDepMap :: DependencyMap -> [Dependency]
-fromDepMap m = [ Dependency p vr | (p,vr) <- toList (unDependencyMap m) ]
+fromDepMap m = [ Dependency p vr | (p,vr) <- Map.toList (unDependencyMap m) ]
 
 -- | Flattens a CondTree using a partial flag assignment.  When a condition
 -- cannot be evaluated, both branches are ignored.
@@ -532,7 +527,7 @@ data PDTagged = Lib Library
 
 instance Monoid PDTagged where
     mempty = PDNull
-    mappend = (Semi.<>)
+    mappend = (<>)
 
 instance Semigroup PDTagged where
     PDNull    <> x      = x

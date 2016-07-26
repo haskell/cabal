@@ -7,21 +7,18 @@ module Distribution.Types.ModuleRenaming (
     lookupRenaming,
 ) where
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
 import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Text
 
-import Data.Typeable               (Typeable)
-import Data.Data                  (Data)
-import GHC.Generics                (Generic)
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>), text)
 import qualified Data.Map as Map
-import Data.Map                    (Map)
 
 -- ---------------------------------------------------------------------------
 -- Module renaming

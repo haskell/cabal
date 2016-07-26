@@ -69,11 +69,12 @@ module Distribution.Compat.ReadP
   )
  where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (many, get)
+
 import qualified Distribution.Compat.MonadFail as Fail
 
-import Control.Monad( MonadPlus(..), liftM, liftM2, replicateM, ap, (>=>) )
-import Data.Char (isSpace)
-import Control.Applicative as AP (Applicative(..), Alternative(empty, (<|>)))
+import Control.Monad( replicateM, (>=>) )
 
 infixr 5 +++, <++
 
@@ -98,7 +99,7 @@ instance Applicative (P s) where
   (<*>) = ap
 
 instance Monad (P s) where
-  return = AP.pure
+  return = pure
 
   (Get f)      >>= k = Get (f >=> k)
   (Look f)     >>= k = Look (f >=> k)
@@ -160,7 +161,7 @@ instance Applicative (Parser r s) where
   (<*>) = ap
 
 instance Monad (Parser r s) where
-  return = AP.pure
+  return = pure
   fail = Fail.fail
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 

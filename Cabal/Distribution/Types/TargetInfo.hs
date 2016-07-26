@@ -3,6 +3,9 @@ module Distribution.Types.TargetInfo (
     TargetInfo(..)
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.Component
 

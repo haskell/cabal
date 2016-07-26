@@ -26,6 +26,9 @@ module Distribution.PackageDescription.PrettyPrint (
      showHookedBuildInfo,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
 import Distribution.ParseUtils
@@ -33,11 +36,9 @@ import Distribution.PackageDescription.Parse
 import Distribution.Package
 import Distribution.Text
 
-import Data.Monoid as Mon (Monoid(mempty))
-import Data.Maybe (isJust)
 import Text.PrettyPrint
-       (hsep, space, parens, char, nest, empty, isEmpty, ($$), (<+>),
-        colon, (<>), text, vcat, ($+$), Doc, render)
+       (hsep, space, parens, char, nest, isEmpty, ($$), (<+>),
+        colon, text, vcat, ($+$), Doc, render)
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -69,7 +70,7 @@ ppPackageDescription pd                  =      ppFields pkgDescrFieldDescrs pd
                                                 $+$ ppSourceRepos (sourceRepos pd)
 
 ppSourceRepos :: [SourceRepo] -> Doc
-ppSourceRepos []                         = empty
+ppSourceRepos []                         = mempty
 ppSourceRepos (hd:tl)                    = ppSourceRepo hd $+$ ppSourceRepos tl
 
 ppSourceRepo :: SourceRepo -> Doc
@@ -107,7 +108,7 @@ ppCustomFields :: [(String,String)] -> Doc
 ppCustomFields flds                      = vcat [ppCustomField f | f <- flds]
 
 ppCustomField :: (String,String) -> Doc
-ppCustomField (name,val)                 = text name <> colon <+> showFreeText val
+ppCustomField (name,val)                 = text name <<>> colon <+> showFreeText val
 
 ppGenPackageFlags :: [Flag] -> Doc
 ppGenPackageFlags flds                   = vcat [ppFlag f | f <- flds]
@@ -119,7 +120,7 @@ ppFlag flag@(MkFlag name _ _ _)    =
     fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
 ppLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
-ppLibrary Nothing = empty
+ppLibrary Nothing = mempty
 ppLibrary (Just condTree) =
     emptyLine $ text "library"
         $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
@@ -141,13 +142,13 @@ ppExecutables exes                       =
               $+$ nest indentWith (ppCondTree condTree Nothing ppExe)| (n,condTree) <- exes]
   where
     ppExe (Executable _ modulePath' buildInfo') Nothing =
-        (if modulePath' == "" then empty else text "main-is:" <+> text modulePath')
+        (if modulePath' == "" then mempty else text "main-is:" <+> text modulePath')
             $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs buildInfo'
             $+$  ppCustomFields (customFieldsBI buildInfo')
     ppExe (Executable _ modulePath' buildInfo')
             (Just (Executable _ modulePath2 buildInfo2)) =
             (if modulePath' == "" || modulePath' == modulePath2
-                then empty else text "main-is:" <+> text modulePath')
+                then mempty else text "main-is:" <+> text modulePath')
             $+$ ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
 
@@ -158,11 +159,11 @@ ppTestSuites suites =
                      | (n,condTree) <- suites]
   where
     ppTestSuite testsuite Nothing =
-                maybe empty (\t -> text "type:"        <+> disp t)
+                maybe mempty (\t -> text "type:"        <+> disp t)
                             maybeTestType
-            $+$ maybe empty (\f -> text "main-is:"     <+> text f)
+            $+$ maybe mempty (\f -> text "main-is:"     <+> text f)
                             (testSuiteMainIs testsuite)
-            $+$ maybe empty (\m -> text "test-module:" <+> disp m)
+            $+$ maybe mempty (\m -> text "test-module:" <+> disp m)
                             (testSuiteModule testsuite)
             $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs (testBuildInfo testsuite)
             $+$ ppCustomFields (customFieldsBI (testBuildInfo testsuite))
@@ -190,9 +191,9 @@ ppBenchmarks suites =
                      | (n,condTree) <- suites]
   where
     ppBenchmark benchmark Nothing =
-                maybe empty (\t -> text "type:"        <+> disp t)
+                maybe mempty (\t -> text "type:"        <+> disp t)
                             maybeBenchmarkType
-            $+$ maybe empty (\f -> text "main-is:"     <+> text f)
+            $+$ maybe mempty (\f -> text "main-is:"     <+> text f)
                             (benchmarkMainIs benchmark)
             $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs (benchmarkBuildInfo benchmark)
             $+$ ppCustomFields (customFieldsBI (benchmarkBuildInfo benchmark))
@@ -212,16 +213,16 @@ ppBenchmarks suites =
 ppCondition :: Condition ConfVar -> Doc
 ppCondition (Var x)                      = ppConfVar x
 ppCondition (Lit b)                      = text (show b)
-ppCondition (CNot c)                     = char '!' <> (ppCondition c)
+ppCondition (CNot c)                     = char '!' <<>> (ppCondition c)
 ppCondition (COr c1 c2)                  = parens (hsep [ppCondition c1, text "||"
                                                          <+> ppCondition c2])
 ppCondition (CAnd c1 c2)                 = parens (hsep [ppCondition c1, text "&&"
                                                          <+> ppCondition c2])
 ppConfVar :: ConfVar -> Doc
-ppConfVar (OS os)                        = text "os"   <> parens (disp os)
-ppConfVar (Arch arch)                    = text "arch" <> parens (disp arch)
-ppConfVar (Flag name)                    = text "flag" <> parens (ppFlagName name)
-ppConfVar (Impl c v)                     = text "impl" <> parens (disp c <+> disp v)
+ppConfVar (OS os)                        = text "os"   <<>> parens (disp os)
+ppConfVar (Arch arch)                    = text "arch" <<>> parens (disp arch)
+ppConfVar (Flag name)                    = text "flag" <<>> parens (ppFlagName name)
+ppConfVar (Impl c v)                     = text "impl" <<>> parens (disp c <+> disp v)
 
 ppFlagName :: FlagName -> Doc
 ppFlagName (FlagName name)               = text name
@@ -247,7 +248,7 @@ ppIf' :: a -> (a -> Maybe a -> Doc)
            -> Doc
 ppIf' it ppIt c thenTree =
   if isEmpty thenDoc
-     then Mon.mempty
+     then mempty
      else ppIfCondition c $$ nest indentWith thenDoc
   where thenDoc = ppCondTree thenTree (if simplifiedPrinting then (Just it) else Nothing) ppIt
 
@@ -258,7 +259,7 @@ ppIfElse :: a -> (a -> Maybe a -> Doc)
               -> Doc
 ppIfElse it ppIt c thenTree elseTree =
   case (isEmpty thenDoc, isEmpty elseDoc) of
-    (True,  True)  -> Mon.mempty
+    (True,  True)  -> mempty
     (False, True)  -> ppIfCondition c $$ nest indentWith thenDoc
     (True,  False) -> ppIfCondition (cNot c) $$ nest indentWith elseDoc
     (False, False) -> (ppIfCondition c $$ nest indentWith thenDoc)
@@ -282,7 +283,7 @@ showPackageDescription pkg = render $
      ppPackage pkg
   $$ ppCustomFields (customFieldsPD pkg)
   $$ (case library pkg of
-        Nothing -> empty
+        Nothing -> mempty
         Just lib -> ppLibrary' lib)
   $$ vcat [ space $$ ppLibrary' lib | lib <- subLibraries pkg ]
   $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]

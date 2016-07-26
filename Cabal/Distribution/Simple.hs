@@ -53,6 +53,9 @@ module Distribution.Simple (
         defaultHookedPackageDesc
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 -- local
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
@@ -95,8 +98,6 @@ import System.FilePath                      (searchPathSeparator)
 import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
-import Control.Monad   (when)
-import Data.Foldable   (traverse_)
 import Data.List       (unionBy)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -504,7 +505,7 @@ clean pkg_descr flags = do
       when exists (removeDirectoryRecursive distPref)
 
     -- Any extra files the user wants to remove
-    mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
+    traverse_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
     -- If the user wanted to save the config, write it back
     traverse_ (writePersistBuildConfig distPref) maybeConfig

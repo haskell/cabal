@@ -73,6 +73,9 @@ module Distribution.Simple.LocalBuildInfo (
         substPathTemplate
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
 import Distribution.Types.ComponentEnabledSpec
@@ -95,7 +98,6 @@ import Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
 
 import Data.List (stripPrefix)
-import Data.Maybe
 import System.FilePath
 import qualified Data.Map as Map
 
@@ -271,7 +273,7 @@ depLibraryPaths inplace relative lbi clbi = do
         allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
 
         allDepLibDirs' = internalLibs ++ allDepLibDirs
-    allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
+    allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'
 
     let p                = prefix installDirs
         prefixRelative l = isJust (stripPrefix p l)

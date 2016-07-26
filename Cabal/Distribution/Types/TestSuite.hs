@@ -8,17 +8,14 @@ module Distribution.Types.TestSuite (
     testModules,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.BuildInfo
 import Distribution.Types.TestType
 import Distribution.Types.TestSuiteInterface
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.ModuleName
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 -- | A \"test-suite\" stanza in a cabal file.
 --

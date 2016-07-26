@@ -45,17 +45,14 @@ module Distribution.Simple.InstallDirs (
         installDirsTemplateEnv,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
 
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup as Semi
 import Distribution.Package
 import Distribution.System
 import Distribution.Compiler
 import Distribution.Text
 
-import Data.List (isPrefixOf)
-import Data.Maybe (fromMaybe)
-import GHC.Generics (Generic)
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
@@ -97,7 +94,7 @@ instance Binary dir => Binary (InstallDirs dir)
 
 instance (Semigroup dir, Monoid dir) => Monoid (InstallDirs dir) where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup dir => Semigroup (InstallDirs dir) where
   (<>) = gmappend

@@ -108,8 +108,9 @@ module Distribution.Simple.PackageIndex (
   lookupInstalledPackageId,
   ) where
 
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup as Semi
+import Prelude ()
+import Distribution.Compat.Prelude hiding (lookup)
+
 import Distribution.Package
 import Distribution.ModuleName
 import qualified Distribution.InstalledPackageInfo as IPI
@@ -120,15 +121,9 @@ import Control.Exception (assert)
 import Data.Array ((!))
 import qualified Data.Array as Array
 import qualified Data.Graph as Graph
-import Data.List as List
-         ( null, foldl', sort
-         , groupBy, sortBy, find, nubBy, deleteBy, deleteFirstsBy )
-import Data.Map (Map)
+import Data.List as List ( groupBy,  deleteBy, deleteFirstsBy )
 import qualified Data.Map as Map
-import Data.Maybe (isNothing, fromMaybe)
 import qualified Data.Tree  as Tree
-import GHC.Generics (Generic)
-import Prelude hiding (lookup)
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -165,7 +160,7 @@ type InstalledPackageIndex = PackageIndex IPI.InstalledPackageInfo
 
 instance HasUnitId a => Monoid (PackageIndex a) where
   mempty  = PackageIndex Map.empty Map.empty
-  mappend = (Semi.<>)
+  mappend = (<>)
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
@@ -300,7 +295,7 @@ deleteUnitId ipkgid original@(PackageIndex pids pnames) =
       . Map.update deletePkgInstance (packageVersion spkgid)
 
     deletePkgInstance =
-        (\xs -> if List.null xs then Nothing else Just xs)
+        (\xs -> if null xs then Nothing else Just xs)
       . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
 -- | Backwards compatibility wrapper for Cabal pre-1.24.

@@ -7,15 +7,11 @@ module Distribution.Types.Executable (
     exeModules,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.BuildInfo
-
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.ModuleName
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 data Executable = Executable {
         exeName    :: String,

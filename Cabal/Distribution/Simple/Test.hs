@@ -15,6 +15,9 @@ module Distribution.Simple.Test
     ( test
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
@@ -30,7 +33,6 @@ import Distribution.Simple.Utils
 import Distribution.TestSuite
 import Distribution.Text
 
-import Control.Monad ( when, unless, filterM )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )
@@ -84,7 +86,7 @@ test args pkg_descr lbi flags = do
 
     testsToRun <- case testNames of
             [] -> return $ zip enabledTests $ repeat Nothing
-            names -> flip mapM names $ \tName ->
+            names -> flip traverse names $ \tName ->
                 let testMap = zip enabledNames enabledTests
                     enabledNames = map (PD.testName . fst) enabledTests
                     allNames = map PD.testName pkgTests
@@ -100,11 +102,11 @@ test args pkg_descr lbi flags = do
     -- Delete ordinary files from test log directory.
     getDirectoryContents testLogDir
         >>= filterM doesFileExist . map (testLogDir </>)
-        >>= mapM_ removeFile
+        >>= traverse_ removeFile
 
     let totalSuites = length testsToRun
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
-    suites <- mapM doTest testsToRun
+    suites <- traverse doTest testsToRun
     let packageLog = (localPackageLog pkg_descr lbi) { testSuites = suites }
         packageLogFile = (</>) testLogDir
             $ packageLogPath machineTemplate pkg_descr lbi

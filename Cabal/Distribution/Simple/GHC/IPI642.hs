@@ -13,6 +13,9 @@ module Distribution.Simple.GHC.IPI642 (
     toCurrent,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Package as Current hiding (installedUnitId)
 import Distribution.Simple.GHC.IPIConvert

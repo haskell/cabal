@@ -50,6 +50,9 @@ module Distribution.Types.LocalBuildInfo (
     externalPackageDeps,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.ComponentEnabledSpec
@@ -69,12 +72,7 @@ import Distribution.System
 
 import Distribution.Compat.Graph (Graph)
 import qualified Distribution.Compat.Graph as Graph
-import Distribution.Compat.Binary (Binary)
-import Data.List (nub, intercalate)
 import qualified Data.Map as Map
-import Data.Map (Map)
-import GHC.Generics (Generic)
-import Data.Maybe (mapMaybe)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.

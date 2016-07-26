@@ -17,8 +17,10 @@ module Distribution.ReadE (
    readP_to_E
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compat.ReadP
-import Data.Char ( isSpace )
 
 -- | Parser with simple error reporting
 newtype ReadE a = ReadE {runReadE :: String -> Either ErrorMsg a}

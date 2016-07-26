@@ -7,16 +7,12 @@ module Distribution.Types.Library (
     libModules,
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.BuildInfo
 import Distribution.Types.ModuleReexport
-
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.ModuleName
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 data Library = Library {
         libName :: Maybe String,

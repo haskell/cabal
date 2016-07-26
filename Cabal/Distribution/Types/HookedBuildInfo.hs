@@ -6,6 +6,9 @@ module Distribution.Types.HookedBuildInfo (
     emptyHookedBuildInfo,
   ) where
 
+import Prelude ()
+--import Distribution.Compat.Prelude
+
 import Distribution.Types.ComponentName
 import Distribution.Types.BuildInfo
 

@@ -22,16 +22,14 @@ module Language.Haskell.Extension (
         deprecatedExtensions
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Binary
 
 import qualified Text.PrettyPrint as Disp
-import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
-import Data.Data (Data)
-import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
 
 -- ------------------------------------------------------------
 -- * Language
@@ -66,7 +64,7 @@ instance Text Language where
   disp other                   = Disp.text (show other)
 
   parse = do
-    lang <- Parse.munch1 Char.isAlphaNum
+    lang <- Parse.munch1 isAlphaNum
     return (classifyLanguage lang)
 
 classifyLanguage :: String -> Language
@@ -796,14 +794,14 @@ instance Text Extension where
   disp (DisableExtension ke)    = Disp.text ("No" ++ show ke)
 
   parse = do
-    extension <- Parse.munch1 Char.isAlphaNum
+    extension <- Parse.munch1 isAlphaNum
     return (classifyExtension extension)
 
 instance Text KnownExtension where
   disp ke = Disp.text (show ke)
 
   parse = do
-    extension <- Parse.munch1 Char.isAlphaNum
+    extension <- Parse.munch1 isAlphaNum
     case classifyKnownExtension extension of
         Just ke ->
             return ke

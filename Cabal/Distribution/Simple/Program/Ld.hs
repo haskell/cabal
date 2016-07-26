@@ -12,6 +12,9 @@ module Distribution.Simple.Program.Ld (
     combineObjectFiles,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..) )
 import Distribution.Simple.Program.Run

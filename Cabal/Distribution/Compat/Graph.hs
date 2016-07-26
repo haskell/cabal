@@ -80,20 +80,18 @@ module Distribution.Compat.Graph (
     nodeValue,
 ) where
 
-import qualified Prelude as Prelude
-import Prelude hiding (lookup, null)
+import Prelude ()
+import qualified Distribution.Compat.Prelude as Prelude
+import Distribution.Compat.Prelude hiding (lookup, null, empty)
+
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
-import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Array as Array
 import Data.Array ((!))
 import qualified Data.Tree as Tree
 import Data.Either (partitionEithers)
-import Data.Typeable (Typeable)
 import qualified Data.Foldable as Foldable
-import Control.DeepSeq (NFData(..))
-import Distribution.Compat.Binary (Binary(..))
 
 -- | A graph of nodes @a@.  The nodes are expected to have instance
 -- of class 'IsNode'.
@@ -295,7 +293,7 @@ revNeighbors g k = do
 -- Requires amortized construction of graph.
 closure :: Graph a -> [Key a] -> Maybe [a]
 closure g ks = do
-    vs <- mapM (graphKeyToVertex g) ks
+    vs <- traverse (graphKeyToVertex g) ks
     return (decodeVertexForest g (G.dfs (graphForward g) vs))
 
 -- | Compute the reverse closure of a graph from some set
@@ -304,7 +302,7 @@ closure g ks = do
 -- Requires amortized construction of graph.
 revClosure :: Graph a -> [Key a] -> Maybe [a]
 revClosure g ks = do
-    vs <- mapM (graphKeyToVertex g) ks
+    vs <- traverse (graphKeyToVertex g) ks
     return (decodeVertexForest g (G.dfs (graphAdjoint g) vs))
 
 flattenForest :: Tree.Forest a -> [a]

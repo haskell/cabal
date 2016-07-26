@@ -10,13 +10,15 @@
 module Distribution.Simple.Program.Strip (stripLib, stripExe)
        where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Verbosity
 import Distribution.Version
 
-import Control.Monad               (unless)
 import System.FilePath             (takeBaseName)
 
 runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()

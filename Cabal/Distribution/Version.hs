@@ -100,19 +100,17 @@ module Distribution.Version (
 
  ) where
 
-import Distribution.Compat.Binary ( Binary(..) )
-import Data.Data        ( Data )
-import Data.Typeable    ( Typeable )
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Data.Version     ( Version(..) )
-import GHC.Generics     ( Generic )
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP hiding (get)
 
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>), (<+>))
-import qualified Data.Char as Char (isDigit)
+import Text.PrettyPrint ((<+>))
 import Control.Exception (assert)
 
 -- -----------------------------------------------------------------------------
@@ -798,12 +796,12 @@ instance Text VersionRange where
   disp = fst
        . foldVersionRange'                         -- precedence:
            (         Disp.text "-any"                           , 0 :: Int)
-           (\v   -> (Disp.text "==" <> disp v                   , 0))
-           (\v   -> (Disp.char '>'  <> disp v                   , 0))
-           (\v   -> (Disp.char '<'  <> disp v                   , 0))
-           (\v   -> (Disp.text ">=" <> disp v                   , 0))
-           (\v   -> (Disp.text "<=" <> disp v                   , 0))
-           (\v _ -> (Disp.text "==" <> dispWild v               , 0))
+           (\v   -> (Disp.text "==" <<>> disp v                   , 0))
+           (\v   -> (Disp.char '>'  <<>> disp v                   , 0))
+           (\v   -> (Disp.char '<'  <<>> disp v                   , 0))
+           (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
+           (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
+           (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
            (\(r1, p1) (r2, p2) ->
              (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) ->
@@ -812,7 +810,7 @@ instance Text VersionRange where
 
     where dispWild (Version b _) =
                Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
-            <> Disp.text ".*"
+            <<>> Disp.text ".*"
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
 
@@ -858,11 +856,11 @@ instance Text VersionRange where
                                      return (VersionRangeParens a))
 
         digits = do
-          first <- Parse.satisfy Char.isDigit
-          if first == '0'
+          firstDigit <- Parse.satisfy isDigit
+          if firstDigit == '0'
             then return 0
-            else do rest <- Parse.munch Char.isDigit
-                    return (read (first : rest))
+            else do rest <- Parse.munch isDigit
+                    return (read (firstDigit : rest))
 
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),

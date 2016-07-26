@@ -13,8 +13,8 @@ module Distribution.Lex (
         tokenizeQuotedWords
  ) where
 
-import Data.Char (isSpace)
-import Distribution.Compat.Semigroup as Semi
+import Prelude ()
+import Distribution.Compat.Prelude
 
 newtype DList a = DList ([a] -> [a])
 
@@ -26,7 +26,7 @@ singleton a = DList (a:)
 
 instance Monoid (DList a) where
   mempty = DList id
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup (DList a) where
   DList a <> DList b = DList (a . b)

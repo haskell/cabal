@@ -41,6 +41,9 @@ module Distribution.InstalledPackageInfo (
         fieldsInstalledPackageInfo,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.ParseUtils
 import Distribution.License
 import Distribution.Package hiding (installedUnitId, installedPackageId)
@@ -49,12 +52,9 @@ import Distribution.ModuleName
 import Distribution.Version
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Binary
 import Distribution.Compat.Graph
 
 import Text.PrettyPrint as Disp
-import Data.Maybe   (fromMaybe)
-import GHC.Generics (Generic)
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type

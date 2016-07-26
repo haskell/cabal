@@ -67,18 +67,16 @@ module Distribution.Simple.Compiler (
         showProfDetailLevel,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Compiler
 import Distribution.Version
 import Distribution.Text
 import Language.Haskell.Extension
 import Distribution.Simple.Utils
-import Distribution.Compat.Binary
 
-import Control.Monad (liftM)
-import Data.List (nub)
-import qualified Data.Map as M (Map, lookup)
-import Data.Maybe (catMaybes, isNothing, listToMaybe)
-import GHC.Generics (Generic)
+import qualified Data.Map as Map (lookup)
 import System.Directory (canonicalizePath)
 
 data Compiler = Compiler {
@@ -92,7 +90,7 @@ data Compiler = Compiler {
         -- ^ Supported language standards.
         compilerExtensions      :: [(Extension, Flag)],
         -- ^ Supported extensions.
-        compilerProperties      :: M.Map String String
+        compilerProperties      :: Map String String
         -- ^ A key-value map for properties not covered by the above fields.
     }
     deriving (Eq, Generic, Show, Read)
@@ -199,7 +197,7 @@ registrationPackageDB dbs = last dbs
 
 
 absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
-absolutePackageDBPaths = mapM absolutePackageDBPath
+absolutePackageDBPaths = traverse absolutePackageDBPath
 
 absolutePackageDBPath :: PackageDB -> IO PackageDB
 absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB
@@ -343,7 +341,7 @@ ghcSupported key comp =
     GHCJS -> checkProp
     _     -> False
   where checkProp =
-          case M.lookup key (compilerProperties comp) of
+          case Map.lookup key (compilerProperties comp) of
             Just "YES" -> True
             _          -> False
 

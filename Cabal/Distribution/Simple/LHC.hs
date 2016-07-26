@@ -40,6 +40,9 @@ module Distribution.Simple.LHC (
         ghcVerbosityOptions
  ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -60,11 +63,7 @@ import Distribution.Compat.Exception
 import Distribution.System
 import Language.Haskell.Extension
 
-import Control.Monad            ( unless, when )
-import Data.Monoid as Mon
-import Data.List
-import qualified Data.Map as M  ( empty )
-import Data.Maybe               ( catMaybes )
+import qualified Data.Map as Map ( empty )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
@@ -103,7 +102,7 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerCompat         = [],
         compilerLanguages      = languages,
         compilerExtensions     = extensions,
-        compilerProperties     = M.empty
+        compilerProperties     = Map.empty
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
       compPlatform = Nothing
@@ -201,7 +200,7 @@ getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! (Mon.mconcat indexes)
+  return $! (mconcat indexes)
 
   where
     -- On Windows, various fields have $topdir/foo rather than full
@@ -226,7 +225,7 @@ getInstalledPackages' :: ConfiguredProgram -> Verbosity
                       -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
-  sequence
+  sequenceA
     [ do str <- rawSystemProgramStdoutConf verbosity lhcPkgProgram conf
                   ["dump", packageDbGhcPkgFlag packagedb]
            `catchExit` \_ -> die $ "ghc-pkg dump failed"
@@ -349,15 +348,15 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       sharedLibFilePath  = libTargetDir </> mkSharedLibName cid lib_name
       ghciLibFilePath    = libTargetDir </> mkGHCiLibName       lib_name
 
-  stubObjs <- fmap catMaybes $ sequence
+  stubObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension [objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
-  stubProfObjs <- fmap catMaybes $ sequence
+  stubProfObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
-  stubSharedObjs <- fmap catMaybes $ sequence
+  stubSharedObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
     | x <- libModules lib ]
@@ -539,7 +538,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
                    | x <- libModules lib ]
-        objss <- mapM getDirectoryContents dirs
+        objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
                      let obj_ext = takeExtension obj,
@@ -720,7 +719,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   ifVanilla $ copyModuleFiles "hi"
   ifProf    $ copyModuleFiles "p_hi"
   hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
-  flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
+  flip traverse_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
 
   -- copy the built library files over:
   ifVanilla $ copy builtDir targetDir       vanillaLibName

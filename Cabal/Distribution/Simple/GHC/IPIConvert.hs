@@ -14,14 +14,15 @@ module Distribution.Simple.GHC.IPIConvert (
     convertModuleName
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.Package as Current hiding (installedUnitId)
 import qualified Distribution.License as Current
 
 import Distribution.Version
 import Distribution.ModuleName
 import Distribution.Text
-
-import Data.Maybe
 
 data PackageIdentifier = PackageIdentifier {
     pkgName    :: String,
@@ -38,7 +39,7 @@ data License = GPL | LGPL | BSD3 | BSD4
   deriving Read
 
 convertModuleName :: String -> ModuleName
-convertModuleName s = fromJust $ simpleParse s
+convertModuleName s = fromMaybe (error "convertModuleName") $ simpleParse s
 
 convertLicense :: License -> Current.License
 convertLicense GPL  = Current.GPL  Nothing

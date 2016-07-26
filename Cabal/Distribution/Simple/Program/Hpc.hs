@@ -13,6 +13,9 @@ module Distribution.Simple.Program.Hpc
     , union
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.ModuleName
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Types

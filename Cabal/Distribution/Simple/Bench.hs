@@ -15,6 +15,9 @@ module Distribution.Simple.Bench
     ( bench
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -25,7 +28,6 @@ import Distribution.Simple.UserHooks
 import Distribution.Simple.Utils
 import Distribution.Text
 
-import Control.Monad ( when, unless, forM )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess )
 import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
@@ -81,7 +83,7 @@ bench args pkg_descr lbi flags = do
 
     bmsToRun <- case benchmarkNames of
             [] -> return enabledBenchmarks
-            names -> forM names $ \bmName ->
+            names -> for names $ \bmName ->
                 let benchmarkMap = zip enabledNames enabledBenchmarks
                     enabledNames = map PD.benchmarkName enabledBenchmarks
                     allNames = map PD.benchmarkName pkgBenchmarks
@@ -94,7 +96,7 @@ bench args pkg_descr lbi flags = do
 
     let totalBenchmarks = length bmsToRun
     notice verbosity $ "Running " ++ show totalBenchmarks ++ " benchmarks..."
-    exitcodes <- mapM doBench bmsToRun
+    exitcodes <- traverse doBench bmsToRun
     let allOk = totalBenchmarks == length (filter (== ExitSuccess) exitcodes)
     unless allOk exitFailure
   where

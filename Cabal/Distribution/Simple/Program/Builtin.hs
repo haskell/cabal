@@ -45,6 +45,9 @@ module Distribution.Simple.Program.Builtin (
     hpcProgram,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Internal
 import Distribution.Simple.Program.Run
@@ -54,8 +57,6 @@ import Distribution.Compat.Exception
 import Distribution.Verbosity
 import Distribution.Version
 
-import Data.Char
-         ( isDigit )
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------

@@ -53,8 +53,8 @@ module Distribution.Simple.GHC (
         pkgRoot
  ) where
 
-import Control.Applicative -- 7.10 -Werror workaround
-import Prelude             -- https://ghc.haskell.org/trac/ghc/wiki/Migration/7.10#GHCsaysTheimportof...isredundant
+import Prelude ()
+import Distribution.Compat.Prelude
 
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import qualified Distribution.Simple.GHC.Internal as Internal
@@ -86,12 +86,7 @@ import Distribution.Text
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import Control.Monad            ( unless, when )
-import Data.Char                ( isDigit, isSpace )
-import Data.List
-import qualified Data.Map as M  ( fromList, lookup )
-import Data.Maybe               ( catMaybes )
-import Data.Monoid as Mon       ( Monoid(..) )
+import qualified Data.Map as Map
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
@@ -147,14 +142,14 @@ configure verbosity hcPath hcPkgPath conf0 = do
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
-  let ghcInfoMap = M.fromList ghcInfo
+  let ghcInfoMap = Map.fromList ghcInfo
 
       -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
       -- `--supported-extensions` when it's not available.
       -- for older GHCs we can use the "Have interpreter" property to
       -- filter out `TemplateHaskell`
       extensions | ghcVersion < Version [8] []
-                 , Just "NO" <- M.lookup "Have interpreter" ghcInfoMap
+                 , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap
                    = filter ((/= EnableExtension TemplateHaskell) . fst)
                      extensions0
                  | otherwise = extensions0
@@ -208,7 +203,7 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
        info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ given_dir
        debug verbosity $ "candidate locations: " ++ show guesses
-       exists <- mapM doesFileExist guesses
+       exists <- traverse doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
                    -- method.
@@ -402,7 +397,7 @@ getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
                      -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
-  sequence
+  sequenceA
     [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
@@ -420,11 +415,11 @@ getInstalledPackages' verbosity packagedbs conf = do
           (UserPackageDB,  _global:_)      -> return $ Nothing
           (SpecificPackageDB specific, _)  -> return $ Just specific
           _ -> die "cannot read ghc-pkg package listing"
-    pkgFiles' <- mapM dbFile packagedbs
-    sequence [ withFileContents file $ \content -> do
+    pkgFiles' <- traverse dbFile packagedbs
+    sequenceA [ withFileContents file $ \content -> do
                   pkgs <- readPackages file content
                   return (db, pkgs)
-             | (db , Just file) <- zip packagedbs pkgFiles' ]
+              | (db , Just file) <- zip packagedbs pkgFiles' ]
   where
     -- Depending on the version of ghc we use a different type's Read
     -- instance to parse the package file and then convert.
@@ -446,7 +441,7 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Platform
                                  -> [PackageDB]
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity platform progdb =
-    mapM getPackageDBPath
+    traverse getPackageDBPath
   where
     getPackageDBPath :: PackageDB -> IO FilePath
     getPackageDBPath GlobalPackageDB =
@@ -521,7 +516,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       pkg_name = display (PD.package pkg_descr)
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
-        | forRepl = Mon.mempty  -- HPC is not supported in ghci
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way pkg_name
         | otherwise = mempty
 
@@ -664,17 +659,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         libInstallPath = libdir $ absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName compiler_id uid
 
-    stubObjs <- catMaybes <$> sequence
+    stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubProfObjs <- catMaybes <$> sequence
+    stubProfObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
-    stubSharedObjs <- catMaybes <$> sequence
+    stubSharedObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files

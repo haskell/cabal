@@ -46,7 +46,8 @@ module Distribution.Simple.CCompiler (
    filenameCDialect
   ) where
 
-import Distribution.Compat.Semigroup as Semi
+import Prelude ()
+import Distribution.Compat.Prelude
 
 import System.FilePath
      ( takeExtension )
@@ -63,7 +64,7 @@ data CDialect = C
 
 instance Monoid CDialect where
   mempty = C
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup CDialect where
   C                  <> anything           = anything

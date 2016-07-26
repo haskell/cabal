@@ -39,6 +39,9 @@ module Distribution.ParseUtils (
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude hiding (get)
+
 import Distribution.Compiler
 import Distribution.License
 import Distribution.Version
@@ -52,15 +55,15 @@ import Distribution.Simple.Utils
 import Distribution.PrettyUtils
 import Language.Haskell.Extension
 
-import Text.PrettyPrint hiding (braces)
-import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
-import Data.Maybe       (fromMaybe)
+import Text.PrettyPrint
+    ( Doc, render, style, renderStyle
+    , text, colon, nest, punctuate, comma, sep
+    , fsep, hsep, isEmpty, vcat, mode, Mode (..)
+    , ($+$), (<+>)
+    )
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
-import Control.Monad (foldM, ap)
-import Control.Applicative as AP (Applicative(..))
 import System.FilePath (normalise)
-import Data.List (sortBy)
 
 -- -----------------------------------------------------------------------------
 
@@ -96,7 +99,7 @@ instance Applicative ParseResult where
 
 
 instance Monad ParseResult where
-        return = AP.pure
+        return = pure
         ParseFailed err >>= _ = ParseFailed err
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
@@ -268,9 +271,9 @@ ppFields fields x =
 
 ppField :: String -> Doc -> Doc
 ppField name fielddoc
-   | isEmpty fielddoc         = empty
-   | name `elem` nestedFields = text name <> colon $+$ nest indentWith fielddoc
-   | otherwise                = text name <> colon <+> fielddoc
+   | isEmpty fielddoc         = mempty
+   | name `elem` nestedFields = text name <<>> colon $+$ nest indentWith fielddoc
+   | otherwise                = text name <<>> colon <+> fielddoc
    where
       nestedFields =
          [ "description"
@@ -384,14 +387,14 @@ fName _ = error "fname: not a field or section"
 
 readFields :: String -> ParseResult [Field]
 readFields input = ifelse
-               =<< mapM (mkField 0)
+               =<< traverse (mkField 0)
                =<< mkTree tokens
 
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLine . trimLines) ls
 
 readFieldsFlat :: String -> ParseResult [Field]
-readFieldsFlat input = mapM (mkField 0)
+readFieldsFlat input = traverse (mkField 0)
                    =<< mkTree tokens
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLineFlat . trimLines) ls
@@ -565,7 +568,7 @@ mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
                         then tabsError n
                         else return $ F n (map toLower name)
                                           (fieldValue rest' followingLines)
-    rest'       -> do ts' <- mapM (mkField (d+1)) ts
+    rest'       -> do ts' <- traverse (mkField (d+1)) ts
                       return (Section n (map toLower name) rest' ts')
  where    fieldValue firstLine followingLines =
             let firstLine' = trimLeading firstLine

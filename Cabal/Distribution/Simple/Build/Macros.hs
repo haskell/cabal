@@ -22,6 +22,9 @@ module Distribution.Simple.Build.Macros (
     generatePackageVersionMacros,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Package
 import Distribution.Version
 import Distribution.PackageDescription
@@ -29,9 +32,6 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Types
 import Distribution.Text
-
-import Data.Maybe
-         ( isJust )
 
 -- ------------------------------------------------------------
 -- * Generate cabal_macros.h

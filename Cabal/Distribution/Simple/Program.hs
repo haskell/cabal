@@ -127,6 +127,9 @@ module Distribution.Simple.Program (
 
     ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.Simple.Program.Db
@@ -135,9 +138,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
-
 -- | Runs the given configured program.
---
 runProgram :: Verbosity          -- ^Verbosity
            -> ConfiguredProgram  -- ^The program to run
            -> [ProgArg]          -- ^Any /extra/ arguments to add

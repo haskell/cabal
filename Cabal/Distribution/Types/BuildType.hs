@@ -6,15 +6,13 @@ module Distribution.Types.BuildType (
     knownBuildTypes,
 ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
-import qualified Data.Char as Char (isAlphaNum)
 
 -- | The type of build system used by this package.
 data BuildType
@@ -41,7 +39,7 @@ instance Text BuildType where
   disp other                    = Disp.text (show other)
 
   parse = do
-    name <- Parse.munch1 Char.isAlphaNum
+    name <- Parse.munch1 isAlphaNum
     return $ case name of
       "Simple"    -> Simple
       "Configure" -> Configure

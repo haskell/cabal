@@ -1,9 +1,10 @@
 module Distribution.Simple.HaskellSuite where
 
-import Control.Monad
-import Data.Maybe
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Data.Version
-import qualified Data.Map as M (empty)
+import qualified Data.Map as Map (empty)
 
 import Distribution.Simple.Program
 import Distribution.Simple.Compiler as Compiler
@@ -75,7 +76,7 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
           compilerCompat         = [],
           compilerLanguages      = languages,
           compilerExtensions     = extensions,
-          compilerProperties     = M.empty
+          compilerProperties     = Map.empty
         }
 
       return (comp, confdCompiler, conf2)
@@ -119,7 +120,7 @@ getLanguages verbosity prog = do
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf =
-  liftM (PackageIndex.fromList . concat) $ forM packagedbs $ \packagedb ->
+  liftM (PackageIndex.fromList . concat) $ for packagedbs $ \packagedb ->
     do str <-
         getDbProgramOutput verbosity haskellSuitePkgProgram conf
                 ["dump", packageDbOpt packagedb]

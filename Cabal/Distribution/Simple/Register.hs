@@ -44,6 +44,9 @@ module Distribution.Simple.Register (
     generalInstalledPackageInfo,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
@@ -76,9 +79,7 @@ import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
 
 import Data.Version
-import Control.Monad
-import Data.Maybe
-import Data.List
+import Data.List (partition)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- -----------------------------------------------------------------------------
@@ -116,7 +117,7 @@ register pkg_descr lbi flags = when (hasPublicLib pkg_descr) doRegister
             [] -> die "In --assume-deps-up-to-date mode you must specify a target"
             _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
         else fmap catMaybes
-           . mapM maybeGenerateOne
+           . traverse maybeGenerateOne
            $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
     registerAll pkg_descr lbi flags ipis
     return ()
@@ -151,7 +152,7 @@ registerAll :: PackageDescription -> LocalBuildInfo -> RegisterFlags
 registerAll pkg lbi regFlags ipis
   = do
     when (fromFlag (regPrintId regFlags)) $ do
-      forM_ ipis $ \installedPkgInfo ->
+      for_ ipis $ \installedPkgInfo ->
         -- Only print the public library's IPI
         when (IPI.sourcePackageId installedPkgInfo == packageId pkg) $
           putStrLn (display (IPI.installedUnitId installedPkgInfo))
@@ -162,7 +163,7 @@ registerAll pkg lbi regFlags ipis
        | modeGenerateRegScript -> writeRegisterScript
        | otherwise             -> do
            setupMessage verbosity "Registering" (packageId pkg)
-           forM_ ipis $ \installedPkgInfo ->
+           for_ ipis $ \installedPkgInfo ->
                registerPackage verbosity (compiler lbi) (withPrograms lbi)
                                HcPkg.NoMultiInstance packageDbs installedPkgInfo
 
@@ -194,7 +195,7 @@ registerAll pkg lbi regFlags ipis
               lpad m xs = replicate (m - length ys) '0' ++ ys
                   where ys = take m xs
               number i = lpad (length (show num_ipis)) (show i)
-          forM_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
+          for_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
             -- TODO: This will need a hashUnitId when Backpack comes.
             writeUTF8File (regFile </> (number i ++ "-" ++ display (IPI.installedUnitId installedPkgInfo)))
                           (IPI.showInstalledPackageInfo installedPkgInfo)

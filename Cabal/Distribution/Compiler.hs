@@ -42,23 +42,17 @@ module Distribution.Compiler (
   AbiTag(..), abiTagString
   ) where
 
-import Distribution.Compat.Binary
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Language.Haskell.Extension
 
-import Data.Data (Data)
-import Data.Typeable (Typeable)
-import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
-import GHC.Generics (Generic)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>))
-
-import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
-import Control.Monad (when)
 
 data CompilerFlavor = GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | HaskellSuite String -- string is the id of the actual compiler
@@ -77,8 +71,8 @@ instance Text CompilerFlavor where
   disp other                = Disp.text (lowercase (show other))
 
   parse = do
-    comp <- Parse.munch1 Char.isAlphaNum
-    when (all Char.isDigit comp) Parse.pfail
+    comp <- Parse.munch1 isAlphaNum
+    when (all isDigit comp) Parse.pfail
     return (classifyCompilerFlavor comp)
 
 classifyCompilerFlavor :: String -> CompilerFlavor
@@ -103,8 +97,8 @@ classifyCompilerFlavor s =
 --
 parseCompilerFlavorCompat :: Parse.ReadP r CompilerFlavor
 parseCompilerFlavorCompat = do
-  comp <- Parse.munch1 Char.isAlphaNum
-  when (all Char.isDigit comp) Parse.pfail
+  comp <- Parse.munch1 isAlphaNum
+  when (all isDigit comp) Parse.pfail
   case lookup comp compilerMap of
     Just compiler -> return compiler
     Nothing       -> return (OtherCompiler comp)
@@ -144,7 +138,7 @@ instance Binary CompilerId
 
 instance Text CompilerId where
   disp (CompilerId f (Version [] _)) = disp f
-  disp (CompilerId f v) = disp f <> Disp.char '-' <> disp v
+  disp (CompilerId f v) = disp f <<>> Disp.char '-' <<>> disp v
 
   parse = do
     flavour <- parse
@@ -152,7 +146,7 @@ instance Text CompilerId where
     return (CompilerId flavour version)
 
 lowercase :: String -> String
-lowercase = map Char.toLower
+lowercase = map toLower
 
 -- ------------------------------------------------------------
 -- * Compiler Info
@@ -189,7 +183,7 @@ instance Text AbiTag where
   disp (AbiTag tag) = Disp.text tag
 
   parse = do
-    tag <- Parse.munch (\c -> Char.isAlphaNum c || c == '_')
+    tag <- Parse.munch (\c -> isAlphaNum c || c == '_')
     if null tag then return NoAbiTag else return (AbiTag tag)
 
 abiTagString :: AbiTag -> String

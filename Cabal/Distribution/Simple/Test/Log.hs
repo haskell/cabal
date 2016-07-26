@@ -11,6 +11,9 @@ module Distribution.Simple.Test.Log
        , testSuiteLogPath
        ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
@@ -21,9 +24,6 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.TestSuite
 import Distribution.Verbosity
-
-import Control.Monad ( when )
-import Data.Char ( toUpper )
 
 -- | Logs all test results for a package, broken down first by test suite and
 -- then by test case.

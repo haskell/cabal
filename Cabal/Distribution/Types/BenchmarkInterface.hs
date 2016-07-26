@@ -5,15 +5,11 @@ module Distribution.Types.BenchmarkInterface (
     BenchmarkInterface(..),
 ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Types.BenchmarkType
-
-import Distribution.Compat.Binary
-import Distribution.Compat.Semigroup
 import Distribution.Version
-
-import Data.Data                  (Data)
-import Data.Typeable               ( Typeable )
-import GHC.Generics                (Generic)
 
 -- | The benchmark interfaces that are currently defined. Each
 -- benchmark must specify which interface it supports.

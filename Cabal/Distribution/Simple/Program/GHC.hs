@@ -14,7 +14,9 @@ module Distribution.Simple.Program.GHC (
 
   ) where
 
-import Distribution.Compat.Semigroup as Semi
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
@@ -29,8 +31,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import GHC.Generics (Generic)
-import qualified Data.Map as M
+import qualified Data.Map as Map
 
 -- | A structured set of GHC options/flags
 --
@@ -150,7 +151,7 @@ data GhcOptions = GhcOptions {
 
   -- | A GHC version-dependent mapping of extensions to flags. This must be
   -- set to be able to make use of the 'ghcOptExtensions'.
-  ghcOptExtensionMap    :: M.Map Extension String,
+  ghcOptExtensionMap    :: Map Extension String,
 
   ----------------
   -- Compilation
@@ -406,7 +407,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     then [ "-X" ++ display lang | lang <- flag ghcOptLanguage ]
     else []
 
-  , [ case M.lookup ext (ghcOptExtensionMap opts) of
+  , [ case Map.lookup ext (ghcOptExtensionMap opts) of
         Just arg -> arg
         Nothing  -> error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
                           ++ display ext ++ " not present in ghcOptExtensionMap."
@@ -491,7 +492,7 @@ packageDbArgs implInfo
 
 instance Monoid GhcOptions where
   mempty = gmempty
-  mappend = (Semi.<>)
+  mappend = (<>)
 
 instance Semigroup GhcOptions where
   (<>) = gmappend

@@ -28,6 +28,9 @@ module Distribution.Simple.UserHooks (
         emptyUserHooks,
   ) where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription
 import Distribution.Simple.Program
 import Distribution.Simple.Command

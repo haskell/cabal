@@ -40,6 +40,9 @@ module Distribution.Simple.SrcDist (
 
   )  where
 
+import Prelude ()
+import Distribution.Compat.Prelude
+
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.PackageDescription.Check hiding (doesFileExist)
 import Distribution.Package
@@ -55,11 +58,8 @@ import Distribution.Simple.Program
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Monad(when, unless, forM)
-import Data.Char (toLower)
-import Data.List (partition, isPrefixOf)
+import Data.List (partition)
 import qualified Data.Map as Map
-import Data.Maybe (isNothing, catMaybes)
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
@@ -79,8 +79,8 @@ sdist pkg mb_lbi flags mkTmpDir pps =
   case (sDistListSources flags) of
     Flag path -> withFile path WriteMode $ \outHandle -> do
       (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
-      mapM_ (hPutStrLn outHandle) ordinary
-      mapM_ (hPutStrLn outHandle) maybeExecutable
+      traverse_ (hPutStrLn outHandle) ordinary
+      traverse_ (hPutStrLn outHandle) maybeExecutable
       notice verbosity $ "List of package sources written to file '"
                          ++ path ++ "'"
     NoFlag    -> do
@@ -142,7 +142,7 @@ listPackageSources verbosity pkg_descr0 pps = do
 listPackageSourcesMaybeExecutable :: PackageDescription -> IO [FilePath]
 listPackageSourcesMaybeExecutable pkg_descr =
   -- Extra source files.
-  fmap concat . forM (extraSrcFiles pkg_descr) $ \fpath -> matchFileGlob fpath
+  fmap concat . for (extraSrcFiles pkg_descr) $ \fpath -> matchFileGlob fpath
 
 -- | List those source files that should be copied with ordinary permissions.
 listPackageSourcesOrdinary :: Verbosity
@@ -150,7 +150,7 @@ listPackageSourcesOrdinary :: Verbosity
                            -> [PPSuffixHandler]
                            -> IO [FilePath]
 listPackageSourcesOrdinary verbosity pkg_descr pps =
-  fmap concat . sequence $
+  fmap concat . sequenceA $
   [
     -- Library sources.
     fmap concat
@@ -202,12 +202,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
 
     -- Data files.
   , fmap concat
-    . forM (dataFiles pkg_descr) $ \filename ->
+    . for (dataFiles pkg_descr) $ \filename ->
        matchFileGlob (dataDir pkg_descr </> filename)
 
     -- Extra doc files.
   , fmap concat
-    . forM (extraDocFiles pkg_descr) $ \ filename ->
+    . for (extraDocFiles pkg_descr) $ \ filename ->
       matchFileGlob filename
 
     -- License file(s).
@@ -218,7 +218,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     . withAllLib $ \ l -> do
        let lbi = libBuildInfo l
            relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
-       mapM (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
+       traverse (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
 
     -- Setup script, if it exists.
   , fmap (maybe [] (\f -> [f])) $ findSetupFile ""
@@ -230,10 +230,10 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   where
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
-    withAllLib       action = mapM action (allLibraries pkg_descr)
-    withAllExe       action = mapM action (executables pkg_descr)
-    withAllTest      action = mapM action (testSuites pkg_descr)
-    withAllBenchmark action = mapM action (benchmarks pkg_descr)
+    withAllLib       action = traverse action (allLibraries pkg_descr)
+    withAllExe       action = traverse action (executables pkg_descr)
+    withAllTest      action = traverse action (testSuites pkg_descr)
+    withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
 
 -- |Prepare a directory tree of source files.
@@ -419,12 +419,12 @@ allSourcesBuildInfo :: BuildInfo
                        -> IO [FilePath]
 allSourcesBuildInfo bi pps modules = do
   let searchDirs = hsSourceDirs bi
-  sources <- fmap concat $ sequence $
+  sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
       in findAllFilesWithExtension suffixes searchDirs file
          >>= nonEmpty (notFound module_) return
     | module_ <- modules ++ otherModules bi ]
-  bootFiles <- sequence
+  bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
           fileExts = ["hs-boot", "lhs-boot"]
       in findFileWithExtension fileExts (hsSourceDirs bi) file
