@@ -592,9 +592,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     asConfiguredPackage _ = internalError "not in configured state"
 
 directDeps, revDirectDeps
-  :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-      HasUnitId srcpkg, PackageFixedDeps srcpkg)
-  => GenericInstallPlan ipkg srcpkg
+  :: GenericInstallPlan ipkg srcpkg
   -> UnitId
   -> [GenericPlanPackage ipkg srcpkg]
 
