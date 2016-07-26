@@ -20,6 +20,7 @@ module Distribution.Client.InstallSymlink (
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Types (BuildResults)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
@@ -28,9 +29,10 @@ import Distribution.System
 symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan 
+                -> InstallPlan
+                -> BuildResults
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries _ _ _ _ _ = return []
+symlinkBinaries _ _ _ _ _ _ = return []
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
@@ -38,8 +40,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( GenericReadyPackage(..), ReadyPackage
-         , ConfiguredPackage(..))
+         ( ConfiguredPackage(..), BuildResults )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -106,8 +107,9 @@ symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
+                -> BuildResults
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries platform comp configFlags installFlags plan =
+symlinkBinaries platform comp configFlags installFlags plan buildResults =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
     Just symlinkBinDir
@@ -136,15 +138,17 @@ symlinkBinaries platform comp configFlags installFlags plan =
   where
     exes =
       [ (cpkg, pkg, exe)
-      | InstallPlan.Installed cpkg _ _ <- InstallPlan.toList plan
-      , let pkg   = pkgDescription cpkg
+      | InstallPlan.Configured cpkg <- InstallPlan.toList plan
+      , case InstallPlan.lookupBuildResult cpkg buildResults of
+          Just (Right _success) -> True
+          _                     -> False
+      , let pkg :: PackageDescription
+            pkg = pkgDescription cpkg
       , exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
-    pkgDescription :: ReadyPackage -> PackageDescription
-    pkgDescription (ReadyPackage (ConfiguredPackage
-                                    _ (SourcePackage _ pkg _ _)
-                                    flags stanzas _)) =
+    pkgDescription (ConfiguredPackage _ (SourcePackage _ pkg _ _)
+                                      flags stanzas _) =
       case finalizePD flags (enableStanzas stanzas)
              (const True)
              platform cinfo [] pkg of

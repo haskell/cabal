@@ -266,6 +266,8 @@ maybeRepoRemote (RepoSecure r _localDir) = Just r
 -- ------------------------------------------------------------
 
 type BuildResult  = Either BuildFailure BuildSuccess
+type BuildResults = Map UnitId (Either BuildFailure BuildSuccess)
+
 data BuildFailure = PlanningFailed
                   | DependentFailed PackageId
                   | DownloadFailed  SomeException

@@ -60,6 +60,8 @@ module Distribution.Compat.Graph (
     SCC(..),
     cycles,
     broken,
+    neighbors,
+    revNeighbors,
     closure,
     revClosure,
     topSort,
@@ -272,6 +274,20 @@ cycles g = [ vs | CyclicSCC vs <- stronglyConnComp g ]
 -- Requires amortized construction of graph.
 broken :: Graph a -> [(a, [Key a])]
 broken g = graphBroken g
+
+-- | Lookup the immediate neighbors from a key in the graph.
+-- Requires amortized construction of graph.
+neighbors :: Graph a -> Key a -> Maybe [a]
+neighbors g k = do
+    v <- graphKeyToVertex g k
+    return (map (graphVertexToNode g) (graphForward g ! v))
+
+-- | Lookup the immediate reverse neighbors from a key in the graph.
+-- Requires amortized construction of graph.
+revNeighbors :: Graph a -> Key a -> Maybe [a]
+revNeighbors g k = do
+    v <- graphKeyToVertex g k
+    return (map (graphVertexToNode g) (graphAdjoint g ! v))
 
 -- | Compute the subgraph which is the closure of some set of keys.
 -- Returns @Nothing@ if one (or more) keys are not present in

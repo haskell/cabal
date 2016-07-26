@@ -22,6 +22,7 @@ import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.ProjectConfig
 import qualified UnitTests.Distribution.Client.JobControl
+import qualified UnitTests.Distribution.Client.InstallPlan
 
 import UnitTests.Options
 
@@ -58,6 +59,8 @@ tests mtimeChangeCalibrated =
        UnitTests.Distribution.Client.ProjectConfig.tests
   , testGroup "UnitTests.Distribution.Client.JobControl"
        UnitTests.Distribution.Client.JobControl.tests
+  , testGroup "UnitTests.Distribution.Client.InstallPlan"
+       UnitTests.Distribution.Client.InstallPlan.tests
   ]
 
 main :: IO ()

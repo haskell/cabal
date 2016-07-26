@@ -123,38 +123,35 @@ storeLocal cinfo templates reports platform = sequence_
 
 fromInstallPlan :: Platform -> CompilerId
                 -> InstallPlan
+                -> BuildResults
                 -> [(BuildReport, Maybe Repo)]
-fromInstallPlan platform comp plan =
+fromInstallPlan platform comp plan buildResults =
      catMaybes
-   . map (fromPlanPackage platform comp)
+   . map (\pkg -> fromPlanPackage
+                    platform comp pkg
+                    (InstallPlan.lookupBuildResult pkg buildResults))
    . InstallPlan.toList
    $ plan
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
+                -> Maybe BuildResult
                 -> Maybe (BuildReport, Maybe Repo)
-fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
-  InstallPlan.Installed (ReadyPackage (ConfiguredPackage _ srcPkg flags _ deps))
-                         _ result
-    -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags
-                                (map packageId (CD.nonSetupDeps deps))
-                                (Right result)
-              , extractRepo srcPkg)
-
-  InstallPlan.Failed (ConfiguredPackage _ srcPkg flags _ deps) result
-    -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags
-                                (map confSrcId (CD.nonSetupDeps deps))
-                                (Left result)
-              , extractRepo srcPkg )
-
-  _ -> Nothing
-
+fromPlanPackage (Platform arch os) comp
+                (InstallPlan.Configured (ConfiguredPackage _ srcPkg flags _ deps))
+                (Just buildResult) =
+      Just ( BuildReport.new os arch comp
+                             (packageId srcPkg) flags
+                             (map packageId (CD.nonSetupDeps deps))
+                             buildResult
+           , extractRepo srcPkg)
   where
     extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ })
                   = Just repo
     extractRepo _ = Nothing
+
+fromPlanPackage _ _ _ _ = Nothing
+
 
 fromPlanningFailure :: Platform -> CompilerId
     -> [PackageId] -> FlagAssignment -> [(BuildReport, Maybe Repo)]

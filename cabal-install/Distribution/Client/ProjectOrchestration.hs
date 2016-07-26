@@ -60,8 +60,8 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
-                          , DocsResult(..), TestsResult(..) )
+                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
+                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -76,7 +76,6 @@ import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
-import qualified Distribution.InstalledPackageInfo as Installed
 import           Distribution.Simple.Setup (HaddockFlags)
 
 import           Distribution.Simple.Utils (die, notice)
@@ -196,14 +195,22 @@ runProjectPreBuildPhase
 --
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
-                     -> IO ElaboratedInstallPlan
+                     -> IO BuildResults
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
+    fmap (Map.union (previousBuildResults pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
                    elaboratedPlan
                    elaboratedShared
                    pkgsBuildStatus
                    buildSettings
+  where
+    previousBuildResults :: BuildStatusMap -> BuildResults
+    previousBuildResults =
+      Map.mapMaybe $ \status -> case status of
+        BuildStatusUpToDate _ buildSuccess -> Just (Right buildSuccess)
+        --TODO: [nice to have] record build failures persistently
+        _                                  -> Nothing
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -399,7 +406,7 @@ printPlan verbosity
        ++ " be built (use -v for more details):")
     : map showPkg pkgs
   where
-    pkgs = linearizeInstallPlan elaboratedPlan
+    pkgs = InstallPlan.executionOrder elaboratedPlan
 
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
@@ -460,31 +467,12 @@ printPlan verbosity
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
-linearizeInstallPlan :: ElaboratedInstallPlan -> [ElaboratedReadyPackage]
-linearizeInstallPlan =
-    unfoldr next
-  where
-    next plan = case InstallPlan.ready plan of
-      []      -> Nothing
-      (pkg:_) -> Just (pkg, plan')
-        where
-          ipkgid = installedPackageId pkg
-          ipkg   = Installed.emptyInstalledPackageInfo {
-                     Installed.sourcePackageId    = packageId pkg,
-                     Installed.installedUnitId = ipkgid
-                   }
-          plan'  = InstallPlan.completed ipkgid (Just ipkg)
-                     (BuildOk DocsNotTried TestsNotTried)
-                     (InstallPlan.processing [pkg] plan)
-    --TODO: [code cleanup] This is a bit of a hack, pretending that each package is installed
-    -- could we use InstallPlan.topologicalOrder?
 
-
-reportBuildFailures :: ElaboratedInstallPlan -> IO ()
+reportBuildFailures :: BuildResults -> IO ()
 reportBuildFailures plan =
 
-  case [ (pkg, reason)
-       | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
+  case [ (pkgid, reason)
+       | (pkgid, Left reason) <- Map.toList plan ] of
     []      -> return ()
     _failed -> exitFailure
     --TODO: [required eventually] see the old printBuildFailures for an example

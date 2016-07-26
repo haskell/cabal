@@ -389,6 +389,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
     UnitTests.Distribution.Client.JobControl
+    UnitTests.Distribution.Client.InstallPlan
     UnitTests.Distribution.Solver.Modular.PSQ
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL

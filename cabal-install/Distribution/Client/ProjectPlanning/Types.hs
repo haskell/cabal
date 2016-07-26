@@ -21,6 +21,7 @@ module Distribution.Client.ProjectPlanning.Types (
     --      plan definition. Need to better separate InstallPlan definition.
     GenericBuildResult(..),
     BuildResult,
+    BuildResults,
     BuildSuccess(..),
     BuildFailure(..),
     DocsResult(..),
@@ -38,8 +39,8 @@ module Distribution.Client.ProjectPlanning.Types (
 import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildSuccess(..), BuildFailure(..)
-                          , DocsResult(..), TestsResult(..) )
+                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
+                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import           Distribution.Client.SolverInstallPlan
@@ -82,12 +83,10 @@ import           Control.Exception
 type ElaboratedInstallPlan
    = GenericInstallPlan InstalledPackageInfo
                         ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
 
 type ElaboratedPlanPackage
    = GenericPlanPackage InstalledPackageInfo
                         ElaboratedConfiguredPackage
-                        BuildSuccess BuildFailure
 
 --TODO: [code cleanup] decide if we really need this, there's not much in it, and in principle
 --      even platform and compiler could be different if we're building things
@@ -296,6 +295,7 @@ instance (Binary ipkg, Binary iresult, Binary ifailure) =>
 
 type BuildResult  = GenericBuildResult InstalledPackageInfo
                                        BuildSuccess BuildFailure
+type BuildResults = Map UnitId (Either BuildFailure BuildSuccess)
 
 data BuildSuccess = BuildOk DocsResult TestsResult
   deriving (Eq, Show, Generic)
