@@ -267,7 +267,12 @@ maybeRepoRemote (RepoSecure r _localDir) = Just r
 -- * Build results
 -- ------------------------------------------------------------
 
+-- | A summary of the outcome for building a single package.
+--
 type BuildResult  = Either BuildFailure BuildSuccess
+
+-- | A summary of the outcome for building a whole set of packages.
+--
 type BuildResults = Map UnitId BuildResult
 
 data BuildFailure = PlanningFailed

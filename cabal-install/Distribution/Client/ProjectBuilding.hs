@@ -114,12 +114,17 @@ import           System.Directory
 -- (that would make it harder to reproduce the problem sitation).
 
 
--- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'
+-- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
+--
+-- This is used as the result of the dry-run of building an install plan.
 --
 type BuildStatusMap = Map InstalledPackageId BuildStatus
 
--- | The build status for an individual package. That is, the state that the
--- package is in prior to initiating a (re)build.
+-- | The build status for an individual package is the state that the
+-- package is in /prior/ to initiating a (re)build.
+--
+-- This should not be confused with a 'BuildResult' which is the outcome
+-- /after/ building a package.
 --
 -- It serves two purposes:
 --
