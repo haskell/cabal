@@ -47,8 +47,9 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # Cabal otherwise).
 timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 
-# Note: http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
-# some osx has broken bash
+# NB: the '|| exit $?' workaround is required on old broken versions of bash
+# that ship with OS X. See https://github.com/haskell/cabal/pull/3624 and
+# http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
 
 # Run tests
 (cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
