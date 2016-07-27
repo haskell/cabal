@@ -40,6 +40,7 @@ cp cabal.project.travis cabal.project.local
 # Cabal
 # ---------------------------------------------------------------------
 
+# Needed to work around some bugs in nix-local-build code.
 export CABAL_BUILDDIR="${CABAL_BDIR}"
 
 # NB: Best to do everything for a single package together as it's
@@ -70,16 +71,13 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 # Check for package warnings
 (cd Cabal && timed cabal check) || exit $?
 
-# Test that an sdist can be created
-(cd Cabal && timed cabal sdist --builddir=${CABAL_BDIR}) || exit $?
-
 unset CABAL_BUILDDIR
 
 # ---------------------------------------------------------------------
 # cabal-install
 # ---------------------------------------------------------------------
 
-# Setting the build directory here helps avoid sdist bugs.
+# Needed to work around some bugs in nix-local-build code.
 export CABAL_BUILDDIR="${CABAL_INSTALL_BDIR}"
 
 timed cabal new-build cabal-install:cabal \
@@ -98,7 +96,6 @@ timed cabal new-build cabal-install:cabal \
 (cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
 
 (cd cabal-install && timed cabal check) || exit $?
-(cd cabal-install && timed cabal sdist --builddir=${CABAL_INSTALL_BDIR}) || exit $?
 
 unset CABAL_BUILDDIR
 
