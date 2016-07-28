@@ -1048,12 +1048,16 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   let
       comp        = compiler lbi
       platform    = hostPlatform lbi
-      vanillaArgs =
+      vanillaArgs0 =
         (componentGhcOptions verbosity lbi libBi clbi (componentBuildDir lbi clbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
+      vanillaArgs =
+          -- Package DBs unnecessary, and break ghc-cabal. See #3633
+          vanillaArgs0 { ghcOptPackageDBs = []
+                       , ghcOptPackages = mempty }
       sharedArgs = vanillaArgs `mappend` mempty {
                        ghcOptDynLinkMode = toFlag GhcDynamicOnly,
                        ghcOptFPic        = toFlag True,
