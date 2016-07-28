@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -56,6 +55,7 @@ import Distribution.Compat.ReadP hiding (get)
 
 import Data.List        (partition, (\\))
 import System.Directory (doesFileExist)
+import Control.Monad    (mapM)
 
 import Text.PrettyPrint
        (vcat, ($$), (<+>), text, render,
@@ -1201,42 +1201,24 @@ deprecField _ = cabalBug "'deprecField' called on a non-field"
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
 parseHookedBuildInfo inp = do
   fields <- readFields inp
-  let (mLibFields:rest) = stanzas fields
+  let ss@(mLibFields:exes) = stanzas fields
   mLib <- parseLib mLibFields
-  foldM parseStanza mLib rest
+  biExes <- mapM parseExe (maybe ss (const exes) mLib)
+  return (mLib, biExes)
   where
-    -- For backwards compatibility, if you have a bare stanza,
-    -- we assume it's part of the public library.  We don't
-    -- know what the name is, so the people using the HookedBuildInfo
-    -- have to handle this carefully.
-    parseLib :: [Field] -> ParseResult [(ComponentName, BuildInfo)]
+    parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
     parseLib (bi@(F _ inFieldName _:_))
-        | lowercase inFieldName /= "executable" &&
-          lowercase inFieldName /= "library" &&
-          lowercase inFieldName /= "benchmark" &&
-          lowercase inFieldName /= "test-suite"
-            = liftM (\bis -> [(CLibName, bis)]) (parseBI bi)
-    parseLib _ = return []
+        | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
+    parseLib _ = return Nothing
 
-    parseStanza :: HookedBuildInfo -> [Field] -> ParseResult HookedBuildInfo
-    parseStanza bis (F line inFieldName mName:bi)
-        | Just k <- case lowercase inFieldName of
-                        "executable" -> Just CExeName
-                        -- An *explicit* library indicates a
-                        -- sub-library; only way to get main
-                        -- library is to have a bare section.
-                        "library"    -> Just CSubLibName
-                        "benchmark"  -> Just CBenchName
-                        "test-suite" -> Just CTestName
-                        _ -> Nothing
-            = do bi' <- parseBI bi
-                 return ((k mName, bi'):bis)
-        | otherwise
-            = syntaxError line $
-                "expecting 'executable', 'library', 'benchmark' or 'test-suite' " ++
-                "at top of stanza, but got '" ++ inFieldName ++ "'"
-    parseStanza _ (_:_) = cabalBug "`parseStanza' called on a non-field"
-    parseStanza _ [] = syntaxError 0 "error in parsing buildinfo file. Expected stanza"
+    parseExe :: [Field] -> ParseResult (String, BuildInfo)
+    parseExe (F line inFieldName mName:bi)
+        | lowercase inFieldName == "executable"
+            = do bis <- parseBI bi
+                 return (mName, bis)
+        | otherwise = syntaxError line "expecting 'executable' at top of stanza"
+    parseExe (_:_) = cabalBug "`parseExe' called on a non-field"
+    parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
 
     parseBI st = parseFields binfoFieldDescrs storeXFieldsBI emptyBuildInfo st
 

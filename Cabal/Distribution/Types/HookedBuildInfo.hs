@@ -6,10 +6,7 @@ module Distribution.Types.HookedBuildInfo (
     emptyHookedBuildInfo,
   ) where
 
-import Prelude ()
---import Distribution.Compat.Prelude
-
-import Distribution.Types.ComponentName
+-- import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
 
 -- | 'HookedBuildInfo' is mechanism that hooks can use to
@@ -62,7 +59,7 @@ import Distribution.Types.BuildInfo
 -- are obligated to apply any new 'HookedBuildInfo' and then we'd
 -- get the effect twice.  But this does mean we have to re-apply
 -- it every time. Hey, it's more flexibility.
-type HookedBuildInfo = [(ComponentName, BuildInfo)]
+type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
 emptyHookedBuildInfo :: HookedBuildInfo
-emptyHookedBuildInfo = []
+emptyHookedBuildInfo = (Nothing, [])

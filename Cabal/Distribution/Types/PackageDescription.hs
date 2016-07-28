@@ -302,39 +302,27 @@ allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
 -- ------------------------------------------------------------
 
 updatePackageDescription :: HookedBuildInfo -> PackageDescription -> PackageDescription
-updatePackageDescription hooked_bis p
-  = p{ executables = updateMany (CExeName . exeName)         updateExecutable (executables p)
-     , library     = fmap (updateLibrary lib_bi) (library p)
-     , subLibraries = updateMany (maybe CLibName CSubLibName . libName) updateLibrary    (subLibraries   p)
-     , benchmarks  = updateMany (CBenchName . benchmarkName) updateBenchmark  (benchmarks p)
-     , testSuites  = updateMany (CTestName . testName)       updateTestSuite  (testSuites p)
-     }
+updatePackageDescription (mb_lib_bi, exe_bi) p
+    = p{ executables = updateExecutables exe_bi    (executables p)
+       , library     = updateLibrary     mb_lib_bi (library     p) }
     where
-      lib_bi = case find ((== CLibName) . fst) hooked_bis of
-                Nothing -> mempty
-                Just (_, bi) -> bi
+      updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
+      updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
+      updateLibrary Nothing   mb_lib     = mb_lib
+      updateLibrary (Just _)  Nothing    = Nothing
 
-      updateMany :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
-                 -> (BuildInfo -> a -> a) -- ^ @updateExecutable@, @updateLibrary@, etc
-                 -> [a]          -- ^list of components to update
-                 -> [a]          -- ^list with updated components
-      updateMany name update cs' = foldr (updateOne name update) cs' hooked_bis
+      updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
+                        -> [Executable]          -- ^list of executables to update
+                        -> [Executable]          -- ^list with exeNames updated
+      updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
 
-      updateOne :: (a -> ComponentName) -- ^ get 'ComponentName' from @a@
-                -> (BuildInfo -> a -> a) -- ^ @updateExecutable@, @updateLibrary@, etc
-                -> (ComponentName, BuildInfo) -- ^(name, new buildinfo)
-                -> [a]        -- ^list of components to update
-                -> [a]        -- ^list with name component updated
-      updateOne _ _ _                 []         = []
-      updateOne name_sel update hooked_bi'@(name,bi) (c:cs)
-        | name_sel c == name
-          = update bi c : cs
-        | otherwise          = c : updateOne name_sel update hooked_bi' cs
-
-      updateExecutable bi exe = exe{buildInfo    = bi `mappend` buildInfo exe}
-      updateLibrary    bi lib = lib{libBuildInfo = bi `mappend` libBuildInfo lib}
-      updateBenchmark  bi ben = ben{benchmarkBuildInfo = bi `mappend` benchmarkBuildInfo ben}
-      updateTestSuite  bi test = test{testBuildInfo = bi `mappend` testBuildInfo test}
+      updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
+                       -> [Executable]        -- ^list of executables to update
+                       -> [Executable]        -- ^list with exeName updated
+      updateExecutable _                 []         = []
+      updateExecutable exe_bi'@(name,bi) (exe:exes)
+        | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes
+        | otherwise           = exe : updateExecutable exe_bi' exes
 
 -- -----------------------------------------------------------------------------
 -- Source-representation of buildable components
