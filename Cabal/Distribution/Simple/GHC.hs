@@ -1056,7 +1056,9 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         }
       vanillaArgs =
           -- Package DBs unnecessary, and break ghc-cabal. See #3633
-          vanillaArgs0 { ghcOptPackageDBs = []
+          -- BUT, put at least the global database so that 7.4 doesn't
+          -- break.
+          vanillaArgs0 { ghcOptPackageDBs = [GlobalPackageDB]
                        , ghcOptPackages = mempty }
       sharedArgs = vanillaArgs `mappend` mempty {
                        ghcOptDynLinkMode = toFlag GhcDynamicOnly,
