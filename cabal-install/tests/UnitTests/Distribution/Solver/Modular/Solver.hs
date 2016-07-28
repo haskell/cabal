@@ -43,6 +43,7 @@ tests = [
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (SolverSuccess [("A", 1), ("B", 1)])
         , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (SolverFailure (isInfixOf "unknown package: C"))
+        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (SolverFailure (isInfixOf "unknown package: B"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -796,6 +797,17 @@ db22 :: ExampleDb
 db22 = [
     Right $ exAv "A" 1 [ExAny "B"]
   , Right $ exAv "A" 2 [ExAny "C"]
+  ]
+
+-- | Another test for the unknown package message.  This database tests that
+-- filtering out redundant conflict set messages in the solver log doesn't
+-- interfere with generating a message about a missing package (part of issue
+-- #3617). The conflict set for the missing package is {A, B}. That conflict set
+-- is propagated up the tree to the level of A. Since the conflict set is the
+-- same at both levels, the solver only keeps one of the backjumping messages.
+db23 :: ExampleDb
+db23 = [
+    Right $ exAv "A" 1 [ExAny "B"]
   ]
 
 -- | Database for (unsuccessfully) trying to expose a bug in the handling
