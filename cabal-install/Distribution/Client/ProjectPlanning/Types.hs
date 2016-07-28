@@ -16,17 +16,6 @@ module Distribution.Client.ProjectPlanning.Types (
     BuildStyle(..),
     CabalFileText,
 
-    -- * Types used in executing an install plan
-    --TODO: [code cleanup] these types should live with execution, not with
-    --      plan definition. Need to better separate InstallPlan definition.
-    GenericBuildResult(..),
-    BuildResult,
-    BuildResults,
-    BuildSuccess(..),
-    BuildFailure(..),
-    DocsResult(..),
-    TestsResult(..),
-
     -- * Build targets
     PackageTarget(..),
     ComponentTarget(..),
@@ -68,8 +57,6 @@ import           Data.Set (Set)
 import qualified Data.ByteString.Lazy as LBS
 import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
-import           Data.Typeable (Typeable)
-import           Control.Exception
 
 
 
@@ -279,49 +266,6 @@ instance Binary BuildStyle
 type CabalFileText = LBS.ByteString
 
 type ElaboratedReadyPackage = GenericReadyPackage ElaboratedConfiguredPackage
-
---TODO: [code cleanup] this duplicates the InstalledPackageInfo quite a bit in an install plan
--- because the same ipkg is used by many packages. So the binary file will be big.
--- Could we keep just (ipkgid, deps) instead of the whole InstalledPackageInfo?
--- or transform to a shared form when serialising / deserialising
-
-data GenericBuildResult ipkg iresult ifailure
-                  = BuildFailure ifailure
-                  | BuildSuccess [ipkg] iresult
-  deriving (Eq, Show, Generic)
-
-instance (Binary ipkg, Binary iresult, Binary ifailure) =>
-         Binary (GenericBuildResult ipkg iresult ifailure)
-
-type BuildResult  = GenericBuildResult InstalledPackageInfo
-                                       BuildSuccess BuildFailure
-type BuildResults = Map UnitId (Either BuildFailure BuildSuccess)
-
-data BuildSuccess = BuildOk DocsResult TestsResult
-  deriving (Eq, Show, Generic)
-
-data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
-  deriving (Eq, Show, Generic)
-
-data TestsResult = TestsNotTried | TestsOk
-  deriving (Eq, Show, Generic)
-
-data BuildFailure = PlanningFailed              --TODO: [required eventually] not yet used
-                  | DependentFailed PackageId
-                  | DownloadFailed  String      --TODO: [required eventually] not yet used
-                  | UnpackFailed    String      --TODO: [required eventually] not yet used
-                  | ConfigureFailed String
-                  | BuildFailed     String
-                  | TestsFailed     String      --TODO: [required eventually] not yet used
-                  | InstallFailed   String
-  deriving (Eq, Show, Typeable, Generic)
-
-instance Exception BuildFailure
-
-instance Binary BuildFailure
-instance Binary BuildSuccess
-instance Binary DocsResult
-instance Binary TestsResult
 
 
 ---------------------------

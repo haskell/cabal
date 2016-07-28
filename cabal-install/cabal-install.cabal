@@ -396,6 +396,7 @@ Test-Suite unit-tests
     UnitTests.Options
   build-depends:
         base,
+        async,
         array,
         bytestring,
         Cabal,
@@ -460,6 +461,7 @@ Test-Suite solver-quickcheck
     UnitTests.Distribution.Solver.Modular.QuickCheck
   build-depends:
         base,
+        async,
         array,
         bytestring,
         Cabal,

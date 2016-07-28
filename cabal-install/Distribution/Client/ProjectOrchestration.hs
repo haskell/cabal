@@ -60,8 +60,6 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
-                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -208,7 +206,7 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
     previousBuildResults :: BuildStatusMap -> BuildResults
     previousBuildResults =
       Map.mapMaybe $ \status -> case status of
-        BuildStatusUpToDate _ buildSuccess -> Just (Right buildSuccess)
+        BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
         --TODO: [nice to have] record build failures persistently
         _                                  -> Nothing
 

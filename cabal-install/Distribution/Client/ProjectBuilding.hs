@@ -5,12 +5,19 @@
 -- | 
 --
 module Distribution.Client.ProjectBuilding (
+    -- * Dry run phase
     BuildStatus(..),
     BuildStatusMap,
     BuildStatusRebuild(..),
     BuildReason(..),
     MonitorChangedReason(..),
     rebuildTargetsDryRun,
+
+    -- * Build phase
+    BuildResult,
+    BuildResults,
+    BuildFailure(..),
+    BuildSuccess(..),
     rebuildTargets
   ) where
 
@@ -20,8 +27,6 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
-                   ( PackageLocation(..), GenericReadyPackage(..)
-                   , InstalledPackageId, installedPackageId )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -63,20 +68,14 @@ import           Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.ByteString.Lazy as LBS
 
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
 import           Control.Monad
 import           Control.Exception
-import           Control.Concurrent.Async
-import           Control.Concurrent.MVar
 import           Data.List
 import           Data.Maybe
 
 import           System.FilePath
 import           System.IO
 import           System.Directory
-import           System.Exit (ExitCode)
 
 
 ------------------------------------------------------------------------------
@@ -115,12 +114,17 @@ import           System.Exit (ExitCode)
 -- (that would make it harder to reproduce the problem sitation).
 
 
--- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'
+-- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
+--
+-- This is used as the result of the dry-run of building an install plan.
 --
 type BuildStatusMap = Map InstalledPackageId BuildStatus
 
--- | The build status for an individual package. That is, the state that the
--- package is in prior to initiating a (re)build.
+-- | The build status for an individual package is the state that the
+-- package is in /prior/ to initiating a (re)build.
+--
+-- This should not be confused with a 'BuildResult' which is the outcome
+-- /after/ building a package.
 --
 -- It serves two purposes:
 --
@@ -152,7 +156,7 @@ data BuildStatus =
      -- | The package exists in a local dir already, and is fully up to date.
      --   So this package can be put into the 'InstallPlan.Installed' state
      --   and it does not need to be built.
-   | BuildStatusUpToDate [InstalledPackageInfo] BuildSuccess
+   | BuildStatusUpToDate BuildSuccess
 
 -- | For a package that is going to be built or rebuilt, the state it's in now.
 --
@@ -293,8 +297,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
             return (BuildStatusRebuild srcdir rebuild)
 
           -- No changes, the package is up to date. Use the saved build results.
-          Right (ipkgs, buildSuccess) ->
-            return (BuildStatusUpToDate ipkgs buildSuccess)
+          Right buildSuccess ->
+            return (BuildStatusUpToDate buildSuccess)
       where
         packageFileMonitor =
           newPackageFileMonitor distDirLayout (packageId pkg)
@@ -346,7 +350,7 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
-      , BuildStatusUpToDate ipkgs _buildSuccess <- [pkgBuildStatus]
+      , BuildStatusUpToDate (BuildOk _ _ ipkgs) <- [pkgBuildStatus]
       ]
   where
     replaceWithPrePreExisting =
@@ -374,9 +378,17 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
 --
 data PackageFileMonitor = PackageFileMonitor {
        pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage (),
-       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccess,
+       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccessMisc,
        pkgFileMonitorReg    :: FileMonitor () [InstalledPackageInfo]
      }
+
+-- | This is all the components of the 'BuildSuccess' other than the
+-- @['InstalledPackageInfo']@.
+--
+-- We have to split up the 'BuildSuccess' components since they get produced
+-- at different times (or rather, when different things change).
+--
+type BuildSuccessMisc = (DocsResult, TestsResult)
 
 newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
 newPackageFileMonitor DistDirLayout{distPackageCacheFile} pkgid =
@@ -433,9 +445,7 @@ checkPackageFileMonitorChanged :: PackageFileMonitor
                                -> ElaboratedConfiguredPackage
                                -> FilePath
                                -> ComponentDeps [BuildStatus]
-                               -> IO (Either BuildStatusRebuild
-                                            ([InstalledPackageInfo],
-                                             BuildSuccess))
+                               -> IO (Either BuildStatusRebuild BuildSuccess)
 checkPackageFileMonitorChanged PackageFileMonitor{..}
                                pkg srcdir depsBuildStatus = do
     --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
@@ -490,7 +500,9 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                   buildReason = BuildReasonEphemeralTargets
 
               (MonitorUnchanged buildSuccess _, MonitorUnchanged ipkgs _) ->
-                return (Right (ipkgs, buildSuccess))
+                  return (Right (BuildOk docsResult testsResult ipkgs))
+                where
+                  (docsResult, testsResult) = buildSuccess
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
     changedToMaybe (MonitorChanged     _) = Nothing
@@ -514,7 +526,7 @@ updatePackageBuildFileMonitor :: PackageFileMonitor
                               -> ElaboratedConfiguredPackage
                               -> BuildStatusRebuild
                               -> [FilePath]
-                              -> BuildSuccess
+                              -> BuildSuccessMisc
                               -> IO ()
 updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
                               srcdir timestamp pkg pkgBuildStatus
@@ -602,9 +614,7 @@ rebuildTargets verbosity
       -- For each package in the plan, in dependency order, but in parallel...
       InstallPlan.execute jobControl keepGoing (DependentFailed . packageId)
                           installPlan $ \pkg ->
-        fmap (\x -> case x of BuildFailure f   -> Left f
-                              BuildSuccess _ s -> Right s) $
-        handle (return . BuildFailure) $ --TODO: review exception handling
+        handle (return . Left) $ fmap Right $ --TODO: review exception handling
 
         let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus in
@@ -636,12 +646,12 @@ rebuildTargets verbosity
 rebuildTarget :: Verbosity
               -> DistDirLayout
               -> BuildTimeSettings
-              -> AsyncDownloadMap
+              -> AsyncFetchMap
               -> Lock -> Lock
               -> ElaboratedSharedConfig
               -> ElaboratedReadyPackage
               -> BuildStatus
-              -> IO BuildResult
+              -> IO BuildSuccess
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
               buildSettings downloadMap
@@ -663,7 +673,8 @@ rebuildTarget verbosity
     unexpectedState = error "rebuildTarget: unexpected package status"
 
     downloadPhase = do
-        downsrcloc <- waitAsyncPackageDownload verbosity downloadMap pkg
+        downsrcloc <- annotateFailure DownloadFailed $
+                        waitAsyncPackageDownload verbosity downloadMap pkg
         case downsrcloc of
           DownloadedTarball tarball -> unpackTarballPhase tarball
           --TODO: [nice to have] git/darcs repos etc
@@ -716,20 +727,6 @@ rebuildTarget verbosity
 --TODO: [nice to have] do we need to use a with-style for the temp files for downloading http
 -- packages, or are we going to cache them persistently?
 
-type AsyncDownloadMap = Map (PackageLocation (Maybe FilePath))
-                            (MVar DownloadedSourceLocation)
-
-data DownloadedSourceLocation = DownloadedTarball FilePath
-                              --TODO: [nice to have] git/darcs repos etc
-
-downloadedSourceLocation :: PackageLocation FilePath
-                         -> Maybe DownloadedSourceLocation
-downloadedSourceLocation pkgloc =
-    case pkgloc of
-      RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
-      RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
-      _                              -> Nothing
-
 -- | Given the current 'InstallPlan' and 'BuildStatusMap', select all the
 -- packages we have to download and fork off an async action to download them.
 -- We download them in dependency order so that the one's we'll need
@@ -740,28 +737,16 @@ downloadedSourceLocation pkgloc =
 -- lookup the location and use 'waitAsyncPackageDownload' to get the result.
 --
 asyncDownloadPackages :: Verbosity
-                      -> ((RepoContext -> IO ()) -> IO ())
+                      -> ((RepoContext -> IO a) -> IO a)
                       -> ElaboratedInstallPlan
                       -> BuildStatusMap
-                      -> (AsyncDownloadMap -> IO a)
+                      -> (AsyncFetchMap -> IO a)
                       -> IO a
 asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
   | null pkgsToDownload = body Map.empty
-  | otherwise = do
-    --TODO: [research required] use parallel downloads? if so, use the fetchLimit
-
-    asyncDownloadVars <- mapM (\loc -> (,) loc <$> newEmptyMVar) pkgsToDownload
-
-    let downloadAction :: IO ()
-        downloadAction =
-          withRepoCtx $ \repoctx ->
-            forM_ asyncDownloadVars $ \(pkgloc, var) -> do
-              Just scrloc <- downloadedSourceLocation <$>
-                             fetchPackage verbosity repoctx pkgloc
-              putMVar var scrloc
-
-    withAsync downloadAction $ \_ ->
-      body (Map.fromList asyncDownloadVars)
+  | otherwise           = withRepoCtx $ \repoctx ->
+                            asyncFetchPackages verbosity repoctx
+                                               pkgsToDownload body
   where
     pkgsToDownload = 
       [ pkgSourceLocation pkg
@@ -774,21 +759,29 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
 
 
 -- | Check if a package needs downloading, and if so expect to find a download
--- in progress in the given 'AsyncDownloadMap' and wait on it to finish.
+-- in progress in the given 'AsyncFetchMap' and wait on it to finish.
 --
 waitAsyncPackageDownload :: Verbosity
-                         -> AsyncDownloadMap
+                         -> AsyncFetchMap
                          -> ElaboratedConfiguredPackage
                          -> IO DownloadedSourceLocation
-waitAsyncPackageDownload verbosity downloadMap pkg =
-    case Map.lookup (pkgSourceLocation pkg) downloadMap of
-      Just hnd -> do
-        debug verbosity $
-          "Waiting for download of " ++ display (packageId pkg) ++ " to finish"
-        --TODO: [required eventually] do the exception handling on download stuff
-        takeMVar hnd
-      Nothing ->
-        fail "waitAsyncPackageDownload: package not being download"
+waitAsyncPackageDownload verbosity downloadMap pkg = do
+    pkgloc <- waitAsyncFetchPackage verbosity downloadMap
+                                    (pkgSourceLocation pkg)
+    case downloadedSourceLocation pkgloc of
+      Just loc -> return loc
+      Nothing  -> fail "waitAsyncPackageDownload: unexpected source location"
+
+data DownloadedSourceLocation = DownloadedTarball FilePath
+                              --TODO: [nice to have] git/darcs repos etc
+
+downloadedSourceLocation :: PackageLocation FilePath
+                         -> Maybe DownloadedSourceLocation
+downloadedSourceLocation pkgloc =
+    case pkgloc of
+      RemoteTarballPackage _ tarball -> Just (DownloadedTarball tarball)
+      RepoTarballPackage _ _ tarball -> Just (DownloadedTarball tarball)
+      _                              -> Nothing
 
 
 
@@ -900,7 +893,7 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
                                -> FilePath -> FilePath
-                               -> IO BuildResult
+                               -> IO BuildSuccess
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
                                BuildTimeSettings {
@@ -942,7 +935,7 @@ buildAndInstallUnpackedPackage verbosity
       setup buildCommand buildFlags
 
     -- Install phase
-    mipkg <-
+    ipkgs <-
       annotateFailure InstallFailed $ do
       --TODO: [required eventually] need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
@@ -997,7 +990,7 @@ buildAndInstallUnpackedPackage verbosity
     let docsResult  = DocsNotTried
         testsResult = TestsNotTried
 
-    return (BuildSuccess mipkg (BuildOk docsResult testsResult))
+    return (BuildOk docsResult testsResult ipkgs)
 
   where
     pkgid  = packageId rpkg
@@ -1063,7 +1056,7 @@ buildInplaceUnpackedPackage :: Verbosity
                             -> ElaboratedReadyPackage
                             -> BuildStatusRebuild
                             -> FilePath -> FilePath
-                            -> IO BuildResult
+                            -> IO BuildSuccess
 buildInplaceUnpackedPackage verbosity
                             distDirLayout@DistDirLayout {
                               distTempDirectory,
@@ -1097,8 +1090,8 @@ buildInplaceUnpackedPackage verbosity
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
 
-            buildSuccess :: BuildSuccess
-            buildSuccess = BuildOk docsResult testsResult
+            buildSuccess :: BuildSuccessMisc
+            buildSuccess = (docsResult, testsResult)
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
@@ -1197,7 +1190,7 @@ buildInplaceUnpackedPackage verbosity
           annotateFailure BuildFailed $
           setup haddockCommand haddockFlags []
 
-        return (BuildSuccess ipkgs buildSuccess)
+        return (BuildOk docsResult testsResult ipkgs)
 
   where
     pkgid  = packageId rpkg
@@ -1270,20 +1263,23 @@ buildInplaceUnpackedPackage verbosity
 
 
 -- helper
-annotateFailure :: (String -> BuildFailure) -> IO a -> IO a
+annotateFailure :: (SomeException -> BuildFailure) -> IO a -> IO a
 annotateFailure annotate action =
   action `catches`
-    [ Handler $ \ioe  -> handler (ioe  :: IOException)
-    , Handler $ \exit -> handler (exit :: ExitCode)
+    -- It's not just IOException and ExitCode we have to deal with, there's
+    -- lots, including exceptions from the hackage-security and tar packages.
+    -- So we take the strategy of catching everything except async exceptions.
+    [
+#if MIN_VERSION_base(4,7,0)
+      Handler $ \async -> throwIO (async :: SomeAsyncException)
+#else
+      Handler $ \async -> throwIO (async :: AsyncException)
+#endif
+    , Handler $ \other -> handler (other :: SomeException)
     ]
   where
     handler :: Exception e => e -> IO a
-    handler = throwIO . annotate
-#if MIN_VERSION_base(4,8,0)
-            . displayException
-#else
-            . show
-#endif
+    handler = throwIO . annotate . toException
 
 
 withTempInstalledPackageInfoFiles :: Verbosity -> FilePath
