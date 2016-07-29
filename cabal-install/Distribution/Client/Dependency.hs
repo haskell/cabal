@@ -338,9 +338,7 @@ dontUpgradeNonUpgradeablePackages params =
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
       , isInstalled pkgname ]
-    -- TODO: the top down resolver chokes on the base constraints
-    -- below when there are no targets and thus no dep on base.
-    -- Need to refactor constraints separate from needing packages.
+
     isInstalled = not . null
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
