@@ -415,7 +415,7 @@ data KnownExtension =
   -- | Allow default instantiation of polymorphic types in more
   -- situations.
   --
-  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/interactive-evaluation.html#extended-default-rules>
+  -- * <http://downloads.haskell.org/~ghc/latest/docs/html/users_guide/ghci.html#type-defaulting-in-ghci>
   | ExtendedDefaultRules
 
   -- | Enable unboxed tuples.
