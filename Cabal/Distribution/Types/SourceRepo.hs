@@ -6,6 +6,9 @@ module Distribution.Types.SourceRepo (
     RepoKind(..),
     RepoType(..),
     knownRepoTypes,
+    emptySourceRepo,
+    classifyRepoType,
+    classifyRepoKind,
   ) where
 
 import Prelude ()
@@ -77,6 +80,17 @@ data SourceRepo = SourceRepo {
 }
   deriving (Eq, Generic, Read, Show, Typeable, Data)
 
+emptySourceRepo :: RepoKind -> SourceRepo
+emptySourceRepo kind = SourceRepo
+    { repoKind     = kind
+    , repoType     = Nothing
+    , repoLocation = Nothing
+    , repoModule   = Nothing
+    , repoBranch   = Nothing
+    , repoTag      = Nothing
+    , repoSubdir   = Nothing
+    }
+
 instance Binary SourceRepo
 
 -- | What this repo info is for, what it represents.
@@ -123,12 +137,13 @@ instance Text RepoKind where
   disp RepoThis                = Disp.text "this"
   disp (RepoKindUnknown other) = Disp.text other
 
-  parse = do
-    name <- ident
-    return $ case lowercase name of
-      "head" -> RepoHead
-      "this" -> RepoThis
-      _      -> RepoKindUnknown name
+  parse = fmap classifyRepoKind ident
+
+classifyRepoKind :: String -> RepoKind
+classifyRepoKind name = case lowercase name of
+  "head" -> RepoHead
+  "this" -> RepoThis
+  _      -> RepoKindUnknown name
 
 instance Text RepoType where
   disp (OtherRepoType other) = Disp.text other

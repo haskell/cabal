@@ -95,6 +95,7 @@ module Distribution.PackageDescription (
         RepoKind(..),
         RepoType(..),
         knownRepoTypes,
+        emptySourceRepo,
 
         -- * Custom setup build information
         SetupBuildInfo(..),
