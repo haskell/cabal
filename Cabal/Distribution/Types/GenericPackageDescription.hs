@@ -7,6 +7,7 @@
 module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
     Flag(..),
+    emptyFlag,
     FlagName(..),
     FlagAssignment,
     ConfVar(..),
@@ -63,6 +64,15 @@ data Flag = MkFlag
     deriving (Show, Eq, Typeable, Data, Generic)
 
 instance Binary Flag
+
+-- | A 'Flag' initialized with default parameters.
+emptyFlag :: FlagName -> Flag
+emptyFlag name = MkFlag
+    { flagName        = name
+    , flagDescription = ""
+    , flagDefault     = True
+    , flagManual      = False
+    }
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 newtype FlagName = FlagName String

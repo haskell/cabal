@@ -980,7 +980,7 @@ parsePackageDescription file = do
             flag <- lift $ parseFields
                     flagFieldDescrs
                     warnUnrec
-                    (MkFlag (FlagName (lowercase sec_label)) "" True False)
+                    (emptyFlag (FlagName (lowercase sec_label)))
                     sec_fields
             skipField
             (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
