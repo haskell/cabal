@@ -39,6 +39,7 @@ module Distribution.Client.InstallPlan (
   -- ** Traversal helpers
   -- $traversal
   Processing,
+  -- NB: these functions are only used by the legacy install-path
   ready,
   completed,
   failed,
