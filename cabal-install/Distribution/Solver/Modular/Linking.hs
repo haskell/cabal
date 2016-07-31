@@ -43,11 +43,11 @@ import Distribution.Solver.Types.ComponentDeps (Component)
 type RelatedGoals = Map (PN, I) [PackagePath]
 type Linker       = Reader RelatedGoals
 
--- | Introduce link nodes into tree tree
+-- | Introduce link nodes into the tree
 --
 -- Linking is a traversal of the solver tree that adapts package choice nodes
 -- and adds the option to link wherever appropriate: Package goals are called
--- "related" if they are for the same version of the same package (but have
+-- "related" if they are for the same instance of the same package (but have
 -- different prefixes). A link option is available in a package choice node
 -- whenever we can choose an instance that has already been chosen for a related
 -- goal at a higher position in the tree.
