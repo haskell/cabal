@@ -32,7 +32,7 @@ module Distribution.Client.Install (
 import Data.Foldable
          ( traverse_ )
 import Data.List
-         ( isPrefixOf, nub, sort, (\\) )
+         ( isPrefixOf, nub, sort, (\\), find )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Data.Maybe
@@ -1422,9 +1422,6 @@ installUnpackedPackage verbosity installLock numJobs
 
             -- Capture installed package configuration file, so that
             -- it can be incorporated into the final InstallPlan
-            -- TODO: This is duplicated with
-            -- Distribution/Client/ProjectBuilding.hs, search for
-            -- the Note [Updating installedUnitId].
             ipkgs <- genPkgConfs mLogPath
             let ipkgs' = case ipkgs of
                             [ipkg] -> [ipkg { Installed.installedUnitId = ipid }]
@@ -1439,7 +1436,7 @@ installUnpackedPackage verbosity installLock numJobs
                                       NoMultiInstance
                                       packageDBs ipkg'
 
-            return (Right (BuildResult docsResult testsResult ipkgs'))
+            return (Right (BuildResult docsResult testsResult (find ((==uid).installedUnitId) ipkgs')))
 
   where
     pkgid            = packageId pkg
