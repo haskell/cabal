@@ -63,6 +63,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     -- repl targets (as opposed to say repl or haddock targets).
     selectBuildTargets =
       selectTargets
+        verbosity
         BuildDefaultComponents
         BuildSpecificComponent
 

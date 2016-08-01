@@ -5,17 +5,43 @@
 -- The layout of the .\/dist\/ directory where cabal keeps all of it's state
 -- and build artifacts.
 --
-module Distribution.Client.DistDirLayout where
+module Distribution.Client.DistDirLayout (
+    -- 'DistDirLayout'
+    DistDirLayout(..),
+    DistDirParams(..),
+    defaultDistDirLayout,
+
+    -- * 'CabalDirLayout'
+    CabalDirLayout(..),
+    defaultCabalDirLayout,
+) where
 
 import System.FilePath
 import Distribution.Package
-         ( PackageId )
+         ( PackageId, UnitId(..) )
 import Distribution.Compiler
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Text
+import Distribution.Types.ComponentName
+import Distribution.System
 import Distribution.Client.Types
          ( InstalledPackageId )
 
+-- | Information which can be used to construct the path to
+-- the build directory of a build.  This is LESS fine-grained
+-- than what goes into the hashed 'InstalledPackageId',
+-- and for good reason: we don't want this path to change if
+-- the user, say, adds a dependency to their project.
+data DistDirParams = DistDirParams {
+    distParamUnitId         :: UnitId,
+    distParamPackageId      :: PackageId,
+    distParamComponentName  :: Maybe ComponentName,
+    distParamCompilerId     :: CompilerId,
+    distParamPlatform       :: Platform
+    -- TODO (see #3343):
+    --  Flag assignments
+    --  Optimization
+    }
 
 
 -- | The layout of the project state directory. Traditionally this has been
@@ -31,11 +57,11 @@ data DistDirLayout = DistDirLayout {
        -- | The directory under dist where we keep the build artifacts for a
        -- package we're building from a local directory.
        --
-       -- This uses a 'PackageId' not just a 'PackageName' because technically
+       -- This uses a 'UnitId' not just a 'PackageName' because technically
        -- we can have multiple instances of the same package in a solution
        -- (e.g. setup deps).
        --
-       distBuildDirectory           :: PackageId -> FilePath,
+       distBuildDirectory           :: DistDirParams -> FilePath,
        distBuildRootDirectory       :: FilePath,
 
        -- | The directory under dist where we put the unpacked sources of
@@ -55,8 +81,8 @@ data DistDirLayout = DistDirLayout {
        -- | The location for package-specific cache files (e.g. state used in
        -- incremental rebuilds).
        --
-       distPackageCacheFile         :: PackageId -> String -> FilePath,
-       distPackageCacheDirectory    :: PackageId -> FilePath,
+       distPackageCacheFile         :: DistDirParams -> String -> FilePath,
+       distPackageCacheDirectory    :: DistDirParams -> FilePath,
 
        distTempDirectory            :: FilePath,
        distBinDirectory             :: FilePath,
@@ -88,7 +114,17 @@ defaultDistDirLayout projectRootDirectory =
     --TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory   = distDirectory </> "build"
-    distBuildDirectory pkgid = distBuildRootDirectory </> display pkgid
+    distBuildDirectory params =
+        distBuildRootDirectory </>
+        display (distParamPlatform params) </>
+        display (distParamCompilerId params) </>
+        display (distParamPackageId params) </>
+        (case fmap componentNameString (distParamComponentName params) of
+            Nothing         -> ""
+            Just Nothing    -> ""
+            Just (Just str) -> "c" </> str) </>
+        (case distParamUnitId params of -- For Backpack
+            SimpleUnitId _ -> "")
 
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
@@ -97,8 +133,8 @@ defaultDistDirLayout projectRootDirectory =
     distProjectCacheDirectory = distDirectory </> "cache"
     distProjectCacheFile name = distProjectCacheDirectory </> name
 
-    distPackageCacheDirectory pkgid = distBuildDirectory pkgid </> "cache"
-    distPackageCacheFile pkgid name = distPackageCacheDirectory pkgid </> name
+    distPackageCacheDirectory params = distBuildDirectory params </> "cache"
+    distPackageCacheFile params name = distPackageCacheDirectory params </> name
 
     distTempDirectory = distDirectory </> "tmp"
 

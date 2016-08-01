@@ -14,6 +14,7 @@
 module Distribution.Solver.Types.ComponentDeps (
     -- * Fine-grained package dependencies
     Component(..)
+  , componentNameToComponent
   , ComponentDep
   , ComponentDeps -- opaque
     -- ** Constructing ComponentDeps
@@ -40,6 +41,8 @@ import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup (Semigroup((<>)))
 import GHC.Generics
 import Data.Foldable (fold)
+
+import qualified Distribution.Types.ComponentName as CN
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable(foldMap))
@@ -89,6 +92,13 @@ instance Traversable ComponentDeps where
   traverse f = fmap ComponentDeps . traverse f . unComponentDeps
 
 instance Binary a => Binary (ComponentDeps a)
+
+componentNameToComponent :: CN.ComponentName -> Component
+componentNameToComponent (CN.CLibName)      = ComponentLib
+componentNameToComponent (CN.CSubLibName s) = ComponentSubLib s
+componentNameToComponent (CN.CExeName s)    = ComponentExe s
+componentNameToComponent (CN.CTestName s)   = ComponentTest s
+componentNameToComponent (CN.CBenchName s)  = ComponentBench s
 
 {-------------------------------------------------------------------------------
   Construction

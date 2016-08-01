@@ -67,6 +67,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
     -- repl targets (as opposed to say build or haddock targets).
     selectReplTargets =
       selectTargets
+        verbosity
         ReplDefaultComponent
         ReplSpecificComponent
 

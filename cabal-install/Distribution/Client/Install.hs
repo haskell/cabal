@@ -116,7 +116,6 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
-import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.PkgConfigDb
                    ( PkgConfigDb, readPkgConfigDb )
 import           Distribution.Solver.Types.SourcePackage as SourcePackage
@@ -614,12 +613,12 @@ packageStatus installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' = filter changed $
+    changes pkg (ReadyPackage pkg') = filter changed $
       mergeBy (comparing packageName)
         -- deps of installed pkg
         (resolveInstalledIds $ Installed.depends pkg)
         -- deps of configured pkg
-        (resolveInstalledIds $ CD.nonSetupDeps (depends pkg'))
+        (resolveInstalledIds $ map confInstId (CD.nonSetupDeps (confPkgDeps pkg')))
 
     -- convert to source pkg ids via index
     resolveInstalledIds :: [UnitId] -> [PackageIdentifier]

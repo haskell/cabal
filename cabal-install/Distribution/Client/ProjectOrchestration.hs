@@ -58,6 +58,7 @@ module Distribution.Client.ProjectOrchestration (
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
+import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
@@ -79,7 +80,7 @@ import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import           Distribution.Simple.Setup (HaddockFlags)
 
-import           Distribution.Simple.Utils (die, notice)
+import           Distribution.Simple.Utils (die, notice, debug)
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -183,7 +184,7 @@ runProjectPreBuildPhase
     -- This also gives us more accurate reasons for the --dry-run output.
     --
     (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun distDirLayout
+      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
                            elaboratedPlan'
 
     return ProjectBuildContext {
@@ -243,14 +244,34 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
 -- | Adjust an 'ElaboratedInstallPlan' by selecting just those parts of it
 -- required to build the given user targets.
 --
--- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable.
+-- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable,
+-- so that we can change the meaning of @pkgname@ to target a build or
+-- repl depending on which command is calling it.
 --
-selectTargets :: PackageTarget
+-- Conceptually, every target identifies one or more roots in the
+-- 'ElaboratedInstallPlan', which we then use to determine the closure
+-- of what packages need to be built, dropping everything from
+-- 'ElaboratedInstallPlan' that is unnecessary.
+--
+-- There is a complication, however: In an ideal world, every
+-- possible target would be a node in the graph.  However, it is
+-- currently not possible (and possibly not even desirable) to invoke a
+-- Setup script to build *just* one file.  Similarly, it is not possible
+-- to invoke a pre Cabal-1.25 custom Setup script and build only one
+-- component.  In these cases, we want to build the entire package, BUT
+-- only actually building some of the files/components.  This is what
+-- 'pkgBuildTargets', 'pkgReplTarget' and 'pkgBuildHaddock' control.
+-- Arguably, these should an out-of-band mechanism rather than stored
+-- in 'ElaboratedInstallPlan', but it's what we have.  We have
+-- to fiddle around with the ElaboratedConfiguredPackage roots to say
+-- what it will build.
+--
+selectTargets :: Verbosity -> PackageTarget
               -> (ComponentTarget -> PackageTarget)
               -> [UserBuildTarget]
               -> ElaboratedInstallPlan
               -> IO ElaboratedInstallPlan
-selectTargets targetDefaultComponents targetSpecificComponent
+selectTargets verbosity targetDefaultComponents targetSpecificComponent
               userBuildTargets installPlan = do
 
     -- Match the user targets against the available targets. If no targets are
@@ -277,6 +298,7 @@ selectTargets targetDefaultComponents targetSpecificComponent
                        targetSpecificComponent
                        installPlan
                        buildTargets
+    debug verbosity ("buildTargets': " ++ show buildTargets')
 
     -- Finally, prune the install plan to cover just those target packages
     -- and their deps.
@@ -285,7 +307,8 @@ selectTargets targetDefaultComponents targetSpecificComponent
   where
     localPackages =
       [ (pkgDescription pkg, pkgSourceLocation pkg)
-      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+      | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
+      , let pkg = getElaboratedPackage pkg_or_comp ]
       --TODO: [code cleanup] is there a better way to identify local packages?
 
 
@@ -301,7 +324,8 @@ resolveAndCheckTargets targetDefaultComponents
                        installPlan targets =
     case partitionEithers (map checkTarget targets) of
       ([], targets') -> Right $ Map.fromListWith (++)
-                                  [ (ipkgid, [t]) | (ipkgid, t) <- targets' ]
+                                  [ (ipkgid, [t]) | (ipkgids, t) <- targets'
+                                                  , ipkgid <- ipkgids ]
       (problems, _)  -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
@@ -342,16 +366,20 @@ resolveAndCheckTargets targetDefaultComponents
       = Left (BuildTargetNotInProject (buildTargetPackage t))
 
 
-    projAllPkgs, projLocalPkgs :: Map PackageName InstalledPackageId
+    -- NB: It's a list of 'InstalledPackageId', because each component
+    -- in the install plan from a single package needs to be associated with
+    -- the same 'PackageName'.
+    projAllPkgs, projLocalPkgs :: Map PackageName [InstalledPackageId]
     projAllPkgs =
-      Map.fromList
-        [ (packageName pkg, installedPackageId pkg)
+      Map.fromListWith (++)
+        [ (packageName pkg, [installedPackageId pkg])
         | pkg <- InstallPlan.toList installPlan ]
 
     projLocalPkgs =
-      Map.fromList
-        [ (packageName pkg, installedPackageId pkg)
-        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
+      Map.fromListWith (++)
+        [ (packageName pkg, [installedPackageId pkg_or_comp])
+        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
+        , let pkg = getElaboratedPackage pkg_or_comp
         , case pkgSourceLocation pkg of
             LocalUnpackedPackage _ -> True; _ -> False
           --TODO: [code cleanup] is there a better way to identify local packages?
@@ -418,18 +446,25 @@ printPlan verbosity
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
 
-    showPkg pkg = display (packageId pkg)
+    showPkg (ReadyPackage (ElabPackage pkg)) = display (packageId pkg)
+    showPkg (ReadyPackage (ElabComponent comp)) =
+        display (packageId (elabComponentPackage comp)) ++
+        " (" ++ maybe "custom" display (elabComponentName comp) ++ ")"
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage pkg) =
-      display (packageId pkg) ++
-      showTargets pkg ++
+    showPkgAndReason (ReadyPackage pkg_or_comp) =
+      display (installedUnitId pkg_or_comp) ++
+      (case pkg_or_comp of
+          ElabPackage _ -> showTargets pkg ++ showStanzas pkg
+          ElabComponent comp ->
+            " (" ++ maybe "custom" display (elabComponentName comp) ++ ")") ++
       showFlagAssignment (nonDefaultFlags pkg) ++
-      showStanzas pkg ++
-      let buildStatus = pkgsBuildStatus Map.! installedPackageId pkg in
+      let buildStatus = pkgsBuildStatus Map.! installedPackageId pkg_or_comp in
       " (" ++ showBuildStatus buildStatus ++ ")"
+     where
+      pkg = getElaboratedPackage pkg_or_comp
 
-    nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
+    nonDefaultFlags :: ElaboratedPackage -> FlagAssignment
     nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
 
     showStanzas pkg = concat

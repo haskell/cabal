@@ -9,8 +9,6 @@ module Distribution.Client.ProjectPlanOutput (
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
-                   ( ElaboratedInstallPlan, ElaboratedConfiguredPackage(..)
-                   , ElaboratedSharedConfig(..) )
 import           Distribution.Client.DistDirLayout
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -66,27 +64,46 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
       J.object
         [ "type"       J..= J.String "pre-existing"
         , "id"         J..= jdisplay (installedUnitId ipi)
-        , "components" J..= J.object
-          [ "lib" J..= J.object [ "depends" J..= map jdisplay (installedDepends ipi) ] ]
+        , "depends" J..= map jdisplay (installedDepends ipi)
         ]
 
-    -- ecp :: ElaboratedConfiguredPackage
-    toJ (InstallPlan.Configured ecp) =
+    -- pkg :: ElaboratedPackage
+    toJ (InstallPlan.Configured (ElabPackage pkg)) =
       J.object
         [ "type"       J..= J.String "configured"
-        , "id"         J..= (jdisplay . installedUnitId) ecp
+        , "id"         J..= (jdisplay . installedUnitId) pkg
         , "components" J..= components
+        , "depends"    J..= map (jdisplay . confInstId) flat_deps
         , "flags"      J..= J.object [ fn J..= v
-                                     | (PD.FlagName fn,v) <- pkgFlagAssignment ecp ]
+                                     | (PD.FlagName fn,v) <-
+                                            pkgFlagAssignment pkg ]
         ]
       where
+        flat_deps = ordNub (ComponentDeps.flatDeps (pkgDependencies pkg))
         components = J.object
           [ comp2str c J..= J.object
             [ "depends" J..= map (jdisplay . installedUnitId) v ]
-          | (c,v) <- ComponentDeps.toList (pkgDependencies ecp) ]
+          -- NB: does NOT contain order-only dependencies
+          | (c,v) <- ComponentDeps.toList (pkgDependencies pkg) ]
+
+    -- ecp :: ElaboratedConfiguredPackage
+    toJ (InstallPlan.Configured (ElabComponent comp)) =
+      J.object
+        [ "type"       J..= J.String "configured-component"
+        , "id"         J..= (jdisplay . installedUnitId) comp
+        , "name"       J..= J.String (comp2str (elabComponent comp))
+        , "flags"      J..= J.object [ fn J..= v
+                                     | (PD.FlagName fn,v) <-
+                                            pkgFlagAssignment pkg ]
+        -- NB: does NOT contain order-only dependencies
+        , "depends"    J..= map (jdisplay . installedUnitId) (elabComponentDependencies comp)
+        ]
+      where
+        pkg = elabComponentPackage comp
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
+    comp2str :: ComponentDeps.Component -> String
     comp2str c = case c of
         ComponentDeps.ComponentLib     -> "lib"
         ComponentDeps.ComponentSubLib s -> "lib:"   <> s

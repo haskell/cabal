@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -21,7 +22,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), HasUnitId(..) )
+         , UnitId(..), HasUnitId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -31,11 +32,13 @@ import Distribution.Version
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
+import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ComponentDeps
          ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Compat.Graph (IsNode(..))
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
@@ -98,7 +101,22 @@ data ConfiguredPackage loc = ConfiguredPackage {
     }
   deriving (Eq, Show, Generic)
 
+-- | 'HasConfiguredId' indicates data types which have a 'ConfiguredId'.
+-- This type class is mostly used to conveniently finesse between
+-- 'ElaboratedPackage' and 'ElaboratedComponent'.
+--
+instance HasConfiguredId (ConfiguredPackage loc) where
+    configuredId pkg = ConfiguredId (packageId pkg) (confPkgId pkg)
+
+instance IsNode (ConfiguredPackage loc) where
+    type Key (ConfiguredPackage loc) = UnitId
+    nodeKey       = confPkgId
+    -- TODO: if we update ConfiguredPackage to support order-only
+    -- dependencies, need to include those here
+    nodeNeighbors = map confInstId . CD.flatDeps . confPkgDeps
+
 instance (Binary loc) => Binary (ConfiguredPackage loc)
+
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
@@ -115,7 +133,7 @@ data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
   , confInstId :: UnitId
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Binary ConfiguredId
 
@@ -131,16 +149,28 @@ instance HasUnitId ConfiguredId where
 instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
-instance PackageFixedDeps (ConfiguredPackage loc) where
-  depends cpkg = fmap (map installedUnitId) (confPkgDeps cpkg)
+instance PackageInstalled (ConfiguredPackage loc) where
+  installedDepends = CD.flatDeps . fmap (map installedUnitId) . confPkgDeps
 
 instance HasUnitId (ConfiguredPackage loc) where
   installedUnitId = confPkgId
 
+class HasConfiguredId a where
+    configuredId :: a -> ConfiguredId
+
+instance HasConfiguredId InstalledPackageInfo where
+    configuredId ipkg = ConfiguredId (packageId ipkg) (installedUnitId ipkg)
+
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
 newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPackage'.
-  deriving (Eq, Show, Generic, Package, PackageFixedDeps, HasUnitId, Binary)
+  deriving (Eq, Show, Generic, Package, PackageFixedDeps, HasUnitId, PackageInstalled, Binary)
+
+-- Can't newtype derive this
+instance IsNode srcpkg => IsNode (GenericReadyPackage srcpkg) where
+    type Key (GenericReadyPackage srcpkg) = Key srcpkg
+    nodeKey (ReadyPackage spkg) = nodeKey spkg
+    nodeNeighbors (ReadyPackage spkg) = nodeNeighbors spkg
 
 type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
@@ -287,6 +317,10 @@ data BuildFailure = PlanningFailed
 
 instance Exception BuildFailure
 
+-- Note that the @Maybe InstalledPackageInfo@ is a slight hack: we only
+-- the public library's 'InstalledPackageInfo' is stored here, even if
+-- there were 'InstalledPackageInfo' from internal libraries.  This
+-- 'InstalledPackageInfo' is not used anyway, so it makes no difference.
 data BuildResult = BuildResult DocsResult TestsResult
                                (Maybe InstalledPackageInfo)
   deriving (Show, Generic)

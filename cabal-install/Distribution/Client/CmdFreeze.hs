@@ -7,13 +7,11 @@ module Distribution.Client.CmdFreeze (
   ) where
 
 import Distribution.Client.ProjectPlanning
-         ( ElaboratedInstallPlan, rebuildInstallPlan )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
          , findProjectRoot )
 import Distribution.Client.ProjectPlanning.Types
-         ( ElaboratedConfiguredPackage(..) )
 import Distribution.Client.Targets
          ( UserConstraint(..) )
 import Distribution.Solver.Types.ConstraintSource
@@ -149,8 +147,9 @@ projectFreezeConstraints plan =
     flagAssignments =
       Map.fromList
         [ (pkgname, flags)
-        | InstallPlan.Configured pkg <- InstallPlan.toList plan
-        , let flags   = pkgFlagAssignment pkg
+        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList plan
+        , let pkg     = getElaboratedPackage pkg_or_comp
+              flags   = pkgFlagAssignment pkg
               pkgname = packageName pkg
         , not (null flags) ]
 
@@ -158,7 +157,8 @@ projectFreezeConstraints plan =
     localPackages =
       Map.fromList
         [ (packageName pkg, ())
-        | InstallPlan.Configured pkg <- InstallPlan.toList plan
+        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList plan
+        , let pkg = getElaboratedPackage pkg_or_comp
         , pkgLocalToProject pkg
         ]
 

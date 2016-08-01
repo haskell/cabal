@@ -1,10 +1,14 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE NoMonoLocalBinds #-}
+{-# LANGUAGE ConstraintKinds #-}
 module UnitTests.Distribution.Client.InstallPlan (tests) where
 
 import           Distribution.Package
 import           Distribution.Version
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import           Distribution.Client.InstallPlan (GenericInstallPlan)
+import           Distribution.Client.InstallPlan (GenericInstallPlan, IsUnit)
 import qualified Distribution.Compat.Graph as Graph
+import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.ComponentDeps as CD
@@ -146,6 +150,12 @@ instance Show TestInstallPlan where
 data TestPkg = TestPkg PackageId UnitId [UnitId]
   deriving (Eq, Show)
 
+instance IsNode TestPkg where
+  type Key TestPkg = UnitId
+  nodeKey (TestPkg _ ipkgid _) = ipkgid
+  nodeNeighbors (TestPkg _ _ deps) = deps
+
+
 instance Package TestPkg where
   packageId (TestPkg pkgid _ _) = pkgid
 
@@ -154,6 +164,9 @@ instance HasUnitId TestPkg where
 
 instance PackageFixedDeps TestPkg where
   depends (TestPkg _ _ deps) = CD.singleton CD.ComponentLib deps
+
+instance PackageInstalled TestPkg where
+  installedDepends (TestPkg _ _ deps) = deps
 
 instance Arbitrary TestInstallPlan where
   arbitrary = arbitraryTestInstallPlan
@@ -191,8 +204,8 @@ arbitraryTestInstallPlan = do
 -- It takes generators for installed and source packages and the chance that
 -- each package is installed (for those packages with no prerequisites).
 --
-arbitraryInstallPlan :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
-                         HasUnitId srcpkg, PackageFixedDeps srcpkg)
+arbitraryInstallPlan :: (IsUnit ipkg,
+                         IsUnit srcpkg)
                      => (Vertex -> [Vertex] -> Gen ipkg)
                      -> (Vertex -> [Vertex] -> Gen srcpkg)
                      -> Float
@@ -222,9 +235,7 @@ arbitraryInstallPlan mkIPkg mkSrcPkg ipkgProportion graph = do
                  ]
     let index = Graph.fromList (map InstallPlan.PreExisting ipkgs
                              ++ map InstallPlan.Configured  srcpkgs)
-    case InstallPlan.new (IndependentGoals False) index of
-      Right plan -> return plan
-      Left  _    -> error "arbitraryInstallPlan: generated invalid plan"
+    return $ InstallPlan.new (IndependentGoals False) index
 
 
 -- | Generate a random directed acyclic graph, based on the algorithm presented

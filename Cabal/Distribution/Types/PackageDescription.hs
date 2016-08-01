@@ -43,6 +43,7 @@ module Distribution.Types.PackageDescription (
     updatePackageDescription,
     pkgComponents,
     pkgBuildableComponents,
+    enabledComponents,
     lookupComponent,
     getComponent,
   ) where
@@ -57,6 +58,7 @@ import Distribution.Types.Benchmark
 
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
+import Distribution.Types.ComponentEnabledSpec
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
@@ -345,6 +347,13 @@ pkgComponents pkg =
 --
 pkgBuildableComponents :: PackageDescription -> [Component]
 pkgBuildableComponents = filter componentBuildable . pkgComponents
+
+-- | A list of all components in the package that are enabled.
+--
+-- @since 2.0.0.0
+--
+enabledComponents :: PackageDescription -> ComponentEnabledSpec -> [Component]
+enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildableComponents pkg
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg CLibName = fmap CLib (library pkg)

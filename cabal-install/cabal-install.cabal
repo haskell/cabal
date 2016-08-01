@@ -88,6 +88,11 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T3460/sub-package-B/B.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/Setup.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/sub-package-B.cabal
+  tests/IntegrationTests/new-build/executable/Main.hs
+  tests/IntegrationTests/new-build/executable/Setup.hs
+  tests/IntegrationTests/new-build/executable/Test.hs
+  tests/IntegrationTests/new-build/executable/a.cabal
+  tests/IntegrationTests/new-build/executable/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs

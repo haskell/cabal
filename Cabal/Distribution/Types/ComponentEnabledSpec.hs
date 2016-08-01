@@ -54,7 +54,7 @@ data ComponentEnabledSpec
     = ComponentEnabledSpec { testsEnabled :: Bool,
                              benchmarksEnabled :: Bool }
     | OneComponentEnabledSpec ComponentName
-  deriving (Generic, Read, Show)
+  deriving (Generic, Read, Show, Eq)
 instance Binary ComponentEnabledSpec
 
 -- | The default set of enabled components.  Historically tests and

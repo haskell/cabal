@@ -237,12 +237,13 @@ planProject testdir cliConfig = do
     let targets =
           Map.fromList
             [ (installedUnitId pkg, [BuildDefaultComponents])
-            | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedPlan
+            | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList elaboratedPlan
+            , let pkg = getElaboratedPackage pkg_or_comp
             , pkgBuildStyle pkg == BuildInplaceOnly ]
         elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
 
     (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun distDirLayout
+      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
                            elaboratedPlan'
 
     let buildSettings = resolveBuildTimeSettings
@@ -350,30 +351,30 @@ expectPackagePreExisting plan buildOutcomes pkgid = do
       (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
 
 expectPackageConfigured :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
-                        -> IO ElaboratedConfiguredPackage
+                        -> IO ElaboratedPackage
 expectPackageConfigured plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
     case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Nothing)
-                       -> return pkg
+                       -> return (getElaboratedPackage pkg)
       (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
 
 expectPackageInstalled :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
-                       -> IO (ElaboratedConfiguredPackage, BuildResult)
+                       -> IO (ElaboratedPackage, BuildResult)
 expectPackageInstalled plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
     case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Just (Right result))
-                       -> return (pkg, result)
+                       -> return (getElaboratedPackage pkg, result)
       (_, buildResult) -> unexpectedBuildResult "Installed" planpkg buildResult
 
 expectPackageFailed :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
-                    -> IO (ElaboratedConfiguredPackage, BuildFailure)
+                    -> IO (ElaboratedPackage, BuildFailure)
 expectPackageFailed plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
     case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Just (Left failure))
-                       -> return (pkg, failure)
+                       -> return (getElaboratedPackage pkg, failure)
       (_, buildResult) -> unexpectedBuildResult "Failed" planpkg buildResult
 
 unexpectedBuildResult :: String -> ElaboratedPlanPackage
