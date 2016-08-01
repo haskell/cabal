@@ -32,16 +32,23 @@ foreign import WINAPI unsafe "windows.h GetShortPathNameW"
 
 -- | On Windows, retrieves the short path form of the specified path. On
 -- non-Windows, does nothing. See https://github.com/haskell/cabal/issues/3185.
+--
+-- From MS's GetShortPathName docs:
+--
+--      Passing NULL for [the second] parameter and zero for cchBuffer
+--      will always return the required buffer size for a
+--      specified lpszLongPath.
+--
 getShortPathName :: FilePath -> IO FilePath
 getShortPathName path =
-  Win32.withTString path $ \c_path ->
+  Win32.withTString path $ \c_path -> do
+    c_len <- Win32.failIfZero "GetShortPathName #1 failed!" $
+      c_GetShortPathName c_path Win32.nullPtr 0
+    let arr_len = fromIntegral c_len
     allocaArray arr_len $ \c_out -> do
-      void $ Win32.failIfZero "GetShortPathName failed!" $
+      void $ Win32.failIfZero "GetShortPathName #2 failed!" $
         c_GetShortPathName c_path c_out c_len
       Win32.peekTString c_out
-  where
-    arr_len = length path + 1
-    c_len   = fromIntegral arr_len
 
 #else
 
