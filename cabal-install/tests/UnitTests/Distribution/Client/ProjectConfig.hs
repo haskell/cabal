@@ -488,7 +488,7 @@ instance Arbitrary SourceRepo where
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary)
                            <*> (fmap getShortToken <$> arbitrary))
-                `suchThat` (/= emptySourceRepo)
+                `suchThat` (/= emptySourceRepo RepoThis)
 
     shrink (SourceRepo _ x1 x2 x3 x4 x5 x6) =
       [ repo
@@ -505,13 +505,8 @@ instance Arbitrary SourceRepo where
                               (fmap getShortToken x4')
                               (fmap getShortToken x5')
                               (fmap getShortToken x6')
-      , repo /= emptySourceRepo
+      , repo /= emptySourceRepo RepoThis
       ]
-
-emptySourceRepo :: SourceRepo
-emptySourceRepo = SourceRepo RepoThis Nothing Nothing Nothing
-                                      Nothing Nothing Nothing
-
 
 instance Arbitrary RepoType where
     arbitrary = elements knownRepoTypes

@@ -32,7 +32,12 @@ module Distribution.System (
 
   -- * Internal
   knownOSs,
-  knownArches
+  knownArches,
+
+  -- * Classification
+  ClassificationStrictness (..),
+  classifyOS,
+  classifyArch,
   ) where
 
 import Prelude ()

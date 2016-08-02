@@ -15,11 +15,13 @@
 module Language.Haskell.Extension (
         Language(..),
         knownLanguages,
+        classifyLanguage,
 
         Extension(..),
         KnownExtension(..),
         knownExtensions,
-        deprecatedExtensions
+        deprecatedExtensions,
+        classifyExtension,
   ) where
 
 import Prelude ()

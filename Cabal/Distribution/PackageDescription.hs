@@ -86,7 +86,7 @@ module Distribution.PackageDescription (
 
         -- * package configuration
         GenericPackageDescription(..),
-        Flag(..), FlagName(..), FlagAssignment,
+        Flag(..), emptyFlag, FlagName(..), FlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 
@@ -95,6 +95,7 @@ module Distribution.PackageDescription (
         RepoKind(..),
         RepoType(..),
         knownRepoTypes,
+        emptySourceRepo,
 
         -- * Custom setup build information
         SetupBuildInfo(..),

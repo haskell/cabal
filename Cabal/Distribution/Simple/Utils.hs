@@ -114,6 +114,8 @@ module Distribution.Simple.Utils (
 
         -- * Unicode
         fromUTF8,
+        fromUTF8BS,
+        fromUTF8LBS,
         toUTF8,
         readUTF8File,
         withUTF8FileContents,
@@ -169,6 +171,7 @@ import Distribution.Verbosity
 import qualified Paths_Cabal (version)
 #endif
 
+import Data.Word (Word8)
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
@@ -182,6 +185,8 @@ import Data.Ord
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
+
+import qualified Data.ByteString as SBS
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -1328,6 +1333,57 @@ fromUTF8 (c:cs)
 
     moreBytes _ _ cs' _
       = replacementChar : fromUTF8 cs'
+
+    replacementChar = '\xfffd'
+
+fromUTF8BS :: SBS.ByteString -> String
+fromUTF8BS = fromUTF8BSImpl . SBS.unpack
+
+fromUTF8LBS :: BS.ByteString -> String
+fromUTF8LBS = fromUTF8BSImpl . BS.unpack
+
+fromUTF8BSImpl :: [Word8] -> String
+fromUTF8BSImpl = go
+  where
+    go :: [Word8] -> String
+    go []       = []
+    go (c : cs)
+      | c <= 0x7F = chr (fromIntegral c) : go cs
+      | c <= 0xBF = replacementChar : go cs
+      | c <= 0xDF = twoBytes c cs
+      | c <= 0xEF = moreBytes 3 0x800     cs (fromIntegral $ c .&. 0xF)
+      | c <= 0xF7 = moreBytes 4 0x10000   cs (fromIntegral $ c .&. 0x7)
+      | c <= 0xFB = moreBytes 5 0x200000  cs (fromIntegral $ c .&. 0x3)
+      | c <= 0xFD = moreBytes 6 0x4000000 cs (fromIntegral $ c .&. 0x1)
+      | otherwise   = replacementChar : go cs
+
+    twoBytes :: Word8 -> [Word8] -> String
+    twoBytes c0 (c1:cs')
+      | c1 .&. 0xC0 == 0x80
+      = let d = ((c0 .&. 0x1F) `shiftL` 6)
+             .|. (c1 .&. 0x3F)
+         in if d >= 0x80
+               then  chr (fromIntegral d) : go cs'
+               else  replacementChar      : go cs'
+    twoBytes _ cs' = replacementChar      : go cs'
+
+    moreBytes :: Int -> Int -> [Word8] -> Int -> [Char]
+    moreBytes 1 overlong cs' acc
+      | overlong <= acc && acc <= 0x10FFFF
+     && (acc < 0xD800 || 0xDFFF < acc)
+     && (acc < 0xFFFE || 0xFFFF < acc)
+      = chr acc : go cs'
+
+      | otherwise
+      = replacementChar : go cs'
+
+    moreBytes byteCount overlong (cn:cs') acc
+      | cn .&. 0xC0 == 0x80
+      = moreBytes (byteCount-1) overlong cs'
+          ((acc `shiftL` 6) .|. fromIntegral cn .&. 0x3F)
+
+    moreBytes _ _ cs' _
+      = replacementChar : go cs'
 
     replacementChar = '\xfffd'
 

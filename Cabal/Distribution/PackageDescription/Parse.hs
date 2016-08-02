@@ -980,7 +980,7 @@ parsePackageDescription file = do
             flag <- lift $ parseFields
                     flagFieldDescrs
                     warnUnrec
-                    (MkFlag (FlagName (lowercase sec_label)) "" True False)
+                    (emptyFlag (FlagName (lowercase sec_label)))
                     sec_fields
             skipField
             (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
@@ -997,15 +997,7 @@ parsePackageDescription file = do
             repo <- lift $ parseFields
                     sourceRepoFieldDescrs
                     warnUnrec
-                    SourceRepo {
-                      repoKind     = kind,
-                      repoType     = Nothing,
-                      repoLocation = Nothing,
-                      repoModule   = Nothing,
-                      repoBranch   = Nothing,
-                      repoTag      = Nothing,
-                      repoSubdir   = Nothing
-                    }
+                    (emptySourceRepo kind)
                     sec_fields
             skipField
             (repos, flags, csetup, mlib, sub_libs, exes, tests, bms) <- getBody pkg
