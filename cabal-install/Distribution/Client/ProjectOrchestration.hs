@@ -476,7 +476,7 @@ printPlan verbosity
     showTargets pkg
       | null (pkgBuildTargets pkg) = ""
       | otherwise
-      = " (" ++ unwords [ showComponentTarget pkg t | t <- pkgBuildTargets pkg ]
+      = " (" ++ unwords [ showComponentTarget (packageId pkg) t | t <- pkgBuildTargets pkg ]
              ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place

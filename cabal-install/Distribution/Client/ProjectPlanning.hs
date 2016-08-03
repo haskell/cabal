@@ -2172,7 +2172,7 @@ setupHsConfigureArgs :: ElaboratedConfiguredPackage
                      -> [String]
 setupHsConfigureArgs (ElabPackage _pkg) = []
 setupHsConfigureArgs (ElabComponent comp) =
-    [showComponentTarget pkg (ComponentTarget cname WholeComponent)]
+    [showComponentTarget (packageId pkg) (ComponentTarget cname WholeComponent)]
   where
     pkg = elabComponentPackage comp
     cname = fromMaybe (error "setupHsConfigureArgs: trying to configure setup")
@@ -2196,16 +2196,16 @@ setupHsBuildFlags _ _ verbosity builddir =
 
 
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
-setupHsBuildArgs (ElabPackage pkg) = map (showComponentTarget pkg) (pkgBuildTargets pkg)
+setupHsBuildArgs (ElabPackage pkg) = map (showComponentTarget (packageId pkg)) (pkgBuildTargets pkg)
 setupHsBuildArgs (ElabComponent _comp) = []
 
 
-showComponentTarget :: ElaboratedPackage -> ComponentTarget -> String
-showComponentTarget pkg =
+showComponentTarget :: PackageId -> ComponentTarget -> String
+showComponentTarget pkgid =
     showBuildTarget . toBuildTarget
   where
     showBuildTarget t =
-      Cabal.showBuildTarget (qlBuildTarget t) (packageId pkg) t
+      Cabal.showBuildTarget (qlBuildTarget t) pkgid t
 
     qlBuildTarget Cabal.BuildTargetComponent{} = Cabal.QL2
     qlBuildTarget _                            = Cabal.QL3
@@ -2235,7 +2235,7 @@ setupHsReplFlags _ _ verbosity builddir =
 
 setupHsReplArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsReplArgs (ElabPackage pkg) =
-    maybe [] (\t -> [showComponentTarget pkg t]) (pkgReplTarget pkg)
+    maybe [] (\t -> [showComponentTarget (packageId pkg) t]) (pkgReplTarget pkg)
     --TODO: should be able to give multiple modules in one component
 setupHsReplArgs (ElabComponent _comp) =
     error "setupHsReplArgs: didn't implement me yet"
