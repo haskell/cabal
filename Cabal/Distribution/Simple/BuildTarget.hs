@@ -233,9 +233,20 @@ showUserBuildTarget = intercalate ":" . getComponents
     getComponents (UserBuildTargetDouble s1 s2)    = [s1,s2]
     getComponents (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
 
-showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
-showBuildTarget ql pkgid bt =
+-- | Unless you use 'QL1', this function is PARTIAL;
+-- use 'showBuildTarget' instead.
+showBuildTarget' :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget' ql pkgid bt =
     showUserBuildTarget (renderBuildTarget ql bt pkgid)
+
+-- | Unambiguously render a 'BuildTarget', so that it can
+-- be parsed in all situations.
+showBuildTarget :: PackageId -> BuildTarget -> String
+showBuildTarget pkgid t =
+    showBuildTarget' (qlBuildTarget t) pkgid t
+  where
+    qlBuildTarget BuildTargetComponent{} = QL2
+    qlBuildTarget _                      = QL3
 
 
 -- ------------------------------------------------------------

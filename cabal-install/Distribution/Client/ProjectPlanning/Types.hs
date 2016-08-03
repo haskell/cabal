@@ -32,6 +32,7 @@ module Distribution.Client.ProjectPlanning.Types (
     -- * Build targets
     PackageTarget(..),
     ComponentTarget(..),
+    showComponentTarget,
     SubComponentTarget(..),
 
     -- * Setup script
@@ -54,6 +55,7 @@ import           Distribution.System
 import qualified Distribution.PackageDescription as Cabal
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import           Distribution.Simple.Compiler
+import qualified Distribution.Simple.BuildTarget as Cabal
 import           Distribution.Simple.Program.Db
 import           Distribution.ModuleName (ModuleName)
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
@@ -460,6 +462,20 @@ data SubComponentTarget = WholeComponent
 instance Binary PackageTarget
 instance Binary ComponentTarget
 instance Binary SubComponentTarget
+
+-- | Unambiguously render a 'ComponentTarget', e.g., to pass
+-- to a Cabal Setup script.
+showComponentTarget :: PackageId -> ComponentTarget -> String
+showComponentTarget pkgid =
+    Cabal.showBuildTarget pkgid . toBuildTarget
+  where
+    toBuildTarget :: ComponentTarget -> Cabal.BuildTarget
+    toBuildTarget (ComponentTarget cname subtarget) =
+      case subtarget of
+        WholeComponent     -> Cabal.BuildTargetComponent cname
+        ModuleTarget mname -> Cabal.BuildTargetModule    cname mname
+        FileTarget   fname -> Cabal.BuildTargetFile      cname fname
+
 
 
 ---------------------------

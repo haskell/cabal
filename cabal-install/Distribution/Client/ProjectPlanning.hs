@@ -103,7 +103,6 @@ import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.Simple.BuildTarget as Cabal
 
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
@@ -2198,24 +2197,6 @@ setupHsBuildFlags _ _ verbosity builddir =
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs (ElabPackage pkg) = map (showComponentTarget (packageId pkg)) (pkgBuildTargets pkg)
 setupHsBuildArgs (ElabComponent _comp) = []
-
-
-showComponentTarget :: PackageId -> ComponentTarget -> String
-showComponentTarget pkgid =
-    showBuildTarget . toBuildTarget
-  where
-    showBuildTarget t =
-      Cabal.showBuildTarget (qlBuildTarget t) pkgid t
-
-    qlBuildTarget Cabal.BuildTargetComponent{} = Cabal.QL2
-    qlBuildTarget _                            = Cabal.QL3
-
-    toBuildTarget :: ComponentTarget -> Cabal.BuildTarget
-    toBuildTarget (ComponentTarget cname subtarget) =
-      case subtarget of
-        WholeComponent     -> Cabal.BuildTargetComponent cname
-        ModuleTarget mname -> Cabal.BuildTargetModule    cname mname
-        FileTarget   fname -> Cabal.BuildTargetFile      cname fname
 
 
 setupHsReplFlags :: ElaboratedConfiguredPackage

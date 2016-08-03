@@ -13,6 +13,8 @@ module Distribution.Client.BuildTarget (
 
     -- * Build targets
     BuildTarget(..),
+    -- Don't export me: it's partial (if you try to qualify too
+    -- much you will error.)
     --showBuildTarget,
     QualLevel(..),
     buildTargetPackage,
