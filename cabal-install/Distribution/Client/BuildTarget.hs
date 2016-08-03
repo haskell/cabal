@@ -8,6 +8,10 @@
 -- Maintainer  :  duncan@community.haskell.org
 --
 -- Handling for user-specified build targets
+-- Unlike "Distribution.Simple.BuildTarget" these build
+-- targets also handle package qualification (so, up to
+-- four levels of qualification, as opposed to the former's
+-- three.)
 -----------------------------------------------------------------------------
 module Distribution.Client.BuildTarget (
 
@@ -433,7 +437,9 @@ showUserBuildTarget = intercalate ":" . components
 
 showBuildTarget :: QualLevel -> BuildTarget PackageInfo -> String
 showBuildTarget ql = showUserBuildTarget . forgetFileStatus
-                   . head . renderBuildTarget ql
+                   . hd . renderBuildTarget ql
+  where hd [] = error "showBuildTarget: head"
+        hd (x:_) = x
 
 
 -- ------------------------------------------------------------
