@@ -1301,10 +1301,10 @@ elaborateInstallPlan platform compiler compilerprogdb
       -- package config validation/resolution pass.
 
       --TODO: [nice to have] config consistency checking:
-      -- * profiling libs & exes, exe needs lib, recursive
-      -- * shared libs & exes, exe needs lib, recursive
-      -- * vanilla libs & exes, exe needs lib, recursive
-      -- * ghci or shared lib needed by TH, recursive, ghc version dependent
+      -- + profiling libs & exes, exe needs lib, recursive
+      -- + shared libs & exes, exe needs lib, recursive
+      -- + vanilla libs & exes, exe needs lib, recursive
+      -- + ghci or shared lib needed by TH, recursive, ghc version dependent
 
 
 ---------------------------
