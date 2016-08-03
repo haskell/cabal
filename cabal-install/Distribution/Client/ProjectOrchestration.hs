@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 
 -- | This module deals with building and incrementally rebuilding a collection
@@ -84,8 +85,13 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
 import           Data.List
+import           Data.Maybe
 import           Data.Either
-import           System.Exit (exitFailure)
+import           Control.Exception (Exception(..))
+import           System.Exit (ExitCode(..), exitFailure)
+#ifdef MIN_VERSION_unix
+import           System.Posix.Signals (sigKILL)
+#endif
 
 
 -- | Command line configuration flags. These are used to extend\/override the
@@ -466,16 +472,131 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-reportBuildFailures :: BuildResults -> IO ()
-reportBuildFailures plan =
+reportBuildFailures :: ElaboratedInstallPlan -> BuildResults -> IO ()
+reportBuildFailures plan buildResults
+  | null failures
+  = return ()
 
-  case [ (pkgid, reason)
-       | (pkgid, Left reason) <- Map.toList plan ] of
-    []      -> return ()
-    _failed -> exitFailure
-    --TODO: [required eventually] see the old printBuildFailures for an example
-    -- of the kind of things we could report, but we want to handle the special
-    -- case of the current package better, since if you do "cabal build" then
-    -- you don't need a lot of context to explain where the ghc error message
-    -- comes from, and indeed extra noise would just be annoying.
+  -- Special case: we don't want to report anything complicated in the case
+  -- of just doing build on the current package, since it's clear from context
+  -- which package failed.
+  --
+  -- We generalise this rule as follows:
+  --  - if only one failure occurs, and it is in a single root package (ie a
+  --    package with nothing else depending on it)
+  --  - and that failure is of a kind that always reports enought detail itself
+  --    (e.g. ghc reporting errors on stdout)
+  --  - then we do not report additional error detail or context.
+  --
+  | [(pkgid, reason)] <- failures
+  , [pkg]             <- rootpkgs
+  , installedUnitId pkg == pkgid
+  , isFailureSelfExplanitory reason
+  = exitFailure
+
+  | otherwise
+  = case failuresPrimary of
+     [(pkg, reason)] -> die $ renderFailure pkg reason
+     multiple        -> die $ "multiple failures:\n"
+                           ++ unlines
+                                [ renderFailure pkg reason
+                                | (pkg, reason) <- multiple ]
+  where
+    failures =  [ (pkgid, reason)
+                | (pkgid, Left reason) <- Map.toList buildResults ]
+
+    failuresPrimary =
+      [ (pkg, reason)
+      | (pkgid, reason) <- failures
+      , case reason of
+          DependentFailed {} -> False
+          _                  -> True
+      , InstallPlan.Configured pkg <-
+           maybeToList (InstallPlan.lookup plan pkgid)
+      ]
+
+    -- Failures that we believe print enough detail on their own that we do
+    -- not need to report anything else.
+    isFailureSelfExplanitory (BuildFailed e)
+      | Just (ExitFailure _) <- fromException e = True
+
+    isFailureSelfExplanitory (ConfigureFailed e)
+      | Just (ExitFailure _) <- fromException e = True
+
+    isFailureSelfExplanitory _                  = False
+
+    rootpkgs =
+      [ pkg
+      | InstallPlan.Configured pkg <- InstallPlan.toList plan
+      , hasNoDependents pkg ]
+
+    ultimateDeps pkgid =
+        filter (\pkg -> hasNoDependents pkg && installedUnitId pkg /= pkgid)
+               (InstallPlan.reverseDependencyClosure plan [pkgid])
+
+    hasNoDependents :: HasUnitId pkg => pkg -> Bool
+    hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
+
+    renderFailure pkg reason =
+        case reason of
+          DownloadFailed  e -> "failed to download " ++ pkgstr ++ "."
+                            ++ showException e
+          UnpackFailed    e -> "failed to unpack " ++ pkgstr ++ "."
+                            ++ showException e
+          ConfigureFailed e -> "failed to build " ++ pkgstr ++ ". The failure"
+                            ++ "occured during the configure step."
+                            ++ showException e
+          BuildFailed     e -> "failed to build " ++ pkgstr ++ "."
+                            ++ showException e
+          TestsFailed     e -> "tests failed for " ++ pkgstr ++ "."
+                            ++ showException e
+          InstallFailed   e -> "failed to build " ++ pkgstr ++ ". The failure"
+                            ++ "occured during the final install step."
+                            ++ showException e
+
+          -- This will never happen, but we include it for completeness
+          DependentFailed pkgid -> " depends on " ++ display pkgid
+                                ++ " which failed to install."
+          PlanningFailed -> " failed during the planning phase."
+      where
+        pkgstr = display (packageId pkg)
+              ++ renderDependencyOf (installedUnitId pkg)
+
+    renderDependencyOf pkgid =
+      case ultimateDeps pkgid of
+        []         -> ""
+        (p1:[])    -> " (which is required by " ++ display (packageName p1) ++ ")"
+        (p1:p2:[]) -> " (which is required by " ++ display (packageName p1)
+                                     ++ " and " ++ display (packageName p2) ++ ")"
+        (p1:p2:_)  -> " (which is required by " ++ display (packageName p1)
+                                        ++ ", " ++ display (packageName p2)
+                                        ++ " and others)"
+
+    showException e = case fromException e of
+      Just (ExitFailure 1) -> ""
+        --TODO: show log in this case
+
+#ifdef MIN_VERSION_unix
+      Just (ExitFailure n)
+        | -n == fromIntegral sigKILL ->
+            " The build process was killed (i.e. SIGKILL). " ++ explanation
+
+        |  n == fromIntegral sigKILL ->
+            " The build process terminated with exit code " ++ show n
+         ++ " which may be because some part of it was killed "
+         ++ "(i.e. SIGKILL). " ++ explanation
+        where
+          explanation = "The typical reason for this is that there is not "
+                     ++ "enough memory available (so the OS kills a process "
+                     ++ "using lots of memory)."
+#endif
+      Just (ExitFailure n) ->
+        " The build process terminated with exit code " ++ show n
+
+      _ -> " The exception was:\n  "
+#if MIN_VERSION_base(4,8,0)
+             ++ displayException e
+#else
+             ++ show e
+#endif
 

@@ -45,7 +45,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     userTargets <- readUserBuildTargets targetStrings
 
-    buildCtx@ProjectBuildContext{buildSettings} <-
+    buildCtx@ProjectBuildContext{buildSettings, elaboratedPlan} <-
       runProjectPreBuildPhase
         verbosity
         ( globalFlags, configFlags, configExFlags
@@ -58,10 +58,8 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
     printPlan verbosity buildCtx
 
     unless (buildSettingDryRun buildSettings) $ do
-      plan <- runProjectBuildPhase
-                verbosity
-                buildCtx
-      reportBuildFailures plan
+      buildResults <- runProjectBuildPhase verbosity buildCtx
+      reportBuildFailures elaboratedPlan buildResults
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
