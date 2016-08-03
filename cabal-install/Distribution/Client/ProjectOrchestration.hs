@@ -477,21 +477,7 @@ reportBuildFailures plan buildResults
   | null failures
   = return ()
 
-  -- Special case: we don't want to report anything complicated in the case
-  -- of just doing build on the current package, since it's clear from context
-  -- which package failed.
-  --
-  -- We generalise this rule as follows:
-  --  - if only one failure occurs, and it is in a single root package (ie a
-  --    package with nothing else depending on it)
-  --  - and that failure is of a kind that always reports enought detail itself
-  --    (e.g. ghc reporting errors on stdout)
-  --  - then we do not report additional error detail or context.
-  --
-  | [(pkgid, reason)] <- failures
-  , [pkg]             <- rootpkgs
-  , installedUnitId pkg == pkgid
-  , isFailureSelfExplanitory reason
+  | isSimpleCase
   = exitFailure
 
   | otherwise
@@ -515,15 +501,33 @@ reportBuildFailures plan buildResults
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
 
-    -- Failures that we believe print enough detail on their own that we do
-    -- not need to report anything else.
-    isFailureSelfExplanitory (BuildFailed e)
+    -- Special case: we don't want to report anything complicated in the case
+    -- of just doing build on the current package, since it's clear from
+    -- context which package failed.
+    --
+    -- We generalise this rule as follows:
+    --  - if only one failure occurs, and it is in a single root package (ie a
+    --    package with nothing else depending on it)
+    --  - and that failure is of a kind that always reports enough detail
+    --    itself (e.g. ghc reporting errors on stdout)
+    --  - then we do not report additional error detail or context.
+    --
+    isSimpleCase
+      | [(pkgid, reason)] <- failures
+      , [pkg]             <- rootpkgs
+      , installedUnitId pkg == pkgid
+      , isFailureSelfExplanatory reason
+      = True
+      | otherwise
+      = False
+
+    isFailureSelfExplanatory (BuildFailed e)
       | Just (ExitFailure _) <- fromException e = True
 
-    isFailureSelfExplanitory (ConfigureFailed e)
+    isFailureSelfExplanatory (ConfigureFailed e)
       | Just (ExitFailure _) <- fromException e = True
 
-    isFailureSelfExplanitory _                  = False
+    isFailureSelfExplanatory _                  = False
 
     rootpkgs =
       [ pkg
@@ -544,14 +548,14 @@ reportBuildFailures plan buildResults
           UnpackFailed    e -> "failed to unpack " ++ pkgstr ++ "."
                             ++ showException e
           ConfigureFailed e -> "failed to build " ++ pkgstr ++ ". The failure"
-                            ++ "occured during the configure step."
+                            ++ "occurred during the configure step."
                             ++ showException e
           BuildFailed     e -> "failed to build " ++ pkgstr ++ "."
                             ++ showException e
           TestsFailed     e -> "tests failed for " ++ pkgstr ++ "."
                             ++ showException e
           InstallFailed   e -> "failed to build " ++ pkgstr ++ ". The failure"
-                            ++ "occured during the final install step."
+                            ++ "occurred during the final install step."
                             ++ showException e
 
           -- This will never happen, but we include it for completeness
