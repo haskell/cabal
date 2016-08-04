@@ -70,6 +70,9 @@
 	  the component to be configured.  The semantics of this mode
 	  of operation are described in
 	  <https://github.com/ghc-proposals/ghc-proposals/pull/4>
+	* Internal 'build-tools' dependencies are now added to PATH
+	  upon invocation of GHC, so that they can be conveniently
+	  used via `-pgmF`. (#1541)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

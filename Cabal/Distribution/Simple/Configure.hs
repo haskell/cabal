@@ -1777,14 +1777,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
     foldM go [] graph
   where
     go z (component, dep_cnames) = do
-        -- NB: We want to preserve cdeps because it contains extra
-        -- information like build-tools ordering
-        let dep_uids = [ componentUnitId dep_clbi
-                       | cname <- dep_cnames
-                       -- Being in z relies on topsort!
-                       , dep_clbi <- z
-                       , componentLocalName dep_clbi == cname ]
-        clbi <- componentLocalBuildInfo z component dep_uids
+        clbi <- componentLocalBuildInfo z component dep_cnames
         return (clbi:z)
 
     -- The allPkgDeps contains all the package deps for the whole package
@@ -1793,8 +1786,19 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
     componentLocalBuildInfo :: [ComponentLocalBuildInfo]
-                            -> Component -> [UnitId] -> IO ComponentLocalBuildInfo
-    componentLocalBuildInfo internalComps component dep_uids =
+                            -> Component -> [ComponentName] -> IO ComponentLocalBuildInfo
+    componentLocalBuildInfo internalComps component dep_cnames =
+      -- NB: We want to preserve cdeps because it contains extra
+      -- information like build-tools ordering
+      let dep_uids = [ componentUnitId dep_clbi
+                     | cname <- dep_cnames
+                     , dep_clbi <- internalComps
+                     , componentLocalName dep_clbi == cname ]
+          dep_exes = [ componentUnitId dep_clbi
+                     | cname@(CExeName _) <- dep_cnames
+                     , dep_clbi <- internalComps
+                     , componentLocalName dep_clbi == cname ]
+      in
       -- (putStrLn $ "configuring " ++ display (componentName component)) >>
       case component of
       CLib lib -> do
@@ -1811,6 +1815,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentInternalDeps = dep_uids,
+          componentExeDeps = dep_exes,
           componentUnitId = uid,
           componentLocalName = componentName component,
           componentIsPublic = libName lib == Nothing,
@@ -1823,6 +1828,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         return ExeComponentLocalBuildInfo {
           componentUnitId = uid,
           componentInternalDeps = dep_uids,
+          componentExeDeps = dep_exes,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes
@@ -1831,6 +1837,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         return TestComponentLocalBuildInfo {
           componentUnitId = uid,
           componentInternalDeps = dep_uids,
+          componentExeDeps = dep_exes,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes
@@ -1839,6 +1846,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         return BenchComponentLocalBuildInfo {
           componentUnitId = uid,
           componentInternalDeps = dep_uids,
+          componentExeDeps = dep_exes,
           componentLocalName = componentName component,
           componentPackageDeps = cpds,
           componentIncludes = includes

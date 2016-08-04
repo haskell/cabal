@@ -1416,7 +1416,8 @@ for these fields.
     build this package, e.g. `c2hs >= 0.15, cpphs`.  If no version
     constraint is specified, any version is assumed to be acceptable.
     `build-tools` can refer to locally defined executables, in which
-    case Cabal will make sure that executable is built first.
+    case Cabal will make sure that executable is built first and
+    add it to the PATH upon invocations to the compiler.
 
 `buildable:` _boolean_ (default: `True`)
 :   Is the component buildable? Like some of the other fields below,

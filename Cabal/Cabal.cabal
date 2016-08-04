@@ -98,6 +98,10 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
+  tests/PackageTests/BuildToolsPath/A.hs
+  tests/PackageTests/BuildToolsPath/MyCustomPreprocessor.hs
+  tests/PackageTests/BuildToolsPath/build-tools-path.cabal
+  tests/PackageTests/BuildToolsPath/hello/Hello.hs
   tests/PackageTests/BuildableField/BuildableField.cabal
   tests/PackageTests/BuildableField/Main.hs
   tests/PackageTests/CMain/Bar.hs

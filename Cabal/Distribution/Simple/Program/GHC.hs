@@ -210,6 +210,10 @@ data GhcOptions = GhcOptions {
   -- | Get GHC to be quiet or verbose with what it's doing; the @ghc -v@ flag.
   ghcOptVerbosity     :: Flag Verbosity,
 
+  -- | Put the extra folders in the PATH environment variable we invoke
+  -- GHC with
+  ghcOptExtraPath     :: NubListR FilePath,
+
   -- | Let GHC know that it is Cabal that's calling it.
   -- Modifies some of the GHC error messages.
   ghcOptCabal         :: Flag Bool
@@ -251,7 +255,9 @@ runGHC verbosity ghcProg comp platform opts = do
 ghcInvocation :: ConfiguredProgram -> Compiler -> Platform -> GhcOptions
               -> ProgramInvocation
 ghcInvocation prog comp platform opts =
-    programInvocation prog (renderGhcOptions comp platform opts)
+    (programInvocation prog (renderGhcOptions comp platform opts)) {
+        progInvokePathEnv = fromNubListR (ghcOptExtraPath opts)
+    }
 
 renderGhcOptions :: Compiler -> Platform -> GhcOptions -> [String]
 renderGhcOptions comp _platform@(Platform _arch os) opts

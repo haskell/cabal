@@ -425,6 +425,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentInternalDeps = componentInternalDeps clbi
+                , componentExeDeps = componentExeDeps clbi
                 , componentLocalName = CSubLibName (testName test)
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
@@ -465,6 +466,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 -- (doesn't clobber something) we won't run into trouble
                 componentUnitId = mkUnitId (stubName test),
                 componentInternalDeps = [componentUnitId clbi],
+                componentExeDeps = [],
                 componentLocalName = CExeName (stubName test),
                 componentPackageDeps = deps,
                 componentIncludes = zip (map fst deps) (repeat defaultRenaming)
@@ -488,6 +490,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
                 componentUnitId = componentUnitId clbi,
                 componentLocalName = CExeName (benchmarkName bm),
                 componentInternalDeps = componentInternalDeps clbi,
+                componentExeDeps = componentExeDeps clbi,
                 componentPackageDeps = componentPackageDeps clbi,
                 componentIncludes = componentIncludes clbi
               }

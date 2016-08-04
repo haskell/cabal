@@ -484,6 +484,12 @@ tests config = do
       runExe' "hello-world" []
         >>= assertOutputContains "hello from A"
 
+  -- Test PATH-munging
+  tc "BuildToolsPath" $ do
+      cabal_build []
+      runExe' "hello-world" []
+        >>= assertOutputContains "1111"
+
   -- Test that executable recompilation works
   -- https://github.com/haskell/cabal/issues/3294
   tc "Regression/T3294" $ do

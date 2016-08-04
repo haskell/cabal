@@ -46,6 +46,8 @@ import Distribution.Simple.Setup
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.LocalBuildInfo
+import Distribution.Types.TargetInfo
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.System
@@ -304,6 +306,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
       ghcOptDebugInfo       = toGhcDebugInfo (withDebugInfo lbi),
       ghcOptExtra           = toNubListR $ hcOptions GHC bi,
+      ghcOptExtraPath       = toNubListR $ exe_paths,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
       -- Unsupported extensions have already been checked by configure
       ghcOptExtensions      = toNubListR $ usedExtensions bi,
@@ -319,6 +322,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo MinimalDebugInfo = toFlag True
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
+
+    exe_paths = [ componentBuildDir lbi (targetCLBI exe_tgt)
+                | uid <- componentExeDeps clbi
+                -- TODO: Ugh, localPkgDescr
+                , Just exe_tgt <- [unitIdTarget' (localPkgDescr lbi) lbi uid] ]
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]
