@@ -42,3 +42,5 @@ extra-deps:
 - unbounded-delays-0.1.0.9
 - zlib-0.6.1.1
 flags: {}
+nix:
+  packages: [zlib, zlib.out]
