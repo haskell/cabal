@@ -97,7 +97,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
          ( relaxPackageDeps )
 import Distribution.Simple.Setup
-         ( AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         ( asBool, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -172,15 +172,15 @@ showDepResolverParams p =
   ++ "\npreferences: "
   ++   concatMap (("\n  " ++) . showPackagePreference)
        (depResolverPreferences p)
-  ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault p)
-  ++ "\nreorder goals: "     ++ show (depResolverReorderGoals      p)
-  ++ "\ncount conflicts: "   ++ show (depResolverCountConflicts    p)
-  ++ "\nindependent goals: " ++ show (depResolverIndependentGoals  p)
-  ++ "\navoid reinstalls: "  ++ show (depResolverAvoidReinstalls   p)
-  ++ "\nshadow packages: "   ++ show (depResolverShadowPkgs        p)
-  ++ "\nstrong flags: "      ++ show (depResolverStrongFlags       p)
+  ++ "\nstrategy: "          ++ show (depResolverPreferenceDefault        p)
+  ++ "\nreorder goals: "     ++ show (asBool (depResolverReorderGoals     p))
+  ++ "\ncount conflicts: "   ++ show (asBool (depResolverCountConflicts   p))
+  ++ "\nindependent goals: " ++ show (asBool (depResolverIndependentGoals p))
+  ++ "\navoid reinstalls: "  ++ show (asBool (depResolverAvoidReinstalls  p))
+  ++ "\nshadow packages: "   ++ show (asBool (depResolverShadowPkgs       p))
+  ++ "\nstrong flags: "      ++ show (asBool (depResolverStrongFlags      p))
   ++ "\nmax backjumps: "     ++ maybe "infinite" show
-                                     (depResolverMaxBackjumps      p)
+                                     (depResolverMaxBackjumps             p)
   where
     showLabeledConstraint :: LabeledPackageConstraint -> String
     showLabeledConstraint (LabeledPackageConstraint pc src) =
