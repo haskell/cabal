@@ -17,6 +17,9 @@
 	* The bootstrap script now works correctly when run from a Git
 	clone (#3439).
 	* Removed the top-down solver (#3598).
+	* The '-v/--verbosity' option no longer affects GHC verbosity
+	(except in the case of '-v0'). Use '--ghc-options=-v' to enable
+	verbose GHC output (#3540, #3671).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates
