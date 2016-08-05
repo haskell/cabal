@@ -301,7 +301,7 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
             return (BuildStatusUpToDate buildSuccess)
       where
         packageFileMonitor =
-          newPackageFileMonitor distDirLayout (packageId pkg)
+          newPackageFileMonitor distDirLayout (installedUnitId pkg)
 
 
 -- | A specialised traversal over the packages in an install plan.
@@ -390,22 +390,22 @@ data PackageFileMonitor = PackageFileMonitor {
 --
 type BuildSuccessMisc = (DocsResult, TestsResult)
 
-newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
-newPackageFileMonitor DistDirLayout{distPackageCacheFile} pkgid =
+newPackageFileMonitor :: DistDirLayout -> UnitId -> PackageFileMonitor
+newPackageFileMonitor DistDirLayout{distPackageCacheFile} ipkgid =
     PackageFileMonitor {
       pkgFileMonitorConfig =
-        newFileMonitor (distPackageCacheFile pkgid "config"),
+        newFileMonitor (distPackageCacheFile ipkgid "config"),
 
       pkgFileMonitorBuild =
         FileMonitor {
-          fileMonitorCacheFile = distPackageCacheFile pkgid "build",
+          fileMonitorCacheFile = distPackageCacheFile ipkgid "build",
           fileMonitorKeyValid  = \componentsToBuild componentsAlreadyBuilt ->
             componentsToBuild `Set.isSubsetOf` componentsAlreadyBuilt,
           fileMonitorCheckIfOnlyValueChanged = True
         },
 
       pkgFileMonitorReg =
-        newFileMonitor (distPackageCacheFile pkgid "registration")
+        newFileMonitor (distPackageCacheFile ipkgid "registration")
     }
 
 -- | Helper function for 'checkPackageFileMonitorChanged',
@@ -683,7 +683,7 @@ rebuildTarget verbosity
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
-          (packageId pkg) (pkgBuildStyle pkg)
+          (packageId pkg) (installedPackageId pkg) (pkgBuildStyle pkg)
           (pkgDescriptionOverride pkg) $
 
           case pkgBuildStyle pkg of
@@ -701,7 +701,7 @@ rebuildTarget verbosity
 
           buildInplace buildStatus srcdir builddir
       where
-        builddir = distBuildDirectory (packageId pkg)
+        builddir = distBuildDirectory (installedUnitId pkg)
 
     buildAndInstall srcdir builddir =
         buildAndInstallUnpackedPackage
@@ -787,19 +787,22 @@ downloadedSourceLocation pkgloc =
 
 
 -- | Ensure that the package is unpacked in an appropriate directory, either
--- a temporary one or a persistent one under the shared dist directory. 
+-- a temporary one or a persistent one under the shared dist directory.
 --
 withTarballLocalDirectory
   :: Verbosity
   -> DistDirLayout
   -> FilePath
   -> PackageId
+  -> UnitId
   -> BuildStyle
   -> Maybe CabalFileText
-  -> (FilePath -> FilePath -> IO a)
+  -> (FilePath -> -- Source directory
+      FilePath -> -- Build directory
+      IO a)
   -> IO a
 withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
-                          tarball pkgid buildstyle pkgTextOverride
+                          tarball pkgid ipkgid buildstyle pkgTextOverride
                           buildPkg  =
       case buildstyle of
         -- In this case we make a temp dir, unpack the tarball to there and
@@ -819,7 +822,7 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
         BuildInplaceOnly -> do
           let srcrootdir = distUnpackedSrcRootDirectory
               srcdir     = distUnpackedSrcDirectory pkgid
-              builddir   = distBuildDirectory pkgid
+              builddir   = distBuildDirectory ipkgid
           -- TODO: [nice to have] use a proper file monitor rather than this dir exists test
           exists <- doesDirectoryExist srcdir
           unless exists $ do
@@ -827,7 +830,7 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
             unpackPackageTarball verbosity tarball srcrootdir
                                  pkgid pkgTextOverride
             moveTarballShippedDistDirectory verbosity distDirLayout
-                                            srcrootdir pkgid
+                                            srcrootdir pkgid ipkgid
           buildPkg srcdir builddir
 
 
@@ -873,9 +876,9 @@ unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
 -- system, though we'll still need to keep this hack for older packages.
 --
 moveTarballShippedDistDirectory :: Verbosity -> DistDirLayout
-                                -> FilePath -> PackageId -> IO ()
+                                -> FilePath -> PackageId -> UnitId -> IO ()
 moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
-                                parentdir pkgid = do
+                                parentdir pkgid uid = do
     distDirExists <- doesDirectoryExist tarballDistDir
     when distDirExists $ do
       debug verbosity $ "Moving '" ++ tarballDistDir ++ "' to '"
@@ -884,7 +887,7 @@ moveTarballShippedDistDirectory verbosity DistDirLayout{distBuildDirectory}
       renameDirectory tarballDistDir targetDistDir
   where
     tarballDistDir = parentdir </> display pkgid </> "dist"
-    targetDistDir  = distBuildDirectory pkgid
+    targetDistDir  = distBuildDirectory uid
 
 
 buildAndInstallUnpackedPackage :: Verbosity
@@ -1074,8 +1077,9 @@ buildInplaceUnpackedPackage verbosity
 
         --TODO: [code cleanup] there is duplication between the distdirlayout and the builddir here
         --      builddir is not enough, we also need the per-package cachedir
+        let uid = installedUnitId pkg
         createDirectoryIfMissingVerbose verbosity False builddir
-        createDirectoryIfMissingVerbose verbosity False (distPackageCacheDirectory pkgid)
+        createDirectoryIfMissingVerbose verbosity False (distPackageCacheDirectory uid)
 
         -- Configure phase
         --
@@ -1193,12 +1197,11 @@ buildInplaceUnpackedPackage verbosity
         return (BuildOk docsResult testsResult ipkgs)
 
   where
-    pkgid  = packageId rpkg
     ipkgid = installedPackageId rpkg
 
     isParallelBuild = buildSettingNumJobs >= 2
 
-    packageFileMonitor = newPackageFileMonitor distDirLayout pkgid
+    packageFileMonitor = newPackageFileMonitor distDirLayout ipkgid
 
     whenReConfigure action = case buildStatus of
       BuildStatusConfigure _ -> action

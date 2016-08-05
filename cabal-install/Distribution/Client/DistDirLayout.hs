@@ -9,7 +9,7 @@ module Distribution.Client.DistDirLayout where
 
 import System.FilePath
 import Distribution.Package
-         ( PackageId )
+         ( PackageId, UnitId )
 import Distribution.Compiler
 import Distribution.Simple.Compiler (PackageDB(..))
 import Distribution.Text
@@ -31,11 +31,11 @@ data DistDirLayout = DistDirLayout {
        -- | The directory under dist where we keep the build artifacts for a
        -- package we're building from a local directory.
        --
-       -- This uses a 'PackageId' not just a 'PackageName' because technically
+       -- This uses a 'UnitId' not just a 'PackageName' because technically
        -- we can have multiple instances of the same package in a solution
        -- (e.g. setup deps).
        --
-       distBuildDirectory           :: PackageId -> FilePath,
+       distBuildDirectory           :: UnitId -> FilePath,
        distBuildRootDirectory       :: FilePath,
 
        -- | The directory under dist where we put the unpacked sources of
@@ -55,8 +55,8 @@ data DistDirLayout = DistDirLayout {
        -- | The location for package-specific cache files (e.g. state used in
        -- incremental rebuilds).
        --
-       distPackageCacheFile         :: PackageId -> String -> FilePath,
-       distPackageCacheDirectory    :: PackageId -> FilePath,
+       distPackageCacheFile         :: UnitId -> String -> FilePath,
+       distPackageCacheDirectory    :: UnitId -> FilePath,
 
        distTempDirectory            :: FilePath,
        distBinDirectory             :: FilePath,
@@ -88,7 +88,7 @@ defaultDistDirLayout projectRootDirectory =
     --TODO: switch to just dist at some point, or some other new name
 
     distBuildRootDirectory   = distDirectory </> "build"
-    distBuildDirectory pkgid = distBuildRootDirectory </> display pkgid
+    distBuildDirectory uid = distBuildRootDirectory </> display uid
 
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory
@@ -97,8 +97,8 @@ defaultDistDirLayout projectRootDirectory =
     distProjectCacheDirectory = distDirectory </> "cache"
     distProjectCacheFile name = distProjectCacheDirectory </> name
 
-    distPackageCacheDirectory pkgid = distBuildDirectory pkgid </> "cache"
-    distPackageCacheFile pkgid name = distPackageCacheDirectory pkgid </> name
+    distPackageCacheDirectory uid = distBuildDirectory uid </> "cache"
+    distPackageCacheFile uid name = distPackageCacheDirectory uid </> name
 
     distTempDirectory = distDirectory </> "tmp"
 
