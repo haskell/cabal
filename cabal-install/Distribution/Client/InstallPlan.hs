@@ -30,6 +30,9 @@ module Distribution.Client.InstallPlan (
   configureInstallPlan,
   remove,
   preexisting,
+  lookup,
+  directDeps,
+  revDirectDeps,
 
   -- * Traversal
   executionOrder,
@@ -49,6 +52,7 @@ module Distribution.Client.InstallPlan (
 
   -- * Graph-like operations
   reverseTopologicalOrder,
+  reverseDependencyClosure,
   ) where
 
 import Distribution.Client.Types hiding (BuildResults)
@@ -91,6 +95,8 @@ import qualified Data.Map as Map
 import           Data.Map (Map)
 import qualified Data.Set as Set
 import           Data.Set (Set)
+
+import Prelude hiding (lookup)
 
 
 -- When cabal tries to install a number of packages, including all their
@@ -299,6 +305,39 @@ preexisting pkgid ipkg plan = assert (invariant plan') plan'
                   $ planIndex plan
     }
 
+-- | Lookup a package in the plan.
+--
+lookup :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
+           HasUnitId srcpkg, PackageFixedDeps srcpkg)
+       => GenericInstallPlan ipkg srcpkg
+       -> UnitId
+       -> Maybe (GenericPlanPackage ipkg srcpkg)
+lookup plan pkgid = Graph.lookup pkgid (planIndex plan)
+
+-- | Find all the direct depencencies of the given package.
+--
+-- Note that the package must exist in the plan or it is an error.
+--
+directDeps :: GenericInstallPlan ipkg srcpkg
+           -> UnitId
+           -> [GenericPlanPackage ipkg srcpkg]
+directDeps plan pkgid =
+  case Graph.neighbors (planIndex plan) pkgid of
+    Just deps -> deps
+    Nothing   -> internalError "directDeps: package not in graph"
+
+-- | Find all the direct reverse depencencies of the given package.
+--
+-- Note that the package must exist in the plan or it is an error.
+--
+revDirectDeps :: GenericInstallPlan ipkg srcpkg
+              -> UnitId
+              -> [GenericPlanPackage ipkg srcpkg]
+revDirectDeps plan pkgid =
+  case Graph.revNeighbors (planIndex plan) pkgid of
+    Just deps -> deps
+    Nothing   -> internalError "revDirectDeps: package not in graph"
+
 
 -- ------------------------------------------------------------
 -- * Checking validity of plans
@@ -379,6 +418,16 @@ stateDependencyRelation (PreExisting _) (Configured  _) = False
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg
                         -> [GenericPlanPackage ipkg srcpkg]
 reverseTopologicalOrder plan = Graph.revTopSort (planIndex plan)
+
+
+-- | Return the packages in the plan that depend directly or indirectly on the
+-- given packages.
+--
+reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg
+                         -> [UnitId]
+                         -> [GenericPlanPackage ipkg srcpkg]
+reverseDependencyClosure plan = fromMaybe []
+                              . Graph.revClosure (planIndex plan)
 
 
 fromSolverInstallPlan ::
@@ -590,21 +639,6 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
 
     asConfiguredPackage (Configured pkg) = pkg
     asConfiguredPackage _ = internalError "not in configured state"
-
-directDeps, revDirectDeps
-  :: GenericInstallPlan ipkg srcpkg
-  -> UnitId
-  -> [GenericPlanPackage ipkg srcpkg]
-
-directDeps plan pkgid =
-  case Graph.neighbors (planIndex plan) pkgid of
-    Just deps -> deps
-    Nothing   -> internalError "directDeps: package not in graph"
-
-revDirectDeps plan pkgid =
-  case Graph.revNeighbors (planIndex plan) pkgid of
-    Just deps -> deps
-    Nothing   -> internalError "directDeps: package not in graph"
 
 processingInvariant :: (HasUnitId ipkg,   PackageFixedDeps ipkg,
                         HasUnitId srcpkg, PackageFixedDeps srcpkg)
