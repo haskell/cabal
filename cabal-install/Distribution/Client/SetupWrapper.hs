@@ -91,7 +91,7 @@ import Distribution.Text
 import Distribution.Utils.NubList
          ( toNubListR )
 import Distribution.Verbosity
-         ( Verbosity )
+         ( Verbosity, normal )
 import Distribution.Compat.Exception
          ( catchIO )
 
@@ -624,8 +624,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           addRenaming (ipid, _) = (ipid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
-              -- Use --ghc-option=-v instead!
-              ghcOptVerbosity       = NoFlag
+              -- Respect -v0, but don't crank up verbosity on GHC if
+              -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
+              ghcOptVerbosity       = Flag (min verbosity normal)
             , ghcOptMode            = Flag GhcModeMake
             , ghcOptInputFiles      = toNubListR [setupHs]
             , ghcOptOutputFile      = Flag setupProgFile
