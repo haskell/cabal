@@ -423,15 +423,12 @@ configureInstallPlan solverPlan =
                            -> ConfiguredPackage UnresolvedPkgLoc
     configureSolverPackage mapDep spkg =
       ConfiguredPackage {
-        confPkgId = SimpleUnitId
-                  $ Configure.computeComponentId
+        confPkgId = Configure.computeComponentId
                         Cabal.NoFlag
                         Cabal.NoFlag
                         (packageId spkg)
                         PD.CLibName
-                        -- TODO: this is a hack that won't work for Backpack.
-                        (map ((\(SimpleUnitId cid0) -> cid0) . confInstId)
-                             (CD.libraryDeps deps))
+                        (map confInstId (CD.libraryDeps deps))
                         (solverPkgFlags spkg),
         confPkgSource = solverPkgSource spkg,
         confPkgFlags  = solverPkgFlags spkg,

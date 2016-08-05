@@ -124,7 +124,7 @@ import           System.Directory
 --
 -- This is used as the result of the dry-run of building an install plan.
 --
-type BuildStatusMap = Map InstalledPackageId BuildStatus
+type BuildStatusMap = Map UnitId BuildStatus
 
 -- | The build status for an individual package is the state that the
 -- package is in /prior/ to initiating a (re)build.
@@ -336,13 +336,13 @@ foldMInstallPlanDepOrder
   => GenericInstallPlan ipkg srcpkg
   -> (GenericPlanPackage ipkg srcpkg ->
       [b] -> m b)
-  -> m (Map InstalledPackageId b)
+  -> m (Map UnitId b)
 foldMInstallPlanDepOrder plan0 visit =
     go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
   where
-    go :: Map InstalledPackageId b
+    go :: Map UnitId b
        -> [GenericPlanPackage ipkg srcpkg]
-       -> m (Map InstalledPackageId b)
+       -> m (Map UnitId b)
     go !results [] = return results
 
     go !results (pkg : pkgs) = do
@@ -361,24 +361,24 @@ improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
                                        -> ElaboratedInstallPlan
 improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
     replaceWithPrePreExisting installPlan
-      [ (installedPackageId pkg, mipkg)
+      [ (installedUnitId pkg, mipkg)
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
-      , let ipkgid = installedPackageId pkg
-            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
+      , let uid = installedUnitId pkg
+            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
       , BuildStatusUpToDate (BuildResult { buildResultLibInfo = mipkg })
           <- [pkgBuildStatus]
       ]
   where
     replaceWithPrePreExisting =
-      foldl' (\plan (ipkgid, mipkg) ->
+      foldl' (\plan (uid, mipkg) ->
                 -- TODO: A grievous hack.  Better to have a special type
                 -- of entry representing pre-existing executables.
                 let stub_ipkg = Installed.emptyInstalledPackageInfo {
-                                    Installed.installedUnitId = ipkgid
+                                    Installed.installedUnitId = uid
                                 }
                     ipkg = fromMaybe stub_ipkg mipkg
-                in InstallPlan.preexisting ipkgid ipkg plan)
+                in InstallPlan.preexisting uid ipkg plan)
 
 
 -----------------------------
@@ -699,8 +699,8 @@ rebuildTargets verbosity
                           installPlan $ \pkg ->
         handle (return . Left) $ fmap Right $ --TODO: review exception handling
 
-        let ipkgid = installedPackageId pkg
-            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus in
+        let uid = installedUnitId pkg
+            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus in
 
         rebuildTarget
           verbosity
@@ -838,8 +838,8 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
       [ pkgSourceLocation (getElaboratedPackage pkg_or_comp)
       | InstallPlan.Configured pkg_or_comp
          <- InstallPlan.reverseTopologicalOrder installPlan
-      , let ipkgid = installedPackageId pkg_or_comp
-            Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
+      , let uid = installedUnitId pkg_or_comp
+            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
       , BuildStatusDownload <- [pkgBuildStatus]
       ]
 
@@ -1059,7 +1059,7 @@ buildAndInstallUnpackedPackage verbosity
           -- grab and modify the InstalledPackageInfo. We decide what
           -- the installed package id is, not the build system.
           ipkg0 <- generateInstalledPackageInfo
-          let ipkg = ipkg0 { Installed.installedUnitId = ipkgid }
+          let ipkg = ipkg0 { Installed.installedUnitId = uid }
 
           criticalSection registerLock $
               Cabal.registerPackage verbosity compiler progdb
@@ -1081,7 +1081,7 @@ buildAndInstallUnpackedPackage verbosity
 
   where
     pkgid  = packageId rpkg
-    ipkgid = installedPackageId rpkg
+    uid = installedUnitId rpkg
 
     isParallelBuild = buildSettingNumJobs >= 2
 
@@ -1125,7 +1125,7 @@ buildAndInstallUnpackedPackage verbosity
     mlogFile =
       case buildSettingLogFile of
         Nothing        -> Nothing
-        Just mkLogFile -> Just (mkLogFile compiler platform pkgid ipkgid)
+        Just mkLogFile -> Just (mkLogFile compiler platform pkgid uid)
 
     initLogFile =
       case mlogFile of

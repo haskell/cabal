@@ -62,8 +62,7 @@ import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
-                   ( InstalledPackageId, installedPackageId
-                   , GenericReadyPackage(..), PackageLocation(..) )
+                   ( GenericReadyPackage(..), PackageLocation(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -318,14 +317,14 @@ resolveAndCheckTargets :: PackageTarget
                        -> ElaboratedInstallPlan
                        -> [BuildTarget PackageName]
                        -> Either [BuildTargetProblem]
-                                 (Map InstalledPackageId [PackageTarget])
+                                 (Map UnitId [PackageTarget])
 resolveAndCheckTargets targetDefaultComponents
                        targetSpecificComponent
                        installPlan targets =
     case partitionEithers (map checkTarget targets) of
       ([], targets') -> Right $ Map.fromListWith (++)
-                                  [ (ipkgid, [t]) | (ipkgids, t) <- targets'
-                                                  , ipkgid <- ipkgids ]
+                                  [ (uid, [t]) | (uids, t) <- targets'
+                                               , uid <- uids ]
       (problems, _)  -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
@@ -369,15 +368,15 @@ resolveAndCheckTargets targetDefaultComponents
     -- NB: It's a list of 'InstalledPackageId', because each component
     -- in the install plan from a single package needs to be associated with
     -- the same 'PackageName'.
-    projAllPkgs, projLocalPkgs :: Map PackageName [InstalledPackageId]
+    projAllPkgs, projLocalPkgs :: Map PackageName [UnitId]
     projAllPkgs =
       Map.fromListWith (++)
-        [ (packageName pkg, [installedPackageId pkg])
+        [ (packageName pkg, [installedUnitId pkg])
         | pkg <- InstallPlan.toList installPlan ]
 
     projLocalPkgs =
       Map.fromListWith (++)
-        [ (packageName pkg, [installedPackageId pkg_or_comp])
+        [ (packageName pkg, [installedUnitId pkg_or_comp])
         | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
         , let pkg = getElaboratedPackage pkg_or_comp
         , case pkgSourceLocation pkg of
@@ -459,7 +458,7 @@ printPlan verbosity
           ElabComponent comp ->
             " (" ++ maybe "custom" display (elabComponentName comp) ++ ")") ++
       showFlagAssignment (nonDefaultFlags pkg) ++
-      let buildStatus = pkgsBuildStatus Map.! installedPackageId pkg_or_comp in
+      let buildStatus = pkgsBuildStatus Map.! installedUnitId pkg_or_comp in
       " (" ++ showBuildStatus buildStatus ++ ")"
      where
       pkg = getElaboratedPackage pkg_or_comp

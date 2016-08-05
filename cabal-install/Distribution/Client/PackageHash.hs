@@ -29,7 +29,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), mkUnitId )
+         ( PackageId, PackageIdentifier(..), ComponentId(..) )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
@@ -86,7 +86,7 @@ hashedInstalledPackageId
 --
 hashedInstalledPackageIdLong :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    mkUnitId $
+    ComponentId $
          display pkgHashPkgId   -- to be a bit user friendly
       ++ "-"
       ++ showHashValue (hashPackageHashInputs pkghashinputs)
@@ -111,7 +111,7 @@ hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 --
 hashedInstalledPackageIdShort :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    mkUnitId $
+    ComponentId $
       intercalate "-"
         -- max length now 64
         [ truncateStr 14 (display name)

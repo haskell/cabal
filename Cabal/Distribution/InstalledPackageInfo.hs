@@ -108,6 +108,9 @@ installedComponentId ipi = case installedUnitId ipi of
 
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
 -- | Backwards compatibility with Cabal pre-1.24.
+-- This type synonym is slightly awful because in cabal-install
+-- we define an 'InstalledPackageId' but it's a ComponentId,
+-- not a UnitId!
 installedPackageId :: InstalledPackageInfo -> UnitId
 installedPackageId = installedUnitId
 

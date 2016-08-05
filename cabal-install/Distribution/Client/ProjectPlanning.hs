@@ -211,7 +211,7 @@ sanityCheckElaboratedPackage sharedConfig
     -- the 'hashedInstalledPackageId' we would compute from
     -- the elaborated configured package
   . assert (pkgBuildStyle == BuildInplaceOnly ||
-     installedPackageId pkg == hashedInstalledPackageId
+     pkgInstalledId == hashedInstalledPackageId
                                  (packageHashInputs sharedConfig (ElabPackage pkg)))
 
     -- either a package is built inplace, or we are not attempting to
@@ -1071,7 +1071,7 @@ elaborateInstallPlan platform compiler compilerprogdb
             ecomp = ElaboratedComponent {
                     elabComponent = cname',
                     elabComponentName = Just cname,
-                    elabComponentId = cid,
+                    elabComponentId = SimpleUnitId cid, -- Backpack later!
                     elabComponentPackage = pkg,
                     elabComponentDependencies = deps,
                     -- TODO: track dependencies on executables
@@ -1081,9 +1081,10 @@ elaborateInstallPlan platform compiler compilerprogdb
                     elabComponentReplTarget = Nothing,
                     elabComponentBuildHaddocks = False
                   }
+            cid :: ComponentId
             cid = case pkgBuildStyle pkg of
                     BuildInplaceOnly ->
-                      mkUnitId $
+                      ComponentId $
                         display pkgid ++ "-inplace" ++
                           (case Cabal.componentNameString cname of
                               Nothing -> ""
@@ -1129,7 +1130,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
-          = mkUnitId (display pkgid ++ "-inplace")
+          = ComponentId (display pkgid ++ "-inplace")
 
           | otherwise
           = assert (isJust pkgSourceHash) $
@@ -1253,12 +1254,13 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgProgPrefix          = perPkgOptionMaybe pkgid packageConfigProgPrefix
         pkgProgSuffix          = perPkgOptionMaybe pkgid packageConfigProgSuffix
 
+        -- TODO: This needs to be overridden in per-component mode
         pkgInstallDirs
           | shouldBuildInplaceOnly pkg
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               pkgInstalledId
+               (SimpleUnitId pkgInstalledId)
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1513,7 +1515,7 @@ pkgBuildTargetWholeComponents (ElabComponent comp) =
 -- targets. Also, update the package config to specify which optional stanzas
 -- to enable, and which targets within each package to build.
 --
-pruneInstallPlanToTargets :: Map InstalledPackageId [PackageTarget]
+pruneInstallPlanToTargets :: Map UnitId [PackageTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
 pruneInstallPlanToTargets perPkgTargetsMap =
     InstallPlan.new (IndependentGoals False)
@@ -1532,7 +1534,7 @@ pruneInstallPlanToTargets perPkgTargetsMap =
 -- where we don't need to avoid configuring a test suite; it always
 -- is configured separately.
 data PrunedPackage
-    = PrunedPackage ElaboratedPackage [InstalledPackageId]
+    = PrunedPackage ElaboratedPackage [UnitId]
     | PrunedComponent ElaboratedComponent
 
 instance Package PrunedPackage where
@@ -1543,7 +1545,7 @@ instance HasUnitId PrunedPackage where
     installedUnitId = nodeKey
 
 instance IsNode PrunedPackage where
-    type Key PrunedPackage = InstalledPackageId
+    type Key PrunedPackage = UnitId
     nodeKey (PrunedPackage pkg _)  = nodeKey pkg
     nodeKey (PrunedComponent comp) = nodeKey comp
     nodeNeighbors (PrunedPackage _ deps) = deps
@@ -1562,7 +1564,7 @@ fromPrunedPackage (PrunedComponent comp) = ElabComponent comp
 --   are used only by unneeded optional stanzas. These pruned deps are only
 --   used for the dependency closure and are not persisted in this pass.
 --
-pruneInstallPlanPass1 :: Map InstalledPackageId [PackageTarget]
+pruneInstallPlanPass1 :: Map UnitId [PackageTarget]
                       -> [ElaboratedPlanPackage]
                       -> [ElaboratedPlanPackage]
 pruneInstallPlanPass1 perPkgTargetsMap pkgs =
@@ -1615,7 +1617,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
                             then Just sub
                             else Nothing
         targets = fromMaybe []
-                $ Map.lookup (installedPackageId comp) perPkgTargetsMap
+                $ Map.lookup (installedUnitId comp) perPkgTargetsMap
 
     -- Elaborate and set the targets we'll build for this package. This is just
     -- based on the targets from the user, not targets implied by reverse
@@ -1631,7 +1633,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
         (buildTargets, replTarget, buildHaddocks)
                 = elaboratePackageTargets pkg targets
         targets = fromMaybe []
-                $ Map.lookup (installedPackageId pkg) perPkgTargetsMap
+                $ Map.lookup (installedUnitId pkg) perPkgTargetsMap
 
     -- Decide whether or not to enable testsuites and benchmarks
     --
@@ -1662,10 +1664,10 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- the optional stanzas and we'll make further tweaks to the optional
     -- stanzas in the next pass.
     --
-    pruneOptionalDependencies :: ElaboratedPackage -> [InstalledPackageId]
+    pruneOptionalDependencies :: ElaboratedPackage -> [UnitId]
     pruneOptionalDependencies pkg =
         -- TODO: do the right thing when this is a test-suite component itself
-        (CD.flatDeps . CD.filterDeps keepNeeded . fmap (map confInstId)) (pkgDependencies pkg)
+        (CD.flatDeps . CD.filterDeps keepNeeded . fmap (map (SimpleUnitId . confInstId))) (pkgDependencies pkg)
       where
         keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
@@ -1691,7 +1693,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
 
     availablePkgs =
       Set.fromList
-        [ installedPackageId pkg
+        [ installedUnitId pkg
         | InstallPlan.PreExisting pkg <- pkgs ]
 
 -- | Given a set of already installed packages @availablePkgs@,
@@ -1700,15 +1702,15 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
 -- to implement "sticky" testsuites, where once we have installed
 -- all of the deps needed for the test suite, we go ahead and
 -- enable it always.
-optionalStanzasWithDepsAvailable :: Set InstalledPackageId
+optionalStanzasWithDepsAvailable :: Set UnitId
                                  -> ElaboratedPackage
                                  -> Set OptionalStanza
 optionalStanzasWithDepsAvailable availablePkgs pkg =
     Set.fromList
       [ stanza
       | stanza <- Set.toList (pkgStanzasAvailable pkg)
-      , let deps :: [InstalledPackageId]
-            deps = map installedPackageId
+      , let deps :: [UnitId]
+            deps = map (SimpleUnitId . confInstId)
                  $ CD.select (optionalStanzaDeps stanza)
                              (pkgDependencies pkg)
       , all (`Set.member` availablePkgs) deps
@@ -1759,7 +1761,7 @@ pruneInstallPlanPass2 pkgs =
       where
         targetsRequiredForRevDeps =
           [ WholeComponent
-          | installedPackageId comp `Set.member` hasReverseLibDeps
+          | installedUnitId comp `Set.member` hasReverseLibDeps
           ]
     setStanzasDepsAndTargets (ElabPackage pkg) =
         ElabPackage $ pkg {
@@ -1779,14 +1781,14 @@ pruneInstallPlanPass2 pkgs =
         targetsRequiredForRevDeps =
           [ ComponentTarget Cabal.defaultLibName WholeComponent
           -- if anything needs this pkg, build the library component
-          | installedPackageId pkg `Set.member` hasReverseLibDeps
+          | installedUnitId pkg `Set.member` hasReverseLibDeps
           ]
         --TODO: also need to track build-tool rev-deps for exes
 
-    availablePkgs :: Set InstalledPackageId
-    availablePkgs = Set.fromList (map installedPackageId pkgs)
+    availablePkgs :: Set UnitId
+    availablePkgs = Set.fromList (map installedUnitId pkgs)
 
-    hasReverseLibDeps :: Set InstalledPackageId
+    hasReverseLibDeps :: Set UnitId
     hasReverseLibDeps =
       Set.fromList [ depid | pkg <- pkgs
                            , depid <- nodeNeighbors pkg ]
@@ -2139,8 +2141,8 @@ setupHsConfigureFlags (ReadyPackage pkg_or_comp)
     -- in which case we use configConstraints
     -- NB: This does NOT use nodeNeighbors, which includes executable
     -- dependencies which should NOT be fed in here
-    configDependencies        = [ (packageName srcid, uid)
-                                | ConfiguredId srcid uid <-
+    configDependencies        = [ (packageName srcid, cid)
+                                | ConfiguredId srcid cid <-
                                     case pkg_or_comp of
                                         ElabPackage _ -> CD.nonSetupDeps pkgDependencies
                                         ElabComponent comp -> elabComponentDependencies comp ]
@@ -2359,7 +2361,7 @@ packageHashInputs
       pkgHashComponent   = Nothing,
       pkgHashSourceHash  = srchash,
       pkgHashDirectDeps  = Set.fromList $
-                         [ installedPackageId dep
+                         [ confInstId dep
                          | dep <- CD.select relevantDeps pkgDependencies ] ++
                          CD.select relevantDeps pkgExeDependencies,
       pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
@@ -2385,7 +2387,7 @@ packageHashInputs
       pkgHashPkgId       = packageId comp,
       pkgHashComponent   = Just (elabComponent comp),
       pkgHashSourceHash  = srchash,
-      pkgHashDirectDeps  = Set.fromList (nodeNeighbors comp),
+      pkgHashDirectDeps  = Set.fromList (map confInstId (elabComponentDependencies comp)),
       pkgHashOtherConfig = packageHashConfigInputs pkgshared pkg
     }
 
@@ -2450,8 +2452,8 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
 
     canPackageBeImproved pkg =
       PackageIndex.lookupUnitId
-        installedPkgIndex (installedPackageId pkg)
+        installedPkgIndex (installedUnitId pkg)
 
     replaceWithPreExisting =
       foldl' (\plan ipkg -> InstallPlan.preexisting
-                              (installedPackageId ipkg) ipkg plan)
+                              (installedUnitId ipkg) ipkg plan)

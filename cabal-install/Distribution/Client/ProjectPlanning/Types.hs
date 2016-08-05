@@ -125,14 +125,14 @@ instance IsNode ElaboratedConfiguredPackage where
 
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared (ElabPackage pkg) = DistDirParams {
-        distParamUnitId = pkgInstalledId pkg,
+        distParamUnitId = installedUnitId pkg,
         distParamPackageId = pkgSourceId pkg,
         distParamComponentName = Nothing,
         distParamCompilerId = compilerId (pkgConfigCompiler shared),
         distParamPlatform = pkgConfigPlatform shared
     }
 elabDistDirParams shared (ElabComponent comp) = DistDirParams {
-        distParamUnitId = elabComponentId comp,
+        distParamUnitId = installedUnitId comp,
         distParamPackageId = packageId comp, -- NB: NOT the munged ID
         distParamComponentName = elabComponentName comp, -- TODO: Ick. Change type.
         distParamCompilerId = compilerId (pkgConfigCompiler shared),
@@ -207,7 +207,7 @@ data ElaboratedComponent
     elabComponentDependencies :: [ConfiguredId],
     -- | The order-only dependencies of this component; e.g.,
     -- if you depend on an executable it goes here.
-    elabComponentExeDependencies :: [UnitId],
+    elabComponentExeDependencies :: [ComponentId],
     -- | The 'ElaboratedPackage' this component came from
     elabComponentPackage :: ElaboratedPackage,
     -- | What in this component should we build (TRANSIENT, see 'pkgBuildTargets')
@@ -232,7 +232,7 @@ instance Package ElaboratedComponent where
     packageId = packageId . elabComponentPackage
 
 instance HasConfiguredId ElaboratedComponent where
-    configuredId comp = ConfiguredId (packageId comp) (installedUnitId comp)
+    configuredId comp = ConfiguredId (packageId comp) (unitIdComponentId (elabComponentId comp))
 
 instance HasUnitId ElaboratedComponent where
     installedUnitId = elabComponentId
@@ -241,8 +241,9 @@ instance IsNode ElaboratedComponent where
     type Key ElaboratedComponent = UnitId
     nodeKey = elabComponentId
     nodeNeighbors comp =
-           map installedUnitId (elabComponentDependencies comp)
-        ++ elabComponentExeDependencies comp
+           -- TODO: Change this with Backpack!
+           map (SimpleUnitId . confInstId) (elabComponentDependencies comp)
+        ++ map SimpleUnitId (elabComponentExeDependencies comp)
 
 data ElaboratedPackage
    = ElaboratedPackage {
@@ -266,7 +267,7 @@ data ElaboratedPackage
 
        -- | The executable dependencies, which we don't pass as @--dependency@ flags;
        -- these just need to be added to the path.
-       pkgExeDependencies :: ComponentDeps [UnitId],
+       pkgExeDependencies :: ComponentDeps [ComponentId],
 
        -- | Another way of phrasing 'pkgStanzasAvailable'.
        pkgEnabled          :: ComponentEnabledSpec,
@@ -392,16 +393,16 @@ instance Package ElaboratedPackage where
   packageId = pkgSourceId
 
 instance HasUnitId ElaboratedPackage where
-  installedUnitId = pkgInstalledId
+  installedUnitId = SimpleUnitId . pkgInstalledId
 
 instance HasConfiguredId ElaboratedPackage where
   configuredId pkg = ConfiguredId (pkgSourceId pkg) (pkgInstalledId pkg)
 
 instance IsNode ElaboratedPackage where
   type Key ElaboratedPackage = UnitId
-  nodeKey = pkgInstalledId
-  nodeNeighbors pkg = map installedUnitId (CD.flatDeps (pkgDependencies pkg))
-                   ++ CD.flatDeps (pkgExeDependencies pkg)
+  nodeKey = installedUnitId
+  nodeNeighbors pkg = map (SimpleUnitId . confInstId) (CD.flatDeps (pkgDependencies pkg))
+                   ++ map SimpleUnitId (CD.flatDeps (pkgExeDependencies pkg))
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.

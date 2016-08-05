@@ -404,7 +404,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, UnitId)],
+    configDependencies :: [(PackageName, ComponentId)],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -709,7 +709,7 @@ configureOptions showOrParseArgs =
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
-         (reqArg "NAME=ID"
+         (reqArg "NAME=CID"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
                  (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
 
@@ -795,7 +795,7 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parseDependency :: Parse.ReadP r (PackageName, UnitId)
+parseDependency :: Parse.ReadP r (PackageName, ComponentId)
 parseDependency = do
   x <- parse
   _ <- Parse.char '='

@@ -239,7 +239,7 @@ packageVersion  = pkgVersion . packageId
 instance Package PackageIdentifier where
   packageId = id
 
--- | Packages that have an installed package ID
+-- | Packages that have an installed unit ID
 class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
 

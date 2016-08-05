@@ -22,7 +22,8 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), HasUnitId(..), PackageInstalled(..) )
+         , UnitId(..), ComponentId(..), HasUnitId(..)
+         , PackageInstalled(..), unitIdComponentId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -77,10 +78,7 @@ instance Binary SourcePackageDb
 -- slightly and we may distinguish these two types and have an explicit
 -- conversion when we register units with the compiler.
 --
-type InstalledPackageId = UnitId
-
-installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
-installedPackageId = installedUnitId
+type InstalledPackageId = ComponentId
 
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
@@ -88,8 +86,11 @@ installedPackageId = installedUnitId
 -- the sense that it provides all the configuration information and so the
 -- final configure process will be independent of the environment.
 --
+-- 'ConfiguredPackage' is assumed to not support Backpack.  Only the
+-- @new-build@ codepath supports Backpack.
+--
 data ConfiguredPackage loc = ConfiguredPackage {
-       confPkgId :: UnitId, -- the generated 'UnitId' for this package
+       confPkgId :: InstalledPackageId,
        confPkgSource :: SourcePackage loc, -- package info, including repo
        confPkgFlags :: FlagAssignment,     -- complete flag assignment for the package
        confPkgStanzas :: [OptionalStanza], -- list of enabled optional stanzas for the package
@@ -108,12 +109,17 @@ data ConfiguredPackage loc = ConfiguredPackage {
 instance HasConfiguredId (ConfiguredPackage loc) where
     configuredId pkg = ConfiguredId (packageId pkg) (confPkgId pkg)
 
+-- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
+-- to never have a nontrivial 'UnitId'
+instance PackageFixedDeps (ConfiguredPackage loc) where
+    depends = fmap (map (SimpleUnitId . confInstId)) . confPkgDeps
+
 instance IsNode (ConfiguredPackage loc) where
     type Key (ConfiguredPackage loc) = UnitId
-    nodeKey       = confPkgId
+    nodeKey       = SimpleUnitId . confPkgId
     -- TODO: if we update ConfiguredPackage to support order-only
     -- dependencies, need to include those here
-    nodeNeighbors = map confInstId . CD.flatDeps . confPkgDeps
+    nodeNeighbors = CD.flatDeps . depends
 
 instance (Binary loc) => Binary (ConfiguredPackage loc)
 
@@ -126,12 +132,9 @@ instance (Binary loc) => Binary (ConfiguredPackage loc)
 --
 -- An already installed package of course is also "configured" (all it's
 -- configuration parameters and dependencies have been specified).
---
--- TODO: I wonder if it would make sense to promote this datatype to Cabal
--- and use it consistently instead of UnitIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: UnitId
+  , confInstId :: ComponentId
   }
   deriving (Eq, Ord, Generic)
 
@@ -143,28 +146,29 @@ instance Show ConfiguredId where
 instance Package ConfiguredId where
   packageId = confSrcId
 
-instance HasUnitId ConfiguredId where
-  installedUnitId = confInstId
-
 instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
-instance PackageInstalled (ConfiguredPackage loc) where
-  installedDepends = CD.flatDeps . fmap (map installedUnitId) . confPkgDeps
-
+-- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId = confPkgId
+  installedUnitId = SimpleUnitId . confPkgId
+
+instance PackageInstalled (ConfiguredPackage loc) where
+  installedDepends = CD.flatDeps . depends
 
 class HasConfiguredId a where
     configuredId :: a -> ConfiguredId
 
+-- NB: This instance is slightly dangerous, in that you'll lose
+-- information about the specific UnitId you depended on.
 instance HasConfiguredId InstalledPackageInfo where
-    configuredId ipkg = ConfiguredId (packageId ipkg) (installedUnitId ipkg)
+    configuredId ipkg = ConfiguredId (packageId ipkg) (unitIdComponentId (installedUnitId ipkg))
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
 newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPackage'.
-  deriving (Eq, Show, Generic, Package, PackageFixedDeps, HasUnitId, PackageInstalled, Binary)
+  deriving (Eq, Show, Generic, Package, PackageFixedDeps,
+            HasUnitId, PackageInstalled, Binary)
 
 -- Can't newtype derive this
 instance IsNode srcpkg => IsNode (GenericReadyPackage srcpkg) where

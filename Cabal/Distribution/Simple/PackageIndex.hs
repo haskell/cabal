@@ -77,6 +77,7 @@ module Distribution.Simple.PackageIndex (
 
   -- ** Precise lookups
   lookupUnitId,
+  lookupComponentId,
   lookupSourcePackageId,
   lookupPackageId,
   lookupPackageName,
@@ -379,14 +380,21 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- * Lookups
 --
 
--- | Does a lookup by source package id (name & version).
+-- | Does a lookup by unit identifier.
 --
 -- Since multiple package DBs mask each other by 'UnitId',
 -- then we get back at most one package.
 --
 lookupUnitId :: PackageIndex a -> UnitId
              -> Maybe a
-lookupUnitId (PackageIndex pids _) pid = Map.lookup pid pids
+lookupUnitId (PackageIndex m _) uid = Map.lookup uid m
+
+-- | Does a lookup by component identifier.  In the absence
+-- of Backpack, this is just a 'lookupUnitId'.
+--
+lookupComponentId :: PackageIndex a -> ComponentId
+                  -> Maybe a
+lookupComponentId (PackageIndex m _) uid = Map.lookup (SimpleUnitId uid) m
 
 -- | Backwards compatibility for Cabal pre-1.24.
 {-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}

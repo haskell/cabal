@@ -1332,15 +1332,15 @@ newPackageDepsBehaviour pkg =
 -- deps in the end. So we still need to remember which installed packages to
 -- pick.
 combinedConstraints :: [Dependency] ->
-                       [(PackageName, UnitId)] ->
+                       [(PackageName, ComponentId)] ->
                        InstalledPackageIndex ->
                        Either String ([Dependency],
                                       Map PackageName InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 
-    when (not (null badUnitIds)) $
+    when (not (null badComponentIds)) $
       Left $ render $ text "The following package dependencies were requested"
-         $+$ nest 4 (dispDependencies badUnitIds)
+         $+$ nest 4 (dispDependencies badComponentIds)
          $+$ text "however the given installed package instance does not exist."
 
     --TODO: we don't check that all dependencies are used!
@@ -1359,26 +1359,26 @@ combinedConstraints constraints dependencies installedPackages = do
                         | (_, _, Just pkg) <- dependenciesPkgInfo ]
 
     -- The dependencies along with the installed package info, if it exists
-    dependenciesPkgInfo :: [(PackageName, UnitId,
+    dependenciesPkgInfo :: [(PackageName, ComponentId,
                              Maybe InstalledPackageInfo)]
     dependenciesPkgInfo =
-      [ (pkgname, ipkgid, mpkg)
-      | (pkgname, ipkgid) <- dependencies
-      , let mpkg = PackageIndex.lookupUnitId
-                     installedPackages ipkgid
+      [ (pkgname, cid, mpkg)
+      | (pkgname, cid) <- dependencies
+      , let mpkg = PackageIndex.lookupComponentId
+                     installedPackages cid
       ]
 
     -- If we looked up a package specified by an installed package id
     -- (i.e. someone has written a hash) and didn't find it then it's
     -- an error.
-    badUnitIds =
-      [ (pkgname, ipkgid)
-      | (pkgname, ipkgid, Nothing) <- dependenciesPkgInfo ]
+    badComponentIds =
+      [ (pkgname, cid)
+      | (pkgname, cid, Nothing) <- dependenciesPkgInfo ]
 
     dispDependencies deps =
       hsep [    text "--dependency="
-             <<>> quotes (disp pkgname <<>> char '=' <<>> disp ipkgid)
-           | (pkgname, ipkgid) <- deps ]
+             <<>> quotes (disp pkgname <<>> char '=' <<>> disp cid)
+           | (pkgname, cid) <- deps ]
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies

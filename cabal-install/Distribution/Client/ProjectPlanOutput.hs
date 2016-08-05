@@ -10,6 +10,7 @@ module Distribution.Client.ProjectPlanOutput (
 
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.DistDirLayout
+import           Distribution.Client.Types
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -82,7 +83,7 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
         flat_deps = ordNub (ComponentDeps.flatDeps (pkgDependencies pkg))
         components = J.object
           [ comp2str c J..= J.object
-            [ "depends" J..= map (jdisplay . installedUnitId) v ]
+            [ "depends" J..= map (jdisplay . confInstId) v ]
           -- NB: does NOT contain order-only dependencies
           | (c,v) <- ComponentDeps.toList (pkgDependencies pkg) ]
 
@@ -96,7 +97,7 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
                                      | (PD.FlagName fn,v) <-
                                             pkgFlagAssignment pkg ]
         -- NB: does NOT contain order-only dependencies
-        , "depends"    J..= map (jdisplay . installedUnitId) (elabComponentDependencies comp)
+        , "depends"    J..= map (jdisplay . confInstId) (elabComponentDependencies comp)
         ]
       where
         pkg = elabComponentPackage comp
