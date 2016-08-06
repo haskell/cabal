@@ -3,4 +3,11 @@
 -- Turn off parallelization to get good errors.
 jobs: 1
 
-ghc-options: -Werror
+-- The -fno-warn-orphans is a hack to make Cabal-1.24
+-- build properly (unfortunately the flags here get applied
+-- to the dependencies too!)
+package Cabal
+  ghc-options: -Werror -fno-warn-orphans
+
+package cabal-install
+  ghc-options: -Werror
