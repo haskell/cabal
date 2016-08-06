@@ -241,10 +241,11 @@ componentCcGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo
                       -> FilePath -> FilePath
                       -> GhcOptions
-componentCcGhcOptions _verbosity _implInfo lbi bi clbi odir filename =
+componentCcGhcOptions verbosity _implInfo lbi bi clbi odir filename =
     mempty {
-      -- Use --ghc-option=-v instead!
-      ghcOptVerbosity      = NoFlag,
+      -- Respect -v0, but don't crank up verbosity on GHC if
+      -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
+      ghcOptVerbosity      = toFlag (min verbosity normal),
       ghcOptMode           = toFlag GhcModeCompile,
       ghcOptInputFiles     = toNubListR [filename],
 
@@ -270,10 +271,11 @@ componentCcGhcOptions _verbosity _implInfo lbi bi clbi odir filename =
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
-componentGhcOptions _verbosity lbi bi clbi odir =
+componentGhcOptions verbosity lbi bi clbi odir =
     mempty {
-      -- Use --ghc-option=-v instead!
-      ghcOptVerbosity       = NoFlag,
+      -- Respect -v0, but don't crank up verbosity on GHC if
+      -- Cabal verbosity is requested. For that, use --ghc-option=-v instead!
+      ghcOptVerbosity       = toFlag (min verbosity normal),
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptThisUnitId      = case clbi of
