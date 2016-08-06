@@ -132,11 +132,11 @@ import qualified Data.Tree  as Tree
 -- Packages are uniquely identified in by their 'UnitId', they can
 -- also be efficiently looked up by package name or by name and version.
 --
-data PackageIndex a = PackageIndex
+data PackageIndex a = PackageIndex {
   -- The primary index. Each InstalledPackageInfo record is uniquely identified
   -- by its UnitId.
   --
-  !(Map UnitId a)
+  unitIdIndex :: !(Map UnitId a),
 
   -- This auxiliary index maps package names (case-sensitively) to all the
   -- versions and instances of that package. This allows us to find all
@@ -149,9 +149,9 @@ data PackageIndex a = PackageIndex
   --
   -- FIXME: Clarify what "preference order" means. Check that this invariant is
   -- preserved. See #1463 for discussion.
-  !(Map PackageName (Map Version [a]))
+  packageIdIndex :: !(Map PackageName (Map Version [a]))
 
-  deriving (Eq, Generic, Show, Read)
+  } deriving (Eq, Generic, Show, Read)
 
 instance Binary a => Binary (PackageIndex a)
 
@@ -354,16 +354,16 @@ deleteDependency (Dependency name verstionRange) =
 -- | Get all the packages from the index.
 --
 allPackages :: PackageIndex a -> [a]
-allPackages (PackageIndex pids _) = Map.elems pids
+allPackages = Map.elems . unitIdIndex
 
 -- | Get all the packages from the index.
 --
 -- They are grouped by package name (case-sensitively).
 --
 allPackagesByName :: PackageIndex a -> [(PackageName, [a])]
-allPackagesByName (PackageIndex _ pnames) =
+allPackagesByName index =
   [ (pkgname, concat (Map.elems pvers))
-  | (pkgname, pvers) <- Map.toList pnames ]
+  | (pkgname, pvers) <- Map.toList (packageIdIndex index) ]
 
 -- | Get all the packages from the index.
 --
@@ -371,9 +371,9 @@ allPackagesByName (PackageIndex _ pnames) =
 --
 allPackagesBySourcePackageId :: HasUnitId a => PackageIndex a
                              -> [(PackageId, [a])]
-allPackagesBySourcePackageId (PackageIndex _ pnames) =
+allPackagesBySourcePackageId index =
   [ (packageId ipkg, ipkgs)
-  | pvers <- Map.elems pnames
+  | pvers <- Map.elems (packageIdIndex index)
   , ipkgs@(ipkg:_) <- Map.elems pvers ]
 
 --
@@ -387,14 +387,14 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 --
 lookupUnitId :: PackageIndex a -> UnitId
              -> Maybe a
-lookupUnitId (PackageIndex m _) uid = Map.lookup uid m
+lookupUnitId index uid = Map.lookup uid (unitIdIndex index)
 
 -- | Does a lookup by component identifier.  In the absence
 -- of Backpack, this is just a 'lookupUnitId'.
 --
 lookupComponentId :: PackageIndex a -> ComponentId
                   -> Maybe a
-lookupComponentId (PackageIndex m _) uid = Map.lookup (SimpleUnitId uid) m
+lookupComponentId index uid = Map.lookup (SimpleUnitId uid) (unitIdIndex index)
 
 -- | Backwards compatibility for Cabal pre-1.24.
 {-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}
@@ -410,8 +410,8 @@ lookupInstalledPackageId = lookupUnitId
 -- preference, with the most preferred first.
 --
 lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
-lookupSourcePackageId (PackageIndex _ pnames) pkgid =
-  case Map.lookup (packageName pkgid) pnames of
+lookupSourcePackageId index pkgid =
+  case Map.lookup (packageName pkgid) (packageIdIndex index) of
     Nothing     -> []
     Just pvers  -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing   -> []
@@ -429,8 +429,8 @@ lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
 --
 lookupPackageName :: PackageIndex a -> PackageName
                   -> [(Version, [a])]
-lookupPackageName (PackageIndex _ pnames) name =
-  case Map.lookup name pnames of
+lookupPackageName index name =
+  case Map.lookup name (packageIdIndex index) of
     Nothing     -> []
     Just pvers  -> Map.toList pvers
 
@@ -442,8 +442,8 @@ lookupPackageName (PackageIndex _ pnames) name =
 --
 lookupDependency :: PackageIndex a -> Dependency
                  -> [(Version, [a])]
-lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
-  case Map.lookup name pnames of
+lookupDependency index (Dependency name versionRange) =
+  case Map.lookup name (packageIdIndex index) of
     Nothing    -> []
     Just pvers -> [ entry
                   | entry@(ver, _) <- Map.toList pvers
@@ -466,8 +466,8 @@ lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
 -- it is a non-empty list of non-empty lists.
 --
 searchByName :: PackageIndex a -> String -> SearchResult [a]
-searchByName (PackageIndex _ pnames) name =
-  case [ pkgs | pkgs@(PackageName name',_) <- Map.toList pnames
+searchByName index name =
+  case [ pkgs | pkgs@(PackageName name',_) <- Map.toList (packageIdIndex index)
               , lowercase name' == lname ] of
     []               -> None
     [(_,pvers)]      -> Unambiguous (concat (Map.elems pvers))
@@ -483,9 +483,9 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 -- That is, all packages that contain the given string in their name.
 --
 searchByNameSubstring :: PackageIndex a -> String -> [a]
-searchByNameSubstring (PackageIndex _ pnames) searchterm =
+searchByNameSubstring index searchterm =
   [ pkg
-  | (PackageName name, pvers) <- Map.toList pnames
+  | (PackageName name, pvers) <- Map.toList (packageIdIndex index)
   , lsearchterm `isInfixOf` lowercase name
   , pkgs <- Map.elems pvers
   , pkg <- pkgs ]
