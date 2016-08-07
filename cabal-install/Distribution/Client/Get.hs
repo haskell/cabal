@@ -319,10 +319,7 @@ branchGit = Brancher "git" $ \repo -> do
              cwd <- getCurrentDirectory
              setCurrentDirectory dst
              finally
-                 (rawSystem "git" (["checkout", t] ++
-                    case PD.repoBranch repo of
-                        Just b -> [b]
-                        Nothing -> []))
+                 (rawSystem "git" ["checkout", t])
                  (setCurrentDirectory cwd)
          Nothing -> return ExitSuccess
     return $ BranchCmd $ \verbosity dst -> do
