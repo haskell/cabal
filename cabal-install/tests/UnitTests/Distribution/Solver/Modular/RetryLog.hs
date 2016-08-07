@@ -10,42 +10,38 @@ import Distribution.Solver.Types.Progress
 
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase, (@?=))
+import Test.Tasty.QuickCheck
+         ( Arbitrary(..), Blind(..), listOf, oneof, testProperty, (===))
 
 type Log a = Progress a String String
 
 tests :: [TestTree]
 tests = [
-    testCase "convert to and from RetryLog ending in failure" $
-        let lg = Step 1 (Step 2 (Step 3 (Fail "Error")))
-        in toProgress (fromProgress lg) @?= (lg :: Log Int)
+    testProperty "'toProgress . fromProgress' is identity" $ \p ->
+        toProgress (fromProgress p) === (p :: Log Int)
 
-  , testCase "convert to and from RetryLog ending in success" $
-        let lg = Step 1 (Step 2 (Step 3 (Done "Result")))
-        in toProgress (fromProgress lg) @?= (lg :: Log Int)
+  , testProperty "'mapFailure f' is like 'foldProgress Step (Fail . f) Done'" $
+        let mapFailureProgress f = foldProgress Step (Fail . f) Done
+        in \(Blind f) p ->
+               toProgress (mapFailure f (fromProgress p))
+               === mapFailureProgress (f :: String -> Int) (p :: Log Int)
 
-  , testCase "retry with failure" $
-        let log1 = fromProgress $ Step 1 (Step 2 (Fail "Error 1"))
-            log2 = fromProgress $ Step 3 (Step 4 (Fail "Error 2"))
-        in toProgress (retry log1 (const log2))
-           @?= (Step 1 (Step 2 (Step 3 (Step 4 (Fail "Error 2")))) :: Log Int)
+  , testProperty "'retry p f' is like 'foldProgress Step f Done p'" $
+      \p (Blind f) ->
+        toProgress (retry (fromProgress p) (fromProgress . f))
+        === (foldProgress Step f Done (p :: Log Int) :: Log Int)
 
-  , testCase "retry with success" $
-        let lg1 = fromProgress $ Step 1 (Step 2 (Done "Done"))
-            lg2 = fromProgress $ Step 3 (Step 4 (Fail "Error"))
-        in toProgress (retry lg1 (const lg2))
-           @?= (Step 1 (Step 2 (Done "Done")) :: Log Int)
+  , testProperty "failWith" $ \step failure ->
+        toProgress (failWith step failure)
+        === (Step step (Fail failure) :: Log Int)
 
-  , testCase "failWith" $
-        toProgress (failWith 1 "Error") @?= (Step 1 (Fail "Error") :: Log Int)
+  , testProperty "succeedWith" $ \step success ->
+        toProgress (succeedWith step success)
+        === (Step step (Done success) :: Log Int)
 
-  , testCase "succeedWith" $
-        toProgress (succeedWith 1 "Result")
-        @?= (Step 1 (Done "Result") :: Log Int)
-
-  , testCase "continueWith" $
-        let failure = Fail "Error"
-        in toProgress (continueWith 1 $ fromProgress failure)
-           @?= (Step 1 failure :: Log Int)
+  , testProperty "continueWith" $ \step p ->
+        toProgress (continueWith step (fromProgress p))
+        === (Step step p :: Log Int)
 
   , testCase "tryWith with failure" $
         let failure = Fail "Error"
@@ -59,6 +55,13 @@ tests = [
         in toProgress (tryWith Success $ fromProgress (s (s done)))
            @?= (s (Step Enter (s (s done))) :: Log Message)
   ]
+
+instance (Arbitrary step, Arbitrary fail, Arbitrary done)
+    => Arbitrary (Progress step fail done) where
+  arbitrary = do
+    steps <- listOf arbitrary
+    end <- oneof [Fail `fmap` arbitrary, Done `fmap` arbitrary]
+    return $ foldr Step end steps
 
 deriving instance (Eq step, Eq fail, Eq done) => Eq (Progress step fail done)
 
