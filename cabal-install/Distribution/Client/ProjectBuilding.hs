@@ -2,7 +2,7 @@
              DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
 
--- | 
+-- |
 --
 module Distribution.Client.ProjectBuilding (
     -- * Dry run phase
@@ -187,7 +187,7 @@ data BuildReason =
      --
      BuildReasonDepsRebuilt
 
-     -- | Changes in files within the package (or first run or corrupt cache) 
+     -- | Changes in files within the package (or first run or corrupt cache)
    | BuildReasonFilesChanged (MonitorChangedReason ())
 
      -- | An important special case is that no files have changed but the
@@ -205,7 +205,7 @@ data BuildReason =
      -- | Although we're not going to build any additional targets as a whole,
      -- we're going to build some part of a component or run a repl or any
      -- other action that does not result in additional persistent artifacts.
-     -- 
+     --
    | BuildReasonEphemeralTargets
 
 -- | Which 'BuildStatus' values indicate we'll have to do some build work of
@@ -630,7 +630,7 @@ rebuildTargets verbosity
   where
     isParallelBuild = buildSettingNumJobs >= 2
     keepGoing       = buildSettingKeepGoing
-    withRepoCtx     = projectConfigWithBuilderRepoContext verbosity 
+    withRepoCtx     = projectConfigWithBuilderRepoContext verbosity
                         buildSettings
     packageDBsToUse = -- all the package dbs we may need to create
       (Set.toList . Set.fromList)
@@ -748,7 +748,7 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
                             asyncFetchPackages verbosity repoctx
                                                pkgsToDownload body
   where
-    pkgsToDownload = 
+    pkgsToDownload =
       [ pkgSourceLocation pkg
       | InstallPlan.Configured pkg
          <- InstallPlan.reverseTopologicalOrder installPlan
@@ -787,7 +787,7 @@ downloadedSourceLocation pkgloc =
 
 
 -- | Ensure that the package is unpacked in an appropriate directory, either
--- a temporary one or a persistent one under the shared dist directory. 
+-- a temporary one or a persistent one under the shared dist directory.
 --
 withTarballLocalDirectory
   :: Verbosity
@@ -946,7 +946,7 @@ buildAndInstallUnpackedPackage verbosity
 
       -- Actual installation
       setup Cabal.copyCommand copyFlags
-      
+
       LBS.writeFile
         (InstallDirs.prefix (pkgInstallDirs pkg) </> "cabal-hash.txt") $
         (renderPackageHashInputs (packageHashInputs pkgshared pkg))
@@ -1023,7 +1023,7 @@ buildAndInstallUnpackedPackage verbosity
 
     setup :: CommandUI flags -> (Version -> flags) -> IO ()
     setup cmd flags =
-      withLogging $ \mLogFileHandle -> 
+      withLogging $ \mLogFileHandle ->
         setupWrapper
           verbosity
           scriptOptions { useLoggingHandle = mLogFileHandle }
@@ -1317,4 +1317,3 @@ withTempInstalledPackageInfoFiles verbosity tempdir action =
         warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
 
       return ipkg
-
