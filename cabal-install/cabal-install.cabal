@@ -298,6 +298,7 @@ executable cabal
         Distribution.Solver.Modular.Package
         Distribution.Solver.Modular.Preference
         Distribution.Solver.Modular.PSQ
+        Distribution.Solver.Modular.RetryLog
         Distribution.Solver.Modular.Solver
         Distribution.Solver.Modular.Tree
         Distribution.Solver.Modular.Validate
@@ -391,6 +392,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.JobControl
     UnitTests.Distribution.Client.InstallPlan
     UnitTests.Distribution.Solver.Modular.PSQ
+    UnitTests.Distribution.Solver.Modular.RetryLog
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Options
