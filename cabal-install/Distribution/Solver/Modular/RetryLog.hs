@@ -3,6 +3,7 @@ module Distribution.Solver.Modular.RetryLog
     ( RetryLog
     , toProgress
     , fromProgress
+    , mapFailure
     , retry
     , failWith
     , succeedWith
@@ -33,6 +34,12 @@ fromProgress l = RetryLog $ \f -> go f l
     go _ (Done d) = Done d
     go f (Fail failure) = f failure
     go f (Step m ms) = Step m (go f ms)
+
+-- | /O(1)/. Apply a function to the failure value in a log.
+mapFailure :: (fail1 -> fail2)
+           -> RetryLog step fail1 done
+           -> RetryLog step fail2 done
+mapFailure f l = retry l $ \failure -> RetryLog $ \g -> g (f failure)
 
 -- | /O(1)/. If the first log leads to failure, continue with the second.
 retry :: RetryLog step fail1 done

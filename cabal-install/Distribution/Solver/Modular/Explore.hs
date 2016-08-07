@@ -18,7 +18,6 @@ import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts(..))
-import qualified Distribution.Solver.Types.Progress as P
 
 -- | This function takes the variable we're currently considering, an
 -- initial conflict set and a
@@ -165,8 +164,7 @@ backjumpAndExplore :: EnableBackjumping
                    -> CountConflicts
                    -> Tree QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore enableBj countConflicts t =
-    toLog $ toProgress $
-    exploreLog enableBj countConflicts t (A M.empty M.empty M.empty) M.empty
+    toLog $ exploreLog enableBj countConflicts t (A M.empty M.empty M.empty) M.empty
   where
-    toLog :: P.Progress step fail done -> Log step done
-    toLog = P.foldProgress P.Step (const (P.Fail ())) P.Done
+    toLog :: RetryLog step fail done -> Log step done
+    toLog = toProgress . mapFailure (const ())
