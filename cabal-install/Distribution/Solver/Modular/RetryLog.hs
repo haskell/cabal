@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Rank2Types #-}
 module Distribution.Solver.Modular.RetryLog
     ( RetryLog
     , toProgress
@@ -15,8 +15,8 @@ import Distribution.Solver.Types.Progress
 
 -- | 'Progress' as a difference list that allows efficient appends at failures.
 newtype RetryLog step fail done = RetryLog {
-    unRetryLog :: (fail -> Progress step fail done)
-               -> Progress step fail done
+    unRetryLog :: forall fail2 . (fail -> Progress step fail2 done)
+               -> Progress step fail2 done
   }
 
 -- | /O(1)/. Convert a 'RetryLog' to a 'Progress'.
@@ -24,20 +24,20 @@ toProgress :: RetryLog step fail done -> Progress step fail done
 toProgress (RetryLog f) = f Fail
 
 -- | /O(N)/. Convert a 'Progress' to a 'RetryLog'.
-fromProgress :: forall step fail done .
-                Progress step fail done
-             -> RetryLog step fail done
-fromProgress l = RetryLog $ \f ->
-  let go :: Progress step fail done -> Progress step fail done
-      go (Done d) = Done d
-      go (Fail failure) = f failure
-      go (Step m ms) = Step m (go ms)
-  in go l
+fromProgress :: Progress step fail done -> RetryLog step fail done
+fromProgress l = RetryLog $ \f -> go f l
+  where
+    go :: (fail1 -> Progress step fail2 done)
+       -> Progress step fail1 done
+       -> Progress step fail2 done
+    go _ (Done d) = Done d
+    go f (Fail failure) = f failure
+    go f (Step m ms) = Step m (go f ms)
 
 -- | /O(1)/. If the first log leads to failure, continue with the second.
-retry :: RetryLog step fail done
-      -> (fail -> RetryLog step fail done)
-      -> RetryLog step fail done
+retry :: RetryLog step fail1 done
+      -> (fail1 -> RetryLog step fail2 done)
+      -> RetryLog step fail2 done
 retry (RetryLog f) g =
     RetryLog $ \extendLog -> f $ \failure -> unRetryLog (g failure) extendLog
 
