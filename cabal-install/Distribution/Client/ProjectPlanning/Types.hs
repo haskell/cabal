@@ -67,6 +67,7 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps (ComponentDeps)
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Compat.Graph (IsNode(..))
+import           Distribution.Simple.Utils (ordNub)
 
 import           Data.Map (Map)
 import           Data.Set (Set)
@@ -401,8 +402,12 @@ instance HasConfiguredId ElaboratedPackage where
 instance IsNode ElaboratedPackage where
   type Key ElaboratedPackage = UnitId
   nodeKey = installedUnitId
-  nodeNeighbors pkg = map (SimpleUnitId . confInstId) (CD.flatDeps (pkgDependencies pkg))
-                   ++ map SimpleUnitId (CD.flatDeps (pkgExeDependencies pkg))
+  nodeNeighbors pkg =
+    -- Important not to have duplicates: otherwise InstallPlan gets
+    -- confused
+    ordNub $
+        map (SimpleUnitId . confInstId) (CD.flatDeps (pkgDependencies pkg))
+     ++ map SimpleUnitId (CD.flatDeps (pkgExeDependencies pkg))
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.
