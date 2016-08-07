@@ -314,20 +314,23 @@ branchDarcs = Brancher "darcs" $ \repo -> do
 branchGit :: Brancher
 branchGit = Brancher "git" $ \repo -> do
     src <- PD.repoLocation repo
-    let branchArgs = case PD.repoBranch repo of
-         Just b -> ["--branch", b]
-         Nothing -> []
     let postClone dst = case PD.repoTag repo of
          Just t -> do
              cwd <- getCurrentDirectory
              setCurrentDirectory dst
              finally
-                 (rawSystem "git" (["checkout", t] ++ branchArgs))
+                 (rawSystem "git" (["checkout", t] ++
+                    case PD.repoBranch repo of
+                        Just b -> [b]
+                        Nothing -> []))
                  (setCurrentDirectory cwd)
          Nothing -> return ExitSuccess
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("git: clone " ++ show src)
-        code <- rawSystem "git" (["clone", src, dst] ++ branchArgs)
+        code <- rawSystem "git" (["clone", src, dst] ++
+                    case PD.repoBranch repo of
+                        Nothing -> []
+                        Just b -> ["--branch", b])
         case code of
             ExitFailure _ -> return code
             ExitSuccess -> postClone dst
