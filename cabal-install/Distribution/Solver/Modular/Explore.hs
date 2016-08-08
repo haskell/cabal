@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.Solver.Modular.Explore
     ( backjump
     , backjumpAndExplore
@@ -13,10 +14,10 @@ import Distribution.Solver.Modular.Log
 import Distribution.Solver.Modular.Message
 import qualified Distribution.Solver.Modular.PSQ as P
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import Distribution.Solver.Modular.RetryLog
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Settings (EnableBackjumping(..), CountConflicts(..))
-import qualified Distribution.Solver.Types.Progress as P
 
 -- | This function takes the variable we're currently considering, an
 -- initial conflict set and a
@@ -47,24 +48,20 @@ backjump :: EnableBackjumping -> Var QPN
 backjump (EnableBackjumping enableBj) var initial xs =
     F.foldr combine logBackjump xs initial
   where
-    combine :: (ConflictMap -> ConflictSetLog a)
+    combine :: forall a . (ConflictMap -> ConflictSetLog a)
             -> (ConflictSet QPN -> ConflictMap -> ConflictSetLog a)
             ->  ConflictSet QPN -> ConflictMap -> ConflictSetLog a
-    combine x f csAcc cm =
-      let l = x cm
-      in case l of
-        P.Done d  -> P.Done d
-        P.Fail (cs, cm')
-          | enableBj && not (var `CS.member` cs) -> logBackjump cs cm'
-          | otherwise                            -> f (csAcc `CS.union` cs) cm'
-        P.Step m ms ->
-          let l' = combine (\ _ -> ms) f csAcc cm
-          in P.Step m l'
+    combine x f csAcc cm = retry (x cm) next
+      where
+        next :: (ConflictSet QPN, ConflictMap) -> ConflictSetLog a
+        next (cs, cm')
+          | enableBj && not (var `CS.member` cs) = logBackjump cs cm'
+          | otherwise                            = f (csAcc `CS.union` cs) cm'
 
     logBackjump :: ConflictSet QPN -> ConflictMap -> ConflictSetLog a
     logBackjump cs cm = failWith (Failure cs Backjump) (cs, cm)
 
-type ConflictSetLog = P.Progress Message (ConflictSet QPN, ConflictMap)
+type ConflictSetLog = RetryLog Message (ConflictSet QPN, ConflictMap)
 
 type ConflictMap = Map (Var QPN) Int
 
@@ -167,7 +164,7 @@ backjumpAndExplore :: EnableBackjumping
                    -> CountConflicts
                    -> Tree QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore enableBj countConflicts t =
-    toLog $ (exploreLog enableBj countConflicts t (A M.empty M.empty M.empty)) M.empty
+    toLog $ exploreLog enableBj countConflicts t (A M.empty M.empty M.empty) M.empty
   where
-    toLog :: P.Progress step fail done -> Log step done
-    toLog = P.foldProgress P.Step (const (P.Fail ())) P.Done
+    toLog :: RetryLog step fail done -> Log step done
+    toLog = toProgress . mapFailure (const ())

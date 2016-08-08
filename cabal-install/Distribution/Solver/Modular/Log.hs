@@ -1,10 +1,6 @@
 module Distribution.Solver.Modular.Log
     ( Log
-    , continueWith
-    , failWith
     , logToProgress
-    , succeedWith
-    , tryWith
     ) where
 
 import Control.Applicative
@@ -90,17 +86,3 @@ logToProgress mbj l = let
                                                         currlimit Nothing  = ""
     go _  _           (Done s)              = Done s
     go _  _           (Fail (_, Nothing))   = Fail ("Could not resolve dependencies; something strange happened.") -- should not happen
-
-failWith :: step -> fail -> Progress step fail done
-failWith s f = Step s (Fail f)
-
-succeedWith :: step -> done -> Progress step fail done
-succeedWith s d = Step s (Done d)
-
-continueWith :: step -> Progress step fail done -> Progress step fail done
-continueWith = Step
-
-tryWith :: Message
-        -> Progress Message fail done
-        -> Progress Message fail done
-tryWith m = Step m . Step Enter . foldProgress Step (failWith Leave) Done

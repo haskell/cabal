@@ -12,6 +12,7 @@ import Distribution.Compat.Time
 
 import qualified UnitTests.Distribution.Solver.Modular.PSQ
 import qualified UnitTests.Distribution.Solver.Modular.Solver
+import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Client.FileMonitor
 import qualified UnitTests.Distribution.Client.Glob
 import qualified UnitTests.Distribution.Client.GZipUtils
@@ -39,6 +40,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Solver.Modular.PSQ.tests
   , testGroup "UnitTests.Distribution.Solver.Modular.Solver"
         UnitTests.Distribution.Solver.Modular.Solver.tests
+  , testGroup "UnitTests.Distribution.Solver.Modular.RetryLog"
+        UnitTests.Distribution.Solver.Modular.RetryLog.tests
   , testGroup "UnitTests.Distribution.Client.FileMonitor" $
         UnitTests.Distribution.Client.FileMonitor.tests mtimeChange
   , testGroup "UnitTests.Distribution.Client.Glob"
