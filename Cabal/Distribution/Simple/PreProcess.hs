@@ -149,7 +149,7 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
                                   ,autogenPackageModulesDir lbi]
     setupMessage verbosity "Preprocessing library" (packageId pd)
     for_ (map ModuleName.toFilePath $ libModules lib) $
-      pre dirs (buildDir lbi) (localHandlers bi)
+      pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
