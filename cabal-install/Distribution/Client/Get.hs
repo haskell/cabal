@@ -23,7 +23,7 @@ import Distribution.Package
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( notice, die, info, writeFileAtomic )
+         ( notice, die, info, rawSystemExitCode, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
@@ -68,8 +68,6 @@ import System.Exit
          ( ExitCode(..) )
 import System.FilePath
          ( (</>), (<.>), addTrailingPathSeparator )
-import System.Process
-         ( rawSystem )
 
 
 -- | Entry point for the 'cabal get' command.
@@ -297,7 +295,7 @@ branchBzr = Brancher "bzr" $ \repo -> do
          Nothing -> ["branch", src, dst]
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("bzr: branch " ++ show src)
-        rawSystem "bzr" (args dst)
+        rawSystemExitCode verbosity "bzr" (args dst)
 
 -- | Branch driver for Darcs.
 branchDarcs :: Brancher
@@ -308,29 +306,29 @@ branchDarcs = Brancher "darcs" $ \repo -> do
          Nothing -> ["get", src, dst]
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("darcs: get " ++ show src)
-        rawSystem "darcs" (args dst)
+        rawSystemExitCode verbosity "darcs" (args dst)
 
 -- | Branch driver for Git.
 branchGit :: Brancher
 branchGit = Brancher "git" $ \repo -> do
     src <- PD.repoLocation repo
-    let branchArgs = case PD.repoBranch repo of
-         Just b -> ["--branch", b]
-         Nothing -> []
-    let postClone dst = case PD.repoTag repo of
+    let postClone verbosity dst = case PD.repoTag repo of
          Just t -> do
              cwd <- getCurrentDirectory
              setCurrentDirectory dst
              finally
-                 (rawSystem "git" (["checkout", t] ++ branchArgs))
+                 (rawSystemExitCode verbosity "git" ["checkout", t])
                  (setCurrentDirectory cwd)
          Nothing -> return ExitSuccess
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("git: clone " ++ show src)
-        code <- rawSystem "git" (["clone", src, dst] ++ branchArgs)
+        code <- rawSystemExitCode verbosity "git" (["clone", src, dst] ++
+                    case PD.repoBranch repo of
+                        Nothing -> []
+                        Just b -> ["--branch", b])
         case code of
             ExitFailure _ -> return code
-            ExitSuccess -> postClone dst
+            ExitSuccess -> postClone verbosity  dst
 
 -- | Branch driver for Mercurial.
 branchHg :: Brancher
@@ -345,7 +343,7 @@ branchHg = Brancher "hg" $ \repo -> do
     let args dst = ["clone", src, dst] ++ branchArgs ++ tagArgs
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("hg: clone " ++ show src)
-        rawSystem "hg" (args dst)
+        rawSystemExitCode verbosity "hg" (args dst)
 
 -- | Branch driver for Subversion.
 branchSvn :: Brancher
@@ -354,4 +352,4 @@ branchSvn = Brancher "svn" $ \repo -> do
     let args dst = ["checkout", src, dst]
     return $ BranchCmd $ \verbosity dst -> do
         notice verbosity ("svn: checkout " ++ show src)
-        rawSystem "svn" (args dst)
+        rawSystemExitCode verbosity "svn" (args dst)
