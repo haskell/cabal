@@ -186,10 +186,10 @@ registerAll pkg lbi regFlags ipis
       deletePackageDB regFile
       case ipis of
         [installedPkgInfo] -> do
-          notice verbosity ("Creating package registration file: " ++ regFile)
+          info verbosity ("Creating package registration file: " ++ regFile)
           writeUTF8File regFile (IPI.showInstalledPackageInfo installedPkgInfo)
         _ -> do
-          notice verbosity ("Creating package registration directory: " ++ regFile)
+          info verbosity ("Creating package registration directory: " ++ regFile)
           createDirectory regFile
           let num_ipis = length ipis
               lpad m xs = replicate (m - length ys) '0' ++ ys
@@ -354,7 +354,7 @@ writeHcPkgRegisterScript verbosity ipis packageDbs hpi = do
       -- TODO: Do something more robust here
       regScript = unlines scripts
 
-  notice verbosity ("Creating package registration script: " ++ regScriptFileName)
+  info verbosity ("Creating package registration script: " ++ regScriptFileName)
   writeUTF8File regScriptFileName regScript
   setFileExecutable regScriptFileName
 
