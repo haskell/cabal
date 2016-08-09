@@ -43,21 +43,24 @@ import Distribution.Solver.Types.ComponentDeps (Component)
 type RelatedGoals = Map (PN, I) [PackagePath]
 type Linker       = Reader RelatedGoals
 
--- | Introduce link nodes into tree tree
+-- | Introduce link nodes into the tree
 --
 -- Linking is a traversal of the solver tree that adapts package choice nodes
 -- and adds the option to link wherever appropriate: Package goals are called
--- "related" if they are for the same version of the same package (but have
+-- "related" if they are for the same instance of the same package (but have
 -- different prefixes). A link option is available in a package choice node
 -- whenever we can choose an instance that has already been chosen for a related
--- goal at a higher position in the tree.
+-- goal at a higher position in the tree. We only create link options for
+-- related goals that are not themselves linked, because the choice to link to a
+-- linked goal is the same as the choice to link to the target of that goal's
+-- linking.
 --
 -- The code here proceeds by maintaining a finite map recording choices that
 -- have been made at higher positions in the tree. For each pair of package name
 -- and instance, it stores the prefixes at which we have made a choice for this
--- package instance. Whenever we make a choice, we extend the map. Whenever we
--- find a choice, we look into the map in order to find out what link options we
--- have to add.
+-- package instance. Whenever we make an unlinked choice, we extend the map.
+-- Whenever we find a choice, we look into the map in order to find out what
+-- link options we have to add.
 addLinking :: Tree a -> Tree a
 addLinking = (`runReader` M.empty) .  cata go
   where
@@ -66,9 +69,10 @@ addLinking = (`runReader` M.empty) .  cata go
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
       env <- ask
-      cs' <- T.sequence $ P.mapWithKey (goP qpn) cs
-      let newCs = concatMap (linkChoices env qpn) (P.toList cs')
-      return $ PChoice qpn gr (cs' `P.union` P.fromList newCs)
+      let linkedCs = P.fromList $ concatMap (linkChoices env qpn) (P.toList cs)
+          unlinkedCs = P.mapWithKey (goP qpn) cs
+      allCs <- T.sequence $ unlinkedCs `P.union` linkedCs
+      return $ PChoice qpn gr allCs
     go _otherwise =
       innM _otherwise
 
