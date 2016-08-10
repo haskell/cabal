@@ -609,12 +609,13 @@ instance Exception BuildFailure
 
 -- | Detail on the reason that a package failed to build.
 --
-data BuildFailureReason = PlanningFailed
-                        | DependentFailed PackageId
+data BuildFailureReason = DependentFailed PackageId
                         | DownloadFailed  SomeException
                         | UnpackFailed    SomeException
                         | ConfigureFailed SomeException
                         | BuildFailed     SomeException
+                        | ReplFailed      SomeException
+                        | HaddocksFailed  SomeException
                         | TestsFailed     SomeException
                         | InstallFailed   SomeException
   deriving Show
@@ -1240,12 +1241,12 @@ buildInplaceUnpackedPackage verbosity
         -- Repl phase
         --
         whenRepl $
-          annotateFailure (BuildFailure Nothing . BuildFailed) $
+          annotateFailure (BuildFailure Nothing . ReplFailed) $
           setup replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
-          annotateFailure (BuildFailure Nothing . BuildFailed) $
+          annotateFailure (BuildFailure Nothing . HaddocksFailed) $
           setup haddockCommand haddockFlags []
 
         return BuildResult {

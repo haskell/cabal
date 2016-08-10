@@ -554,6 +554,10 @@ reportBuildFailures plan buildOutcomes
                             ++ showException e
           BuildFailed     e -> "failed to build " ++ pkgstr ++ "."
                             ++ showException e
+          ReplFailed      e -> "repl failed for " ++ pkgstr ++ "."
+                            ++ showException e
+          HaddocksFailed  e -> "failed to build documentation for " ++ pkgstr ++ "."
+                            ++ showException e
           TestsFailed     e -> "tests failed for " ++ pkgstr ++ "."
                             ++ showException e
           InstallFailed   e -> "failed to build " ++ pkgstr ++ ". The failure"
@@ -563,7 +567,6 @@ reportBuildFailures plan buildOutcomes
           -- This will never happen, but we include it for completeness
           DependentFailed pkgid -> " depends on " ++ display pkgid
                                 ++ " which failed to install."
-          PlanningFailed -> " failed during the planning phase."
       where
         pkgstr = display (packageId pkg)
               ++ renderDependencyOf (installedUnitId pkg)
