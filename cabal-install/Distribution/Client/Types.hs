@@ -288,7 +288,7 @@ data BuildFailure = PlanningFailed
 instance Exception BuildFailure
 
 data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    [InstalledPackageInfo]
+                                    (Maybe InstalledPackageInfo)
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk

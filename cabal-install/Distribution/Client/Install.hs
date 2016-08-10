@@ -54,13 +54,11 @@ import Control.Applicative
 import Data.Traversable
          ( traverse )
 #endif
-import Control.Exception ( assert )
 import Control.Monad
          ( filterM, forM_, when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
-           createDirectoryIfMissing, removeFile, renameDirectory,
-           getDirectoryContents )
+           createDirectoryIfMissing, removeFile, renameDirectory )
 import System.FilePath
          ( (</>), (<.>), equalFilePath, takeDirectory )
 import System.IO
@@ -1425,21 +1423,19 @@ installUnpackedPackage verbosity installLock numJobs
             -- TODO: This is duplicated with
             -- Distribution/Client/ProjectBuilding.hs, search for
             -- the Note [Updating installedUnitId].
-            ipkgs <- genPkgConfs mLogPath
-            let ipkgs' = case ipkgs of
-                            [ipkg] -> [ipkg { Installed.installedUnitId = ipid }]
-                            _ -> assert (any ((== ipid)
-                                              . Installed.installedUnitId)
-                                             ipkgs) ipkgs
+            mipkg0 <- genPkgConf mLogPath
+            let mipkg = fmap (\ipkg0 -> ipkg0 { Installed.installedUnitId = ipid }) mipkg0
             let packageDBs = interpretPackageDbFlags
                                 (fromFlag (configUserInstall configFlags))
                                 (configPackageDBs configFlags)
-            forM_ ipkgs' $ \ipkg' ->
+            case mipkg of
+              Just ipkg ->
                 registerPackage verbosity comp conf
                                       NoMultiInstance
-                                      packageDBs ipkg'
+                                      packageDBs ipkg
+              Nothing -> return ()
 
-            return (Right (BuildOk docsResult testsResult ipkgs'))
+            return (Right (BuildOk docsResult testsResult mipkg))
 
   where
     pkgid            = packageId pkg
@@ -1488,9 +1484,9 @@ installUnpackedPackage verbosity installLock numJobs
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
-    genPkgConfs :: Maybe FilePath
-                     -> IO [Installed.InstalledPackageInfo]
-    genPkgConfs mLogPath =
+    genPkgConf :: Maybe FilePath
+               -> IO (Maybe Installed.InstalledPackageInfo)
+    genPkgConf mLogPath =
       if shouldRegister then do
         tmp <- getTemporaryDirectory
         withTempDirectory verbosity tmp (tempTemplate "pkgConf") $ \dir -> do
@@ -1499,16 +1495,8 @@ installUnpackedPackage verbosity installLock numJobs
                 Cabal.regGenPkgConf = toFlag (Just pkgConfDest)
               }
           setup Cabal.registerCommand registerFlags' mLogPath
-          is_dir <- doesDirectoryExist pkgConfDest
-          let notHidden = not . isHidden
-              isHidden name = "." `isPrefixOf` name
-          if is_dir
-            -- Sort so that each prefix of the package
-            -- configurations is well formed
-            then mapM (readPkgConf pkgConfDest) . sort . filter notHidden
-                    =<< getDirectoryContents pkgConfDest
-            else fmap (:[]) $ readPkgConf "." pkgConfDest
-      else return []
+          fmap Just $ readPkgConf "." pkgConfDest
+      else return Nothing
 
     readPkgConf :: FilePath -> FilePath
                 -> IO Installed.InstalledPackageInfo
