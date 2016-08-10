@@ -61,6 +61,8 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
+                   ( InstalledPackageId, installedPackageId
+                   , GenericReadyPackage(..), PackageLocation(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets

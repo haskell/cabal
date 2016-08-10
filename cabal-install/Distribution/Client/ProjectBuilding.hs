@@ -27,6 +27,8 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 
 import           Distribution.Client.Types
+                   hiding (BuildOutcomes, BuildOutcome,
+                           BuildResult(..), BuildFailure(..))
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -72,6 +74,7 @@ import           Control.Monad
 import           Control.Exception
 import           Data.List
 import           Data.Maybe
+import           Data.Typeable
 
 import           System.FilePath
 import           System.IO
@@ -350,7 +353,8 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
-      , BuildStatusUpToDate (BuildResult _ _ ipkgs) <- [pkgBuildStatus]
+      , BuildStatusUpToDate (BuildResult { buildResultLibInfo = ipkgs })
+          <- [pkgBuildStatus]
       ]
   where
     replaceWithPrePreExisting =
@@ -500,7 +504,11 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                   buildReason = BuildReasonEphemeralTargets
 
               (MonitorUnchanged buildResult _, MonitorUnchanged ipkgs _) ->
-                  return (Right (BuildResult docsResult testsResult ipkgs))
+                  return $ Right BuildResult {
+                    buildResultDocs    = docsResult,
+                    buildResultTests   = testsResult,
+                    buildResultLibInfo = ipkgs
+                  }
                 where
                   (docsResult, testsResult) = buildResult
   where
@@ -568,6 +576,37 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 -- * Doing it: executing an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
+-- | A summary of the outcome for building a whole set of packages.
+--
+type BuildOutcomes = Map UnitId BuildOutcome
+
+-- | A summary of the outcome for building a single package: either success
+-- or failure.
+--
+type BuildOutcome  = Either BuildFailure BuildResult
+
+-- | Information arising from successfully building a single package.
+--
+data BuildResult = BuildResult {
+       buildResultDocs    :: DocsResult,
+       buildResultTests   :: TestsResult,
+       buildResultLibInfo :: [InstalledPackageInfo]
+     }
+  deriving Show
+
+-- | Information arising from the failure to build a single package.
+--
+data BuildFailure = PlanningFailed
+                  | DependentFailed PackageId
+                  | DownloadFailed  SomeException
+                  | UnpackFailed    SomeException
+                  | ConfigureFailed SomeException
+                  | BuildFailed     SomeException
+                  | TestsFailed     SomeException
+                  | InstallFailed   SomeException
+  deriving (Show, Typeable)
+
+instance Exception BuildFailure
 
 -- | Build things for real.
 --
@@ -990,7 +1029,11 @@ buildAndInstallUnpackedPackage verbosity
     let docsResult  = DocsNotTried
         testsResult = TestsNotTried
 
-    return (BuildResult docsResult testsResult ipkgs)
+    return BuildResult {
+       buildResultDocs    = docsResult,
+       buildResultTests   = testsResult,
+       buildResultLibInfo = ipkgs
+    }
 
   where
     pkgid  = packageId rpkg
@@ -1190,7 +1233,11 @@ buildInplaceUnpackedPackage verbosity
           annotateFailure BuildFailed $
           setup haddockCommand haddockFlags []
 
-        return (BuildResult docsResult testsResult ipkgs)
+        return BuildResult {
+          buildResultDocs    = docsResult,
+          buildResultTests   = testsResult,
+          buildResultLibInfo = ipkgs
+        }
 
   where
     pkgid  = packageId rpkg
