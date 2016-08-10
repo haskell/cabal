@@ -484,19 +484,19 @@ reportBuildFailures plan buildOutcomes
 
   | otherwise
   = case failuresPrimary of
-     [(pkg, reason)] -> die $ renderFailure pkg reason
+     [(pkg, failure)] -> die $ renderFailure pkg (buildFailureReason failure)
      multiple        -> die $ "multiple failures:\n"
-                           ++ unlines
-                                [ renderFailure pkg reason
-                                | (pkg, reason) <- multiple ]
+                            ++ unlines
+                                 [ renderFailure pkg (buildFailureReason failure)
+                                 | (pkg, failure) <- multiple ]
   where
-    failures =  [ (pkgid, reason)
-                | (pkgid, Left reason) <- Map.toList buildOutcomes ]
+    failures =  [ (pkgid, failure)
+                | (pkgid, Left failure) <- Map.toList buildOutcomes ]
 
     failuresPrimary =
-      [ (pkg, reason)
-      | (pkgid, reason) <- failures
-      , case reason of
+      [ (pkg, failure)
+      | (pkgid, failure) <- failures
+      , case buildFailureReason failure of
           DependentFailed {} -> False
           _                  -> True
       , InstallPlan.Configured pkg <-
@@ -515,10 +515,10 @@ reportBuildFailures plan buildOutcomes
     --  - then we do not report additional error detail or context.
     --
     isSimpleCase
-      | [(pkgid, reason)] <- failures
-      , [pkg]             <- rootpkgs
+      | [(pkgid, failure)] <- failures
+      , [pkg]              <- rootpkgs
       , installedUnitId pkg == pkgid
-      , isFailureSelfExplanatory reason
+      , isFailureSelfExplanatory (buildFailureReason failure)
       = True
       | otherwise
       = False

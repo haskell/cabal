@@ -18,6 +18,7 @@ module Distribution.Client.ProjectBuilding (
     BuildOutcomes,
     BuildResult(..),
     BuildFailure(..),
+    BuildFailureReason(..),
     rebuildTargets
   ) where
 
@@ -507,6 +508,7 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                   return $ Right BuildResult {
                     buildResultDocs    = docsResult,
                     buildResultTests   = testsResult,
+                    buildResultLogFile = Nothing,
                     buildResultLibInfo = ipkgs
                   }
                 where
@@ -590,23 +592,32 @@ type BuildOutcome  = Either BuildFailure BuildResult
 data BuildResult = BuildResult {
        buildResultDocs    :: DocsResult,
        buildResultTests   :: TestsResult,
+       buildResultLogFile :: Maybe FilePath,
        buildResultLibInfo :: [InstalledPackageInfo]
      }
   deriving Show
 
 -- | Information arising from the failure to build a single package.
 --
-data BuildFailure = PlanningFailed
-                  | DependentFailed PackageId
-                  | DownloadFailed  SomeException
-                  | UnpackFailed    SomeException
-                  | ConfigureFailed SomeException
-                  | BuildFailed     SomeException
-                  | TestsFailed     SomeException
-                  | InstallFailed   SomeException
+data BuildFailure = BuildFailure {
+       buildFailureLogFile :: Maybe FilePath,
+       buildFailureReason  :: BuildFailureReason
+     }
   deriving (Show, Typeable)
 
 instance Exception BuildFailure
+
+-- | Detail on the reason that a package failed to build.
+--
+data BuildFailureReason = PlanningFailed
+                        | DependentFailed PackageId
+                        | DownloadFailed  SomeException
+                        | UnpackFailed    SomeException
+                        | ConfigureFailed SomeException
+                        | BuildFailed     SomeException
+                        | TestsFailed     SomeException
+                        | InstallFailed   SomeException
+  deriving Show
 
 -- | Build things for real.
 --
@@ -651,7 +662,8 @@ rebuildTargets verbosity
                           installPlan pkgsBuildStatus $ \downloadMap ->
 
       -- For each package in the plan, in dependency order, but in parallel...
-      InstallPlan.execute jobControl keepGoing (DependentFailed . packageId)
+      InstallPlan.execute jobControl keepGoing
+                          (BuildFailure Nothing . DependentFailed . packageId)
                           installPlan $ \pkg ->
         handle (return . Left) $ fmap Right $ --TODO: review exception handling
 
@@ -712,7 +724,7 @@ rebuildTarget verbosity
     unexpectedState = error "rebuildTarget: unexpected package status"
 
     downloadPhase = do
-        downsrcloc <- annotateFailure DownloadFailed $
+        downsrcloc <- annotateFailure (BuildFailure Nothing . DownloadFailed) $
                         waitAsyncPackageDownload verbosity downloadMap pkg
         case downsrcloc of
           DownloadedTarball tarball -> unpackTarballPhase tarball
@@ -875,7 +887,7 @@ unpackPackageTarball :: Verbosity -> FilePath -> FilePath
                      -> IO ()
 unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
     --TODO: [nice to have] switch to tar package and catch tar exceptions
-    annotateFailure UnpackFailed $ do
+    annotateFailure (BuildFailure Nothing . UnpackFailed) $ do
 
       -- Unpack the tarball
       --
@@ -964,18 +976,18 @@ buildAndInstallUnpackedPackage verbosity
     -- Configure phase
     when isParallelBuild $
       notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-    annotateFailure ConfigureFailed $
+    annotateFailure (BuildFailure mlogFile . ConfigureFailed) $
       setup configureCommand configureFlags
 
     -- Build phase
     when isParallelBuild $
       notice verbosity $ "Building " ++ display pkgid ++ "..."
-    annotateFailure BuildFailed $
+    annotateFailure (BuildFailure mlogFile . BuildFailed) $
       setup buildCommand buildFlags
 
     -- Install phase
     ipkgs <-
-      annotateFailure InstallFailed $ do
+      annotateFailure (BuildFailure mlogFile . InstallFailed) $ do
       --TODO: [required eventually] need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
 
@@ -1032,6 +1044,7 @@ buildAndInstallUnpackedPackage verbosity
     return BuildResult {
        buildResultDocs    = docsResult,
        buildResultTests   = testsResult,
+       buildResultLogFile = mlogFile,
        buildResultLibInfo = ipkgs
     }
 
@@ -1073,6 +1086,7 @@ buildAndInstallUnpackedPackage verbosity
           (Just (pkgDescription pkg))
           cmd flags []
 
+    mlogFile :: Maybe FilePath
     mlogFile =
       case buildSettingLogFile of
         Nothing        -> Nothing
@@ -1123,7 +1137,7 @@ buildInplaceUnpackedPackage verbosity
         -- Configure phase
         --
         whenReConfigure $ do
-          annotateFailure ConfigureFailed $
+          annotateFailure (BuildFailure Nothing . ConfigureFailed) $
             setup configureCommand configureFlags []
           invalidatePackageRegFileMonitor packageFileMonitor
           updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
@@ -1138,7 +1152,7 @@ buildInplaceUnpackedPackage verbosity
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
-          annotateFailure BuildFailed $
+          annotateFailure (BuildFailure Nothing . BuildFailed) $
             setup buildCommand buildFlags buildArgs
 
           --TODO: [required eventually] this doesn't track file
@@ -1150,7 +1164,8 @@ buildInplaceUnpackedPackage verbosity
                                         pkg buildStatus
                                         allSrcFiles buildResult
 
-        ipkgs <- whenReRegister $ annotateFailure InstallFailed $ do
+        ipkgs <- whenReRegister $
+                 annotateFailure (BuildFailure Nothing . InstallFailed) $ do
           -- Register locally
           ipkgs <- if pkgRequiresRegistration pkg
             then do
@@ -1225,17 +1240,18 @@ buildInplaceUnpackedPackage verbosity
         -- Repl phase
         --
         whenRepl $
-          annotateFailure BuildFailed $
+          annotateFailure (BuildFailure Nothing . BuildFailed) $
           setup replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
-          annotateFailure BuildFailed $
+          annotateFailure (BuildFailure Nothing . BuildFailed) $
           setup haddockCommand haddockFlags []
 
         return BuildResult {
           buildResultDocs    = docsResult,
           buildResultTests   = testsResult,
+          buildResultLogFile = Nothing,
           buildResultLibInfo = ipkgs
         }
 

@@ -94,8 +94,8 @@ testExceptionInConfigureStep :: ProjectConfig -> Assertion
 testExceptionInConfigureStep config = do
     (plan, res) <- executePlan =<< planProject testdir config
     (_pkga1, failure) <- expectPackageFailed plan res pkgidA1
-    case failure of
-      ConfigureFailed _str -> return ()
+    case buildFailureReason failure of
+      ConfigureFailed _ -> return ()
       _ -> assertFailure $ "expected ConfigureFailed, got " ++ show failure 
     cleanProject testdir
   where
@@ -405,9 +405,9 @@ expectPlanPackage plan pkgid =
                 ++ " in the install plan but there's several"
 
 expectBuildFailed :: BuildFailure -> IO ()
-expectBuildFailed (BuildFailed _str) = return ()
-expectBuildFailed failure = assertFailure $ "expected BuildFailed, got "
-                                         ++ show failure
+expectBuildFailed (BuildFailure _ (BuildFailed _)) = return ()
+expectBuildFailed (BuildFailure _ reason) =
+    assertFailure $ "expected BuildFailed, got " ++ show reason
 
 ---------------------------------------
 -- Other utils
