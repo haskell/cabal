@@ -1,6 +1,8 @@
 install:
-  - choco install ghc -version 7.10.3 > NUL
-  - SET PATH=%PATH%;C:\tools\ghc\ghc-7.10.3\bin
+  # Using '-y' and 'refreshenv' as a workaround to:
+  # https://github.com/haskell/cabal/issues/3687
+  - choco install -y ghc --version 8.0.1 > NUL
+  - refreshenv
   - curl -o cabal.zip --silent https://www.haskell.org/cabal/release/cabal-install-1.24.0.0/cabal-install-1.24.0.0-x86_64-unknown-mingw32.zip
   - 7z x -bd cabal.zip
   - cabal --version
