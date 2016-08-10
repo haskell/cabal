@@ -339,9 +339,9 @@ processInstallPlan verbosity
       installFlags pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
-      buildResults <- performInstallations verbosity
-                        args installedPkgIndex installPlan
-      postInstallActions verbosity args userTargets installPlan buildResults
+      buildOutcomes <- performInstallations verbosity
+                         args installedPkgIndex installPlan
+      postInstallActions verbosity args userTargets installPlan buildOutcomes
   where
     installPlan = InstallPlan.configureInstallPlan installPlan0
     dryRun = fromFlag (installDryRun installFlags)
@@ -808,12 +808,12 @@ postInstallActions :: Verbosity
                    -> InstallArgs
                    -> [UserTarget]
                    -> InstallPlan
-                   -> BuildResults
+                   -> BuildOutcomes
                    -> IO ()
 postInstallActions verbosity
   (packageDBs, _, comp, platform, conf, useSandbox, mSandboxPkgInfo
   ,globalFlags, configFlags, _, installFlags, _)
-  targets installPlan buildResults = do
+  targets installPlan buildOutcomes = do
 
   unless oneShot $
     World.insert verbosity worldFile
@@ -822,7 +822,7 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)
-                                                  installPlan buildResults
+                                                  installPlan buildOutcomes
   BuildReports.storeLocal (compilerInfo comp)
                           (fromNubList $ installSummaryFile installFlags)
                           buildReports
@@ -833,15 +833,15 @@ postInstallActions verbosity
     storeDetailedBuildReports verbosity logsDir buildReports
 
   regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
-                         configFlags installFlags buildResults
+                         configFlags installFlags buildOutcomes
 
   symlinkBinaries verbosity platform comp configFlags installFlags
-                  installPlan buildResults
+                  installPlan buildOutcomes
 
-  printBuildFailures buildResults
+  printBuildFailures buildOutcomes
 
   updateSandboxTimestampsFile useSandbox mSandboxPkgInfo
-                              comp platform installPlan buildResults
+                              comp platform installPlan buildOutcomes
 
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
@@ -891,10 +891,10 @@ regenerateHaddockIndex :: Verbosity
                        -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
-                       -> BuildResults
+                       -> BuildOutcomes
                        -> IO ()
 regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
-                       configFlags installFlags buildResults
+                       configFlags installFlags buildOutcomes
   | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
@@ -922,11 +922,11 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
     -- #1337), we don't do it for global installs or special cases where we're
     -- installing into a specific db.
     shouldRegenerateHaddockIndex = (isUseSandbox useSandbox || normalUserInstall)
-                                && someDocsWereInstalled buildResults
+                                && someDocsWereInstalled buildOutcomes
       where
         someDocsWereInstalled = any installedDocs . Map.elems
-        installedDocs (Right (BuildOk DocsOk _ _)) = True
-        installedDocs _                            = False
+        installedDocs (Right (BuildResult DocsOk _ _)) = True
+        installedDocs _                                = False
 
         normalUserInstall     = (UserPackageDB `elem` packageDBs)
                              && all (not . isSpecificPackageDB) packageDBs
@@ -951,13 +951,13 @@ symlinkBinaries :: Verbosity
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
-                -> BuildResults
+                -> BuildOutcomes
                 -> IO ()
 symlinkBinaries verbosity platform comp configFlags installFlags
-                plan buildResults = do
+                plan buildOutcomes = do
   failed <- InstallSymlink.symlinkBinaries platform comp
                                            configFlags installFlags
-                                           plan buildResults
+                                           plan buildOutcomes
   case failed of
     [] -> return ()
     [(_, exe, path)] ->
@@ -979,10 +979,10 @@ symlinkBinaries verbosity platform comp configFlags installFlags
     bindir = fromFlag (installSymlinkBinDir installFlags)
 
 
-printBuildFailures :: BuildResults -> IO ()
-printBuildFailures buildResults =
+printBuildFailures :: BuildOutcomes -> IO ()
+printBuildFailures buildOutcomes =
   case [ (pkgid, failure)
-       | (pkgid, Left failure) <- Map.toList buildResults ] of
+       | (pkgid, Left failure) <- Map.toList buildOutcomes ] of
     []     -> return ()
     failed -> die . unlines
             $ "Error: some packages failed to install:"
@@ -1025,16 +1025,16 @@ printBuildFailures buildResults =
 updateSandboxTimestampsFile :: UseSandbox -> Maybe SandboxPackageInfo
                             -> Compiler -> Platform
                             -> InstallPlan
-                            -> BuildResults
+                            -> BuildOutcomes
                             -> IO ()
 updateSandboxTimestampsFile (UseSandbox sandboxDir)
                             (Just (SandboxPackageInfo _ _ _ allAddSourceDeps))
-                            comp platform installPlan buildResults =
+                            comp platform installPlan buildOutcomes =
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg
                        | InstallPlan.Configured pkg
                             <- InstallPlan.toList installPlan
-                       , case InstallPlan.lookupBuildResult pkg buildResults of
+                       , case InstallPlan.lookupBuildOutcome pkg buildOutcomes of
                            Just (Right _success) -> True
                            _                     -> False
                        ]
@@ -1062,7 +1062,7 @@ performInstallations :: Verbosity
                      -> InstallArgs
                      -> InstalledPackageIndex
                      -> InstallPlan
-                     -> IO BuildResults
+                     -> IO BuildOutcomes
 performInstallations verbosity
   (packageDBs, repoCtxt, comp, platform, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
@@ -1170,26 +1170,26 @@ performInstallations verbosity
 
 
 executeInstallPlan :: Verbosity
-                   -> JobControl IO (UnitId, BuildResult)
+                   -> JobControl IO (UnitId, BuildOutcome)
                    -> Bool
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ReadyPackage -> IO BuildResult)
-                   -> IO BuildResults
+                   -> (ReadyPackage -> IO BuildOutcome)
+                   -> IO BuildOutcomes
 executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
     InstallPlan.execute
       jobCtl keepGoing depsFailure plan0 $ \pkg -> do
-        buildResult <- installPkg pkg
-        printBuildResult (packageId pkg) (installedPackageId pkg) buildResult
-        return buildResult
+        buildOutcome <- installPkg pkg
+        printBuildResult (packageId pkg) (installedPackageId pkg) buildOutcome
+        return buildOutcome
 
   where
     depsFailure = DependentFailed . packageId
 
     -- Print build log if something went wrong, and 'Installed $PKGID'
     -- otherwise.
-    printBuildResult :: PackageId -> UnitId -> BuildResult -> IO ()
-    printBuildResult pkgid ipid buildResult = case buildResult of
+    printBuildResult :: PackageId -> UnitId -> BuildOutcome -> IO ()
+    printBuildResult pkgid ipid buildOutcome = case buildOutcome of
         (Right _) -> notice verbosity $ "Installed " ++ display pkgid
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
@@ -1252,8 +1252,8 @@ fetchSourcePackage
   -> RepoContext
   -> JobLimit
   -> UnresolvedPkgLoc
-  -> (ResolvedPkgLoc -> IO BuildResult)
-  -> IO BuildResult
+  -> (ResolvedPkgLoc -> IO BuildOutcome)
+  -> IO BuildOutcome
 fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
   fetched <- checkFetched src
   case fetched of
@@ -1267,8 +1267,8 @@ fetchSourcePackage verbosity repoCtxt fetchLimit src installPkg = do
 installLocalPackage
   :: Verbosity
   -> PackageIdentifier -> ResolvedPkgLoc -> FilePath
-  -> (Maybe FilePath -> IO BuildResult)
-  -> IO BuildResult
+  -> (Maybe FilePath -> IO BuildOutcome)
+  -> IO BuildOutcome
 installLocalPackage verbosity pkgid location distPref installPkg =
 
   case location of
@@ -1292,8 +1292,8 @@ installLocalPackage verbosity pkgid location distPref installPkg =
 installLocalTarballPackage
   :: Verbosity
   -> PackageIdentifier -> FilePath -> FilePath
-  -> (Maybe FilePath -> IO BuildResult)
-  -> IO BuildResult
+  -> (Maybe FilePath -> IO BuildOutcome)
+  -> IO BuildOutcome
 installLocalTarballPackage verbosity pkgid
                            tarballPath distPref installPkg = do
   tmp <- getTemporaryDirectory
@@ -1356,7 +1356,7 @@ installUnpackedPackage
   -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
-  -> IO BuildResult
+  -> IO BuildOutcome
 installUnpackedPackage verbosity installLock numJobs
                        scriptOptions
                        configFlags installFlags haddockFlags comp conf
@@ -1439,7 +1439,7 @@ installUnpackedPackage verbosity installLock numJobs
                                       NoMultiInstance
                                       packageDBs ipkg'
 
-            return (Right (BuildOk docsResult testsResult ipkgs'))
+            return (Right (BuildResult docsResult testsResult ipkgs'))
 
   where
     pkgid            = packageId pkg
@@ -1551,14 +1551,14 @@ installUnpackedPackage verbosity installLock numJobs
 
 
 -- helper
-onFailure :: (SomeException -> BuildFailure) -> IO BuildResult -> IO BuildResult
+onFailure :: (SomeException -> BuildFailure) -> IO BuildOutcome -> IO BuildOutcome
 onFailure result action =
   action `catches`
     [ Handler $ \ioe  -> handler (ioe  :: IOException)
     , Handler $ \exit -> handler (exit :: ExitCode)
     ]
   where
-    handler :: Exception e => e -> IO BuildResult
+    handler :: Exception e => e -> IO BuildOutcome
     handler = return . Left . result . toException
 
 

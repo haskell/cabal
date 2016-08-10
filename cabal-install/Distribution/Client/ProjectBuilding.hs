@@ -14,10 +14,10 @@ module Distribution.Client.ProjectBuilding (
     rebuildTargetsDryRun,
 
     -- * Build phase
-    BuildResult,
-    BuildResults,
+    BuildOutcome,
+    BuildOutcomes,
+    BuildResult(..),
     BuildFailure(..),
-    BuildSuccess(..),
     rebuildTargets
   ) where
 
@@ -123,8 +123,8 @@ type BuildStatusMap = Map InstalledPackageId BuildStatus
 -- | The build status for an individual package is the state that the
 -- package is in /prior/ to initiating a (re)build.
 --
--- This should not be confused with a 'BuildResult' which is the outcome
--- /after/ building a package.
+-- This should not be confused with a 'BuildResult' which is the result
+-- /after/ successfully building a package.
 --
 -- It serves two purposes:
 --
@@ -156,7 +156,7 @@ data BuildStatus =
      -- | The package exists in a local dir already, and is fully up to date.
      --   So this package can be put into the 'InstallPlan.Installed' state
      --   and it does not need to be built.
-   | BuildStatusUpToDate BuildSuccess
+   | BuildStatusUpToDate BuildResult
 
 -- | For a package that is going to be built or rebuilt, the state it's in now.
 --
@@ -297,8 +297,8 @@ rebuildTargetsDryRun distDirLayout@DistDirLayout{..} = \installPlan -> do
             return (BuildStatusRebuild srcdir rebuild)
 
           -- No changes, the package is up to date. Use the saved build results.
-          Right buildSuccess ->
-            return (BuildStatusUpToDate buildSuccess)
+          Right buildResult ->
+            return (BuildStatusUpToDate buildResult)
       where
         packageFileMonitor =
           newPackageFileMonitor distDirLayout (packageId pkg)
@@ -350,7 +350,7 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
           <- InstallPlan.reverseTopologicalOrder installPlan
       , let ipkgid = installedPackageId pkg
             Just pkgBuildStatus = Map.lookup ipkgid pkgsBuildStatus
-      , BuildStatusUpToDate (BuildOk _ _ ipkgs) <- [pkgBuildStatus]
+      , BuildStatusUpToDate (BuildResult _ _ ipkgs) <- [pkgBuildStatus]
       ]
   where
     replaceWithPrePreExisting =
@@ -378,17 +378,17 @@ improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
 --
 data PackageFileMonitor = PackageFileMonitor {
        pkgFileMonitorConfig :: FileMonitor ElaboratedConfiguredPackage (),
-       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildSuccessMisc,
+       pkgFileMonitorBuild  :: FileMonitor (Set ComponentName) BuildResultMisc,
        pkgFileMonitorReg    :: FileMonitor () [InstalledPackageInfo]
      }
 
--- | This is all the components of the 'BuildSuccess' other than the
+-- | This is all the components of the 'BuildResult' other than the
 -- @['InstalledPackageInfo']@.
 --
--- We have to split up the 'BuildSuccess' components since they get produced
+-- We have to split up the 'BuildResult' components since they get produced
 -- at different times (or rather, when different things change).
 --
-type BuildSuccessMisc = (DocsResult, TestsResult)
+type BuildResultMisc = (DocsResult, TestsResult)
 
 newPackageFileMonitor :: DistDirLayout -> PackageId -> PackageFileMonitor
 newPackageFileMonitor DistDirLayout{distPackageCacheFile} pkgid =
@@ -445,7 +445,7 @@ checkPackageFileMonitorChanged :: PackageFileMonitor
                                -> ElaboratedConfiguredPackage
                                -> FilePath
                                -> ComponentDeps [BuildStatus]
-                               -> IO (Either BuildStatusRebuild BuildSuccess)
+                               -> IO (Either BuildStatusRebuild BuildResult)
 checkPackageFileMonitorChanged PackageFileMonitor{..}
                                pkg srcdir depsBuildStatus = do
     --TODO: [nice to have] some debug-level message about file changes, like rerunIfChanged
@@ -499,10 +499,10 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                 where
                   buildReason = BuildReasonEphemeralTargets
 
-              (MonitorUnchanged buildSuccess _, MonitorUnchanged ipkgs _) ->
-                  return (Right (BuildOk docsResult testsResult ipkgs))
+              (MonitorUnchanged buildResult _, MonitorUnchanged ipkgs _) ->
+                  return (Right (BuildResult docsResult testsResult ipkgs))
                 where
-                  (docsResult, testsResult) = buildSuccess
+                  (docsResult, testsResult) = buildResult
   where
     (pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
     changedToMaybe (MonitorChanged     _) = Nothing
@@ -526,14 +526,14 @@ updatePackageBuildFileMonitor :: PackageFileMonitor
                               -> ElaboratedConfiguredPackage
                               -> BuildStatusRebuild
                               -> [FilePath]
-                              -> BuildSuccessMisc
+                              -> BuildResultMisc
                               -> IO ()
 updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
                               srcdir timestamp pkg pkgBuildStatus
-                              allSrcFiles buildSuccess =
+                              allSrcFiles buildResult =
     updateFileMonitor pkgFileMonitorBuild srcdir (Just timestamp)
                       (map monitorFileHashed allSrcFiles)
-                      buildComponents' buildSuccess
+                      buildComponents' buildResult
   where
     (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
 
@@ -579,7 +579,7 @@ rebuildTargets :: Verbosity
                -> ElaboratedSharedConfig
                -> BuildStatusMap
                -> BuildTimeSettings
-               -> IO BuildResults
+               -> IO BuildOutcomes
 rebuildTargets verbosity
                distDirLayout@DistDirLayout{..}
                installPlan
@@ -651,7 +651,7 @@ rebuildTarget :: Verbosity
               -> ElaboratedSharedConfig
               -> ElaboratedReadyPackage
               -> BuildStatus
-              -> IO BuildSuccess
+              -> IO BuildResult
 rebuildTarget verbosity
               distDirLayout@DistDirLayout{distBuildDirectory}
               buildSettings downloadMap
@@ -893,7 +893,7 @@ buildAndInstallUnpackedPackage :: Verbosity
                                -> ElaboratedSharedConfig
                                -> ElaboratedReadyPackage
                                -> FilePath -> FilePath
-                               -> IO BuildSuccess
+                               -> IO BuildResult
 buildAndInstallUnpackedPackage verbosity
                                DistDirLayout{distTempDirectory}
                                BuildTimeSettings {
@@ -990,7 +990,7 @@ buildAndInstallUnpackedPackage verbosity
     let docsResult  = DocsNotTried
         testsResult = TestsNotTried
 
-    return (BuildOk docsResult testsResult ipkgs)
+    return (BuildResult docsResult testsResult ipkgs)
 
   where
     pkgid  = packageId rpkg
@@ -1056,7 +1056,7 @@ buildInplaceUnpackedPackage :: Verbosity
                             -> ElaboratedReadyPackage
                             -> BuildStatusRebuild
                             -> FilePath -> FilePath
-                            -> IO BuildSuccess
+                            -> IO BuildResult
 buildInplaceUnpackedPackage verbosity
                             distDirLayout@DistDirLayout {
                               distTempDirectory,
@@ -1090,8 +1090,8 @@ buildInplaceUnpackedPackage verbosity
         let docsResult  = DocsNotTried
             testsResult = TestsNotTried
 
-            buildSuccess :: BuildSuccessMisc
-            buildSuccess = (docsResult, testsResult)
+            buildResult :: BuildResultMisc
+            buildResult = (docsResult, testsResult)
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
@@ -1105,7 +1105,7 @@ buildInplaceUnpackedPackage verbosity
 
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus
-                                        allSrcFiles buildSuccess
+                                        allSrcFiles buildResult
 
         ipkgs <- whenReRegister $ annotateFailure InstallFailed $ do
           -- Register locally
@@ -1190,7 +1190,7 @@ buildInplaceUnpackedPackage verbosity
           annotateFailure BuildFailed $
           setup haddockCommand haddockFlags []
 
-        return (BuildOk docsResult testsResult ipkgs)
+        return (BuildResult docsResult testsResult ipkgs)
 
   where
     pkgid  = packageId rpkg

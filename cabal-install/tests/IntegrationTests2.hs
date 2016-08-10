@@ -263,7 +263,7 @@ type PlanDetails = (DistDirLayout,
                     BuildStatusMap,
                     BuildTimeSettings)
 
-executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildResults)
+executePlan :: PlanDetails -> IO (ElaboratedInstallPlan, BuildOutcomes)
 executePlan (distDirLayout,
              elaboratedPlan,
              elaboratedShared,
@@ -340,44 +340,44 @@ expectException expected action = do
       Left  e -> return e
       Right _ -> throwIO $ HUnitFailure $ "expected an exception " ++ expected
 
-expectPackagePreExisting :: ElaboratedInstallPlan -> BuildResults -> PackageId
+expectPackagePreExisting :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
                          -> IO InstalledPackageInfo
-expectPackagePreExisting plan buildResults pkgid = do
+expectPackagePreExisting plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+    case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.PreExisting pkg, Nothing)
                        -> return pkg
       (_, buildResult) -> unexpectedBuildResult "PreExisting" planpkg buildResult
 
-expectPackageConfigured :: ElaboratedInstallPlan -> BuildResults -> PackageId
+expectPackageConfigured :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
                         -> IO ElaboratedConfiguredPackage
-expectPackageConfigured plan buildResults pkgid = do
+expectPackageConfigured plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+    case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Nothing)
                        -> return pkg
       (_, buildResult) -> unexpectedBuildResult "Configured" planpkg buildResult
 
-expectPackageInstalled :: ElaboratedInstallPlan -> BuildResults -> PackageId
-                       -> IO (ElaboratedConfiguredPackage, BuildSuccess)
-expectPackageInstalled plan buildResults pkgid = do
+expectPackageInstalled :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
+                       -> IO (ElaboratedConfiguredPackage, BuildResult)
+expectPackageInstalled plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+    case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Just (Right result))
                        -> return (pkg, result)
       (_, buildResult) -> unexpectedBuildResult "Installed" planpkg buildResult
 
-expectPackageFailed :: ElaboratedInstallPlan -> BuildResults -> PackageId
+expectPackageFailed :: ElaboratedInstallPlan -> BuildOutcomes -> PackageId
                     -> IO (ElaboratedConfiguredPackage, BuildFailure)
-expectPackageFailed plan buildResults pkgid = do
+expectPackageFailed plan buildOutcomes pkgid = do
     planpkg <- expectPlanPackage plan pkgid
-    case (planpkg, InstallPlan.lookupBuildResult planpkg buildResults) of
+    case (planpkg, InstallPlan.lookupBuildOutcome planpkg buildOutcomes) of
       (InstallPlan.Configured pkg, Just (Left failure))
                        -> return (pkg, failure)
       (_, buildResult) -> unexpectedBuildResult "Failed" planpkg buildResult
 
 unexpectedBuildResult :: String -> ElaboratedPlanPackage
-                      -> Maybe (Either BuildFailure BuildSuccess) -> IO a
+                      -> Maybe (Either BuildFailure BuildResult) -> IO a
 unexpectedBuildResult expected planpkg buildResult =
     throwIO $ HUnitFailure $
          "expected to find " ++ display (packageId planpkg) ++ " in the "

@@ -28,8 +28,6 @@ module Distribution.Client.ProjectPlanning.Types (
 import           Distribution.Client.PackageHash
 
 import           Distribution.Client.Types
-                   hiding ( BuildResult, BuildResults, BuildSuccess(..)
-                          , BuildFailure(..), DocsResult(..), TestsResult(..) )
 import           Distribution.Client.InstallPlan
                    ( GenericInstallPlan, GenericPlanPackage )
 import           Distribution.Client.SolverInstallPlan

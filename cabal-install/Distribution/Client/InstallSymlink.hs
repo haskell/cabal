@@ -20,7 +20,7 @@ module Distribution.Client.InstallSymlink (
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Client.InstallPlan (InstallPlan)
-import Distribution.Client.Types (BuildResults)
+import Distribution.Client.Types (BuildOutcomes)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
@@ -30,7 +30,7 @@ symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
-                -> BuildResults
+                -> BuildOutcomes
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries _ _ _ _ _ _ = return []
 
@@ -40,7 +40,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( ConfiguredPackage(..), BuildResults )
+         ( ConfiguredPackage(..), BuildOutcomes )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -107,9 +107,9 @@ symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan
-                -> BuildResults
+                -> BuildOutcomes
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries platform comp configFlags installFlags plan buildResults =
+symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
     Just symlinkBinDir
@@ -139,7 +139,7 @@ symlinkBinaries platform comp configFlags installFlags plan buildResults =
     exes =
       [ (cpkg, pkg, exe)
       | InstallPlan.Configured cpkg <- InstallPlan.toList plan
-      , case InstallPlan.lookupBuildResult cpkg buildResults of
+      , case InstallPlan.lookupBuildOutcome cpkg buildOutcomes of
           Just (Right _success) -> True
           _                     -> False
       , let pkg :: PackageDescription

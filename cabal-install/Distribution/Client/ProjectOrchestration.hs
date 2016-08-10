@@ -199,9 +199,9 @@ runProjectPreBuildPhase
 --
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
-                     -> IO BuildResults
+                     -> IO BuildOutcomes
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
-    fmap (Map.union (previousBuildResults pkgsBuildStatus)) $
+    fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
                    elaboratedPlan
@@ -209,8 +209,8 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
                    pkgsBuildStatus
                    buildSettings
   where
-    previousBuildResults :: BuildStatusMap -> BuildResults
-    previousBuildResults =
+    previousBuildOutcomes :: BuildStatusMap -> BuildOutcomes
+    previousBuildOutcomes =
       Map.mapMaybe $ \status -> case status of
         BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
         --TODO: [nice to have] record build failures persistently
@@ -472,8 +472,8 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-reportBuildFailures :: ElaboratedInstallPlan -> BuildResults -> IO ()
-reportBuildFailures plan buildResults
+reportBuildFailures :: ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+reportBuildFailures plan buildOutcomes
   | null failures
   = return ()
 
@@ -489,7 +489,7 @@ reportBuildFailures plan buildResults
                                 | (pkg, reason) <- multiple ]
   where
     failures =  [ (pkgid, reason)
-                | (pkgid, Left reason) <- Map.toList buildResults ]
+                | (pkgid, Left reason) <- Map.toList buildOutcomes ]
 
     failuresPrimary =
       [ (pkg, reason)
