@@ -77,12 +77,7 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
-    Flag path -> withFile path WriteMode $ \outHandle -> do
-      (ordinary, maybeExecutable) <- listPackageSources (fromFlag (sDistVerbosity flags)) pkg pps
-      traverse_ (hPutStrLn outHandle) ordinary
-      traverse_ (hPutStrLn outHandle) maybeExecutable
-      notice (fromFlag (sDistVerbosity flags)) $ "List of package sources written to file '"
-                         ++ path ++ "'"
+    Flag path -> sdistListSources path pkg mb_lbi flags mkTmpDir pps
     NoFlag    -> do
       -- do some QA
       printPackageProblems verbosity pkg
@@ -121,6 +116,22 @@ sdist pkg mb_lbi flags mkTmpDir pps =
     distPref     = fromFlag $ sDistDistPref flags
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
+
+-- |Create a file with the path of each source line by line.
+sdistListSources :: FilePath    -- ^ output file
+      -> PackageDescription     -- ^information from the tarball
+      -> Maybe LocalBuildInfo   -- ^Information from configure
+      -> SDistFlags             -- ^verbosity & snapshot
+      -> (FilePath -> FilePath) -- ^build prefix (temp dir)
+      -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
+      -> IO ()
+sdistListSources path pkg mb_lbi flags mkTmpDir pps =
+  withFile path WriteMode $ \outHandle -> do
+    (ordinary, maybeExecutable) <- listPackageSources (fromFlag (sDistVerbosity flags)) pkg pps
+    traverse_ (hPutStrLn outHandle) ordinary
+    traverse_ (hPutStrLn outHandle) maybeExecutable
+    notice (fromFlag (sDistVerbosity flags)) $ "List of package sources written to file '"
+                       ++ path ++ "'"
 
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
