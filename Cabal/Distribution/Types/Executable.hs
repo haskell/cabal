@@ -5,6 +5,7 @@ module Distribution.Types.Executable (
     Executable(..),
     emptyExecutable,
     exeModules,
+    exeModulesAutogen
 ) where
 
 import Prelude ()
@@ -46,3 +47,8 @@ emptyExecutable = mempty
 -- | Get all the module names from an exe
 exeModules :: Executable -> [ModuleName]
 exeModules exe = otherModules (buildInfo exe)
+
+-- | Get all the auto generated module names from an exe
+-- This are a subset of 'exeModules'.
+exeModulesAutogen :: Executable -> [ModuleName]
+exeModulesAutogen exe = autogenModules (buildInfo exe)

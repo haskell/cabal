@@ -288,6 +288,7 @@ ppField name fielddoc
          , "includes"
          , "install-includes"
          , "other-modules"
+         , "autogen-modules"
          , "depends"
          ]
 

@@ -36,6 +36,7 @@ module Distribution.PackageDescription (
         hasPublicLib,
         hasLibs,
         libModules,
+        libModulesAutogen,
 
         -- ** Executables
         Executable(..),
@@ -43,6 +44,7 @@ module Distribution.PackageDescription (
         withExe,
         hasExes,
         exeModules,
+        exeModulesAutogen,
 
         -- * Tests
         TestSuite(..),
@@ -54,6 +56,7 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
+        testModulesAutogen,
 
         -- * Benchmarks
         Benchmark(..),
@@ -65,6 +68,7 @@ module Distribution.PackageDescription (
         hasBenchmarks,
         withBenchmark,
         benchmarkModules,
+        benchmarkModulesAutogen,
 
         -- * Build information
         BuildInfo(..),

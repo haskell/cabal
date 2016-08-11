@@ -38,6 +38,20 @@ extra-source-files:
   tests/PackageTests/AllowOlder/benchmarks/Bench.hs
   tests/PackageTests/AllowOlder/src/Foo.hs
   tests/PackageTests/AllowOlder/tests/Test.hs
+  tests/PackageTests/AutogenModules/Package/Dummy.hs
+  tests/PackageTests/AutogenModules/Package/MyBenchModule.hs
+  tests/PackageTests/AutogenModules/Package/MyExeModule.hs
+  tests/PackageTests/AutogenModules/Package/MyLibModule.hs
+  tests/PackageTests/AutogenModules/Package/MyLibrary.hs
+  tests/PackageTests/AutogenModules/Package/MyTestModule.hs
+  tests/PackageTests/AutogenModules/Package/my.cabal
+  tests/PackageTests/AutogenModules/SrcDist/Dummy.hs
+  tests/PackageTests/AutogenModules/SrcDist/MyBenchModule.hs
+  tests/PackageTests/AutogenModules/SrcDist/MyExeModule.hs
+  tests/PackageTests/AutogenModules/SrcDist/MyLibModule.hs
+  tests/PackageTests/AutogenModules/SrcDist/MyLibrary.hs
+  tests/PackageTests/AutogenModules/SrcDist/MyTestModule.hs
+  tests/PackageTests/AutogenModules/SrcDist/my.cabal
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
@@ -435,6 +449,8 @@ test-suite package-tests
   type: exitcode-stdio-1.0
   main-is: PackageTests.hs
   other-modules:
+    PackageTests.AutogenModules.Package.Check
+    PackageTests.AutogenModules.SrcDist.Check
     PackageTests.BenchmarkStanza.Check
     PackageTests.TestStanza.Check
     PackageTests.DeterministicAr.Check
