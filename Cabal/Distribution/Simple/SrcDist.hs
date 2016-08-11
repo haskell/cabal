@@ -134,10 +134,10 @@ sdistDirectorySources :: FilePath
                   -> [PPSuffixHandler]
                   -> Bool
                   -> IO ()
-sdistDirectorySources targetDir pkg mb_lbi verbosity pps snapshot = do
+sdistDirectorySources targetDir pkg mb_lbi verbosity pps isSnapshot = do
   setupMessage verbosity "Building source dist for" (packageId pkg)
   prepareTree verbosity pkg mb_lbi targetDir pps
-  when snapshot $
+  when isSnapshot $
     overwriteSnapshotPackageDesc verbosity pkg targetDir
 
 -- | List all source files of a package. Returns a tuple of lists: first
