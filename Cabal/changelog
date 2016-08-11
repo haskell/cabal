@@ -50,6 +50,17 @@
 	* 'getComponentLocalBuildInfo', 'withComponentsInBuildOrder'
 	  and 'componentsInBuildOrder' are deprecated in favor of a
 	  new interface in "Distribution.Types.LocalBuildInfo".
+	* New 'autogen-modules' field. Modules that are built automatically at
+	  setup, like Paths_PACKAGENAME or others created with a build-type
+	  custom, appear on 'other-modules' for the Library, Executable,
+	  Test-Suite or Benchmark stanzas or also on 'exposed-modules' for
+	  libraries but are not really on the package when distributed. This
+	  makes commands like sdist fail because the file is not found, so with
+	  this new field modules that appear there are treated the same way as
+	  Paths_PACKAGENAME was and there is no need to create complex build
+	  hooks. Just add the module names on 'other-modules' and
+	  'exposed-modules' as always and on the new 'autogen-modules' besides.
+	(#3656).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

@@ -5,6 +5,7 @@ module Distribution.Types.Library (
     Library(..),
     emptyLibrary,
     libModules,
+    libModulesAutogen
 ) where
 
 import Prelude ()
@@ -58,3 +59,8 @@ libModules :: Library -> [ModuleName]
 libModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
               ++ requiredSignatures lib
+
+-- | Get all the auto generated module names from the library, exposed or not.
+-- This are a subset of 'libModules'.
+libModulesAutogen :: Library -> [ModuleName]
+libModulesAutogen lib = autogenModules (libBuildInfo lib)

@@ -6,6 +6,7 @@ module Distribution.Types.Benchmark (
     emptyBenchmark,
     benchmarkType,
     benchmarkModules,
+    benchmarkModulesAutogen
 ) where
 
 import Prelude ()
@@ -60,3 +61,8 @@ benchmarkType benchmark = case benchmarkInterface benchmark of
 -- | Get all the module names from a benchmark.
 benchmarkModules :: Benchmark -> [ModuleName]
 benchmarkModules benchmark = otherModules (benchmarkBuildInfo benchmark)
+
+-- | Get all the auto generated module names from a benchmark.
+-- This are a subset of 'benchmarkModules'.
+benchmarkModulesAutogen :: Benchmark -> [ModuleName]
+benchmarkModulesAutogen benchmark = autogenModules (benchmarkBuildInfo benchmark)

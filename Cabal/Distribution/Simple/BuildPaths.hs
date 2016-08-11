@@ -19,6 +19,7 @@ module Distribution.Simple.BuildPaths (
     autogenComponentModulesDir,
 
     autogenModuleName,
+    autogenPathsModuleName,
     cppHeaderName,
     haddockName,
 
@@ -87,9 +88,14 @@ autogenComponentModulesDir lbi clbi = componentBuildDir lbi clbi </> "autogen"
 cppHeaderName :: String
 cppHeaderName = "cabal_macros.h"
 
+{-# DEPRECATED autogenModuleName "Use autogenPathsModuleName instead" #-}
 -- |The name of the auto-generated module associated with a package
 autogenModuleName :: PackageDescription -> ModuleName
-autogenModuleName pkg_descr =
+autogenModuleName = autogenPathsModuleName
+
+-- | The name of the auto-generated Paths_* module associated with a package
+autogenPathsModuleName :: PackageDescription -> ModuleName
+autogenPathsModuleName pkg_descr =
   ModuleName.fromString $
     "Paths_" ++ map fixchar (display (packageName pkg_descr))
   where fixchar '-' = '_'

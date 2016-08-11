@@ -40,6 +40,7 @@ data BuildInfo = BuildInfo {
         jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
+        autogenModules    :: [ModuleName], -- ^ not present on sdist, Paths_* or user-generated with a custom Setup.hs
 
         defaultLanguage   :: Maybe Language,-- ^ language used when not explicitly specified
         otherLanguages    :: [Language],    -- ^ other languages used within the package
@@ -80,6 +81,7 @@ instance Monoid BuildInfo where
     jsSources           = [],
     hsSourceDirs        = [],
     otherModules        = [],
+    autogenModules      = [],
     defaultLanguage     = Nothing,
     otherLanguages      = [],
     defaultExtensions   = [],
@@ -114,6 +116,7 @@ instance Semigroup BuildInfo where
     jsSources           = combineNub jsSources,
     hsSourceDirs        = combineNub hsSourceDirs,
     otherModules        = combineNub otherModules,
+    autogenModules      = combineNub autogenModules,
     defaultLanguage     = combineMby defaultLanguage,
     otherLanguages      = combineNub otherLanguages,
     defaultExtensions   = combineNub defaultExtensions,

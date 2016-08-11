@@ -2,6 +2,8 @@ module PackageTests.Tests(tests) where
 
 import PackageTests.PackageTester
 
+import qualified PackageTests.AutogenModules.Package.Check
+import qualified PackageTests.AutogenModules.SrcDist.Check
 import qualified PackageTests.BenchmarkStanza.Check
 import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
@@ -39,6 +41,11 @@ tests config = do
 
   -- Test that Cabal determinstically generates object archives
   tc "DeterministicAr"  PackageTests.DeterministicAr.Check.suite
+
+  -- Test that cabal shows all the 'autogen-modules' warnings.
+  tc "AutogenModules/Package" PackageTests.AutogenModules.Package.Check.suite
+  -- Test that Cabal parses and uses 'autogen-modules' fields correctly
+  tc "AutogenModules/SrcDist" PackageTests.AutogenModules.SrcDist.Check.suite
 
   ---------------------------------------------------------------------
   -- * Test suite tests

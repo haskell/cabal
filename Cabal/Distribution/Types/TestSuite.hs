@@ -6,6 +6,7 @@ module Distribution.Types.TestSuite (
     emptyTestSuite,
     testType,
     testModules,
+    testModulesAutogen
 ) where
 
 import Prelude ()
@@ -65,3 +66,8 @@ testModules test = (case testInterface test of
                      TestSuiteLibV09 _ m -> [m]
                      _                   -> [])
                 ++ otherModules (testBuildInfo test)
+
+-- | Get all the auto generated module names from a test suite.
+-- This are a subset of 'testModules'.
+testModulesAutogen :: TestSuite -> [ModuleName]
+testModulesAutogen test = autogenModules (testBuildInfo test)
