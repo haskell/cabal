@@ -27,7 +27,7 @@ module Distribution.Client.BuildReports.Anonymous (
   ) where
 
 import qualified Distribution.Client.Types as BR
-         ( BuildResult, BuildFailure(..), BuildSuccess(..)
+         ( BuildOutcome, BuildFailure(..), BuildResult(..)
          , DocsResult(..), TestsResult(..) )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
@@ -120,7 +120,7 @@ data Outcome = NotTried | Failed | Ok
   deriving Eq
 
 new :: OS -> Arch -> CompilerId -> PackageIdentifier -> FlagAssignment
-    -> [PackageIdentifier] -> BR.BuildResult -> BuildReport
+    -> [PackageIdentifier] -> BR.BuildOutcome -> BuildReport
 new os' arch' comp pkgid flags deps result =
   BuildReport {
     package               = pkgid,
@@ -145,17 +145,17 @@ new os' arch' comp pkgid flags deps result =
       Left  (BR.BuildFailed     _) -> BuildFailed
       Left  (BR.TestsFailed     _) -> TestsFailed
       Left  (BR.InstallFailed   _) -> InstallFailed
-      Right (BR.BuildOk       _ _ _) -> InstallOk
+      Right (BR.BuildResult _ _ _) -> InstallOk
     convertDocsOutcome = case result of
-      Left _                                -> NotTried
-      Right (BR.BuildOk BR.DocsNotTried _ _)  -> NotTried
-      Right (BR.BuildOk BR.DocsFailed _ _)    -> Failed
-      Right (BR.BuildOk BR.DocsOk _ _)        -> Ok
+      Left _                                      -> NotTried
+      Right (BR.BuildResult BR.DocsNotTried _ _)  -> NotTried
+      Right (BR.BuildResult BR.DocsFailed _ _)    -> Failed
+      Right (BR.BuildResult BR.DocsOk _ _)        -> Ok
     convertTestsOutcome = case result of
-      Left  (BR.TestsFailed _)              -> Failed
-      Left _                                -> NotTried
-      Right (BR.BuildOk _ BR.TestsNotTried _) -> NotTried
-      Right (BR.BuildOk _ BR.TestsOk _)       -> Ok
+      Left  (BR.TestsFailed _)                    -> Failed
+      Left _                                      -> NotTried
+      Right (BR.BuildResult _ BR.TestsNotTried _) -> NotTried
+      Right (BR.BuildResult _ BR.TestsOk _)       -> Ok
 
 cabalInstallID :: PackageIdentifier
 cabalInstallID =

@@ -61,6 +61,8 @@ import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
+                   ( InstalledPackageId, installedPackageId
+                   , GenericReadyPackage(..), PackageLocation(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -84,6 +86,7 @@ import           Distribution.Text
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
+import qualified Data.ByteString.Lazy.Char8 as BS
 import           Data.List
 import           Data.Maybe
 import           Data.Either
@@ -199,9 +202,9 @@ runProjectPreBuildPhase
 --
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
-                     -> IO BuildResults
+                     -> IO BuildOutcomes
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
-    fmap (Map.union (previousBuildResults pkgsBuildStatus)) $
+    fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
                    elaboratedPlan
@@ -209,8 +212,8 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
                    pkgsBuildStatus
                    buildSettings
   where
-    previousBuildResults :: BuildStatusMap -> BuildResults
-    previousBuildResults =
+    previousBuildOutcomes :: BuildStatusMap -> BuildOutcomes
+    previousBuildOutcomes =
       Map.mapMaybe $ \status -> case status of
         BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
         --TODO: [nice to have] record build failures persistently
@@ -472,34 +475,66 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-reportBuildFailures :: ElaboratedInstallPlan -> BuildResults -> IO ()
-reportBuildFailures plan buildResults
-  | null failures
-  = return ()
+reportBuildFailures :: Verbosity -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+reportBuildFailures verbosity plan buildOutcomes
+  | null failures = return ()
 
-  | isSimpleCase
-  = exitFailure
+  | isSimpleCase  = exitFailure
 
-  | otherwise
-  = case failuresPrimary of
-     [(pkg, reason)] -> die $ renderFailure pkg reason
-     multiple        -> die $ "multiple failures:\n"
-                           ++ unlines
-                                [ renderFailure pkg reason
-                                | (pkg, reason) <- multiple ]
+  | otherwise = do
+      -- For failures where we have a build log, print the log plus a header
+       sequence_
+         [ do notice verbosity $
+                '\n' : renderFailureDetail False pkg reason
+                    ++ "\nBuild log ( " ++ logfile ++ " ):"
+              BS.readFile logfile >>= BS.putStrLn
+         | verbosity >= normal
+         ,  (pkg, ShowBuildSummaryAndLog reason logfile)
+             <- failuresClassification
+         ]
+
+       -- For all failures, print either a short summary (if we showed the
+       -- build log) or all details
+       die $ unlines
+         [ case failureClassification of
+             ShowBuildSummaryAndLog reason _
+               | verbosity > normal
+              -> renderFailureDetail mentionDepOf pkg reason
+
+               | otherwise
+              -> renderFailureSummary mentionDepOf pkg reason
+              ++ ". See the build log above for details."
+
+             ShowBuildSummaryOnly reason ->
+               renderFailureDetail mentionDepOf pkg reason
+
+         | let mentionDepOf = verbosity <= normal
+         , (pkg, failureClassification) <- failuresClassification ]
   where
-    failures =  [ (pkgid, reason)
-                | (pkgid, Left reason) <- Map.toList buildResults ]
+    failures =  [ (pkgid, failure)
+                | (pkgid, Left failure) <- Map.toList buildOutcomes ]
 
-    failuresPrimary =
-      [ (pkg, reason)
-      | (pkgid, reason) <- failures
-      , case reason of
-          DependentFailed {} -> False
+    failuresClassification =
+      [ (pkg, classifyBuildFailure failure)
+      | (pkgid, failure) <- failures
+      , case buildFailureReason failure of
+          DependentFailed {} -> verbosity > normal
           _                  -> True
       , InstallPlan.Configured pkg <-
            maybeToList (InstallPlan.lookup plan pkgid)
       ]
+
+    classifyBuildFailure :: BuildFailure -> BuildFailurePresentation
+    classifyBuildFailure BuildFailure {
+                           buildFailureReason  = reason,
+                           buildFailureLogFile = mlogfile
+                         } =
+      maybe (ShowBuildSummaryOnly   reason)
+            (ShowBuildSummaryAndLog reason) $ do
+        logfile <- mlogfile
+        e       <- buildFailureException reason
+        ExitFailure 1 <- fromException e
+        return logfile
 
     -- Special case: we don't want to report anything complicated in the case
     -- of just doing build on the current package, since it's clear from
@@ -513,10 +548,10 @@ reportBuildFailures plan buildResults
     --  - then we do not report additional error detail or context.
     --
     isSimpleCase
-      | [(pkgid, reason)] <- failures
-      , [pkg]             <- rootpkgs
+      | [(pkgid, failure)] <- failures
+      , [pkg]              <- rootpkgs
       , installedUnitId pkg == pkgid
-      , isFailureSelfExplanatory reason
+      , isFailureSelfExplanatory (buildFailureReason failure)
       = True
       | otherwise
       = False
@@ -541,30 +576,36 @@ reportBuildFailures plan buildResults
     hasNoDependents :: HasUnitId pkg => pkg -> Bool
     hasNoDependents = null . InstallPlan.revDirectDeps plan . installedUnitId
 
-    renderFailure pkg reason =
-        case reason of
-          DownloadFailed  e -> "failed to download " ++ pkgstr ++ "."
-                            ++ showException e
-          UnpackFailed    e -> "failed to unpack " ++ pkgstr ++ "."
-                            ++ showException e
-          ConfigureFailed e -> "failed to build " ++ pkgstr ++ ". The failure"
-                            ++ "occurred during the configure step."
-                            ++ showException e
-          BuildFailed     e -> "failed to build " ++ pkgstr ++ "."
-                            ++ showException e
-          TestsFailed     e -> "tests failed for " ++ pkgstr ++ "."
-                            ++ showException e
-          InstallFailed   e -> "failed to build " ++ pkgstr ++ ". The failure"
-                            ++ "occurred during the final install step."
-                            ++ showException e
+    renderFailureDetail mentionDepOf pkg reason =
+        renderFailureSummary mentionDepOf pkg reason ++ "."
+     ++ renderFailureExtraDetail reason
+     ++ maybe "" showException (buildFailureException reason)
 
-          -- This will never happen, but we include it for completeness
-          DependentFailed pkgid -> " depends on " ++ display pkgid
-                                ++ " which failed to install."
-          PlanningFailed -> " failed during the planning phase."
+    renderFailureSummary mentionDepOf pkg reason =
+        case reason of
+          DownloadFailed  _ -> "Failed to download " ++ pkgstr
+          UnpackFailed    _ -> "Failed to unpack "   ++ pkgstr
+          ConfigureFailed _ -> "Failed to build "    ++ pkgstr
+          BuildFailed     _ -> "Failed to build "    ++ pkgstr
+          ReplFailed      _ -> "repl failed for "    ++ pkgstr
+          HaddocksFailed  _ -> "Failed to build documentation for " ++ pkgstr
+          TestsFailed     _ -> "Tests failed for " ++ pkgstr
+          InstallFailed   _ -> "Failed to build "  ++ pkgstr
+          DependentFailed depid
+                            -> "Failed to build " ++ display (packageId pkg)
+                            ++ " because it depends on " ++ display depid
+                            ++ " which itself failed to build"
       where
         pkgstr = display (packageId pkg)
-              ++ renderDependencyOf (installedUnitId pkg)
+              ++ if mentionDepOf
+                   then renderDependencyOf (installedUnitId pkg)
+                   else ""
+
+    renderFailureExtraDetail reason =
+      case reason of
+        ConfigureFailed _ -> " The failure occurred during the configure step."
+        InstallFailed   _ -> " The failure occurred during the final install step."
+        _                 -> ""
 
     renderDependencyOf pkgid =
       case ultimateDeps pkgid of
@@ -578,7 +619,6 @@ reportBuildFailures plan buildResults
 
     showException e = case fromException e of
       Just (ExitFailure 1) -> ""
-        --TODO: show log in this case
 
 #ifdef MIN_VERSION_unix
       Just (ExitFailure n)
@@ -591,7 +631,7 @@ reportBuildFailures plan buildResults
          ++ "(i.e. SIGKILL). " ++ explanation
         where
           explanation = "The typical reason for this is that there is not "
-                     ++ "enough memory available (so the OS kills a process "
+                     ++ "enough memory available (e.g. the OS killed a process "
                      ++ "using lots of memory)."
 #endif
       Just (ExitFailure n) ->
@@ -603,4 +643,20 @@ reportBuildFailures plan buildResults
 #else
              ++ show e
 #endif
+
+    buildFailureException reason =
+      case reason of
+        DownloadFailed  e -> Just e
+        UnpackFailed    e -> Just e
+        ConfigureFailed e -> Just e
+        BuildFailed     e -> Just e
+        ReplFailed      e -> Just e
+        HaddocksFailed  e -> Just e
+        TestsFailed     e -> Just e
+        InstallFailed   e -> Just e
+        DependentFailed _ -> Nothing
+
+data BuildFailurePresentation =
+       ShowBuildSummaryOnly   BuildFailureReason
+     | ShowBuildSummaryAndLog BuildFailureReason FilePath
 

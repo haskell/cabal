@@ -59,7 +59,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     unless (buildSettingDryRun buildSettings) $ do
       buildResults <- runProjectBuildPhase verbosity buildCtx
-      reportBuildFailures elaboratedPlan buildResults
+      reportBuildFailures verbosity elaboratedPlan buildResults
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 

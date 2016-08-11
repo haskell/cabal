@@ -123,19 +123,19 @@ storeLocal cinfo templates reports platform = sequence_
 
 fromInstallPlan :: Platform -> CompilerId
                 -> InstallPlan
-                -> BuildResults
+                -> BuildOutcomes
                 -> [(BuildReport, Maybe Repo)]
-fromInstallPlan platform comp plan buildResults =
+fromInstallPlan platform comp plan buildOutcomes =
      catMaybes
    . map (\pkg -> fromPlanPackage
                     platform comp pkg
-                    (InstallPlan.lookupBuildResult pkg buildResults))
+                    (InstallPlan.lookupBuildOutcome pkg buildOutcomes))
    . InstallPlan.toList
    $ plan
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
-                -> Maybe BuildResult
+                -> Maybe BuildOutcome
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp
                 (InstallPlan.Configured (ConfiguredPackage _ srcPkg flags _ deps))

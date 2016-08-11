@@ -37,8 +37,8 @@ module Distribution.Client.InstallPlan (
   -- * Traversal
   executionOrder,
   execute,
-  BuildResults,
-  lookupBuildResult,
+  BuildOutcomes,
+  lookupBuildOutcome,
   -- ** Traversal helpers
   -- $traversal
   Processing,
@@ -55,7 +55,7 @@ module Distribution.Client.InstallPlan (
   reverseDependencyClosure,
   ) where
 
-import Distribution.Client.Types hiding (BuildResults)
+import Distribution.Client.Types hiding (BuildOutcomes)
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.Simple.Configure as Configure
 import qualified Distribution.Simple.Setup as Cabal
@@ -704,19 +704,19 @@ executionOrder plan =
 
 -- | The set of results we get from executing an install plan.
 --
-type BuildResults failure result = Map UnitId (Either failure result)
+type BuildOutcomes failure result = Map UnitId (Either failure result)
 
 -- | Lookup the build result for a single package.
 --
-lookupBuildResult :: HasUnitId pkg
-                  => pkg -> BuildResults failure result
-                  -> Maybe (Either failure result)
-lookupBuildResult = Map.lookup . installedUnitId
+lookupBuildOutcome :: HasUnitId pkg
+                   => pkg -> BuildOutcomes failure result
+                   -> Maybe (Either failure result)
+lookupBuildOutcome = Map.lookup . installedUnitId
 
 -- | Execute an install plan. This traverses the plan in dependency order.
 --
 -- Executing each individual package can fail and if so all dependents fail
--- too. The result for each package is collected as a 'BuildResults' map.
+-- too. The result for each package is collected as a 'BuildOutcomes' map.
 --
 -- Visiting each package happens with optional parallelism, as determined by
 -- the 'JobControl'. By default, after any failure we stop as soon as possible
@@ -732,15 +732,15 @@ execute :: forall m ipkg srcpkg result failure.
         -> (srcpkg -> failure) -- ^ Value for dependents of failed packages
         -> GenericInstallPlan ipkg srcpkg
         -> (GenericReadyPackage srcpkg -> m (Either failure result))
-        -> m (BuildResults failure result)
+        -> m (BuildOutcomes failure result)
 execute jobCtl keepGoing depFailure plan installPkg =
     let (newpkgs, processing) = ready plan
      in tryNewTasks Map.empty False False processing newpkgs
   where
-    tryNewTasks :: BuildResults failure result
+    tryNewTasks :: BuildOutcomes failure result
                 -> Bool -> Bool -> Processing
                 -> [GenericReadyPackage srcpkg]
-                -> m (BuildResults failure result)
+                -> m (BuildOutcomes failure result)
 
     tryNewTasks !results tasksFailed tasksRemaining !processing newpkgs
       -- we were in the process of cancelling and now we're finished
@@ -767,9 +767,9 @@ execute jobCtl keepGoing depFailure plan installPkg =
                      | pkg <- newpkgs ]
            waitForTasks results tasksFailed processing
 
-    waitForTasks :: BuildResults failure result
+    waitForTasks :: BuildOutcomes failure result
                  -> Bool -> Processing
-                 -> m (BuildResults failure result)
+                 -> m (BuildOutcomes failure result)
     waitForTasks !results tasksFailed !processing = do
       (pkgid, result) <- collectJob jobCtl
 

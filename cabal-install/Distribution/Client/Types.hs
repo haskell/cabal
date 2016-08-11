@@ -269,11 +269,11 @@ maybeRepoRemote (RepoSecure r _localDir) = Just r
 
 -- | A summary of the outcome for building a single package.
 --
-type BuildResult  = Either BuildFailure BuildSuccess
+type BuildOutcome = Either BuildFailure BuildResult
 
 -- | A summary of the outcome for building a whole set of packages.
 --
-type BuildResults = Map UnitId BuildResult
+type BuildOutcomes = Map UnitId BuildOutcome
 
 data BuildFailure = PlanningFailed
                   | DependentFailed PackageId
@@ -287,8 +287,8 @@ data BuildFailure = PlanningFailed
 
 instance Exception BuildFailure
 
-data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    [InstalledPackageInfo]
+data BuildResult = BuildResult DocsResult TestsResult
+                               [InstalledPackageInfo]
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
@@ -297,7 +297,7 @@ data TestsResult = TestsNotTried | TestsOk
   deriving (Show, Generic)
 
 instance Binary BuildFailure
-instance Binary BuildSuccess
+instance Binary BuildResult
 instance Binary DocsResult
 instance Binary TestsResult
 
