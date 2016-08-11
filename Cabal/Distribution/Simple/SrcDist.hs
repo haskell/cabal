@@ -127,11 +127,13 @@ sdistListSources :: FilePath    -- ^ output file
       -> IO ()
 sdistListSources path pkg mb_lbi flags mkTmpDir pps =
   withFile path WriteMode $ \outHandle -> do
-    (ordinary, maybeExecutable) <- listPackageSources (fromFlag (sDistVerbosity flags)) pkg pps
+    (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
     traverse_ (hPutStrLn outHandle) ordinary
     traverse_ (hPutStrLn outHandle) maybeExecutable
-    notice (fromFlag (sDistVerbosity flags)) $ "List of package sources written to file '"
+    notice verbosity $ "List of package sources written to file '"
                        ++ path ++ "'"
+  where
+    verbosity = fromFlag (sDistVerbosity flags)
 
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
