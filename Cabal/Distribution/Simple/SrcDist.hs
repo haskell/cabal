@@ -91,14 +91,14 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
-          generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot
+          sdistDirectorySources targetDir pkg' mb_lbi verbosity pps snapshot
           info verbosity $ "Source directory created: " ++ targetDir
 
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
           withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
-            generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot
+            sdistDirectorySources targetDir pkg' mb_lbi verbosity pps snapshot
             targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
             notice verbosity $ "Source tarball created: " ++ targzFile
 
@@ -127,14 +127,14 @@ sdistListSources path pkg flags pps =
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
-generateSourceDir :: FilePath
+sdistDirectorySources :: FilePath
                   -> PackageDescription
                   -> Maybe LocalBuildInfo
                   -> Verbosity
                   -> [PPSuffixHandler]
                   -> Bool
                   -> IO ()
-generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot = do
+sdistDirectorySources targetDir pkg' mb_lbi verbosity pps snapshot = do
   setupMessage verbosity "Building source dist for" (packageId pkg')
   prepareTree verbosity pkg' mb_lbi targetDir pps
   when snapshot $
