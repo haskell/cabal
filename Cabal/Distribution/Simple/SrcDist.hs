@@ -78,10 +78,10 @@ sdist pkg mb_lbi flags mkTmpDir pps =
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
     Flag path -> withFile path WriteMode $ \outHandle -> do
-      (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
+      (ordinary, maybeExecutable) <- listPackageSources (fromFlag (sDistVerbosity flags)) pkg pps
       traverse_ (hPutStrLn outHandle) ordinary
       traverse_ (hPutStrLn outHandle) maybeExecutable
-      notice verbosity $ "List of package sources written to file '"
+      notice (fromFlag (sDistVerbosity flags)) $ "List of package sources written to file '"
                          ++ path ++ "'"
     NoFlag    -> do
       -- do some QA
