@@ -109,11 +109,11 @@ sdist pkg mb_lbi flags mkTmpDir pps =
     tmpTargetDir = mkTmpDir distPref
 
 -- |Create a file with the path of each source line by line.
-sdistListSources :: FilePath    -- ^ output file
-      -> PackageDescription     -- ^information from the tarball
-      -> SDistFlags             -- ^verbosity & snapshot
-      -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
-      -> IO ()
+sdistListSources :: FilePath           -- ^ output file
+                 -> PackageDescription -- ^information from the tarball
+                 -> SDistFlags         -- ^verbosity & snapshot
+                 -> [PPSuffixHandler]  -- ^ extra preprocessors
+                 -> IO ()
 sdistListSources path pkg flags pps =
   withFile path WriteMode $ \outHandle -> do
     (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
@@ -125,13 +125,13 @@ sdistListSources path pkg flags pps =
     verbosity = fromFlag (sDistVerbosity flags)
 
 -- |Create a directory with the all source files.
-sdistDirectorySources :: FilePath
-                  -> PackageDescription
-                  -> Maybe LocalBuildInfo
-                  -> Verbosity
-                  -> Bool
-                  -> [PPSuffixHandler]
-                  -> IO ()
+sdistDirectorySources :: FilePath             -- ^ output directory
+                      -> PackageDescription   -- ^ information from the tarball
+                      -> Maybe LocalBuildInfo -- ^ Information from configure
+                      -> Verbosity            -- ^ verbosity
+                      -> Bool                 -- ^ snapshot
+                      -> [PPSuffixHandler]    -- ^ extra preprocessors
+                      -> IO ()
 sdistDirectorySources targetDir pkg mb_lbi verbosity isSnapshot pps = do
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
