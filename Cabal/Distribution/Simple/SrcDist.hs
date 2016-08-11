@@ -130,8 +130,8 @@ sdistListSources path pkg mb_lbi flags mkTmpDir pps =
     (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
     traverse_ (hPutStrLn outHandle) ordinary
     traverse_ (hPutStrLn outHandle) maybeExecutable
-    notice verbosity $ "List of package sources written to file '"
-                       ++ path ++ "'"
+    notice verbosity $
+      "List of package sources written to file '" ++ path ++ "'"
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
