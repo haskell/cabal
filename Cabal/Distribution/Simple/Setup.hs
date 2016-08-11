@@ -347,6 +347,9 @@ relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
 -- should be updated.
 data ConfigFlags = ConfigFlags {
+    -- This is the same hack as in 'buildArgs' and 'copyArgs'.
+    configArgs :: [String],
+
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
@@ -387,6 +390,7 @@ data ConfigFlags = ConfigFlags {
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
     configIPID          :: Flag String, -- ^ explicit IPID to be used
+    configCID           :: Flag ComponentId, -- ^ explicit CID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
@@ -435,6 +439,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
+    configArgs         = [],
     configPrograms_    = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
@@ -671,6 +676,11 @@ configureOptions showOrParseArgs =
          "Installed package ID to compile this package as"
          configIPID (\v flags -> flags {configIPID = v})
          (reqArgFlag "IPID")
+
+      ,option "" ["cid"]
+         "Installed component ID to compile this component as"
+         (fmap display . configCID) (\v flags -> flags {configCID = fmap ComponentId v})
+         (reqArgFlag "CID")
 
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"

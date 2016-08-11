@@ -266,6 +266,7 @@ instance Semigroup SavedConfig where
           lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
 
       combinedSavedConfigureFlags = ConfigFlags {
+        configArgs                = lastNonEmpty configArgs,
         configPrograms_           = configPrograms_ . savedConfigureFlags $ b,
         -- TODO: NubListify
         configProgramPaths        = lastNonEmpty configProgramPaths,
@@ -301,6 +302,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
         configIPID                = combine configIPID,
+        configCID                 = combine configCID,
         configDistPref            = combine configDistPref,
         configCabalFilePath       = combine configCabalFilePath,
         configVerbosity           = combine configVerbosity,

@@ -30,6 +30,7 @@ module Distribution.PackageDescription.Parse (
 
         pkgDescrFieldDescrs,
         libFieldDescrs,
+        subLibFieldDescrs,
         executableFieldDescrs,
         binfoFieldDescrs,
         sourceRepoFieldDescrs,
@@ -160,6 +161,14 @@ storeXFieldsPD _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
 -- The Library type
+
+subLibFieldDescrs :: [FieldDescr Library]
+subLibFieldDescrs =
+  [ simpleField "library"
+                        showToken             parseTokenQ
+                        (fromMaybe "subLibFieldDescrs" . libName)
+                        (\xs lib -> lib{libName=Just xs})
+  ] ++ libFieldDescrs
 
 libFieldDescrs :: [FieldDescr Library]
 libFieldDescrs =

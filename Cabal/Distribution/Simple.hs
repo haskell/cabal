@@ -187,7 +187,8 @@ allSuffixHandlers hooks
 configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
-    let flags' = flags { configDistPref = toFlag distPref }
+    let flags' = flags { configDistPref = toFlag distPref
+                       , configArgs = args }
 
     -- See docs for 'HookedBuildInfo'
     pbi <- preConf hooks args flags'
@@ -578,7 +579,6 @@ defaultUserHooks = autoconfUserHooks {
     -- https://github.com/haskell/cabal/issues/158
     where oldCompatPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
                        runConfigureScript verbosity
@@ -609,7 +609,6 @@ autoconfUserHooks
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
           defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
-                   noExtraFlags args
                    confExists <- doesFileExist "configure"
                    if confExists
                      then runConfigureScript verbosity

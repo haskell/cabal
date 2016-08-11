@@ -439,6 +439,31 @@ tests config = do
           _ <- shell "autoreconf" ["-i"]
           cabal_build []
 
+  tc "ConfigureComponent/Exe" $ do
+    withPackageDb $ do
+      cabal_install ["goodexe"]
+      runExe' "goodexe" [] >>= assertOutputContains "OK"
+
+  tcs "ConfigureComponent/SubLib" "sublib-explicit" $ do
+    withPackageDb $ do
+      cabal_install ["sublib", "--cid", "sublib-0.1-abc"]
+      cabal_install ["exe", "--dependency", "sublib=sublib-0.1-abc"]
+      runExe' "exe" [] >>= assertOutputContains "OK"
+
+  tcs "ConfigureComponent/SubLib" "sublib" $ do
+    withPackageDb $ do
+      cabal_install ["sublib"]
+      cabal_install ["exe"]
+      runExe' "exe" [] >>= assertOutputContains "OK"
+
+  tcs "ConfigureComponent/Test" "test" $ do
+    withPackageDb $ do
+      cabal_install ["test-for-cabal"]
+      withPackage "testlib" $ cabal_install []
+      cabal "configure" ["testsuite"]
+      cabal "build" []
+      cabal "test" []
+
   -- Test that per-component copy works, when only building library
   tc "CopyComponent/Lib" $
       withPackageDb $ do
@@ -580,9 +605,9 @@ tests config = do
                 uid = componentUnitId (targetCLBI target)
                 dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
                               NoCopyDest)
-            assertBool "interface files should NOT be installed" . not
+            assertBool "interface files should be installed"
                 =<< liftIO (doesFileExist (dir </> "Foo.hi"))
-            assertBool "static library should NOT be installed" . not
+            assertBool "static library should be installed"
                 =<< liftIO (doesFileExist (dir </> mkLibName uid))
             if is_dynamic
               then
@@ -590,7 +615,7 @@ tests config = do
                     =<< liftIO (doesFileExist (dir </> mkSharedLibName
                                                compiler_id uid))
               else
-                assertBool "dynamic library should NOT be installed" . not
+                assertBool "dynamic library should be installed"
                     =<< liftIO (doesFileExist (dir </> mkSharedLibName
                                                compiler_id uid))
             shouldFail $ ghcPkg "describe" ["foo"]
