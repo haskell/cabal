@@ -77,7 +77,7 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
-    Flag path -> sdistListSources path pkg flags mkTmpDir pps
+    Flag path -> sdistListSources path pkg flags pps
     NoFlag    -> do
       -- do some QA
       printPackageProblems verbosity pkg
@@ -121,10 +121,9 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 sdistListSources :: FilePath    -- ^ output file
       -> PackageDescription     -- ^information from the tarball
       -> SDistFlags             -- ^verbosity & snapshot
-      -> (FilePath -> FilePath) -- ^build prefix (temp dir)
       -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdistListSources path pkg flags mkTmpDir pps =
+sdistListSources path pkg flags pps =
   withFile path WriteMode $ \outHandle -> do
     (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
     traverse_ (hPutStrLn outHandle) ordinary
