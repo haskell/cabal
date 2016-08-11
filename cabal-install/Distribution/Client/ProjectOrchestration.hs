@@ -503,6 +503,7 @@ reportBuildFailures verbosity plan buildOutcomes
 
                | otherwise
               -> renderFailureSummary mentionDepOf pkg reason
+              ++ ". See the build log above for details."
 
              ShowBuildSummaryOnly reason ->
                renderFailureDetail mentionDepOf pkg reason
