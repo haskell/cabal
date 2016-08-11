@@ -74,10 +74,10 @@ sdist :: PackageDescription     -- ^information from the tarball
       -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
 sdist pkg mb_lbi flags mkTmpDir pps =
-
-  -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
+    -- When given --list-sources, just output the list of sources to a file.
     Flag path -> sdistListSources path pkg flags pps
+    -- Else create directory or tarball.
     NoFlag    -> do
       -- do some QA
       printPackageProblems verbosity pkg
