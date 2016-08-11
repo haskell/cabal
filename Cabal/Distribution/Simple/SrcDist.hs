@@ -91,24 +91,18 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
-          generateSourceDir targetDir pkg'
+          generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot
           info verbosity $ "Source directory created: " ++ targetDir
 
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
           withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
-            generateSourceDir targetDir pkg'
+            generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot
             targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
             notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
-    generateSourceDir targetDir pkg' = do
-
-      setupMessage verbosity "Building source dist for" (packageId pkg')
-      prepareTree verbosity pkg' mb_lbi targetDir pps
-      when snapshot $
-        overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
@@ -132,6 +126,19 @@ sdistListSources path pkg flags pps =
       "List of package sources written to file '" ++ path ++ "'"
   where
     verbosity = fromFlag (sDistVerbosity flags)
+
+generateSourceDir :: FilePath
+                  -> PackageDescription
+                  -> Maybe LocalBuildInfo
+                  -> Verbosity
+                  -> [PPSuffixHandler]
+                  -> Bool
+                  -> IO ()
+generateSourceDir targetDir pkg' mb_lbi verbosity pps snapshot = do
+  setupMessage verbosity "Building source dist for" (packageId pkg')
+  prepareTree verbosity pkg' mb_lbi targetDir pps
+  when snapshot $
+    overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
