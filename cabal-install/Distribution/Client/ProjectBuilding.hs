@@ -725,7 +725,7 @@ rebuildTarget verbosity
     unexpectedState = error "rebuildTarget: unexpected package status"
 
     downloadPhase = do
-        downsrcloc <- annotateFailure (BuildFailure Nothing . DownloadFailed) $
+        downsrcloc <- annotateFailureNoLog DownloadFailed $
                         waitAsyncPackageDownload verbosity downloadMap pkg
         case downsrcloc of
           DownloadedTarball tarball -> unpackTarballPhase tarball
@@ -888,7 +888,7 @@ unpackPackageTarball :: Verbosity -> FilePath -> FilePath
                      -> IO ()
 unpackPackageTarball verbosity tarball parentdir pkgid pkgTextOverride =
     --TODO: [nice to have] switch to tar package and catch tar exceptions
-    annotateFailure (BuildFailure Nothing . UnpackFailed) $ do
+    annotateFailureNoLog UnpackFailed $ do
 
       -- Unpack the tarball
       --
@@ -977,18 +977,18 @@ buildAndInstallUnpackedPackage verbosity
     -- Configure phase
     when isParallelBuild $
       notice verbosity $ "Configuring " ++ display pkgid ++ "..."
-    annotateFailure (BuildFailure mlogFile . ConfigureFailed) $
+    annotateFailure mlogFile ConfigureFailed $
       setup configureCommand configureFlags
 
     -- Build phase
     when isParallelBuild $
       notice verbosity $ "Building " ++ display pkgid ++ "..."
-    annotateFailure (BuildFailure mlogFile . BuildFailed) $
+    annotateFailure mlogFile BuildFailed $
       setup buildCommand buildFlags
 
     -- Install phase
     ipkgs <-
-      annotateFailure (BuildFailure mlogFile . InstallFailed) $ do
+      annotateFailure mlogFile InstallFailed $ do
       --TODO: [required eventually] need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
 
@@ -1138,7 +1138,7 @@ buildInplaceUnpackedPackage verbosity
         -- Configure phase
         --
         whenReConfigure $ do
-          annotateFailure (BuildFailure Nothing . ConfigureFailed) $
+          annotateFailureNoLog ConfigureFailed $
             setup configureCommand configureFlags []
           invalidatePackageRegFileMonitor packageFileMonitor
           updatePackageConfigFileMonitor packageFileMonitor srcdir pkg
@@ -1153,7 +1153,7 @@ buildInplaceUnpackedPackage verbosity
 
         whenRebuild $ do
           timestamp <- beginUpdateFileMonitor
-          annotateFailure (BuildFailure Nothing . BuildFailed) $
+          annotateFailureNoLog BuildFailed $
             setup buildCommand buildFlags buildArgs
 
           --TODO: [required eventually] this doesn't track file
@@ -1166,7 +1166,7 @@ buildInplaceUnpackedPackage verbosity
                                         allSrcFiles buildResult
 
         ipkgs <- whenReRegister $
-                 annotateFailure (BuildFailure Nothing . InstallFailed) $ do
+                 annotateFailureNoLog InstallFailed $ do
           -- Register locally
           ipkgs <- if pkgRequiresRegistration pkg
             then do
@@ -1241,12 +1241,12 @@ buildInplaceUnpackedPackage verbosity
         -- Repl phase
         --
         whenRepl $
-          annotateFailure (BuildFailure Nothing . ReplFailed) $
+          annotateFailureNoLog ReplFailed $
           setup replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
-          annotateFailure (BuildFailure Nothing . HaddocksFailed) $
+          annotateFailureNoLog HaddocksFailed $
           setup haddockCommand haddockFlags []
 
         return BuildResult {
@@ -1327,8 +1327,15 @@ buildInplaceUnpackedPackage verbosity
 
 
 -- helper
-annotateFailure :: (SomeException -> BuildFailure) -> IO a -> IO a
-annotateFailure annotate action =
+annotateFailureNoLog :: (SomeException -> BuildFailureReason)
+                     -> IO a -> IO a
+annotateFailureNoLog annotate action =
+  annotateFailure Nothing annotate action
+
+annotateFailure :: Maybe FilePath
+                -> (SomeException -> BuildFailureReason)
+                -> IO a -> IO a
+annotateFailure mlogFile annotate action =
   action `catches`
     -- It's not just IOException and ExitCode we have to deal with, there's
     -- lots, including exceptions from the hackage-security and tar packages.
@@ -1343,7 +1350,7 @@ annotateFailure annotate action =
     ]
   where
     handler :: Exception e => e -> IO a
-    handler = throwIO . annotate . toException
+    handler = throwIO . BuildFailure mlogFile . annotate . toException
 
 
 withTempInstalledPackageInfoFiles :: Verbosity -> FilePath
