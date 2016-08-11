@@ -127,6 +127,7 @@ sdistListSources path pkg flags pps =
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
+-- |Create a directory with the all source files.
 sdistDirectorySources :: FilePath
                   -> PackageDescription
                   -> Maybe LocalBuildInfo
