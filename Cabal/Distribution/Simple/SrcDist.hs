@@ -82,9 +82,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
       -- do some QA
       printPackageProblems verbosity pkg
 
-      when (isNothing mb_lbi) $
-        warn verbosity "Cannot run preprocessors. Run 'configure' command first."
-
       date <- getCurrentTime
       let pkg' | isSnapshot  = snapshotPackage date pkg
                | otherwise = pkg
@@ -136,6 +133,8 @@ sdistDirectorySources :: FilePath
                   -> [PPSuffixHandler]
                   -> IO ()
 sdistDirectorySources targetDir pkg mb_lbi verbosity isSnapshot pps = do
+  when (isNothing mb_lbi) $
+    warn verbosity "Cannot run preprocessors. Run 'configure' command first."
   setupMessage verbosity "Building source dist for" (packageId pkg)
   prepareTree verbosity pkg mb_lbi targetDir pps
   when isSnapshot $
