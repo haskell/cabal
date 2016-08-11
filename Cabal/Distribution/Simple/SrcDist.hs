@@ -86,26 +86,26 @@ sdist pkg mb_lbi flags mkTmpDir pps =
         warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
       date <- getCurrentTime
-      let pkg' | snapshot  = snapshotPackage date pkg
+      let pkg' | isSnapshot  = snapshotPackage date pkg
                | otherwise = pkg
 
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
-          sdistDirectorySources targetDir pkg' mb_lbi verbosity pps snapshot
+          sdistDirectorySources targetDir pkg' mb_lbi verbosity pps isSnapshot
           info verbosity $ "Source directory created: " ++ targetDir
 
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
           withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
-            sdistDirectorySources targetDir pkg' mb_lbi verbosity pps snapshot
+            sdistDirectorySources targetDir pkg' mb_lbi verbosity pps isSnapshot
             targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
             notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
 
     verbosity = fromFlag (sDistVerbosity flags)
-    snapshot  = fromFlag (sDistSnapshot flags)
+    isSnapshot  = fromFlag (sDistSnapshot flags)
 
     distPref     = fromFlag $ sDistDistPref flags
     targetPref   = distPref
