@@ -268,7 +268,7 @@ allSourcesBuildInfo bi pps modules = do
   bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
           fileExts = ["hs-boot", "lhs-boot"]
-      in findFileWithExtension fileExts (hsSourceDirs bi) file
+      in findFileWithExtension fileExts searchDirs file
     | module_ <- modules ]
 
   return $ sources ++ catMaybes bootFiles
