@@ -327,6 +327,18 @@ filterAutogenModules :: PackageDescription -> PackageDescription
 filterAutogenModules pkg_descr0 = mapLib filterAutogenModuleLib $
                                  mapAllBuildInfo filterAutogenModuleBI pkg_descr0
   where
+    mapAllBuildInfo f pkg = pkg {
+        library     = fmap mapLibBi (library pkg),
+        subLibraries = fmap mapLibBi (subLibraries pkg),
+        executables = fmap mapExeBi (executables pkg),
+        testSuites  = fmap mapTestBi (testSuites pkg),
+        benchmarks  = fmap mapBenchBi (benchmarks pkg)
+      }
+      where
+        mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
+        mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
+        mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
+        mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
     mapLib f pkg = pkg { library      = fmap f (library pkg)
                        , subLibraries = map f (subLibraries pkg) }
     filterAutogenModuleLib lib = lib {
@@ -484,18 +496,3 @@ printPackageProblems verbosity pkg_descr = do
 --
 tarBallName :: PackageDescription -> String
 tarBallName = display . packageId
-
-mapAllBuildInfo :: (BuildInfo -> BuildInfo)
-                -> (PackageDescription -> PackageDescription)
-mapAllBuildInfo f pkg = pkg {
-    library     = fmap mapLibBi (library pkg),
-    subLibraries = fmap mapLibBi (subLibraries pkg),
-    executables = fmap mapExeBi (executables pkg),
-    testSuites  = fmap mapTestBi (testSuites pkg),
-    benchmarks  = fmap mapBenchBi (benchmarks pkg)
-  }
-  where
-    mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
-    mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
-    mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
-    mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
