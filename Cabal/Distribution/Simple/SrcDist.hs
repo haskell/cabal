@@ -172,14 +172,14 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     fmap concat
     . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } -> do
      filePaths <- allSourcesBuildInfo libBi pps (modules ++ (otherModules libBi))
-     return filePaths
+     return $ filePaths ++ cSources libBi ++ jsSources libBi
 
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
        biSrcs  <- allSourcesBuildInfo exeBi pps (otherModules exeBi)
        mainSrc <- findMainExeFile exeBi pps mainPath
-       return (mainSrc:biSrcs)
+       return $ (mainSrc:biSrcs) ++ cSources exeBi ++ jsSources exeBi
 
     -- Test suites sources.
   , fmap concat
@@ -194,10 +194,10 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
              case ppFile of
                Nothing -> findFile (hsSourceDirs bi) mainPath
                Just pp -> return pp
-           return (srcMainFile:biSrcs)
+           return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            filePaths <- allSourcesBuildInfo bi pps ([m] ++ (otherModules bi))
-           return filePaths
+           return $ filePaths ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
                                    ++ show tp
 
@@ -214,7 +214,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
              case ppFile of
                Nothing -> findFile (hsSourceDirs bi) mainPath
                Just pp -> return pp
-           return (srcMainFile:biSrcs)
+           return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
                                     ++ show tp
 
@@ -271,7 +271,7 @@ allSourcesBuildInfo bi pps modules = do
       in findFileWithExtension fileExts (hsSourceDirs bi) file
     | module_ <- modules ]
 
-  return $ sources ++ catMaybes bootFiles ++ cSources bi ++ jsSources bi
+  return $ sources ++ catMaybes bootFiles
 
   where
     nonEmpty x _ [] = x
