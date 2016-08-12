@@ -170,8 +170,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   [
     -- Library sources.
     fmap concat
-    . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
-     allSourcesBuildInfo libBi pps (modules ++ (otherModules libBi))
+    . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } -> do
+     filePaths <- allSourcesBuildInfo libBi pps (modules ++ (otherModules libBi))
+     return filePaths
 
     -- Executables sources.
   , fmap concat
