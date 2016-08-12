@@ -271,10 +271,11 @@ moduleNamesToFilePaths searchDirs pps modules = do
 -- | Find the main file.
 findMainFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
 findMainFile bi pps mainPath = do
-  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs bi)
+  let searchDirs = hsSourceDirs bi
+  ppFile <- findFileWithExtension (ppSuffixes pps) searchDirs
             (dropExtension mainPath)
   case ppFile of
-   Nothing -> findFile (hsSourceDirs bi) mainPath
+   Nothing -> findFile searchDirs mainPath
    Just pp -> return pp
 
 -- |Prepare a directory tree of source files.
