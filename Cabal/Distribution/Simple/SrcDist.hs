@@ -274,14 +274,14 @@ findMainExeFile bi pps mainPath = do
   ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs bi)
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFile (hsSourceDirs bi) mainPath
-    Just pp -> return pp
+   Nothing -> findFile (hsSourceDirs bi) mainPath
+   Just pp -> return pp
 
 -- | Find the main test-suite file.
 findMainTestFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
 findMainTestFile bi pps mainPath = do
-  ppFile <- findFileWithExtension (ppSuffixes pps)
-           (hsSourceDirs bi) (dropExtension mainPath)
+  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs bi)
+            (dropExtension mainPath)
   case ppFile of
    Nothing -> findFile (hsSourceDirs bi) mainPath
    Just pp -> return pp
@@ -289,8 +289,8 @@ findMainTestFile bi pps mainPath = do
 -- | Find the main benchmark file.
 findMainBenchFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
 findMainBenchFile bi pps mainPath = do
-  ppFile <- findFileWithExtension (ppSuffixes pps)
-           (hsSourceDirs bi) (dropExtension mainPath)
+  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs bi)
+            (dropExtension mainPath)
   case ppFile of
    Nothing -> findFile (hsSourceDirs bi) mainPath
    Just pp -> return pp
