@@ -203,12 +203,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            biSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
-           srcMainFile <- do
-             ppFile <- findFileWithExtension (ppSuffixes pps)
-                       (hsSourceDirs bi) (dropExtension mainPath)
-             case ppFile of
-               Nothing -> findFile (hsSourceDirs bi) mainPath
-               Just pp -> return pp
+           srcMainFile <- findMainBenchFile bi pps mainPath
            return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
                                     ++ show tp
@@ -290,6 +285,16 @@ findMainTestFile bi pps mainPath = do
   case ppFile of
    Nothing -> findFile (hsSourceDirs bi) mainPath
    Just pp -> return pp
+
+-- | Find the main benchmark file.
+findMainBenchFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainBenchFile bi pps mainPath = do
+  ppFile <- findFileWithExtension (ppSuffixes pps)
+           (hsSourceDirs bi) (dropExtension mainPath)
+  case ppFile of
+   Nothing -> findFile (hsSourceDirs bi) mainPath
+   Just pp -> return pp
+
 
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
