@@ -206,7 +206,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let  bi = benchmarkBuildInfo bm
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
-           moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
+           let modules = otherModules bi
+           moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
