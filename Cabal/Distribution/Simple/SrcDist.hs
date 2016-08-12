@@ -88,14 +88,14 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
-          sdistDirectorySources targetDir pkg' mb_lbi verbosity isSnapshot pps
+          sdistSourcesDirectory targetDir pkg' mb_lbi verbosity isSnapshot pps
           info verbosity $ "Source directory created: " ++ targetDir
 
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
           withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
-            sdistDirectorySources targetDir pkg' mb_lbi verbosity isSnapshot pps
+            sdistSourcesDirectory targetDir pkg' mb_lbi verbosity isSnapshot pps
             targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
             notice verbosity $ "Source tarball created: " ++ targzFile
 
@@ -123,14 +123,14 @@ sdistSourcesList path pkg verbosity pps =
       "List of package sources written to file '" ++ path ++ "'"
 
 -- |Create a directory with the all source files.
-sdistDirectorySources :: FilePath             -- ^ output directory
+sdistSourcesDirectory :: FilePath             -- ^ output directory
                       -> PackageDescription   -- ^ information from the tarball
                       -> Maybe LocalBuildInfo -- ^ Information from configure
                       -> Verbosity            -- ^ verbosity
                       -> Bool                 -- ^ snapshot
                       -> [PPSuffixHandler]    -- ^ extra preprocessors
                       -> IO ()
-sdistDirectorySources targetDir pkg mb_lbi verbosity isSnapshot pps = do
+sdistSourcesDirectory targetDir pkg mb_lbi verbosity isSnapshot pps = do
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
   setupMessage verbosity "Building source dist for" (packageId pkg)
