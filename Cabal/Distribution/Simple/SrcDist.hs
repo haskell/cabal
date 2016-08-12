@@ -170,14 +170,14 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   [
     -- Library sources.
     fmap concat
-    . withAllLib $ \Library { exposedModules = exposed, libBuildInfo = bi } -> do
+    . withAllLib $ \Library {exposedModules = exposed, libBuildInfo = bi} -> do
        let modules = exposed ++ (otherModules bi)
        moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
        return $ moduleSrcs ++ cSources bi ++ jsSources bi
 
     -- Executables sources.
   , fmap concat
-    . withAllExe $ \Executable { modulePath = mainPath, buildInfo = bi } -> do
+    . withAllExe $ \Executable {modulePath = mainPath, buildInfo = bi} -> do
        let modules = otherModules bi
        moduleSrcs  <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
        mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
