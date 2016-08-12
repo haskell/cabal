@@ -195,8 +195,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
                Nothing -> findFile (hsSourceDirs bi) mainPath
                Just pp -> return pp
            return (srcMainFile:biSrcs)
-         TestSuiteLibV09 _ m ->
-           allSourcesBuildInfo bi pps ([m] ++ (otherModules bi))
+         TestSuiteLibV09 _ m -> do
+           filePaths <- allSourcesBuildInfo bi pps ([m] ++ (otherModules bi))
+           return filePaths
          TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
                                    ++ show tp
 
