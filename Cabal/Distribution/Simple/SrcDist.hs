@@ -171,12 +171,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Library sources.
     fmap concat
     . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
-     allSourcesBuildInfo libBi pps modules
+     allSourcesBuildInfo libBi pps (modules ++ (otherModules libBi))
 
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
-       biSrcs  <- allSourcesBuildInfo exeBi pps []
+       biSrcs  <- allSourcesBuildInfo exeBi pps (otherModules exeBi)
        mainSrc <- findMainExeFile exeBi pps mainPath
        return (mainSrc:biSrcs)
 
@@ -186,7 +186,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let bi  = testBuildInfo t
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
-           biSrcs <- allSourcesBuildInfo bi pps []
+           biSrcs <- allSourcesBuildInfo bi pps (otherModules bi)
            srcMainFile <- do
              ppFile <- findFileWithExtension (ppSuffixes pps)
                        (hsSourceDirs bi) (dropExtension mainPath)
@@ -195,7 +195,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
                Just pp -> return pp
            return (srcMainFile:biSrcs)
          TestSuiteLibV09 _ m ->
-           allSourcesBuildInfo bi pps [m]
+           allSourcesBuildInfo bi pps ([m] ++ (otherModules bi))
          TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
                                    ++ show tp
 
@@ -205,7 +205,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let  bi = benchmarkBuildInfo bm
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
-           biSrcs <- allSourcesBuildInfo bi pps []
+           biSrcs <- allSourcesBuildInfo bi pps (otherModules bi)
            srcMainFile <- do
              ppFile <- findFileWithExtension (ppSuffixes pps)
                        (hsSourceDirs bi) (dropExtension mainPath)
@@ -454,12 +454,12 @@ allSourcesBuildInfo bi pps modules = do
     [ let file = ModuleName.toFilePath module_
       in findAllFilesWithExtension suffixes searchDirs file
          >>= nonEmpty (notFound module_) return
-    | module_ <- modules ++ otherModules bi ]
+    | module_ <- modules ]
   bootFiles <- sequenceA
     [ let file = ModuleName.toFilePath module_
           fileExts = ["hs-boot", "lhs-boot"]
       in findFileWithExtension fileExts (hsSourceDirs bi) file
-    | module_ <- modules ++ otherModules bi ]
+    | module_ <- modules ]
 
   return $ sources ++ catMaybes bootFiles ++ cSources bi ++ jsSources bi
 
