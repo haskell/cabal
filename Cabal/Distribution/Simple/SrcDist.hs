@@ -178,7 +178,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = bi } -> do
-       moduleSrcs  <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
+       let modules = otherModules bi
+       moduleSrcs  <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
        mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
        return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
 
