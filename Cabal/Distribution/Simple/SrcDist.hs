@@ -188,8 +188,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
-           srcMainFile <- findMainFile (hsSourceDirs bi) pps mainPath
-           return $ (srcMainFile:moduleSrcs) ++ cSources bi ++ jsSources bi
+           mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
+           return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps ([m] ++ (otherModules bi))
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
