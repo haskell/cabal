@@ -254,7 +254,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
 -- | Given a buildinfo and a list of modules return the paths of all sources.
-allSourcesBuildInfo :: [FilePath]
+allSourcesBuildInfo :: [FilePath]           -- ^ Search directories.
                        -> [PPSuffixHandler] -- ^ Extra preprocessors
                        -> [ModuleName]      -- ^ Exposed modules
                        -> IO [FilePath]
