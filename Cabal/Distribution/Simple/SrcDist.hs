@@ -269,9 +269,7 @@ allSourcesBuildInfo searchDirs pps modules = do
           fileExts = ["hs-boot", "lhs-boot"]
       in findFileWithExtension fileExts searchDirs file
     | module_ <- modules ]
-
   return $ sources ++ catMaybes bootFiles
-
   where
     nonEmpty x _ [] = x
     nonEmpty _ f xs = f xs
