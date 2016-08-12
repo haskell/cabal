@@ -251,7 +251,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     withAllTest      action = traverse action (testSuites pkg_descr)
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
--- | Given a buildinfo, return the names of all source files.
+-- | Given a buildinfo and a list of modules return the paths of all sources.
 allSourcesBuildInfo :: BuildInfo
                        -> [PPSuffixHandler] -- ^ Extra preprocessors
                        -> [ModuleName]      -- ^ Exposed modules
