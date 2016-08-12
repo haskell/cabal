@@ -177,9 +177,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
-       biSrcs  <- moduleNamesToFilePaths (hsSourceDirs exeBi) pps (otherModules exeBi)
+       moduleSrcs  <- moduleNamesToFilePaths (hsSourceDirs exeBi) pps (otherModules exeBi)
        mainSrc <- findMainFile (hsSourceDirs exeBi) pps mainPath
-       return $ (mainSrc:biSrcs) ++ cSources exeBi ++ jsSources exeBi
+       return $ (mainSrc:moduleSrcs) ++ cSources exeBi ++ jsSources exeBi
 
     -- Test suites sources.
   , fmap concat
