@@ -35,6 +35,7 @@ import Distribution.ParseUtils
 import Distribution.PackageDescription.Parse
 import Distribution.Package
 import Distribution.Text
+import Distribution.ModuleName
 
 import Text.PrettyPrint
        (hsep, space, parens, char, nest, isEmpty, ($$), (<+>),
@@ -58,11 +59,11 @@ ppGenericPackageDescription :: GenericPackageDescription -> Doc
 ppGenericPackageDescription gpd          =
         ppPackageDescription (packageDescription gpd)
         $+$ ppGenPackageFlags (genPackageFlags gpd)
-        $+$ ppLibrary (condLibrary gpd)
-        $+$ ppSubLibraries (condSubLibraries gpd)
-        $+$ ppExecutables (condExecutables gpd)
-        $+$ ppTestSuites (condTestSuites gpd)
-        $+$ ppBenchmarks (condBenchmarks gpd)
+        $+$ ppCondLibrary (condLibrary gpd)
+        $+$ ppCondSubLibraries (condSubLibraries gpd)
+        $+$ ppCondExecutables (condExecutables gpd)
+        $+$ ppCondTestSuites (condTestSuites gpd)
+        $+$ ppCondBenchmarks (condBenchmarks gpd)
 
 ppPackageDescription :: PackageDescription -> Doc
 ppPackageDescription pd                  =      ppFields pkgDescrFieldDescrs pd
@@ -119,14 +120,14 @@ ppFlag flag@(MkFlag name _ _ _)    =
   where
     fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
-ppLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
-ppLibrary Nothing = mempty
-ppLibrary (Just condTree) =
+ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
+ppCondLibrary Nothing = mempty
+ppCondLibrary (Just condTree) =
     emptyLine $ text "library"
         $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
 
-ppSubLibraries :: [(String, CondTree ConfVar [Dependency] Library)] -> Doc
-ppSubLibraries libs                           =
+ppCondSubLibraries :: [(String, CondTree ConfVar [Dependency] Library)] -> Doc
+ppCondSubLibraries libs                           =
     vcat [emptyLine $ text ("library " ++ n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppLib)| (n,condTree) <- libs]
 
@@ -136,8 +137,8 @@ ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
 ppLib lib (Just plib) = ppDiffFields libFieldDescrs lib plib
                         $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
 
-ppExecutables :: [(String, CondTree ConfVar [Dependency] Executable)] -> Doc
-ppExecutables exes                       =
+ppCondExecutables :: [(String, CondTree ConfVar [Dependency] Executable)] -> Doc
+ppCondExecutables exes                       =
     vcat [emptyLine $ text ("executable " ++ n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppExe)| (n,condTree) <- exes]
   where
@@ -152,8 +153,8 @@ ppExecutables exes                       =
             $+$ ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
 
-ppTestSuites :: [(String, CondTree ConfVar [Dependency] TestSuite)] -> Doc
-ppTestSuites suites =
+ppCondTestSuites :: [(String, CondTree ConfVar [Dependency] TestSuite)] -> Doc
+ppCondTestSuites suites =
     emptyLine $ vcat [     text ("test-suite " ++ n)
                        $+$ nest indentWith (ppCondTree condTree Nothing ppTestSuite)
                      | (n,condTree) <- suites]
@@ -184,8 +185,8 @@ ppTestSuites suites =
       TestSuiteLibV09 _ m -> Just m
       _                   -> Nothing
 
-ppBenchmarks :: [(String, CondTree ConfVar [Dependency] Benchmark)] -> Doc
-ppBenchmarks suites =
+ppCondBenchmarks :: [(String, CondTree ConfVar [Dependency] Benchmark)] -> Doc
+ppCondBenchmarks suites =
     emptyLine $ vcat [     text ("benchmark " ++ n)
                        $+$ nest indentWith (ppCondTree condTree Nothing ppBenchmark)
                      | (n,condTree) <- suites]
@@ -280,17 +281,80 @@ writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription 
 -- | @since 1.26.0.0@
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
-     ppPackage pkg
-  $$ ppCustomFields (customFieldsPD pkg)
-  $$ (case library pkg of
-        Nothing -> mempty
-        Just lib -> ppLibrary' lib)
-  $$ vcat [ space $$ ppLibrary' lib | lib <- subLibraries pkg ]
-  $$ vcat [ space $$ ppExecutable exe | exe <- executables pkg ]
-  where
-    ppPackage    = ppFields pkgDescrFieldDescrs
-    ppLibrary'   = ppFields libFieldDescrs
-    ppExecutable = ppFields executableFieldDescrs
+     ppPackageDescription pkg
+     $+$ ppMaybeLibrary (library pkg)
+     $+$ ppSubLibraries (subLibraries pkg)
+     $+$ ppExecutables  (executables pkg)
+     $+$ ppTestSuites   (testSuites pkg)
+     $+$ ppBenchmarks   (benchmarks pkg)
+
+ppMaybeLibrary :: Maybe Library -> Doc
+ppMaybeLibrary Nothing = mempty
+ppMaybeLibrary (Just lib) =
+    emptyLine $ text "library"
+        $+$ nest indentWith (ppFields libFieldDescrs lib)
+
+ppSubLibraries :: [Library] -> Doc
+ppSubLibraries libs = vcat [
+    emptyLine $ text "library" <+> text libname
+        $+$ nest indentWith (ppFields libFieldDescrs lib)
+    | lib@Library{ libName = Just libname } <- libs ]
+
+ppExecutables :: [Executable] -> Doc
+ppExecutables exes = vcat [
+    emptyLine $ text "executable" <+> text (exeName exe)
+        $+$ nest indentWith (ppFields executableFieldDescrs exe)
+    | exe <- exes ]
+
+ppTestSuites :: [TestSuite] -> Doc
+ppTestSuites tests = vcat [
+    emptyLine $ text "test-suite" <+> text (testName test)
+        $+$ nest indentWith (ppFields testSuiteFieldDescrs test_stanza)
+    | test <- tests
+    , let test_stanza
+            = TestSuiteStanza {
+                testStanzaTestType = Just (testSuiteInterfaceToTestType (testInterface test)),
+                testStanzaMainIs = testSuiteInterfaceToMaybeMainIs (testInterface test),
+                testStanzaTestModule = testSuiteInterfaceToMaybeModule (testInterface test),
+                testStanzaBuildInfo = testBuildInfo test
+            }
+    ]
+
+testSuiteInterfaceToTestType :: TestSuiteInterface -> TestType
+testSuiteInterfaceToTestType (TestSuiteExeV10 ver _) = TestTypeExe ver
+testSuiteInterfaceToTestType (TestSuiteLibV09 ver _) = TestTypeLib ver
+testSuiteInterfaceToTestType (TestSuiteUnsupported ty) = ty
+
+testSuiteInterfaceToMaybeMainIs :: TestSuiteInterface -> Maybe FilePath
+testSuiteInterfaceToMaybeMainIs (TestSuiteExeV10 _ fp) = Just fp
+testSuiteInterfaceToMaybeMainIs TestSuiteLibV09{} = Nothing
+testSuiteInterfaceToMaybeMainIs TestSuiteUnsupported{} = Nothing
+
+testSuiteInterfaceToMaybeModule :: TestSuiteInterface -> Maybe ModuleName
+testSuiteInterfaceToMaybeModule (TestSuiteLibV09 _ mod_name) = Just mod_name
+testSuiteInterfaceToMaybeModule TestSuiteExeV10{} = Nothing
+testSuiteInterfaceToMaybeModule TestSuiteUnsupported{} = Nothing
+
+ppBenchmarks :: [Benchmark] -> Doc
+ppBenchmarks benchs = vcat [
+    emptyLine $ text "benchmark" <+> text (benchmarkName bench)
+        $+$ nest indentWith (ppFields benchmarkFieldDescrs bench_stanza)
+    | bench <- benchs
+    , let bench_stanza = BenchmarkStanza {
+                benchmarkStanzaBenchmarkType = Just (benchmarkInterfaceToBenchmarkType (benchmarkInterface bench)),
+                benchmarkStanzaMainIs = benchmarkInterfaceToMaybeMainIs (benchmarkInterface bench),
+                benchmarkStanzaBenchmarkModule = Nothing,
+                benchmarkStanzaBuildInfo = benchmarkBuildInfo bench
+            }]
+
+benchmarkInterfaceToBenchmarkType :: BenchmarkInterface -> BenchmarkType
+benchmarkInterfaceToBenchmarkType (BenchmarkExeV10 ver _)   = BenchmarkTypeExe ver
+benchmarkInterfaceToBenchmarkType (BenchmarkUnsupported ty) = ty
+
+benchmarkInterfaceToMaybeMainIs :: BenchmarkInterface -> Maybe FilePath
+benchmarkInterfaceToMaybeMainIs (BenchmarkExeV10 _ fp) = Just fp
+benchmarkInterfaceToMaybeMainIs BenchmarkUnsupported{} = Nothing
+
 
 -- | @since 1.26.0.0@
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()

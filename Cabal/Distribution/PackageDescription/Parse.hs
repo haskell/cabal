@@ -24,6 +24,10 @@ module Distribution.PackageDescription.Parse (
         FieldDescr(..),
         LineNo,
 
+        -- ** Private, but needed for pretty-printer
+        TestSuiteStanza(..),
+        BenchmarkStanza(..),
+
         -- ** Supplementary build information
         readHookedBuildInfo,
         parseHookedBuildInfo,
@@ -34,6 +38,7 @@ module Distribution.PackageDescription.Parse (
         binfoFieldDescrs,
         sourceRepoFieldDescrs,
         testSuiteFieldDescrs,
+        benchmarkFieldDescrs,
         flagFieldDescrs
   ) where
 
@@ -189,12 +194,7 @@ storeXFieldsLib _ _ = Nothing
 
 executableFieldDescrs :: [FieldDescr Executable]
 executableFieldDescrs =
-  [ -- note ordering: configuration must come first, for
-    -- showPackageDescription.
-    simpleField "executable"
-                           showToken          parseTokenQ
-                           exeName            (\xs    exe -> exe{exeName=xs})
-  , simpleField "main-is"
+  [ simpleField "main-is"
                            showFilePath       parseFilePathQ
                            modulePath         (\xs    exe -> exe{modulePath=xs})
   ]
@@ -1094,7 +1094,7 @@ parsePackageDescription file = do
 
     -- Note: we don't parse the "executable" field here, hence the tail hack.
     parseExeFields :: [Field] -> PM Executable
-    parseExeFields = lift . parseFields (tail executableFieldDescrs)
+    parseExeFields = lift . parseFields executableFieldDescrs
                                         storeXFieldsExe emptyExecutable
 
     parseTestFields :: LineNo -> [Field] -> PM TestSuite
