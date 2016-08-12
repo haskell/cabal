@@ -171,8 +171,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Library sources.
     fmap concat
     . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } -> do
-     filePaths <- moduleNamesToFilePaths (hsSourceDirs libBi) pps (modules ++ (otherModules libBi))
-     return $ filePaths ++ cSources libBi ++ jsSources libBi
+     moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs libBi) pps (modules ++ (otherModules libBi))
+     return $ moduleSrcs ++ cSources libBi ++ jsSources libBi
 
     -- Executables sources.
   , fmap concat
