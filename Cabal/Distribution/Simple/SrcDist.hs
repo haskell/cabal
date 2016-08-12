@@ -270,11 +270,11 @@ moduleNamesToFilePaths searchDirs pps modules = do
 
 -- | Find the main executable file.
 findMainExeFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
-findMainExeFile exeBi pps mainPath = do
-  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi)
+findMainExeFile bi pps mainPath = do
+  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs bi)
             (dropExtension mainPath)
   case ppFile of
-    Nothing -> findFile (hsSourceDirs exeBi) mainPath
+    Nothing -> findFile (hsSourceDirs bi) mainPath
     Just pp -> return pp
 
 -- | Find the main test-suite file.
