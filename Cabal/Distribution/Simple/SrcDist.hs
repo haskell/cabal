@@ -171,13 +171,13 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- Library sources.
     fmap concat
     . withAllLib $ \Library { exposedModules = modules, libBuildInfo = libBi } -> do
-     filePaths <- allSourcesBuildInfo libBi pps (modules ++ (otherModules libBi))
+     filePaths <- allSourcesBuildInfo (hsSourceDirs libBi) pps (modules ++ (otherModules libBi))
      return $ filePaths ++ cSources libBi ++ jsSources libBi
 
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
-       biSrcs  <- allSourcesBuildInfo exeBi pps (otherModules exeBi)
+       biSrcs  <- allSourcesBuildInfo (hsSourceDirs exeBi) pps (otherModules exeBi)
        mainSrc <- findMainExeFile exeBi pps mainPath
        return $ (mainSrc:biSrcs) ++ cSources exeBi ++ jsSources exeBi
 
@@ -187,7 +187,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let bi  = testBuildInfo t
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
-           biSrcs <- allSourcesBuildInfo bi pps (otherModules bi)
+           biSrcs <- allSourcesBuildInfo (hsSourceDirs bi) pps (otherModules bi)
            srcMainFile <- do
              ppFile <- findFileWithExtension (ppSuffixes pps)
                        (hsSourceDirs bi) (dropExtension mainPath)
@@ -196,7 +196,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
                Just pp -> return pp
            return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
-           filePaths <- allSourcesBuildInfo bi pps ([m] ++ (otherModules bi))
+           filePaths <- allSourcesBuildInfo (hsSourceDirs bi) pps ([m] ++ (otherModules bi))
            return $ filePaths ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
                                    ++ show tp
@@ -207,7 +207,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let  bi = benchmarkBuildInfo bm
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
-           biSrcs <- allSourcesBuildInfo bi pps (otherModules bi)
+           biSrcs <- allSourcesBuildInfo (hsSourceDirs bi) pps (otherModules bi)
            srcMainFile <- do
              ppFile <- findFileWithExtension (ppSuffixes pps)
                        (hsSourceDirs bi) (dropExtension mainPath)
@@ -254,12 +254,11 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
 -- | Given a buildinfo and a list of modules return the paths of all sources.
-allSourcesBuildInfo :: BuildInfo
+allSourcesBuildInfo :: [FilePath]
                        -> [PPSuffixHandler] -- ^ Extra preprocessors
                        -> [ModuleName]      -- ^ Exposed modules
                        -> IO [FilePath]
-allSourcesBuildInfo bi pps modules = do
-  let searchDirs = hsSourceDirs bi
+allSourcesBuildInfo searchDirs pps modules = do
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
       in findAllFilesWithExtension suffixes searchDirs file
