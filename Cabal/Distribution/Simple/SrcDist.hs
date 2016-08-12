@@ -188,7 +188,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            biSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
-           srcMainFile <- findMainTestFile bi pps mainPath
+           srcMainFile <- findMainExeFile bi pps mainPath
            return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            filePaths <- moduleNamesToFilePaths (hsSourceDirs bi) pps ([m] ++ (otherModules bi))
@@ -203,7 +203,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            biSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
-           srcMainFile <- findMainBenchFile bi pps mainPath
+           srcMainFile <- findMainExeFile bi pps mainPath
            return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
                                     ++ show tp
