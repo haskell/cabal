@@ -243,10 +243,10 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     withAllTest      action = traverse action (testSuites pkg_descr)
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
--- | Given a buildinfo and a list of modules return the paths of all sources.
-moduleNamesToFilePaths :: [FilePath]           -- ^ Search directories.
+-- | Given the search directories and a list of modules return the paths.
+moduleNamesToFilePaths :: [FilePath]        -- ^ Search directories.
                        -> [PPSuffixHandler] -- ^ Extra preprocessors
-                       -> [ModuleName]      -- ^ Exposed modules
+                       -> [ModuleName]      -- ^ Modules
                        -> IO [FilePath]
 moduleNamesToFilePaths searchDirs pps modules = do
   sources <- fmap concat $ sequenceA $
