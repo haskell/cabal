@@ -188,12 +188,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            biSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps (otherModules bi)
-           srcMainFile <- do
-             ppFile <- findFileWithExtension (ppSuffixes pps)
-                       (hsSourceDirs bi) (dropExtension mainPath)
-             case ppFile of
-               Nothing -> findFile (hsSourceDirs bi) mainPath
-               Just pp -> return pp
+           srcMainFile <- findMainTestFile bi pps mainPath
            return $ (srcMainFile:biSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            filePaths <- moduleNamesToFilePaths (hsSourceDirs bi) pps ([m] ++ (otherModules bi))
@@ -286,6 +281,15 @@ findMainExeFile exeBi pps mainPath = do
   case ppFile of
     Nothing -> findFile (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
+
+-- | Find the main test-suite file.
+findMainTestFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainTestFile bi pps mainPath = do
+  ppFile <- findFileWithExtension (ppSuffixes pps)
+           (hsSourceDirs bi) (dropExtension mainPath)
+  case ppFile of
+   Nothing -> findFile (hsSourceDirs bi) mainPath
+   Just pp -> return pp
 
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
