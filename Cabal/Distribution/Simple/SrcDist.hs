@@ -336,13 +336,51 @@ prepareTree verbosity pkg_descr mb_lbi targetDir pps = do
   case mb_lbi of
     Just lbi | not (null pps) -> do
       let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
-      withAllComponentsInBuildOrder (filterAutogen pkg_descr) lbi' $ \c clbi ->
-        preprocessComponent pkg_descr c lbi' clbi True verbosity pps
+      withAllComponentsInBuildOrder pkg_descr lbi' $ \c clbi ->
+        preprocessComponentSdist pkg_descr c lbi' clbi True verbosity pps
     _ -> return ()
   (ordinary, mExecutable)  <- listPackageSources verbosity pkg_descr pps
   installOrdinaryFiles        verbosity targetDir (zip (repeat []) ordinary)
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
   maybeCreateDefaultSetupScript targetDir
+
+-- | Remove autogen modules before calling preprocessComponent.
+preprocessComponentSdist :: PackageDescription
+                         -> Component
+                         -> LocalBuildInfo
+                         -> ComponentLocalBuildInfo
+                         -> Bool
+                         -> Verbosity
+                         -> [PPSuffixHandler]
+                         -> IO ()
+preprocessComponentSdist pd comp lbi clbi isSrcDist verbosity handlers =
+  case comp of
+    (CLib   lib@Library{        libBuildInfo       = bi}) -> do
+      let exposed = filterAutogenModules pd bi $ exposedModules lib
+      let others = filterAutogenModules pd bi $ otherModules bi
+      let c = CLib lib {
+          exposedModules = exposed
+        , libBuildInfo = bi {otherModules = others}
+      }
+      preprocessComponent pd c lbi clbi isSrcDist verbosity handlers
+    (CExe   exe@Executable{     buildInfo          = bi}) -> do
+      let others = filterAutogenModules pd bi $ otherModules bi
+      let c = CExe exe {
+          buildInfo = bi {otherModules = others}
+      }
+      preprocessComponent pd c lbi clbi isSrcDist verbosity handlers
+    (CTest  test@TestSuite{     testBuildInfo      = bi}) -> do
+      let others = filterAutogenModules pd bi $ otherModules bi
+      let c = CTest test {
+          testBuildInfo = bi {otherModules = others}
+      }
+      preprocessComponent pd c lbi clbi isSrcDist verbosity handlers
+    (CBench bench@Benchmark{    benchmarkBuildInfo = bi}) -> do
+      let others = filterAutogenModules pd bi $ otherModules bi
+      let c = CBench bench {
+          benchmarkBuildInfo = bi {otherModules = others}
+      }
+      preprocessComponent pd c lbi clbi isSrcDist verbosity handlers
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()
