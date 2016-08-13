@@ -330,16 +330,16 @@ prepareTree :: Verbosity          -- ^verbosity
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> IO ()
-prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
+prepareTree verbosity pkg_descr mb_lbi targetDir pps = do
   -- If the package was configured then we can run platform-independent
   -- pre-processors and include those generated files.
   case mb_lbi of
     Just lbi | not (null pps) -> do
       let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
-      withAllComponentsInBuildOrder (filterAutogen pkg_descr0) lbi' $ \c clbi ->
-        preprocessComponent pkg_descr0 c lbi' clbi True verbosity pps
+      withAllComponentsInBuildOrder (filterAutogen pkg_descr) lbi' $ \c clbi ->
+        preprocessComponent pkg_descr c lbi' clbi True verbosity pps
     _ -> return ()
-  (ordinary, mExecutable)  <- listPackageSources verbosity pkg_descr0 pps
+  (ordinary, mExecutable)  <- listPackageSources verbosity pkg_descr pps
   installOrdinaryFiles        verbosity targetDir (zip (repeat []) ordinary)
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
   maybeCreateDefaultSetupScript targetDir
