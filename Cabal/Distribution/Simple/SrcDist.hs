@@ -149,10 +149,8 @@ listPackageSources :: Verbosity          -- ^ verbosity
 listPackageSources verbosity pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   ordinary        <- listPackageSourcesOrdinary        verbosity pkg_descr0 pps
-  maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr
+  maybeExecutable <- listPackageSourcesMaybeExecutable (filterAutogen pkg_descr0)
   return (ordinary, maybeExecutable)
-  where
-    pkg_descr = filterAutogen pkg_descr0
 
 -- | List those source files that may be executable (e.g. the configure script).
 listPackageSourcesMaybeExecutable :: PackageDescription -> IO [FilePath]
