@@ -172,14 +172,14 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     fmap concat
     . withAllLib $ \Library {exposedModules = exposed, libBuildInfo = bi} -> do
        let modules = exposed ++ (otherModules bi)
-       moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
+       moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
        return $ moduleSrcs ++ cSources bi ++ jsSources bi
 
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable {modulePath = mainPath, buildInfo = bi} -> do
        let modules = otherModules bi
-       moduleSrcs  <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
+       moduleSrcs  <- findModulesFiles (hsSourceDirs bi) pps modules
        mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
        return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
 
@@ -190,12 +190,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            let modules = otherModules bi
-           moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
+           moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            let modules = (m:(otherModules bi))
-           moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
+           moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
                                    ++ show tp
@@ -207,7 +207,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            let modules = otherModules bi
-           moduleSrcs <- moduleNamesToFilePaths (hsSourceDirs bi) pps modules
+           moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
@@ -249,11 +249,11 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
 
 -- | Given the search directories and a list of modules return the paths.
-moduleNamesToFilePaths :: [FilePath]        -- ^ Search directories.
+findModulesFiles :: [FilePath]        -- ^ Search directories.
                        -> [PPSuffixHandler] -- ^ Extra preprocessors
                        -> [ModuleName]      -- ^ Modules
                        -> IO [FilePath]
-moduleNamesToFilePaths searchDirs pps modules = do
+findModulesFiles searchDirs pps modules = do
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
       in findAllFilesWithExtension suffixes searchDirs file
