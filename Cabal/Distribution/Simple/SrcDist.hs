@@ -152,7 +152,7 @@ listPackageSources verbosity pkg_descr0 pps = do
   maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr
   return (ordinary, maybeExecutable)
   where
-    pkg_descr = filterAutogenModules pkg_descr0
+    pkg_descr = filterAutogen pkg_descr0
 
 -- | List those source files that may be executable (e.g. the configure script).
 listPackageSourcesMaybeExecutable :: PackageDescription -> IO [FilePath]
@@ -334,7 +334,7 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
   maybeCreateDefaultSetupScript targetDir
 
   where
-    pkg_descr = filterAutogenModules pkg_descr0
+    pkg_descr = filterAutogen pkg_descr0
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()
@@ -349,8 +349,8 @@ maybeCreateDefaultSetupScript targetDir = do
 
 -- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules' 
 -- and 'other-modules'.
-filterAutogenModules :: PackageDescription -> PackageDescription
-filterAutogenModules pkg_descr0 = mapLib filterAutogenModuleLib $
+filterAutogen :: PackageDescription -> PackageDescription
+filterAutogen pkg_descr0 = mapLib filterAutogenModuleLib $
                                  mapAllBuildInfo filterAutogenModuleBI pkg_descr0
   where
     mapAllBuildInfo f pkg = pkg {
