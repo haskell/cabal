@@ -339,7 +339,7 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
   case mb_lbi of
     Just lbi | not (null pps) -> do
       let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
-      withAllComponentsInBuildOrder pkg_descr lbi' $ \c clbi ->
+      withAllComponentsInBuildOrder (filterAutogen pkg_descr0) lbi' $ \c clbi ->
         preprocessComponent pkg_descr0 c lbi' clbi True verbosity pps
     _ -> return ()
 
@@ -347,9 +347,6 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
   installOrdinaryFiles        verbosity targetDir (zip (repeat []) ordinary)
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
   maybeCreateDefaultSetupScript targetDir
-
-  where
-    pkg_descr = filterAutogen pkg_descr0
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()
