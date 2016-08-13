@@ -276,7 +276,10 @@ findModulesFiles searchDirs pps modules = do
 -- | Find the main file.
 -- First tries to find it with the provided extensions.
 -- If not found, tries as it appears on the package description.
-findMainFile :: [FilePath] -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainFile :: [FilePath]        -- ^ Search directories.
+             -> [PPSuffixHandler] -- ^ Extra preprocessors.
+             -> FilePath          -- ^ Main file.
+             -> IO FilePath
 findMainFile searchDirs pps mainPath = do
   ppFile <- findFileWithExtension (ppSuffixes pps) searchDirs
             (dropExtension mainPath)
