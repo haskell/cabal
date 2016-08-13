@@ -197,8 +197,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            let modules = (m:(otherModules bi))
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
-         TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
-                                   ++ show tp
+         TestSuiteUnsupported tp -> do
+           die $ "Unsupported test suite type: " ++ show tp
 
     -- Benchmarks sources.
   , fmap concat
@@ -210,8 +210,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
-         BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
-                                    ++ show tp
+         BenchmarkUnsupported tp -> do
+          die $ "Unsupported benchmark type: " ++ show tp
 
     -- Data files.
   , fmap concat
