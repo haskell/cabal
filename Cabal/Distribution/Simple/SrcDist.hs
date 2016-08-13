@@ -393,37 +393,6 @@ maybeCreateDefaultSetupScript targetDir = do
         "import Distribution.Simple",
         "main = defaultMain"]
 
--- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules' 
--- and 'other-modules'.
-filterAutogen :: PackageDescription -> PackageDescription
-filterAutogen pkg_descr0 = mapLib filterAutogenModuleLib $
-                                 mapAllBuildInfo filterAutogenModuleBI pkg_descr0
-  where
-    mapAllBuildInfo f pkg = pkg {
-        library     = fmap mapLibBi (library pkg),
-        subLibraries = fmap mapLibBi (subLibraries pkg),
-        executables = fmap mapExeBi (executables pkg),
-        testSuites  = fmap mapTestBi (testSuites pkg),
-        benchmarks  = fmap mapBenchBi (benchmarks pkg)
-      }
-      where
-        mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
-        mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
-        mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
-        mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
-    mapLib f pkg = pkg { library      = fmap f (library pkg)
-                       , subLibraries = map f (subLibraries pkg) }
-    filterAutogenModuleLib lib = lib {
-      exposedModules = filter (filterFunction (libBuildInfo lib)) (exposedModules lib)
-    }
-    filterAutogenModuleBI bi = bi {
-      otherModules   = filter (filterFunction bi) (otherModules bi)
-    }
-    pathsModule = autogenPathsModuleName pkg_descr0
-    filterFunction bi = \mn ->
-                                   mn /= pathsModule
-                                && not (elem mn (autogenModules bi))
-
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
 -- in the package description, eg using 'snapshotPackage' or 'snapshotVersion'.
