@@ -294,6 +294,20 @@ findIncludeFile (d:ds) f = do
   b <- doesFileExist path
   if b then return (f,path) else findIncludeFile ds f
 
+-- | Find the setup script file, if it exists.
+findSetupFile :: FilePath -> IO (Maybe FilePath)
+findSetupFile targetDir = do
+  hsExists  <- doesFileExist setupHs
+  lhsExists <- doesFileExist setupLhs
+  if hsExists
+    then return (Just setupHs)
+    else if lhsExists
+         then return (Just setupLhs)
+         else return Nothing
+    where
+      setupHs  = targetDir </> "Setup.hs"
+      setupLhs = targetDir </> "Setup.lhs"
+
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
             -> PackageDescription -- ^info from the cabal file
@@ -318,20 +332,6 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
 
   where
     pkg_descr = filterAutogenModules pkg_descr0
-
--- | Find the setup script file, if it exists.
-findSetupFile :: FilePath -> IO (Maybe FilePath)
-findSetupFile targetDir = do
-  hsExists  <- doesFileExist setupHs
-  lhsExists <- doesFileExist setupLhs
-  if hsExists
-    then return (Just setupHs)
-    else if lhsExists
-         then return (Just setupLhs)
-         else return Nothing
-    where
-      setupHs  = targetDir </> "Setup.hs"
-      setupLhs = targetDir </> "Setup.lhs"
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
 maybeCreateDefaultSetupScript :: FilePath -> IO ()
