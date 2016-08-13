@@ -61,6 +61,9 @@
 	  hooks. Just add the module names on 'other-modules' and
 	  'exposed-modules' as always and on the new 'autogen-modules' besides.
 	(#3656).
+	* New './Setup configure' flag '--cabal-file', allowing multiple
+	.cabal files in a single directory (#3553). Primarily intended for
+	internal use.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
