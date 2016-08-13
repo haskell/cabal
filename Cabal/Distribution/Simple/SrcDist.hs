@@ -146,10 +146,10 @@ listPackageSources :: Verbosity          -- ^ verbosity
                    -> [PPSuffixHandler]  -- ^ extra preprocessors (include
                                          -- suffixes)
                    -> IO ([FilePath], [FilePath])
-listPackageSources verbosity pkg_descr0 pps = do
+listPackageSources verbosity pkg_descr pps = do
   -- Call helpers that actually do all work.
-  ordinary        <- listPackageSourcesOrdinary        verbosity pkg_descr0 pps
-  maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr0
+  ordinary        <- listPackageSourcesOrdinary        verbosity pkg_descr pps
+  maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr
   return (ordinary, maybeExecutable)
 
 -- | List those source files that may be executable (e.g. the configure script).
