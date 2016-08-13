@@ -250,9 +250,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
 
 -- | Given the search directories and a list of modules return the paths.
 findModulesFiles :: [FilePath]        -- ^ Search directories.
-                       -> [PPSuffixHandler] -- ^ Extra preprocessors
-                       -> [ModuleName]      -- ^ Modules
-                       -> IO [FilePath]
+                 -> [PPSuffixHandler] -- ^ Extra preprocessors
+                 -> [ModuleName]      -- ^ Modules
+                 -> IO [FilePath]
 findModulesFiles searchDirs pps modules = do
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
