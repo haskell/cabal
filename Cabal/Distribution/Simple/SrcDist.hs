@@ -90,7 +90,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
         Just targetDir -> do
           sdistSourcesDirectory targetDir pkg' mb_lbi verbosity isSnapshot pps
           info verbosity $ "Source directory created: " ++ targetDir
-
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
           withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
@@ -100,10 +99,8 @@ sdist pkg mb_lbi flags mkTmpDir pps =
             notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
-
     verbosity = fromFlag (sDistVerbosity flags)
     isSnapshot  = fromFlag (sDistSnapshot flags)
-
     distPref     = fromFlag $ sDistDistPref flags
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
@@ -342,7 +339,6 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
       withAllComponentsInBuildOrder (filterAutogen pkg_descr0) lbi' $ \c clbi ->
         preprocessComponent pkg_descr0 c lbi' clbi True verbosity pps
     _ -> return ()
-
   (ordinary, mExecutable)  <- listPackageSources verbosity pkg_descr0 pps
   installOrdinaryFiles        verbosity targetDir (zip (repeat []) ordinary)
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
