@@ -284,6 +284,16 @@ findMainFile searchDirs pps mainPath = do
    Nothing -> findFile searchDirs mainPath
    Just pp -> return pp
 
+-- | Given a list of include paths, try to find the include file named
+-- @f@. Return the name of the file and the full path, or exit with error if
+-- there's no such file.
+findIncludeFile :: [FilePath] -> String -> IO (String, FilePath)
+findIncludeFile [] f = die ("can't find include file " ++ f)
+findIncludeFile (d:ds) f = do
+  let path = (d </> f)
+  b <- doesFileExist path
+  if b then return (f,path) else findIncludeFile ds f
+
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
             -> PackageDescription -- ^info from the cabal file
@@ -333,16 +343,6 @@ maybeCreateDefaultSetupScript targetDir = do
       writeUTF8File (targetDir </> "Setup.hs") $ unlines [
         "import Distribution.Simple",
         "main = defaultMain"]
-
--- | Given a list of include paths, try to find the include file named
--- @f@. Return the name of the file and the full path, or exit with error if
--- there's no such file.
-findIncludeFile :: [FilePath] -> String -> IO (String, FilePath)
-findIncludeFile [] f = die ("can't find include file " ++ f)
-findIncludeFile (d:ds) f = do
-  let path = (d </> f)
-  b <- doesFileExist path
-  if b then return (f,path) else findIncludeFile ds f
 
 -- | Remove the auto-generated modules (like 'Paths_*') from 'exposed-modules' 
 -- and 'other-modules'.
