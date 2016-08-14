@@ -21,45 +21,34 @@ module Distribution.Client.Status (
   ) where
 
 import Distribution.Simple.PackageIndex       ( allPackages )
-import Distribution.Simple.Program.Db         ( configuredPrograms )
+import Distribution.Simple.Program.Db         ( ProgramDb, configuredPrograms )
 import Distribution.Simple.Program.Types      ( ConfiguredProgram(..) )
-import Distribution.Simple.Configure          ( tryGetPersistBuildConfig
-                                              , checkPackageDBs )
-import Distribution.Simple.Compiler           ( PackageDB(..)
+import Distribution.Simple.Configure          ( tryGetPersistBuildConfig )
+import Distribution.Simple.Compiler           ( Compiler(..), compilerFlavor
+                                              , PackageDB(..), PackageDBStack
                                               , compilerId )
 import Distribution.Simple.BuildPaths         ( exeExtension )
+import qualified Distribution.Simple.GHC as GHC
+                                              ( checkPackageDBs )
 import Distribution.Simple.Utils              ( cabalVersion
+                                              , die, debug
                                               , rawSystemStdout
                                               , listPackageDescs
                                               , currentDir
                                               , wrapText
                                               )
-import Distribution.Client.Setup              ( StatusFlags(..)
-                                              , GlobalFlags(..)
-                                              , withRepoContext
-                                              , defaultFreezeFlags
-                                              )
-import Distribution.Client.Config             ( defaultCompiler
-                                              , SavedConfig(..)
-                                              )
-import Distribution.Client.Sandbox            ( getSandboxConfigFilePath
-                                              , tryLoadSandboxConfig
-                                              , loadConfigOrSandboxConfig
-                                              , maybeWithSandboxPackageInfo
-                                              , maybeWithSandboxDirOnSearchPath
-                                              )
-import Distribution.Client.Sandbox.PackageEnvironment ( sandboxPackageDBPath )
-import Distribution.Client.Setup              ( configCompilerAux' )
-import Distribution.Client.SetupWrapper       ( useDistPref
-                                              , defaultSetupScriptOptions )
-import Distribution.Client.Freeze             ( planPackages )
-import Distribution.Client.IndexUtils         ( getInstalledPackages
-                                              , getSourcePackages
-                                              )
-import Distribution.Client.Targets            ( resolveUserTargets
-                                              , UserTarget(..) )
-import Distribution.Client.Types              ( SourcePackageDb(..) )
-import Distribution.Solver.Types.PkgConfigDb  ( readPkgConfigDb )
+import Distribution.Client.Setup       hiding ( cabalVersion, packageName )
+import Distribution.Client.Config
+import Distribution.Client.Sandbox
+import Distribution.Client.Sandbox.PackageEnvironment
+import Distribution.Client.SetupWrapper
+import Distribution.Client.Freeze
+import Distribution.Client.IndexUtils
+import Distribution.Client.Targets
+import Distribution.Client.Types
+import Distribution.Solver.Types.PkgConfigDb
+
+import Distribution.Compiler                  ( CompilerFlavor(..) )
 import Distribution.Text                      ( simpleParse
                                               , display
                                               , disp
@@ -81,7 +70,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 
 import qualified Paths_cabal_install          ( version )
 
-import Distribution.Client.Compat.ExecutablePath ( getExecutablePath )
+import Distribution.Client.Compat.ExecutablePath
 import System.Directory                       ( doesFileExist )
 import System.FilePath                        ( splitFileName
                                               , combine
@@ -119,6 +108,29 @@ import qualified Data.Monoid as Monoid
 import Data.List                              ( inits )
 import Data.Foldable                          ( asum )
 
+
+-- | Check the consistency of the given package databases.
+checkPackageDBs :: Verbosity -> Compiler
+                -> PackageDBStack -- ^ The stack of package databases.
+                -> ProgramDb
+                -> IO [(PackageDB, [String])]
+checkPackageDBs verbosity comp packageDBs progdb = do
+  when (null packageDBs) $
+    die $ "No package databases have been specified. If you use "
+       ++ "--package-db=clear, you must follow it with --package-db= "
+       ++ "with 'global', 'user' or a specific file."
+
+  debug verbosity "checking package-db..."
+  case compilerFlavor comp of
+    GHC   -> GHC.checkPackageDBs verbosity comp packageDBs progdb
+    -- GHCJS -> GHCJS.checkPackageDBs verbosity packageDBs progdb
+    -- JHC   -> JHC.checkPackageDBs verbosity packageDBs progdb
+    -- LHC   -> LHC.checkPackageDBs verbosity packageDBs progdb
+    -- UHC   -> UHC.checkPackageDBs verbosity comp packageDBs progdb
+    -- HaskellSuite {} ->
+    --   HaskellSuite.checkPackageDBs verbosity packageDBs progdb
+    flv -> die $ "don't know how to check the packages database for "
+              ++ display flv
 
 
 status :: Verbosity -> GlobalFlags -> StatusFlags -> IO ()

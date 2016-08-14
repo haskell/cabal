@@ -44,7 +44,6 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
                                       getInstalledPackagesMonitorFiles,
                                       getPackageDBContents,
-                                      checkPackageDBs,
                                       configCompiler, configCompilerAux,
                                       configCompilerEx, configCompilerAuxEx,
                                       ccLdOptionsBuildInfo,
@@ -1268,29 +1267,6 @@ getInstalledPackages verbosity comp packageDBs progdb = do
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progdb
     flv -> die $ "don't know how to find the installed packages for "
-              ++ display flv
-
--- | Check the consistency of the given package databases.
-checkPackageDBs :: Verbosity -> Compiler
-                -> PackageDBStack -- ^ The stack of package databases.
-                -> ProgramConfiguration
-                -> IO [(PackageDB, [String])]
-checkPackageDBs verbosity comp packageDBs progconf = do
-  when (null packageDBs) $
-    die $ "No package databases have been specified. If you use "
-       ++ "--package-db=clear, you must follow it with --package-db= "
-       ++ "with 'global', 'user' or a specific file."
-
-  debug verbosity "checking package-db..."
-  case compilerFlavor comp of
-    GHC   -> GHC.checkPackageDBs verbosity comp packageDBs progconf
-    -- GHCJS -> GHCJS.checkPackageDBs verbosity packageDBs progconf
-    -- JHC   -> JHC.checkPackageDBs verbosity packageDBs progconf
-    -- LHC   -> LHC.checkPackageDBs verbosity packageDBs progconf
-    -- UHC   -> UHC.checkPackageDBs verbosity comp packageDBs progconf
-    -- HaskellSuite {} ->
-    --   HaskellSuite.checkPackageDBs verbosity packageDBs progconf
-    flv -> die $ "don't know how to check the packages database for "
               ++ display flv
 
 -- | Like 'getInstalledPackages', but for a single package DB.
