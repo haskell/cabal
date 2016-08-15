@@ -138,8 +138,8 @@ status verbosity globalFlags statusFlags = do
   (useSandbox, config) <- loadConfigOrSandboxConfig
     verbosity
     (globalFlags { globalRequireSandbox = Cabal.Flag False })
-  (defaultComp, platform, defaultConf) <- configCompilerAux'
-                                        $ savedConfigureFlags config
+  (_defaultComp, platform, _defaultConf) <- configCompilerAux'
+                                            $ savedConfigureFlags config
   let distPref = useDistPref defaultSetupScriptOptions
   buildConfig <- tryGetPersistBuildConfig distPref
   (comp, conf, dbs) <- case buildConfig of
