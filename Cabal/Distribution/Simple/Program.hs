@@ -192,28 +192,37 @@ getDbProgramOutput verbosity prog programDb args =
 -- Deprecated aliases
 --
 
+{-# DEPRECATED rawSystemProgram "use runProgram instead" #-}
 rawSystemProgram :: Verbosity -> ConfiguredProgram
                  -> [ProgArg] -> IO ()
 rawSystemProgram = runProgram
 
+{-# DEPRECATED rawSystemProgramStdout "use getProgramOutput instead" #-}
 rawSystemProgramStdout :: Verbosity -> ConfiguredProgram
                        -> [ProgArg] -> IO String
 rawSystemProgramStdout = getProgramOutput
 
+{-# DEPRECATED rawSystemProgramConf "use runDbProgram instead" #-}
 rawSystemProgramConf :: Verbosity  -> Program -> ProgramConfiguration
                      -> [ProgArg] -> IO ()
 rawSystemProgramConf = runDbProgram
 
+{-# DEPRECATED rawSystemProgramStdoutConf "use getDbProgramOutput instead" #-}
 rawSystemProgramStdoutConf :: Verbosity -> Program -> ProgramConfiguration
                            -> [ProgArg] -> IO String
 rawSystemProgramStdoutConf = getDbProgramOutput
 
+{-# DEPRECATED ProgramConfiguration "use ProgramDb instead" #-}
 type ProgramConfiguration = ProgramDb
 
+{-# DEPRECATED emptyProgramConfiguration "use emptyProgramDb instead" #-}
+{-# DEPRECATED defaultProgramConfiguration "use defaultProgramDb instead" #-}
 emptyProgramConfiguration, defaultProgramConfiguration :: ProgramConfiguration
 emptyProgramConfiguration   = emptyProgramDb
 defaultProgramConfiguration = defaultProgramDb
 
+{-# DEPRECATED restoreProgramConfiguration
+               "use restoreProgramDb instead" #-}
 restoreProgramConfiguration :: [Program] -> ProgramConfiguration
                                          -> ProgramConfiguration
 restoreProgramConfiguration = restoreProgramDb
