@@ -37,6 +37,36 @@ import Distribution.Text
 -- * Generate cabal_macros.h
 -- ------------------------------------------------------------
 
+-- Invariant: HeaderLines always has a trailing newline
+type HeaderLines = String
+
+line :: String -> HeaderLines
+line str = str ++ "\n"
+
+ifndef :: String -> HeaderLines -> HeaderLines
+ifndef macro body =
+    line ("#ifndef " ++ macro) ++
+    body ++
+    line ("#endif /* " ++ macro ++ " */")
+
+define :: String -> Maybe [String] -> String -> HeaderLines
+define macro params val =
+    line ("#define " ++ macro ++ f params ++ " " ++ val)
+  where
+    f Nothing = ""
+    f (Just xs) = "(" ++ intercalate "," xs ++ ")"
+
+defineStr :: String -> String -> HeaderLines
+defineStr macro str = define macro Nothing (show str)
+
+ifndefDefine :: String -> Maybe [String] -> String -> HeaderLines
+ifndefDefine macro params str =
+    ifndef macro (define macro params str)
+
+ifndefDefineStr :: String -> String -> HeaderLines
+ifndefDefineStr macro str =
+    ifndef macro (defineStr macro str)
+
 -- | The contents of the @cabal_macros.h@ for the given configured package.
 --
 generate :: PackageDescription -> LocalBuildInfo -> ComponentLocalBuildInfo -> String
@@ -53,7 +83,7 @@ generate pkg_descr lbi clbi =
 --
 generatePackageVersionMacros :: [PackageIdentifier] -> String
 generatePackageVersionMacros pkgids = concat
-  [ "/* package " ++ display pkgid ++ " */\n"
+  [ line ("/* package " ++ display pkgid ++ " */")
   ++ generateMacros "" pkgname version
   | pkgid@(PackageIdentifier name version) <- pkgids
   , let pkgname = map fixchar (display name)
@@ -64,7 +94,7 @@ generatePackageVersionMacros pkgids = concat
 --
 generateToolVersionMacros :: [ConfiguredProgram] -> String
 generateToolVersionMacros progs = concat
-  [ "/* tool " ++ progid ++ " */\n"
+  [ line ("/* tool " ++ progid ++ " */")
   ++ generateMacros "TOOL_" progname version
   | prog <- progs
   , isJust . programVersion $ prog
@@ -79,29 +109,30 @@ generateToolVersionMacros progs = concat
 generateMacros :: String -> String -> Version -> String
 generateMacros macro_prefix name version =
   concat
-  ["#define ", macro_prefix, "VERSION_",name," ",show (display version),"\n"
-  ,"#define MIN_", macro_prefix, "VERSION_",name,"(major1,major2,minor) (\\\n"
-  ,"  (major1) <  ",major1," || \\\n"
-  ,"  (major1) == ",major1," && (major2) <  ",major2," || \\\n"
-  ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor,")"
-  ,"\n\n"
-  ]
+  [ifndefDefineStr (macro_prefix ++ "VERSION_" ++ name) (display version)
+  ,ifndefDefine ("MIN_" ++ macro_prefix ++ "VERSION_" ++ name)
+                (Just ["major1","major2","minor"])
+    $ concat [
+       "(\\\n"
+      ,"  (major1) <  ",major1," || \\\n"
+      ,"  (major1) == ",major1," && (major2) <  ",major2," || \\\n"
+      ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor,")"
+    ]
+  ,"\n"]
   where
     (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
 
 -- | Generate the @CURRENT_COMPONENT_ID@ definition for the component ID
 --   of the current package.
 generateComponentIdMacro :: LocalBuildInfo -> ComponentLocalBuildInfo -> String
-generateComponentIdMacro lbi clbi =
+generateComponentIdMacro _lbi clbi =
   concat $
-      (case clbi of
+      [case clbi of
         LibComponentLocalBuildInfo{} ->
-          ["#define CURRENT_PACKAGE_KEY \"" ++ componentCompatPackageKey clbi ++ "\"\n"]
-        _ -> [])
-      ++
-      ["#define CURRENT_COMPONENT_ID \"" ++ display (componentComponentId clbi) ++ "\"\n"
-      ,"#define LOCAL_COMPONENT_ID \"" ++ display (localComponentId lbi) ++ "\"\n"
-      ,"\n"]
+          ifndefDefineStr "CURRENT_PACKAGE_KEY" (componentCompatPackageKey clbi)
+        _ -> ""
+      ,ifndefDefineStr "CURRENT_COMPONENT_ID" (display (componentComponentId clbi))
+      ]
 
 fixchar :: Char -> Char
 fixchar '-' = '_'
