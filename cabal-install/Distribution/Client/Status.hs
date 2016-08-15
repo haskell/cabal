@@ -141,13 +141,12 @@ status verbosity globalFlags statusFlags = do
   (defaultComp, platform, defaultConf) <- configCompilerAux'
                                         $ savedConfigureFlags config
   let distPref = useDistPref defaultSetupScriptOptions
-  -- TODO: this currently only works if the cabal version used for configuring
-  --       is the same as the one doing the status. would be cool if it would
-  --       either work or at least indicate this otherwise.
   buildConfig <- tryGetPersistBuildConfig distPref
-  let (comp, conf) = case buildConfig of
-        Left _ -> (defaultComp, defaultConf)
-        Right c -> (LBI.compiler c, LBI.withPrograms c)
+  (comp, conf, dbs) <- case buildConfig of
+    Left _ -> die $ "Couldn't load the saved package config file. "
+              ++ "Most likely reason: the package was configured with a different "
+              ++ "version of Cabal than the one cabal-install was built with."
+    Right c -> return (LBI.compiler c, LBI.withPrograms c, LBI.withPackageDB c)
   let globalFlags' = savedGlobalFlags config `Monoid.mappend` globalFlags
   sandboxConfigPath <- getSandboxConfigFilePath globalFlags
   sandboxConfigExists <- doesFileExist sandboxConfigPath
@@ -157,13 +156,6 @@ status verbosity globalFlags statusFlags = do
       return $ ( Just sandboxPath
                , Just $ sandboxPackageDBPath sandboxPath comp platform)
     else return (Nothing, Nothing)
-  let dbs :: [PackageDB] -- TODO: it might be better to inspect the currently
-                         -- configured dbs instead of a static global,local,..
-      dbs = GlobalPackageDB
-          : UserPackageDB
-          : case sandboxDbPath of
-              Nothing -> []
-              Just p -> [SpecificPackageDB p]
   let noFlags = not $ any Cabal.fromFlag [ statusVersion      statusFlags
                                          , statusProgVersions statusFlags
                                          , statusCompiler     statusFlags
