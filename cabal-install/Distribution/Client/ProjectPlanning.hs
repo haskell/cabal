@@ -1060,9 +1060,9 @@ elaborateInstallPlan platform compiler compilerprogdb
         internalPkgSet = pkgInternalPackages pkg
         comps_graph = Cabal.mkComponentsGraph (pkgEnabled pkg) pd internalPkgSet
 
-        buildComponent :: (Map PackageName ConfiguredId, Map String ConfiguredId)
+        buildComponent :: (Map PackageName ConfiguredId, Map String (ConfiguredId, FilePath))
                      -> (Cabal.Component, [Cabal.ComponentName])
-                     -> ((Map PackageName ConfiguredId, Map String ConfiguredId),
+                     -> ((Map PackageName ConfiguredId, Map String (ConfiguredId, FilePath)),
                          ElaboratedComponent)
         buildComponent (internal_map, exe_map) (comp, _cdeps) =
             ((internal_map', exe_map'), ecomp)
@@ -1079,6 +1079,8 @@ elaborateInstallPlan platform compiler compilerprogdb
                         internal_lib_deps,
                     elabComponentExeDependencies =
                         internal_exe_deps,
+                    elabComponentExeDependencyPaths =
+                        internal_exe_dep_paths,
                     elabComponentInstallDirs = installDirs,
                     -- These are filled in later
                     elabComponentBuildTargets = [],
@@ -1106,11 +1108,12 @@ elaborateInstallPlan platform compiler compilerprogdb
                 = [ confid'
                 | Dependency pkgname _ <- PD.targetBuildDepends bi
                 , Just confid' <- [Map.lookup pkgname internal_map] ]
-            internal_exe_deps
-                = [ confInstId confid'
+            (internal_exe_deps, internal_exe_dep_paths)
+                = unzip $
+                  [ (confInstId confid', path)
                   | Dependency (PackageName toolname) _ <- PD.buildTools bi
                   , toolname `elem` map PD.exeName (PD.executables pd)
-                  , Just confid' <- [Map.lookup toolname exe_map]
+                  , Just (confid', path) <- [Map.lookup toolname exe_map]
                   ]
             internal_map' = case cname of
                 CLibName
@@ -1119,8 +1122,25 @@ elaborateInstallPlan platform compiler compilerprogdb
                     -> Map.insert (PackageName libname) confid internal_map
                 _   -> internal_map
             exe_map' = case cname of
-                CExeName exename -> Map.insert exename confid exe_map
-                _                -> exe_map
+                CExeName exename
+                    -> Map.insert exename (confid, inplace_bin_dir) exe_map
+                _   -> exe_map
+            -- NB: For inplace NOT InstallPaths.bindir installDirs; for an
+            -- inplace build those values are utter nonsense.  So we
+            -- have to guess where the directory is going to be.
+            -- Fortunately this is "stable" part of Cabal API.
+            -- But the way we get the build directory is A HORRIBLE
+            -- HACK.
+            inplace_bin_dir
+              | shouldBuildInplaceOnly spkg
+              = distBuildDirectory
+                    (elabDistDirParams elaboratedSharedConfig (ElabComponent ecomp)) </>
+                    "build" </> case Cabal.componentNameString cname of
+                                    Just n -> n
+                                    Nothing -> ""
+              | otherwise
+              = InstallDirs.bindir installDirs
+
 
             installDirs
               | shouldBuildInplaceOnly spkg
@@ -2044,7 +2064,7 @@ setupHsScriptOptions :: ElaboratedReadyPackage
                      -> SetupScriptOptions
 -- TODO: Fix this so custom is a separate component.  Custom can ALWAYS
 -- be a separate component!!!
-setupHsScriptOptions (ReadyPackage (getElaboratedPackage -> ElaboratedPackage{..}))
+setupHsScriptOptions (ReadyPackage pkg_or_comp)
                      ElaboratedSharedConfig{..} srcdir builddir
                      isParallelBuild cacheLock =
     SetupScriptOptions {
@@ -2062,10 +2082,13 @@ setupHsScriptOptions (ReadyPackage (getElaboratedPackage -> ElaboratedPackage{..
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
+      useExtraPathEnv          = elabExeDependencyPaths pkg_or_comp,
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
       setupCacheLock           = Just cacheLock
     }
+  where
+    ElaboratedPackage{..} = getElaboratedPackage pkg_or_comp
 
 
 -- | To be used for the input for elaborateInstallPlan.

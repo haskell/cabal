@@ -1199,6 +1199,8 @@ buildInplaceUnpackedPackage verbosity
                                         pkg buildStatus
                                         allSrcFiles buildResult
 
+        -- PURPOSELY omitted: no copy!
+
         mipkg <- whenReRegister $
                  annotateFailureNoLog InstallFailed $ do
           -- Register locally

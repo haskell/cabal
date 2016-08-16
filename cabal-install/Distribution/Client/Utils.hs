@@ -4,6 +4,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , readMaybe
                                  , inDir, withEnv, logDirChange
+                                 , withExtraPathEnv
                                  , determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
@@ -18,7 +19,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , relaxEncodingErrors)
        where
 
-import Distribution.Compat.Environment ( lookupEnv, setEnv, unsetEnv )
+import Distribution.Compat.Environment
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
@@ -31,6 +32,7 @@ import Control.Monad
          ( when )
 import Data.Bits
          ( (.|.), shiftL, shiftR )
+import System.FilePath
 import Data.Char
          ( ord, chr )
 #if MIN_VERSION_base(4,6,0)
@@ -38,7 +40,7 @@ import Text.Read
          ( readMaybe )
 #endif
 import Data.List
-         ( isPrefixOf, sortBy, groupBy )
+         ( isPrefixOf, sortBy, groupBy, intercalate )
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
@@ -47,8 +49,6 @@ import qualified Control.Exception as Exception
 import System.Directory
          ( canonicalizePath, doesFileExist, getCurrentDirectory
          , removeFile, setCurrentDirectory )
-import System.FilePath
-         ( (</>), isAbsolute, takeDrive, splitPath, joinPath )
 import System.IO
          ( Handle, hClose, openTempFile
 #if MIN_VERSION_base(4,4,0)
@@ -152,6 +152,23 @@ withEnv k v m = do
   m `Exception.finally` (case mb_old of
     Nothing -> unsetEnv k
     Just old -> setEnv k old)
+
+-- | Executes the action, increasing the PATH environment
+-- in some way
+--
+-- Warning: This operation is NOT thread-safe, because the
+-- environment variables are a process-global concept.
+withExtraPathEnv :: [FilePath] -> IO a -> IO a
+withExtraPathEnv paths m = do
+  oldPathSplit <- getSearchPath
+  let newPath = mungePath $ intercalate [searchPathSeparator] (paths ++ oldPathSplit)
+      oldPath = mungePath $ intercalate [searchPathSeparator] oldPathSplit
+      -- TODO: This is a horrible hack to work around the fact that
+      -- setEnv can't take empty values as an argument
+      mungePath p | p == ""   = "/dev/null"
+                  | otherwise = p
+  setEnv "PATH" newPath
+  m `Exception.finally` setEnv "PATH" oldPath
 
 -- | Log directory change in 'make' compatible syntax
 logDirChange :: (String -> IO ()) -> Maybe FilePath -> IO a -> IO a

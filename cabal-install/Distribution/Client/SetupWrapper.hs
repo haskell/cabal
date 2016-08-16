@@ -52,7 +52,7 @@ import Distribution.Simple.Program
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
-         ( programSearchPathAsPATHVar )
+         ( programSearchPathAsPATHVar, ProgramSearchPathEntry(ProgramSearchPathDir) )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -80,7 +80,7 @@ import Distribution.Simple.Utils
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
-         ( inDir, tryCanonicalizePath
+         ( inDir, tryCanonicalizePath, withExtraPathEnv
          , existsAndIsMoreRecentThan, moreRecentFile, withEnv
 #if mingw32_HOST_OS
          , canonicalizePathNoThrow
@@ -160,6 +160,8 @@ data SetupScriptOptions = SetupScriptOptions {
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
+    -- | Extra things to add to PATH when invoking the setup script.
+    useExtraPathEnv          :: [FilePath],
     forceExternalSetupMethod :: Bool,
 
     -- | List of dependencies to use when building Setup.hs.
@@ -228,6 +230,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
+    useExtraPathEnv          = [],
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing
@@ -304,9 +307,10 @@ internalSetupMethod verbosity options _ bt mkargs = do
   let args = mkargs cabalVersion
   info verbosity $ "Using internal setup method with build-type " ++ show bt
                 ++ " and args:\n  " ++ show args
-  inDir (useWorkingDir options) $
+  inDir (useWorkingDir options) $ do
     withEnv "HASKELL_DIST_DIR" (useDistPref options) $
-      buildTypeAction bt args
+      withExtraPathEnv (useExtraPathEnv options) $
+        buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -335,7 +339,8 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
                                     ++ show logHandle
 
   searchpath <- programSearchPathAsPATHVar
-                (getProgramSearchPath (useProgramConfig options))
+                (map ProgramSearchPathDir (useExtraPathEnv options) ++
+                 getProgramSearchPath (useProgramConfig options))
   env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                         ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
@@ -689,7 +694,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     where
       doInvoke path' = do
         searchpath <- programSearchPathAsPATHVar
-                      (getProgramSearchPath (useProgramConfig options'))
+                      (map ProgramSearchPathDir (useExtraPathEnv options') ++
+                       getProgramSearchPath (useProgramConfig options'))
         env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                               ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 

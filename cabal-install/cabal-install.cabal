@@ -77,6 +77,12 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
+  tests/IntegrationTests/new-build/BuildToolsPath.sh
+  tests/IntegrationTests/new-build/BuildToolsPath/A.hs
+  tests/IntegrationTests/new-build/BuildToolsPath/MyCustomPreprocessor.hs
+  tests/IntegrationTests/new-build/BuildToolsPath/build-tools-path.cabal
+  tests/IntegrationTests/new-build/BuildToolsPath/cabal.project
+  tests/IntegrationTests/new-build/BuildToolsPath/hello/Hello.hs
   tests/IntegrationTests/new-build/T3460.sh
   tests/IntegrationTests/new-build/T3460/C.hs
   tests/IntegrationTests/new-build/T3460/Setup.hs

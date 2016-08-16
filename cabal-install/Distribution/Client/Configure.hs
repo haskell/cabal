@@ -203,6 +203,7 @@ configureSetupScript packageDBs
     , useDistPref              = distPref
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing
+    , useExtraPathEnv          = []
     , setupCacheLock           = lock
     , useWin32CleanHack        = False
     , forceExternalSetupMethod = forceExternal

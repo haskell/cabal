@@ -17,6 +17,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabInstallDirs,
     elabDistDirParams,
     elabRequiresRegistration,
+    elabExeDependencyPaths,
     elabBuildTargets,
     elabReplTarget,
     elabBuildHaddocks,
@@ -170,6 +171,10 @@ elabBuildHaddocks :: ElaboratedConfiguredPackage -> Bool
 elabBuildHaddocks (ElabPackage pkg) = pkgBuildHaddocks pkg
 elabBuildHaddocks (ElabComponent comp) = elabComponentBuildHaddocks comp
 
+elabExeDependencyPaths :: ElaboratedConfiguredPackage -> [FilePath]
+elabExeDependencyPaths (ElabPackage _) = [] -- TODO: not implemented
+elabExeDependencyPaths (ElabComponent comp) = elabComponentExeDependencyPaths comp
+
 getElaboratedPackage :: ElaboratedConfiguredPackage -> ElaboratedPackage
 getElaboratedPackage (ElabPackage pkg) = pkg
 getElaboratedPackage (ElabComponent comp) = elabComponentPackage comp
@@ -209,6 +214,8 @@ data ElaboratedComponent
     -- | The order-only dependencies of this component; e.g.,
     -- if you depend on an executable it goes here.
     elabComponentExeDependencies :: [ComponentId],
+    -- | The file paths of all our executable dependencies.
+    elabComponentExeDependencyPaths :: [FilePath],
     -- | The 'ElaboratedPackage' this component came from
     elabComponentPackage :: ElaboratedPackage,
     -- | What in this component should we build (TRANSIENT, see 'pkgBuildTargets')
