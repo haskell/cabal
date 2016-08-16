@@ -80,7 +80,7 @@ import Distribution.Simple.Utils
          , copyFileVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath
-         , existsAndIsMoreRecentThan, moreRecentFile
+         , existsAndIsMoreRecentThan, moreRecentFile, withEnv
 #if mingw32_HOST_OS
          , canonicalizePathNoThrow
 #endif
@@ -304,7 +304,8 @@ internalSetupMethod verbosity options _ bt mkargs = do
   info verbosity $ "Using internal setup method with build-type " ++ show bt
                 ++ " and args:\n  " ++ show args
   inDir (useWorkingDir options) $
-    buildTypeAction bt args
+    withEnv "HASKELL_DIST_DIR" (useDistPref options) $
+      buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -334,7 +335,8 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
 
   searchpath <- programSearchPathAsPATHVar
                 (getProgramSearchPath (useProgramConfig options))
-  env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+  env        <- getEffectiveEnvironment [("PATH", Just searchpath)
+                                        ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
   process <- runProcess path args
              (useWorkingDir options) env Nothing
@@ -687,7 +689,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       doInvoke path' = do
         searchpath <- programSearchPathAsPATHVar
                       (getProgramSearchPath (useProgramConfig options'))
-        env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+        env        <- getEffectiveEnvironment [("PATH", Just searchpath)
+                                              ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
         process <- runProcess path' args
                    (useWorkingDir options') env Nothing
