@@ -51,9 +51,7 @@ lookupEnv name = (Just `fmap` System.getEnv name) `catchIO` const (return Nothin
 -- Throws `Control.Exception.IOException` if either @name@ or @value@ is the
 -- empty string or contains an equals sign.
 setEnv :: String -> String -> IO ()
-setEnv key value_
-  | null value = error "Distribution.Compat.setEnv: empty string"
-  | otherwise  = setEnv_ key value
+setEnv key value_ = setEnv_ key value
   where
     -- NOTE: Anything that follows NUL is ignored on both POSIX and Windows. We
     -- still strip it manually so that the null check above succeeds if a value
