@@ -140,9 +140,9 @@ elabDistDirParams shared (ElabComponent comp) = DistDirParams {
         distParamPlatform = pkgConfigPlatform shared
     }
 
--- TODO: give each component a separate install dir prefix
 elabInstallDirs :: ElaboratedConfiguredPackage -> InstallDirs.InstallDirs FilePath
-elabInstallDirs = pkgInstallDirs . getElaboratedPackage
+elabInstallDirs (ElabPackage pkg) = pkgInstallDirs pkg
+elabInstallDirs (ElabComponent comp) = elabComponentInstallDirs comp
 
 elabRequiresRegistration :: ElaboratedConfiguredPackage -> Bool
 elabRequiresRegistration (ElabPackage pkg) = pkgRequiresRegistration pkg
@@ -216,9 +216,9 @@ data ElaboratedComponent
     -- | Should we REPL this component (TRANSIENT, see 'pkgReplTarget')
     elabComponentReplTarget :: Maybe SubComponentTarget,
     -- | Should we Haddock this component (TRANSIENT, see 'pkgBuildHaddocks')
-    elabComponentBuildHaddocks :: Bool
-    -- NB: Careful, if you add elabComponentInstallDirs, need
-    -- to adjust 'packageHashInputs'!!!
+    elabComponentBuildHaddocks :: Bool,
+    -- | Where things should get installed to
+    elabComponentInstallDirs :: InstallDirs.InstallDirs FilePath
    }
   deriving (Eq, Show, Generic)
 

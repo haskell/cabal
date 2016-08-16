@@ -1076,6 +1076,7 @@ elaborateInstallPlan platform compiler compilerprogdb
                     elabComponentDependencies = deps,
                     -- TODO: track dependencies on executables
                     elabComponentExeDependencies = [],
+                    elabComponentInstallDirs = installDirs,
                     -- These are filled in later
                     elabComponentBuildTargets = [],
                     elabComponentReplTarget = Nothing,
@@ -1103,6 +1104,28 @@ elaborateInstallPlan platform compiler compilerprogdb
                             | cdep <- cdeps
                             , Just confid' <- [Map.lookup cdep internal_map] ]
             deps = external_deps ++ internal_deps
+
+            installDirs
+              | shouldBuildInplaceOnly spkg
+              -- use the ordinary default install dirs
+              = (InstallDirs.absoluteInstallDirs
+                   pkgid
+                   (SimpleUnitId cid) -- differs!
+                   (compilerInfo compiler)
+                   InstallDirs.NoCopyDest
+                   platform
+                   defaultInstallDirs) {
+
+                  InstallDirs.libsubdir  = "", -- absoluteInstallDirs sets these as
+                  InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
+                }                              -- them as "Setup.hs configure" args
+
+              | otherwise
+              -- use special simplified install dirs
+              = storePackageInstallDirs
+                  cabalDirLayout
+                  (compilerId compiler)
+                  cid
 
 
     elaborateSolverPackage :: (SolverId -> [ElaboratedPlanPackage])
@@ -2133,9 +2156,8 @@ setupHsConfigureFlags (ReadyPackage pkg_or_comp)
     configProgPrefix          = maybe mempty toFlag pkgProgPrefix
     configProgSuffix          = maybe mempty toFlag pkgProgSuffix
 
-    -- TODO: do this per-component
     configInstallDirs         = fmap (toFlag . InstallDirs.toPathTemplate)
-                                     pkgInstallDirs
+                                     (elabInstallDirs pkg_or_comp)
 
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
