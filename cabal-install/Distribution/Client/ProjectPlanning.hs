@@ -1030,7 +1030,7 @@ elaborateInstallPlan platform compiler compilerprogdb
     elaborateAndExpandSolverPackage mapDep spkg
         | eligible
         , Right g <- comps_graph
-        = map ElabComponent (snd (mapAccumL buildComponent Map.empty g))
+        = map ElabComponent (snd (mapAccumL buildComponent (Map.empty, Map.empty) g))
         | otherwise
         = [ElabPackage pkg]
       where
@@ -1060,11 +1060,12 @@ elaborateInstallPlan platform compiler compilerprogdb
         internalPkgSet = pkgInternalPackages pkg
         comps_graph = Cabal.mkComponentsGraph (pkgEnabled pkg) pd internalPkgSet
 
-        buildComponent :: Map PackageName ConfiguredId
+        buildComponent :: (Map PackageName ConfiguredId, Map String ConfiguredId)
                      -> (Cabal.Component, [Cabal.ComponentName])
-                     -> (Map PackageName ConfiguredId, ElaboratedComponent)
-        buildComponent internal_map (comp, _cdeps) =
-            (internal_map', ecomp)
+                     -> ((Map PackageName ConfiguredId, Map String ConfiguredId),
+                         ElaboratedComponent)
+        buildComponent (internal_map, exe_map) (comp, _cdeps) =
+            ((internal_map', exe_map'), ecomp)
           where
             cname = Cabal.componentName comp
             cname' = CD.componentNameToComponent cname
@@ -1076,8 +1077,8 @@ elaborateInstallPlan platform compiler compilerprogdb
                     elabComponentDependencies =
                         CD.select (== cname') (pkgDependencies pkg) ++
                         internal_lib_deps,
-                    -- TODO: track dependencies on executables
-                    elabComponentExeDependencies = [],
+                    elabComponentExeDependencies =
+                        internal_exe_deps,
                     elabComponentInstallDirs = installDirs,
                     -- These are filled in later
                     elabComponentBuildTargets = [],
@@ -1105,12 +1106,21 @@ elaborateInstallPlan platform compiler compilerprogdb
                 = [ confid'
                 | Dependency pkgname _ <- PD.targetBuildDepends bi
                 , Just confid' <- [Map.lookup pkgname internal_map] ]
+            internal_exe_deps
+                = [ confInstId confid'
+                  | Dependency (PackageName toolname) _ <- PD.buildTools bi
+                  , toolname `elem` map PD.exeName (PD.executables pd)
+                  , Just confid' <- [Map.lookup toolname exe_map]
+                  ]
             internal_map' = case cname of
                 CLibName
                     -> Map.insert (packageName pkg) confid internal_map
                 CSubLibName libname
                     -> Map.insert (PackageName libname) confid internal_map
                 _   -> internal_map
+            exe_map' = case cname of
+                CExeName exename -> Map.insert exename confid exe_map
+                _                -> exe_map
 
             installDirs
               | shouldBuildInplaceOnly spkg
