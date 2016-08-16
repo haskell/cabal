@@ -1060,10 +1060,10 @@ elaborateInstallPlan platform compiler compilerprogdb
         internalPkgSet = pkgInternalPackages pkg
         comps_graph = Cabal.mkComponentsGraph (pkgEnabled pkg) pd internalPkgSet
 
-        buildComponent :: Map ComponentName ConfiguredId
+        buildComponent :: Map PackageName ConfiguredId
                      -> (Cabal.Component, [Cabal.ComponentName])
-                     -> (Map ComponentName ConfiguredId, ElaboratedComponent)
-        buildComponent internal_map (comp, cdeps) =
+                     -> (Map PackageName ConfiguredId, ElaboratedComponent)
+        buildComponent internal_map (comp, _cdeps) =
             (internal_map', ecomp)
           where
             cname = Cabal.componentName comp
@@ -1073,7 +1073,9 @@ elaborateInstallPlan platform compiler compilerprogdb
                     elabComponentName = Just cname,
                     elabComponentId = SimpleUnitId cid, -- Backpack later!
                     elabComponentPackage = pkg,
-                    elabComponentDependencies = deps,
+                    elabComponentDependencies =
+                        CD.select (== cname') (pkgDependencies pkg) ++
+                        internal_lib_deps,
                     -- TODO: track dependencies on executables
                     elabComponentExeDependencies = [],
                     elabComponentInstallDirs = installDirs,
@@ -1097,13 +1099,18 @@ elaborateInstallPlan platform compiler compilerprogdb
                             elaboratedSharedConfig
                             (ElabComponent ecomp)) -- knot tied
             confid = ConfiguredId pkgid cid
-            external_deps = CD.select (== cname') (pkgDependencies pkg)
-            internal_map' = Map.insert cname confid internal_map
-            -- TODO: Custom setup dep.
-            internal_deps = [ confid'
-                            | cdep <- cdeps
-                            , Just confid' <- [Map.lookup cdep internal_map] ]
-            deps = external_deps ++ internal_deps
+
+            bi = Cabal.componentBuildInfo comp
+            internal_lib_deps
+                = [ confid'
+                | Dependency pkgname _ <- PD.targetBuildDepends bi
+                , Just confid' <- [Map.lookup pkgname internal_map] ]
+            internal_map' = case cname of
+                CLibName
+                    -> Map.insert (packageName pkg) confid internal_map
+                CSubLibName libname
+                    -> Map.insert (PackageName libname) confid internal_map
+                _   -> internal_map
 
             installDirs
               | shouldBuildInplaceOnly spkg
