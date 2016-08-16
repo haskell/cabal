@@ -48,7 +48,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Build.Macros
          ( generatePackageVersionMacros )
 import Distribution.Simple.Program
-         ( ProgramDb, emptyProgramConfiguration
+         ( ProgramDb, emptyProgramDb
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
@@ -226,7 +226,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDependencies          = [],
     useDependenciesExclusive = False,
     useVersionMacros         = False,
-    useProgramConfig         = emptyProgramConfiguration,
+    useProgramConfig         = emptyProgramDb,
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,

@@ -1377,7 +1377,7 @@ haddockCommand = CommandUI
   where
     progConf = addKnownProgram haddockProgram
              $ addKnownProgram ghcProgram
-             $ emptyProgramConfiguration
+             $ emptyProgramDb
 
 haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
 haddockOptions showOrParseArgs =
