@@ -49,7 +49,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (jhcProg, _, conf') <- requireProgramVersion verbosity
@@ -84,7 +84,7 @@ jhcLanguageExtensions =
     ,(DisableExtension CPP                        , "-fno-cpp")
     ]
 
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity _packageDBs conf = do
    -- jhc --list-libraries lists all available libraries.

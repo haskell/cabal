@@ -23,7 +23,7 @@ import System.FilePath ((</>), splitFileName)
 import Distribution.Package
          ( packageVersion )
 import Distribution.Simple.Haddock (haddockPackagePaths)
-import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
+import Distribution.Simple.Program (haddockProgram, ProgramDb
                                    , runProgram, requireProgramVersion)
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
@@ -35,7 +35,7 @@ import Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo(exposed) )
 
 regenerateHaddockIndex :: Verbosity
-                       -> InstalledPackageIndex -> ProgramConfiguration
+                       -> InstalledPackageIndex -> ProgramDb
                        -> FilePath
                        -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do

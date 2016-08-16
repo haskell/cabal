@@ -86,7 +86,7 @@ import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , findDistPref )
 import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
-import Distribution.Simple.Program            ( ProgramConfiguration )
+import Distribution.Simple.Program            ( ProgramDb )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
                                               , fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.SrcDist            ( prepareTree )
@@ -250,7 +250,7 @@ getSandboxPackageDB configFlags = do
 
 -- | Which packages are installed in the sandbox package DB?
 getInstalledPackagesInSandbox :: Verbosity -> ConfigFlags
-                                 -> Compiler -> ProgramConfiguration
+                                 -> Compiler -> ProgramDb
                                  -> IO InstalledPackageIndex
 getInstalledPackagesInSandbox verbosity configFlags comp conf = do
     sandboxDB <- getSandboxPackageDB configFlags
@@ -282,7 +282,7 @@ withSandboxBinDirOnSearchPath sandboxDir = bracket_ addBinDir rmBinDir
 
 -- | Initialise a package DB for this compiler if it doesn't exist.
 initPackageDBIfNeeded :: Verbosity -> ConfigFlags
-                         -> Compiler -> ProgramConfiguration
+                         -> Compiler -> ProgramDb
                          -> IO ()
 initPackageDBIfNeeded verbosity configFlags comp conf = do
   SpecificPackageDB dbPath <- getSandboxPackageDB configFlags
@@ -723,7 +723,7 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
 -- we don't update the timestamp file here - this is done in
 -- 'postInstallActions'.
 withSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
-                          -> Compiler -> Platform -> ProgramConfiguration
+                          -> Compiler -> Platform -> ProgramDb
                           -> FilePath
                           -> (SandboxPackageInfo -> IO ())
                           -> IO ()
@@ -777,7 +777,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
 -- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and the
 -- identity otherwise.
 maybeWithSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
-                               -> Compiler -> Platform -> ProgramConfiguration
+                               -> Compiler -> Platform -> ProgramDb
                                -> UseSandbox
                                -> (Maybe SandboxPackageInfo -> IO ())
                                -> IO ()
@@ -866,7 +866,7 @@ configPackageDB' cfg =
     userInstall = fromFlagOrDefault True (configUserInstall cfg)
 
 configCompilerAux' :: ConfigFlags
-                   -> IO (Compiler, Platform, ProgramConfiguration)
+                   -> IO (Compiler, Platform, ProgramDb)
 configCompilerAux' configFlags =
   configCompilerAuxEx configFlags
     --FIXME: make configCompilerAux use a sensible verbosity
@@ -876,7 +876,7 @@ configCompilerAux' configFlags =
 -- 'localBuildInfoFile', falling back on 'configCompilerAuxEx' if it
 -- cannot be read.
 getPersistOrConfigCompiler :: ConfigFlags
-                           -> IO (Compiler, Platform, ProgramConfiguration)
+                           -> IO (Compiler, Platform, ProgramDb)
 getPersistOrConfigCompiler configFlags = do
   distPref <- findDistPrefOrDefault (configDistPref configFlags)
   mlbi <- maybeGetPersistBuildConfig distPref

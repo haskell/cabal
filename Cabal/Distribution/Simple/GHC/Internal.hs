@@ -71,8 +71,8 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 configureToolchain :: GhcImplInfo
                    -> ConfiguredProgram
                    -> Map String String
-                   -> ProgramConfiguration
-                   -> ProgramConfiguration
+                   -> ProgramDb
+                   -> ProgramDb
 configureToolchain _implInfo ghcProg ghcInfo =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgramName extraGccPath,

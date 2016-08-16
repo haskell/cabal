@@ -39,8 +39,7 @@ import Distribution.Version
 import Distribution.Compat.Environment
     ( lookupEnv )
 import Distribution.Simple.Program
-    ( ProgramConfiguration, pkgConfigProgram, getProgramOutput,
-      requireProgram )
+    ( ProgramDb, pkgConfigProgram, getProgramOutput, requireProgram )
 import Distribution.Simple.Utils
     ( info )
 
@@ -59,7 +58,7 @@ data PkgConfigDb =  PkgConfigDb (M.Map PackageName (Maybe Version))
 -- | Query pkg-config for the list of installed packages, together
 -- with their versions. Return a `PkgConfigDb` encapsulating this
 -- information.
-readPkgConfigDb :: Verbosity -> ProgramConfiguration -> IO PkgConfigDb
+readPkgConfigDb :: Verbosity -> ProgramDb -> IO PkgConfigDb
 readPkgConfigDb verbosity conf = handle ioErrorHandler $ do
   (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
   pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
@@ -109,7 +108,7 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
 -- | Query pkg-config for the locations of pkg-config's package files. Use this
 -- to monitor for changes in the pkg-config DB.
 --
-getPkgConfigDbDirs :: Verbosity -> ProgramConfiguration -> IO [FilePath]
+getPkgConfigDbDirs :: Verbosity -> ProgramDb -> IO [FilePath]
 getPkgConfigDbDirs verbosity conf =
     (++) <$> getEnvPath <*> getDefPath
  where

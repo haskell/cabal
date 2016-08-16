@@ -377,7 +377,7 @@ configure (pkg_descr0', pbi) cfg = do
     --                  building with
     (comp           :: Compiler,
      compPlatform   :: Platform,
-     programsConfig :: ProgramConfiguration)
+     programsConfig :: ProgramDb)
         <- configCompilerEx
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
@@ -777,7 +777,7 @@ configure (pkg_descr0', pbi) cfg = do
     where
       verbosity = fromFlag (configVerbosity cfg)
 
-mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
+mkProgramsConfig :: ConfigFlags -> ProgramDb -> ProgramDb
 mkProgramsConfig cfg initialProgramsConfig = programsConfig
   where
     programsConfig = userSpecifyArgss (configProgramArgs cfg)
@@ -1239,7 +1239,7 @@ reportFailedDependencies failed =
 -- | List all installed packages in the given package databases.
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -- ^ The stack of package databases.
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
   when (null packageDBs) $
@@ -1266,7 +1266,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 -- on the package database stack in question.  However, when sandboxes
 -- are involved these sanity checks are not desirable.
 getPackageDBContents :: Verbosity -> Compiler
-                     -> PackageDB -> ProgramConfiguration
+                     -> PackageDB -> ProgramDb
                      -> IO InstalledPackageIndex
 getPackageDBContents verbosity comp packageDB progconf = do
   info verbosity "Reading installed packages..."
@@ -1282,7 +1282,7 @@ getPackageDBContents verbosity comp packageDB progconf = do
 --
 getInstalledPackagesMonitorFiles :: Verbosity -> Compiler
                                  -> PackageDBStack
-                                 -> ProgramConfiguration -> Platform
+                                 -> ProgramDb -> Platform
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity comp packageDBs progconf platform =
   case compilerFlavor comp of
@@ -1383,13 +1383,13 @@ combinedConstraints constraints dependencies installedPackages = do
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
-configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration
-                             -> IO ProgramConfiguration
+configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramDb
+                             -> IO ProgramDb
 configureRequiredPrograms verbosity deps conf =
   foldM (configureRequiredProgram verbosity) conf deps
 
-configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency
-                            -> IO ProgramConfiguration
+configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
+                            -> IO ProgramDb
 configureRequiredProgram verbosity conf
   (Dependency (PackageName progName) verRange) =
   case lookupKnownProgram progName conf of
@@ -1411,8 +1411,8 @@ configureRequiredProgram verbosity conf
 -- Configuring pkg-config package dependencies
 
 configurePkgconfigPackages :: Verbosity -> PackageDescription
-                           -> ProgramConfiguration
-                           -> IO (PackageDescription, ProgramConfiguration)
+                           -> ProgramDb
+                           -> IO (PackageDescription, ProgramDb)
 configurePkgconfigPackages verbosity pkg_descr conf
   | null allpkgs = return (pkg_descr, conf)
   | otherwise    = do
@@ -1514,7 +1514,7 @@ ccLdOptionsBuildInfo cflags ldflags =
 -- Determining the compiler details
 
 configCompilerAuxEx :: ConfigFlags
-                    -> IO (Compiler, Platform, ProgramConfiguration)
+                    -> IO (Compiler, Platform, ProgramDb)
 configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            (flagToMaybe $ configHcPath cfg)
                                            (flagToMaybe $ configHcPkg cfg)
@@ -1524,8 +1524,8 @@ configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
     programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-                 -> ProgramConfiguration -> Verbosity
-                 -> IO (Compiler, Platform, ProgramConfiguration)
+                 -> ProgramDb -> Verbosity
+                 -> IO (Compiler, Platform, ProgramDb)
 configCompilerEx Nothing _ _ _ _ = die "Unknown compiler"
 configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
   (comp, maybePlatform, programsConfig) <- case hcFlavor of
@@ -1547,15 +1547,15 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
 {-# DEPRECATED configCompiler
     "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramConfiguration -> Verbosity
-               -> IO (Compiler, ProgramConfiguration)
+               -> ProgramDb -> Verbosity
+               -> IO (Compiler, ProgramDb)
 configCompiler mFlavor hcPath hcPkg conf verbosity =
   fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg conf verbosity
 
 {-# DEPRECATED configCompilerAux
     "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
 configCompilerAux :: ConfigFlags
-                  -> IO (Compiler, ProgramConfiguration)
+                  -> IO (Compiler, ProgramDb)
 configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 -- -----------------------------------------------------------------------------

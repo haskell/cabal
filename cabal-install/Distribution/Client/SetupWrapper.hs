@@ -48,7 +48,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Build.Macros
          ( generatePackageVersionMacros )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, emptyProgramConfiguration
+         ( ProgramDb, emptyProgramConfiguration
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
@@ -156,7 +156,7 @@ data SetupScriptOptions = SetupScriptOptions {
     usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
     usePackageIndex          :: Maybe InstalledPackageIndex,
-    useProgramConfig         :: ProgramConfiguration,
+    useProgramConfig         :: ProgramDb,
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
@@ -382,7 +382,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
-                            -> ProgramConfiguration -> IO InstalledPackageIndex
+                            -> ProgramDb -> IO InstalledPackageIndex
   maybeGetInstalledPackages options' comp conf =
     case usePackageIndex options' of
       Just index -> return index
@@ -496,7 +496,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     Custom             -> error "buildTypeScript Custom"
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
-  installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
+  installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
   installedCabalVersion options' compiler conf = do
@@ -543,7 +543,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           latestVersion    = version
 
   configureCompiler :: SetupScriptOptions
-                    -> IO (Compiler, ProgramConfiguration, SetupScriptOptions)
+                    -> IO (Compiler, ProgramDb, SetupScriptOptions)
   configureCompiler options' = do
     (comp, conf) <- case useCompiler options' of
       Just comp -> return (comp, useProgramConfig options')

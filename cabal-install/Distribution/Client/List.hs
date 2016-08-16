@@ -28,7 +28,7 @@ import Distribution.PackageDescription.Configuration
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
 import Distribution.Simple.Setup (fromFlag)
@@ -80,7 +80,7 @@ getPkgList :: Verbosity
            -> PackageDBStack
            -> RepoContext
            -> Compiler
-           -> ProgramConfiguration
+           -> ProgramDb
            -> ListFlags
            -> [String]
            -> IO [PackageDisplayInfo]
@@ -136,7 +136,7 @@ list :: Verbosity
      -> PackageDBStack
      -> RepoContext
      -> Compiler
-     -> ProgramConfiguration
+     -> ProgramDb
      -> ListFlags
      -> [String]
      -> IO ()
@@ -166,7 +166,7 @@ info :: Verbosity
      -> PackageDBStack
      -> RepoContext
      -> Compiler
-     -> ProgramConfiguration
+     -> ProgramDb
      -> GlobalFlags
      -> InfoFlags
      -> [UserTarget]

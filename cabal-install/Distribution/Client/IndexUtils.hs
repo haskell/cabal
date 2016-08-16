@@ -50,7 +50,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
-         ( ProgramConfiguration )
+         ( ProgramDb )
 import qualified Distribution.Simple.Configure as Configure
          ( getInstalledPackages, getInstalledPackagesMonitorFiles )
 import Distribution.ParseUtils
@@ -102,7 +102,7 @@ import qualified Hackage.Security.Util.Some as Sec
 
 -- | Reduced-verbosity version of 'Configure.getInstalledPackages'
 getInstalledPackages :: Verbosity -> Compiler
-                     -> PackageDBStack -> ProgramConfiguration
+                     -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs conf =
     Configure.getInstalledPackages verbosity' comp packageDbs conf

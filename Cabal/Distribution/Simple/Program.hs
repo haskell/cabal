@@ -11,10 +11,10 @@
 -- 'ConfiguredProgram' is a 'Program' that has been found on the current
 -- machine and is ready to be run (possibly with some user-supplied default
 -- args). Configuring a program involves finding its location and if necessary
--- finding its version. There is also a 'ProgramConfiguration' type which holds
+-- finding its version. There is also a 'ProgramDb' type which holds
 -- configured and not-yet configured programs. It is the parameter to lots of
 -- actions elsewhere in Cabal that need to look up and run programs. If we had
--- a Cabal monad, the 'ProgramConfiguration' would probably be a reader or
+-- a Cabal monad, the 'ProgramDb' would probably be a reader or
 -- state component of it. 
 --
 -- The module also defines all the known built-in 'Program's and the
@@ -63,10 +63,10 @@ module Distribution.Simple.Program (
     , builtinPrograms
 
     -- * The collection of configured programs we can run
-    , ProgramConfiguration
-    , emptyProgramConfiguration
-    , defaultProgramConfiguration
-    , restoreProgramConfiguration
+    , ProgramDb
+    , defaultProgramDb
+    , emptyProgramDb
+    , restoreProgramDb
     , addKnownProgram
     , addKnownPrograms
     , lookupKnownProgram
@@ -118,6 +118,10 @@ module Distribution.Simple.Program (
     , hpcProgram
 
     -- * deprecated
+    , ProgramConfiguration
+    , emptyProgramConfiguration
+    , defaultProgramConfiguration
+    , restoreProgramConfiguration
     , rawSystemProgram
     , rawSystemProgramStdout
     , rawSystemProgramConf

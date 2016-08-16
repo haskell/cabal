@@ -21,7 +21,7 @@ import Distribution.Version
 
 import System.FilePath             (takeBaseName)
 
-runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()
+runStrip :: Verbosity -> ProgramDb -> FilePath -> [String] -> IO ()
 runStrip verbosity progConf path args =
   case lookupProgram stripProgram progConf of
     Just strip -> runProgram verbosity strip (path:args)
@@ -32,7 +32,7 @@ runStrip verbosity progConf path args =
                                    ++ (takeBaseName path)
                                    ++ "' (missing the 'strip' program)"
 
-stripExe :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
+stripExe :: Verbosity -> Platform -> ProgramDb -> FilePath -> IO ()
 stripExe verbosity (Platform _arch os) conf path =
   runStrip verbosity conf path args
   where
@@ -43,7 +43,7 @@ stripExe verbosity (Platform _arch os) conf path =
                      -- The -x flag fixes that.
        _   -> []
 
-stripLib :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
+stripLib :: Verbosity -> Platform -> ProgramDb -> FilePath -> IO ()
 stripLib verbosity (Platform arch os) conf path = do
   case os of
     OSX -> -- '--strip-unneeded' is not supported on OS X, iOS, AIX, or

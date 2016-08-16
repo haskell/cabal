@@ -46,7 +46,7 @@ import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration )
+import Distribution.Simple.Program (ProgramDb )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
@@ -106,7 +106,7 @@ configure :: Verbosity
           -> RepoContext
           -> Compiler
           -> Platform
-          -> ProgramConfiguration
+          -> ProgramDb
           -> ConfigFlags
           -> ConfigExFlags
           -> [String]
@@ -174,7 +174,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
 configureSetupScript :: PackageDBStack
                      -> Compiler
                      -> Platform
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> FilePath
                      -> VersionRange
                      -> Maybe Lock

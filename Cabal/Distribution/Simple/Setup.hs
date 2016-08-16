@@ -354,9 +354,9 @@ data ConfigFlags = ConfigFlags {
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
-    -- ProgramConfiguration directly and not via ConfigFlags
-    configPrograms_     :: Last' ProgramConfiguration, -- ^All programs that
-                                                       -- @cabal@ may run
+    -- ProgramDb directly and not via ConfigFlags
+    configPrograms_     :: Last' ProgramDb, -- ^All programs that
+                                            -- @cabal@ may run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
@@ -429,7 +429,7 @@ instance Binary ConfigFlags
 
 -- | More convenient version of 'configPrograms'. Results in an
 -- 'error' if internal invariant is violated.
-configPrograms :: ConfigFlags -> ProgramConfiguration
+configPrograms :: ConfigFlags -> ProgramDb
 configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
 
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
@@ -438,7 +438,7 @@ configAbsolutePaths f =
   `liftM` traverse (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
   (configPackageDBs f)
 
-defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
+defaultConfigFlags :: ProgramDb -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
     configArgs         = [],
     configPrograms_    = pure progConf,
@@ -478,7 +478,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configAllowNewer   = Nothing
   }
 
-configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
+configureCommand :: ProgramDb -> CommandUI ConfigFlags
 configureCommand progConf = CommandUI
   { commandName         = "configure"
   , commandSynopsis     = "Prepare to build the package."
@@ -1560,7 +1560,7 @@ defaultBuildFlags  = BuildFlags {
     buildArgs        = []
   }
 
-buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
+buildCommand :: ProgramDb -> CommandUI BuildFlags
 buildCommand progConf = CommandUI
   { commandName         = "build"
   , commandSynopsis     = "Compile all/specific components."
@@ -1599,7 +1599,7 @@ buildCommand progConf = CommandUI
       ++ buildOptions progConf showOrParseArgs
   }
 
-buildOptions :: ProgramConfiguration -> ShowOrParseArgs
+buildOptions :: ProgramDb -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
 buildOptions progConf showOrParseArgs =
   [ optionNumJobs
@@ -1659,7 +1659,7 @@ instance Monoid ReplFlags where
 instance Semigroup ReplFlags where
   (<>) = gmappend
 
-replCommand :: ProgramConfiguration -> CommandUI ReplFlags
+replCommand :: ProgramDb -> CommandUI ReplFlags
 replCommand progConf = CommandUI
   { commandName         = "repl"
   , commandSynopsis     =
@@ -1940,7 +1940,7 @@ instance Semigroup BenchmarkFlags where
 -- * Shared options utils
 -- ------------------------------------------------------------
 
-programFlagsDescription :: ProgramConfiguration -> String
+programFlagsDescription :: ProgramDb -> String
 programFlagsDescription progConf =
      "The flags --with-PROG and --PROG-option(s) can be used with"
   ++ " the following programs:"
@@ -1951,7 +1951,7 @@ programFlagsDescription progConf =
 -- | For each known program @PROG@ in 'progConf', produce a @with-PROG@
 -- 'OptionField'.
 programConfigurationPaths
-  :: ProgramConfiguration
+  :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
@@ -1962,7 +1962,7 @@ programConfigurationPaths progConf showOrParseArgs get set =
 -- | Like 'programConfigurationPaths', but allows to customise the option name.
 programConfigurationPaths'
   :: (String -> String)
-  -> ProgramConfiguration
+  -> ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
@@ -1984,7 +1984,7 @@ programConfigurationPaths' mkName progConf showOrParseArgs get set =
 -- | For each known program @PROG@ in 'progConf', produce a @PROG-option@
 -- 'OptionField'.
 programConfigurationOption
-  :: ProgramConfiguration
+  :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
@@ -2008,7 +2008,7 @@ programConfigurationOption progConf showOrParseArgs get set =
 -- | For each known program @PROG@ in 'progConf', produce a @PROG-options@
 -- 'OptionField'.
 programConfigurationOptions
-  :: ProgramConfiguration
+  :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
@@ -2129,14 +2129,14 @@ configureArgs bcHack flags
                                                  . config_field
                                                  . configInstallDirs)
 
-configureCCompiler :: Verbosity -> ProgramConfiguration
+configureCCompiler :: Verbosity -> ProgramDb
                       -> IO (FilePath, [String])
 configureCCompiler verbosity lbi = configureProg verbosity lbi gccProgram
 
-configureLinker :: Verbosity -> ProgramConfiguration -> IO (FilePath, [String])
+configureLinker :: Verbosity -> ProgramDb -> IO (FilePath, [String])
 configureLinker verbosity lbi = configureProg verbosity lbi ldProgram
 
-configureProg :: Verbosity -> ProgramConfiguration -> Program
+configureProg :: Verbosity -> ProgramDb -> Program
                  -> IO (FilePath, [String])
 configureProg verbosity programConfig prog = do
     (p, _) <- requireProgram verbosity prog programConfig

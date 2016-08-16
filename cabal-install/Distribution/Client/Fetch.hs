@@ -35,7 +35,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-         ( ProgramConfiguration )
+         ( ProgramDb )
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Simple.Utils
@@ -71,7 +71,7 @@ fetch :: Verbosity
       -> RepoContext
       -> Compiler
       -> Platform
-      -> ProgramConfiguration
+      -> ProgramDb
       -> GlobalFlags
       -> FetchFlags
       -> [UserTarget]

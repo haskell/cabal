@@ -24,7 +24,7 @@ import Distribution.Simple.Program.Builtin
 
 configure
   :: Verbosity -> Maybe FilePath -> Maybe FilePath
-  -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+  -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity mbHcPath hcPkgPath conf0 = do
 
   -- We have no idea how a haskell-suite tool is named, so we require at
@@ -117,7 +117,7 @@ getLanguages verbosity prog = do
 
 -- Other compilers do some kind of a packagedb stack check here. Not sure
 -- if we need something like that as well.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf =
   liftM (PackageIndex.fromList . concat) $ for packagedbs $ \packagedb ->
@@ -202,7 +202,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
 
 registerPackage
   :: Verbosity
-  -> ProgramConfiguration
+  -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()
@@ -214,7 +214,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo = do
       ["update", packageDbOpt $ last packageDbs])
       { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
 
-initPackageDB :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
+initPackageDB :: Verbosity -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity conf dbPath =
   runDbProgram verbosity haskellSuitePkgProgram conf
     ["init", dbPath]

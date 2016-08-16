@@ -46,7 +46,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-         ( ProgramConfiguration )
+         ( ProgramDb )
 import Distribution.Simple.Setup
          ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
@@ -82,7 +82,7 @@ freeze :: Verbosity
       -> RepoContext
       -> Compiler
       -> Platform
-      -> ProgramConfiguration
+      -> ProgramDb
       -> Maybe SandboxPackageInfo
       -> GlobalFlags
       -> FreezeFlags
@@ -114,7 +114,7 @@ getFreezePkgs :: Verbosity
               -> RepoContext
               -> Compiler
               -> Platform
-              -> ProgramConfiguration
+              -> ProgramDb
               -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags

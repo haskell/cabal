@@ -46,7 +46,7 @@ import System.FilePath
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (_uhcProg, uhcVersion, conf') <-
@@ -89,7 +89,7 @@ uhcLanguageExtensions =
      (OverlappingInstances,         alwaysOn),
      (FlexibleInstances,            alwaysOn)]
 
-getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs conf = do
   let compilerid = compilerId comp
@@ -108,7 +108,7 @@ getInstalledPackages verbosity comp packagedbs conf = do
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
-getGlobalPackageDir :: Verbosity -> ProgramConfiguration -> IO FilePath
+getGlobalPackageDir :: Verbosity -> ProgramDb -> IO FilePath
 getGlobalPackageDir verbosity conf = do
     output <- getDbProgramOutput verbosity
                 uhcProgram conf ["--meta-pkgdir-system"]
@@ -268,7 +268,7 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 registerPackage
   :: Verbosity
   -> Compiler
-  -> ProgramConfiguration
+  -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()

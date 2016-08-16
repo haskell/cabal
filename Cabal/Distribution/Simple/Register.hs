@@ -269,12 +269,12 @@ relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
-initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath -> IO ()
+initPackageDB :: Verbosity -> Compiler -> ProgramDb -> FilePath -> IO ()
 initPackageDB verbosity comp progdb dbPath =
     createPackageDB verbosity comp progdb False dbPath
 
 -- | Create an empty package DB at the specified location.
-createPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> Bool
+createPackageDB :: Verbosity -> Compiler -> ProgramDb -> Bool
                 -> FilePath -> IO ()
 createPackageDB verbosity comp progdb preferCompat dbPath =
     case compilerFlavor comp of
@@ -305,13 +305,13 @@ deletePackageDB dbPath = do
 
 -- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
 -- provided command-line arguments to it.
-invokeHcPkg :: Verbosity -> Compiler -> ProgramConfiguration -> PackageDBStack
+invokeHcPkg :: Verbosity -> Compiler -> ProgramDb -> PackageDBStack
                 -> [String] -> IO ()
 invokeHcPkg verbosity comp conf dbStack extraArgs =
   withHcPkg "invokeHcPkg" comp conf
     (\hpi -> HcPkg.invoke hpi verbosity dbStack extraArgs)
 
-withHcPkg :: String -> Compiler -> ProgramConfiguration
+withHcPkg :: String -> Compiler -> ProgramDb
           -> (HcPkg.HcPkgInfo -> IO a) -> IO a
 withHcPkg name comp conf f =
   case compilerFlavor comp of
@@ -323,7 +323,7 @@ withHcPkg name comp conf f =
 
 registerPackage :: Verbosity
                 -> Compiler
-                -> ProgramConfiguration
+                -> ProgramDb
                 -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo

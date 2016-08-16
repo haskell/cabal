@@ -38,7 +38,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
 import Distribution.Simple.Program
-         ( ProgramConfiguration )
+         ( ProgramDb )
 import Distribution.Simple.Utils
          ( tryFindPackageDesc )
 import Distribution.System
@@ -96,7 +96,7 @@ genBounds
     -> RepoContext
     -> Compiler
     -> Platform
-    -> ProgramConfiguration
+    -> ProgramDb
     -> Maybe SandboxPackageInfo
     -> GlobalFlags
     -> FreezeFlags

@@ -75,7 +75,7 @@ import System.IO (hClose, hPutStrLn)
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf = do
 
   (lhcProg, lhcVersion, conf') <-
@@ -110,8 +110,8 @@ configure verbosity hcPath hcPkgPath conf = do
 
 -- | Adjust the way we find and configure gcc and ld
 --
-configureToolchain :: ConfiguredProgram -> ProgramConfiguration
-                                        -> ProgramConfiguration
+configureToolchain :: ConfiguredProgram -> ProgramDb
+                                        -> ProgramDb
 configureToolchain lhcProg =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgram (baseDir </> "gcc.exe"),
@@ -193,7 +193,7 @@ getExtensions verbosity lhcProg = do
     return $ [ (ext, "-X" ++ display ext)
              | Just ext <- map readExtension (lines exts) ]
 
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   checkPackageDbStack packagedbs
@@ -221,7 +221,7 @@ checkPackageDbStack _ =
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
 getInstalledPackages' :: ConfiguredProgram -> Verbosity
-                      -> [PackageDB] -> ProgramConfiguration
+                      -> [PackageDB] -> ProgramDb
                       -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
@@ -749,7 +749,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
 registerPackage
   :: Verbosity
-  -> ProgramConfiguration
+  -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()
@@ -757,7 +757,7 @@ registerPackage verbosity progdb packageDbs installedPkgInfo =
   HcPkg.reregister (hcPkgInfo progdb) verbosity packageDbs
     (Right installedPkgInfo)
 
-hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
+hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
 hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False

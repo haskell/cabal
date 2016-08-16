@@ -101,8 +101,8 @@ import qualified System.Info
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration
-          -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramDb
+          -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, conf1) <-
@@ -273,7 +273,7 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
     implInfo = ghcVersionImplInfo version
 
 -- | Given a single package DB, return all installed packages.
-getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
+getPackageDBContents :: Verbosity -> PackageDB -> ProgramDb
                         -> IO InstalledPackageIndex
 getPackageDBContents verbosity packagedb conf = do
   pkgss <- getInstalledPackages' verbosity [packagedb] conf
@@ -281,7 +281,7 @@ getPackageDBContents verbosity packagedb conf = do
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs conf = do
   checkPackageDbStack comp packagedbs
@@ -305,7 +305,7 @@ getInstalledPackages verbosity comp packagedbs conf = do
 -- 'getInstalledPackages'.
 toPackageIndex :: Verbosity
                -> [(PackageDB, [InstalledPackageInfo])]
-               -> ProgramConfiguration
+               -> ProgramDb
                -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss conf = do
   -- On Windows, various fields have $topdir/foo rather than full
@@ -392,7 +392,7 @@ removeMingwIncludeDir pkg =
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
-getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
+getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                      -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
@@ -436,7 +436,7 @@ getInstalledPackages' verbosity packagedbs conf = do
     failToRead file = die $ "cannot read ghc package database " ++ file
 
 getInstalledPackagesMonitorFiles :: Verbosity -> Platform
-                                 -> ProgramConfiguration
+                                 -> ProgramDb
                                  -> [PackageDB]
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity platform progdb =
@@ -753,7 +753,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         runGhcProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
-startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler -> Platform
+startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
 startInterpreter verbosity conf comp platform packageDBs = do
   let replOpts = mempty {
@@ -1188,7 +1188,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
+hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
 hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                  , HcPkg.noPkgDbStack    = v < [6,9]
                                  , HcPkg.noVerboseFlag   = v < [6,11]
@@ -1205,7 +1205,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> ProgramConfiguration
+  -> ProgramDb
   -> HcPkg.MultiInstance
   -> PackageDBStack
   -> InstalledPackageInfo

@@ -125,7 +125,7 @@ import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , CompilerInfo(..), compilerInfo, PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Program (ProgramDb)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -201,7 +201,7 @@ install
   -> RepoContext
   -> Compiler
   -> Platform
-  -> ProgramConfiguration
+  -> ProgramDb
   -> UseSandbox
   -> Maybe SandboxPackageInfo
   -> GlobalFlags
@@ -263,7 +263,7 @@ type InstallArgs = ( PackageDBStack
                    , RepoContext
                    , Compiler
                    , Platform
-                   , ProgramConfiguration
+                   , ProgramDb
                    , UseSandbox
                    , Maybe SandboxPackageInfo
                    , GlobalFlags
@@ -886,7 +886,7 @@ regenerateHaddockIndex :: Verbosity
                        -> [PackageDB]
                        -> Compiler
                        -> Platform
-                       -> ProgramConfiguration
+                       -> ProgramDb
                        -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
@@ -1347,7 +1347,7 @@ installUnpackedPackage
   -> InstallFlags
   -> HaddockFlags
   -> Compiler
-  -> ProgramConfiguration
+  -> ProgramDb
   -> Platform
   -> PackageDescription
   -> ReadyPackage

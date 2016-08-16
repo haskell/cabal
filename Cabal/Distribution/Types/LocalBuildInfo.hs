@@ -127,7 +127,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- to it; see 'HookedBuildInfo' for the whole sordid saga.
                 -- As much as possible, Cabal library should avoid using
                 -- this parameter.
-        withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
+        withPrograms  :: ProgramDb, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
