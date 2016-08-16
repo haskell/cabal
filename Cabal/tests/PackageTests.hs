@@ -13,7 +13,8 @@ import PackageTests.Tests
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
     , interpretPackageDbFlags, configCompilerEx )
-import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack, CompilerFlavor(GHC))
+import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack
+                                    ,CompilerFlavor(GHC))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program (defaultProgramDb)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)

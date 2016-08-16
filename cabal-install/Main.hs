@@ -380,9 +380,9 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
-               (Cabal.buildCommand progConf) mkBuildFlags extraArgs
+               (Cabal.buildCommand progDb) mkBuildFlags extraArgs
   where
-    progConf     = defaultProgramDb
+    progDb       = defaultProgramDb
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
     mkBuildFlags version = filterBuildFlags version config buildFlags'
@@ -432,7 +432,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
         reconfigure verbosity (replDistPref replFlags)
                     mempty [] globalFlags noAddSource NoFlag
                     (const Nothing)
-      let progConf     = defaultProgramDb
+      let progDb       = defaultProgramDb
           setupOptions = defaultSetupScriptOptions
             { useCabalVersion = orLaterVersion $ Version [1,18,0] []
             , useDistPref     = distPref
@@ -444,7 +444,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
 
       maybeWithSandboxDirOnSearchPath useSandbox $
         setupWrapper verbosity setupOptions Nothing
-        (Cabal.replCommand progConf) (const replFlags') extraArgs
+        (Cabal.replCommand progDb) (const replFlags') extraArgs
 
     -- No .cabal file in the current directory: just start the REPL (possibly
     -- using the sandbox package DB).

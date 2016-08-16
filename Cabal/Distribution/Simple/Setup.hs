@@ -439,9 +439,9 @@ configAbsolutePaths f =
   (configPackageDBs f)
 
 defaultConfigFlags :: ProgramDb -> ConfigFlags
-defaultConfigFlags progConf = emptyConfigFlags {
+defaultConfigFlags progDb = emptyConfigFlags {
     configArgs         = [],
-    configPrograms_    = pure progConf,
+    configPrograms_    = pure progDb,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
     configProfLib      = NoFlag,
@@ -479,7 +479,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
   }
 
 configureCommand :: ProgramDb -> CommandUI ConfigFlags
-configureCommand progConf = CommandUI
+configureCommand progDb = CommandUI
   { commandName         = "configure"
   , commandSynopsis     = "Prepare to build the package."
   , commandDescription  = Just $ \_ -> wrapText $
@@ -488,17 +488,17 @@ configureCommand progConf = CommandUI
       ++ "\n"
       ++ "The configuration affects several other commands, "
       ++ "including build, test, bench, run, repl.\n"
-  , commandNotes        = Just $ \_pname -> programFlagsDescription progConf
+  , commandNotes        = Just $ \_pname -> programFlagsDescription progDb
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " configure [FLAGS]\n"
-  , commandDefaultFlags = defaultConfigFlags progConf
+  , commandDefaultFlags = defaultConfigFlags progDb
   , commandOptions      = \showOrParseArgs ->
          configureOptions showOrParseArgs
-      ++ programConfigurationPaths   progConf showOrParseArgs
+      ++ programConfigurationPaths   progDb showOrParseArgs
            configProgramPaths (\v fs -> fs { configProgramPaths = v })
-      ++ programConfigurationOption progConf showOrParseArgs
+      ++ programConfigurationOption progDb showOrParseArgs
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
-      ++ programConfigurationOptions progConf showOrParseArgs
+      ++ programConfigurationOptions progDb showOrParseArgs
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
   }
 
@@ -1367,15 +1367,15 @@ haddockCommand = CommandUI
   , commandDefaultFlags = defaultHaddockFlags
   , commandOptions      = \showOrParseArgs ->
          haddockOptions showOrParseArgs
-      ++ programConfigurationPaths   progConf ParseArgs
+      ++ programConfigurationPaths   progDb ParseArgs
              haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
-      ++ programConfigurationOption  progConf showOrParseArgs
+      ++ programConfigurationOption  progDb showOrParseArgs
              haddockProgramArgs (\v fs -> fs { haddockProgramArgs = v })
-      ++ programConfigurationOptions progConf ParseArgs
+      ++ programConfigurationOptions progDb ParseArgs
              haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
   }
   where
-    progConf = addKnownProgram haddockProgram
+    progDb = addKnownProgram haddockProgram
              $ addKnownProgram ghcProgram
              $ emptyProgramDb
 
@@ -1561,7 +1561,7 @@ defaultBuildFlags  = BuildFlags {
   }
 
 buildCommand :: ProgramDb -> CommandUI BuildFlags
-buildCommand progConf = CommandUI
+buildCommand progDb = CommandUI
   { commandName         = "build"
   , commandSynopsis     = "Compile all/specific components."
   , commandDescription  = Just $ \_ -> wrapText $
@@ -1574,7 +1574,7 @@ buildCommand progConf = CommandUI
         ++ "    All the components in the package\n"
         ++ "  " ++ pname ++ " build foo       "
         ++ "    A component (i.e. lib, exe, test suite)\n\n"
-        ++ programFlagsDescription progConf
+        ++ programFlagsDescription progDb
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " build Foo.Bar   "
 --        ++ "    A module\n"
@@ -1596,12 +1596,12 @@ buildCommand progConf = CommandUI
       , optionDistPref
         buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
       ]
-      ++ buildOptions progConf showOrParseArgs
+      ++ buildOptions progDb showOrParseArgs
   }
 
 buildOptions :: ProgramDb -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
-buildOptions progConf showOrParseArgs =
+buildOptions progDb showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
 
@@ -1611,13 +1611,13 @@ buildOptions progConf showOrParseArgs =
       trueArg
   ]
 
-  ++ programConfigurationPaths progConf showOrParseArgs
+  ++ programConfigurationPaths progDb showOrParseArgs
        buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
-  ++ programConfigurationOption progConf showOrParseArgs
+  ++ programConfigurationOption progDb showOrParseArgs
        buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
 
-  ++ programConfigurationOptions progConf showOrParseArgs
+  ++ programConfigurationOptions progDb showOrParseArgs
        buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
@@ -1660,7 +1660,7 @@ instance Semigroup ReplFlags where
   (<>) = gmappend
 
 replCommand :: ProgramDb -> CommandUI ReplFlags
-replCommand progConf = CommandUI
+replCommand progDb = CommandUI
   { commandName         = "repl"
   , commandSynopsis     =
       "Open an interpreter session for the given component."
@@ -1708,13 +1708,13 @@ replCommand progConf = CommandUI
           replDistPref (\d flags -> flags { replDistPref = d })
           showOrParseArgs
 
-      : programConfigurationPaths   progConf showOrParseArgs
+      : programConfigurationPaths   progDb showOrParseArgs
           replProgramPaths (\v flags -> flags { replProgramPaths = v})
 
-     ++ programConfigurationOption progConf showOrParseArgs
+     ++ programConfigurationOption progDb showOrParseArgs
           replProgramArgs (\v flags -> flags { replProgramArgs = v})
 
-     ++ programConfigurationOptions progConf showOrParseArgs
+     ++ programConfigurationOptions progDb showOrParseArgs
           replProgramArgs (\v flags -> flags { replProgramArgs = v})
 
      ++ case showOrParseArgs of
@@ -1941,14 +1941,14 @@ instance Semigroup BenchmarkFlags where
 -- ------------------------------------------------------------
 
 programFlagsDescription :: ProgramDb -> String
-programFlagsDescription progConf =
+programFlagsDescription progDb =
      "The flags --with-PROG and --PROG-option(s) can be used with"
   ++ " the following programs:"
   ++ (concatMap (\line -> "\n  " ++ unwords line) . wrapLine 77 . sort)
-     [ programName prog | (prog, _) <- knownPrograms progConf ]
+     [ programName prog | (prog, _) <- knownPrograms progDb ]
   ++ "\n"
 
--- | For each known program @PROG@ in 'progConf', produce a @with-PROG@
+-- | For each known program @PROG@ in 'progDb', produce a @with-PROG@
 -- 'OptionField'.
 programConfigurationPaths
   :: ProgramDb
@@ -1956,8 +1956,8 @@ programConfigurationPaths
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationPaths progConf showOrParseArgs get set =
-  programConfigurationPaths' ("with-" ++) progConf showOrParseArgs get set
+programConfigurationPaths progDb showOrParseArgs get set =
+  programConfigurationPaths' ("with-" ++) progDb showOrParseArgs get set
 
 -- | Like 'programConfigurationPaths', but allows to customise the option name.
 programConfigurationPaths'
@@ -1967,12 +1967,12 @@ programConfigurationPaths'
   -> (flags -> [(String, FilePath)])
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationPaths' mkName progConf showOrParseArgs get set =
+programConfigurationPaths' mkName progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [withProgramPath "PROG"]
     ParseArgs -> map (withProgramPath . programName . fst)
-                 (knownPrograms progConf)
+                 (knownPrograms progDb)
   where
     withProgramPath prog =
       option "" [mkName prog]
@@ -1981,7 +1981,7 @@ programConfigurationPaths' mkName progConf showOrParseArgs get set =
         (reqArg' "PATH" (\path -> [(prog, path)])
           (\progPaths -> [ path | (prog', path) <- progPaths, prog==prog' ]))
 
--- | For each known program @PROG@ in 'progConf', produce a @PROG-option@
+-- | For each known program @PROG@ in 'progDb', produce a @PROG-option@
 -- 'OptionField'.
 programConfigurationOption
   :: ProgramDb
@@ -1989,12 +1989,12 @@ programConfigurationOption
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationOption progConf showOrParseArgs get set =
+programConfigurationOption progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOption "PROG"]
     ParseArgs -> map (programOption  . programName . fst)
-                 (knownPrograms progConf)
+                 (knownPrograms progDb)
   where
     programOption prog =
       option "" [prog ++ "-option"]
@@ -2005,7 +2005,7 @@ programConfigurationOption progConf showOrParseArgs get set =
            (\progArgs -> concat [ args
                                 | (prog', args) <- progArgs, prog==prog' ]))
 
--- | For each known program @PROG@ in 'progConf', produce a @PROG-options@
+-- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
 programConfigurationOptions
   :: ProgramDb
@@ -2013,12 +2013,12 @@ programConfigurationOptions
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationOptions progConf showOrParseArgs get set =
+programConfigurationOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOptions  "PROG"]
     ParseArgs -> map (programOptions . programName . fst)
-                 (knownPrograms progConf)
+                 (knownPrograms progDb)
   where
     programOptions prog =
       option "" [prog ++ "-options"]

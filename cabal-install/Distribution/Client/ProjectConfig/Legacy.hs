@@ -1157,7 +1157,7 @@ programLocationsSectionDescr =
     }
 
 
--- | For each known program @PROG@ in 'progConf', produce a @PROG-options@
+-- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
 programConfigurationOptions
   :: ProgramDb
@@ -1165,12 +1165,12 @@ programConfigurationOptions
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationOptions progConf showOrParseArgs get set =
+programConfigurationOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOptions  "PROG"]
     ParseArgs -> map (programOptions . programName . fst)
-                 (knownPrograms progConf)
+                 (knownPrograms progDb)
   where
     programOptions prog =
       option "" [prog ++ "-options"]

@@ -22,8 +22,8 @@ import Distribution.Version
 import System.FilePath             (takeBaseName)
 
 runStrip :: Verbosity -> ProgramDb -> FilePath -> [String] -> IO ()
-runStrip verbosity progConf path args =
-  case lookupProgram stripProgram progConf of
+runStrip verbosity progDb path args =
+  case lookupProgram stripProgram progDb of
     Just strip -> runProgram verbosity strip (path:args)
     Nothing    -> unless (buildOS == Windows) $
                   -- Don't bother warning on windows, we don't expect them to

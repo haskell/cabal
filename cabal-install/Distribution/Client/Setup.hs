@@ -559,7 +559,7 @@ testCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (Cabal.buildOptions progDb showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -568,8 +568,8 @@ testCommand = parent {
     get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
     get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
-    parent   = Cabal.testCommand
-    progConf = defaultProgramDb
+    parent = Cabal.testCommand
+    progDb = defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Bench command
@@ -584,7 +584,7 @@ benchmarkCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (Cabal.buildOptions progDb showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -593,8 +593,8 @@ benchmarkCommand = parent {
     get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
     get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
-    parent   = Cabal.benchmarkCommand
-    progConf = defaultProgramDb
+    parent = Cabal.benchmarkCommand
+    progDb = defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Fetch command
