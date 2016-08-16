@@ -756,7 +756,7 @@ installExe verbosity lbi installDirs buildPref
   let exeFileName = exeName exe
       fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
       installBinary dest = do
-        rawSystemProgramConf verbosity ghcjsProgram (withPrograms lbi) $
+        runDbProgram verbosity ghcjsProgram (withPrograms lbi) $
           [ "--install-executable"
           , buildPref </> exeName exe </> exeFileName
           , "-o", dest

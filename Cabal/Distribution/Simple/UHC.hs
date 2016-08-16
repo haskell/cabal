@@ -171,7 +171,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
-  let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
+  let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- set package name
                    ["--pkg-build=" ++ display (packageId pkg_descr)]
                    -- common flags lib/exe
@@ -193,7 +193,7 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildExe verbosity _pkg_descr lbi exe clbi = do
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
-  let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
+  let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- common flags lib/exe
                    constructUHCCmdLine userPkgDir systemPkgDir
                                        lbi (buildInfo exe) clbi

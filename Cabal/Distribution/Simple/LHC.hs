@@ -291,7 +291,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let lib_name = componentUnitId clbi
       pref = componentBuildDir lbi clbi
       pkgid = packageId pkg_descr
-      runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
+      runGhcProg = runDbProgram verbosity lhcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifSharedLib = when (withSharedLib lbi)
@@ -426,11 +426,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
             -- output goes to <ldLibName>.tmp, and any existing file
             -- named <ldLibName> is included when linking. The
             -- output is renamed to <lib_name>.
-          rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
+          runDbProgram verbosity ldProgram (withPrograms lbi)
             (args ++ if exists then [ldLibName] else [])
           renameFile (ldLibName <.> "tmp") ldLibName
 
-        runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
+        runAr = runDbProgram verbosity arProgram (withPrograms lbi)
 
          --TODO: discover this at configure time or runtime on Unix
          -- The value is 32k on Windows and POSIX specifies a minimum of 4k
@@ -457,7 +457,7 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildExe verbosity _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
   let pref = buildDir lbi
-      runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
+      runGhcProg = runDbProgram verbosity lhcProgram (withPrograms lbi)
 
   exeBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfExe lbi) (buildInfo exe)
@@ -742,7 +742,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     ifGHCi    = when (hasLib && withGHCiLib    lbi)
     ifShared  = when (hasLib && withSharedLib  lbi)
 
-    runLhc    = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
+    runLhc    = runDbProgram verbosity lhcProgram (withPrograms lbi)
 
 -- -----------------------------------------------------------------------------
 -- Registering

@@ -302,7 +302,7 @@ ppGreenCard _ lbi _
     = PreProcessor {
         platformIndependent = False,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-          rawSystemProgramConf verbosity greencardProgram (withPrograms lbi)
+          runDbProgram verbosity greencardProgram (withPrograms lbi)
               (["-tffi", "-o" ++ outFile, inFile])
       }
 
@@ -372,7 +372,7 @@ ppHsc2hs bi lbi clbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $
+      runDbProgram verbosity hsc2hsProgram (withPrograms lbi) $
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
@@ -605,7 +605,7 @@ standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity prog (withPrograms lbi)
+      runDbProgram verbosity prog (withPrograms lbi)
                            (args ++ ["-o", outFile, inFile])
   }
 
