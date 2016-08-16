@@ -156,7 +156,7 @@ defaultMainHelper hooks args = topHandler $
     printVersion        = putStrLn $ "Cabal library version "
                                   ++ display cabalVersion
 
-    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     commands =
       [configureCommand progs `commandAddAction` \fs as ->
                                                  configureAction    hooks fs as >> return ()

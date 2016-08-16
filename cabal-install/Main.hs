@@ -148,7 +148,7 @@ import Distribution.Simple.Configure
          , ConfigStateFileError(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Program (defaultProgramConfiguration
+import Distribution.Simple.Program (defaultProgramDb
                                    ,configureAllKnownPrograms
                                    ,simpleProgramInvocation
                                    ,getProgramInvocationOutput)
@@ -382,7 +382,7 @@ build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
                (Cabal.buildCommand progConf) mkBuildFlags extraArgs
   where
-    progConf     = defaultProgramConfiguration
+    progConf     = defaultProgramDb
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
     mkBuildFlags version = filterBuildFlags version config buildFlags'
@@ -432,7 +432,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
         reconfigure verbosity (replDistPref replFlags)
                     mempty [] globalFlags noAddSource NoFlag
                     (const Nothing)
-      let progConf     = defaultProgramConfiguration
+      let progConf     = defaultProgramDb
           setupOptions = defaultSetupScriptOptions
             { useCabalVersion = orLaterVersion $ Version [1,18,0] []
             , useDistPref     = distPref

@@ -18,7 +18,7 @@
 -- state component of it.
 --
 -- The module also defines all the known built-in 'Program's and the
--- 'defaultProgramConfiguration' which contains them all.
+-- 'defaultProgramDb' which contains them all.
 --
 -- One nice thing about using it is that any program that is
 -- registered with Cabal will get some \"configure\" and \".cabal\"

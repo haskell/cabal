@@ -1521,7 +1521,7 @@ configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            programsConfig
                                            (fromFlag (configVerbosity cfg))
   where
-    programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
+    programsConfig = mkProgramsConfig cfg defaultProgramDb
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                  -> ProgramDb -> Verbosity

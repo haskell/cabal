@@ -15,7 +15,7 @@ import Distribution.Simple.Configure
     , interpretPackageDbFlags, configCompilerEx )
 import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack, CompilerFlavor(GHC))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.Program (defaultProgramDb)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
@@ -116,7 +116,7 @@ main = do
                         -- NB: if we accept full ConfigFlags parser then
                         -- should use (mkProgramsConfig cfg (configPrograms cfg))
                         -- instead.
-                        defaultProgramConfiguration
+                        defaultProgramDb
                         (lessVerbose verbosity)
                 return programsConfig
 
@@ -130,7 +130,7 @@ main = do
                 (_comp, _compPlatform, with_programs)
                     <- configCompilerEx
                         (Just GHC) mb_with_ghc_path mb_with_ghc_pkg_path
-                        defaultProgramConfiguration
+                        defaultProgramDb
                         (lessVerbose verbosity)
                 return with_programs
 

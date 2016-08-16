@@ -115,7 +115,7 @@ defaultMainHelper args =
     printVersion        = putStrLn $ "Cabal library version "
                                   ++ display cabalVersion
 
-    progs = defaultProgramConfiguration
+    progs = defaultProgramDb
     commands =
       [configureCommand progs `commandAddAction` configureAction
       ,buildCommand     progs `commandAddAction` buildAction

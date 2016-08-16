@@ -72,7 +72,7 @@ import Distribution.Solver.Types.Settings
 
 import Distribution.Simple.Compiler (PackageDB)
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration )
+         ( defaultProgramDb )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
@@ -345,7 +345,7 @@ configureCommand = c
        ++ "    with some package-specific flag.\n"
   }
  where
-  c = Cabal.configureCommand defaultProgramConfiguration
+  c = Cabal.configureCommand defaultProgramDb
 
 configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
@@ -518,7 +518,7 @@ buildCommand = parent {
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-    parent = Cabal.buildCommand defaultProgramConfiguration
+    parent = Cabal.buildCommand defaultProgramDb
 
 instance Monoid BuildExFlags where
   mempty = gmempty
@@ -544,7 +544,7 @@ replCommand = parent {
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-    parent = Cabal.replCommand defaultProgramConfiguration
+    parent = Cabal.replCommand defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Test command
@@ -569,7 +569,7 @@ testCommand = parent {
     get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
     parent   = Cabal.testCommand
-    progConf = defaultProgramConfiguration
+    progConf = defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Bench command
@@ -594,7 +594,7 @@ benchmarkCommand = parent {
     get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
     parent   = Cabal.benchmarkCommand
-    progConf = defaultProgramConfiguration
+    progConf = defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Fetch command
@@ -892,7 +892,7 @@ runCommand = CommandUI {
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-    parent = Cabal.buildCommand defaultProgramConfiguration
+    parent = Cabal.buildCommand defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Report flags
@@ -1255,7 +1255,7 @@ installCommand = CommandUI {
      ++ " continue working as long as bindir and datadir are left untouched.",
   commandNotes        = Just $ \pname ->
         ( case commandNotes
-               $ Cabal.configureCommand defaultProgramConfiguration
+               $ Cabal.configureCommand defaultProgramDb
           of Just desc -> desc pname ++ "\n"
              Nothing   -> ""
         )
