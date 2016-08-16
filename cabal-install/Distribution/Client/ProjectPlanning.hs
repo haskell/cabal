@@ -2168,9 +2168,13 @@ setupHsConfigureFlags (ReadyPackage pkg_or_comp)
                                     case pkg_or_comp of
                                         ElabPackage _ -> CD.nonSetupDeps pkgDependencies
                                         ElabComponent comp -> elabComponentDependencies comp ]
-    -- TODO: don't need to provide these when pkgComponent is Just
-    configConstraints         = [ thisPackageVersion srcid
-                                | ConfiguredId srcid _uid <- CD.nonSetupDeps pkgDependencies ]
+    configConstraints         =
+        case pkg_or_comp of
+            ElabPackage _ ->
+                [ thisPackageVersion srcid
+                | ConfiguredId srcid _uid <- CD.nonSetupDeps pkgDependencies ]
+            ElabComponent _ -> []
+
 
     -- explicitly clear, then our package db stack
     -- TODO: [required eventually] have to do this differently for older Cabal versions
