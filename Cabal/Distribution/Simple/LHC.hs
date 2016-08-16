@@ -226,7 +226,7 @@ getInstalledPackages' :: ConfiguredProgram -> Verbosity
 getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
   sequenceA
-    [ do str <- rawSystemProgramStdoutConf verbosity lhcPkgProgram conf
+    [ do str <- getDbProgramOutput verbosity lhcPkgProgram conf
                   ["dump", packageDbGhcPkgFlag packagedb]
            `catchExit` \_ -> die $ "ghc-pkg dump failed"
          case parsePackages str of

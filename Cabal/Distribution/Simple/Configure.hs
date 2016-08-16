@@ -1432,7 +1432,7 @@ configurePkgconfigPackages verbosity pkg_descr conf
 
   where
     allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
-    pkgconfig = rawSystemProgramStdoutConf (lessVerbose verbosity)
+    pkgconfig = getDbProgramOutput (lessVerbose verbosity)
                   pkgConfigProgram conf
 
     requirePkg dep@(Dependency (PackageName pkg) range) = do
@@ -1493,8 +1493,8 @@ configurePkgconfigPackages verbosity pkg_descr conf
 -- and similar package-specific programs like mysql-config, freealut-config etc.
 -- For example:
 --
--- > ccflags <- rawSystemProgramStdoutConf verbosity prog conf ["--cflags"]
--- > ldflags <- rawSystemProgramStdoutConf verbosity prog conf ["--libs"]
+-- > ccflags <- getDbProgramOutput verbosity prog progdb ["--cflags"]
+-- > ldflags <- getDbProgramOutput verbosity prog progdb ["--libs"]
 -- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags))
 --
 ccLdOptionsBuildInfo :: [String] -> [String] -> BuildInfo
@@ -2139,7 +2139,7 @@ checkForeignDeps pkg lbi verbosity = do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd
-                _ <- rawSystemProgramStdoutConf verbosity
+                _ <- getDbProgramOutput verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
            `catchIO`   (\_ -> return False)

@@ -90,7 +90,7 @@ getInstalledPackages verbosity _packageDBs conf = do
    -- jhc --list-libraries lists all available libraries.
    -- How shall I find out, whether they are global or local
    -- without checking all files and locations?
-   str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
+   str <- getDbProgramOutput verbosity jhcProgram conf ["--list-libraries"]
    let pCheck :: [(a, String)] -> [a]
        pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
    let parseLine ln =

@@ -110,7 +110,7 @@ getInstalledPackages verbosity comp packagedbs conf = do
 
 getGlobalPackageDir :: Verbosity -> ProgramConfiguration -> IO FilePath
 getGlobalPackageDir verbosity conf = do
-    output <- rawSystemProgramStdoutConf verbosity
+    output <- getDbProgramOutput verbosity
                 uhcProgram conf ["--meta-pkgdir-system"]
     -- call to "lines" necessary, because pkgdir contains an extra newline at the end
     let [pkgdir] = lines output

@@ -236,7 +236,7 @@ getInstalledPackages' verbosity packagedbs conf =
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdoutConf verbosity ghcjsProgram
+     getDbProgramOutput verbosity ghcjsProgram
      (withPrograms lbi) ["--print-libdir"]
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath

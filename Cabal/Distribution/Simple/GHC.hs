@@ -322,7 +322,7 @@ toPackageIndex verbosity pkgss conf = do
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdoutConf verbosity ghcProgram
+     getDbProgramOutput verbosity ghcProgram
      (withPrograms lbi) ["--print-libdir"]
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
@@ -406,7 +406,7 @@ getInstalledPackages' verbosity packagedbs conf
     Just ghcVersion = programVersion ghcProg
 
 getInstalledPackages' verbosity packagedbs conf = do
-    str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf ["list"]
+    str <- getDbProgramOutput verbosity ghcPkgProgram conf ["list"]
     let pkgFiles = [ init line | line <- lines str, last line == ':' ]
         dbFile packagedb = case (packagedb, pkgFiles) of
           (GlobalPackageDB, global:_)      -> return $ Just global
