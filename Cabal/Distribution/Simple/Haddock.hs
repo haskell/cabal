@@ -153,7 +153,7 @@ haddock pkg_descr lbi suffixes flags' = do
           fromFlagOrDefault ForDevelopment (haddockForHackage flags')
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
-    (confHaddock, version, _) <-
+    (haddockProg, version, _) <-
       requireProgramVersion verbosity haddockProgram
         (orLaterVersion (Version [2,0] [])) (withPrograms lbi)
 
@@ -162,7 +162,7 @@ haddock pkg_descr lbi suffixes flags' = do
            && version < Version [2,2] []) $
          die "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
-    haddockGhcVersionStr <- rawSystemProgramStdout verbosity confHaddock
+    haddockGhcVersionStr <- rawSystemProgramStdout verbosity haddockProg
                               ["--ghc-version"]
     case (simpleParse haddockGhcVersionStr, compilerCompatVersion GHC comp) of
       (Nothing, _) -> die "Could not get GHC version from Haddock"
@@ -199,7 +199,7 @@ haddock pkg_descr lbi suffixes flags' = do
                            version
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp platform
-                  confHaddock exeArgs'
+                  haddockProg exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
@@ -211,7 +211,7 @@ haddock pkg_descr lbi suffixes flags' = do
               libArgs <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
                          version
               let libArgs' = commonArgs `mappend` libArgs
-              runHaddock verbosity tmpFileOpts comp platform confHaddock libArgs'
+              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe component
         CTest  _ -> when (flag haddockTestSuites)  $ doExe component
         CBench _ -> when (flag haddockBenchmarks)  $ doExe component
@@ -428,13 +428,13 @@ runHaddock :: Verbosity
               -> ConfiguredProgram
               -> HaddockArgs
               -> IO ()
-runHaddock verbosity tmpFileOpts comp platform confHaddock args = do
+runHaddock verbosity tmpFileOpts comp platform haddockProg args = do
   let haddockVersion = fromMaybe (error "unable to determine haddock version")
-                       (programVersion confHaddock)
+                       (programVersion haddockProg)
   renderArgs verbosity tmpFileOpts haddockVersion comp platform args $
     \(flags,result)-> do
 
-      rawSystemProgram verbosity confHaddock flags
+      runProgram verbosity haddockProg flags
 
       notice verbosity $ "Documentation created: " ++ result
 
@@ -695,13 +695,13 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
 
          case stylesheet of -- copy the CSS file
            Nothing | programVersion prog >= Just (Version [1,9] []) ->
-                       rawSystemProgram verbosity prog
+                       runProgram verbosity prog
                           ["-print-css", "-o" ++ outputDir </> "hscolour.css"]
                    | otherwise -> return ()
            Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
 
          for_ moduleFiles $ \(m, inFile) ->
-             rawSystemProgram verbosity prog
+             runProgram verbosity prog
                     ["-css", "-anchor", "-o" ++ outFile m, inFile]
         where
           outFile m = outputDir </>

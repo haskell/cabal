@@ -24,7 +24,7 @@ import System.FilePath             (takeBaseName)
 runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()
 runStrip verbosity progConf path args =
   case lookupProgram stripProgram progConf of
-    Just strip -> rawSystemProgram verbosity strip (path:args)
+    Just strip -> runProgram verbosity strip (path:args)
     Nothing    -> unless (buildOS == Windows) $
                   -- Don't bother warning on windows, we don't expect them to
                   -- have the strip program anyway.

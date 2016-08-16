@@ -161,7 +161,7 @@ configureToolchain lhcProg =
              withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity lhcProg ["-c", testcfile,
+               runProgram verbosity lhcProg ["-c", testcfile,
                                                    "-o", testofile]
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
@@ -684,7 +684,7 @@ installExe verbosity lbi installDirs buildPref (progprefix, progsuffix) _pkg exe
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
   case lookupProgram stripProgram (withPrograms lbi) of
-    Just strip -> rawSystemProgram verbosity strip args
+    Just strip -> runProgram verbosity strip args
     Nothing    -> unless (buildOS == Windows) $
                   -- Don't bother warning on windows, we don't expect them to
                   -- have the strip program anyway.

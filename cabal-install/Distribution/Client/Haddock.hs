@@ -24,7 +24,7 @@ import Distribution.Package
          ( packageVersion )
 import Distribution.Simple.Haddock (haddockPackagePaths)
 import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
-                                   , rawSystemProgram, requireProgramVersion)
+                                   , runProgram, requireProgramVersion)
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PackageIndex
@@ -57,7 +57,7 @@ regenerateHaddockIndex verbosity pkgs conf index = do
                     , "--title=Haskell modules on this system" ]
                  ++ [ "--read-interface=" ++ html ++ "," ++ interface
                     | (interface, html) <- paths' ]
-        rawSystemProgram verbosity confHaddock flags
+        runProgram verbosity confHaddock flags
         renameFile (tempDir </> "index.html") (tempDir </> destFile)
         installDirectoryContents verbosity tempDir destDir
 

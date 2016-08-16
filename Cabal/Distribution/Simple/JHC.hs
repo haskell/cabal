@@ -120,7 +120,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       pfile = buildDir lbi </> "jhc-pkg.conf"
       hlfile= buildDir lbi </> (pkgid ++ ".hl")
   writeFileAtomic pfile . BS.Char8.pack $ jhcPkgConf pkg_descr
-  rawSystemProgram verbosity jhcProg $
+  runProgram verbosity jhcProg $
      ["--build-hl="++pfile, "-o", hlfile] ++
      args ++ map display (libModules lib)
 
@@ -133,7 +133,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
   let exeBi = buildInfo exe
   let out   = buildDir lbi </> exeName exe
   let args  = constructJHCCmdLine lbi exeBi clbi (buildDir lbi) verbosity
-  rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
+  runProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                     -> FilePath -> Verbosity -> [String]

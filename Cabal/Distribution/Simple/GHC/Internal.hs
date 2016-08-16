@@ -177,8 +177,8 @@ configureToolchain _implInfo ghcProg ghcInfo =
              withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                                   "-o", testofile]
+               runProgram verbosity ghcProg ["-c", testcfile,
+                                             "-o", testofile]
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
