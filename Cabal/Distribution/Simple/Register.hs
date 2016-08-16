@@ -307,17 +307,17 @@ deletePackageDB dbPath = do
 -- provided command-line arguments to it.
 invokeHcPkg :: Verbosity -> Compiler -> ProgramDb -> PackageDBStack
                 -> [String] -> IO ()
-invokeHcPkg verbosity comp conf dbStack extraArgs =
-  withHcPkg "invokeHcPkg" comp conf
+invokeHcPkg verbosity comp progdb dbStack extraArgs =
+  withHcPkg "invokeHcPkg" comp progdb
     (\hpi -> HcPkg.invoke hpi verbosity dbStack extraArgs)
 
 withHcPkg :: String -> Compiler -> ProgramDb
           -> (HcPkg.HcPkgInfo -> IO a) -> IO a
-withHcPkg name comp conf f =
+withHcPkg name comp progdb f =
   case compilerFlavor comp of
-    GHC   -> f (GHC.hcPkgInfo conf)
-    GHCJS -> f (GHCJS.hcPkgInfo conf)
-    LHC   -> f (LHC.hcPkgInfo conf)
+    GHC   -> f (GHC.hcPkgInfo progdb)
+    GHCJS -> f (GHCJS.hcPkgInfo progdb)
+    LHC   -> f (LHC.hcPkgInfo progdb)
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
 

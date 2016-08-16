@@ -15,7 +15,7 @@
 -- configured and not-yet configured programs. It is the parameter to lots of
 -- actions elsewhere in Cabal that need to look up and run programs. If we had
 -- a Cabal monad, the 'ProgramDb' would probably be a reader or
--- state component of it. 
+-- state component of it.
 --
 -- The module also defines all the known built-in 'Program's and the
 -- 'defaultProgramConfiguration' which contains them all.
