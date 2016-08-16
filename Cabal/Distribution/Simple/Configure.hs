@@ -373,11 +373,11 @@ configure (pkg_descr0', pbi) cfg = do
 
     -- comp:            the compiler we're building with
     -- compPlatform:    the platform we're building for
-    -- programsConfig:  location and args of all programs we're
+    -- programDb:  location and args of all programs we're
     --                  building with
-    (comp           :: Compiler,
-     compPlatform   :: Platform,
-     programsConfig :: ProgramDb)
+    (comp         :: Compiler,
+     compPlatform :: Platform,
+     programDb    :: ProgramDb)
         <- configCompilerEx
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
@@ -388,7 +388,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- The InstalledPackageIndex of all installed packages
     installedPackageSet :: InstalledPackageIndex
         <- getInstalledPackages (lessVerbose verbosity) comp
-                                  packageDbs programsConfig
+                                  packageDbs programDb
 
     -- The set of package names which are "shadowed" by internal
     -- packages, and which component they map to
@@ -606,12 +606,12 @@ configure (pkg_descr0', pbi) cfg = do
                  && packageVersion pkg_descr `withinRange` reqVer
           , not isInternal ]
 
-    programsConfig' <-
-          configureAllKnownPrograms (lessVerbose verbosity) programsConfig
+    programDb' <-
+          configureAllKnownPrograms (lessVerbose verbosity) programDb
       >>= configureRequiredPrograms verbosity requiredBuildTools
 
-    (pkg_descr', programsConfig'') <-
-      configurePkgconfigPackages verbosity pkg_descr programsConfig'
+    (pkg_descr', programDb'') <-
+      configurePkgconfigPackages verbosity pkg_descr programDb'
 
     -- Compute internal component graph
     --
@@ -713,7 +713,7 @@ configure (pkg_descr0', pbi) cfg = do
                 installedPkgs       = packageDependsIndex,
                 pkgDescrFile        = Nothing,
                 localPkgDescr       = pkg_descr',
-                withPrograms        = programsConfig'',
+                withPrograms        = programDb'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
                 withSharedLib       = withSharedLib_,
                 withDynExe          = withDynExe_,
@@ -770,7 +770,7 @@ configure (pkg_descr0', pbi) cfg = do
     dirinfo "Configuration files" (sysconfdir dirs) (sysconfdir relative)
 
     sequence_ [ reportProgram verbosity prog configuredProg
-              | (prog, configuredProg) <- knownPrograms programsConfig'' ]
+              | (prog, configuredProg) <- knownPrograms programDb'' ]
 
     return lbi
 
@@ -778,15 +778,15 @@ configure (pkg_descr0', pbi) cfg = do
       verbosity = fromFlag (configVerbosity cfg)
 
 mkProgramsConfig :: ConfigFlags -> ProgramDb -> ProgramDb
-mkProgramsConfig cfg initialProgramsConfig = programsConfig
+mkProgramsConfig cfg initialProgramsConfig = programDb
   where
-    programsConfig = userSpecifyArgss (configProgramArgs cfg)
-                   . userSpecifyPaths (configProgramPaths cfg)
-                   . setProgramSearchPath searchpath
-                   $ initialProgramsConfig
-    searchpath     = getProgramSearchPath (initialProgramsConfig)
-                  ++ map ProgramSearchPathDir
-                     (fromNubList $ configProgramPathExtra cfg)
+    programDb  = userSpecifyArgss (configProgramArgs cfg)
+                 . userSpecifyPaths (configProgramPaths cfg)
+                 . setProgramSearchPath searchpath
+                 $ initialProgramsConfig
+    searchpath = getProgramSearchPath (initialProgramsConfig)
+                 ++ map ProgramSearchPathDir
+                 (fromNubList $ configProgramPathExtra cfg)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
@@ -1518,17 +1518,17 @@ configCompilerAuxEx :: ConfigFlags
 configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            (flagToMaybe $ configHcPath cfg)
                                            (flagToMaybe $ configHcPkg cfg)
-                                           programsConfig
+                                           programDb
                                            (fromFlag (configVerbosity cfg))
   where
-    programsConfig = mkProgramsConfig cfg defaultProgramDb
+    programDb = mkProgramsConfig cfg defaultProgramDb
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                  -> ProgramDb -> Verbosity
                  -> IO (Compiler, Platform, ProgramDb)
 configCompilerEx Nothing _ _ _ _ = die "Unknown compiler"
 configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
-  (comp, maybePlatform, programsConfig) <- case hcFlavor of
+  (comp, maybePlatform, programDb) <- case hcFlavor of
     GHC   -> GHC.configure  verbosity hcPath hcPkg conf
     GHCJS -> GHCJS.configure verbosity hcPath hcPkg conf
     JHC   -> JHC.configure  verbosity hcPath hcPkg conf
@@ -1537,7 +1537,7 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
     UHC   -> UHC.configure  verbosity hcPath hcPkg conf
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg conf
     _    -> die "Unknown compiler"
-  return (comp, fromMaybe buildPlatform maybePlatform, programsConfig)
+  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
 -- Ideally we would like to not have separate configCompiler* and
 -- configCompiler*Ex sets of functions, but there are many custom setup scripts

@@ -110,7 +110,7 @@ main = do
                 return (withPrograms lbi)
             _ -> do
                 putStrLn "(Re)configuring test suite (ignoring LBI)"
-                (_comp, _compPlatform, programsConfig)
+                (_comp, _compPlatform, programDb)
                     <- configCompilerEx
                         (Just GHC) mb_ghc_path mb_ghc_pkg_path
                         -- NB: if we accept full ConfigFlags parser then
@@ -118,7 +118,7 @@ main = do
                         -- instead.
                         defaultProgramDb
                         (lessVerbose verbosity)
-                return programsConfig
+                return programDb
 
     mb_with_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
     mb_with_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_PKG"
