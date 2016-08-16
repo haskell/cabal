@@ -185,7 +185,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                        (map display (libModules lib))
 
   runUhcProg uhcArgs
-  
+
   return ()
 
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
