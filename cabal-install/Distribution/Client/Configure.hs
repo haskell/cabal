@@ -386,8 +386,13 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,
-      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas),
+      -- NB: if the user explicitly specified
+      -- --enable-tests/--enable-benchmarks, always respect it.
+      -- (But if they didn't, let solver decide.)
+      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas)
+                                    `mappend` configBenchmarks configFlags,
       configTests              = toFlag (TestStanzas `elem` stanzas)
+                                    `mappend` configTests configFlags
     }
 
     pkg = case finalizePD flags (enableStanzas stanzas)

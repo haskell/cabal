@@ -97,6 +97,10 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
+  tests/IntegrationTests/regression/t2755.sh
+  tests/IntegrationTests/regression/t2755/A.hs
+  tests/IntegrationTests/regression/t2755/Setup.hs
+  tests/IntegrationTests/regression/t2755/test-t2755.cabal
   tests/IntegrationTests/regression/t3199.sh
   tests/IntegrationTests/regression/t3199/Main.hs
   tests/IntegrationTests/regression/t3199/Setup.hs
