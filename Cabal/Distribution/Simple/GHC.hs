@@ -328,14 +328,14 @@ getLibDir verbosity lbi =
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
+     getProgramOutput verbosity ghcProg ["--print-libdir"]
 
 
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
+     getProgramOutput verbosity ghcProg ["--print-global-package-db"]
 
 -- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath

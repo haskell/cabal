@@ -242,13 +242,13 @@ getLibDir verbosity lbi =
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcjsProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcjsProg ["--print-libdir"]
+     getProgramOutput verbosity ghcjsProg ["--print-libdir"]
 
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcjsProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcjsProg ["--print-global-package-db"]
+     getProgramOutput verbosity ghcjsProg ["--print-global-package-db"]
 
 toJSLibName :: String -> String
 toJSLibName lib

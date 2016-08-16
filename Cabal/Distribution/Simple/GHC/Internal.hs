@@ -182,7 +182,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
-                   _ <- rawSystemProgramStdout verbosity ldProg
+                   _ <- getProgramOutput verbosity ldProg
                      ["-x", "-r", testofile, "-o", testofile']
                    return True
                  `catchIO`   (\_ -> return False)

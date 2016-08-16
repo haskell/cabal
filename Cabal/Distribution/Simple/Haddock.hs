@@ -162,7 +162,7 @@ haddock pkg_descr lbi suffixes flags' = do
            && version < Version [2,2] []) $
          die "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
-    haddockGhcVersionStr <- rawSystemProgramStdout verbosity haddockProg
+    haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
                               ["--ghc-version"]
     case (simpleParse haddockGhcVersionStr, compilerCompatVersion GHC comp) of
       (Nothing, _) -> die "Could not get GHC version from Haddock"
