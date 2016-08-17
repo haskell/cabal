@@ -190,7 +190,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
-           let modules = filterAutogenModules pkg_descr bi $ (m:(otherModules bi))
+           let modules = filterAutogenModules pkg_descr bi (m:(otherModules bi))
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> do
