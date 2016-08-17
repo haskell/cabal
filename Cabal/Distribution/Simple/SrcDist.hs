@@ -92,6 +92,7 @@ sdist pkg mb_lbi flags mkTmpDir pps =
       let pkg' | isSnapshot  = snapshotPackage date pkg
                | otherwise = pkg
 
+      -- Just the directory if flag present or tarball otherwise.
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
           sdistSourcesDirectory targetDir pkg' mb_lbi verbosity isSnapshot pps
