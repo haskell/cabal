@@ -114,8 +114,8 @@ sdist pkg mb_lbi flags mkTmpDir pps =
 
 -- |Create a file with the path of each source line by line.
 sdistSourcesList :: FilePath           -- ^ output file
-                 -> PackageDescription -- ^information from the tarball
-                 -> Verbosity            -- ^ verbosity
+                 -> PackageDescription -- ^ information from the tarball
+                 -> Verbosity          -- ^ verbosity
                  -> [PPSuffixHandler]  -- ^ extra preprocessors
                  -> IO ()
 sdistSourcesList path pkg verbosity pps =
