@@ -76,7 +76,10 @@ sdist :: PackageDescription     -- ^information from the tarball
 sdist pkg mb_lbi flags mkTmpDir pps =
   case (sDistListSources flags) of
     -- When given --list-sources, just output the list of sources to a file.
-    Flag path -> sdistSourcesList path pkg verbosity pps
+    Flag path -> do
+      sdistSourcesList path pkg verbosity pps
+      notice verbosity $
+        "List of package sources written to file '" ++ path ++ "'"
     -- Else create directory or tarball.
     NoFlag    -> do
       -- do some QA
@@ -116,8 +119,6 @@ sdistSourcesList path pkg verbosity pps =
     (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
     traverse_ (hPutStrLn outHandle) ordinary
     traverse_ (hPutStrLn outHandle) maybeExecutable
-    notice verbosity $
-      "List of package sources written to file '" ++ path ++ "'"
 
 -- |Create a directory with the all source files.
 sdistSourcesDirectory :: FilePath             -- ^ output directory
