@@ -1463,8 +1463,14 @@ for these fields.
 :   A list of header files to be included in any compilations via C.
     This field applies to both header files that are already installed
     on the system and to those coming with the package to be installed.
+    The former files should be found in absolute paths, while the latter files
+    should be found in paths relative to the top of the source tree or
+    relative to one of the directories listed in `include-dirs`.
+
     These files typically contain function prototypes for foreign
-    imports used by the package.
+    imports used by the package. This is in contrast to `install-includes`,
+    which lists header files that are intended to be exposed to other packages
+    that transitively depend on this library.
 
 `install-includes:` _filename list_
 :   A list of header files from this package to be installed into
@@ -1476,13 +1482,29 @@ for these fields.
     `install-includes` is typically used to name header files that
     contain prototypes for foreign imports used in Haskell code in this
     package, for which the C implementations are also provided with the
-    package.  Note that to include them when compiling the package
-    itself, they need to be listed in the `includes:` field as well.
+    package. For example, here is a `.cabal` file for a hypothetical
+    `bindings-clib` package that bundles the C source code for `clib`:
+
+    ~~~~~~~~~~~~~~~~
+    include-dirs:     cbits
+    c-sources:        clib.c
+    install-includes: clib.h
+    ~~~~~~~~~~~~~~~~
+
+    Now any package that depends (directly or transitively) on the
+    `bindings-clib` library can use `clib.h`.
+
+    Note that in order for files listed in `install-includes` to be usable
+    when compiling the package itself, they need to be listed in the
+    `includes:` field as well.
 
 `include-dirs:` _directory list_
 :   A list of directories to search for header files, when preprocessing
     with `c2hs`, `hsc2hs`, `cpphs` or the C preprocessor, and
-    also when compiling via C.
+    also when compiling via C. Directories can be absolute paths (e.g., for
+    system directories) or paths that are relative to the top of the source
+    tree. Cabal looks in these directories when attempting to locate files
+    listed in `includes` and `install-includes`.
 
 `c-sources:` _filename list_
 :   A list of C source files to be compiled and linked with the Haskell files.
