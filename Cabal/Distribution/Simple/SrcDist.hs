@@ -84,14 +84,13 @@ sdist pkg mb_lbi flags mkTmpDir pps =
     NoFlag    -> do
       -- do some QA
       printPackageProblems verbosity pkg
+      when (isNothing mb_lbi) $
+        warn verbosity "Cannot run preprocessors. Run 'configure' command first."
+      setupMessage verbosity "Building source dist for" (packageId pkg)
 
       date <- getCurrentTime
       let pkg' | isSnapshot  = snapshotPackage date pkg
                | otherwise = pkg
-
-      when (isNothing mb_lbi) $
-        warn verbosity "Cannot run preprocessors. Run 'configure' command first."
-      setupMessage verbosity "Building source dist for" (packageId pkg)
 
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
