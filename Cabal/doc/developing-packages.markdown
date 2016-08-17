@@ -1470,7 +1470,7 @@ for these fields.
     These files typically contain function prototypes for foreign
     imports used by the package. This is in contrast to `install-includes`,
     which lists header files that are intended to be exposed to other packages
-    that depend on this library.
+    that transitively depend on this library.
 
 `install-includes:` _filename list_
 :   A list of header files from this package to be installed into
@@ -1491,8 +1491,9 @@ for these fields.
     install-includes: clib.h
     ~~~~~~~~~~~~~~~~
 
-    Now any package that depends on the `bindings-clib` library can include
-    `clib.h` without needing to list it explicitly in an `include` field.
+    Now any package that depends (directly or transitively) on the
+    `bindings-clib` library can include `clib.h` without needing to list it
+    explicitly in an `include` field.
 
     Note that in order for files listed in `install-includes` to be usable
     when compiling the package itself, they need to be listed in the
