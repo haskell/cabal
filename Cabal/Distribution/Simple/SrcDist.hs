@@ -89,6 +89,10 @@ sdist pkg mb_lbi flags mkTmpDir pps =
       let pkg' | isSnapshot  = snapshotPackage date pkg
                | otherwise = pkg
 
+      when (isNothing mb_lbi) $
+        warn verbosity "Cannot run preprocessors. Run 'configure' command first."
+      setupMessage verbosity "Building source dist for" (packageId pkg)
+
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
           sdistSourcesDirectory targetDir pkg' mb_lbi verbosity isSnapshot pps
@@ -129,9 +133,6 @@ sdistSourcesDirectory :: FilePath             -- ^ output directory
                       -> [PPSuffixHandler]    -- ^ extra preprocessors
                       -> IO ()
 sdistSourcesDirectory targetDir pkg mb_lbi verbosity isSnapshot pps = do
-  when (isNothing mb_lbi) $
-    warn verbosity "Cannot run preprocessors. Run 'configure' command first."
-  setupMessage verbosity "Building source dist for" (packageId pkg)
   prepareTree verbosity pkg mb_lbi targetDir pps
   when isSnapshot $
     overwriteSnapshotPackageDesc verbosity pkg targetDir
