@@ -1492,8 +1492,7 @@ for these fields.
     ~~~~~~~~~~~~~~~~
 
     Now any package that depends (directly or transitively) on the
-    `bindings-clib` library can include `clib.h` without needing to list it
-    explicitly in an `include` field.
+    `bindings-clib` library can use `clib.h`.
 
     Note that in order for files listed in `install-includes` to be usable
     when compiling the package itself, they need to be listed in the
@@ -1504,23 +1503,8 @@ for these fields.
     with `c2hs`, `hsc2hs`, `cpphs` or the C preprocessor, and
     also when compiling via C. Directories can be absolute paths (e.g., for
     system directories) or paths that are relative to the top of the source
-    tree.
-
-    Cabal looks in these directories when attempting to locate files listed in
-    `includes` and `install-includes`. As a result, the following:
-
-    ~~~~~~~~~~~~~~~~
-    includes:         foo/bar.h
-    install-includes: foo/baz.h
-    ~~~~~~~~~~~~~~~~
-
-    is equivalent to the following:
-
-    ~~~~~~~~~~~~~~~~
-    include-dirs:     foo
-    includes:         bar.h
-    install-includes: baz.h
-    ~~~~~~~~~~~~~~~~
+    tree. Cabal looks in these directories when attempting to locate files
+    listed in `includes` and `install-includes`.
 
 `c-sources:` _filename list_
 :   A list of C source files to be compiled and linked with the Haskell files.
