@@ -1721,6 +1721,20 @@ The following tests are currently supported.
     version constraint, then this evaluates to true, otherwise false.
     The match is case-insensitive.
 
+    Note that including a version constraint in an `impl` test causes it
+    to check for two properties:
+
+      * The current compiler has the specified name, and
+
+      * The compiler's version satisfied the specified version constraint
+
+    As a result, `!impl(ghc >= x.y.z)` is not entirely equivalent to
+    `impl(ghc < x.y.z)`. The test `!impl(ghc >= x.y.z)` checks that:
+
+      * The current compiler is not GHC, or
+
+      * The version of GHC is earlier than version x.y.z.
+
 `flag(`_name_`)`
 :   Evaluates to the current assignment of the flag of the given name.
     Flag names are case insensitive. Testing for flags that have not
