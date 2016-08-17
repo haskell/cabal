@@ -161,6 +161,8 @@ listPackageSourcesOrdinary :: Verbosity
                            -> [PPSuffixHandler]
                            -> IO [FilePath]
 listPackageSourcesOrdinary verbosity pkg_descr pps =
+-- TODO: We should remove the verbosity parameter.
+--       Function defaultPackageDesc isn't using it internally.
   fmap concat . sequenceA $
   [
     -- Library sources.
@@ -270,7 +272,7 @@ filterAutogenBuildInfo pkg_descr bi =
   let others = filterAutogenModules pkg_descr bi (otherModules bi)
   in bi {otherModules = others}
 
--- | Given the search directories and a list of modules return the paths.
+-- | Given the search directories and list of modules by name return the paths.
 findModulesFiles :: [FilePath]        -- ^ Search directories.
                  -> [PPSuffixHandler] -- ^ Extra preprocessors
                  -> [ModuleName]      -- ^ Modules
