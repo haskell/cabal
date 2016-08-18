@@ -3,7 +3,7 @@
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , readMaybe
-                                 , inDir, logDirChange
+                                 , inDir, withEnv, logDirChange
                                  , determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
@@ -18,6 +18,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , relaxEncodingErrors)
        where
 
+import Distribution.Compat.Environment ( lookupEnv, setEnv, unsetEnv )
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
@@ -138,6 +139,19 @@ inDir (Just d) m = do
   old <- getCurrentDirectory
   setCurrentDirectory d
   m `Exception.finally` setCurrentDirectory old
+
+-- | Executes the action with an environment variable set to some
+-- value.
+--
+-- Warning: This operation is NOT thread-safe, because current
+-- environment is a process-global concept.
+withEnv :: String -> String -> IO a -> IO a
+withEnv k v m = do
+  mb_old <- lookupEnv k
+  setEnv k v
+  m `Exception.finally` (case mb_old of
+    Nothing -> unsetEnv k
+    Just old -> setEnv k old)
 
 -- | Log directory change in 'make' compatible syntax
 logDirChange :: (String -> IO ()) -> Maybe FilePath -> IO a -> IO a
