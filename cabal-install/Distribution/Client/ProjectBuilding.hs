@@ -351,7 +351,7 @@ foldMInstallPlanDepOrder plan0 visit =
           depresults =
             map (\ipkgid -> let Just result = Map.lookup ipkgid results
                               in result)
-                (nodeNeighbors pkg)
+                (InstallPlan.depends pkg)
       result <- visit pkg depresults
       let results' = Map.insert (nodeKey pkg) result results
       go results' pkgs

@@ -28,6 +28,7 @@ module Distribution.Client.InstallPlan (
   new,
   toList,
   planIndepGoals,
+  depends,
 
   fromSolverInstallPlan,
   configureInstallPlan,
@@ -160,6 +161,9 @@ data GenericPlanPackage ipkg srcpkg
   deriving (Eq, Show, Generic)
 
 type IsUnit a = (IsNode a, Key a ~ UnitId)
+
+depends :: IsUnit a => a -> [UnitId]
+depends = nodeNeighbors
 
 -- NB: Expanded constraint synonym here to avoid undecidable
 -- instance errors in GHC 7.8 and earlier.

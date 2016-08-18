@@ -1744,9 +1744,10 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
     -- stanzas in the next pass.
     --
     pruneOptionalDependencies :: ElaboratedConfiguredPackage -> [UnitId]
-    pruneOptionalDependencies elab@ElaboratedConfiguredPackage{ elabPkgOrComp = ElabComponent _ } = nodeNeighbors elab -- no pruning
-    pruneOptionalDependencies ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg } =
-        (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
+    pruneOptionalDependencies elab@ElaboratedConfiguredPackage{ elabPkgOrComp = ElabComponent _ }
+        = InstallPlan.depends elab -- no pruning
+    pruneOptionalDependencies ElaboratedConfiguredPackage{ elabPkgOrComp = ElabPackage pkg }
+        = (CD.flatDeps . CD.filterDeps keepNeeded) (pkgOrderDependencies pkg)
       where
         keepNeeded (CD.ComponentTest  _) _ = TestStanzas  `Set.member` stanzas
         keepNeeded (CD.ComponentBench _) _ = BenchStanzas `Set.member` stanzas
@@ -1865,7 +1866,7 @@ pruneInstallPlanPass2 pkgs =
     hasReverseLibDeps :: Set UnitId
     hasReverseLibDeps =
       Set.fromList [ depid | pkg <- pkgs
-                           , depid <- nodeNeighbors pkg ]
+                           , depid <- InstallPlan.depends pkg ]
 
 mapConfiguredPackage :: (srcpkg -> srcpkg')
                      -> InstallPlan.GenericPlanPackage ipkg srcpkg
@@ -2211,7 +2212,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
 
     -- we only use configDependencies, unless we're talking to an old Cabal
     -- in which case we use configConstraints
-    -- NB: This does NOT use nodeNeighbors, which includes executable
+    -- NB: This does NOT use InstallPlan.depends, which includes executable
     -- dependencies which should NOT be fed in here (also you don't have
     -- enough info anyway)
     configDependencies        = [ (packageName srcid, cid)
