@@ -305,9 +305,8 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     return (pruneInstallPlanToTargets buildTargets' installPlan)
   where
     localPackages =
-      [ (pkgDescription pkg, pkgSourceLocation pkg)
-      | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
-      , let pkg = getElaboratedPackage pkg_or_comp ]
+      [ (elabPkgDescription elab, elabPkgSourceLocation elab)
+      | InstallPlan.Configured elab <- InstallPlan.toList installPlan ]
       --TODO: [code cleanup] is there a better way to identify local packages?
 
 
@@ -376,10 +375,9 @@ resolveAndCheckTargets targetDefaultComponents
 
     projLocalPkgs =
       Map.fromListWith (++)
-        [ (packageName pkg, [installedUnitId pkg_or_comp])
-        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
-        , let pkg = getElaboratedPackage pkg_or_comp
-        , case pkgSourceLocation pkg of
+        [ (packageName elab, [installedUnitId elab])
+        | InstallPlan.Configured elab <- InstallPlan.toList installPlan
+        , case elabPkgSourceLocation elab of
             LocalUnpackedPackage _ -> True; _ -> False
           --TODO: [code cleanup] is there a better way to identify local packages?
         ]
@@ -438,33 +436,31 @@ printPlan verbosity
   = notice verbosity $ unlines $
       ("In order, the following " ++ wouldWill
        ++ " be built (use -v for more details):")
-    : map showPkg pkgs
+    : map (\(ReadyPackage pkg) -> showPkg pkg (elabPkgOrComp pkg)) pkgs
   where
     pkgs = InstallPlan.executionOrder elaboratedPlan
 
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
 
-    showPkg (ReadyPackage (ElabPackage pkg)) = display (packageId pkg)
-    showPkg (ReadyPackage (ElabComponent comp)) =
-        display (packageId (elabComponentPackage comp)) ++
-        " (" ++ maybe "custom" display (elabComponentName comp) ++ ")"
+    showPkg elab (ElabPackage _) = display (packageId elab)
+    showPkg elab (ElabComponent comp) =
+        display (packageId elab) ++
+        " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage pkg_or_comp) =
-      display (installedUnitId pkg_or_comp) ++
-      (case pkg_or_comp of
-          ElabPackage _ -> showTargets pkg ++ showStanzas pkg
+    showPkgAndReason (ReadyPackage elab) =
+      display (installedUnitId elab) ++
+      (case elabPkgOrComp elab of
+          ElabPackage pkg -> showTargets elab ++ showStanzas pkg
           ElabComponent comp ->
-            " (" ++ maybe "custom" display (elabComponentName comp) ++ ")") ++
-      showFlagAssignment (nonDefaultFlags pkg) ++
-      let buildStatus = pkgsBuildStatus Map.! installedUnitId pkg_or_comp in
+            " (" ++ maybe "custom" display (compComponentName comp) ++ ")") ++
+      showFlagAssignment (nonDefaultFlags elab) ++
+      let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
       " (" ++ showBuildStatus buildStatus ++ ")"
-     where
-      pkg = getElaboratedPackage pkg_or_comp
 
-    nonDefaultFlags :: ElaboratedPackage -> FlagAssignment
-    nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
+    nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
+    nonDefaultFlags elab = elabFlagAssignment elab \\ elabFlagDefaults elab
 
     showStanzas pkg = concat
                     $ [ " *test"
@@ -472,10 +468,10 @@ printPlan verbosity
                    ++ [ " *bench"
                       | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
 
-    showTargets pkg
-      | null (pkgBuildTargets pkg) = ""
+    showTargets elab
+      | null (elabBuildTargets elab) = ""
       | otherwise
-      = " (" ++ unwords [ showComponentTarget (packageId pkg) t | t <- pkgBuildTargets pkg ]
+      = " (" ++ unwords [ showComponentTarget (packageId elab) t | t <- elabBuildTargets elab ]
              ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place

@@ -263,7 +263,7 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
       return BuildStatusPreExisting
 
     dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
-      mloc <- checkFetched (pkgSourceLocation (getElaboratedPackage pkg))
+      mloc <- checkFetched (elabPkgSourceLocation pkg)
       case mloc of
         Nothing -> return BuildStatusDownload
 
@@ -289,7 +289,7 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
                      -> FilePath
                      -> IO BuildStatus
     dryRunTarballPkg pkg depsBuildStatus tarball =
-      case pkgBuildStyle (getElaboratedPackage pkg) of
+      case elabBuildStyle pkg of
         BuildAndInstall  -> return (BuildStatusUnpack tarball)
         BuildInplaceOnly -> do
           -- TODO: [nice to have] use a proper file monitor rather than this dir exists test
@@ -435,8 +435,8 @@ newPackageFileMonitor DistDirLayout{distPackageCacheFile} dparams =
 --
 packageFileMonitorKeyValues :: ElaboratedConfiguredPackage
                             -> (ElaboratedConfiguredPackage, Set ComponentName)
-packageFileMonitorKeyValues pkg_or_comp =
-    (pkg_or_comp_config, buildComponents)
+packageFileMonitorKeyValues elab =
+    (elab_config, buildComponents)
   where
     -- The first part is the value used to guard (re)configuring the package.
     -- That is, if this value changes then we will reconfigure.
@@ -445,25 +445,18 @@ packageFileMonitorKeyValues pkg_or_comp =
     -- do not affect the configure step need to be nulled out. Those parts are
     -- the specific targets that we're going to build.
     --
-    pkg_or_comp_config =
-        case pkg_or_comp of
-            ElabPackage pkg    -> ElabPackage $ pkg {
-                  pkgBuildTargets  = [],
-                  pkgReplTarget    = Nothing,
-                  pkgBuildHaddocks = False
-                }
-            ElabComponent comp ->
-                ElabComponent $ comp {
-                  elabComponentBuildTargets  = [],
-                  elabComponentReplTarget    = Nothing,
-                  elabComponentBuildHaddocks = False
-                }
+    elab_config =
+        elab {
+            elabBuildTargets = [],
+            elabReplTarget    = Nothing,
+            elabBuildHaddocks = False
+        }
 
     -- The second part is the value used to guard the build step. So this is
     -- more or less the opposite of the first part, as it's just the info about
     -- what targets we're going to build.
     --
-    buildComponents = pkgBuildTargetWholeComponents pkg_or_comp
+    buildComponents = elabBuildTargetWholeComponents elab
 
 -- | Do all the checks on whether a package has changed and thus needs either
 -- rebuilding or reconfiguring and rebuilding.
@@ -718,11 +711,10 @@ rebuildTargets verbosity
     packageDBsToUse = -- all the package dbs we may need to create
       (Set.toList . Set.fromList)
         [ pkgdb
-        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList installPlan
-        , let pkg = getElaboratedPackage pkg_or_comp
-        , (pkgdb:_) <- map reverse [ pkgBuildPackageDBStack pkg,
-                                     pkgRegisterPackageDBStack pkg,
-                                     pkgSetupPackageDBStack pkg ]
+        | InstallPlan.Configured elab <- InstallPlan.toList installPlan
+        , (pkgdb:_) <- map reverse [ elabBuildPackageDBStack elab,
+                                     elabRegisterPackageDBStack elab,
+                                     elabSetupPackageDBStack elab ]
         ]
 
 -- | Given all the context and resources, (re)build an individual package.
@@ -755,7 +747,6 @@ rebuildTarget verbosity
       BuildStatusUpToDate    {} -> unexpectedState
   where
     unexpectedState = error "rebuildTarget: unexpected package status"
-    backing_pkg = getElaboratedPackage pkg
 
     downloadPhase = do
         downsrcloc <- annotateFailureNoLog DownloadFailed $
@@ -768,10 +759,10 @@ rebuildTarget verbosity
     unpackTarballPhase tarball =
         withTarballLocalDirectory
           verbosity distDirLayout tarball
-          (packageId pkg) (elabDistDirParams sharedPackageConfig pkg) (pkgBuildStyle backing_pkg)
-          (pkgDescriptionOverride backing_pkg) $
+          (packageId pkg) (elabDistDirParams sharedPackageConfig pkg) (elabBuildStyle pkg)
+          (elabPkgDescriptionOverride pkg) $
 
-          case pkgBuildStyle backing_pkg of
+          case elabBuildStyle pkg of
             BuildAndInstall  -> buildAndInstall
             BuildInplaceOnly -> buildInplace buildStatus
               where
@@ -782,7 +773,7 @@ rebuildTarget verbosity
     -- would only start from download or unpack phases.
     --
     rebuildPhase buildStatus srcdir =
-        assert (pkgBuildStyle backing_pkg == BuildInplaceOnly) $
+        assert (elabBuildStyle pkg == BuildInplaceOnly) $
 
           buildInplace buildStatus srcdir builddir
       where
@@ -835,10 +826,10 @@ asyncDownloadPackages verbosity withRepoCtx installPlan pkgsBuildStatus body
   where
     pkgsToDownload =
       ordNub $
-      [ pkgSourceLocation (getElaboratedPackage pkg_or_comp)
-      | InstallPlan.Configured pkg_or_comp
+      [ elabPkgSourceLocation elab
+      | InstallPlan.Configured elab
          <- InstallPlan.reverseTopologicalOrder installPlan
-      , let uid = installedUnitId pkg_or_comp
+      , let uid = installedUnitId elab
             Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
       , BuildStatusDownload <- [pkgBuildStatus]
       ]
@@ -851,9 +842,9 @@ waitAsyncPackageDownload :: Verbosity
                          -> AsyncFetchMap
                          -> ElaboratedConfiguredPackage
                          -> IO DownloadedSourceLocation
-waitAsyncPackageDownload verbosity downloadMap pkg_or_comp = do
+waitAsyncPackageDownload verbosity downloadMap elab = do
     pkgloc <- waitAsyncFetchPackage verbosity downloadMap
-                                    (pkgSourceLocation (getElaboratedPackage pkg_or_comp))
+                                    (elabPkgSourceLocation elab)
     case downloadedSourceLocation pkgloc of
       Just loc -> return loc
       Nothing  -> fail "waitAsyncPackageDownload: unexpected source location"
@@ -1011,10 +1002,10 @@ buildAndInstallUnpackedPackage verbosity
     --TODO: [required feature] docs and tests
     --TODO: [required feature] sudo re-exec
 
-    let dispname = case pkg of
+    let dispname = case elabPkgOrComp pkg of
             ElabPackage _ -> display pkgid
             ElabComponent comp -> display pkgid ++ " "
-                ++ maybe "custom" display (elabComponentName comp)
+                ++ maybe "custom" display (compComponentName comp)
 
     -- Configure phase
     when isParallelBuild $
@@ -1064,7 +1055,7 @@ buildAndInstallUnpackedPackage verbosity
           criticalSection registerLock $
               Cabal.registerPackage verbosity compiler progdb
                                     HcPkg.MultiInstance
-                                    (pkgRegisterPackageDBStack (getElaboratedPackage pkg)) ipkg
+                                    (elabRegisterPackageDBStack pkg) ipkg
           return (Just ipkg)
         else return Nothing
 
@@ -1118,7 +1109,7 @@ buildAndInstallUnpackedPackage verbosity
         setupWrapper
           verbosity
           scriptOptions { useLoggingHandle = mLogFileHandle }
-          (Just (pkgDescription (getElaboratedPackage pkg)))
+          (Just (elabPkgDescription pkg))
           cmd flags args
 
     mlogFile :: Maybe FilePath
@@ -1213,7 +1204,7 @@ buildInplaceUnpackedPackage verbosity
                 let ipkg = ipkg0 { Installed.installedUnitId = ipkgid }
                 criticalSection registerLock $
                     Cabal.registerPackage verbosity compiler progdb HcPkg.NoMultiInstance
-                                          (pkgRegisterPackageDBStack (getElaboratedPackage pkg))
+                                          (elabRegisterPackageDBStack pkg)
                                           ipkg
                 return (Just ipkg)
 
@@ -1297,7 +1288,7 @@ buildInplaceUnpackedPackage verbosity
     setup cmd flags args =
       setupWrapper verbosity
                    scriptOptions
-                   (Just (pkgDescription (getElaboratedPackage pkg)))
+                   (Just (elabPkgDescription pkg))
                    cmd flags args
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo

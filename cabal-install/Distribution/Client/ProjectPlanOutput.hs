@@ -69,38 +69,24 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
         ]
 
     -- pkg :: ElaboratedPackage
-    toJ (InstallPlan.Configured (ElabPackage pkg)) =
-      J.object
+    toJ (InstallPlan.Configured elab) =
+      J.object $
         [ "type"       J..= J.String "configured"
-        , "id"         J..= (jdisplay . installedUnitId) pkg
-        , "components" J..= components
-        , "depends"    J..= map (jdisplay . confInstId) flat_deps
+        , "id"         J..= (jdisplay . installedUnitId) elab
+        , "depends"    J..= map (jdisplay . confInstId) (elabLibDependencies elab)
         , "flags"      J..= J.object [ fn J..= v
                                      | (PD.FlagName fn,v) <-
-                                            pkgFlagAssignment pkg ]
-        ]
-      where
-        flat_deps = ordNub (ComponentDeps.flatDeps (pkgDependencies pkg))
-        components = J.object
-          [ comp2str c J..= J.object
-            [ "depends" J..= map (jdisplay . confInstId) v ]
-          -- NB: does NOT contain order-only dependencies
-          | (c,v) <- ComponentDeps.toList (pkgDependencies pkg) ]
-
-    -- ecp :: ElaboratedConfiguredPackage
-    toJ (InstallPlan.Configured (ElabComponent comp)) =
-      J.object
-        [ "type"       J..= J.String "configured-component"
-        , "id"         J..= (jdisplay . installedUnitId) comp
-        , "name"       J..= J.String (comp2str (elabComponent comp))
-        , "flags"      J..= J.object [ fn J..= v
-                                     | (PD.FlagName fn,v) <-
-                                            pkgFlagAssignment pkg ]
-        -- NB: does NOT contain order-only dependencies
-        , "depends"    J..= map (jdisplay . confInstId) (elabComponentDependencies comp)
-        ]
-      where
-        pkg = elabComponentPackage comp
+                                            elabFlagAssignment elab ]
+        ] ++
+        case elabPkgOrComp elab of
+            ElabPackage pkg ->
+                let components = J.object
+                      [ comp2str c J..= J.object
+                        [ "depends" J..= map (jdisplay . confInstId) v ]
+                      -- NB: does NOT contain non-lib dependencies
+                      | (c,v) <- ComponentDeps.toList (pkgLibDependencies pkg) ]
+                in ["components" J..= components ]
+            ElabComponent _ -> []
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?

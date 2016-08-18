@@ -11,7 +11,6 @@ import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
          , findProjectRoot )
-import Distribution.Client.ProjectPlanning.Types
 import Distribution.Client.Targets
          ( UserConstraint(..) )
 import Distribution.Solver.Types.ConstraintSource
@@ -147,18 +146,16 @@ projectFreezeConstraints plan =
     flagAssignments =
       Map.fromList
         [ (pkgname, flags)
-        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList plan
-        , let pkg     = getElaboratedPackage pkg_or_comp
-              flags   = pkgFlagAssignment pkg
-              pkgname = packageName pkg
+        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        , let flags   = elabFlagAssignment elab
+              pkgname = packageName elab
         , not (null flags) ]
 
     localPackages :: Map PackageName ()
     localPackages =
       Map.fromList
-        [ (packageName pkg, ())
-        | InstallPlan.Configured pkg_or_comp <- InstallPlan.toList plan
-        , let pkg = getElaboratedPackage pkg_or_comp
-        , pkgLocalToProject pkg
+        [ (packageName elab, ())
+        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        , elabLocalToProject elab
         ]
 
