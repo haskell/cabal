@@ -73,8 +73,6 @@ import System.IO.Error (ioError, mkIOError, doesNotExistErrorType)
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
--- * The result list never contains @(Nothing, Nothing)@.
---
 mergeBy :: (a -> b -> Ordering) -> [a] -> [b] -> [MergeResult a b]
 mergeBy cmp = merge
   where
