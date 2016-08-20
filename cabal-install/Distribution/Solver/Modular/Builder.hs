@@ -55,7 +55,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
       -- This is important, because in general, if a goal is inserted twice,
       -- the later addition will have better dependency information.
     go g o (ng@(OpenGoal (Stanza  _   _  )      _gr) : ngs) = go g (cons' ng () o) ngs
-    go g o (ng@(OpenGoal (Simple (Dep qpn _) c) _gr) : ngs)
+    go g o (ng@(OpenGoal (Simple (Dep _ qpn _) c) _gr) : ngs)
       | qpn == qpn'       = go                            g               o  ngs
           -- we ignore self-dependencies at this point; TODO: more care may be needed
       | qpn `M.member` g  = go (M.adjust ((c, qpn'):) qpn g)              o  ngs
@@ -127,7 +127,7 @@ build = ana go
       error "Distribution.Solver.Modular.Builder: build.go called with Lang goal"
     go    (BS { index = _  , next = OneGoal (OpenGoal (Simple (Pkg _ _          ) _) _ ) }) =
       error "Distribution.Solver.Modular.Builder: build.go called with Pkg goal"
-    go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _) _) gr) }) =
+    go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep _ qpn@(Q _ pn) _) _) gr) }) =
       -- If the package does not exist in the index, we construct an emty PChoiceF node for it
       -- After all, we have no choices here. Alternatively, we could immediately construct
       -- a Fail node here, but that would complicate the construction of conflict sets.
@@ -186,7 +186,9 @@ buildTree idx (IndependentGoals ind) igs =
       , qualifyOptions = defaultQualifyOptions idx
       }
   where
-    topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) UserGoal
+    -- Should a top-level goal allowed to be an executable style
+    -- dependency? Well, I don't think it would make much difference
+    topLevelGoal qpn = OpenGoal (Simple (Dep False {- not exe -} qpn (Constrained [])) ()) UserGoal
 
     qpns | ind       = makeIndependent igs
          | otherwise = L.map (Q (PackagePath DefaultNamespace Unqualified)) igs

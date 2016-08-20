@@ -79,6 +79,7 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
+import           Distribution.Solver.Types.InstSolverPackage
 
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
@@ -415,8 +416,8 @@ configureInstallPlan :: SolverInstallPlan -> InstallPlan
 configureInstallPlan solverPlan =
     flip fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
       [case planpkg of
-        SolverInstallPlan.PreExisting pkg _ ->
-          PreExisting pkg
+        SolverInstallPlan.PreExisting pkg ->
+          PreExisting (instSolverPkgIPI pkg)
 
         SolverInstallPlan.Configured  pkg ->
           Configured (configureSolverPackage mapDep pkg)
@@ -438,9 +439,10 @@ configureInstallPlan solverPlan =
         confPkgFlags  = solverPkgFlags spkg,
         confPkgStanzas = solverPkgStanzas spkg,
         confPkgDeps   = deps
+        -- NB: no support for executable dependencies
       }
       where
-        deps = fmap (concatMap (map configuredId . mapDep)) (solverPkgDeps spkg)
+        deps = fmap (concatMap (map configuredId . mapDep)) (solverPkgLibDeps spkg)
 
 
 -- ------------------------------------------------------------

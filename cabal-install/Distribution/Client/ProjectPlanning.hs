@@ -79,6 +79,7 @@ import           Distribution.Solver.Types.PkgConfigDb
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
+import           Distribution.Solver.Types.InstSolverPackage
 import           Distribution.Solver.Types.SourcePackage
 
 import           Distribution.Package hiding
@@ -1040,8 +1041,8 @@ elaborateInstallPlan platform compiler compilerprogdb
     elaboratedInstallPlan =
       flip InstallPlan.fromSolverInstallPlan solverPlan $ \mapDep planpkg ->
         case planpkg of
-          SolverInstallPlan.PreExisting pkg _ ->
-            [InstallPlan.PreExisting pkg]
+          SolverInstallPlan.PreExisting pkg ->
+            [InstallPlan.PreExisting (instSolverPkgIPI pkg)]
 
           SolverInstallPlan.Configured  pkg ->
             -- SolverPackage
@@ -1073,7 +1074,7 @@ elaborateInstallPlan platform compiler compilerprogdb
         :: (SolverId -> [ElaboratedPlanPackage])
         -> SolverPackage UnresolvedPkgLoc
         -> [ElaboratedConfiguredPackage]
-    elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0)
+    elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0)
         = snd (mapAccumL buildComponent (Map.empty, Map.empty) comps_graph)
       where
         elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon mapDep spkg
@@ -1121,19 +1122,28 @@ elaborateInstallPlan platform compiler compilerprogdb
             compComponentName = Just cname
             compSolverName = CD.componentNameToComponent cname
             compLibDependencies =
-                concatMap (elaborateSolverId mapDep)
+                concatMap (elaborateLibSolverId mapDep)
                           (CD.select (== compSolverName) deps0) ++
                 internal_lib_deps
+            compExeDependencies =
+                (map confInstId $
+                    concatMap (elaborateExeSolverId mapDep)
+                              (CD.select (== compSolverName) exe_deps0)) ++
+                internal_exe_deps
+            compExeDependencyPaths =
+                concatMap (elaborateExePath mapDep)
+                          (CD.select (== compSolverName) exe_deps0) ++
+                internal_exe_paths
 
             bi = Cabal.componentBuildInfo comp
             confid = ConfiguredId elabPkgSourceId cid
 
-            compSetupDependencies = concatMap (elaborateSolverId mapDep) (CD.setupDeps deps0)
+            compSetupDependencies = concatMap (elaborateLibSolverId mapDep) (CD.setupDeps deps0)
             internal_lib_deps
                 = [ confid'
                   | Dependency pkgname _ <- PD.targetBuildDepends bi
                   , Just confid' <- [Map.lookup pkgname internal_map] ]
-            (compExeDependencies, compExeDependencyPaths)
+            (internal_exe_deps, internal_exe_paths)
                 = unzip $
                   [ (confInstId confid', path)
                   | Dependency (PackageName toolname) _ <- PD.buildTools bi
@@ -1190,14 +1200,48 @@ elaborateInstallPlan platform compiler compilerprogdb
                   (compilerId compiler)
                   cid
 
-    elaborateSolverId :: (SolverId -> [ElaboratedPlanPackage])
+    elaborateLibSolverId :: (SolverId -> [ElaboratedPlanPackage])
                       -> SolverId -> [ConfiguredId]
-    elaborateSolverId mapDep = map configuredId . filter is_lib . mapDep
+    elaborateLibSolverId mapDep = map configuredId . filter is_lib . mapDep
       where is_lib (InstallPlan.PreExisting _) = True
             is_lib (InstallPlan.Configured elab) =
                 case elabPkgOrComp elab of
                     ElabPackage _ -> True
                     ElabComponent comp -> compSolverName comp == CD.ComponentLib
+
+    elaborateExeSolverId :: (SolverId -> [ElaboratedPlanPackage])
+                      -> SolverId -> [ConfiguredId]
+    elaborateExeSolverId mapDep = map configuredId . filter is_exe . mapDep
+      where is_exe (InstallPlan.PreExisting _) = False
+            is_exe (InstallPlan.Configured elab) =
+                case elabPkgOrComp elab of
+                    ElabPackage _ -> True
+                    ElabComponent comp ->
+                        case compSolverName comp of
+                            CD.ComponentExe _ -> True
+                            _ -> False
+
+    elaborateExePath :: (SolverId -> [ElaboratedPlanPackage])
+                     -> SolverId -> [FilePath]
+    elaborateExePath mapDep = concatMap get_exe_path . mapDep
+      where
+        -- Pre-existing executables are assumed to be in PATH
+        -- already.  In fact, this should be impossible.
+        -- Modest duplication with 'inplace_bin_dir'
+        get_exe_path (InstallPlan.PreExisting _) = []
+        get_exe_path (InstallPlan.Configured elab) =
+            [if elabBuildStyle elab == BuildInplaceOnly
+              then distBuildDirectory
+                    (elabDistDirParams elaboratedSharedConfig elab) </>
+                    "build" </>
+                        case elabPkgOrComp elab of
+                            ElabPackage _ -> ""
+                            ElabComponent comp ->
+                                case fmap Cabal.componentNameString
+                                          (compComponentName comp) of
+                                    Just (Just n) -> n
+                                    _ -> ""
+              else InstallDirs.bindir (elabInstallDirs elab)]
 
     elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
                              -> SolverPackage UnresolvedPkgLoc
@@ -1205,7 +1249,7 @@ elaborateInstallPlan platform compiler compilerprogdb
     elaborateSolverToPackage
         mapDep
         pkg@(SolverPackage (SourcePackage pkgid _gdesc _srcloc _descOverride)
-                           _flags _stanzas deps0) =
+                           _flags _stanzas deps0 exe_deps0) =
         -- Knot tying: the final elab includes the
         -- pkgInstalledId, which is calculated by hashing many
         -- of the other fields of the elaboratedPackage.
@@ -1219,7 +1263,7 @@ elaborateInstallPlan platform compiler compilerprogdb
                 elabPkgOrComp = ElabPackage $ ElaboratedPackage {..}
             }
 
-        deps = fmap (concatMap (elaborateSolverId mapDep)) deps0
+        deps = fmap (concatMap (elaborateLibSolverId mapDep)) deps0
 
         requires_reg = PD.hasPublicLib elabPkgDescription
         pkgInstalledId
@@ -1238,6 +1282,8 @@ elaborateInstallPlan platform compiler compilerprogdb
                  ++ " is missing a source hash: " ++ display pkgid
 
         pkgLibDependencies  = deps
+        pkgExeDependencies  = fmap (concatMap (elaborateExeSolverId mapDep)) exe_deps0
+        pkgExeDependencyPaths = fmap (concatMap (elaborateExePath mapDep)) exe_deps0
 
         -- Filled in later
         pkgStanzasEnabled  = Set.empty
@@ -1269,7 +1315,7 @@ elaborateInstallPlan platform compiler compilerprogdb
                             -> ElaboratedConfiguredPackage
     elaborateSolverToCommon mapDep
         pkg@(SolverPackage (SourcePackage pkgid gdesc srcloc descOverride)
-                           flags stanzas deps0) =
+                           flags stanzas deps0 _exe_deps0) =
         elaboratedPackage
       where
         elaboratedPackage = ElaboratedConfiguredPackage {..}
@@ -1332,7 +1378,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
         elabSetupScriptStyle       = packageSetupScriptStyle elabPkgDescription
         -- Computing the deps here is a little awful
-        deps = fmap (concatMap (elaborateSolverId mapDep)) deps0
+        deps = fmap (concatMap (elaborateLibSolverId mapDep)) deps0
         elabSetupScriptCliVersion  = packageSetupScriptSpecVersion
                                       elabSetupScriptStyle elabPkgDescription deps
         elabSetupPackageDBStack    = buildAndRegisterDbs
@@ -1838,7 +1884,8 @@ pruneInstallPlanPass2 pkgs =
     setStanzasDepsAndTargets elab =
         elab {
           elabBuildTargets = elabBuildTargets elab
-                          ++ targetsRequiredForRevDeps,
+                          ++ libTargetsRequiredForRevDeps
+                          ++ exeTargetsRequiredForRevDeps,
           elabPkgOrComp =
             case elabPkgOrComp elab of
               ElabPackage pkg ->
@@ -1849,14 +1896,23 @@ pruneInstallPlanPass2 pkgs =
                     keepNeeded _                     _ = True
                 in ElabPackage $ pkg {
                   pkgStanzasEnabled = stanzas,
-                  pkgLibDependencies   = CD.filterDeps keepNeeded (pkgLibDependencies pkg)
+                  pkgLibDependencies   = CD.filterDeps keepNeeded (pkgLibDependencies pkg),
+                  pkgExeDependencies   = CD.filterDeps keepNeeded (pkgExeDependencies pkg),
+                  pkgExeDependencyPaths = CD.filterDeps keepNeeded (pkgExeDependencyPaths pkg)
                 }
               r@(ElabComponent _) -> r
         }
       where
-        targetsRequiredForRevDeps =
+        libTargetsRequiredForRevDeps =
           [ ComponentTarget Cabal.defaultLibName WholeComponent
           | installedUnitId elab `Set.member` hasReverseLibDeps
+          ]
+        exeTargetsRequiredForRevDeps =
+          -- TODO: allow requesting executable with different name
+          -- than package name
+          [ ComponentTarget (Cabal.CExeName (unPackageName (packageName (elabPkgSourceId elab))))
+                            WholeComponent
+          | installedUnitId elab `Set.member` hasReverseExeDeps
           ]
 
 
@@ -1865,8 +1921,15 @@ pruneInstallPlanPass2 pkgs =
 
     hasReverseLibDeps :: Set UnitId
     hasReverseLibDeps =
-      Set.fromList [ depid | pkg <- pkgs
-                           , depid <- InstallPlan.depends pkg ]
+      Set.fromList [ SimpleUnitId (confInstId depid)
+                   | InstallPlan.Configured pkg <- pkgs
+                   , depid <- elabLibDependencies pkg ]
+
+    hasReverseExeDeps :: Set UnitId
+    hasReverseExeDeps =
+      Set.fromList [ SimpleUnitId depid
+                   | InstallPlan.Configured pkg <- pkgs
+                   , depid <- elabExeDependencies pkg ]
 
 mapConfiguredPackage :: (srcpkg -> srcpkg')
                      -> InstallPlan.GenericPlanPackage ipkg srcpkg
@@ -2436,7 +2499,9 @@ packageHashInputs
           ElabPackage (ElaboratedPackage{..}) ->
             Set.fromList $
              [ confInstId dep
-             | dep <- CD.select relevantDeps pkgLibDependencies ]
+             | dep <- CD.select relevantDeps pkgLibDependencies ] ++
+             [ confInstId dep
+             | dep <- CD.select relevantDeps pkgExeDependencies ]
           ElabComponent comp ->
             Set.fromList (map confInstId (compLibDependencies comp)
                                        ++ compExeDependencies comp),

@@ -99,6 +99,12 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/executable/Test.hs
   tests/IntegrationTests/new-build/executable/a.cabal
   tests/IntegrationTests/new-build/executable/cabal.project
+  tests/IntegrationTests/new-build/external_build_tools.sh
+  tests/IntegrationTests/new-build/external_build_tools/cabal.project
+  tests/IntegrationTests/new-build/external_build_tools/client/Hello.hs
+  tests/IntegrationTests/new-build/external_build_tools/client/client.cabal
+  tests/IntegrationTests/new-build/external_build_tools/happy/MyCustomPreprocessor.hs
+  tests/IntegrationTests/new-build/external_build_tools/happy/happy.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
@@ -279,6 +285,7 @@ executable cabal
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver
         Distribution.Solver.Types.InstalledPreference
+        Distribution.Solver.Types.InstSolverPackage
         Distribution.Solver.Types.LabeledPackageConstraint
         Distribution.Solver.Types.OptionalStanza
         Distribution.Solver.Types.PackageConstraint

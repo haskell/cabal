@@ -768,7 +768,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerInfo
                           -> SolverPackage UnresolvedPkgLoc -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (SolverPackage pkg specifiedFlags stanzas specifiedDeps') =
+  (SolverPackage pkg specifiedFlags stanzas specifiedDeps' _specifiedExeDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -779,6 +779,7 @@ configuredPackageProblems platform cinfo
   ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
                             , not (packageSatisfiesDependency pkgid dep) ]
+  -- TODO: sanity tests on executable deps
   where
     specifiedDeps :: ComponentDeps [PackageId]
     specifiedDeps = fmap (map solverSrcId) specifiedDeps'

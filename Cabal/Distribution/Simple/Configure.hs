@@ -1393,7 +1393,9 @@ configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency
 configureRequiredProgram verbosity conf
   (Dependency (PackageName progName) verRange) =
   case lookupKnownProgram progName conf of
-    Nothing -> die ("Unknown build tool " ++ progName)
+    Nothing ->
+      -- Try to configure it as a 'simpleProgram' automatically
+      configureProgram verbosity (simpleProgram progName) conf
     Just prog
       -- requireProgramVersion always requires the program have a version
       -- but if the user says "build-depends: foo" ie no version constraint

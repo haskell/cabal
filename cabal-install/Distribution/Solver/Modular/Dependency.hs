@@ -165,6 +165,9 @@ flattenFlaggedDeps = concatMap aux
 type TrueFlaggedDeps  qpn = FlaggedDeps Component qpn
 type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 
+-- | Is this dependency on an executable
+type IsExe = Bool
+
 -- | A dependency (constraint) associates a package name with a
 -- constrained instance.
 --
@@ -172,20 +175,22 @@ type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 -- is used both to record the dependencies as well as who's doing the
 -- depending; having a 'Functor' instance makes bugs where we don't distinguish
 -- these two far too likely. (By rights 'Dep' ought to have two type variables.)
-data Dep qpn = Dep  qpn (CI qpn)  -- dependency on a package
+data Dep qpn = Dep IsExe qpn (CI qpn)  -- dependency on a package (possibly for executable
              | Ext  Extension     -- dependency on a language extension
              | Lang Language      -- dependency on a language version
              | Pkg  PN VR         -- dependency on a pkg-config package
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn (Fixed i v)            ) =
+showDep (Dep is_exe qpn (Fixed i v)            ) =
   (if P qpn /= v then showVar v ++ " => " else "") ++
-  showQPN qpn ++ "==" ++ showI i
-showDep (Dep qpn (Constrained [(vr, v)])) =
-  showVar v ++ " => " ++ showQPN qpn ++ showVR vr
-showDep (Dep qpn ci                     ) =
-  showQPN qpn ++ showCI ci
+  showQPN qpn ++
+  (if is_exe then " (exe) " else "") ++ "==" ++ showI i
+showDep (Dep is_exe qpn (Constrained [(vr, v)])) =
+  showVar v ++ " => " ++ showQPN qpn ++
+  (if is_exe then " (exe) " else "") ++ showVR vr
+showDep (Dep is_exe qpn ci                     ) =
+  showQPN qpn ++ (if is_exe then " (exe) " else "") ++ showCI ci
 showDep (Ext ext)   = "requires " ++ display ext
 showDep (Lang lang) = "requires " ++ display lang
 showDep (Pkg pn vr) = "requires pkg-config package "
@@ -237,10 +242,11 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     goD (Ext  ext)    _    = Ext  ext
     goD (Lang lang)   _    = Lang lang
     goD (Pkg pkn vr)  _    = Pkg pkn vr
-    goD (Dep  dep ci) comp
-      | qBase  dep  = Dep (Q (PackagePath ns (Base  pn)) dep) (fmap (Q pp) ci)
-      | qSetup comp = Dep (Q (PackagePath ns (Setup pn)) dep) (fmap (Q pp) ci)
-      | otherwise   = Dep (Q (PackagePath ns inheritedQ) dep) (fmap (Q pp) ci)
+    goD (Dep is_exe dep ci) comp
+      | is_exe      = Dep is_exe (Q (PackagePath ns (Exe pn dep)) dep) (fmap (Q pp) ci)
+      | qBase  dep  = Dep is_exe (Q (PackagePath ns (Base  pn)) dep) (fmap (Q pp) ci)
+      | qSetup comp = Dep is_exe (Q (PackagePath ns (Setup pn)) dep) (fmap (Q pp) ci)
+      | otherwise   = Dep is_exe (Q (PackagePath ns inheritedQ) dep) (fmap (Q pp) ci)
 
     -- If P has a setup dependency on Q, and Q has a regular dependency on R, then
     -- we say that the 'Setup' qualifier is inherited: P has an (indirect) setup
@@ -252,6 +258,7 @@ qualifyDeps QO{..} (Q pp@(PackagePath ns q) pn) = go
     inheritedQ :: Qualifier
     inheritedQ = case q of
                    Setup _     -> q
+                   Exe _ _     -> q
                    Unqualified -> q
                    Base _      -> Unqualified
 
@@ -282,7 +289,7 @@ unqualifyDeps = go
     go1 (Simple dep comp)    = Simple (goD dep) comp
 
     goD :: Dep QPN -> Dep PN
-    goD (Dep qpn ci) = Dep (unq qpn) (fmap unq ci)
+    goD (Dep is_exe qpn ci) = Dep is_exe (unq qpn) (fmap unq ci)
     goD (Ext  ext)   = Ext ext
     goD (Lang lang)  = Lang lang
     goD (Pkg pn vr)  = Pkg pn vr
@@ -354,7 +361,7 @@ instance ResetVar CI where
   resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
 
 instance ResetVar Dep where
-  resetVar v (Dep qpn ci) = Dep qpn (resetVar v ci)
+  resetVar v (Dep is_exe qpn ci) = Dep is_exe qpn (resetVar v ci)
   resetVar _ (Ext ext)    = Ext ext
   resetVar _ (Lang lang)  = Lang lang
   resetVar _ (Pkg pn vr)  = Pkg pn vr
@@ -401,7 +408,7 @@ data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReason
 -- | Closes a goal, i.e., removes all the extraneous information that we
 -- need only during the build phase.
 close :: OpenGoal comp -> Goal QPN
-close (OpenGoal (Simple (Dep qpn _) _) gr) = Goal (P qpn) gr
+close (OpenGoal (Simple (Dep _ qpn _) _) gr) = Goal (P qpn) gr
 close (OpenGoal (Simple (Ext     _) _) _ ) =
   error "Distribution.Solver.Modular.Dependency.close: called on Ext goal"
 close (OpenGoal (Simple (Lang    _) _) _ ) =

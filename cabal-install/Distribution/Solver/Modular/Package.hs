@@ -76,8 +76,12 @@ instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
 
--- | Is the package in the primary group of packages. In particular this
--- does not include packages pulled in as setup deps.
+-- | Is the package in the primary group of packages.  This is used to
+-- determine (1) if we should try to establish stanza preferences
+-- for this goal, and (2) whether or not a user specified @--constraint@
+-- should apply to this dependency (grep 'primaryPP' to see the
+-- use sites).  In particular this does not include packages pulled in
+-- as setup deps.
 --
 primaryPP :: PackagePath -> Bool
 primaryPP (PackagePath _ns q) = go q
@@ -85,6 +89,7 @@ primaryPP (PackagePath _ns q) = go q
     go Unqualified = True
     go (Base  _)   = True
     go (Setup _)   = False
+    go (Exe _ _)   = False
 
 -- | Create artificial parents for each of the package names, making
 -- them all independent.

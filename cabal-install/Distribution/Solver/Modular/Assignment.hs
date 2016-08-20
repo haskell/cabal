@@ -82,10 +82,10 @@ extend extSupported langSupported pkgPresent var = foldM extendSingle
     extendSingle a (Pkg pn vr)  =
       if pkgPresent pn vr then Right a
                           else Left (varToConflictSet var, [Pkg pn vr])
-    extendSingle a (Dep qpn ci) =
+    extendSingle a (Dep is_exe qpn ci) =
       let ci' = M.findWithDefault (Constrained []) qpn a
       in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
-            Left (c, (d, d')) -> Left  (c, L.map (Dep qpn) (simplify (P qpn) d d'))
+            Left (c, (d, d')) -> Left  (c, L.map (Dep is_exe qpn) (simplify (P qpn) d d'))
             Right x           -> Right x
 
     -- We're trying to remove trivial elements of the conflict. If we're just

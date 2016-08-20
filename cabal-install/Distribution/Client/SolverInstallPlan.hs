@@ -125,7 +125,7 @@ showInstallPlan :: SolverInstallPlan -> String
 showInstallPlan = showPlanIndex . planIndex
 
 showPlanPackage :: SolverPlanPackage -> String
-showPlanPackage (PreExisting ipkg _) = "PreExisting " ++ display (packageId ipkg)
+showPlanPackage (PreExisting ipkg) = "PreExisting " ++ display (packageId ipkg)
                                             ++ " (" ++ display (installedUnitId ipkg)
                                             ++ ")"
 showPlanPackage (Configured  spkg)   = "Configured " ++ display (packageId spkg)
@@ -207,7 +207,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
   ++ " which is in the " ++ showPlanState pkg'
   ++ " state"
   where
-    showPlanState (PreExisting _ _) = "pre-existing"
+    showPlanState (PreExisting _) = "pre-existing"
     showPlanState (Configured  _)   = "configured"
 
 -- | For an invalid plan, produce a detailed list of problems as human readable
@@ -279,7 +279,7 @@ nonSetupClosure index pkgids0 = closure Graph.empty pkgids0
             Just _  -> closure completed  pkgids
             Nothing -> closure completed' pkgids'
               where completed' = Graph.insert pkg completed
-                    pkgids'    = CD.nonSetupDeps (resolverPackageDeps pkg) ++ pkgids
+                    pkgids'    = CD.nonSetupDeps (resolverPackageLibDeps pkg) ++ pkgids
 
 -- | Compute the root sets of a plan
 --
@@ -310,7 +310,7 @@ libraryRoots index =
 -- | The setup dependencies of each package in the plan
 setupRoots :: SolverPlanIndex -> [[SolverId]]
 setupRoots = filter (not . null)
-           . map (CD.setupDeps . resolverPackageDeps)
+           . map (CD.setupDeps . resolverPackageLibDeps)
            . Graph.toList
 
 -- | Given a package index where we assume we want to use all the packages
@@ -342,7 +342,7 @@ dependencyInconsistencies' index =
       | -- For each package @pkg@
         pkg <- Graph.toList index
         -- Find out which @sid@ @pkg@ depends on
-      , sid <- CD.nonSetupDeps (resolverPackageDeps pkg)
+      , sid <- CD.nonSetupDeps (resolverPackageLibDeps pkg)
         -- And look up those @sid@ (i.e., @sid@ is the ID of @dep@)
       , Just dep <- [Graph.lookup sid index]
       ]
@@ -358,8 +358,8 @@ dependencyInconsistencies' index =
     reallyIsInconsistent [p1, p2] =
       let pid1 = nodeKey p1
           pid2 = nodeKey p2
-      in pid1 `notElem` CD.nonSetupDeps (resolverPackageDeps p2)
-      && pid2 `notElem` CD.nonSetupDeps (resolverPackageDeps p1)
+      in pid1 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p2)
+      && pid2 `notElem` CD.nonSetupDeps (resolverPackageLibDeps p1)
     reallyIsInconsistent _ = True
 
 

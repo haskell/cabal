@@ -153,7 +153,8 @@ validate = cata go
       let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let newactives = Dep qpn (Fixed i (P qpn)) : L.map (resetVar (P qpn)) (extractDeps pfa psa qdeps)
+      -- TODO: is the False here right?
+      let newactives = Dep False {- not exe -} qpn (Fixed i (P qpn)) : L.map (resetVar (P qpn)) (extractDeps pfa psa qdeps)
       -- We now try to extend the partial assignment with the new active constraints.
       let mnppa = extend extSupported langSupported pkgPresent (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies

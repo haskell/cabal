@@ -44,7 +44,7 @@ defaultQualifyOptions idx = QO {
                                 -- .. which are installed ..
                               , (I _ver (Inst _), PInfo deps _flagNfo _fr) <- M.toList is
                                 -- .. and flatten all their dependencies ..
-                              , (Dep dep _ci, _comp) <- flattenFlaggedDeps deps
+                              , (Dep _is_exe dep _ci, _comp) <- flattenFlaggedDeps deps
                               ]
     , qoSetupIndependent = True
     }

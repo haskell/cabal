@@ -16,6 +16,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabDistDirParams,
     elabExeDependencyPaths,
     elabLibDependencies,
+    elabExeDependencies,
     elabSetupDependencies,
 
     ElaboratedPackageOrComponent(..),
@@ -73,6 +74,7 @@ import           Data.Set (Set)
 import qualified Data.ByteString.Lazy as LBS
 import           Distribution.Compat.Binary
 import           GHC.Generics (Generic)
+import qualified Data.Monoid as Mon
 
 
 
@@ -296,9 +298,15 @@ elabLibDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pk
 elabLibDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
     = compLibDependencies comp
 
+elabExeDependencies :: ElaboratedConfiguredPackage -> [ComponentId]
+elabExeDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
+    = map confInstId (CD.nonSetupDeps (pkgExeDependencies pkg))
+elabExeDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
+    = compExeDependencies comp
+
 elabExeDependencyPaths :: ElaboratedConfiguredPackage -> [FilePath]
-elabExeDependencyPaths ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage _ }
-    = [] -- TODO: not implemented
+elabExeDependencyPaths ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
+    = CD.nonSetupDeps (pkgExeDependencyPaths pkg)
 elabExeDependencyPaths ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
     = compExeDependencyPaths comp
 
@@ -353,6 +361,14 @@ data ElaboratedPackage
        --
        pkgLibDependencies :: ComponentDeps [ConfiguredId],
 
+       -- | Dependencies on executable packages.
+       --
+       pkgExeDependencies :: ComponentDeps [ConfiguredId],
+
+       -- | Paths where executable dependencies live.
+       --
+       pkgExeDependencyPaths :: ComponentDeps [FilePath],
+
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
        pkgStanzasEnabled :: Set OptionalStanza
@@ -363,7 +379,8 @@ instance Binary ElaboratedPackage
 
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
-    fmap (map (SimpleUnitId . confInstId)) (pkgLibDependencies pkg)
+    fmap (map (SimpleUnitId . confInstId)) (pkgLibDependencies pkg) `Mon.mappend`
+    fmap (map (SimpleUnitId . confInstId)) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.
