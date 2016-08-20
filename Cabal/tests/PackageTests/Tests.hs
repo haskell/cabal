@@ -5,6 +5,7 @@ import PackageTests.PackageTester
 import qualified PackageTests.AutogenModules.Package.Check
 import qualified PackageTests.AutogenModules.SrcDist.Check
 import qualified PackageTests.BenchmarkStanza.Check
+import qualified PackageTests.CaretOperator.Check
 import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
@@ -38,6 +39,9 @@ tests config = do
 
   -- Test that Cabal parses 'test' sections correctly
   tc "TestStanza"       PackageTests.TestStanza.Check.suite
+
+  -- Test that Cabal parses '^>=' operator correctly
+  tc "CaretOperator"    PackageTests.CaretOperator.Check.suite
 
   -- Test that Cabal determinstically generates object archives
   tc "DeterministicAr"  PackageTests.DeterministicAr.Check.suite

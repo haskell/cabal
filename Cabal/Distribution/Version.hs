@@ -58,6 +58,7 @@ module Distribution.Version (
   differenceVersionRanges,
   invertVersionRange,
   withinVersion,
+  majorBoundVersion,
   betweenVersionsInclusive,
 
   -- ** Inspection
@@ -125,6 +126,7 @@ data VersionRange
   | LaterVersion           Version -- > version  (NB. not >=)
   | EarlierVersion         Version -- < version
   | WildcardVersion        Version -- == ver.*   (same as >= ver && < ver+1)
+  | MajorBoundVersion      Version -- @^>= ver@ (same as >= ver && < MAJ(ver)+1)
   | UnionVersionRanges     VersionRange VersionRange
   | IntersectVersionRanges VersionRange VersionRange
   | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
@@ -274,8 +276,17 @@ invertVersionRange =
 withinVersion :: Version -> VersionRange
 withinVersion = WildcardVersion
 
--- | The version range @>= v1 && <= v2@.
+-- | The version range @^>= v@.
 --
+-- For example, for version @1.2.3.4@, the version range @^>= 1.2.3.4@ is the same as
+-- @>= 1.2.3.4 && < 1.3@.
+--
+-- Note that @^>= 1@ is equivalent to @>= 1 && < 1.1@.
+--
+-- @since 2.0@
+majorBoundVersion :: Version -> VersionRange
+majorBoundVersion = MajorBoundVersion
+
 -- In practice this is not very useful because we normally use inclusive lower
 -- bounds and exclusive upper bounds.
 --
@@ -334,6 +345,7 @@ foldVersionRange anyv this later earlier union intersect = fold
     fold (LaterVersion v)               = later v
     fold (EarlierVersion v)             = earlier v
     fold (WildcardVersion v)            = fold (wildcard v)
+    fold (MajorBoundVersion v)          = fold (majorBound v)
     fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
     fold (VersionRangeParens v)         = fold v
@@ -341,6 +353,10 @@ foldVersionRange anyv this later earlier union intersect = fold
     wildcard v = intersectVersionRanges
                    (orLaterVersion v)
                    (earlierVersion (wildcardUpperBound v))
+
+    majorBound v = intersectVersionRanges
+                     (orLaterVersion v)
+                     (earlierVersion (majorUpperBound v))
 
 -- | An extended variant of 'foldVersionRange' that also provides a view of the
 -- expression in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"==
@@ -358,12 +374,18 @@ foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                                                -- inclusive lower bound and the
                                                -- exclusive upper bounds of the
                                                -- range defined by the wildcard.
+                  -> (Version -> Version -> a) -- ^ @\"^>= v\"@ major upper bound
+                                               -- The function is passed the
+                                               -- inclusive lower bound and the
+                                               -- exclusive major upper bounds
+                                               -- of the range defined by this
+                                               -- operator.
                   -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
                   -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
                   -> (a -> a)                  -- ^ @\"(_)\"@ parentheses
                   -> VersionRange -> a
 foldVersionRange' anyv this later earlier orLater orEarlier
-                  wildcard union intersect parens = fold
+                  wildcard major union intersect parens = fold
   where
     fold AnyVersion                     = anyv
     fold (ThisVersion v)                = this v
@@ -380,6 +402,7 @@ foldVersionRange' anyv this later earlier orLater orEarlier
                              (ThisVersion    v')) | v==v' = orEarlier v
 
     fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
+    fold (MajorBoundVersion v)          = major v (majorUpperBound v)
     fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
     fold (VersionRangeParens v)         = parens (fold v)
@@ -500,6 +523,18 @@ isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
   where check (n:[]) (m:[]) | n+1 == m = True
         check (n:ns) (m:ms) | n   == m = check ns ms
         check _      _                 = False
+
+-- | Compute next greater major version to be used as upper bound
+--
+-- Example: @0.4.1@ produces the version @0.5@ which then can be used
+-- to construct a range @>= 0.4.1 && < 0.5@
+majorUpperBound :: Version -> Version
+majorUpperBound version = version { versionBranch = upperBound }
+  where
+    upperBound = case versionBranch version of
+      []        -> [0,1] -- should not happen
+      [m1]      -> [m1,1] -- e.g. version '1'
+      (m1:m2:_) -> [m1,m2+1]
 
 ------------------
 -- Intervals view
@@ -802,6 +837,7 @@ instance Text VersionRange where
            (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
            (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
            (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
+           (\v _ -> (Disp.text "^>=" <<>> disp v                  , 0))
            (\(r1, p1) (r2, p2) ->
              (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) ->
@@ -867,6 +903,7 @@ instance Text VersionRange where
                      ("<=", orEarlierVersion),
                      (">",  LaterVersion),
                      (">=", orLaterVersion),
+                     ("^>=", MajorBoundVersion),
                      ("==", ThisVersion) ]
 
 -- | Does the version range have an upper bound?
