@@ -85,6 +85,7 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.System
+import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
@@ -129,7 +130,7 @@ import           Data.Either
 import           Data.Monoid
 import           Data.Function
 import           System.FilePath
-import           System.Directory (doesDirectoryExist)
+import           System.Directory (doesDirectoryExist, getDirectoryContents)
 
 ------------------------------------------------------------------------------
 -- * Elaborated install plan
@@ -604,8 +605,10 @@ rebuildInstallPlan verbosity
         storePkgIndex <- getPackageDBContents verbosity
                                               compiler progdb platform
                                               storePackageDb
+        storeExeIndex <- getExecutableDBContents storeDirectory
         let improvedPlan = improveInstallPlanWithPreExistingPackages
                              storePkgIndex
+                             storeExeIndex
                              elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan improvedPlan)
         return improvedPlan
@@ -664,6 +667,20 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
       createPackageDBIfMissing verbosity compiler progdb packagedb
       Cabal.getPackageDBContents verbosity compiler
                                  packagedb progdb
+
+-- | Return the list of all already installed executables
+getExecutableDBContents
+    :: FilePath -- store directory
+    -> Rebuild (Set ComponentId)
+getExecutableDBContents storeDirectory = do
+    monitorFiles [monitorFileGlob (FilePathGlob (FilePathRoot storeDirectory) (GlobFile [WildCard]))]
+    paths <- liftIO $ getDirectoryContents storeDirectory
+    return (Set.fromList (map ComponentId (filter valid paths)))
+  where
+    valid "." = False
+    valid ".." = False
+    valid "package.db" = False
+    valid _ = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Rebuild SourcePackageDb
@@ -2562,9 +2579,10 @@ packageHashConfigInputs
 -- installed packages whenever they exist.
 --
 improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
+                                          -> Set ComponentId
                                           -> ElaboratedInstallPlan
                                           -> ElaboratedInstallPlan
-improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
+improveInstallPlanWithPreExistingPackages installedPkgIndex installedExes installPlan =
     replaceWithPreExisting installPlan
       [ ipkg
       | InstallPlan.Configured pkg
@@ -2579,8 +2597,16 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installPlan =
     -- since overwriting is never safe.
 
     canPackageBeImproved pkg =
-      PackageIndex.lookupUnitId
-        installedPkgIndex (installedUnitId pkg)
+      case PackageIndex.lookupUnitId
+            installedPkgIndex (installedUnitId pkg) of
+        Just x -> Just x
+        Nothing | SimpleUnitId cid <- installedUnitId pkg
+                , cid `Set.member` installedExes
+                -- Same hack as replacewithPrePreExisting
+                -> Just (Installed.emptyInstalledPackageInfo {
+                            Installed.installedUnitId = installedUnitId pkg
+                        })
+                | otherwise -> Nothing
 
     replaceWithPreExisting =
       foldl' (\plan ipkg -> InstallPlan.preexisting
