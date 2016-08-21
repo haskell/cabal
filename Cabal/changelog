@@ -64,6 +64,8 @@
 	* New './Setup configure' flag '--cabal-file', allowing multiple
 	.cabal files in a single directory (#3553). Primarily intended for
 	internal use.
+	* Macros in 'cabal_macros.h' are now ifndef'd, so that they
+	don't cause an error if the macro is already defined. (#3041)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
