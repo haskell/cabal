@@ -1184,7 +1184,22 @@ buildInplaceUnpackedPackage verbosity
           --TODO: [required eventually] this doesn't track file
           --non-existence, so we could fail to rebuild if someone
           --adds a new file which changes behavior.
-          allSrcFiles <- allPackageSourceFiles verbosity scriptOptions srcdir
+          allSrcFiles <-
+            let trySdist    = allPackageSourceFiles verbosity scriptOptions srcdir
+                -- This is just a hack, to get semi-reasonable file
+                -- listings for the monitor
+                tryFallback = do
+                    warn verbosity $
+                        "Couldn't use sdist to compute source files; falling " ++
+                        "back on recursive file scan."
+                    filter (not . ("dist" `isPrefixOf`))
+                        `fmap` getDirectoryContentsRecursive srcdir
+            in if elabSetupScriptCliVersion pkg >= Version [1,17] []
+                  then do r <- trySdist
+                          if null r
+                            then tryFallback
+                            else return r
+                  else tryFallback
 
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus
