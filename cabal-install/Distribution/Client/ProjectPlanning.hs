@@ -2352,7 +2352,11 @@ setupHsBuildFlags _ _ verbosity builddir =
 
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs elab@(ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage _ })
+    -- Fix for #3335, don't pass build arguments if it's not supported
+    | elabSetupScriptCliVersion elab >= Version [1,17] []
     = map (showComponentTarget (packageId elab)) (elabBuildTargets elab)
+    | otherwise
+    = []
 setupHsBuildArgs (ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent _ })
     = []
 
