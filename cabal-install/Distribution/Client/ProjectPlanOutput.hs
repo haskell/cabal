@@ -73,20 +73,23 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
       J.object $
         [ "type"       J..= J.String "configured"
         , "id"         J..= (jdisplay . installedUnitId) elab
-        , "depends"    J..= map (jdisplay . confInstId) (elabLibDependencies elab)
         , "flags"      J..= J.object [ fn J..= v
                                      | (PD.FlagName fn,v) <-
                                             elabFlagAssignment elab ]
         ] ++
         case elabPkgOrComp elab of
-            ElabPackage pkg ->
-                let components = J.object
-                      [ comp2str c J..= J.object
-                        [ "depends" J..= map (jdisplay . confInstId) v ]
-                      -- NB: does NOT contain non-lib dependencies
-                      | (c,v) <- ComponentDeps.toList (pkgLibDependencies pkg) ]
-                in ["components" J..= components ]
-            ElabComponent _ -> []
+          ElabPackage pkg ->
+            let components = J.object $
+                  [ comp2str c J..= J.object
+                    [ "depends" J..= map (jdisplay . confInstId) v ]
+                  | (c,v) <- ComponentDeps.toList (pkgLibDependencies pkg) ] ++
+                  [ comp2str c J..= J.object
+                    [ "exe-depends" J..= map (jdisplay . confInstId) v ]
+                  | (c,v) <- ComponentDeps.toList (pkgExeDependencies pkg) ]
+            in ["components" J..= components]
+          ElabComponent _ ->
+            ["depends"     J..= map (jdisplay . confInstId) (elabLibDependencies elab)
+            ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)]
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
