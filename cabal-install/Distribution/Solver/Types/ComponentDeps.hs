@@ -22,6 +22,7 @@ module Distribution.Solver.Types.ComponentDeps (
   , fromList
   , singleton
   , insert
+  , zip
   , filterDeps
   , fromLibraryDeps
   , fromSetupDeps
@@ -35,6 +36,7 @@ module Distribution.Solver.Types.ComponentDeps (
   , select
   ) where
 
+import Prelude hiding (zip)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Distribution.Compat.Binary (Binary)
@@ -118,6 +120,17 @@ insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
   where
     aux Nothing   = Just a
     aux (Just a') = Just $ a `mappend` a'
+
+-- | Zip two 'ComponentDeps' together by 'Component', using 'mempty'
+-- as the neutral element when a 'Component' is present only in one.
+zip :: (Monoid a, Monoid b) => ComponentDeps a -> ComponentDeps b -> ComponentDeps (a, b)
+zip (ComponentDeps d1) (ComponentDeps d2) =
+    ComponentDeps $
+      Map.mergeWithKey
+        (\_ a b -> Just (a,b))
+        (fmap (\a -> (a, mempty)))
+        (fmap (\b -> (mempty, b)))
+        d1 d2
 
 -- | Keep only selected components (and their associated deps info).
 filterDeps :: (Component -> a -> Bool) -> ComponentDeps a -> ComponentDeps a
