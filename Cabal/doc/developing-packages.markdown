@@ -2071,6 +2071,15 @@ getLibexecDir :: IO FilePath
 getSysconfDir :: IO FilePath
 ~~~~~~~~~~~~~~~
 
+The actual location of all these directories can be individually
+overridden at runtime using environment variables of the form
+`pkg_name_var`, where `pkg_name` is the name of the package with
+all hyphens converted into underscores, and `var` is either
+`bindir`, `libdir`, `datadir`, `libexedir` or `sysconfdir`.
+For example, the configured data directory for `pretty-show`
+is controlled with the `pretty_show_datadir` environment variable.
+
+
 ### Accessing the package version ###
 
 The aforementioned auto generated `Paths_`_pkgname_ module also
