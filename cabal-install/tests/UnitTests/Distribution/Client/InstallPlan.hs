@@ -11,7 +11,7 @@ import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (IsNode(..))
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.PackageFixedDeps
-import           Distribution.Solver.Types.ComponentDeps as CD
+import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Client.Types
 import           Distribution.Client.JobControl
 
