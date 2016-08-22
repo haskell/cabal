@@ -690,7 +690,8 @@ rebuildTargets verbosity
       InstallPlan.execute jobControl keepGoing
                           (BuildFailure Nothing . DependentFailed . packageId)
                           installPlan $ \pkg ->
-        handle (return . Left) $ fmap Right $ --TODO: review exception handling
+        --TODO: review exception handling
+        handle (\(e :: BuildFailure) -> return (Left e)) $ fmap Right $
 
         let uid = installedUnitId pkg
             Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus in

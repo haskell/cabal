@@ -35,6 +35,10 @@ Extra-Source-Files:
   tests/IntegrationTests/custom/plain/A.hs
   tests/IntegrationTests/custom/plain/Setup.hs
   tests/IntegrationTests/custom/plain/plain.cabal
+  tests/IntegrationTests/custom/segfault.sh
+  tests/IntegrationTests/custom/segfault/Setup.hs
+  tests/IntegrationTests/custom/segfault/cabal.project
+  tests/IntegrationTests/custom/segfault/plain.cabal
   tests/IntegrationTests/exec/Foo.hs
   tests/IntegrationTests/exec/My.hs
   tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.out

@@ -93,7 +93,7 @@ import           Data.Either
 import           Control.Exception (Exception(..))
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
-import           System.Posix.Signals (sigKILL)
+import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
 
 
@@ -586,11 +586,14 @@ reportBuildFailures verbosity plan buildOutcomes
       | otherwise
       = False
 
+    -- NB: if the Setup script segfaulted or was interrupted,
+    -- we should give more detailed information.  So only
+    -- assume that exit code 1 is "pedestrian failure."
     isFailureSelfExplanatory (BuildFailed e)
-      | Just (ExitFailure _) <- fromException e = True
+      | Just (ExitFailure 1) <- fromException e = True
 
     isFailureSelfExplanatory (ConfigureFailed e)
-      | Just (ExitFailure _) <- fromException e = True
+      | Just (ExitFailure 1) <- fromException e = True
 
     isFailureSelfExplanatory _                  = False
 
@@ -651,7 +654,27 @@ reportBuildFailures verbosity plan buildOutcomes
       Just (ExitFailure 1) -> ""
 
 #ifdef MIN_VERSION_unix
+      -- Note [Positive "signal" exit code]
+      -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      -- What's the business with the test for negative and positive
+      -- signal values?  The API for process specifies that if the
+      -- process died due to a signal, it returns a *negative* exit
+      -- code.  So that's the negative test.
+      --
+      -- What about the positive test?  Well, when we find out that
+      -- a process died due to a signal, we ourselves exit with that
+      -- exit code.  However, we don't "kill ourselves" with the
+      -- signal; we just exit with the same code as the signal: thus
+      -- the caller sees a *positive* exit code.  So that's what
+      -- happens when we get a positive exit code.
       Just (ExitFailure n)
+        | -n == fromIntegral sigSEGV ->
+            " The build process segfaulted (i.e. SIGSEGV)."
+
+        |  n == fromIntegral sigSEGV ->
+            " The build process terminated with exit code " ++ show n
+         ++ " which may be because some part of it segfaulted. (i.e. SIGSEGV)."
+
         | -n == fromIntegral sigKILL ->
             " The build process was killed (i.e. SIGKILL). " ++ explanation
 
