@@ -514,16 +514,56 @@ defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
 -- we might have only have older info. This lets us fill that in even for old
 -- config files.
 --
--- TODO: Once we migrate from opt-in to opt-out security for the central
--- Hackage repository, we should enable security and specify keys and threshold
--- for repositories that have their security setting as 'Nothing' (default).
 addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
-addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
-      tryHttps
-    $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
+addInfoForKnownRepos repo
+  | remoteRepoName repo == remoteRepoName defaultRemoteRepo
+  = useSecure . tryHttps . fixOldURI $ repo
   where
+    fixOldURI r
+      | isOldHackageURI (remoteRepoURI r)
+                  = r { remoteRepoURI = remoteRepoURI defaultRemoteRepo }
+      | otherwise = r
+
     tryHttps r = r { remoteRepoShouldTryHttps = True }
+
+    useSecure r@RemoteRepo{
+                  remoteRepoSecure       = secure,
+                  remoteRepoRootKeys     = [],
+                  remoteRepoKeyThreshold = 0
+                } | secure /= Just False
+            = r {
+              --TODO: When we want to switch us from using opt-in to opt-out
+              -- security for the central hackage server, uncomment the
+              -- following line. That will cause the default (of unspecified)
+              -- to get interpreted as if it were "secure: True". For the
+              -- moment it means the keys get added but you have to manually
+              -- set "secure: True" to opt-in.
+              --remoteRepoSecure       = Just True,
+                remoteRepoRootKeys     = defaultHackageRemoteRepoKeys,
+                remoteRepoKeyThreshold = defaultHackageRemoteRepoKeyThreshold
+              }
+    useSecure r = r
 addInfoForKnownRepos other = other
+
+-- | The current hackage.haskell.org repo root keys that we ship with cabal.
+---
+-- This lets us bootstrap trust in this repo without user intervention.
+-- These keys need to be periodically updated when new root keys are added.
+-- See the root key procedures for details.
+--
+defaultHackageRemoteRepoKeys :: [String]
+defaultHackageRemoteRepoKeys =
+    [ "fe331502606802feac15e514d9b9ea83fee8b6ffef71335479a2e68d84adc6b0",
+      "1ea9ba32c526d1cc91ab5e5bd364ec5e9e8cb67179a471872f6e26f0ae773d42",
+      "2c6c3627bd6c982990239487f1abd02e08a02e6cf16edb105a8012d444d870c3",
+      "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d",
+      "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
+    ]
+
+-- | The required threshold of root key signatures for hackage.haskell.org
+--
+defaultHackageRemoteRepoKeyThreshold :: Int
+defaultHackageRemoteRepoKeyThreshold = 3
 
 --
 -- * Config file reading
