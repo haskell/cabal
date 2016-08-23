@@ -81,11 +81,12 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
           ElabPackage pkg ->
             let components = J.object $
                   [ comp2str c J..= J.object
-                    [ "depends" J..= map (jdisplay . confInstId) v ]
-                  | (c,v) <- ComponentDeps.toList (pkgLibDependencies pkg) ] ++
-                  [ comp2str c J..= J.object
-                    [ "exe-depends" J..= map (jdisplay . confInstId) v ]
-                  | (c,v) <- ComponentDeps.toList (pkgExeDependencies pkg) ]
+                    [ "depends"     J..= map (jdisplay . confInstId) ldeps
+                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ]
+                  | (c,(ldeps,edeps))
+                      <- ComponentDeps.toList $
+                         ComponentDeps.zip (pkgLibDependencies pkg)
+                                           (pkgExeDependencies pkg) ]
             in ["components" J..= components]
           ElabComponent _ ->
             ["depends"     J..= map (jdisplay . confInstId) (elabLibDependencies elab)
