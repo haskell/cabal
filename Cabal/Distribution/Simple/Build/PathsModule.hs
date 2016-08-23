@@ -242,6 +242,9 @@ generate pkg_descr lbi clbi =
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.
+--
+-- Note: The format of these strings is part of Cabal's public API;
+-- changing this function constitutes a *backwards-compatibility* break.
 pkgPathEnvVar :: PackageDescription
               -> String     -- ^ path component; one of \"bindir\", \"libdir\",
                             -- \"datadir\", \"libexecdir\", or \"sysconfdir\"
