@@ -271,15 +271,22 @@ resolveUserBuildTargets pkgs utargets = do
     let (primaryPkg, otherPkgs) = selectPrimaryLocalPackage pwd pkgs'
         (bproblems,  btargets)  = resolveBuildTargets
                                     primaryPkg otherPkgs utargets''
-        -- default local dir target if there's no given target
         utargets''
+        -- default local dir target if there's no given target
           | not (null primaryPkg)
           , null utargets       = [UserBuildTargetFileStatus1 "./"
                                      (FileStatusExistsDir pwd)]
           | otherwise           = utargets'
+        -- if there's nothing to build, build everything
+        btargets' | null utargets
+                  , null primaryPkg
+                  = [ BuildTargetPackage pkg
+                    | pkg <- otherPkgs ]
+                  | otherwise
+                  = btargets
 
     reportBuildTargetProblems bproblems
-    return (map (fmap packageName) btargets)
+    return (map (fmap packageName) btargets')
   where
     selectPrimaryLocalPackage :: FilePath
                               -> [PackageInfo]
