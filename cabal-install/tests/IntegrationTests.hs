@@ -292,6 +292,8 @@ main = do
   -- Define default arguments
   setEnv "CABAL_ARGS" $ "--config-file=config-file"
   setEnv "CABAL_ARGS_NO_CONFIG_FILE" " "
+  -- Don't get Unicode output from GHC
+  setEnv "LC_ALL" "C"
   -- Discover all the test categories
   categories <- discoverTestCategories baseDirectory
   -- Discover tests in each category
