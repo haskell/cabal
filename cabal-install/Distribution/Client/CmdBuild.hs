@@ -3,6 +3,7 @@
 -- | cabal-install CLI command: build
 --
 module Distribution.Client.CmdBuild (
+    buildCommand,
     buildAction,
   ) where
 
@@ -25,6 +26,33 @@ import Distribution.Verbosity
          ( normal )
 
 import Control.Monad (unless)
+
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Utils
+         ( wrapText )
+import qualified Distribution.Client.Setup as Client
+
+buildCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+buildCommand = Client.installCommand {
+  commandName         = "new-build",
+  commandSynopsis     = "Builds a Nix-local build project",
+  commandUsage        = usageAlternatives "new-build" [ "[FLAGS]"
+                                                      , "[FLAGS] TARGETS" ],
+  commandDescription  = Just $ \_ -> wrapText $
+        "Builds a Nix-local build project, automatically building and installing"
+     ++ "necessary dependencies.",
+  commandNotes        = Just $ \pname ->
+        "Examples:\n"
+     ++ "  " ++ pname ++ " new-build           "
+     ++ "    Build the package in the current directory or all packages in the project\n"
+     ++ "  " ++ pname ++ " new-build pkgname   "
+     ++ "    Build the package named pkgname in the project\n"
+     ++ "  " ++ pname ++ " new-build cname   "
+     ++ "    Build the component named cname in the project\n"
+     ++ "  " ++ pname ++ " new-build pkgname:cname   "
+     ++ "    Build the component named cname in the package pkgname\n"
+   }
 
 
 -- | The @build@ command does a lot. It brings the install plan up to date,
