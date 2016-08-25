@@ -171,14 +171,16 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     fmap concat
     . withAllLib $ \Library {exposedModules = ex, libBuildInfo = bi} -> do
        let exposed = filterAutogenModules pkg_descr bi ex
-       let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+       let filteredBi = filterAutogenBuildInfo pkg_descr bi
+       let others = otherModules filteredBi
        moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (exposed ++ others)
        return $ moduleSrcs ++ cSources bi ++ jsSources bi
 
     -- Executables sources.
   , fmap concat
     . withAllExe $ \Executable {modulePath = mainPath, buildInfo = bi} -> do
-       let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+       let filteredBi = filterAutogenBuildInfo pkg_descr bi
+       let others = otherModules filteredBi
        moduleSrcs  <- findModulesFiles (hsSourceDirs bi) pps others
        mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
        return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
@@ -189,13 +191,15 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let bi  = testBuildInfo t
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
-           let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+           let filteredBi = filterAutogenBuildInfo pkg_descr bi
+           let others = otherModules filteredBi
            moduleSrcs  <- findModulesFiles (hsSourceDirs bi) pps others
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
            let testModule = filterAutogenModules pkg_descr bi [m]
-           let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+           let filteredBi = filterAutogenBuildInfo pkg_descr bi
+           let others = otherModules filteredBi
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (testModule ++ others)
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> do
@@ -207,7 +211,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let  bi = benchmarkBuildInfo bm
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
-           let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+           let filteredBi = filterAutogenBuildInfo pkg_descr bi
+           let others = otherModules filteredBi
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps others
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
