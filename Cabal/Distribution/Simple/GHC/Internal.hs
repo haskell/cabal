@@ -28,8 +28,17 @@ module Distribution.Simple.GHC.Internal (
         substTopDir,
         checkPackageDbEnvVar,
         profDetailLevelFlag,
-        showArchString,
-        showOsString,
+        -- * GHC platform and version strings
+        ghcArchString,
+        ghcOsString,
+        ghcPlatformAndVersionString,
+        -- * Constructing GHC environment files
+        GhcEnvironmentFileEntry(..),
+        writeGhcEnvironmentFile,
+        simpleGhcEnvironmentFile,
+        ghcEnvironmentFileName,
+        renderGhcEnvironmentFile,
+        renderGhcEnvironmentFileEntry,
  ) where
 
 import Prelude ()
@@ -59,9 +68,11 @@ import Distribution.Text ( display, simpleParse )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
 import Distribution.Compat.Stack
+import Distribution.Version (Version)
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
+import qualified Data.ByteString.Lazy.Char8 as BS
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension
@@ -449,19 +460,100 @@ profDetailLevelFlag forLib mpl =
       ProfDetailAllFunctions        -> toFlag GhcProfAutoAll
       ProfDetailOther _             -> mempty
 
+
+-- -----------------------------------------------------------------------------
+-- GHC platform and version strings
+
 -- | GHC's rendering of it's host or target 'Arch' as used in its platform
 -- strings and certain file locations (such as user package db location).
 --
-showArchString :: Arch -> String
-showArchString PPC   = "powerpc"
-showArchString PPC64 = "powerpc64"
-showArchString other = display other
+ghcArchString :: Arch -> String
+ghcArchString PPC   = "powerpc"
+ghcArchString PPC64 = "powerpc64"
+ghcArchString other = display other
 
 -- | GHC's rendering of it's host or target 'OS' as used in its platform
 -- strings and certain file locations (such as user package db location).
 --
-showOsString :: OS -> String
-showOsString Windows = "mingw32"
-showOsString OSX     = "darwin"
-showOsString Solaris = "solaris2"
-showOsString other   = display other
+ghcOsString :: OS -> String
+ghcOsString Windows = "mingw32"
+ghcOsString OSX     = "darwin"
+ghcOsString Solaris = "solaris2"
+ghcOsString other   = display other
+
+-- | GHC's rendering of it's platform and compiler version string as used in
+-- certain file locations (such as user package db location).
+-- For example @x86_64-linux-7.10.4@
+--
+ghcPlatformAndVersionString :: Platform -> Version -> String
+ghcPlatformAndVersionString (Platform arch os) version =
+    intercalate "-" [ ghcArchString arch, ghcOsString os, display version ]
+
+
+-- -----------------------------------------------------------------------------
+-- Constructing GHC environment files
+
+-- | The kinds of entries we can stick in a @.ghc.environment@ file.
+--
+data GhcEnvironmentFileEntry =
+       GhcEnvFileComment   String     -- ^ @-- a comment@
+     | GhcEnvFilePackageId UnitId     -- ^ @package-id foo-1.0-4fe301a...@
+     | GhcEnvFilePackageDb PackageDB  -- ^ @global-package-db@,
+                                      --   @user-package-db@ or
+                                      --   @package-db blah/package.conf.d/@
+     | GhcEnvFileClearPackageDbStack  -- ^ @clear-package-db@
+
+-- | Make entries for a GHC environment file based on a 'PackageDBStack' and
+-- a bunch of package (unit) ids.
+--
+-- If you need to do anything more complicated then either use this as a basis
+-- and add more entries, or just make all the entries directly.
+--
+simpleGhcEnvironmentFile :: PackageDBStack
+                         -> [UnitId]
+                         -> [GhcEnvironmentFileEntry]
+simpleGhcEnvironmentFile packageDBs pkgids =
+    GhcEnvFileClearPackageDbStack
+  : map GhcEnvFilePackageDb packageDBs
+ ++ map GhcEnvFilePackageId pkgids
+
+-- | Write a @.ghc.environment-$arch-$os-$ver@ file in the given directory.
+--
+-- The 'Platform' and GHC 'Version' are needed as part of the file name.
+--
+writeGhcEnvironmentFile :: FilePath  -- ^ directory in which to put it
+                        -> Platform  -- ^ the GHC target platform
+                        -> Version   -- ^ the GHC version
+                        -> [GhcEnvironmentFileEntry] -- ^ the content
+                        -> NoCallStackIO ()
+writeGhcEnvironmentFile directory platform ghcversion =
+    writeFileAtomic envfile . BS.pack . renderGhcEnvironmentFile
+  where
+    envfile = directory </> ghcEnvironmentFileName platform ghcversion
+
+-- | The @.ghc.environment-$arch-$os-$ver@ file name
+--
+ghcEnvironmentFileName :: Platform -> Version -> FilePath
+ghcEnvironmentFileName platform ghcversion =
+    ".ghc.environment." ++ ghcPlatformAndVersionString platform ghcversion
+
+-- | Render a bunch of GHC environment file entries
+--
+renderGhcEnvironmentFile :: [GhcEnvironmentFileEntry] -> String
+renderGhcEnvironmentFile =
+    unlines . map renderGhcEnvironmentFileEntry
+
+-- | Render an individual GHC environment file entry
+--
+renderGhcEnvironmentFileEntry :: GhcEnvironmentFileEntry -> String
+renderGhcEnvironmentFileEntry entry = case entry of
+    GhcEnvFileComment   comment   -> format comment
+      where format = intercalate "\n" . map ("-- " ++) . lines
+    GhcEnvFilePackageId pkgid     -> "package-id " ++ display pkgid
+    GhcEnvFilePackageDb pkgdb     ->
+      case pkgdb of
+        GlobalPackageDB           -> "global-package-db"
+        UserPackageDB             -> "user-package-db"
+        SpecificPackageDB dbfile  -> "package-db " ++ dbfile
+    GhcEnvFileClearPackageDbStack -> "clear-package-db"
+

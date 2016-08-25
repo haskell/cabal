@@ -51,7 +51,14 @@ module Distribution.Simple.GHC (
         getLibDir,
         isDynamic,
         getGlobalPackageDB,
-        pkgRoot
+        pkgRoot,
+        -- * Constructing GHC environment files
+        Internal.GhcEnvironmentFileEntry(..),
+        Internal.simpleGhcEnvironmentFile,
+        Internal.writeGhcEnvironmentFile,
+        -- * Version-specific implementation quirks
+        getImplInfo,
+        GhcImplInfo(..)
  ) where
 
 import Prelude ()
@@ -337,16 +344,15 @@ getGlobalPackageDB verbosity ghcProg =
 
 -- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> NoCallStackIO FilePath
-getUserPackageDB _verbosity ghcProg (Platform arch os) = do
+getUserPackageDB _verbosity ghcProg platform = do
     -- It's rather annoying that we have to reconstruct this, because ghc
     -- hides this information from us otherwise. But for certain use cases
     -- like change monitoring it really can't remain hidden.
     appdir <- getAppUserDataDirectory "ghc"
     return (appdir </> platformAndVersion </> packageConfFileName)
   where
-    platformAndVersion = intercalate "-" [ Internal.showArchString arch
-                                         , Internal.showOsString os
-                                         , display ghcVersion ]
+    platformAndVersion = Internal.ghcPlatformAndVersionString
+                           platform ghcVersion
     packageConfFileName
       | ghcVersion >= mkVersion [6,12]   = "package.conf.d"
       | otherwise                        = "package.conf"
