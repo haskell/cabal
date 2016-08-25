@@ -284,9 +284,8 @@ filterAutogenBuildInfo :: PackageDescription -- ^ The package of this modules
                        -> BuildInfo          -- ^ The build info of this modules
                        -> BuildInfo          -- ^ The input modules
 filterAutogenBuildInfo pkg_descr bi =
-  let others = filterAutogenModules pkg_descr bi (otherModules bi)
-  in bi {
-      otherModules = others
+  bi {
+      otherModules = filterAutogenModules pkg_descr bi (otherModules bi)
     , cSources     = filterAutogenSources (autogenCSources bi)  (cSources  bi)
     , jsSources    = filterAutogenSources (autogenJsSources bi) (jsSources bi)
   }
