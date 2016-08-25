@@ -173,7 +173,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let exposed = filterAutogenModules pkg_descr bi ex
        let filteredBi = filterAutogenBuildInfo pkg_descr bi
        moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (exposed ++ otherModules filteredBi)
-       return $ moduleSrcs ++ cSources bi ++ jsSources bi
+       return $ moduleSrcs ++ cSources filteredBi ++ jsSources filteredBi
 
     -- Executables sources.
   , fmap concat
@@ -181,7 +181,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        let filteredBi = filterAutogenBuildInfo pkg_descr bi
        moduleSrcs  <- findModulesFiles (hsSourceDirs bi) pps (otherModules filteredBi)
        mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
-       return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
+       return $ (mainSrc:moduleSrcs) ++ cSources filteredBi ++ jsSources filteredBi
 
     -- Test suites sources.
   , fmap concat
@@ -192,12 +192,12 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            let filteredBi = filterAutogenBuildInfo pkg_descr bi
            moduleSrcs  <- findModulesFiles (hsSourceDirs bi) pps (otherModules filteredBi)
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
-           return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
+           return $ (mainSrc:moduleSrcs) ++ cSources filteredBi ++ jsSources filteredBi
          TestSuiteLibV09 _ m -> do
            let testModule = filterAutogenModules pkg_descr bi [m]
            let filteredBi = filterAutogenBuildInfo pkg_descr bi
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (testModule ++ otherModules filteredBi)
-           return $ moduleSrcs ++ cSources bi ++ jsSources bi
+           return $ moduleSrcs ++ cSources filteredBi ++ jsSources filteredBi
          TestSuiteUnsupported tp -> do
            die $ "Unsupported test suite type: " ++ show tp
 
@@ -210,7 +210,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            let filteredBi = filterAutogenBuildInfo pkg_descr bi
            moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (otherModules filteredBi)
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
-           return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
+           return $ (mainSrc:moduleSrcs) ++ cSources filteredBi ++ jsSources filteredBi
          BenchmarkUnsupported tp -> do
           die $ "Unsupported benchmark type: " ++ show tp
 
