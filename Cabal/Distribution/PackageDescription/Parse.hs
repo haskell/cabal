@@ -403,6 +403,12 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "js-sources"
            showFilePath       parseFilePathQ
            jsSources          (\paths binfo -> binfo{jsSources=paths})
+ , listFieldWithSep vcat "autogen-c-sources"
+           showFilePath       parseFilePathQ
+           autogenCSources    (\paths binfo -> binfo{autogenCSources=paths})
+ , listFieldWithSep vcat "autoge-js-sources"
+           showFilePath       parseFilePathQ
+           autogenJsSources   (\paths binfo -> binfo{autogenJsSources=paths})
  , simpleField "default-language"
            (maybe mempty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
