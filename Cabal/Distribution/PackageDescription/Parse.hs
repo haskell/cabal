@@ -406,7 +406,7 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "autogen-c-sources"
            showFilePath       parseFilePathQ
            autogenCSources    (\paths binfo -> binfo{autogenCSources=paths})
- , listFieldWithSep vcat "autoge-js-sources"
+ , listFieldWithSep vcat "autogen-js-sources"
            showFilePath       parseFilePathQ
            autogenJsSources   (\paths binfo -> binfo{autogenJsSources=paths})
  , simpleField "default-language"
