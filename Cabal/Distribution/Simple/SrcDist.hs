@@ -194,8 +194,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
            mainSrc <- findMainFile (hsSourceDirs bi) pps mainPath
            return $ (mainSrc:moduleSrcs) ++ cSources bi ++ jsSources bi
          TestSuiteLibV09 _ m -> do
-           let modules = filterAutogenModules pkg_descr bi (m:(otherModules bi))
-           moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps modules
+           let testModule = filterAutogenModules pkg_descr bi [m]
+           let others = otherModules $ filterAutogenBuildInfo pkg_descr bi
+           moduleSrcs <- findModulesFiles (hsSourceDirs bi) pps (testModule ++ others)
            return $ moduleSrcs ++ cSources bi ++ jsSources bi
          TestSuiteUnsupported tp -> do
            die $ "Unsupported test suite type: " ++ show tp
