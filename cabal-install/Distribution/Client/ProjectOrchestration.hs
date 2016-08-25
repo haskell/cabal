@@ -60,6 +60,7 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
+import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), PackageLocation(..) )
@@ -186,6 +187,12 @@ runProjectPreBuildPhase
     (elaboratedPlan'', pkgsBuildStatus) <-
       rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
                            elaboratedPlan'
+
+    debug verbosity "Updating GHC environment file"
+    writePlanGhcEnvironment
+      projectRootDir
+      elaboratedPlan''
+      elaboratedShared
 
     return ProjectBuildContext {
       distDirLayout,
