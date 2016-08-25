@@ -66,7 +66,7 @@ import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
 import System.FilePath
          ( (</>), (<.>), dropExtension, isAbsolute )
 
--- |Create a source distribution.
+-- | Create a source distribution.
 sdist :: PackageDescription     -- ^information from the tarball
       -> Maybe LocalBuildInfo   -- ^Information from configure
       -> SDistFlags             -- ^verbosity & snapshot
@@ -112,7 +112,7 @@ sdist pkg mb_lbi flags mkTmpDir pps =
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
 
--- |Create a file with the path of each source line by line.
+-- | Create a file with the path of each source line by line.
 sdistSourcesList :: FilePath           -- ^ output file
                  -> PackageDescription -- ^ information from the tarball
                  -> Verbosity          -- ^ verbosity
@@ -124,7 +124,7 @@ sdistSourcesList path pkg verbosity pps =
     traverse_ (hPutStrLn outHandle) ordinary
     traverse_ (hPutStrLn outHandle) maybeExecutable
 
--- |Create a directory with the all source files.
+-- | Create a directory with the all source files.
 sdistSourcesDirectory :: FilePath             -- ^ output directory
                       -> PackageDescription   -- ^ information from the tarball
                       -> Maybe LocalBuildInfo -- ^ Information from configure
@@ -336,7 +336,7 @@ findSetupFile targetDir = do
       setupHs  = targetDir </> "Setup.hs"
       setupLhs = targetDir </> "Setup.lhs"
 
--- |Prepare a directory tree of source files.
+-- | Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
             -> PackageDescription -- ^info from the cabal file
             -> Maybe LocalBuildInfo
@@ -405,7 +405,6 @@ maybeCreateDefaultSetupScript targetDir = do
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
 -- in the package description, eg using 'snapshotPackage' or 'snapshotVersion'.
---
 prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> PackageDescription -- ^info from the cabal file
                     -> Maybe LocalBuildInfo
@@ -438,7 +437,6 @@ overwriteSnapshotPackageDesc verbosity pkg targetDir = do
 
 -- | Modifies a 'PackageDescription' by appending a snapshot number
 -- corresponding to the given date.
---
 snapshotPackage :: UTCTime -> PackageDescription -> PackageDescription
 snapshotPackage date pkg =
   pkg {
@@ -448,7 +446,6 @@ snapshotPackage date pkg =
 
 -- | Modifies a 'Version' by appending a snapshot number corresponding
 -- to the given date.
---
 snapshotVersion :: UTCTime -> Version -> Version
 snapshotVersion date version = version {
     versionBranch = versionBranch version
@@ -457,7 +454,6 @@ snapshotVersion date version = version {
 
 -- | Given a date produce a corresponding integer representation.
 -- For example given a date @18/03/2008@ produce the number @20080318@.
---
 dateToSnapshotNumber :: UTCTime -> Int
 dateToSnapshotNumber date = case toGregorian (utctDay date) of
                             (year, month, day) ->
@@ -514,6 +510,5 @@ printPackageProblems verbosity pkg_descr = do
 ------------------------------------------------------------
 
 -- | The name of the tarball without extension
---
 tarBallName :: PackageDescription -> String
 tarBallName = display . packageId
