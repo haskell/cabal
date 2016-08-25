@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC.Internal
@@ -196,8 +197,11 @@ configureToolchain implInfo ghcProg ghcInfo =
              withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                                   "-o", testofile]
+               rawSystemProgram verbosity ghcProg
+                          [ "-hide-all-packages"
+                          , "-c", testcfile
+                          , "-o", testofile
+                          ]
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
@@ -341,6 +345,7 @@ componentCcGhcOptions verbosity implInfo lbi bi clbi pref filename =
 
       ghcOptCppIncludePath = toNubListR $ [autogenModulesDir lbi, odir]
                                           ++ PD.includeDirs bi,
+      ghcOptHideAllPackages= toFlag True,
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
       ghcOptCcOptions      = toNubListR $
@@ -366,12 +371,12 @@ componentGhcOptions :: Verbosity -> LocalBuildInfo
 componentGhcOptions verbosity lbi bi clbi odir =
     mempty {
       ghcOptVerbosity       = toFlag verbosity,
-      ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptThisUnitId      = case clbi of
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> Mon.mempty,
+      ghcOptHideAllPackages = toFlag True,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
