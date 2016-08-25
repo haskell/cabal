@@ -301,7 +301,6 @@ findModulesFiles searchDirs pps modules = do
 
 -- | Find the main file given the search directories, the extensions and the
 -- file name as it appears on the main-is fields.
--- | Find the main file.
 findMainFile :: [FilePath]        -- ^ Search directories.
              -> [PPSuffixHandler] -- ^ Extra preprocessors.
              -> FilePath          -- ^ Main file.
