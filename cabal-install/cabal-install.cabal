@@ -27,8 +27,14 @@ Extra-Source-Files:
   tests/IntegrationTests/custom-setup/Cabal-99998/CabalMessage.hs
   tests/IntegrationTests/custom-setup/Cabal-99999/Cabal.cabal
   tests/IntegrationTests/custom-setup/Cabal-99999/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/custom-setup-without-cabal-defaultMain.cabal
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/custom-setup-without-cabal.cabal
   tests/IntegrationTests/custom-setup/custom-setup/Setup.hs
   tests/IntegrationTests/custom-setup/custom-setup/custom-setup.cabal
+  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_allow_Cabal_import.sh
+  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_require_Cabal.sh
   tests/IntegrationTests/custom-setup/installs_Cabal_as_setup_dep.sh
   tests/IntegrationTests/custom/custom_dep.sh
   tests/IntegrationTests/custom/custom_dep/client/B.hs
