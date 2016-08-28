@@ -83,14 +83,15 @@ data ProjectConfig
    = ProjectConfig {
 
        -- | Packages in this project, including local dirs, local .cabal files
-       -- local and remote tarballs. Where these are file globs, they must
-       -- match something.
+       -- local and remote tarballs. When these are file globs, they must
+       -- match at least one package.
        projectPackages              :: [String],
 
        -- | Like 'projectConfigPackageGlobs' but /optional/ in the sense that
        -- file globs are allowed to match nothing. The primary use case for
        -- this is to be able to say @optional-packages: */@ to automagically
-       -- pick up deps that we unpack locally.
+       -- pick up deps that we unpack locally without erroring when
+       -- there aren't any.
        projectPackagesOptional      :: [String],
 
        -- | Packages in this project from remote source repositories.
@@ -99,8 +100,13 @@ data ProjectConfig
        -- | Packages in this project from hackage repositories.
        projectPackagesNamed         :: [Dependency],
 
+       -- See respective types for an explanation of what these
+       -- values are about:
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
        projectConfigShared          :: ProjectConfigShared,
+
+       -- | Configuration to be applied to *local* packages; i.e.,
+       -- any packages which are explicitly named in `cabal.project`.
        projectConfigLocalPackages   :: PackageConfig,
        projectConfigSpecificPackage :: MapMappend PackageName PackageConfig
      }
