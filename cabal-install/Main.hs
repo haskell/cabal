@@ -182,7 +182,7 @@ import Data.Monoid              (Monoid(..))
 import Control.Applicative      (pure, (<$>))
 #endif
 import Control.Exception        (SomeException(..), try)
-import Control.Monad            (when, unless)
+import Control.Monad            (when, unless, void)
 
 -- | Entry point
 --
@@ -1283,7 +1283,7 @@ userConfigAction ucflags extraArgs globalFlags = do
       path       <- configFile
       fileExists <- doesFileExist path
       if (not fileExists || (fileExists && force))
-      then createDefaultConfigFile verbosity path
+      then void $ createDefaultConfigFile verbosity path
       else die $ path ++ " already exists."
     ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
     ("update":_) -> userConfigUpdate verbosity globalFlags
