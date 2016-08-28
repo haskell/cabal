@@ -56,7 +56,7 @@ manpage pname commands = unlines $
   , "installing existing packages and developing new packages. "
   , "It can be used to work with local packages or to install packages from online package archives, "
   , "including automatically installing dependencies. By default it is configured to use Hackage, "
-  , "which is Haskell’s central package archive that contains thousands of libraries and applications "
+  , "which is Haskell's central package archive that contains thousands of libraries and applications "
   , "in the Cabal package format."
   , ".SH OPTIONS"
   , "Global options:"
