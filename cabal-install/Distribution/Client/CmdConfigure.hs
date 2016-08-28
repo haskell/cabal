@@ -1,6 +1,7 @@
 -- | cabal-install CLI command: configure
 --
 module Distribution.Client.CmdConfigure (
+    configureCommand,
     configureAction,
   ) where
 
@@ -14,6 +15,26 @@ import Distribution.Simple.Setup
 import Distribution.Verbosity
          ( normal )
 
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Utils
+         ( wrapText )
+import qualified Distribution.Client.Setup as Client
+
+configureCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+configureCommand = Client.installCommand {
+  commandName         = "new-configure",
+  commandSynopsis     = "Write out a cabal.project.local file.",
+  commandUsage        = usageAlternatives "new-configure" [ "[FLAGS]" ],
+  commandDescription  = Just $ \_ -> wrapText $
+        "Configures a Nix-local build project, downloading source from"
+     ++ " the network and writing out a cabal.project.local file which"
+     ++ " saves any FLAGS, to be reapplied on subsequent invocations to new-build.",
+  commandNotes        = Just $ \pname ->
+        "Examples:\n"
+     ++ "  " ++ pname ++ " new-configure           "
+     ++ "    Configure project of the current directory\n"
+   }
 
 -- | To a first approximation, the @configure@ just runs the first phase of
 -- the @build@ command where we bring the install plan up to date (thus

@@ -3,6 +3,7 @@
 -- | cabal-install CLI command: repl
 --
 module Distribution.Client.CmdRepl (
+    replCommand,
     replAction,
   ) where
 
@@ -26,6 +27,26 @@ import Distribution.Verbosity
 
 import Control.Monad (unless)
 
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Utils
+         ( wrapText )
+import qualified Distribution.Client.Setup as Client
+
+replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+replCommand = Client.installCommand {
+  commandName         = "new-repl",
+  commandSynopsis     = "Open a REPL for the current project",
+  commandUsage        = usageAlternatives "new-repl" [ "[FLAGS] TARGET" ],
+  commandDescription  = Just $ \_ -> wrapText $
+        "Opens a REPL for a Nix-local build project.",
+  commandNotes        = Just $ \pname ->
+        "Examples:\n"
+     ++ "  " ++ pname ++ " new-repl cname"
+     ++ "    Open a REPL for the component named cname\n"
+     ++ "  " ++ pname ++ " new-repl pkgname:cname"
+     ++ "    Open a REPL for the component named cname in pkgname\n"
+   }
 
 -- | The @repl@ command is very much like @build@. It brings the install plan
 -- up to date, selects that part of the plan needed by the given or implicit

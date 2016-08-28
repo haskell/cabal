@@ -279,14 +279,10 @@ mainWorker args = topHandler $
       , hiddenCmd  actAsSetupCommand actAsSetupAction
       , hiddenCmd  manpageCommand (manpageAction commandSpecs)
 
-      , hiddenCmd  installCommand { commandName = "new-configure" }
-                                  CmdConfigure.configureAction
-      , hiddenCmd  installCommand { commandName = "new-build" }
-                                  CmdBuild.buildAction
-      , hiddenCmd  installCommand { commandName = "new-repl" }
-                                  CmdRepl.replAction
-      , hiddenCmd  installCommand { commandName = "new-freeze" }
-                                  CmdFreeze.freezeAction
+      , regularCmd  CmdConfigure.configureCommand CmdConfigure.configureAction
+      , regularCmd  CmdBuild.buildCommand         CmdBuild.buildAction
+      , regularCmd  CmdRepl.replCommand           CmdRepl.replAction
+      , regularCmd  CmdFreeze.freezeCommand       CmdFreeze.freezeAction
       ]
 
 type Action = GlobalFlags -> IO ()
