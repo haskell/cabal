@@ -23,6 +23,13 @@ Extra-Source-Files:
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests/common.sh
+  tests/IntegrationTests/custom-setup/Cabal-99998/Cabal.cabal
+  tests/IntegrationTests/custom-setup/Cabal-99998/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/Cabal-99999/Cabal.cabal
+  tests/IntegrationTests/custom-setup/Cabal-99999/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/custom-setup/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup/custom-setup.cabal
+  tests/IntegrationTests/custom-setup/installs_Cabal_as_setup_dep.sh
   tests/IntegrationTests/custom/custom_dep.sh
   tests/IntegrationTests/custom/custom_dep/client/B.hs
   tests/IntegrationTests/custom/custom_dep/client/Setup.hs
