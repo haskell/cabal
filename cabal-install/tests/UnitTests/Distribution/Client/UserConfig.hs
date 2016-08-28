@@ -48,7 +48,7 @@ canDetectDifference = bracketTest $ \configFile -> do
     appendFile configFile "verbose: 0\n"
     diff <- userConfigDiff $ globalFlags configFile
     assertBool (unlines $ "Should detect a difference:" : diff) $
-        diff == [ "- verbose: 1", "+ verbose: 0" ]
+        diff == [ "+ verbose: 0" ]
 
 
 canUpdateConfig :: Assertion
@@ -85,7 +85,7 @@ newDefaultConfig = do
     sysTmpDir <- getTemporaryDirectory
     withTempDirectory silent sysTmpDir "cabal-test" $ \tmpDir -> do
         let configFile  = tmpDir </> "tmp.config"
-        createDefaultConfigFile silent configFile
+        _ <- createDefaultConfigFile silent configFile
         exists <- doesFileExist configFile
         assertBool ("Config file should be written to " ++ configFile) exists
 
