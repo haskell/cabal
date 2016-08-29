@@ -389,6 +389,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing    -> getInstalledPackages verbosity
                     comp (usePackageDB options') conf
 
+  -- Choose the version of Cabal to use if the setup script has a dependency on
+  -- Cabal, and possibly update the setup script options. The version also
+  -- determines how to filter the flags to Setup.
+  --
+  -- We first check whether the dependency solver has specified a Cabal version.
+  -- If it has, we use the solver's version without looking at the installed
+  -- package index (See issue #3436). Otherwise, we pick the Cabal version by
+  -- checking 'useCabalSpecVersion', then the saved version, and finally the
+  -- versions available in the index.
+  --
+  -- The version chosen here must match the one used in 'compileSetupExecutable'
+  -- (See issue #3433).
   cabalLibVersionToUse :: IO (Version, Maybe ComponentId
                              ,SetupScriptOptions)
   cabalLibVersionToUse =
