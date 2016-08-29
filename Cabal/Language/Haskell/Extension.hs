@@ -766,6 +766,10 @@ data KnownExtension =
   -- | Allows use of the @#label@ syntax.
   | OverloadedLabels
 
+  -- | Allow functional dependency annotations on type families to declare them
+  -- as injective.
+  | TypeFamilyDependencies
+
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
