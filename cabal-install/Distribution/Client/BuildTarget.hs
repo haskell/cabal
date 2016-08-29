@@ -1162,16 +1162,16 @@ guardPackage str fstatus =
 
 guardPackageName :: String -> Match ()
 guardPackageName s
-  | validPackgageName s = increaseConfidence
+  | validPackageName s = increaseConfidence
   | otherwise           = matchErrorExpected "package name" s
   where
 
-validPackgageName :: String -> Bool
-validPackgageName s =
-       all validPackgageNameChar s
+validPackageName :: String -> Bool
+validPackageName s =
+       all validPackageNameChar s
     && not (null s)
   where
-    validPackgageNameChar c = isAlphaNum c || c == '-'
+    validPackageNameChar c = isAlphaNum c || c == '-'
 
 
 guardPackageDir :: String -> FileStatus -> Match ()
@@ -1196,7 +1196,7 @@ matchPackage pinfo = \str fstatus ->
 
 matchPackageName :: [PackageInfo] -> String -> Match PackageInfo
 matchPackageName ps = \str -> do
-    guard (validPackgageName str)
+    guard (validPackageName str)
     orNoSuchThing "package" str
                   (map (display . packageName) ps) $
       increaseConfidenceFor $
