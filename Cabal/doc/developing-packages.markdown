@@ -1119,9 +1119,7 @@ information](#build-information)).
 Test suites using the `exitcode-stdio-1.0` interface are executables
 that indicate test failure with a non-zero exit code when run; they may provide
 human-readable log information through the standard output and error channels.
-This interface is provided primarily for compatibility with existing test
-suites; it is preferred that new test suites be written for the `detailed-0.9`
-interface.  The `exitcode-stdio-1.0` type requires the `main-is` field.
+The `exitcode-stdio-1.0` type requires the `main-is` field.
 
 `main-is:` _filename_ (required: `exitcode-stdio-1.0`, disallowed: `detailed-0.9`)
 :   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
