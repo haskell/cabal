@@ -93,7 +93,7 @@ data UserBuildTarget =
      --
    | UserBuildTargetDouble String String
 
-     -- A fully qualified target, either a module or file qualified by a
+     -- | A fully qualified target, either a module or file qualified by a
      -- component name with the component namespace kind.
      --
      -- > cabal build lib:foo:Data/Foo.hs exe:foo:Data/Foo.hs
