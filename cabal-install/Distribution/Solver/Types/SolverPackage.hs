@@ -23,7 +23,8 @@ data SolverPackage loc = SolverPackage {
         solverPkgSource :: SourcePackage loc,
         solverPkgFlags :: FlagAssignment,
         solverPkgStanzas :: [OptionalStanza],
-        solverPkgDeps :: ComponentDeps [SolverId]
+        solverPkgLibDeps :: ComponentDeps [SolverId],
+        solverPkgExeDeps :: ComponentDeps [SolverId]
     }
   deriving (Eq, Show, Generic)
 

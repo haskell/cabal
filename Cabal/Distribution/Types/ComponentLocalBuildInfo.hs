@@ -40,6 +40,7 @@ data ComponentLocalBuildInfo
     -- @-package-id@ arguments.  This is a modernized version of
     -- 'componentPackageDeps', which is kept around for BC purposes.
     componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentExeDeps :: [UnitId],
     -- | The internal dependencies which induce a graph on the
     -- 'ComponentLocalBuildInfo' of this package.  This does NOT
     -- coincide with 'componentPackageDeps' because it ALSO records
@@ -62,6 +63,7 @@ data ComponentLocalBuildInfo
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }
   | TestComponentLocalBuildInfo {
@@ -69,6 +71,7 @@ data ComponentLocalBuildInfo
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
 
   }
@@ -77,6 +80,7 @@ data ComponentLocalBuildInfo
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }
   deriving (Generic, Read, Show)

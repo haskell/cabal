@@ -61,6 +61,18 @@
 	  hooks. Just add the module names on 'other-modules' and
 	  'exposed-modules' as always and on the new 'autogen-modules' besides.
 	(#3656).
+	* New './Setup configure' flag '--cabal-file', allowing multiple
+	.cabal files in a single directory (#3553). Primarily intended for
+	internal use.
+	* Macros in 'cabal_macros.h' are now ifndef'd, so that they
+	don't cause an error if the macro is already defined. (#3041)
+	* './Setup configure' now accepts a single argument specifying
+	  the component to be configured.  The semantics of this mode
+	  of operation are described in
+	  <https://github.com/ghc-proposals/ghc-proposals/pull/4>
+	* Internal 'build-tools' dependencies are now added to PATH
+	  upon invocation of GHC, so that they can be conveniently
+	  used via `-pgmF`. (#1541)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

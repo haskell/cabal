@@ -32,7 +32,7 @@ module Distribution.Client.Install (
 import Data.Foldable
          ( traverse_ )
 import Data.List
-         ( isPrefixOf, nub, sort, (\\) )
+         ( isPrefixOf, nub, sort, (\\), find )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import Data.Maybe
@@ -77,6 +77,7 @@ import Distribution.Client.Dependency.Types
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
          ( HttpTransport (..) )
+import Distribution.Solver.Types.PackageFixedDeps
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
@@ -116,7 +117,6 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
-import           Distribution.Solver.Types.PackageFixedDeps
 import           Distribution.Solver.Types.PkgConfigDb
                    ( PkgConfigDb, readPkgConfigDb )
 import           Distribution.Solver.Types.SourcePackage as SourcePackage
@@ -150,10 +150,9 @@ import Distribution.Simple.Register (registerPackage)
 import Distribution.Simple.Program.HcPkg (MultiInstance(..))
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..)
+         , Package(..), HasUnitId(..)
          , Dependency(..), thisPackageVersion
-         , UnitId(..)
-         , HasUnitId(..) )
+         , UnitId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -614,7 +613,7 @@ packageStatus installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' = filter changed $
+    changes pkg (ReadyPackage pkg') = filter changed $
       mergeBy (comparing packageName)
         -- deps of installed pkg
         (resolveInstalledIds $ Installed.depends pkg)
@@ -1157,12 +1156,11 @@ performInstallations verbosity
           | otherwise                         = False
 
     substLogFileName :: PathTemplate -> PackageIdentifier -> UnitId -> FilePath
-    substLogFileName template pkg ipid = fromPathTemplate
+    substLogFileName template pkg uid = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
-      where env = initialPathTemplateEnv (packageId pkg)
-                  ipid
-                  (compilerInfo comp) platform
+      where env = initialPathTemplateEnv (packageId pkg) uid
+                    (compilerInfo comp) platform
 
     miscOptions  = InstallMisc {
       libVersion = flagToMaybe (configCabalVersion configExFlags)
@@ -1180,7 +1178,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
     InstallPlan.execute
       jobCtl keepGoing depsFailure plan0 $ \pkg -> do
         buildOutcome <- installPkg pkg
-        printBuildResult (packageId pkg) (installedPackageId pkg) buildOutcome
+        printBuildResult (packageId pkg) (installedUnitId pkg) buildOutcome
         return buildOutcome
 
   where
@@ -1189,7 +1187,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
     -- Print build log if something went wrong, and 'Installed $PKGID'
     -- otherwise.
     printBuildResult :: PackageId -> UnitId -> BuildOutcome -> IO ()
-    printBuildResult pkgid ipid buildOutcome = case buildOutcome of
+    printBuildResult pkgid uid buildOutcome = case buildOutcome of
         (Right _) -> notice verbosity $ "Installed " ++ display pkgid
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
@@ -1197,7 +1195,7 @@ executeInstallPlan verbosity jobCtl keepGoing useLogFile plan0 installPkg =
             case useLogFile of
               Nothing                 -> return ()
               Just (mkLogFileName, _) -> do
-                let logName = mkLogFileName pkgid ipid
+                let logName = mkLogFileName pkgid uid
                 putStr $ "Build log ( " ++ logName ++ " ):\n"
                 printFile logName
 
@@ -1232,9 +1230,9 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion srcid
-                         | ConfiguredId srcid _uid <- CD.nonSetupDeps deps ],
-    configDependencies = [ (packageName srcid, uid)
-                         | ConfiguredId srcid uid <- CD.nonSetupDeps deps ],
+                         | ConfiguredId srcid _ipid <- CD.nonSetupDeps deps ],
+    configDependencies = [ (packageName srcid, dep_ipid)
+                         | ConfiguredId srcid dep_ipid <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
@@ -1416,19 +1414,16 @@ installUnpackedPackage verbosity installLock numJobs
         -- Install phase
           onFailure InstallFailed $ criticalSection installLock $ do
             -- Actual installation
-            withWin32SelfUpgrade verbosity ipid configFlags
+            withWin32SelfUpgrade verbosity uid configFlags
                                  cinfo platform pkg $ do
               setup Cabal.copyCommand copyFlags mLogPath
 
             -- Capture installed package configuration file, so that
             -- it can be incorporated into the final InstallPlan
-            -- TODO: This is duplicated with
-            -- Distribution/Client/ProjectBuilding.hs, search for
-            -- the Note [Updating installedUnitId].
             ipkgs <- genPkgConfs mLogPath
             let ipkgs' = case ipkgs of
-                            [ipkg] -> [ipkg { Installed.installedUnitId = ipid }]
-                            _ -> assert (any ((== ipid)
+                            [ipkg] -> [ipkg { Installed.installedUnitId = uid }]
+                            _ -> assert (any ((== uid)
                                               . Installed.installedUnitId)
                                              ipkgs) ipkgs
             let packageDBs = interpretPackageDbFlags
@@ -1439,11 +1434,11 @@ installUnpackedPackage verbosity installLock numJobs
                                       NoMultiInstance
                                       packageDBs ipkg'
 
-            return (Right (BuildResult docsResult testsResult ipkgs'))
+            return (Right (BuildResult docsResult testsResult (find ((==uid).installedUnitId) ipkgs')))
 
   where
     pkgid            = packageId pkg
-    ipid             = installedUnitId rpkg
+    uid              = installedUnitId rpkg
     cinfo            = compilerInfo comp
     buildCommand'    = buildCommand conf
     buildFlags   _   = emptyBuildFlags {
@@ -1484,7 +1479,7 @@ installUnpackedPackage verbosity installLock numJobs
           }
         where
           CompilerId flavor _ = compilerInfoId cinfo
-          env         = initialPathTemplateEnv pkgid ipid cinfo platform
+          env         = initialPathTemplateEnv pkgid uid cinfo platform
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
@@ -1531,7 +1526,7 @@ installUnpackedPackage verbosity installLock numJobs
       case useLogFile of
          Nothing                 -> return Nothing
          Just (mkLogFileName, _) -> do
-           let logFileName = mkLogFileName (packageId pkg) ipid
+           let logFileName = mkLogFileName (packageId pkg) uid
                logDir      = takeDirectory logFileName
            unless (null logDir) $ createDirectoryIfMissing True logDir
            logFileExists <- doesFileExist logFileName
@@ -1574,7 +1569,7 @@ withWin32SelfUpgrade :: Verbosity
                      -> PackageDescription
                      -> IO a -> IO a
 withWin32SelfUpgrade _ _ _ _ _ _ action | buildOS /= Windows = action
-withWin32SelfUpgrade verbosity ipid configFlags cinfo platform pkg action = do
+withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
                    compFlavor
@@ -1602,10 +1597,10 @@ withWin32SelfUpgrade verbosity ipid configFlags cinfo platform pkg action = do
         templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
-                           pkgid ipid
+                           pkgid uid
                            cinfo InstallDirs.NoCopyDest
                            platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
-          where env = InstallDirs.initialPathTemplateEnv pkgid ipid
+          where env = InstallDirs.initialPathTemplateEnv pkgid uid
                       cinfo platform

@@ -47,6 +47,18 @@ data Qualifier =
     -- infinite search trees in the solver. Therefore we limit ourselves to
     -- a single qualifier (within a given namespace).
   | Setup PackageName
+
+    -- | If we depend on an executable from a package (via
+    -- @build-tools@), we should solve for the dependencies of that
+    -- package separately (since we're not going to actually try to
+    -- link it.)  We qualify for EACH package separately; e.g.,
+    -- @'Exe' pn1 pn2@ qualifies the @build-tools@ dependency on
+    -- @pn2@ from package @pn1@.  (If we tracked only @pn1@, that
+    -- would require a consistent dependency resolution for all
+    -- of the depended upon executables from a package; if we
+    -- tracked only @pn2@, that would require us to pick only one
+    -- version of an executable over the entire install plan.)
+  | Exe PackageName PackageName
   deriving (Eq, Ord, Show)
 
 -- | String representation of a package path.
@@ -68,6 +80,7 @@ showPP (PackagePath ns q) =
     -- 'Base' qualifier, will always be @base@).
     go Unqualified = ""
     go (Setup pn)  = display pn ++ "-setup."
+    go (Exe   pn pn2) = display pn ++ "-" ++ display pn2 ++ "-exe."
     go (Base  pn)  = display pn ++ "."
 
 -- | A qualified entity. Pairs a package path with the entity.

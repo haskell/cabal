@@ -101,10 +101,8 @@ import Distribution.Simple.Configure
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.BuildPaths (exeExtension)
 
-#ifndef LOCAL_COMPONENT_ID
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
-#endif
 
 import qualified Test.Tasty.HUnit as HUnit
 import Text.Regex.Posix
@@ -389,10 +387,6 @@ cabal' cmd extraArgs0 = do
                 -- Cabal is going to configure it and usually figure
                 -- out the right location in any case.
                 -- , "--with-ghc-pkg", withGhcPkgPath suite
-                -- Would really like to do this, but we're not always
-                -- going to be building against sufficiently recent
-                -- Cabal which provides this macro.
-                -- , "--dependency=Cabal=" ++ LOCAL_COMPONENT_ID
                 -- These flags make the test suite run faster
                 -- Can't do this unless we LD_LIBRARY_PATH correctly
                 -- , "--enable-executable-dynamic"
@@ -469,11 +463,6 @@ rawCompileSetup verbosity suite e path = do
         [ "--make"] ++
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
         [ "-hide-package Cabal"
-#ifdef LOCAL_COMPONENT_ID
-        -- This is best, but we don't necessarily have it
-        -- if we're bootstrapping with old Cabal.
-        , "-package-id " ++ LOCAL_COMPONENT_ID
-#else
         -- This mostly works, UNLESS you've installed a
         -- version of Cabal with the SAME version number.
         -- Then old GHCs will incorrectly select the installed
@@ -482,7 +471,6 @@ rawCompileSetup verbosity suite e path = do
         -- at all, except if there's a later version of Cabal
         -- installed GHC will prefer that.
         , "-package Cabal-" ++ display cabalVersion
-#endif
         , "-O0"
         , "Setup.hs" ]
     unless (resultExitCode r == ExitSuccess) $

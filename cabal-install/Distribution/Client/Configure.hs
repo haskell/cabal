@@ -55,7 +55,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import Distribution.Package
-         ( Package(..), UnitId, packageName
+         ( Package(..), packageName
          , Dependency(..), thisPackageVersion
          )
 import qualified Distribution.PackageDescription as PkgDesc
@@ -203,6 +203,7 @@ configureSetupScript packageDBs
     , useDistPref              = distPref
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing
+    , useExtraPathEnv          = []
     , setupCacheLock           = lock
     , useWin32CleanHack        = False
     , forceExternalSetupMethod = forceExternal
@@ -244,14 +245,14 @@ configureSetupScript packageDBs
     defaultSetupDeps = maybe False PkgDesc.defaultSetupDepends
                        maybeSetupBuildInfo
 
-    explicitSetupDeps :: Maybe [(UnitId, PackageId)]
+    explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
     explicitSetupDeps = do
       -- Check if there is an explicit setup stanza.
       _buildInfo <- maybeSetupBuildInfo
       -- Return the setup dependencies computed by the solver
       ReadyPackage cpkg <- mpkg
-      return [ ( uid, srcid )
-             | ConfiguredId srcid uid <- CD.setupDeps (confPkgDeps cpkg)
+      return [ ( cid, srcid )
+             | ConfiguredId srcid cid <- CD.setupDeps (confPkgDeps cpkg)
              ]
 
 -- | Warn if any constraints or preferences name packages that are not in the
@@ -386,8 +387,13 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,
-      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas),
+      -- NB: if the user explicitly specified
+      -- --enable-tests/--enable-benchmarks, always respect it.
+      -- (But if they didn't, let solver decide.)
+      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas)
+                                    `mappend` configBenchmarks configFlags,
       configTests              = toFlag (TestStanzas `elem` stanzas)
+                                    `mappend` configTests configFlags
     }
 
     pkg = case finalizePD flags (enableStanzas stanzas)

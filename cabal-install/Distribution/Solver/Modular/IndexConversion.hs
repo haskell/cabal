@@ -87,7 +87,9 @@ convIPId pn' idx ipid =
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  Just (D.Simple (Dep pn (Fixed i (P pn'))) ())
+                in  Just (D.Simple (Dep False pn (Fixed i (P pn'))) ())
+                -- NB: something we pick up from the
+                -- InstalledPackageIndex is NEVER an executable
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -118,8 +120,10 @@ convGPD os arch cinfo strfl pi
     -- and thus cannot actually be solved over.  We'll do this
     -- by creating a set of package names which are "internal"
     -- and dropping them as we convert.
-    ipns = S.fromList [ PackageName nm
-                      | (nm, _) <- sub_libs ]
+    ipns = S.fromList $ [ PackageName nm
+                        | (nm, _) <- sub_libs ] ++
+                        [ PackageName nm
+                        | (nm, _) <- exes ]
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
@@ -138,44 +142,6 @@ convGPD os arch cinfo strfl pi
 
   in
     PInfo flagged_deps fds Nothing
-
--- With convenience libraries, we have to do some work.  Imagine you
--- have the following Cabal file:
---
---      name: foo
---      library foo-internal
---          build-depends: external-a
---      library
---          build-depends: foo-internal, external-b
---      library foo-helper
---          build-depends: foo, external-c
---      test-suite foo-tests
---          build-depends: foo-helper, external-d
---
--- What should the final flagged dependency tree be?  Ideally, it
--- should look like this:
---
---      [ Simple (Dep external-a) (Library foo-internal)
---      , Simple (Dep external-b) (Library foo)
---      , Stanza (SN foo TestStanzas) $
---          [ Simple (Dep external-c) (Library foo-helper)
---          , Simple (Dep external-d) (TestSuite foo-tests) ]
---      ]
---
--- There are two things to note:
---
---      1. First, we eliminated the "local" dependencies foo-internal
---      and foo-helper.  This are implicitly assumed to refer to "foo"
---      so we don't need to have them around.  If you forget this,
---      Cabal will then try to pick a version for "foo-helper" but
---      no such package exists (this is the cost of overloading
---      build-depends to refer to both packages and components.)
---
---      2. Second, it is more precise to have external-c be qualified
---      by a test stanza, since foo-helper only needs to be built if
---      your are building the test suite (and not the main library).
---      If you omit it, Cabal will always attempt to depsolve for
---      foo-helper even if you aren't building the test suite.
 
 -- | Create a flagged dependency tree from a list @fds@ of flagged
 -- dependencies, using @f@ to form the tree node (@f@ will be
@@ -214,14 +180,35 @@ convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
 convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns (CondNode info ds branches) =
                  concatMap
-                    (\d -> filterIPNs ipns d (D.Simple (convDep pn d) comp))
+                    (\d -> filterIPNs ipns d (D.Simple (convLibDep pn d) comp))
                     ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
               ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns) branches
+              -- build-tools dependencies
+              ++ concatMap
+                    (\(Dependency (PackageName exe) vr) ->
+                        case packageProvidingBuildTool exe of
+                            Nothing -> []
+                            Just pn' -> [D.Simple (convExeDep pn (Dependency pn' vr)) comp])
+                    (PD.buildTools bi)
   where
     bi = getInfo info
+
+-- | This function maps known @build-tools@ entries to Haskell package
+-- names which provide them.  This mapping corresponds exactly to
+-- those build-tools that Cabal understands by default
+-- ('builtinPrograms'), and are cabal install'able.  This mapping is
+-- purely for legacy; for other executables, @tool-depends@ should be
+-- used instead.
+--
+packageProvidingBuildTool :: String -> Maybe PackageName
+packageProvidingBuildTool s =
+    if s `elem` ["hscolour", "haddock", "happy", "alex", "hsc2hs",
+                 "c2hs", "cpphs", "greencard"]
+        then Just (PackageName s)
+        else Nothing
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.
 --
@@ -300,19 +287,26 @@ convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
     -- Note that we make assumptions here on the form of the dependencies that
     -- can occur at this point. In particular, no occurrences of Fixed, and no
     -- occurrences of multiple version ranges, as all dependencies below this
-    -- point have been generated using 'convDep'.
+    -- point have been generated using 'convLibDep'.
+    --
+    -- WARNING: This is quadratic!
     extractCommon :: FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
-    extractCommon ps ps' = [ D.Simple (Dep pn1 (Constrained [(vr1 .||. vr2, P pn)])) comp
-                           | D.Simple (Dep pn1 (Constrained [(vr1, _)])) _ <- ps
-                           , D.Simple (Dep pn2 (Constrained [(vr2, _)])) _ <- ps'
+    extractCommon ps ps' = [ D.Simple (Dep is_exe1 pn1 (Constrained [(vr1 .||. vr2, P pn)])) comp
+                           | D.Simple (Dep is_exe1 pn1 (Constrained [(vr1, _)])) _ <- ps
+                           , D.Simple (Dep is_exe2 pn2 (Constrained [(vr2, _)])) _ <- ps'
                            , pn1 == pn2
+                           , is_exe1 == is_exe2
                            ]
 
--- | Convert a Cabal dependency to a solver-specific dependency.
-convDep :: PN -> Dependency -> Dep PN
-convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, P pn')])
+-- | Convert a Cabal dependency on a library to a solver-specific dependency.
+convLibDep :: PN -> Dependency -> Dep PN
+convLibDep pn' (Dependency pn vr) = Dep False {- not exe -} pn (Constrained [(vr, P pn')])
+
+-- | Convert a Cabal dependency on a executable (build-tools) to a solver-specific dependency.
+convExeDep :: PN -> Dependency -> Dep PN
+convExeDep pn' (Dependency pn vr) = Dep True pn (Constrained [(vr, P pn')])
 
 -- | Convert setup dependencies
 convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN
 convSetupBuildInfo (PI pn _i) nfo =
-    L.map (\d -> D.Simple (convDep pn d) ComponentSetup) (PD.setupDepends nfo)
+    L.map (\d -> D.Simple (convLibDep pn d) ComponentSetup) (PD.setupDepends nfo)

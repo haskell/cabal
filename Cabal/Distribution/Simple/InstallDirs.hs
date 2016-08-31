@@ -25,6 +25,7 @@ module Distribution.Simple.InstallDirs (
         InstallDirs(..),
         InstallDirTemplates,
         defaultInstallDirs,
+        defaultInstallDirs',
         combineInstallDirs,
         absoluteInstallDirs,
         CopyDest(..),
@@ -156,7 +157,17 @@ type InstallDirTemplates = InstallDirs PathTemplate
 -- Default installation directories
 
 defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
-defaultInstallDirs comp userInstall _hasLibs = do
+defaultInstallDirs = defaultInstallDirs' False
+
+defaultInstallDirs' :: Bool {- use external internal deps -}
+                    -> CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
+defaultInstallDirs' True comp userInstall hasLibs = do
+  dflt <- defaultInstallDirs' False comp userInstall hasLibs
+  -- Be a bit more hermetic about per-component installs
+  return dflt { datasubdir = toPathTemplate $ "$abi" </> "$libname",
+                docdir     = toPathTemplate $ "$datadir" </> "doc" </> "$abi" </> "$libname"
+              }
+defaultInstallDirs' False comp userInstall _hasLibs = do
   installPrefix <-
       if userInstall
       then getAppUserDataDirectory "cabal"

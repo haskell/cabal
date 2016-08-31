@@ -8,11 +8,17 @@
 -- Maintainer  :  duncan@community.haskell.org
 --
 -- Handling for user-specified build targets
+-- Unlike "Distribution.Simple.BuildTarget" these build
+-- targets also handle package qualification (so, up to
+-- four levels of qualification, as opposed to the former's
+-- three.)
 -----------------------------------------------------------------------------
 module Distribution.Client.BuildTarget (
 
     -- * Build targets
     BuildTarget(..),
+    -- Don't export me: it's partial (if you try to qualify too
+    -- much you will error.)
     --showBuildTarget,
     QualLevel(..),
     buildTargetPackage,
@@ -431,7 +437,9 @@ showUserBuildTarget = intercalate ":" . components
 
 showBuildTarget :: QualLevel -> BuildTarget PackageInfo -> String
 showBuildTarget ql = showUserBuildTarget . forgetFileStatus
-                   . head . renderBuildTarget ql
+                   . hd . renderBuildTarget ql
+  where hd [] = error "showBuildTarget: head"
+        hd (x:_) = x
 
 
 -- ------------------------------------------------------------
@@ -1154,16 +1162,16 @@ guardPackage str fstatus =
 
 guardPackageName :: String -> Match ()
 guardPackageName s
-  | validPackgageName s = increaseConfidence
+  | validPackageName s = increaseConfidence
   | otherwise           = matchErrorExpected "package name" s
   where
 
-validPackgageName :: String -> Bool
-validPackgageName s =
-       all validPackgageNameChar s
+validPackageName :: String -> Bool
+validPackageName s =
+       all validPackageNameChar s
     && not (null s)
   where
-    validPackgageNameChar c = isAlphaNum c || c == '-'
+    validPackageNameChar c = isAlphaNum c || c == '-'
 
 
 guardPackageDir :: String -> FileStatus -> Match ()
@@ -1188,7 +1196,7 @@ matchPackage pinfo = \str fstatus ->
 
 matchPackageName :: [PackageInfo] -> String -> Match PackageInfo
 matchPackageName ps = \str -> do
-    guard (validPackgageName str)
+    guard (validPackageName str)
     orNoSuchThing "package" str
                   (map (display . packageName) ps) $
       increaseConfidenceFor $

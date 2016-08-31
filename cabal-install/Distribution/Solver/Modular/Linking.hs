@@ -301,7 +301,7 @@ linkDeps target = \blame deps -> do
 
     go1 :: [Var QPN] -> FlaggedDep Component QPN -> FlaggedDep Component QPN -> UpdateState ()
     go1 blame dep rdep = case (dep, rdep) of
-      (Simple (Dep qpn _) _, ~(Simple (Dep qpn' _) _)) -> do
+      (Simple (Dep _ qpn _) _, ~(Simple (Dep _ qpn' _) _)) -> do
         vs <- get
         let lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
             lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs

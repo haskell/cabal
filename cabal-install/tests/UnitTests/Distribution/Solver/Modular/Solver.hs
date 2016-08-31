@@ -43,6 +43,7 @@ tests = [
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
         , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (SolverSuccess [("A", 1), ("B", 1)])
         , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (SolverFailure (isInfixOf "unknown package: C"))
+        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (SolverFailure (isInfixOf "unknown package: B"))
         ]
     , testGroup "Flagged dependencies" [
           runTest $         mkTest db3 "forceFlagOn"  ["C"]      (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
@@ -154,6 +155,14 @@ tests = [
         , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
         , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
         , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        ]
+    -- Build-tools dependencies
+    , testGroup "build-tools" [
+          runTest $ mkTest dbBuildTools1 "bt1" ["A"] (SolverSuccess [("A", 1), ("alex", 1)])
+        , runTest $ mkTest dbBuildTools2 "bt2" ["A"] (SolverSuccess [("A", 1)])
+        , runTest $ mkTest dbBuildTools3 "bt3" ["C"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
+        , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
+        , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (SolverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
         ]
     ]
   where
@@ -798,6 +807,17 @@ db22 = [
   , Right $ exAv "A" 2 [ExAny "C"]
   ]
 
+-- | Another test for the unknown package message.  This database tests that
+-- filtering out redundant conflict set messages in the solver log doesn't
+-- interfere with generating a message about a missing package (part of issue
+-- #3617). The conflict set for the missing package is {A, B}. That conflict set
+-- is propagated up the tree to the level of A. Since the conflict set is the
+-- same at both levels, the solver only keeps one of the backjumping messages.
+db23 :: ExampleDb
+db23 = [
+    Right $ exAv "A" 1 [ExAny "B"]
+  ]
+
 -- | Database for (unsuccessfully) trying to expose a bug in the handling
 -- of implied linking constraints. The question is whether an implied linking
 -- constraint should only have the introducing package in its conflict set,
@@ -1051,4 +1071,47 @@ dbBJ8 = [
     Right $ exAv "A" 1 [ExAny "C"]
   , Right $ exAv "B" 1 [ExAny "C"]
   , Right $ exAv "C" 1 []
+  ]
+
+{-------------------------------------------------------------------------------
+  Databases for build-tools
+-------------------------------------------------------------------------------}
+dbBuildTools1 :: ExampleDb
+dbBuildTools1 = [
+    Right $ exAv "alex" 1 [],
+    Right $ exAv "A" 1 [ExBuildToolAny "alex"]
+  ]
+
+-- Test that build-tools on a random thing doesn't matter (only
+-- the ones we recognize need to be in db)
+dbBuildTools2 :: ExampleDb
+dbBuildTools2 = [
+    Right $ exAv "A" 1 [ExBuildToolAny "otherdude"]
+  ]
+
+-- Test that we can solve for different versions of executables
+dbBuildTools3 :: ExampleDb
+dbBuildTools3 = [
+    Right $ exAv "alex" 1 [],
+    Right $ exAv "alex" 2 [],
+    Right $ exAv "A" 1 [ExBuildToolFix "alex" 1],
+    Right $ exAv "B" 1 [ExBuildToolFix "alex" 2],
+    Right $ exAv "C" 1 [ExAny "A", ExAny "B"]
+  ]
+
+-- Test that exe is not related to library choices
+dbBuildTools4 :: ExampleDb
+dbBuildTools4 = [
+    Right $ exAv "alex" 1 [ExFix "A" 1],
+    Right $ exAv "A" 1 [],
+    Right $ exAv "A" 2 [],
+    Right $ exAv "B" 1 [ExBuildToolFix "alex" 1, ExFix "A" 2]
+  ]
+
+-- Test that build-tools on build-tools works
+dbBuildTools5 :: ExampleDb
+dbBuildTools5 = [
+    Right $ exAv "alex" 1 [],
+    Right $ exAv "happy" 1 [ExBuildToolAny "alex"],
+    Right $ exAv "A" 1 [ExBuildToolAny "happy"]
   ]

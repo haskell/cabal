@@ -58,11 +58,11 @@ module Distribution.Client.ProjectOrchestration (
 
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
+import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
 
 import           Distribution.Client.Types
-                   ( InstalledPackageId, installedPackageId
-                   , GenericReadyPackage(..), PackageLocation(..) )
+                   ( GenericReadyPackage(..), PackageLocation(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import           Distribution.Client.BuildTarget
                    ( UserBuildTarget, resolveUserBuildTargets
@@ -79,7 +79,7 @@ import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import           Distribution.Simple.Setup (HaddockFlags)
 
-import           Distribution.Simple.Utils (die, notice)
+import           Distribution.Simple.Utils (die, notice, debug)
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -93,7 +93,7 @@ import           Data.Either
 import           Control.Exception (Exception(..))
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
-import           System.Posix.Signals (sigKILL)
+import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
 
 
@@ -183,7 +183,7 @@ runProjectPreBuildPhase
     -- This also gives us more accurate reasons for the --dry-run output.
     --
     (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun distDirLayout
+      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
                            elaboratedPlan'
 
     return ProjectBuildContext {
@@ -243,14 +243,34 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
 -- | Adjust an 'ElaboratedInstallPlan' by selecting just those parts of it
 -- required to build the given user targets.
 --
--- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable.
+-- How to get the 'PackageTarget's from the 'UserBuildTarget' is customisable,
+-- so that we can change the meaning of @pkgname@ to target a build or
+-- repl depending on which command is calling it.
 --
-selectTargets :: PackageTarget
+-- Conceptually, every target identifies one or more roots in the
+-- 'ElaboratedInstallPlan', which we then use to determine the closure
+-- of what packages need to be built, dropping everything from
+-- 'ElaboratedInstallPlan' that is unnecessary.
+--
+-- There is a complication, however: In an ideal world, every
+-- possible target would be a node in the graph.  However, it is
+-- currently not possible (and possibly not even desirable) to invoke a
+-- Setup script to build *just* one file.  Similarly, it is not possible
+-- to invoke a pre Cabal-1.25 custom Setup script and build only one
+-- component.  In these cases, we want to build the entire package, BUT
+-- only actually building some of the files/components.  This is what
+-- 'pkgBuildTargets', 'pkgReplTarget' and 'pkgBuildHaddock' control.
+-- Arguably, these should an out-of-band mechanism rather than stored
+-- in 'ElaboratedInstallPlan', but it's what we have.  We have
+-- to fiddle around with the ElaboratedConfiguredPackage roots to say
+-- what it will build.
+--
+selectTargets :: Verbosity -> PackageTarget
               -> (ComponentTarget -> PackageTarget)
               -> [UserBuildTarget]
               -> ElaboratedInstallPlan
               -> IO ElaboratedInstallPlan
-selectTargets targetDefaultComponents targetSpecificComponent
+selectTargets verbosity targetDefaultComponents targetSpecificComponent
               userBuildTargets installPlan = do
 
     -- Match the user targets against the available targets. If no targets are
@@ -277,6 +297,7 @@ selectTargets targetDefaultComponents targetSpecificComponent
                        targetSpecificComponent
                        installPlan
                        buildTargets
+    debug verbosity ("buildTargets': " ++ show buildTargets')
 
     -- Finally, prune the install plan to cover just those target packages
     -- and their deps.
@@ -284,8 +305,8 @@ selectTargets targetDefaultComponents targetSpecificComponent
     return (pruneInstallPlanToTargets buildTargets' installPlan)
   where
     localPackages =
-      [ (pkgDescription pkg, pkgSourceLocation pkg)
-      | InstallPlan.Configured pkg <- InstallPlan.toList installPlan ]
+      [ (elabPkgDescription elab, elabPkgSourceLocation elab)
+      | InstallPlan.Configured elab <- InstallPlan.toList installPlan ]
       --TODO: [code cleanup] is there a better way to identify local packages?
 
 
@@ -295,13 +316,14 @@ resolveAndCheckTargets :: PackageTarget
                        -> ElaboratedInstallPlan
                        -> [BuildTarget PackageName]
                        -> Either [BuildTargetProblem]
-                                 (Map InstalledPackageId [PackageTarget])
+                                 (Map UnitId [PackageTarget])
 resolveAndCheckTargets targetDefaultComponents
                        targetSpecificComponent
                        installPlan targets =
     case partitionEithers (map checkTarget targets) of
       ([], targets') -> Right $ Map.fromListWith (++)
-                                  [ (ipkgid, [t]) | (ipkgid, t) <- targets' ]
+                                  [ (uid, [t]) | (uids, t) <- targets'
+                                               , uid <- uids ]
       (problems, _)  -> Left problems
   where
     -- TODO [required eventually] currently all build targets refer to packages
@@ -342,17 +364,20 @@ resolveAndCheckTargets targetDefaultComponents
       = Left (BuildTargetNotInProject (buildTargetPackage t))
 
 
-    projAllPkgs, projLocalPkgs :: Map PackageName InstalledPackageId
+    -- NB: It's a list of 'InstalledPackageId', because each component
+    -- in the install plan from a single package needs to be associated with
+    -- the same 'PackageName'.
+    projAllPkgs, projLocalPkgs :: Map PackageName [UnitId]
     projAllPkgs =
-      Map.fromList
-        [ (packageName pkg, installedPackageId pkg)
+      Map.fromListWith (++)
+        [ (packageName pkg, [installedUnitId pkg])
         | pkg <- InstallPlan.toList installPlan ]
 
     projLocalPkgs =
-      Map.fromList
-        [ (packageName pkg, installedPackageId pkg)
-        | InstallPlan.Configured pkg <- InstallPlan.toList installPlan
-        , case pkgSourceLocation pkg of
+      Map.fromListWith (++)
+        [ (packageName elab, [installedUnitId elab])
+        | InstallPlan.Configured elab <- InstallPlan.toList installPlan
+        , case elabPkgSourceLocation elab of
             LocalUnpackedPackage _ -> True; _ -> False
           --TODO: [code cleanup] is there a better way to identify local packages?
         ]
@@ -411,26 +436,31 @@ printPlan verbosity
   = notice verbosity $ unlines $
       ("In order, the following " ++ wouldWill
        ++ " be built (use -v for more details):")
-    : map showPkg pkgs
+    : map (\(ReadyPackage pkg) -> showPkg pkg (elabPkgOrComp pkg)) pkgs
   where
     pkgs = InstallPlan.executionOrder elaboratedPlan
 
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
 
-    showPkg pkg = display (packageId pkg)
+    showPkg elab (ElabPackage _) = display (packageId elab)
+    showPkg elab (ElabComponent comp) =
+        display (packageId elab) ++
+        " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
 
     showPkgAndReason :: ElaboratedReadyPackage -> String
-    showPkgAndReason (ReadyPackage pkg) =
-      display (packageId pkg) ++
-      showTargets pkg ++
-      showFlagAssignment (nonDefaultFlags pkg) ++
-      showStanzas pkg ++
-      let buildStatus = pkgsBuildStatus Map.! installedPackageId pkg in
+    showPkgAndReason (ReadyPackage elab) =
+      display (installedUnitId elab) ++
+      (case elabPkgOrComp elab of
+          ElabPackage pkg -> showTargets elab ++ showStanzas pkg
+          ElabComponent comp ->
+            " (" ++ maybe "custom" display (compComponentName comp) ++ ")") ++
+      showFlagAssignment (nonDefaultFlags elab) ++
+      let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
       " (" ++ showBuildStatus buildStatus ++ ")"
 
     nonDefaultFlags :: ElaboratedConfiguredPackage -> FlagAssignment
-    nonDefaultFlags pkg = pkgFlagAssignment pkg \\ pkgFlagDefaults pkg
+    nonDefaultFlags elab = elabFlagAssignment elab \\ elabFlagDefaults elab
 
     showStanzas pkg = concat
                     $ [ " *test"
@@ -438,10 +468,10 @@ printPlan verbosity
                    ++ [ " *bench"
                       | BenchStanzas `Set.member` pkgStanzasEnabled pkg ]
 
-    showTargets pkg
-      | null (pkgBuildTargets pkg) = ""
+    showTargets elab
+      | null (elabBuildTargets elab) = ""
       | otherwise
-      = " (" ++ unwords [ showComponentTarget pkg t | t <- pkgBuildTargets pkg ]
+      = " (" ++ unwords [ showComponentTarget (packageId elab) t | t <- elabBuildTargets elab ]
              ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place
@@ -556,11 +586,14 @@ reportBuildFailures verbosity plan buildOutcomes
       | otherwise
       = False
 
+    -- NB: if the Setup script segfaulted or was interrupted,
+    -- we should give more detailed information.  So only
+    -- assume that exit code 1 is "pedestrian failure."
     isFailureSelfExplanatory (BuildFailed e)
-      | Just (ExitFailure _) <- fromException e = True
+      | Just (ExitFailure 1) <- fromException e = True
 
     isFailureSelfExplanatory (ConfigureFailed e)
-      | Just (ExitFailure _) <- fromException e = True
+      | Just (ExitFailure 1) <- fromException e = True
 
     isFailureSelfExplanatory _                  = False
 
@@ -621,7 +654,27 @@ reportBuildFailures verbosity plan buildOutcomes
       Just (ExitFailure 1) -> ""
 
 #ifdef MIN_VERSION_unix
+      -- Note [Positive "signal" exit code]
+      -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      -- What's the business with the test for negative and positive
+      -- signal values?  The API for process specifies that if the
+      -- process died due to a signal, it returns a *negative* exit
+      -- code.  So that's the negative test.
+      --
+      -- What about the positive test?  Well, when we find out that
+      -- a process died due to a signal, we ourselves exit with that
+      -- exit code.  However, we don't "kill ourselves" with the
+      -- signal; we just exit with the same code as the signal: thus
+      -- the caller sees a *positive* exit code.  So that's what
+      -- happens when we get a positive exit code.
       Just (ExitFailure n)
+        | -n == fromIntegral sigSEGV ->
+            " The build process segfaulted (i.e. SIGSEGV)."
+
+        |  n == fromIntegral sigSEGV ->
+            " The build process terminated with exit code " ++ show n
+         ++ " which may be because some part of it segfaulted. (i.e. SIGSEGV)."
+
         | -n == fromIntegral sigKILL ->
             " The build process was killed (i.e. SIGKILL). " ++ explanation
 

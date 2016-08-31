@@ -1,3 +1,9 @@
 name: a
 version: 1
 build-type: Simple
+-- This used to be a blank package with no components,
+-- but I refactored new-build so that if a package has
+-- no buildable components, we skip configuring it.
+-- So put in a (failing) component so that we try to
+-- configure.
+executable a

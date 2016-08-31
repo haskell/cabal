@@ -118,7 +118,7 @@ testSetupScriptStyles config reportSubCase = do
     reportSubCase (show SetupCustomExplicitDeps)
     (plan1, res1) <- executePlan =<< planProject testdir1 config
     (pkg1,  _)    <- expectPackageInstalled plan1 res1 pkgidA
-    pkgSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
+    elabSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
     hasDefaultSetupDeps pkg1 @?= Just False
     marker1 <- readFile (basedir </> testdir1 </> "marker")
     marker1 @?= "ok"
@@ -127,7 +127,7 @@ testSetupScriptStyles config reportSubCase = do
     reportSubCase (show SetupCustomImplicitDeps)
     (plan2, res2) <- executePlan =<< planProject testdir2 config
     (pkg2,  _)    <- expectPackageInstalled plan2 res2 pkgidA
-    pkgSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
+    elabSetupScriptStyle pkg2 @?= SetupCustomImplicitDeps
     hasDefaultSetupDeps pkg2 @?= Just True
     marker2 <- readFile (basedir </> testdir2 </> "marker")
     marker2 @?= "ok"
@@ -136,7 +136,7 @@ testSetupScriptStyles config reportSubCase = do
     reportSubCase (show SetupNonCustomInternalLib)
     (plan3, res3) <- executePlan =<< planProject testdir3 config
     (pkg3,  _)    <- expectPackageInstalled plan3 res3 pkgidA
-    pkgSetupScriptStyle pkg3 @?= SetupNonCustomInternalLib
+    elabSetupScriptStyle pkg3 @?= SetupNonCustomInternalLib
 {-
     --TODO: the SetupNonCustomExternalLib case is hard to test since it
     -- requires a version of Cabal that's later than the one we're testing
@@ -155,7 +155,7 @@ testSetupScriptStyles config reportSubCase = do
     pkgidA   = PackageIdentifier (PackageName "a") (Version [0,1] [])
     -- The solver fills in default setup deps explicitly, but marks them as such
     hasDefaultSetupDeps = fmap defaultSetupDepends
-                        . setupBuildInfo . pkgDescription
+                        . setupBuildInfo . elabPkgDescription
 
 -- | Test the behaviour with and without @--keep-going@
 --
@@ -236,13 +236,13 @@ planProject testdir cliConfig = do
 
     let targets =
           Map.fromList
-            [ (installedUnitId pkg, [BuildDefaultComponents])
-            | InstallPlan.Configured pkg <- InstallPlan.toList elaboratedPlan
-            , pkgBuildStyle pkg == BuildInplaceOnly ]
+            [ (installedUnitId elab, [BuildDefaultComponents])
+            | InstallPlan.Configured elab <- InstallPlan.toList elaboratedPlan
+            , elabBuildStyle elab == BuildInplaceOnly ]
         elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
 
     (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun distDirLayout
+      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
                            elaboratedPlan'
 
     let buildSettings = resolveBuildTimeSettings

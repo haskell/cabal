@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -----------------------------------------------------------------------------
 -- |
@@ -21,7 +22,8 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), HasUnitId(..) )
+         , UnitId(..), ComponentId(..), HasUnitId(..)
+         , PackageInstalled(..), unitIdComponentId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -31,11 +33,13 @@ import Distribution.Version
 
 import Distribution.Solver.Types.PackageIndex
          ( PackageIndex )
+import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Solver.Types.ComponentDeps
          ( ComponentDeps )
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
+import Distribution.Compat.Graph (IsNode(..))
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
@@ -74,10 +78,7 @@ instance Binary SourcePackageDb
 -- slightly and we may distinguish these two types and have an explicit
 -- conversion when we register units with the compiler.
 --
-type InstalledPackageId = UnitId
-
-installedPackageId :: HasUnitId pkg => pkg -> InstalledPackageId
-installedPackageId = installedUnitId
+type InstalledPackageId = ComponentId
 
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
@@ -85,8 +86,11 @@ installedPackageId = installedUnitId
 -- the sense that it provides all the configuration information and so the
 -- final configure process will be independent of the environment.
 --
+-- 'ConfiguredPackage' is assumed to not support Backpack.  Only the
+-- @new-build@ codepath supports Backpack.
+--
 data ConfiguredPackage loc = ConfiguredPackage {
-       confPkgId :: UnitId, -- the generated 'UnitId' for this package
+       confPkgId :: InstalledPackageId,
        confPkgSource :: SourcePackage loc, -- package info, including repo
        confPkgFlags :: FlagAssignment,     -- complete flag assignment for the package
        confPkgStanzas :: [OptionalStanza], -- list of enabled optional stanzas for the package
@@ -98,7 +102,27 @@ data ConfiguredPackage loc = ConfiguredPackage {
     }
   deriving (Eq, Show, Generic)
 
+-- | 'HasConfiguredId' indicates data types which have a 'ConfiguredId'.
+-- This type class is mostly used to conveniently finesse between
+-- 'ElaboratedPackage' and 'ElaboratedComponent'.
+--
+instance HasConfiguredId (ConfiguredPackage loc) where
+    configuredId pkg = ConfiguredId (packageId pkg) (confPkgId pkg)
+
+-- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
+-- to never have a nontrivial 'UnitId'
+instance PackageFixedDeps (ConfiguredPackage loc) where
+    depends = fmap (map (SimpleUnitId . confInstId)) . confPkgDeps
+
+instance IsNode (ConfiguredPackage loc) where
+    type Key (ConfiguredPackage loc) = UnitId
+    nodeKey       = SimpleUnitId . confPkgId
+    -- TODO: if we update ConfiguredPackage to support order-only
+    -- dependencies, need to include those here
+    nodeNeighbors = CD.flatDeps . depends
+
 instance (Binary loc) => Binary (ConfiguredPackage loc)
+
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
@@ -108,14 +132,11 @@ instance (Binary loc) => Binary (ConfiguredPackage loc)
 --
 -- An already installed package of course is also "configured" (all it's
 -- configuration parameters and dependencies have been specified).
---
--- TODO: I wonder if it would make sense to promote this datatype to Cabal
--- and use it consistently instead of UnitIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: UnitId
+  , confInstId :: ComponentId
   }
-  deriving (Eq, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Binary ConfiguredId
 
@@ -125,22 +146,35 @@ instance Show ConfiguredId where
 instance Package ConfiguredId where
   packageId = confSrcId
 
-instance HasUnitId ConfiguredId where
-  installedUnitId = confInstId
-
 instance Package (ConfiguredPackage loc) where
   packageId cpkg = packageId (confPkgSource cpkg)
 
-instance PackageFixedDeps (ConfiguredPackage loc) where
-  depends cpkg = fmap (map installedUnitId) (confPkgDeps cpkg)
-
+-- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId = confPkgId
+  installedUnitId = SimpleUnitId . confPkgId
+
+instance PackageInstalled (ConfiguredPackage loc) where
+  installedDepends = CD.flatDeps . depends
+
+class HasConfiguredId a where
+    configuredId :: a -> ConfiguredId
+
+-- NB: This instance is slightly dangerous, in that you'll lose
+-- information about the specific UnitId you depended on.
+instance HasConfiguredId InstalledPackageInfo where
+    configuredId ipkg = ConfiguredId (packageId ipkg) (unitIdComponentId (installedUnitId ipkg))
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
 newtype GenericReadyPackage srcpkg = ReadyPackage srcpkg -- see 'ConfiguredPackage'.
-  deriving (Eq, Show, Generic, Package, PackageFixedDeps, HasUnitId, Binary)
+  deriving (Eq, Show, Generic, Package, PackageFixedDeps,
+            HasUnitId, PackageInstalled, Binary)
+
+-- Can't newtype derive this
+instance IsNode srcpkg => IsNode (GenericReadyPackage srcpkg) where
+    type Key (GenericReadyPackage srcpkg) = Key srcpkg
+    nodeKey (ReadyPackage spkg) = nodeKey spkg
+    nodeNeighbors (ReadyPackage spkg) = nodeNeighbors spkg
 
 type ReadyPackage = GenericReadyPackage (ConfiguredPackage UnresolvedPkgLoc)
 
@@ -287,8 +321,12 @@ data BuildFailure = PlanningFailed
 
 instance Exception BuildFailure
 
+-- Note that the @Maybe InstalledPackageInfo@ is a slight hack: we only
+-- the public library's 'InstalledPackageInfo' is stored here, even if
+-- there were 'InstalledPackageInfo' from internal libraries.  This
+-- 'InstalledPackageInfo' is not used anyway, so it makes no difference.
 data BuildResult = BuildResult DocsResult TestsResult
-                               [InstalledPackageInfo]
+                               (Maybe InstalledPackageInfo)
   deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk

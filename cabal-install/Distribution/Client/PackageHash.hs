@@ -29,7 +29,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), mkUnitId )
+         ( PackageId, PackageIdentifier(..), ComponentId(..) )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
@@ -43,6 +43,7 @@ import Distribution.Text
          ( display )
 import Distribution.Client.Types
          ( InstalledPackageId )
+import qualified Distribution.Solver.Types.ComponentDeps as CD
 
 import qualified Hackage.Security.Client    as Sec
 
@@ -85,7 +86,7 @@ hashedInstalledPackageId
 --
 hashedInstalledPackageIdLong :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    mkUnitId $
+    ComponentId $
          display pkgHashPkgId   -- to be a bit user friendly
       ++ "-"
       ++ showHashValue (hashPackageHashInputs pkghashinputs)
@@ -110,7 +111,7 @@ hashedInstalledPackageIdLong pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 --
 hashedInstalledPackageIdShort :: PackageHashInputs -> InstalledPackageId
 hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
-    mkUnitId $
+    ComponentId $
       intercalate "-"
         -- max length now 64
         [ truncateStr 14 (display name)
@@ -133,6 +134,7 @@ hashedInstalledPackageIdShort pkghashinputs@PackageHashInputs{pkgHashPkgId} =
 --
 data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
+       pkgHashComponent     :: Maybe CD.Component,
        pkgHashSourceHash    :: PackageSourceHash,
        pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
@@ -188,6 +190,7 @@ hashPackageHashInputs = hashValue . renderPackageHashInputs
 renderPackageHashInputs :: PackageHashInputs -> LBS.ByteString
 renderPackageHashInputs PackageHashInputs{
                           pkgHashPkgId,
+                          pkgHashComponent,
                           pkgHashSourceHash,
                           pkgHashDirectDeps,
                           pkgHashOtherConfig =
@@ -209,6 +212,7 @@ renderPackageHashInputs PackageHashInputs{
     -- use the config file infrastructure so it can be read back in again.
     LBS.pack $ unlines $ catMaybes
       [ entry "pkgid"       display pkgHashPkgId
+      , mentry "component"  show pkgHashComponent
       , entry "src"         showHashValue pkgHashSourceHash
       , entry "deps"        (intercalate ", " . map display
                                               . Set.toList) pkgHashDirectDeps
@@ -239,6 +243,7 @@ renderPackageHashInputs PackageHashInputs{
       ]
   where
     entry key     format value = Just (key ++ ": " ++ format value)
+    mentry key    format value = fmap (\v -> key ++ ": " ++ format v) value
     opt   key def format value
          | value == def = Nothing
          | otherwise    = entry key format value

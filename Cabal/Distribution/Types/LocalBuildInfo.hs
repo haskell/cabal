@@ -29,6 +29,7 @@ module Distribution.Types.LocalBuildInfo (
     -- details.
 
     componentNameTargets',
+    unitIdTarget',
     allTargetsInBuildOrder',
     withAllTargetsInBuildOrder',
     neededTargetsInBuildOrder',
@@ -39,6 +40,7 @@ module Distribution.Types.LocalBuildInfo (
     -- prevent someone from accidentally defining them
 
     componentNameTargets,
+    unitIdTarget,
     allTargetsInBuildOrder,
     withAllTargetsInBuildOrder,
     neededTargetsInBuildOrder,
@@ -210,6 +212,12 @@ componentNameTargets' pkg_descr lbi cname =
         Just clbis -> map (mkTargetInfo pkg_descr lbi) clbis
         Nothing -> []
 
+unitIdTarget' :: PackageDescription -> LocalBuildInfo -> UnitId -> Maybe TargetInfo
+unitIdTarget' pkg_descr lbi uid =
+    case Graph.lookup uid (componentGraph lbi) of
+        Just clbi -> Just (mkTargetInfo pkg_descr lbi clbi)
+        Nothing -> Nothing
+
 -- | Return all 'ComponentLocalBuildInfo's associated with 'ComponentName'.
 -- In the presence of Backpack there may be more than one!
 componentNameCLBIs :: LocalBuildInfo -> ComponentName -> [ComponentLocalBuildInfo]
@@ -262,10 +270,13 @@ testCoverage lbi = exeCoverage lbi && libCoverage lbi
 -------------------------------------------------------------------------------
 -- Stub functions to prevent someone from accidentally defining them
 
-{-# WARNING componentNameTargets, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PakcageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
+{-# WARNING componentNameTargets, unitIdTarget, allTargetsInBuildOrder, withAllTargetsInBuildOrder, neededTargetsInBuildOrder, withNeededTargetsInBuildOrder "By using this function, you may be introducing a bug where you retrieve a 'Component' which does not have 'HookedBuildInfo' applied to it.  See the documentation for 'HookedBuildInfo' for an explanation of the issue.  If you have a 'PakcageDescription' handy (NOT from the 'LocalBuildInfo'), try using the primed version of the function, which takes it as an extra argument." #-}
 
 componentNameTargets :: LocalBuildInfo -> ComponentName -> [TargetInfo]
 componentNameTargets lbi = componentNameTargets' (localPkgDescr lbi) lbi
+
+unitIdTarget :: LocalBuildInfo -> UnitId -> Maybe TargetInfo
+unitIdTarget lbi = unitIdTarget' (localPkgDescr lbi) lbi
 
 allTargetsInBuildOrder :: LocalBuildInfo -> [TargetInfo]
 allTargetsInBuildOrder lbi = allTargetsInBuildOrder' (localPkgDescr lbi) lbi

@@ -421,11 +421,14 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
     removeDisabledSections :: PDTagged -> Bool
-    removeDisabledSections (Lib l)     = componentEnabled enabled (CLib l)
-    removeDisabledSections (SubLib _ l) = componentEnabled enabled (CLib l)
-    removeDisabledSections (Exe _ e)   = componentEnabled enabled (CExe e)
-    removeDisabledSections (Test _ t)  = componentEnabled enabled (CTest t)
-    removeDisabledSections (Bench _ b) = componentEnabled enabled (CBench b)
+    -- UGH. The embedded componentName in the 'Component's here is
+    -- BLANK.  I don't know whose fault this is but I'll use the tag
+    -- instead. -- ezyang
+    removeDisabledSections (Lib _)     = componentNameEnabled enabled CLibName
+    removeDisabledSections (SubLib t _) = componentNameEnabled enabled (CSubLibName t)
+    removeDisabledSections (Exe t _)   = componentNameEnabled enabled (CExeName t)
+    removeDisabledSections (Test t _)  = componentNameEnabled enabled (CTestName t)
+    removeDisabledSections (Bench t _) = componentNameEnabled enabled (CBenchName t)
     removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.

@@ -9,9 +9,8 @@ module Distribution.Client.ProjectPlanOutput (
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
-                   ( ElaboratedInstallPlan, ElaboratedConfiguredPackage(..)
-                   , ElaboratedSharedConfig(..) )
 import           Distribution.Client.DistDirLayout
+import           Distribution.Client.Types
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
@@ -66,27 +65,36 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
       J.object
         [ "type"       J..= J.String "pre-existing"
         , "id"         J..= jdisplay (installedUnitId ipi)
-        , "components" J..= J.object
-          [ "lib" J..= J.object [ "depends" J..= map jdisplay (installedDepends ipi) ] ]
+        , "depends" J..= map jdisplay (installedDepends ipi)
         ]
 
-    -- ecp :: ElaboratedConfiguredPackage
-    toJ (InstallPlan.Configured ecp) =
-      J.object
+    -- pkg :: ElaboratedPackage
+    toJ (InstallPlan.Configured elab) =
+      J.object $
         [ "type"       J..= J.String "configured"
-        , "id"         J..= (jdisplay . installedUnitId) ecp
-        , "components" J..= components
+        , "id"         J..= (jdisplay . installedUnitId) elab
         , "flags"      J..= J.object [ fn J..= v
-                                     | (PD.FlagName fn,v) <- pkgFlagAssignment ecp ]
-        ]
-      where
-        components = J.object
-          [ comp2str c J..= J.object
-            [ "depends" J..= map (jdisplay . installedUnitId) v ]
-          | (c,v) <- ComponentDeps.toList (pkgDependencies ecp) ]
+                                     | (PD.FlagName fn,v) <-
+                                            elabFlagAssignment elab ]
+        ] ++
+        case elabPkgOrComp elab of
+          ElabPackage pkg ->
+            let components = J.object $
+                  [ comp2str c J..= J.object
+                    [ "depends"     J..= map (jdisplay . confInstId) ldeps
+                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ]
+                  | (c,(ldeps,edeps))
+                      <- ComponentDeps.toList $
+                         ComponentDeps.zip (pkgLibDependencies pkg)
+                                           (pkgExeDependencies pkg) ]
+            in ["components" J..= components]
+          ElabComponent _ ->
+            ["depends"     J..= map (jdisplay . confInstId) (elabLibDependencies elab)
+            ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)]
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
+    comp2str :: ComponentDeps.Component -> String
     comp2str c = case c of
         ComponentDeps.ComponentLib     -> "lib"
         ComponentDeps.ComponentSubLib s -> "lib:"   <> s

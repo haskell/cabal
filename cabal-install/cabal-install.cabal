@@ -35,6 +35,10 @@ Extra-Source-Files:
   tests/IntegrationTests/custom/plain/A.hs
   tests/IntegrationTests/custom/plain/Setup.hs
   tests/IntegrationTests/custom/plain/plain.cabal
+  tests/IntegrationTests/custom/segfault.sh
+  tests/IntegrationTests/custom/segfault/Setup.hs
+  tests/IntegrationTests/custom/segfault/cabal.project
+  tests/IntegrationTests/custom/segfault/plain.cabal
   tests/IntegrationTests/exec/Foo.hs
   tests/IntegrationTests/exec/My.hs
   tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.out
@@ -77,6 +81,12 @@ Extra-Source-Files:
   tests/IntegrationTests/multiple-source/p/p.cabal
   tests/IntegrationTests/multiple-source/q/Setup.hs
   tests/IntegrationTests/multiple-source/q/q.cabal
+  tests/IntegrationTests/new-build/BuildToolsPath.sh
+  tests/IntegrationTests/new-build/BuildToolsPath/A.hs
+  tests/IntegrationTests/new-build/BuildToolsPath/MyCustomPreprocessor.hs
+  tests/IntegrationTests/new-build/BuildToolsPath/build-tools-path.cabal
+  tests/IntegrationTests/new-build/BuildToolsPath/cabal.project
+  tests/IntegrationTests/new-build/BuildToolsPath/hello/Hello.hs
   tests/IntegrationTests/new-build/T3460.sh
   tests/IntegrationTests/new-build/T3460/C.hs
   tests/IntegrationTests/new-build/T3460/Setup.hs
@@ -88,6 +98,17 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T3460/sub-package-B/B.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/Setup.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/sub-package-B.cabal
+  tests/IntegrationTests/new-build/executable/Main.hs
+  tests/IntegrationTests/new-build/executable/Setup.hs
+  tests/IntegrationTests/new-build/executable/Test.hs
+  tests/IntegrationTests/new-build/executable/a.cabal
+  tests/IntegrationTests/new-build/executable/cabal.project
+  tests/IntegrationTests/new-build/external_build_tools.sh
+  tests/IntegrationTests/new-build/external_build_tools/cabal.project
+  tests/IntegrationTests/new-build/external_build_tools/client/Hello.hs
+  tests/IntegrationTests/new-build/external_build_tools/client/client.cabal
+  tests/IntegrationTests/new-build/external_build_tools/happy/MyCustomPreprocessor.hs
+  tests/IntegrationTests/new-build/external_build_tools/happy/happy.cabal
   tests/IntegrationTests/new-build/monitor_cabal_files.sh
   tests/IntegrationTests/new-build/monitor_cabal_files/cabal.project
   tests/IntegrationTests/new-build/monitor_cabal_files/p/P.hs
@@ -97,10 +118,19 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/monitor_cabal_files/q/Setup.hs
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-broken.cabal.in
   tests/IntegrationTests/new-build/monitor_cabal_files/q/q-fixed.cabal.in
+  tests/IntegrationTests/regression/t2755.sh
+  tests/IntegrationTests/regression/t2755/A.hs
+  tests/IntegrationTests/regression/t2755/Setup.hs
+  tests/IntegrationTests/regression/t2755/test-t2755.cabal
   tests/IntegrationTests/regression/t3199.sh
   tests/IntegrationTests/regression/t3199/Main.hs
   tests/IntegrationTests/regression/t3199/Setup.hs
   tests/IntegrationTests/regression/t3199/test-3199.cabal
+  tests/IntegrationTests/regression/t3335.sh
+  tests/IntegrationTests/regression/t3335/A.hs
+  tests/IntegrationTests/regression/t3335/Setup.hs
+  tests/IntegrationTests/regression/t3335/cabal.project
+  tests/IntegrationTests/regression/t3335/t3335.cabal
   tests/IntegrationTests/sandbox-reinstalls/p/Main.hs
   tests/IntegrationTests/sandbox-reinstalls/p/p.cabal
   tests/IntegrationTests/sandbox-reinstalls/q/Q.hs
@@ -264,6 +294,7 @@ executable cabal
         Distribution.Solver.Types.ConstraintSource
         Distribution.Solver.Types.DependencyResolver
         Distribution.Solver.Types.InstalledPreference
+        Distribution.Solver.Types.InstSolverPackage
         Distribution.Solver.Types.LabeledPackageConstraint
         Distribution.Solver.Types.OptionalStanza
         Distribution.Solver.Types.PackageConstraint

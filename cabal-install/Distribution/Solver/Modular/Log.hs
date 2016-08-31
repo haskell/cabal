@@ -43,8 +43,8 @@ logToProgress mbj l = let
     proc :: Maybe Int -> Progress Message a b -> Progress Message (Maybe (ConflictSet QPN)) b
     proc _        (Done x)                          = Done x
     proc _        (Fail _)                          = Fail Nothing
-    proc mbj'     (Step   (Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
-      | cs == cs'                                   = proc mbj' xs -- repeated backjumps count as one
+    proc mbj'     (Step x@(Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
+      | cs == cs'                                   = Step x (proc mbj'           xs) -- repeated backjumps count as one
     proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (Just cs)
     proc (Just n) (Step x@(Failure _  Backjump) xs) = Step x (proc (Just (n - 1)) xs)
     proc mbj'     (Step x                       xs) = Step x (proc mbj'           xs)

@@ -27,6 +27,7 @@ module Distribution.Package (
         UnitId(..),
         mkUnitId,
         mkLegacyUnitId,
+        unitIdComponentId,
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
@@ -176,6 +177,10 @@ mkUnitId = SimpleUnitId . ComponentId
 mkLegacyUnitId :: PackageId -> UnitId
 mkLegacyUnitId = SimpleUnitId . ComponentId . display
 
+-- | Extract 'ComponentId' from 'UnitId'.
+unitIdComponentId :: UnitId -> ComponentId
+unitIdComponentId (SimpleUnitId cid) = cid
+
 -- ------------------------------------------------------------
 -- * Package source dependencies
 -- ------------------------------------------------------------
@@ -234,7 +239,7 @@ packageVersion  = pkgVersion . packageId
 instance Package PackageIdentifier where
   packageId = id
 
--- | Packages that have an installed package ID
+-- | Packages that have an installed unit ID
 class Package pkg => HasUnitId pkg where
   installedUnitId :: pkg -> UnitId
 

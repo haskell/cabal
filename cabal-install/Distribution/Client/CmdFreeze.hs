@@ -3,17 +3,15 @@
 -- | cabal-install CLI command: freeze
 --
 module Distribution.Client.CmdFreeze (
+    freezeCommand,
     freezeAction,
   ) where
 
 import Distribution.Client.ProjectPlanning
-         ( ElaboratedInstallPlan, rebuildInstallPlan )
 import Distribution.Client.ProjectConfig
          ( ProjectConfig(..), ProjectConfigShared(..)
          , commandLineFlagsToProjectConfig, writeProjectLocalFreezeConfig
          , findProjectRoot )
-import Distribution.Client.ProjectPlanning.Types
-         ( ElaboratedConfiguredPackage(..) )
 import Distribution.Client.Targets
          ( UserConstraint(..) )
 import Distribution.Solver.Types.ConstraintSource
@@ -46,6 +44,27 @@ import Data.Map (Map)
 import Control.Monad (unless)
 import System.FilePath
 
+import Distribution.Simple.Command
+         ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Utils
+         ( wrapText )
+import qualified Distribution.Client.Setup as Client
+
+
+freezeCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+freezeCommand = Client.installCommand {
+  commandName         = "new-freeze",
+  commandSynopsis     = "Freezes a Nix-local build project",
+  commandUsage        = usageAlternatives "new-freeze" [ "[FLAGS]" ],
+  commandDescription  = Just $ \_ -> wrapText $
+        "Performs dependency solving on a Nix-local build project, and"
+     ++ " then writes out the precise dependency configuration to cabal.project.freeze"
+     ++ " so that the plan is always used in subsequent builds.",
+  commandNotes        = Just $ \pname ->
+        "Examples:\n"
+     ++ "  " ++ pname ++ " new-freeze          "
+     ++ "    Freeze the configuration of the current project\n"
+   }
 
 -- | To a first approximation, the @freeze@ command runs the first phase of
 -- the @build@ command where we bring the install plan up to date, and then
@@ -149,16 +168,16 @@ projectFreezeConstraints plan =
     flagAssignments =
       Map.fromList
         [ (pkgname, flags)
-        | InstallPlan.Configured pkg <- InstallPlan.toList plan
-        , let flags   = pkgFlagAssignment pkg
-              pkgname = packageName pkg
+        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        , let flags   = elabFlagAssignment elab
+              pkgname = packageName elab
         , not (null flags) ]
 
     localPackages :: Map PackageName ()
     localPackages =
       Map.fromList
-        [ (packageName pkg, ())
-        | InstallPlan.Configured pkg <- InstallPlan.toList plan
-        , pkgLocalToProject pkg
+        [ (packageName elab, ())
+        | InstallPlan.Configured elab <- InstallPlan.toList plan
+        , elabLocalToProject elab
         ]
 

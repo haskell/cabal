@@ -532,6 +532,7 @@ convertToLegacyAllPackageConfig
     }
   where
     configFlags = ConfigFlags {
+      configArgs                = mempty,
       configPrograms_           = mempty,
       configProgramPaths        = mempty,
       configProgramArgs         = mempty,
@@ -568,6 +569,7 @@ convertToLegacyAllPackageConfig
       configDependencies        = mempty,
       configExtraIncludeDirs    = mempty,
       configIPID                = mempty,
+      configCID                 = mempty,
       configConfigurationsFlags = mempty,
       configTests               = mempty,
       configCoverage            = mempty, --TODO: don't merge
@@ -595,6 +597,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
     }
   where
     configFlags = ConfigFlags {
+      configArgs                = mempty,
       configPrograms_           = configPrograms_ mempty,
       configProgramPaths        = Map.toList (getMapLast packageConfigProgramPaths),
       configProgramArgs         = Map.toList (getMapMappend packageConfigProgramArgs),
@@ -631,6 +634,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       configDependencies        = mempty,
       configExtraIncludeDirs    = packageConfigExtraIncludeDirs,
       configIPID                = mempty,
+      configCID                 = mempty,
       configConfigurationsFlags = packageConfigFlagAssignment,
       configTests               = packageConfigTests,
       configCoverage            = packageConfigCoverage, --TODO: don't merge

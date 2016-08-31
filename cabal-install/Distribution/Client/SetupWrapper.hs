@@ -27,9 +27,8 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
          , withinRange )
-import Distribution.InstalledPackageInfo (installedUnitId)
 import Distribution.Package
-         ( UnitId(..), PackageIdentifier(..), PackageId,
+         ( UnitId(..), ComponentId, PackageIdentifier(..), PackageId,
            PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -53,7 +52,7 @@ import Distribution.Simple.Program
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
-         ( programSearchPathAsPATHVar )
+         ( programSearchPathAsPATHVar, ProgramSearchPathEntry(ProgramSearchPathDir) )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
 import qualified Distribution.Simple.Program.Strip as Strip
@@ -66,6 +65,8 @@ import Distribution.Simple.Program.GHC
          ( GhcMode(..), GhcOptions(..), renderGhcOptions )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.Client.Types
 import Distribution.Client.Config
          ( defaultCabalDir )
 import Distribution.Client.IndexUtils
@@ -79,8 +80,8 @@ import Distribution.Simple.Utils
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
-         ( inDir, tryCanonicalizePath
-         , existsAndIsMoreRecentThan, moreRecentFile
+         ( inDir, tryCanonicalizePath, withExtraPathEnv
+         , existsAndIsMoreRecentThan, moreRecentFile, withEnv
 #if mingw32_HOST_OS
          , canonicalizePathNoThrow
 #endif
@@ -159,10 +160,12 @@ data SetupScriptOptions = SetupScriptOptions {
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
+    -- | Extra things to add to PATH when invoking the setup script.
+    useExtraPathEnv          :: [FilePath],
     forceExternalSetupMethod :: Bool,
 
     -- | List of dependencies to use when building Setup.hs.
-    useDependencies :: [(UnitId, PackageId)],
+    useDependencies :: [(ComponentId, PackageId)],
 
     -- | Is the list of setup dependencies exclusive?
     --
@@ -227,6 +230,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
+    useExtraPathEnv          = [],
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing
@@ -303,8 +307,10 @@ internalSetupMethod verbosity options _ bt mkargs = do
   let args = mkargs cabalVersion
   info verbosity $ "Using internal setup method with build-type " ++ show bt
                 ++ " and args:\n  " ++ show args
-  inDir (useWorkingDir options) $
-    buildTypeAction bt args
+  inDir (useWorkingDir options) $ do
+    withEnv "HASKELL_DIST_DIR" (useDistPref options) $
+      withExtraPathEnv (useExtraPathEnv options) $
+        buildTypeAction bt args
 
 buildTypeAction :: BuildType -> ([String] -> IO ())
 buildTypeAction Simple    = Simple.defaultMainArgs
@@ -333,8 +339,10 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
                                     ++ show logHandle
 
   searchpath <- programSearchPathAsPATHVar
-                (getProgramSearchPath (useProgramConfig options))
-  env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+                (map ProgramSearchPathDir (useExtraPathEnv options) ++
+                 getProgramSearchPath (useProgramConfig options))
+  env        <- getEffectiveEnvironment [("PATH", Just searchpath)
+                                        ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
   process <- runProcess path args
              (useWorkingDir options) env Nothing
@@ -381,7 +389,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing    -> getInstalledPackages verbosity
                     comp (usePackageDB options') conf
 
-  cabalLibVersionToUse :: IO (Version, (Maybe UnitId)
+  cabalLibVersionToUse :: IO (Version, (Maybe ComponentId)
                              ,SetupScriptOptions)
   cabalLibVersionToUse =
     case useCabalSpecVersion options of
@@ -416,7 +424,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           (&&) <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
 
-      installedVersion :: IO (Version, Maybe UnitId
+      installedVersion :: IO (Version, Maybe InstalledPackageId
                              ,SetupScriptOptions)
       installedVersion = do
         (comp,    conf,    options')  <- configureCompiler options
@@ -463,7 +471,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
-                        -> IO (Version, Maybe UnitId
+                        -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
   installedCabalVersion options' compiler conf = do
     index <- maybeGetInstalledPackages options' compiler conf
@@ -476,7 +484,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                  ++ " but no suitable version is installed."
       pkgs -> let ipkginfo = head . snd . bestVersion fst $ pkgs
               in return (packageVersion ipkginfo
-                        ,Just . installedUnitId $ ipkginfo, options'')
+                        ,Just . IPI.installedComponentId $ ipkginfo, options'')
 
   bestVersion :: (a -> Version) -> [a] -> a
   bestVersion f = firstMaximumBy (comparing (preference . f))
@@ -549,7 +557,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions
-                           -> Version -> Maybe UnitId
+                           -> Version -> Maybe InstalledPackageId
                            -> IO FilePath
   getCachedSetupExecutable options' cabalLibVersion
                            maybeCabalLibInstalledPkgId = do
@@ -584,7 +592,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- Currently this is GHC/GHCJS only. It should really be generalised.
   --
   compileSetupExecutable :: SetupScriptOptions
-                         -> Version -> Maybe UnitId -> Bool
+                         -> Version -> Maybe ComponentId -> Bool
                          -> IO FilePath
   compileSetupExecutable options' cabalLibVersion maybeCabalLibInstalledPkgId
                          forceCompile = do
@@ -621,7 +629,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                      if any hasCabal (useDependencies options')
                                      then []
                                      else cabalDep
-          addRenaming (ipid, _) = (ipid, defaultRenaming)
+          addRenaming (ipid, _) = (SimpleUnitId ipid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               -- Respect -v0, but don't crank up verbosity on GHC if
@@ -686,8 +694,10 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     where
       doInvoke path' = do
         searchpath <- programSearchPathAsPATHVar
-                      (getProgramSearchPath (useProgramConfig options'))
-        env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+                      (map ProgramSearchPathDir (useExtraPathEnv options') ++
+                       getProgramSearchPath (useProgramConfig options'))
+        env        <- getEffectiveEnvironment [("PATH", Just searchpath)
+                                              ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
         process <- runProcess path' args
                    (useWorkingDir options') env Nothing

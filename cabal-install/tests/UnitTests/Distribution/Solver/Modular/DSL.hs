@@ -122,6 +122,12 @@ data ExampleDependency =
     -- | Simple dependency on a fixed version
   | ExFix ExamplePkgName ExamplePkgVersion
 
+    -- | Build-tools dependency
+  | ExBuildToolAny ExamplePkgName
+
+    -- | Build-tools dependency on a fixed version
+  | ExBuildToolFix ExamplePkgName ExamplePkgVersion
+
     -- | Dependencies indexed by a flag
   | ExFlag ExampleFlagName Dependencies Dependencies
 
@@ -222,7 +228,7 @@ exDbPkgs = map (either exInstName exAvName)
 
 exAvSrcPkg :: ExampleAvailable -> UnresolvedSourcePackage
 exAvSrcPkg ex =
-    let (libraryDeps, exts, mlang, pcpkgs) = splitTopLevel (CD.libraryDeps (exAvDeps ex))
+    let (libraryDeps, exts, mlang, pcpkgs, exes) = splitTopLevel (CD.libraryDeps (exAvDeps ex))
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
     in SourcePackage {
            packageInfoId        = exAvPkgId ex
@@ -244,7 +250,8 @@ exAvSrcPkg ex =
                  }
              , C.genPackageFlags = nub $ concatMap extractFlags $
                                    CD.libraryDeps (exAvDeps ex) ++ concatMap snd testSuites
-             , C.condLibrary = Just (mkCondTree (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs)
+             , C.condLibrary = Just (mkCondTree
+                    (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs <> buildtoolsLib exes)
                                                      disableLib
                                                      (Buildable libraryDeps))
              , C.condSubLibraries = []
@@ -263,27 +270,36 @@ exAvSrcPkg ex =
                      , [Extension]
                      , Maybe Language
                      , [(ExamplePkgName, ExamplePkgVersion)] -- pkg-config
+                     , [(ExamplePkgName, Maybe Int)]
                      )
     splitTopLevel [] =
-        ([], [], Nothing, [])
+        ([], [], Nothing, [], [])
+    splitTopLevel (ExBuildToolAny p:deps) =
+      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, (p, Nothing):exes)
+    splitTopLevel (ExBuildToolFix p v:deps) =
+      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
+      in (other, exts, lang, pcpkgs, (p, Just v):exes)
     splitTopLevel (ExExt ext:deps) =
-      let (other, exts, lang, pcpkgs) = splitTopLevel deps
-      in (other, ext:exts, lang, pcpkgs)
+      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
+      in (other, ext:exts, lang, pcpkgs, exes)
     splitTopLevel (ExLang lang:deps) =
         case splitTopLevel deps of
-            (other, exts, Nothing, pcpkgs) -> (other, exts, Just lang, pcpkgs)
+            (other, exts, Nothing, pcpkgs, exes) -> (other, exts, Just lang, pcpkgs, exes)
             _ -> error "Only 1 Language dependency is supported"
     splitTopLevel (ExPkg pkg:deps) =
-      let (other, exts, lang, pcpkgs) = splitTopLevel deps
-      in (other, exts, lang, pkg:pcpkgs)
+      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
+      in (other, exts, lang, pkg:pcpkgs, exes)
     splitTopLevel (dep:deps) =
-      let (other, exts, lang, pcpkgs) = splitTopLevel deps
-      in (dep:other, exts, lang, pcpkgs)
+      let (other, exts, lang, pcpkgs, exes) = splitTopLevel deps
+      in (dep:other, exts, lang, pcpkgs, exes)
 
     -- Extract the total set of flags used
     extractFlags :: ExampleDependency -> [C.Flag]
     extractFlags (ExAny _)      = []
     extractFlags (ExFix _ _)    = []
+    extractFlags (ExBuildToolAny _)   = []
+    extractFlags (ExBuildToolFix _ _) = []
     extractFlags (ExFlag f a b) = C.MkFlag {
                                       C.flagName        = C.FlagName f
                                     , C.flagDescription = ""
@@ -310,6 +326,9 @@ exAvSrcPkg ex =
       let (directDeps, flaggedDeps) = splitDeps deps
       in C.CondNode {
              C.condTreeData        = x -- Necessary for language extensions
+           -- TODO: Arguably, build-tools dependencies should also
+           -- effect constraints on conditional tree. But no way to
+           -- distinguish between them
            , C.condTreeConstraints = map mkDirect directDeps
            , C.condTreeComponents  = map (mkFlagged dontBuild) flaggedDeps
            }
@@ -379,6 +398,12 @@ exAvSrcPkg ex =
     -- A 'C.Library' with just the given pkgconfig-depends in its 'BuildInfo'
     pcpkgLib :: [(ExamplePkgName, ExamplePkgVersion)] -> C.Library
     pcpkgLib ds = mempty { C.libBuildInfo = mempty { C.pkgconfigDepends = [mkDirect (n, (Just v)) | (n,v) <- ds] } }
+
+    buildtoolsLib :: [(ExamplePkgName, Maybe Int)] -> C.Library
+    buildtoolsLib ds = mempty { C.libBuildInfo = mempty {
+        C.buildTools = map mkDirect ds
+      } }
+
 
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {

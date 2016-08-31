@@ -347,6 +347,10 @@ relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
 -- should be updated.
 data ConfigFlags = ConfigFlags {
+    -- This is the same hack as in 'buildArgs' and 'copyArgs'.
+    -- TODO: Stop using this eventually when 'UserHooks' gets changed
+    configArgs :: [String],
+
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
@@ -387,6 +391,7 @@ data ConfigFlags = ConfigFlags {
                                               -- frameworks (OS X only)
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
     configIPID          :: Flag String, -- ^ explicit IPID to be used
+    configCID           :: Flag ComponentId, -- ^ explicit CID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configCabalFilePath :: Flag FilePath, -- ^ Cabal file to use
@@ -399,7 +404,7 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, UnitId)],
+    configDependencies :: [(PackageName, ComponentId)],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -435,6 +440,7 @@ configAbsolutePaths f =
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
+    configArgs         = [],
     configPrograms_    = pure progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
@@ -672,6 +678,11 @@ configureOptions showOrParseArgs =
          configIPID (\v flags -> flags {configIPID = v})
          (reqArgFlag "IPID")
 
+      ,option "" ["cid"]
+         "Installed component ID to compile this component as"
+         (fmap display . configCID) (\v flags -> flags {configCID = fmap ComponentId v})
+         (reqArgFlag "CID")
+
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
@@ -698,7 +709,7 @@ configureOptions showOrParseArgs =
       ,option "" ["dependency"]
          "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
          configDependencies (\v flags -> flags { configDependencies = v})
-         (reqArg "NAME=ID"
+         (reqArg "NAME=CID"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
                  (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
 
@@ -784,7 +795,7 @@ showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
 showProfDetailLevelFlag NoFlag    = []
 showProfDetailLevelFlag (Flag dl) = [showProfDetailLevel dl]
 
-parseDependency :: Parse.ReadP r (PackageName, UnitId)
+parseDependency :: Parse.ReadP r (PackageName, ComponentId)
 parseDependency = do
   x <- parse
   _ <- Parse.char '='
@@ -875,6 +886,7 @@ data CopyFlags = CopyFlags {
     copyAssumeDepsUpToDate   :: Flag Bool,
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
+    -- TODO: Stop using this eventually when 'UserHooks' gets changed
     copyArgs :: [String]
   }
   deriving (Show, Generic)

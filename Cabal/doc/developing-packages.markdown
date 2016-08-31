@@ -1119,9 +1119,7 @@ information](#build-information)).
 Test suites using the `exitcode-stdio-1.0` interface are executables
 that indicate test failure with a non-zero exit code when run; they may provide
 human-readable log information through the standard output and error channels.
-This interface is provided primarily for compatibility with existing test
-suites; it is preferred that new test suites be written for the `detailed-0.9`
-interface.  The `exitcode-stdio-1.0` type requires the `main-is` field.
+The `exitcode-stdio-1.0` type requires the `main-is` field.
 
 `main-is:` _filename_ (required: `exitcode-stdio-1.0`, disallowed: `detailed-0.9`)
 :   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
@@ -1416,7 +1414,8 @@ for these fields.
     build this package, e.g. `c2hs >= 0.15, cpphs`.  If no version
     constraint is specified, any version is assumed to be acceptable.
     `build-tools` can refer to locally defined executables, in which
-    case Cabal will make sure that executable is built first.
+    case Cabal will make sure that executable is built first and
+    add it to the PATH upon invocations to the compiler.
 
 `buildable:` _boolean_ (default: `True`)
 :   Is the component buildable? Like some of the other fields below,
@@ -1463,8 +1462,14 @@ for these fields.
 :   A list of header files to be included in any compilations via C.
     This field applies to both header files that are already installed
     on the system and to those coming with the package to be installed.
+    The former files should be found in absolute paths, while the latter files
+    should be found in paths relative to the top of the source tree or
+    relative to one of the directories listed in `include-dirs`.
+
     These files typically contain function prototypes for foreign
-    imports used by the package.
+    imports used by the package. This is in contrast to `install-includes`,
+    which lists header files that are intended to be exposed to other packages
+    that transitively depend on this library.
 
 `install-includes:` _filename list_
 :   A list of header files from this package to be installed into
@@ -1476,13 +1481,29 @@ for these fields.
     `install-includes` is typically used to name header files that
     contain prototypes for foreign imports used in Haskell code in this
     package, for which the C implementations are also provided with the
-    package.  Note that to include them when compiling the package
-    itself, they need to be listed in the `includes:` field as well.
+    package. For example, here is a `.cabal` file for a hypothetical
+    `bindings-clib` package that bundles the C source code for `clib`:
+
+    ~~~~~~~~~~~~~~~~
+    include-dirs:     cbits
+    c-sources:        clib.c
+    install-includes: clib.h
+    ~~~~~~~~~~~~~~~~
+
+    Now any package that depends (directly or transitively) on the
+    `bindings-clib` library can use `clib.h`.
+
+    Note that in order for files listed in `install-includes` to be usable
+    when compiling the package itself, they need to be listed in the
+    `includes:` field as well.
 
 `include-dirs:` _directory list_
 :   A list of directories to search for header files, when preprocessing
     with `c2hs`, `hsc2hs`, `cpphs` or the C preprocessor, and
-    also when compiling via C.
+    also when compiling via C. Directories can be absolute paths (e.g., for
+    system directories) or paths that are relative to the top of the source
+    tree. Cabal looks in these directories when attempting to locate files
+    listed in `includes` and `install-includes`.
 
 `c-sources:` _filename list_
 :   A list of C source files to be compiled and linked with the Haskell files.
@@ -1720,6 +1741,20 @@ The following tests are currently supported.
     the configured implementation is of the right type and matches the
     version constraint, then this evaluates to true, otherwise false.
     The match is case-insensitive.
+
+    Note that including a version constraint in an `impl` test causes it
+    to check for two properties:
+
+      * The current compiler has the specified name, and
+
+      * The compiler's version satisfied the specified version constraint
+
+    As a result, `!impl(ghc >= x.y.z)` is not entirely equivalent to
+    `impl(ghc < x.y.z)`. The test `!impl(ghc >= x.y.z)` checks that:
+
+      * The current compiler is not GHC, or
+
+      * The version of GHC is earlier than version x.y.z.
 
 `flag(`_name_`)`
 :   Evaluates to the current assignment of the flag of the given name.
@@ -2033,6 +2068,15 @@ getDataDir :: IO FilePath
 getLibexecDir :: IO FilePath
 getSysconfDir :: IO FilePath
 ~~~~~~~~~~~~~~~
+
+The actual location of all these directories can be individually
+overridden at runtime using environment variables of the form
+`pkg_name_var`, where `pkg_name` is the name of the package with
+all hyphens converted into underscores, and `var` is either
+`bindir`, `libdir`, `datadir`, `libexedir` or `sysconfdir`.
+For example, the configured data directory for `pretty-show`
+is controlled with the `pretty_show_datadir` environment variable.
+
 
 ### Accessing the package version ###
 

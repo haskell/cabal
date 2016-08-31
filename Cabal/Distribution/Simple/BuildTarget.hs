@@ -12,6 +12,7 @@
 module Distribution.Simple.BuildTarget (
     -- * Main interface
     readTargetInfos,
+    readBuildTargets, -- in case you don't have LocalBuildInfo
 
     -- * Build targets
     BuildTarget(..),
@@ -92,7 +93,7 @@ data UserBuildTarget =
      --
    | UserBuildTargetDouble String String
 
-     -- A fully qualified target, either a module or file qualified by a
+     -- | A fully qualified target, either a module or file qualified by a
      -- component name with the component namespace kind.
      --
      -- > cabal build lib:foo:Data/Foo.hs exe:foo:Data/Foo.hs
@@ -232,9 +233,20 @@ showUserBuildTarget = intercalate ":" . getComponents
     getComponents (UserBuildTargetDouble s1 s2)    = [s1,s2]
     getComponents (UserBuildTargetTriple s1 s2 s3) = [s1,s2,s3]
 
-showBuildTarget :: QualLevel -> PackageId -> BuildTarget -> String
-showBuildTarget ql pkgid bt =
+-- | Unless you use 'QL1', this function is PARTIAL;
+-- use 'showBuildTarget' instead.
+showBuildTarget' :: QualLevel -> PackageId -> BuildTarget -> String
+showBuildTarget' ql pkgid bt =
     showUserBuildTarget (renderBuildTarget ql bt pkgid)
+
+-- | Unambiguously render a 'BuildTarget', so that it can
+-- be parsed in all situations.
+showBuildTarget :: PackageId -> BuildTarget -> String
+showBuildTarget pkgid t =
+    showBuildTarget' (qlBuildTarget t) pkgid t
+  where
+    qlBuildTarget BuildTargetComponent{} = QL2
+    qlBuildTarget _                      = QL3
 
 
 -- ------------------------------------------------------------
@@ -998,3 +1010,7 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
     formatReason cn DisabledAllBenchmarks =
         "Cannot process the " ++ cn ++ " because benchmarks are not "
      ++ "enabled. Re-run configure with the flag --enable-benchmarks"
+    formatReason cn (DisabledAllButOne cn') =
+        "Cannot process the " ++ cn ++ " because this package was "
+     ++ "configured only to build " ++ cn' ++ ". Re-run configure "
+     ++ "with the argument " ++ cn
