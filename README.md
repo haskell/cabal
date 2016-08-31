@@ -183,6 +183,15 @@ There are a few main venues of communication:
 * Many developers idle on `#hackage` on `irc.freenode.net`.  `#ghc` is
   also a decently good bet.
 
+Releases
+--------
+
+Notes for how to make a release are at the
+wiki page ["Making a release"](https://github.com/haskell/cabal/wiki/Making-a-release).
+Currently, @23Skidoo, @rthomas, @tibbe and @dcoutts have access to
+`haskell.org/cabal`, and @davean is the point of contact for getting
+permissions.
+
 API Documentation
 -----------------
 
