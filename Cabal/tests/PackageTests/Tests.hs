@@ -4,6 +4,8 @@ import PackageTests.PackageTester
 
 import qualified PackageTests.AutogenModules.Package.Check
 import qualified PackageTests.AutogenModules.SrcDist.Check
+import qualified PackageTests.AutogenSources.Package.Check
+import qualified PackageTests.AutogenSources.SrcDist.Check
 import qualified PackageTests.BenchmarkStanza.Check
 import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
@@ -46,6 +48,11 @@ tests config = do
   tc "AutogenModules/Package" PackageTests.AutogenModules.Package.Check.suite
   -- Test that Cabal parses and uses 'autogen-modules' fields correctly
   tc "AutogenModules/SrcDist" PackageTests.AutogenModules.SrcDist.Check.suite
+
+  -- Test that cabal shows all the 'autogen-*-sources' warnings.
+  tc "AutogenSources/Package" PackageTests.AutogenSources.Package.Check.suite
+  -- Test that Cabal parses and uses 'autogen-*-sources' fields correctly
+  tc "AutogenSources/SrcDist" PackageTests.AutogenSources.SrcDist.Check.suite
 
   ---------------------------------------------------------------------
   -- * Test suite tests

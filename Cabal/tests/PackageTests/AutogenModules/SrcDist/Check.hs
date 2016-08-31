@@ -4,6 +4,7 @@ import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
 import Distribution.PackageDescription
 import PackageTests.PackageTester
+import qualified System.FilePath as FilePath
 
 suite :: TestM ()
 suite = do
@@ -73,29 +74,16 @@ suite = do
         let listSourcesFileGot = dist_dir ++ "/" ++ "list-sources.txt"
         cabal "sdist" ["--list-sources=" ++ listSourcesFileGot]
         let listSourcesStrExpected =
-#if defined(mingw32_HOST_OS)
-                   ".\\MyLibrary.hs\n"
-                ++ ".\\MyLibModule.hs\n"
-                ++ ".\\Dummy.hs\n"
-                ++ ".\\MyExeModule.hs\n"
-                ++ ".\\Dummy.hs\n"
-                ++ ".\\MyTestModule.hs\n"
-                ++ ".\\Dummy.hs\n"
-                ++ ".\\MyBenchModule.hs\n"
+                   ("." FilePath.</> "MyLibrary.hs\n")
+                ++ ("." FilePath.</> "MyLibModule.hs\n")
+                ++ ("." FilePath.</> "Dummy.hs\n")
+                ++ ("." FilePath.</> "MyExeModule.hs\n")
+                ++ ("." FilePath.</> "Dummy.hs\n")
+                ++ ("." FilePath.</> "MyTestModule.hs\n")
+                ++ ("." FilePath.</> "Dummy.hs\n")
+                ++ ("." FilePath.</> "MyBenchModule.hs\n")
                 ++ "LICENSE\n"
-                ++ ".\\my.cabal\n"
-#else
-                   "./MyLibrary.hs\n"
-                ++ "./MyLibModule.hs\n"
-                ++ "./Dummy.hs\n"
-                ++ "./MyExeModule.hs\n"
-                ++ "./Dummy.hs\n"
-                ++ "./MyTestModule.hs\n"
-                ++ "./Dummy.hs\n"
-                ++ "./MyBenchModule.hs\n"
-                ++ "LICENSE\n"
-                ++ "./my.cabal\n"
-#endif
+                ++ ("." FilePath.</> "my.cabal\n")
         listSourcesStrGot <- liftIO $ readFile listSourcesFileGot
         assertEqual "sdist --list-sources does not match the expected files"
                 listSourcesStrExpected

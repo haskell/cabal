@@ -254,6 +254,18 @@ checkLibrary pkg lib =
            "An 'autogen-module' is neither on 'exposed-modules' or "
         ++ "'other-modules'."
 
+    -- check that all autogen-c-sources appear on c-sources
+  , check
+      (not $ and $ map (flip elem
+        (cSources $ libBuildInfo lib)) (autogenCSources $ libBuildInfo lib)) $
+      PackageBuildImpossible $ "An 'autogen-c-sources' is not on 'c-sources'"
+
+    -- check that all autogen-js-sources appear on js-sources
+  , check
+      (not $ and $ map (flip elem
+        (jsSources $ libBuildInfo lib)) (autogenJsSources $ libBuildInfo lib)) $
+      PackageBuildImpossible $ "An 'autogen-js-sources' is not on 'js-sources'"
+
   ]
 
   where
@@ -298,6 +310,22 @@ checkExecutable pkg exe =
       PackageBuildImpossible $
            "On executable '" ++ exeName exe ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
+
+    -- check that all autogen-c-sources appear on c-sources
+  , check
+      (not $ and $ map (flip elem
+        (cSources $ buildInfo exe)) (autogenCSources $ buildInfo exe)) $
+      PackageBuildImpossible $
+           "On executable '" ++ exeName exe ++ "' an 'autogen-c-sources' is not "
+        ++ "on 'c-sources'"
+
+    -- check that all autogen-js-sources appear on js-sources
+  , check
+      (not $ and $ map (flip elem
+        (jsSources $ buildInfo exe)) (autogenJsSources $ buildInfo exe)) $
+      PackageBuildImpossible $
+           "On executable '" ++ exeName exe ++ "' an 'autogen-js-sources' is not "
+        ++ "on 'js-sources'"
 
   ]
   where
@@ -344,8 +372,27 @@ checkTestSuite pkg test =
         (testModulesAutogen test)
       ) $
       PackageBuildImpossible $
-           "On test suite '" ++ testName test ++ "' an 'autogen-module' is not "
-        ++ "on 'other-modules'"
+           "On test suite '" ++ testName test ++ "' an 'autogen-module' is "
+        ++ "not on 'other-modules'"
+
+    -- check that all autogen-c-sources appear on c-sources
+  , check
+      (not $ and $ map (flip elem
+        (cSources $ testBuildInfo test))
+        (autogenCSources $ testBuildInfo test)) $
+      PackageBuildImpossible $
+           "On test suite '" ++ testName test ++ "' an 'autogen-c-sources' is "
+        ++ "not on 'c-sources'"
+
+    -- check that all autogen-js-sources appear on js-sources
+  , check
+      (not $ and $ map (flip elem
+        (jsSources $ testBuildInfo test))
+        (autogenJsSources $ testBuildInfo test)) $
+      PackageBuildImpossible $
+           "On test suite '" ++ testName test ++ "' an 'autogen-js-sources' is "
+        ++ "not on 'js-sources'"
+
   ]
   where
     moduleDuplicates = dups $ testModules test
@@ -395,6 +442,25 @@ checkBenchmark _pkg bm =
       PackageBuildImpossible $
              "On benchmark '" ++ benchmarkName bm ++ "' an 'autogen-module' is "
           ++ "not on 'other-modules'"
+
+    -- check that all autogen-c-sources appear on c-sources
+  , check
+      (not $ and $ map (flip elem
+        (cSources $ benchmarkBuildInfo bm))
+        (autogenCSources $ benchmarkBuildInfo bm)) $
+      PackageBuildImpossible $
+           "On benchmark '" ++ benchmarkName bm ++ "' an 'autogen-c-sources' "
+        ++ "is not on 'c-sources'"
+
+    -- check that all autogen-js-sources appear on js-sources
+  , check
+      (not $ and $ map (flip elem
+        (jsSources $ benchmarkBuildInfo bm))
+        (autogenJsSources $ benchmarkBuildInfo bm)) $
+      PackageBuildImpossible $
+           "On benchmark '" ++ benchmarkName bm ++ "' an 'autogen-js-sources' "
+        ++ "is not on 'js-sources'"
+
   ]
   where
     moduleDuplicates = dups $ benchmarkModules bm
