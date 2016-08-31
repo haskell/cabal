@@ -277,10 +277,12 @@ makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repoCtxt, comp, _, conf,_,_,
-   globalFlags, _, configExFlags, _, _) mUserTargets = do
+   globalFlags, _, configExFlags, installFlags, _) mUserTargets = do
+
+    let indexSnapSpec = fmap fromIntegral $ flagToMaybe $ installIndexSnapshot installFlags
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt indexSnapSpec
     pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
     checkConfigExFlags verbosity installedPkgIndex

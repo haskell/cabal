@@ -95,7 +95,7 @@ readBuildTreeRefsFromFile = liftM (readBuildTreeRefs . Tar.read) . BS.readFile
 -- | Read build tree references from an index cache
 readBuildTreeRefsFromCache :: Verbosity -> FilePath -> IO [BuildTreeRef]
 readBuildTreeRefsFromCache verbosity indexPath = do
-    (mRefs, _prefs) <- readCacheStrict verbosity (SandboxIndex indexPath) buildTreeRef
+    (mRefs, _prefs) <- readCacheStrict verbosity (SandboxIndex indexPath) buildTreeRef Nothing
     return (catMaybes mRefs)
   where
     buildTreeRef pkgEntry =

@@ -21,6 +21,8 @@ module Distribution.Client.IndexUtils (
   getSourcePackages,
   getSourcePackagesMonitorFiles,
 
+  IndexSnapshotSpec,
+
   Index(..),
   PackageEntry(..),
   parsePackageIndex,
@@ -62,7 +64,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, ignoreBOM )
+         ( die, warn, info, notice, fromUTF8, ignoreBOM )
 import Distribution.Client.Setup
          ( RepoContext(..) )
 
@@ -76,6 +78,7 @@ import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
+import Data.Int (Int64)
 import qualified Data.Map as Map
 import Control.Monad (when, liftM)
 import Control.Exception (evaluate)
@@ -113,6 +116,9 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- Reading the source package index
 --
 
+type IndexSnapshotSpec = Maybe Timestamp
+type Timestamp = Int64
+
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.
 --
@@ -120,17 +126,20 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
-getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
-getSourcePackages verbosity repoCtxt | null (repoContextRepos repoCtxt) = do
+getSourcePackages :: Verbosity -> RepoContext -> IndexSnapshotSpec -> IO SourcePackageDb
+getSourcePackages verbosity repoCtxt _ | null (repoContextRepos repoCtxt) = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
   return SourcePackageDb {
     packageIndex       = mempty,
     packagePreferences = mempty
   }
-getSourcePackages verbosity repoCtxt = do
-  info verbosity "Reading available packages..."
-  pkgss <- mapM (\r -> readRepoIndex verbosity repoCtxt r) (repoContextRepos repoCtxt)
+getSourcePackages verbosity repoCtxt idxSnapshot = do
+  case idxSnapshot of
+      Nothing -> info verbosity "Reading available packages..."
+      Just time -> notice verbosity ("Reading available packages (timestamp < " ++ show time ++ ")...")
+
+  pkgss <- mapM (\r -> readRepoIndex verbosity repoCtxt r idxSnapshot) (repoContextRepos repoCtxt)
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
@@ -141,12 +150,12 @@ getSourcePackages verbosity repoCtxt = do
     packagePreferences = prefs'
   }
 
-readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
-readCacheStrict verbosity index mkPkg = do
+readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IndexSnapshotSpec -> IO ([pkg], [Dependency])
+readCacheStrict verbosity index mkPkg idxSnapshot = do
     updateRepoIndexCache verbosity index
     cache <- liftM readIndexCache $ BSS.readFile (cacheFile index)
     withFile (indexFile index) ReadMode $ \indexHnd ->
-      packageListFromCache mkPkg indexHnd cache ReadPackageIndexStrict
+      packageListFromCache mkPkg indexHnd cache idxSnapshot ReadPackageIndexStrict
 
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
@@ -155,13 +164,13 @@ readCacheStrict verbosity index mkPkg = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> RepoContext -> Repo
+readRepoIndex :: Verbosity -> RepoContext -> Repo -> IndexSnapshotSpec
               -> IO (PackageIndex UnresolvedSourcePackage, [Dependency])
-readRepoIndex verbosity repoCtxt repo =
+readRepoIndex verbosity repoCtxt repo idxSnapshot =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repoCtxt repo)
+    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repoCtxt repo) idxSnapshot
 
   where
     mkAvailablePackage pkgEntry =
@@ -213,7 +222,7 @@ getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 --
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =
-    [ repoLocalDir repo </> "00-index.cache"
+    [ repoLocalDir repo </> "01-index.cache"
     | repo <- repos ]
 
 -- | It is not necessary to call this, as the cache will be updated when the
@@ -390,7 +399,7 @@ indexFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.tar"
 indexFile (SandboxIndex index)   = index
 
 cacheFile :: Index -> FilePath
-cacheFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.cache"
+cacheFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "01-index.cache"
 cacheFile (SandboxIndex index)   = index `replaceExtension` "cache"
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
@@ -424,19 +433,36 @@ withIndexEntries :: Index -> ([IndexCacheEntry] -> IO a) -> IO a
 withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
     repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
       Sec.withIndex repoSecure $ \Sec.IndexCallbacks{..} -> do
-        let mk :: (Sec.DirectoryEntry, fp, Maybe (Sec.Some Sec.IndexFile))
-               -> IO [IndexCacheEntry]
+        let mk :: (Sec.DirectoryEntry, fp, Maybe (Sec.Some Sec.IndexFile)) -> IO [IndexCacheEntry]
             mk (_, _fp, Nothing) =
               return [] -- skip unrecognized file
             mk (_, _fp, Just (Sec.Some (Sec.IndexPkgMetadata _pkgId))) =
               return [] -- skip metadata
-            mk (dirEntry, _fp, Just (Sec.Some (Sec.IndexPkgCabal pkgId))) = do
+            mk (dirEntry, _fp, Just (Sec.Some file@(Sec.IndexPkgCabal pkgId))) = do
               let blockNo = fromIntegral (Sec.directoryEntryBlockNo dirEntry)
-              return [CachePackageId pkgId blockNo]
+              timestamp <- Sec.indexEntryTime `fmap` indexLookupFileEntry dirEntry file
+              return [CachePackageId pkgId blockNo timestamp]
             mk (dirEntry, _fp, Just (Sec.Some file@(Sec.IndexPkgPrefs _pkgName))) = do
+              let blockNo = fromIntegral (Sec.directoryEntryBlockNo dirEntry)
               content <- Sec.indexEntryContent `fmap` indexLookupFileEntry dirEntry file
-              return $ map CachePreference (parsePreferredVersions content)
-        entriess <- lazySequence $ map mk (Sec.directoryEntries indexDirectory)
+              timestamp <- Sec.indexEntryTime `fmap` indexLookupFileEntry dirEntry file
+              return $ map (\x ->  CachePreference x blockNo timestamp) (parsePreferredVersions content)
+
+        -- TODO/FIXME: turn into lazy non-reversed list-generation
+        let go :: [(Sec.DirectoryEntry, Sec.IndexPath, Maybe (Sec.Some Sec.IndexFile))]
+                  -> Sec.DirectoryEntry
+                  -> IO [(Sec.DirectoryEntry, Sec.IndexPath, Maybe (Sec.Some Sec.IndexFile))]
+            go acc dent = do
+                (sie0, mde) <- indexLookupEntry dent
+                let e = case sie0 of Sec.Some sie -> (dent, Sec.indexEntryPath sie, fmap Sec.Some (Sec.indexEntryPathParsed sie))
+                    acc' = e:acc
+                maybe (return acc') (go acc') mde
+
+        -- entriess <- lazySequence $ map mk (Sec.directoryEntries indexDirectory)
+        -- we need all historic entries, including the overwritten ones
+        rents <- go [] (Sec.directoryFirst indexDirectory)
+        entriess <- lazySequence $ map mk (reverse rents)
+
         callback $ concat entriess
 withIndexEntries index callback = do
     withFile (indexFile index) ReadMode $ \h -> do
@@ -445,9 +471,9 @@ withIndexEntries index callback = do
       callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
-    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo 0 -- FIXME
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
-    toCache (Dep d) = CachePreference d
+    toCache (Dep d) = CachePreference d 0 0 -- FIXME
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
@@ -455,20 +481,22 @@ data ReadPackageIndexMode = ReadPackageIndexStrict
 readPackageIndexCacheFile :: Package pkg
                           => (PackageEntry -> pkg)
                           -> Index
+                          -> IndexSnapshotSpec
                           -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile mkPkg index = do
+readPackageIndexCacheFile mkPkg index idxSnapshot = do
   cache    <- liftM readIndexCache $ BSS.readFile (cacheFile index)
   indexHnd <- openFile (indexFile index) ReadMode
-  packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
+  packageIndexFromCache mkPkg indexHnd cache idxSnapshot ReadPackageIndexLazyIO
 
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
                       -> Handle
                       -> Cache
+                      -> IndexSnapshotSpec
                       -> ReadPackageIndexMode
                       -> IO (PackageIndex pkg, [Dependency])
-packageIndexFromCache mkPkg hnd cache mode = do
-     (pkgs, prefs) <- packageListFromCache mkPkg hnd cache mode
+packageIndexFromCache mkPkg hnd cache idxSnapshot mode = do
+     (pkgs, prefs) <- packageListFromCache mkPkg hnd cache idxSnapshot mode
      pkgIndex <- evaluate $ PackageIndex.fromList pkgs
      return (pkgIndex, prefs)
 
@@ -484,13 +512,19 @@ packageIndexFromCache mkPkg hnd cache mode = do
 packageListFromCache :: (PackageEntry -> pkg)
                      -> Handle
                      -> Cache
+                     -> IndexSnapshotSpec
                      -> ReadPackageIndexMode
                      -> IO ([pkg], [Dependency])
-packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntries
+packageListFromCache mkPkg hnd Cache{..} idxSnapshot mode = accum Map.empty [] Map.empty cacheEntries
   where
     accum !srcpkgs btrs !prefs [] = return (Map.elems srcpkgs ++ btrs, Map.elems prefs)
 
-    accum srcpkgs btrs prefs (CachePackageId pkgid blockno : entries) = do
+    accum srcpkgs btrs prefs (CachePackageId pkgid blockno ti : entries)
+      | Just maxTime <- idxSnapshot, ti > maxTime =
+          -- skip entry due to index-wayback filter
+            accum srcpkgs btrs prefs entries
+
+      | otherwise = do
       -- Given the cache entry, make a package index entry.
       -- The magic here is that we use lazy IO to read the .cabal file
       -- from the index tarball if it turns out that we need it.
@@ -518,8 +552,12 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum srcpkgs (srcpkg:btrs) prefs entries
 
-    accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _) : entries) =
-      accum srcpkgs btrs (Map.insert pn pref prefs) entries
+    accum srcpkgs btrs prefs (CachePreference pref@(Dependency pn _) _ ti : entries)
+      | Just maxTime <- idxSnapshot, ti > maxTime =
+        -- skip entry due to index-snapshot filter
+        accum srcpkgs btrs prefs entries
+
+      | otherwise = accum srcpkgs btrs (Map.insert pn pref prefs) entries
 
     getEntryContent :: BlockNo -> IO ByteString
     getEntryContent blockno = do
@@ -550,35 +588,45 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
 --
 type BlockNo = Tar.TarEntryOffset
 
-data IndexCacheEntry = CachePackageId PackageId BlockNo
+data IndexCacheEntry = CachePackageId PackageId BlockNo Timestamp
                      | CacheBuildTreeRef BuildTreeRefType BlockNo
-                     | CachePreference Dependency
+                     | CachePreference Dependency BlockNo Timestamp
   deriving (Eq)
 
-installedUnitId, blocknoKey, buildTreeRefKey, preferredVersionKey :: String
+installedUnitId, blocknoKey, timeKey, buildTreeRefKey, preferredVersionKey :: String
 installedUnitId = "pkg:"
 blocknoKey = "b#"
+timeKey = "t#"
 buildTreeRefKey     = "build-tree-ref:"
 preferredVersionKey = "pref-ver:"
 
 readIndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
 readIndexCacheEntry = \line ->
   case BSS.words line of
-    [key, pkgnamestr, pkgverstr, sep, blocknostr]
-      | key == BSS.pack installedUnitId && sep == BSS.pack blocknoKey ->
+    [key, sep, blocknostr, sep2, timestr, pkgnamestr, pkgverstr]
+      | key == BSS.pack installedUnitId
+      , sep == BSS.pack blocknoKey
+      , sep2 == BSS.pack timeKey ->
       case (parseName pkgnamestr, parseVer pkgverstr [],
-            parseBlockNo blocknostr) of
-        (Just pkgname, Just pkgver, Just blockno)
-          -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
+            parseBlockNo blocknostr, parseTime timestr) of
+        (Just pkgname, Just pkgver, Just blockno, Just time)
+          -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno time)
         _ -> Nothing
+
     [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
       case (parseRefType typecodestr, parseBlockNo blocknostr) of
         (Just refType, Just blockno)
           -> Just (CacheBuildTreeRef refType blockno)
         _ -> Nothing
 
-    (key: remainder) | key == BSS.pack preferredVersionKey ->
-      fmap CachePreference (simpleParse (BSS.unpack (BSS.unwords remainder)))
+    (key : sep : blocknostr : sep2 : timestr : remainder)
+      | key == BSS.pack preferredVersionKey
+      , sep == BSS.pack blocknoKey
+      , sep2 == BSS.pack timeKey
+      , Just blockno <- parseBlockNo blocknostr
+      , Just time <- parseTime timestr ->
+        fmap (\p -> CachePreference p blockno time) (simpleParse (BSS.unpack (BSS.unwords remainder)))
+
     _  -> Nothing
   where
     parseName str
@@ -600,6 +648,12 @@ readIndexCacheEntry = \line ->
           | BSS.null remainder -> Just (fromIntegral blockno)
         _                      -> Nothing
 
+    parseTime str =
+      case BSS.readInt str of
+        Just (t, remainder)
+          | BSS.null remainder -> Just (fromIntegral t :: Timestamp)
+        _                      -> Nothing
+
     parseRefType str =
       case BSS.uncons str of
         Just (typeCode, remainder)
@@ -609,17 +663,23 @@ readIndexCacheEntry = \line ->
 
 showIndexCacheEntry :: IndexCacheEntry -> String
 showIndexCacheEntry entry = unwords $ case entry of
-   CachePackageId pkgid b -> [ installedUnitId
-                             , display (packageName pkgid)
-                             , display (packageVersion pkgid)
+   CachePackageId pkgid b t -> [ installedUnitId
                              , blocknoKey
                              , show b
+                             , timeKey
+                             , show t
+                             , display (packageName pkgid)
+                             , display (packageVersion pkgid)
                              ]
    CacheBuildTreeRef t b  -> [ buildTreeRefKey
                              , [typeCodeFromRefType t]
                              , show b
                              ]
-   CachePreference dep    -> [ preferredVersionKey
+   CachePreference dep b t-> [ preferredVersionKey
+                             , blocknoKey
+                             , show b
+                             , timeKey
+                             , show t
                              , display dep
                              ]
 

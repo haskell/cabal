@@ -123,7 +123,7 @@ getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
       globalFlags freezeFlags = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt Nothing -- FIXME
     pkgConfigDb       <- readPkgConfigDb      verbosity conf
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt

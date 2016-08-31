@@ -115,7 +115,7 @@ initCabal :: Verbosity
 initCabal verbosity packageDBs repoCtxt comp conf initFlags = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-  sourcePkgDb <- getSourcePackages verbosity repoCtxt
+  sourcePkgDb <- getSourcePackages verbosity repoCtxt Nothing
 
   hSetBuffering stdout NoBuffering
 

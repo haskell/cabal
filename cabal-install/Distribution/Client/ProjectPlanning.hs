@@ -476,6 +476,10 @@ rebuildInstallPlan verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
           sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
+                                                    (fmap fromIntegral
+                                                     . flagToMaybe
+                                                     . projectConfigIndexSnapshot
+                                                     $ projectConfigShared)
           pkgConfigDB       <- getPkgConfigDb      verbosity progdb
 
           --TODO: [code cleanup] it'd be better if the Compiler contained the
@@ -683,12 +687,13 @@ getExecutableDBContents storeDirectory = do
     valid _ = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
+                  -> IndexUtils.IndexSnapshotSpec
                   -> Rebuild SourcePackageDb
-getSourcePackages verbosity withRepoCtx = do
+getSourcePackages verbosity withRepoCtx idxSnapSpec = do
     (sourcePkgDb, repos) <-
       liftIO $
         withRepoCtx $ \repoctx -> do
-          sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
+          sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx idxSnapSpec
           return (sourcePkgDb, repoContextRepos repoctx)
 
     monitorFiles . map monitorFile
