@@ -248,8 +248,9 @@ still important, even when using packages.
 ### Package names and versions ###
 
 All packages have a name, e.g. "HUnit". Package names are assumed to be
-unique. Cabal package names can use letters, numbers and hyphens, but
-not spaces. The namespace for Cabal packages is flat, not hierarchical.
+unique. Cabal package names may contain letters, numbers and hyphens, but
+not spaces and may also not end in "-xyz", i.e. a hyphen followed by 
+numbers. The namespace for Cabal packages is flat, not hierarchical.
 
 Packages also have a version, e.g "1.1". This matches the typical way in
 which packages are developed. Strictly speaking, each version of a
