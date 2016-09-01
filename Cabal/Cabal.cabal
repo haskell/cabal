@@ -52,6 +52,21 @@ extra-source-files:
   tests/PackageTests/AutogenModules/SrcDist/MyLibrary.hs
   tests/PackageTests/AutogenModules/SrcDist/MyTestModule.hs
   tests/PackageTests/AutogenModules/SrcDist/my.cabal
+  tests/PackageTests/AutogenSources/Package/Dummy.hs
+  tests/PackageTests/AutogenSources/Package/MyBenchModule.hs
+  tests/PackageTests/AutogenSources/Package/MyExeModule.hs
+  tests/PackageTests/AutogenSources/Package/MyLibModule.hs
+  tests/PackageTests/AutogenSources/Package/MyLibrary.hs
+  tests/PackageTests/AutogenSources/Package/MyTestModule.hs
+  tests/PackageTests/AutogenSources/Package/my.cabal
+  tests/PackageTests/AutogenSources/SrcDist/Dummy.hs
+  tests/PackageTests/AutogenSources/SrcDist/MyBenchModule.hs
+  tests/PackageTests/AutogenSources/SrcDist/MyExeModule.hs
+  tests/PackageTests/AutogenSources/SrcDist/MyLibModule.hs
+  tests/PackageTests/AutogenSources/SrcDist/MyLibrary.hs
+  tests/PackageTests/AutogenSources/SrcDist/MyTestModule.hs
+  tests/PackageTests/AutogenSources/SrcDist/my.cabal
+  tests/PackageTests/AutogenSources/SrcDist/my_sources.c
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
