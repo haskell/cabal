@@ -248,6 +248,7 @@ prop_foldVersionRange' range =
                        laterVersion earlierVersion
                        orLaterVersion orEarlierVersion
                        (\v _ -> withinVersion v)
+                       (\v _ -> majorBoundVersion v)
                        unionVersionRanges intersectVersionRanges id
                        range
   where
@@ -655,6 +656,7 @@ prop_parse_disp1 vr =
                         laterVersion earlierVersion
                         orLaterVersion orEarlierVersion
                         (\v _ -> withinVersion v)
+                        (\v _ -> MajorBoundVersion v)
                         unionVersionRanges intersectVersionRanges id
 
     stripParens :: VersionRange -> VersionRange
@@ -713,6 +715,7 @@ displayRaw =
      (\v     -> Disp.text ">=" <> disp v)
      (\v     -> Disp.text "<=" <> disp v)
      (\v _   -> Disp.text "==" <> dispWild v)
+     (\v _   -> Disp.text "^>=" <> disp v)
      (\r1 r2 -> r1 <+> Disp.text "||" <+> r2)
      (\r1 r2 -> r1 <+> Disp.text "&&" <+> r2)
      (\r     -> Disp.parens r) -- parens

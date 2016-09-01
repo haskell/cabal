@@ -1337,20 +1337,38 @@ for these fields.
     library
       build-depends:
         base >= 2,
-        foo >= 1.2 && < 1.3,
+        foo >= 1.2.3 && < 1.3,
         bar
     ~~~~~~~~~~~~~~~~
 
-    Dependencies like `foo >= 1.2 && < 1.3` turn out to be very common
+    Dependencies like `foo >= 1.2.3 && < 1.3` turn out to be very common
     because it is recommended practise for package versions to
-    correspond to API versions. As of Cabal 1.6, there is a special
-    syntax to support this use:
+    correspond to API versions (see [PVP][]).
+
+    Since Cabal 1.6, there is a special wildcard syntax to help with such ranges
 
     ~~~~~~~~~~~~~~~~
     build-depends: foo ==1.2.*
     ~~~~~~~~~~~~~~~~
 
     It is only syntactic sugar. It is exactly equivalent to `foo >= 1.2 && < 1.3`.
+
+    Starting with Cabal 2.0, there's a new syntactic sugar to
+    support [PVP][]-style major upper bounds conveniently, and is
+    inspired by similiar syntactic sugar found in other language
+    ecosystems where it's often called the "Caret" operator:
+
+    ~~~~~~~~~~~~~~~~
+    build-depends: foo ^>= 1.2.3.4,
+                   bar ^>= 1
+    ~~~~~~~~~~~~~~~~
+
+    The declaration above is exactly equivalent to
+
+    ~~~~~~~~~~~~~~~~
+    build-depends: foo >= 1.2.3.4 && < 1.3,
+                   bar >= 1 && < 1.1
+    ~~~~~~~~~~~~~~~~
 
     Note: Prior to Cabal 1.8, `build-depends` specified in each section
     were global to all sections. This was unintentional, but some packages

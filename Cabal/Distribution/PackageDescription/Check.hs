@@ -1054,6 +1054,18 @@ checkCabalVersion pkg =
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
            | Dependency name versionRange <- depsUsingWildcardSyntax ]
 
+    -- check use of "build-depends: foo ^>= 1.2.3" syntax
+  , checkVersion [2,0] (not (null depsUsingMajorBoundSyntax)) $
+      PackageDistInexcusable $
+           "The package uses major bounded version syntax in the "
+        ++ "'build-depends' field: "
+        ++ commaSep (map display depsUsingMajorBoundSyntax)
+        ++ ". To use this new syntax the package need to specify at least "
+        ++ "'cabal-version: >= 2.0'. Alternatively, if broader compatibility "
+        ++ "is important then use: " ++ commaSep
+           [ display (Dependency name (eliminateMajorBoundSyntax versionRange))
+           | Dependency name versionRange <- depsUsingMajorBoundSyntax ]
+
     -- check use of "tested-with: GHC (>= 1.0 && < 1.4) || >=1.8 " syntax
   , checkVersion [1,8] (not (null testedWithVersionRangeExpressions)) $
       PackageDistInexcusable $
@@ -1195,6 +1207,7 @@ checkCabalVersion pkg =
                       (\_ -> True)  -- >=
                       (\_ -> False)
                       (\_ _ -> False)
+                      (\_ _ -> False)
                       (\_ _ -> False) (\_ _ -> False)
                       id)
                (specVersionRaw pkg)
@@ -1212,11 +1225,15 @@ checkCabalVersion pkg =
           (const 1) (const 1)
           (const 1) (const 1)
           (const (const 1))
+          (const (const 1))
           (+) (+)
           (const 3) -- uses new ()'s syntax
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
+
+    depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+                                  , usesMajorBoundSyntax vr ]
 
     -- TODO: If the user writes build-depends: foo with (), this is
     -- indistinguishable from build-depends: foo, so there won't be an
@@ -1238,15 +1255,39 @@ checkCabalVersion pkg =
         (const False) (const False)
         (const False) (const False)
         (\_ _ -> True) -- the wildcard case
+        (\_ _ -> False)
         (||) (||) id
 
+    -- NB: this eliminates both, WildcardVersion and MajorBoundVersion
+    -- because when WildcardVersion is not support, neither is MajorBoundVersion
     eliminateWildcardSyntax =
       foldVersionRange'
         anyVersion thisVersion
         laterVersion earlierVersion
         orLaterVersion orEarlierVersion
         (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
+        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
         intersectVersionRanges unionVersionRanges id
+
+    usesMajorBoundSyntax :: VersionRange -> Bool
+    usesMajorBoundSyntax =
+      foldVersionRange'
+        False (const False)
+        (const False) (const False)
+        (const False) (const False)
+        (\_ _ -> False)
+        (\_ _ -> True) -- MajorBoundVersion
+        (||) (||) id
+
+    eliminateMajorBoundSyntax =
+      foldVersionRange'
+        anyVersion thisVersion
+        laterVersion earlierVersion
+        orLaterVersion orEarlierVersion
+        (\v _ -> withinVersion v)
+        (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
+        intersectVersionRanges unionVersionRanges id
+
 
     compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved
@@ -1319,6 +1360,7 @@ displayRawVersionRange =
      (\v   -> (Disp.text ">=" <<>> disp v                   , 0))
      (\v   -> (Disp.text "<=" <<>> disp v                   , 0))
      (\v _ -> (Disp.text "==" <<>> dispWild v               , 0))
+     (\v _ -> (Disp.text "^>=" <<>> disp v                   , 0))
      (\(r1, p1) (r2, p2) ->
        (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
      (\(r1, p1) (r2, p2) ->

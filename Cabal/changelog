@@ -76,6 +76,7 @@
 	* Respect the environment variables 'GHC_PACKAGE_PATH' and
 	'GHCJS_PACKAGE_PATH', lifting the restriction that they be unset.
 	(#3728,#2711).
+	* Add support for new caret-style version range operator `^>=` (#3705)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
