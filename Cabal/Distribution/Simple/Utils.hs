@@ -140,6 +140,7 @@ module Distribution.Simple.Utils (
         ordNub,
         ordNubRight,
         safeTail,
+        unintersperse,
         wrapText,
         wrapLine,
   ) where
@@ -1547,3 +1548,11 @@ equating p x y = p x == p y
 
 lowercase :: String -> String
 lowercase = map toLower
+
+unintersperse :: Char -> String -> [String]
+unintersperse mark = unfoldr unintersperse1 where
+  unintersperse1 str
+    | null str = Nothing
+    | otherwise =
+        let (this, rest) = break (== mark) str in
+        Just (this, safeTail rest)
