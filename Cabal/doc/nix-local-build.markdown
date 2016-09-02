@@ -14,10 +14,10 @@ local builds combine the best of non-sandboxed and sandboxed Cabal:
    will rebuild all its dependencies with profiling automatically.
 
 2. Like non-sandboxed Cabal today, builds of external packages are
-   cached globally, so that a package can be built once, and then reused
-   anywhere else it is also used. No need to continually rebuild
-   dependencies whenever you make a new sandbox: dependencies which can
-   be shared, are shared.
+   cached in `~/.cabal/store`, so that a package can be built once, and
+   then reused anywhere else it is also used. No need to continually
+   rebuild dependencies whenever you make a new sandbox: dependencies
+   which can be shared, are shared.
 
 Nix-style local builds work with all versions of GHC supported by
 cabal-install 1.24, which currently is GHC 7.0 and later.
