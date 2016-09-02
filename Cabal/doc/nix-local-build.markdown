@@ -403,6 +403,17 @@ command line flags that `cabal install` and other commands take.
 For example, `cabal new-configure --library-profiling` will
 write out a project file with `library-profiling: True`.
 
+The full configuration of a project is determined by combining
+the following sources (later entries override earlier ones):
+
+1. `~/.cabal/config` (the user-wide global configuration)
+
+2. `cabal.project` (the project configuratoin)
+
+3. `cabal.project.freeze` (the output of `cabal new-freeze`)
+
+4. `cabal.project.local` (the output of `cabal new-configure`)
+
 ## Specifying the local packages ##
 
 The following top-level options specify what the local packages of a
