@@ -1081,6 +1081,10 @@ be controlled with the following command line options.
     `cabal install --constraint="bar +foo -baz"` specifies that the flag `foo`
     should be turned on and the `baz` flag should be turned off.
 
+`--preference=`_preference_
+:   Specify a soft constraint on versions of a package.  The solver will
+    attempt to satisfy these preferences on a "best-effort" basis.
+
 ## setup build ##
 
 Perform any preprocessing or compilation needed to make this package ready for installation.
