@@ -29,7 +29,8 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Exception ( bracket )
+import Control.Exception ( bracket, catch, displayException,
+                           SomeException )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
@@ -212,7 +213,12 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents
     dir <- getCurrentDirectory
-    results <- tests >>= stubRunTests
+    let errhandler :: SomeException -> IO TestLogs
+        errhandler e = do
+          return $ TestLog { testName = "Cabal test suite exception",
+                             testOptionsReturned = [],
+                             testResult = Error $ displayException e }
+    results <- ((tests >>= stubRunTests) `catch` errhandler)
     setCurrentDirectory dir
     stubWriteLog f n results
 
