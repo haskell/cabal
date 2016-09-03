@@ -29,7 +29,7 @@ We can create both files manually or we can use ``cabal init`` to create
 them for us.
 
 Using "cabal init"
-~~~~~~~~~~~~~~~~~~
+------------------
 
 The ``cabal init`` command is interactive. It asks us a number of
 questions starting with the package name and version.
@@ -78,7 +78,7 @@ are able to build the package you will need to edit the file and add
 some build information about the library or executable.
 
 Editing the .cabal file
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 Load up the ``.cabal`` file in a text editor. The first part of the
 ``.cabal`` file has the package metadata and towards the end of the file
@@ -125,7 +125,7 @@ of the package too, but this is not required and the name is given
 explicitly.
 
 Modules included in the package
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 For a library, ``cabal init`` looks in the project directory for files
 that look like Haskell modules and adds all the modules to the
@@ -141,7 +141,7 @@ contains your program's ``Main`` module. You will need to fill in the
 executable should be listed in the ``other-modules`` field.
 
 Modules imported from other packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------
 
 While your library or executable may include a number of modules, it
 almost certainly also imports a number of external modules from the
@@ -179,7 +179,7 @@ The last is just shorthand, for example ``base == 4.*`` means exactly
 the same thing as ``base >= 4 && < 5``.
 
 Building the package
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 For simple packages that's it! We can now try configuring and building
 the package:
@@ -200,7 +200,7 @@ other packages. For executables it installs the program so that you can
 run it (though you may first need to adjust your system's ``$PATH``).
 
 Next steps
-~~~~~~~~~~
+----------
 
 What we have covered so far should be enough for very simple packages
 that you use on your own system.
@@ -219,7 +219,7 @@ understand a bit about packages in the Haskell world and the particular
 approach that Cabal takes.
 
 The point of packages
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 Packages are a mechanism for organising and distributing code. Packages
 are particularly suited for "programming in the large", that is building
@@ -251,7 +251,7 @@ related functionality. Thus the choice of module names in Haskell is
 still important, even when using packages.
 
 Package names and versions
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 All packages have a name, e.g. "HUnit". Package names are assumed to be
 unique. Cabal package names may contain letters, numbers and hyphens,
@@ -283,7 +283,7 @@ identifies each installed package instance. Most of the time however,
 users need not be aware of this detail.
 
 Kinds of package: Cabal vs GHC vs system
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------
 
 It can be slightly confusing at first because there are various
 different notions of package floating around. Fortunately the details
@@ -328,7 +328,7 @@ Operating system packages
     library dependencies, rather than packaging each library separately.
 
 Unit of distribution
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 The Cabal package is the unit of distribution. What this means is that
 each Cabal package can be distributed on its own in source or binary
@@ -350,7 +350,7 @@ independently. Or to put it the other way round, if you want to
 distribute it as a single unit, then it should be a single package.
 
 Explicit dependencies and automatic package management
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------------
 
 Cabal takes the approach that all packages dependencies are specified
 explicitly and specified in a declarative way. The point is to enable
@@ -401,7 +401,7 @@ management means that Cabal's conditional dependencies system is a bit
 less flexible than with the "./configure" approach.
 
 Portability
-~~~~~~~~~~~
+-----------
 
 One of the purposes of Cabal is to make it easier to build packages on
 different platforms (operating systems and CPU architectures), with
@@ -704,7 +704,7 @@ The syntax of the value depends on the field. Field types include:
     ``LHC >=0.6 && <0.8``.
 
 Modules and preprocessors
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Haskell module names listed in the ``exposed-modules`` and
 ``other-modules`` fields may correspond to Haskell source files, i.e.
@@ -735,7 +735,7 @@ Some fields are marked as required. All others are optional, and unless
 otherwise specified have empty default values.
 
 Package properties
-~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^
 
 These fields may occur in the first top-level properties section and
 describe the package as a whole:
@@ -945,13 +945,13 @@ describe the package as a whole:
     parameters <#system-dependent-parameters>`__.
 
 Library
-~~~~~~~
+^^^^^^^
 
 The library section should contain the following fields:
 
-``exposed-modules:`` *identifier list* (required if this package
-contains a library)
+``exposed-modules:`` *identifier list* (required if this package contains a library)
     A list of modules added by this package.
+
 ``exposed:`` *boolean* (default: ``True``)
     Some Haskell compilers (notably GHC) support the notion of packages
     being "exposed" or "hidden" which means the modules they provide can
@@ -966,7 +966,7 @@ contains a library)
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
 
-``reexported-modules:`` *exportlist *
+``reexported-modules:`` *exportlist*
     Supported only in GHC 7.10 and later. A list of modules to
     *reexport* from this package. The syntax of this field is
     ``orig-pkg:Name as NewName`` to reexport module ``Name`` from
@@ -1050,7 +1050,7 @@ disambiguation purposes. Example:
     cabal repl bench:baz
 
 Freezing dependency versions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""
 
 If a package is built in several different environments, such as a
 development environment, a staging environment and a production
@@ -1067,7 +1067,7 @@ The command writes the selected version for all dependencies to the
 the dependency versions specified in it.
 
 Generating dependency version bounds
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""""""""""
 
 Cabal also has the ability to suggest dependency version bounds that
 conform to `Package Versioning
@@ -1095,7 +1095,7 @@ For example, given the following dependencies specified in
     bar >= 1.1 && < 1.2
 
 Executables
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 Executable sections (if present) describe executable programs contained
 in the package and must have an argument after the section label, which
@@ -1114,7 +1114,7 @@ information <#build-information>`__).
     ``hs-source-dirs``.
 
 Running executables
-^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""
 
 You can have Cabal build and run your executables by using the ``run``
 command:
@@ -1131,7 +1131,7 @@ omitted. See the output of ``cabal help run`` for a list of options you
 can pass to ``cabal run``.
 
 Test suites
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 Test suite sections (if present) describe package test suites and must
 have an argument after the section label, which defines the name of the
@@ -1156,8 +1156,7 @@ provide human-readable log information through the standard output and
 error channels. The ``exitcode-stdio-1.0`` type requires the ``main-is``
 field.
 
-``main-is:`` *filename* (required: ``exitcode-stdio-1.0``, disallowed:
-``detailed-0.9``)
+``main-is:`` *filename* (required: ``exitcode-stdio-1.0``, disallowed: ``detailed-0.9``)
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
@@ -1175,12 +1174,11 @@ inspect a test suite's results case by case, producing detailed human-
 and machine-readable log files. The ``detailed-0.9`` interface requires
 the ``test-module`` field.
 
-``test-module:`` *identifier* (required: ``detailed-0.9``, disallowed:
-``exitcode-stdio-1.0``)
+``test-module:`` *identifier* (required: ``detailed-0.9``, disallowed: ``exitcode-stdio-1.0``)
     The module exporting the ``tests`` symbol.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 The example package description and executable source file below
 demonstrate the use of the ``exitcode-stdio-1.0`` interface.
@@ -1213,7 +1211,7 @@ test-foo.hs:
         exitFailure
 
 Example: Package using ``detailed-0.9`` interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""
 
 The example package description and test module source file below
 demonstrate the use of the ``detailed-0.9`` interface. The test module
@@ -1223,7 +1221,7 @@ be provided by the library that provides the testing facility.
 
 bar.cabal:
 
-::
+.. code-block:: none
 
     Name:           bar
     Version:        1.0
@@ -1235,6 +1233,7 @@ bar.cabal:
         type:       detailed-0.9
         test-module: Bar
         build-depends: base, Cabal >= 1.9.2
+
 
 Bar.hs:
 
@@ -1263,7 +1262,7 @@ Bar.hs:
             }
 
 Running test suites
-^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""
 
 You can have Cabal run your test suites using its built-in test runner:
 
@@ -1277,7 +1276,7 @@ See the output of ``cabal help test`` for a list of options you can pass
 to ``cabal test``.
 
 Benchmarks
-~~~~~~~~~~
+^^^^^^^^^^
 
 Benchmark sections (if present) describe benchmarks contained in the
 package and must have an argument after the section label, which defines
@@ -1309,7 +1308,7 @@ standard output and error channels.
     of an executable section.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 The example package description and executable source file below
 demonstrate the use of the ``exitcode-stdio-1.0`` interface.
@@ -1349,7 +1348,7 @@ bench-foo.hs:
         putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
 
 Running benchmarks
-^^^^^^^^^^^^^^^^^^
+""""""""""""""""""
 
 You can have Cabal run your benchmark using its built-in benchmark
 runner:
@@ -1364,7 +1363,7 @@ See the output of ``cabal help bench`` for a list of options you can
 pass to ``cabal bench``.
 
 Build information
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 The following fields may be optionally present in a library, executable,
 test suite or benchmark section, and give information for the building
@@ -1630,7 +1629,7 @@ system-dependent values for these fields.
     This entry is ignored on all other platforms.
 
 Configurations
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 Library and executable sections may include conditional blocks, which
 test for various system parameters and configuration flags. The flags
@@ -1639,7 +1638,7 @@ certain feature, that can be switched on or off by the package user.
 Here is an example package description file using configurations:
 
 Example: A package containing a library and executable programs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ::
 
@@ -1686,7 +1685,7 @@ Example: A package containing a library and executable programs
         GHC-Options: -DDEBUG
 
 Layout
-^^^^^^
+""""""
 
 Flags, conditionals, library and executable sections use layout to
 indicate structure. This is very similar to the Haskell layout rule.
@@ -1700,7 +1699,7 @@ matter, though different fields within a block must be on different
 lines. Here is a bit of the above example again, using braces:
 
 Example: Using explicit braces rather than indentation for layout
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 ::
 
@@ -1732,7 +1731,7 @@ Example: Using explicit braces rather than indentation for layout
     }
 
 Configuration Flags
-^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""
 
 A flag section takes the flag name as an argument and may contain the
 following fields.
@@ -1780,7 +1779,7 @@ or
 Note that the ``if`` and the condition have to be all on the same line.
 
 Conditions
-^^^^^^^^^^
+""""""""""
 
 Conditions can be formed using boolean tests and the boolean operators
 ``||`` (disjunction / logical "or"), ``&&`` (conjunction / logical
@@ -1836,7 +1835,7 @@ The following tests are currently supported.
     Constant value false.
 
 Resolution of Conditions and Flags
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""""""""
 
 If a package descriptions specifies configuration flags the package user
 can `control these in several
@@ -1872,7 +1871,7 @@ optimizations applied internally, but the overall complexity remains
 unchanged.
 
 Meaning of field values when using conditionals
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 During the configuration phase, a flag assignment is chosen, all
 conditionals are evaluated, and the package description is combined into
@@ -1918,7 +1917,7 @@ and outside then they are combined using the following rules.
          Main-is: Main.hs
 
 Source Repositories
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 It is often useful to be able to specify a source revision control
 repository for a package. Cabal lets you specifying this information in
@@ -2025,7 +2024,7 @@ The exact fields are as follows:
     root directory of the repository.
 
 Downloading a package's source
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The ``cabal get`` command allows to access a package's source code -
 either by unpacking a tarball downloaded from Hackage (the default) or
@@ -2156,7 +2155,7 @@ the configured data directory for ``pretty-show`` is controlled with the
 ``pretty_show_datadir`` environment variable.
 
 Accessing the package version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The aforementioned auto generated ``Paths_``\ *pkgname* module also
 exports the constant ``version ::``

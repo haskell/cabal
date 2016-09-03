@@ -54,7 +54,7 @@ repositories, and ``cabal`` will combine them and be able to download
 packages from any of them.
 
 Using secure repositories
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For repositories that support the TUF security infrastructure (this
 includes Hackage), you can enable secure access to the repository by
@@ -92,7 +92,7 @@ More information about the security infrastructure can be found at
 https://github.com/well-typed/hackage-security.
 
 Legacy repositories
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 Currently ``cabal`` supports two kinds of “legacy” repositories. The
 first is specified using
@@ -125,12 +125,12 @@ layout of remote repositories, and usage of these local repositories is
 deprecated.
 
 Secure local repositories
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you want to use repositories on your local file system, it is
 recommended instead to use a *secure* local repository:
 
-::
+.. code-block:: none
 
     repository my-local-repo
       url: file:/path/to/local/repo
@@ -174,7 +174,7 @@ or
 Building and installing a system package
 ----------------------------------------
 
-::
+.. code-block:: bash
 
     runhaskell Setup.hs configure --ghc
     runhaskell Setup.hs build
@@ -188,7 +188,7 @@ results to some permanent place and registers the package with GHC.
 Building and installing a user package
 --------------------------------------
 
-::
+.. code-block:: bash
 
     runhaskell Setup.hs configure --user
     runhaskell Setup.hs build
@@ -227,13 +227,13 @@ For more on sandboxes, see also `this
 article <http://coldwa.st/e/blog/2013-08-20-Cabal-sandbox.html>`__.
 
 Sandboxes: basic usage
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 To initialise a fresh sandbox in the current directory, run
 ``cabal sandbox init``. All subsequent commands (such as ``build`` and
 ``install``) from this point will use the sandbox.
 
-::
+.. code-block:: bash
 
     $ cd /path/to/my/haskell/library
     $ cabal sandbox init                   # Initialise the sandbox
@@ -247,7 +247,7 @@ unreleased version of a library. This can be done with the
 `Hackage <http://hackage.haskell.org/>`__". If an add-source dependency
 is later modified, it is reinstalled automatically.
 
-::
+.. code-block:: bash
 
     $ cabal sandbox add-source /my/patched/library # Add a new add-source dependency
     $ cabal install --dependencies-only            # Install it into the sandbox
@@ -263,7 +263,7 @@ the same directory with your ``cabal.sandbox.config`` (which was created
 by ``sandbox init``). This file has the same syntax as the main Cabal
 config file.
 
-::
+.. code-block:: console
 
     $ cat cabal.config
     documentation: True
@@ -273,13 +273,13 @@ config file.
 When you have decided that you no longer want to build your package
 inside a sandbox, just delete it:
 
-::
+.. code-block:: bash
 
     $ cabal sandbox delete                       # Built-in command
     $ rm -rf .cabal-sandbox cabal.sandbox.config # Alternative manual method
 
 Sandboxes: advanced usage
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The default behaviour of the ``add-source`` command is to track
 modifications done to the added dependency and reinstall the sandbox
@@ -291,7 +291,7 @@ change tracking. In addition to ``add-source``, there are also
 Sometimes one wants to share a single sandbox between multiple packages.
 This can be easily done with the ``--sandbox`` option:
 
-::
+.. code-block:: bash
 
     $ mkdir -p /path/to/shared-sandbox
     $ cd /path/to/shared-sandbox
@@ -309,7 +309,7 @@ directory (``./.cabal-sandbox``).
 Using multiple different compiler versions simultaneously is also
 supported, via the ``-w`` option:
 
-::
+.. code-block:: bash
 
     $ cabal sandbox init
     $ cabal install --only-dependencies -w /path/to/ghc-1 # Install dependencies for both compilers
@@ -325,7 +325,7 @@ manager tool (e.g. ``ghc-pkg``) tool on the sandbox package DB directly
 ``cabal sandbox hc-pkg`` command is a convenient wrapper that runs the
 compiler-specific package manager tool with the arguments:
 
-::
+.. code-block:: console
 
     $ cabal -v sandbox hc-pkg list
     Using a sandbox located at /path/to/.cabal-sandbox
@@ -365,7 +365,7 @@ The sandbox config file can be also specified via the
 Finally, the flag ``--ignore-sandbox`` lets you temporarily ignore an
 existing sandbox:
 
-::
+.. code-block:: bash
 
     $ mkdir my/sandbox
     $ cd my/sandbox
@@ -468,7 +468,7 @@ Full details can be found in the `Componentized Cabal
 proposal <https://github.com/ezyang/ghc-proposals/blob/master/proposals/0000-componentized-cabal.rst>`__.
 
 Programs used for building
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following options govern the programs used to process the source
 files of a package:
@@ -524,7 +524,7 @@ or ``--``\ *``prog``*\ ``-option`` are passed in the order they were
 specified on the configure command line.
 
 Installation paths
-~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^
 
 The following options govern the location of installed files from a
 package:
@@ -636,7 +636,7 @@ path options:
     ``$abitag``
 
 Path variables in the simple build system
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""""""""""""""""""""""""
 
 For the simple build system, there are a number of variables that can be
 used when specifying installation paths. The defaults are also specified
@@ -689,7 +689,7 @@ independence <#prefix-independence>`__).
     ``$arch-$os-$compiler`` if it doesn't.
 
 Paths in the simple build system
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+""""""""""""""""""""""""""""""""
 
 For the simple build system, the following defaults apply:
 
@@ -726,7 +726,7 @@ For the simple build system, the following defaults apply:
 +------------------------------+-------------------------------------------------------------+---------------------------+
 
 Prefix-independence
-^^^^^^^^^^^^^^^^^^^
+"""""""""""""""""""
 
 On Windows it is possible to obtain the pathname of the running program.
 This means that we can construct an installable executable package that
@@ -754,7 +754,7 @@ linked into an executable whose file system location bears no relation
 to the library package.
 
 Controlling Flag Assignments
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Flag assignments (see the `resolution of conditions and
 flags <developing-packages.html#resolution-of-conditions-and-flags>`__)
@@ -774,7 +774,7 @@ can be controlled with the following command line options.
     ``-fdebug -f-feature1 -ffeature2``.
 
 Building Test Suites
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 ``--enable-tests``
     Build the test suites defined in the package description file during
@@ -795,7 +795,7 @@ Building Test Suites
     (default) Do not enable Haskell Program Coverage.
 
 Miscellaneous options
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 ``--user``
     Does a per-user installation. This changes the `default installation
