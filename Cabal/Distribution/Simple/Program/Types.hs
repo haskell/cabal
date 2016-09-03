@@ -149,7 +149,7 @@ suppressOverrideArgs prog = prog { programOverrideArgs = [] }
 -- By default we'll just search for it in the path and not try to find the
 -- version name. You can override these behaviours if necessary, eg:
 --
--- > simpleProgram "foo" { programFindLocation = ... , programFindVersion ... }
+-- > (simpleProgram "foo") { programFindLocation = ... , programFindVersion ... }
 --
 simpleProgram :: String -> Program
 simpleProgram name = Program {
