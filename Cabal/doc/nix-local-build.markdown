@@ -682,6 +682,12 @@ package bytestring
     ghc-options: -fno-state-hack
 ~~~~~~~~~~~~~~~~
 
+`ghc-options` is not specifically described in this documentation,
+but is one of many fields for configuring programs.  They take the form
+`progname-options` and `progname-location`, and
+can only be set inside package stanzas.  (TODO: They are not supported
+at top-level, see [#3579](https://github.com/haskell/cabal/issues/3579))
+
 At the moment, there is no way to specify an option to apply
 to all external packages or all inplace packages.  Additionally,
 it is only possible to specify these options on the command
