@@ -133,14 +133,15 @@ projectFreezeConstraints plan =
     --
     -- For the moment we deal with multiple versions in the solution by using
     -- constraints that allow either version. Also, we do not include any
-    -- constraints for packages that are local to the project (e.g. if the
-    -- solution has two instances of Cabal, one from the local project and one
-    -- pulled in as a setup deps then we exclude all constraints on Cabal, not
-    -- just the constraint for the local instance since any constraint would
-    -- apply to both instances).
+    -- /version/ constraints for packages that are local to the project (e.g.
+    -- if the solution has two instances of Cabal, one from the local project
+    -- and one pulled in as a setup deps then we exclude all constraints on
+    -- Cabal, not just the constraint for the local instance since any
+    -- constraint would apply to both instances). We do however keep flag
+    -- constraints of local packages.
     --
-    Map.unionWith (++) versionConstraints flagConstraints
-    `Map.difference` localPackages
+    deleteLocalPackagesVersionConstraints
+      (Map.unionWith (++) versionConstraints flagConstraints)
   where
     versionConstraints :: Map PackageName [(UserConstraint, ConstraintSource)]
     versionConstraints =
@@ -172,6 +173,23 @@ projectFreezeConstraints plan =
         , let flags   = elabFlagAssignment elab
               pkgname = packageName elab
         , not (null flags) ]
+
+    -- As described above, remove the version constraints on local packages,
+    -- but leave any flag constraints.
+    deleteLocalPackagesVersionConstraints
+      :: Map PackageName [(UserConstraint, ConstraintSource)]
+      -> Map PackageName [(UserConstraint, ConstraintSource)]
+    deleteLocalPackagesVersionConstraints =
+      Map.mergeWithKey
+        (\_pkgname () constraints ->
+            case filter (not . isVersionConstraint . fst) constraints of
+              []           -> Nothing
+              constraints' -> Just constraints')
+        (const Map.empty) id
+        localPackages
+
+    isVersionConstraint UserConstraintVersion{} = True
+    isVersionConstraint _                       = False
 
     localPackages :: Map PackageName ()
     localPackages =
