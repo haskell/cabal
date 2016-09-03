@@ -671,6 +671,10 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
           | recognisedScheme && not (null host) ->
             Just (Right [ProjectPackageRemoteTarball uri])
 
+          --TODO: [required eventually] handle file: urls which do have a null
+          -- host. translate URI into filepath and use ProjectPackageLocalTarball
+          -- or keep as file url and use ProjectPackageRemoteTarball?
+
           | not recognisedScheme && not (null host) ->
             Just (Left (BadLocUnexpectedUriScheme pkglocstr))
 
@@ -698,9 +702,11 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
             _  -> do
               (failures, pkglocs) <- partitionEithers <$>
                                      mapM checkFilePackageMatch matches
-              if null pkglocs
-                then return (Left (BadLocGlobBadMatches pkglocstr failures))
-                else return (Right pkglocs)
+              return $! case (failures, pkglocs) of
+                ([failure], []) | isJust (isTrivialFilePathGlob glob)
+                        -> Left (BadPackageLocationFile failure)
+                (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
+                _       -> Right pkglocs
 
 
     checkIsSingleFilePackage pkglocstr = do
@@ -721,6 +727,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       -- Either way, </> does the right thing here. We return relative paths if
       -- they were relative in the first place.
       let abspath = projectRootDir </> pkglocstr
+      isFile <- liftIO $ doesFileExist abspath
       isDir  <- liftIO $ doesDirectoryExist abspath
       parentDirExists <- case takeDirectory abspath of
                            []  -> return False
@@ -740,6 +747,9 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
 
           | takeExtension pkglocstr == ".cabal"
          -> return (Right (ProjectPackageLocalCabalFile pkglocstr))
+
+          | isFile
+         -> return (Left (BadLocUnexpectedFile pkglocstr))
 
           | parentDirExists
          -> return (Left (BadLocNonexistantFile pkglocstr))

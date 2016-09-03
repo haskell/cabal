@@ -83,8 +83,8 @@ testExceptionInFindingPackage2 config = do
     BadPackageLocations locs <- expectException "BadPackageLocations" $
       void $ planProject testdir config
     case locs of
-      [BadLocGlobBadMatches "./" [BadLocDirNoCabalFile "."]] -> return ()
-      _ -> assertFailure $ "expected BadLocGlobBadMatches, got " ++ show locs
+      [BadPackageLocationFile (BadLocDirNoCabalFile ".")] -> return ()
+      _ -> assertFailure $ "expected BadLocDirNoCabalFile, got " ++ show locs
     cleanProject testdir
   where
     testdir = "exception/no-pkg2"
