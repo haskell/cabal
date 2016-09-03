@@ -535,10 +535,19 @@ data ProjectPackageLocation =
 -- | Exception thrown by 'findProjectPackages'.
 --
 newtype BadPackageLocations = BadPackageLocations [BadPackageLocation]
+#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
+#else
+  deriving (Typeable)
 
-instance Exception BadPackageLocations
---TODO: [required eventually] displayException for nice rendering
+instance Show BadPackageLocations where
+  show = renderBadPackageLocations
+#endif
+
+instance Exception BadPackageLocations where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderBadPackageLocations
+#endif
 --TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 data BadPackageLocation
@@ -557,6 +566,52 @@ data BadPackageLocationMatch
    | BadLocDirManyCabalFiles   String
   deriving Show
 
+renderBadPackageLocations :: BadPackageLocations -> String
+renderBadPackageLocations (BadPackageLocations bpls) =
+    unlines (map renderBadPackageLocation bpls)
+
+--TODO: [nice to have] keep track of the config file (and src loc) packages
+-- were listed, to use in error messages
+--TODO: [nice to have] keep track in the ProjectConfig and BadPackageLocations
+-- of whether the project config was explicit or implicit so we can report a
+-- better message, either pointing to the file or talking about the issues
+-- related to having no project file and no package.
+
+renderBadPackageLocation :: BadPackageLocation -> String
+renderBadPackageLocation bpl = case bpl of
+    BadPackageLocationFile badmatch ->
+        renderBadPackageLocationMatch badmatch
+    BadLocGlobEmptyMatch pkglocstr ->
+        "The package location glob '" ++ pkglocstr
+     ++ "' does not match any files or directories."
+    BadLocGlobBadMatches pkglocstr failures ->
+        "The package location glob '" ++ pkglocstr ++ "' does not match any "
+     ++ "recognised forms of package. "
+     ++ concatMap ((' ':) . renderBadPackageLocationMatch) failures
+    BadLocUnexpectedUriScheme pkglocstr ->
+        "The package location URI '" ++ pkglocstr ++ "' does not use a "
+     ++ "supported URI scheme. The supported URI schemes are http, https and "
+     ++ "file."
+    BadLocUnrecognisedUri pkglocstr ->
+        "The package location URI '" ++ pkglocstr ++ "' does not appear to "
+     ++ "be a valid absolute URI."
+    BadLocUnrecognised pkglocstr ->
+        "The package location syntax '" ++ pkglocstr ++ "' is not recognised."
+
+renderBadPackageLocationMatch :: BadPackageLocationMatch -> String
+renderBadPackageLocationMatch bplm = case bplm of
+    BadLocUnexpectedFile pkglocstr ->
+        "The package location '" ++ pkglocstr ++ "' is not recognised. The "
+     ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
+     ++ "directories (ie directories containing a .cabal file)."
+    BadLocNonexistantFile pkglocstr ->
+        "The package location '" ++ pkglocstr ++ "' does not exist."
+    BadLocDirNoCabalFile pkglocstr ->
+        "The package directory '" ++ pkglocstr ++ "' does not contain any "
+     ++ ".cabal file."
+    BadLocDirManyCabalFiles pkglocstr ->
+        "The package directory '" ++ pkglocstr ++ "' contains multiple "
+     ++ ".cabal files (which is not currently supported)."
 
 -- | Given the project config,
 --
