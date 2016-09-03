@@ -66,7 +66,7 @@ import Distribution.Client.Utils
          ( makeRelativeToCwd )
 
 import Data.List
-         ( nub, nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
+         ( nubBy, stripPrefix, partition, intercalate, sortBy, sortOn, groupBy )
 import Data.Maybe
          ( listToMaybe, maybeToList )
 import Data.Either
@@ -83,6 +83,8 @@ import qualified Data.Map as Map.Lazy
 import qualified Data.Map as Map
 import Data.Map (Map)
 #endif
+import qualified Data.Set as Set
+import Control.Arrow ((&&&))
 import Control.Monad
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))
@@ -101,7 +103,8 @@ import System.Directory
          , getCurrentDirectory )
 import System.FilePath
          ( (</>), (<.>), normalise )
-
+import Text.EditDistance
+         ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 
 -- ------------------------------------------------------------
 -- * User build targets
@@ -498,14 +501,32 @@ resolveBuildTarget ppinfo opinfo userTarget =
         expected = [ (thing, got) 
                    | (_, MatchErrorExpected thing got)
                            <- map (innerErr Nothing) errs ]
-        nosuch   = [ (inside, thing, got, alts)
-                   | (inside, MatchErrorNoSuch thing got alts)
-                           <- map (innerErr Nothing) errs ]
+        nosuch   = Map.foldrWithKey genResults [] $ Map.fromListWith Set.union $
+          [ ((inside, thing, got), Set.fromList alts)
+          | (inside, MatchErrorNoSuch thing got alts) <- map (innerErr Nothing) errs
+          ]
+
+        genResults (inside, thing, got) alts acc = (
+            inside
+          , thing
+          , got
+          , take maxResults
+            $ map fst
+            $ takeWhile distanceLow
+            $ sortOn snd
+            $ map addLevDist
+            $ Set.toList alts
+          ) : acc
+          where
+            addLevDist = id &&& restrictedDamerauLevenshteinDistance defaultEditCosts got
+
+            distanceLow (_, dist) = dist < length got `div` 2
+
+            maxResults = 3
 
         innerErr _ (MatchErrorIn kind thing m)
                      = innerErr (Just (kind,thing)) m
         innerErr c m = (c,m)
-
 
 -- | The various ways that trying to resolve a 'UserBuildTarget' to a
 -- 'BuildTarget' can fail.
@@ -1502,11 +1523,6 @@ nubMatchesBy _  (NoMatch      d msgs) = NoMatch      d msgs
 nubMatchesBy eq (ExactMatch   d xs)   = ExactMatch   d (nubBy eq xs)
 nubMatchesBy eq (InexactMatch d xs)   = InexactMatch d (nubBy eq xs)
 
-nubMatchErrors :: Match a -> Match a
-nubMatchErrors (NoMatch      d msgs) = NoMatch      d (nub msgs)
-nubMatchErrors (ExactMatch   d xs)   = ExactMatch   d xs
-nubMatchErrors (InexactMatch d xs)   = InexactMatch d xs
-
 -- | Lift a list of matches to an exact match.
 --
 exactMatches, inexactMatches :: [a] -> Match a
@@ -1530,15 +1546,14 @@ tryEach = exactMatches
 -- you may have an 'Ambiguous' match with several possibilities.
 --
 findMatch :: Match a -> MaybeAmbiguous a
-findMatch match =
-    case nubMatchErrors match of
-      NoMatch    _ msgs -> None msgs
-      ExactMatch   _ [x] -> Unambiguous x
-      InexactMatch _ [x] -> Unambiguous x
-      ExactMatch   _  [] -> error "findMatch: impossible: ExactMatch []"
-      InexactMatch _  [] -> error "findMatch: impossible: InexactMatch []"
-      ExactMatch   _  xs -> Ambiguous True  xs
-      InexactMatch _  xs -> Ambiguous False xs
+findMatch match = case match of
+  NoMatch    _ msgs  -> None msgs
+  ExactMatch   _ [x] -> Unambiguous x
+  InexactMatch _ [x] -> Unambiguous x
+  ExactMatch   _  [] -> error "findMatch: impossible: ExactMatch []"
+  InexactMatch _  [] -> error "findMatch: impossible: InexactMatch []"
+  ExactMatch   _  xs -> Ambiguous True  xs
+  InexactMatch _  xs -> Ambiguous False xs
 
 data MaybeAmbiguous a = None [MatchError] | Unambiguous a | Ambiguous Bool [a]
   deriving Show
