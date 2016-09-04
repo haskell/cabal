@@ -29,8 +29,7 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Exception ( bracket, catch, fromException, SomeException, 
-                           AsyncException(UserInterrupt) )
+import qualified Control.Exception as CE
 import Control.Exception.Base ( throwIO )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
@@ -73,7 +72,7 @@ runTest pkg_descr lbi clbi flags suite = do
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ PD.testName suite
 
-    suiteLog <- bracket openCabalTemp deleteIfExists $ \tempLog -> do
+    suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
         (rOut, wOut) <- createPipe
 
@@ -214,13 +213,13 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents
     dir <- getCurrentDirectory
-    results <- (tests >>= stubRunTests) `catch` errHandler 
+    results <- (tests >>= stubRunTests) `CE.catch` errHandler 
     setCurrentDirectory dir
     stubWriteLog f n results
   where 
-    errHandler :: SomeException -> IO TestLogs
-    errHandler e = case fromException e of
-        Just UserInterrupt -> throwIO e
+    errHandler :: CE.SomeException -> IO TestLogs
+    errHandler e = case CE.fromException e of
+        Just CE.UserInterrupt -> CE.throwIO e
         _ -> return $ TestLog { testName = "Cabal test suite exception",
                                 testOptionsReturned = [],
                                 testResult = Error $ show e }
