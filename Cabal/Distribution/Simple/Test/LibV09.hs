@@ -29,7 +29,7 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Exception ( bracket )
+import qualified Control.Exception as CE
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
@@ -71,7 +71,7 @@ runTest pkg_descr lbi clbi flags suite = do
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ PD.testName suite
 
-    suiteLog <- bracket openCabalTemp deleteIfExists $ \tempLog -> do
+    suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
         (rOut, wOut) <- createPipe
 
@@ -212,9 +212,16 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents
     dir <- getCurrentDirectory
-    results <- tests >>= stubRunTests
+    results <- (tests >>= stubRunTests) `CE.catch` errHandler 
     setCurrentDirectory dir
     stubWriteLog f n results
+  where 
+    errHandler :: CE.SomeException -> IO TestLogs
+    errHandler e = case CE.fromException e of
+        Just CE.UserInterrupt -> CE.throwIO e
+        _ -> return $ TestLog { testName = "Cabal test suite exception",
+                                testOptionsReturned = [],
+                                testResult = Error $ show e }
 
 -- | The test runner used in library "TestSuite" stub executables.  Runs a list
 -- of 'Test's.  An executable calling this function is meant to be invoked as
