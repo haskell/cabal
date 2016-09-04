@@ -898,13 +898,13 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { configConfigurationsFlags = v })
       ]
   . filterFields
-      [ "compiler", "with-compiler", "with-hc-pkg"
+      [ "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
       , "library-vanilla", "library-profiling"
       , "shared", "executable-dynamic"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
-      , "optimization", "debug-info", "library-for-ghci", "split-objs"
+      , "library-for-ghci", "split-objs"
       , "executable-stripping", "library-stripping"
       , "tests", "benchmarks"
       , "coverage", "library-coverage"
