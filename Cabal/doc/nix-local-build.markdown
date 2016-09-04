@@ -112,7 +112,7 @@ be cached across packages.  To be more precise:
    the `packages`, `optional-packages` or `extra-packages` field of a
    project.  Usually, these refer to packages whose source code lives
    directly in a folder in your project (although, you can list an
-   arbitrary Hackage packages in `extra-packages` to force it to be
+   arbitrary Hackage package in `extra-packages` to force it to be
    treated as local).
 
    Local packages, as well as the external packages (below) which depend
@@ -121,7 +121,7 @@ be cached across packages.  To be more precise:
    packages are not cached and not given unique hashes, which makes them
    suitable for packages which you want to edit and recompile.
 
-2. A **external package** is any package which is not listed
+2. An **external package** is any package which is not listed
    in the `packages` field.  The source code for external
    packages is usually retrieved from Hackage.
 
