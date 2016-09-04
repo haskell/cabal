@@ -819,11 +819,33 @@ readSourcePackage _verbosity _ =
 
 data BadPerPackageCompilerPaths
    = BadPerPackageCompilerPaths [(PackageName, String)]
+#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
+#else
+  deriving (Typeable)
 
-instance Exception BadPerPackageCompilerPaths
---TODO: [required eventually] displayException for nice rendering
+instance Show BadPerPackageCompilerPaths where
+  show = renderBadPerPackageCompilerPaths
+#endif
+
+instance Exception BadPerPackageCompilerPaths where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderBadPerPackageCompilerPaths
+#endif
 --TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+renderBadPerPackageCompilerPaths :: BadPerPackageCompilerPaths -> String
+renderBadPerPackageCompilerPaths
+  (BadPerPackageCompilerPaths ((pkgname, progname) : _)) =
+    "The path to the compiler program (or programs used by the compiler) "
+ ++ "cannot be specified on a per-package basis in the cabal.project file "
+ ++ "(ie setting the '" ++ progname ++ "-location' for package '"
+ ++ display pkgname ++ "'). All packages have to use the same compiler, so "
+ ++ "specify the path in a global 'program-locations' section."
+ --TODO: [nice to have] better format control so we can pretty-print the
+ -- offending part of the project file. Currently the line wrapping breaks any
+ -- formatting.
+renderBadPerPackageCompilerPaths _ = error "renderBadPerPackageCompilerPaths"
 
 -- | The project configuration is not allowed to specify program locations for
 -- programs used by the compiler as these have to be the same for each set of
