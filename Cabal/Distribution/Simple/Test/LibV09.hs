@@ -30,7 +30,6 @@ import Distribution.Text
 import Distribution.Verbosity
 
 import qualified Control.Exception as CE
-import Control.Exception.Base ( throwIO )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
