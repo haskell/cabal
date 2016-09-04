@@ -29,7 +29,9 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity
 
-import Control.Exception ( bracket, catch, SomeException )
+import Control.Exception ( bracket, catch, fromException, SomeException, 
+                           AsyncException(UserInterrupt) )
+import Control.Exception.Base ( throwIO )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
@@ -212,14 +214,16 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents
     dir <- getCurrentDirectory
-    results <- ((tests >>= stubRunTests) `catch` errHandler)
+    results <- (tests >>= stubRunTests) `catch` errHandler 
     setCurrentDirectory dir
     stubWriteLog f n results
   where 
     errHandler :: SomeException -> IO TestLogs
-    errHandler e = return $ TestLog { testName = "Cabal test suite exception",
-                                      testOptionsReturned = [],
-                                      testResult = Error $ show e }
+    errHandler e = case fromException e of
+        Just UserInterrupt -> throwIO e
+        _ -> return $ TestLog { testName = "Cabal test suite exception",
+                                testOptionsReturned = [],
+                                testResult = Error $ show e }
 
 -- | The test runner used in library "TestSuite" stub executables.  Runs a list
 -- of 'Test's.  An executable calling this function is meant to be invoked as
