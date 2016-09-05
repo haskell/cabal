@@ -173,7 +173,6 @@ tests = [
 
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.
--- (This doesn't really work well at the moment, see #2842)
 indep :: SolverTest -> SolverTest
 indep test = test { testIndepGoals = IndependentGoals True }
 

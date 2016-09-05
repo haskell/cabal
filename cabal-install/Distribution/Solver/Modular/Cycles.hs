@@ -32,10 +32,9 @@ detectCyclesPhase = cata go
         Nothing     -> Done revDeps
         Just relSet -> Fail relSet CyclicDependencies
 
--- | Given the reverse dependency map from a 'Done' node in the tree, as well
--- as the full conflict set containing all decisions that led to that 'Done'
--- node, check if the solution is cyclic. If it is, return the conflict set
--- containing all decisions that could potentially break the cycle.
+-- | Given the reverse dependency map from a 'Done' node in the tree, check
+-- if the solution is cyclic. If it is, return the conflict set containing
+-- all decisions that could potentially break the cycle.
 findCycles :: RevDepMap -> Maybe (ConflictSet QPN)
 findCycles revDeps =
     case cycles of
