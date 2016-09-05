@@ -90,7 +90,7 @@ across packages. To be more precise:
    ``packages``, ``optional-packages`` or ``extra-packages`` field of a
    project. Usually, these refer to packages whose source code lives
    directly in a folder in your project (although, you can list an
-   arbitrary Hackage packages in ``extra-packages`` to force it to be
+   arbitrary Hackage package in ``extra-packages`` to force it to be
    treated as local).
 
 Local packages, as well as the external packages (below) which depend on
@@ -99,7 +99,7 @@ specifically for the project and are not installed globally. Inplace
 packages are not cached and not given unique hashes, which makes them
 suitable for packages which you want to edit and recompile.
 
-2. A **external package** is any package which is not listed in the
+2. An **external package** is any package which is not listed in the
    ``packages`` field. The source code for external packages is usually
    retrieved from Hackage.
 
@@ -672,6 +672,12 @@ an external dependency) should be built with ``-fno-state-hack``:
 
     package bytestring
         ghc-options: -fno-state-hack
+
+``ghc-options`` is not specifically described in this documentation,
+but is one of many fields for configuring programs.  They take the form
+``progname-options`` and ``progname-location``, and
+can only be set inside package stanzas.  (TODO: They are not supported
+at top-level, see `#3579 <https://github.com/haskell/cabal/issues/3579>`__).
 
 At the moment, there is no way to specify an option to apply to all
 external packages or all inplace packages. Additionally, it is only
