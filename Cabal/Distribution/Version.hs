@@ -896,7 +896,7 @@ instance Text VersionRange where
           if firstDigit == '0'
             then return 0
             else do rest <- Parse.munch isDigit
-                    return (read (firstDigit : rest))
+                    return (read (firstDigit : rest)) -- TODO: eradicateNoParse
 
         parseRangeOp (s,f) = Parse.string s >> Parse.skipSpaces >> fmap f parse
         rangeOps = [ ("<",  EarlierVersion),
