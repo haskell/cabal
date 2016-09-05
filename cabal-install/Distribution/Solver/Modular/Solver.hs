@@ -10,6 +10,7 @@ module Distribution.Solver.Modular.Solver
 
 import Data.Map as M
 import Data.List as L
+import Data.Set as S
 import Data.Version
 
 import Distribution.Compiler (CompilerInfo)
@@ -93,7 +94,7 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> PkgConfigDb                          -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
-      -> [PN]                                 -- ^ global goals
+      -> Set PN                               -- ^ global goals
       -> Log Message (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
@@ -134,7 +135,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                                   ])
     buildPhase       = traceTree "build.json" id
                      $ addLinking
-                     $ buildTree idx (independentGoals sc) userGoals
+                     $ buildTree idx (independentGoals sc) (S.toList userGoals)
 
     -- Counting conflicts and reordering goals interferes, as both are strategies to
     -- change the order of goals.

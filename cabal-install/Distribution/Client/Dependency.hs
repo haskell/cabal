@@ -144,7 +144,7 @@ import Control.Exception
 -- implemented in terms of adjustments to the parameters.
 --
 data DepResolverParams = DepResolverParams {
-       depResolverTargets           :: [PackageName],
+       depResolverTargets           :: Set PackageName,
        depResolverConstraints       :: [LabeledPackageConstraint],
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
@@ -165,7 +165,7 @@ data DepResolverParams = DepResolverParams {
 
 showDepResolverParams :: DepResolverParams -> String
 showDepResolverParams p =
-     "targets: " ++ intercalate ", " (map display (depResolverTargets p))
+     "targets: " ++ intercalate ", " (map display $ Set.toList (depResolverTargets p))
   ++ "\nconstraints: "
   ++   concatMap (("\n  " ++) . showLabeledConstraint)
        (depResolverConstraints p)
@@ -221,7 +221,7 @@ basicDepResolverParams :: InstalledPackageIndex
                        -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
-       depResolverTargets           = [],
+       depResolverTargets           = Set.empty,
        depResolverConstraints       = [],
        depResolverPreferences       = [],
        depResolverPreferenceDefault = PreferLatestForSelected,
@@ -242,7 +242,7 @@ addTargets :: [PackageName]
            -> DepResolverParams -> DepResolverParams
 addTargets extraTargets params =
     params {
-      depResolverTargets = extraTargets ++ depResolverTargets params
+      depResolverTargets = Set.fromList extraTargets `Set.union` depResolverTargets params
     }
 
 addConstraints :: [LabeledPackageConstraint]
@@ -334,7 +334,7 @@ dontUpgradeNonUpgradeablePackages params =
       [ LabeledPackageConstraint
         (PackageConstraintInstalled pkgname)
         ConstraintSourceNonUpgradeablePackage
-      | notElem (PackageName "base") (depResolverTargets params)
+      | Set.notMember (PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
       , isInstalled pkgname ]
@@ -454,7 +454,7 @@ upgradeDependencies = setPreferenceDefault PreferAllLatest
 
 reinstallTargets :: DepResolverParams -> DepResolverParams
 reinstallTargets params =
-    hideInstalledPackagesAllVersions (depResolverTargets params) params
+    hideInstalledPackagesAllVersions (Set.toList $ depResolverTargets params) params
 
 
 -- | A basic solver policy on which all others are built.
@@ -598,7 +598,7 @@ resolveDependencies :: Platform
 
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _pkgConfigDB _solver params
-  | null (depResolverTargets params)
+  | Set.null (depResolverTargets params)
   = return (validateSolverResult platform comp indGoals [])
   where
     indGoals = depResolverIndependentGoals params
@@ -629,8 +629,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       enableBj
       order) = dontUpgradeNonUpgradeablePackages params
 
-    preferences = interpretPackagesPreference
-                    (Set.fromList targets) defpref prefs
+    preferences = interpretPackagesPreference targets defpref prefs
 
 
 -- | Give an interpretation to the global 'PackagesPreference' as
@@ -854,7 +853,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj _order) =
-    collectEithers (map selectPackage targets)
+    collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage
     selectPackage pkgname
@@ -892,8 +891,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                       | PackageConstraintVersion name range <- pcs ]
 
     packagePreferences :: PackageName -> PackagePreferences
-    packagePreferences = interpretPackagesPreference
-                           (Set.fromList targets) defpref prefs
+    packagePreferences = interpretPackagesPreference targets defpref prefs
 
 
 collectEithers :: [Either a b] -> Either [a] [b]
