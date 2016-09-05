@@ -336,7 +336,7 @@ form. Of course there may dependencies between packages, but there is
 usually a degree of flexibility in which versions of packages can work
 together so distributing them independently makes sense.
 
-It is perhaps easiest to see what being \`\`the unit of distribution''
+It is perhaps easiest to see what being "the unit of distribution"
 means by contrast to an alternative approach. Many projects are made up
 of several interdependent packages and during development these might
 all be kept under one common directory tree and be built and tested
