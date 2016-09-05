@@ -152,8 +152,9 @@ exploreLog enableBj (CountConflicts countConflicts) = cata go
 -- if an unknown package is requested), the initial conflict set becomes the
 -- actual conflict set.
 --
--- - In a situation where we backjump past the current node, the goal reason
--- of the current node will be added to the conflict set.
+-- - In a situation where all of the children's conflict sets contain the
+-- current variable, the goal reason of the current node will be added to the
+-- conflict set.
 --
 avoidSet :: Var QPN -> QGoalReason -> ConflictSet QPN
 avoidSet var gr =
