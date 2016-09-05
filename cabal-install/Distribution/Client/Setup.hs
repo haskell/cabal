@@ -2116,11 +2116,12 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg getcc setcc _getig _
       (fmap asBool . getcc)
       (setcc . fmap CountConflicts)
       (yesNoOpt showOrParseArgs)
-  -- TODO: Disabled for now because it does not work as advertised (yet).
+  -- TODO: Disabled for now because it may not be necessary
 {-
   , option [] ["independent-goals"]
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
-      getig setig
+      (fmap asBool . getig)
+      (setig . fmap IndependentGoals)
       (yesNoOpt showOrParseArgs)
 -}
   , option [] ["shadow-installed-packages"]
