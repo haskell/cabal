@@ -82,7 +82,7 @@ data PackageType = Library | Executable
 
 instance Text PackageType where
   disp = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable]
+  parse = Parse.choice $ map (fmap read . Parse.string . show) [Library, Executable] -- TODO: eradicateNoParse
 
 instance Monoid InitFlags where
   mempty = gmempty
@@ -114,5 +114,5 @@ data Category
 
 instance Text Category where
   disp  = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ]
+  parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ] -- TODO: eradicateNoParse
 

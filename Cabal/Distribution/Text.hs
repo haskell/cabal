@@ -80,7 +80,8 @@ instance Text Int where
 
 -- | Parser for non-negative integers.
 parseNat :: Parse.ReadP r Int
-parseNat = read `fmap` Parse.munch1 isDigit
+parseNat = read `fmap` Parse.munch1 isDigit -- TODO: eradicateNoParse
+
 
 instance Text Version where
   disp (Version branch _tags)     -- Death to version tags!!

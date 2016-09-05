@@ -366,7 +366,7 @@ type PathTemplateEnv = [(PathTemplateVariable, PathTemplate)]
 -- | Convert a 'FilePath' to a 'PathTemplate' including any template vars.
 --
 toPathTemplate :: FilePath -> PathTemplate
-toPathTemplate = PathTemplate . read
+toPathTemplate = PathTemplate . read -- TODO: eradicateNoParse
 
 -- | Convert back to a path, any remaining vars are included
 --

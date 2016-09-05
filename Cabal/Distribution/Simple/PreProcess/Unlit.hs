@@ -37,7 +37,7 @@ classify ('#':s) = case tokens s of
                                   && length file >= 2
                                   && head file == '"'
                                   && last file == '"'
-                                -> Line (read line) (tail (init file))
+                                -> Line (read line) (tail (init file)) -- TODO:eradicateNoParse
                      _          -> CPP s
   where tokens = unfoldr $ \str -> case lex str of
                                    (t@(_:_), str'):_ -> Just (t, str')
