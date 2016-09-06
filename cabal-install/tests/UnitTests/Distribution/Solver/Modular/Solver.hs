@@ -29,112 +29,112 @@ import UnitTests.Options
 tests :: [TF.TestTree]
 tests = [
       testGroup "Simple dependencies" [
-          runTest $         mkTest db1 "alreadyInstalled"   ["A"]      (SolverSuccess [])
-        , runTest $         mkTest db1 "installLatest"      ["B"]      (SolverSuccess [("B", 2)])
-        , runTest $         mkTest db1 "simpleDep1"         ["C"]      (SolverSuccess [("B", 1), ("C", 1)])
-        , runTest $         mkTest db1 "simpleDep2"         ["D"]      (SolverSuccess [("B", 2), ("D", 1)])
+          runTest $         mkTest db1 "alreadyInstalled"   ["A"]      (solverSuccess [])
+        , runTest $         mkTest db1 "installLatest"      ["B"]      (solverSuccess [("B", 2)])
+        , runTest $         mkTest db1 "simpleDep1"         ["C"]      (solverSuccess [("B", 1), ("C", 1)])
+        , runTest $         mkTest db1 "simpleDep2"         ["D"]      (solverSuccess [("B", 2), ("D", 1)])
         , runTest $         mkTest db1 "failTwoVersions"    ["C", "D"] anySolverFailure
-        , runTest $ indep $ mkTest db1 "indepTwoVersions"   ["C", "D"] (SolverSuccess [("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $ indep $ mkTest db1 "aliasWhenPossible1" ["C", "E"] (SolverSuccess [("B", 1), ("C", 1), ("E", 1)])
-        , runTest $ indep $ mkTest db1 "aliasWhenPossible2" ["D", "E"] (SolverSuccess [("B", 2), ("D", 1), ("E", 1)])
-        , runTest $ indep $ mkTest db2 "aliasWhenPossible3" ["C", "D"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $         mkTest db1 "buildDepAgainstOld" ["F"]      (SolverSuccess [("B", 1), ("E", 1), ("F", 1)])
-        , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (SolverSuccess [("B", 2), ("E", 1), ("G", 1)])
+        , runTest $ indep $ mkTest db1 "indepTwoVersions"   ["C", "D"] (solverSuccess [("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $ indep $ mkTest db1 "aliasWhenPossible1" ["C", "E"] (solverSuccess [("B", 1), ("C", 1), ("E", 1)])
+        , runTest $ indep $ mkTest db1 "aliasWhenPossible2" ["D", "E"] (solverSuccess [("B", 2), ("D", 1), ("E", 1)])
+        , runTest $ indep $ mkTest db2 "aliasWhenPossible3" ["C", "D"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $         mkTest db1 "buildDepAgainstOld" ["F"]      (solverSuccess [("B", 1), ("E", 1), ("F", 1)])
+        , runTest $         mkTest db1 "buildDepAgainstNew" ["G"]      (solverSuccess [("B", 2), ("E", 1), ("G", 1)])
         , runTest $ indep $ mkTest db1 "multipleInstances"  ["F", "G"] anySolverFailure
-        , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (SolverSuccess [("A", 1), ("B", 1)])
-        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (SolverFailure (isInfixOf "unknown package: C"))
-        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (SolverFailure (isInfixOf "unknown package: B"))
+        , runTest $         mkTest db21 "unknownPackage1"   ["A"]      (solverSuccess [("A", 1), ("B", 1)])
+        , runTest $         mkTest db22 "unknownPackage2"   ["A"]      (solverFaiure (isInfixOf "unknown package: C"))
+        , runTest $         mkTest db23 "unknownPackage3"   ["A"]      (solverFaiure (isInfixOf "unknown package: B"))
         ]
     , testGroup "Flagged dependencies" [
-          runTest $         mkTest db3 "forceFlagOn"  ["C"]      (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $         mkTest db3 "forceFlagOff" ["D"]      (SolverSuccess [("A", 2), ("B", 1), ("D", 1)])
+          runTest $         mkTest db3 "forceFlagOn"  ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $         mkTest db3 "forceFlagOff" ["D"]      (solverSuccess [("A", 2), ("B", 1), ("D", 1)])
         , runTest $ indep $ mkTest db3 "linkFlags1"   ["C", "D"] anySolverFailure
         , runTest $ indep $ mkTest db4 "linkFlags2"   ["C", "D"] anySolverFailure
-        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
+        , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
-          runTest $         mkTest db5 "simpleTest1" ["C"]      (SolverSuccess [("A", 2), ("C", 1)])
+          runTest $         mkTest db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
         , runTest $         mkTest db5 "simpleTest2" ["D"]      anySolverFailure
-        , runTest $         mkTest db5 "simpleTest3" ["E"]      (SolverSuccess [("A", 1), ("E", 1)])
+        , runTest $         mkTest db5 "simpleTest3" ["E"]      (solverSuccess [("A", 1), ("E", 1)])
         , runTest $         mkTest db5 "simpleTest4" ["F"]      anySolverFailure -- TODO
-        , runTest $         mkTest db5 "simpleTest5" ["G"]      (SolverSuccess [("A", 2), ("G", 1)])
+        , runTest $         mkTest db5 "simpleTest5" ["G"]      (solverSuccess [("A", 2), ("G", 1)])
         , runTest $         mkTest db5 "simpleTest6" ["E", "G"] anySolverFailure
-        , runTest $ indep $ mkTest db5 "simpleTest7" ["E", "G"] (SolverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
-        , runTest $         mkTest db6 "depsWithTests1" ["C"]      (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        , runTest $ indep $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
+        , runTest $         mkTest db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         ]
     , testGroup "Setup dependencies" [
-          runTest $         mkTest db7  "setupDeps1" ["B"] (SolverSuccess [("A", 2), ("B", 1)])
-        , runTest $         mkTest db7  "setupDeps2" ["C"] (SolverSuccess [("A", 2), ("C", 1)])
-        , runTest $         mkTest db7  "setupDeps3" ["D"] (SolverSuccess [("A", 1), ("D", 1)])
-        , runTest $         mkTest db7  "setupDeps4" ["E"] (SolverSuccess [("A", 1), ("A", 2), ("E", 1)])
-        , runTest $         mkTest db7  "setupDeps5" ["F"] (SolverSuccess [("A", 1), ("A", 2), ("F", 1)])
-        , runTest $         mkTest db8  "setupDeps6" ["C", "D"] (SolverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
-        , runTest $         mkTest db9  "setupDeps7" ["F", "G"] (SolverSuccess [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
-        , runTest $         mkTest db10 "setupDeps8" ["C"] (SolverSuccess [("C", 1)])
-        , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
+          runTest $         mkTest db7  "setupDeps1" ["B"] (solverSuccess [("A", 2), ("B", 1)])
+        , runTest $         mkTest db7  "setupDeps2" ["C"] (solverSuccess [("A", 2), ("C", 1)])
+        , runTest $         mkTest db7  "setupDeps3" ["D"] (solverSuccess [("A", 1), ("D", 1)])
+        , runTest $         mkTest db7  "setupDeps4" ["E"] (solverSuccess [("A", 1), ("A", 2), ("E", 1)])
+        , runTest $         mkTest db7  "setupDeps5" ["F"] (solverSuccess [("A", 1), ("A", 2), ("F", 1)])
+        , runTest $         mkTest db8  "setupDeps6" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $         mkTest db9  "setupDeps7" ["F", "G"] (solverSuccess [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
+        , runTest $         mkTest db10 "setupDeps8" ["C"] (solverSuccess [("C", 1)])
+        , runTest $ indep $ mkTest dbSetupDeps "setupDeps9" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2)])
         ]
     , testGroup "Base shim" [
-          runTest $ mkTest db11 "baseShim1" ["A"] (SolverSuccess [("A", 1)])
-        , runTest $ mkTest db12 "baseShim2" ["A"] (SolverSuccess [("A", 1)])
-        , runTest $ mkTest db12 "baseShim3" ["B"] (SolverSuccess [("B", 1)])
-        , runTest $ mkTest db12 "baseShim4" ["C"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
+          runTest $ mkTest db11 "baseShim1" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ mkTest db12 "baseShim2" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ mkTest db12 "baseShim3" ["B"] (solverSuccess [("B", 1)])
+        , runTest $ mkTest db12 "baseShim4" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ mkTest db12 "baseShim5" ["D"] anySolverFailure
-        , runTest $ mkTest db12 "baseShim6" ["E"] (SolverSuccess [("E", 1), ("syb", 2)])
+        , runTest $ mkTest db12 "baseShim6" ["E"] (solverSuccess [("E", 1), ("syb", 2)])
         ]
     , testGroup "Cycles" [
           runTest $ mkTest db14 "simpleCycle1"          ["A"]      anySolverFailure
         , runTest $ mkTest db14 "simpleCycle2"          ["A", "B"] anySolverFailure
-        , runTest $ mkTest db14 "cycleWithFlagChoice1"  ["C"]      (SolverSuccess [("C", 1), ("E", 1)])
+        , runTest $ mkTest db14 "cycleWithFlagChoice1"  ["C"]      (solverSuccess [("C", 1), ("E", 1)])
         , runTest $ mkTest db15 "cycleThroughSetupDep1" ["A"]      anySolverFailure
         , runTest $ mkTest db15 "cycleThroughSetupDep2" ["B"]      anySolverFailure
-        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (SolverSuccess [("C", 2), ("D", 1)])
-        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (SolverSuccess [("D", 1)])
-        , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (SolverSuccess [("C", 2), ("D", 1), ("E", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep3" ["C"]      (solverSuccess [("C", 2), ("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep4" ["D"]      (solverSuccess [("D", 1)])
+        , runTest $ mkTest db15 "cycleThroughSetupDep5" ["E"]      (solverSuccess [("C", 2), ("D", 1), ("E", 1)])
         ]
     , testGroup "Extensions" [
           runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupported" ["A"] anySolverFailure
         , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "unsupportedIndirect" ["B"] anySolverFailure
-        , runTest $ mkTestExts [EnableExtension RankNTypes] dbExts1 "supported" ["A"] (SolverSuccess [("A",1)])
-        , runTest $ mkTestExts (map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedIndirect" ["C"] (SolverSuccess [("A",1),("B",1), ("C",1)])
+        , runTest $ mkTestExts [EnableExtension RankNTypes] dbExts1 "supported" ["A"] (solverSuccess [("A",1)])
+        , runTest $ mkTestExts (map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedIndirect" ["C"] (solverSuccess [("A",1),("B",1), ("C",1)])
         , runTest $ mkTestExts [EnableExtension CPP] dbExts1 "disabledExtension" ["D"] anySolverFailure
         , runTest $ mkTestExts (map EnableExtension [CPP,RankNTypes]) dbExts1 "disabledExtension" ["D"] anySolverFailure
-        , runTest $ mkTestExts (UnknownExtension "custom" : map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedUnknown" ["E"] (SolverSuccess [("A",1),("B",1),("C",1),("E",1)])
+        , runTest $ mkTestExts (UnknownExtension "custom" : map EnableExtension [CPP,RankNTypes]) dbExts1 "supportedUnknown" ["E"] (solverSuccess [("A",1),("B",1),("C",1),("E",1)])
         ]
     , testGroup "Languages" [
           runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupported" ["A"] anySolverFailure
-        , runTest $ mkTestLangs [Haskell98,Haskell2010] dbLangs1 "supported" ["A"] (SolverSuccess [("A",1)])
+        , runTest $ mkTestLangs [Haskell98,Haskell2010] dbLangs1 "supported" ["A"] (solverSuccess [("A",1)])
         , runTest $ mkTestLangs [Haskell98] dbLangs1 "unsupportedIndirect" ["B"] anySolverFailure
-        , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (SolverSuccess [("A",1),("B",1),("C",1)])
+        , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (solverSuccess [("A",1),("B",1),("C",1)])
         ]
 
      , testGroup "Soft Constraints" [
-          runTest $ soft [ ExPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (SolverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (SolverSuccess [("A", 2)])
+          runTest $ soft [ ExPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
         , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2
-                         , ExPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (SolverSuccess [("A", 1)])
+                         , ExPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
         , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (SolverSuccess [("A", 1)])
+                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
         , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (SolverSuccess [("A", 2)])
+                         , ExPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
         , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (SolverSuccess [("A", 1)])
+                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
         ]
      , testGroup "Buildable Field" [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (SolverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
-        , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (SolverSuccess [("A", 1), ("B", 2)])
+        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
+        , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
          ]
     , testGroup "Pkg-config dependencies" [
           runTest $ mkTestPCDepends [] dbPC1 "noPkgs" ["A"] anySolverFailure
         , runTest $ mkTestPCDepends [("pkgA", "0")] dbPC1 "tooOld" ["A"] anySolverFailure
-        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (SolverSuccess [("A", 1), ("B", 2), ("C", 1)])
+        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "1.0.0")] dbPC1 "pruneNotFound" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ mkTestPCDepends [("pkgA", "1.0.0"), ("pkgB", "2.0.0")] dbPC1 "chooseNewest" ["C"] (solverSuccess [("A", 1), ("B", 2), ("C", 1)])
         ]
     , testGroup "Independent goals" [
-          runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
+          runTest $ indep $ mkTest db16 "indepGoals1" ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("E", 1)])
         , runTest $ testIndepGoals2 "indepGoals2"
         , runTest $ testIndepGoals3 "indepGoals3"
         , runTest $ testIndepGoals4 "indepGoals4"
@@ -145,24 +145,34 @@ tests = [
         ]
       -- Tests designed for the backjumping blog post
     , testGroup "Backjumping" [
-          runTest $         mkTest dbBJ1a "bj1a" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
-        , runTest $         mkTest dbBJ1b "bj1b" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
-        , runTest $         mkTest dbBJ1c "bj1c" ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
-        , runTest $         mkTest dbBJ2  "bj2"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
-        , runTest $         mkTest dbBJ3  "bj3 " ["A"]      (SolverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
-        , runTest $         mkTest dbBJ4  "bj4"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
-        , runTest $         mkTest dbBJ5  "bj5"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("D", 1)])
-        , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (SolverSuccess [("A", 1), ("B",  1)])
-        , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
-        , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (SolverSuccess [("A", 1), ("B",  1), ("C", 1)])
+          runTest $         mkTest dbBJ1a "bj1a" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ1b "bj1b" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ1c "bj1c" ["A"]      (solverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ2  "bj2"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $         mkTest dbBJ3  "bj3 " ["A"]      (solverSuccess [("A", 1), ("Ba", 1), ("C", 1)])
+        , runTest $         mkTest dbBJ4  "bj4"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $         mkTest dbBJ5  "bj5"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("D", 1)])
+        , runTest $         mkTest dbBJ6  "bj6"  ["A"]      (solverSuccess [("A", 1), ("B",  1)])
+        , runTest $         mkTest dbBJ7  "bj7"  ["A"]      (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
+        , runTest $ indep $ mkTest dbBJ8  "bj8"  ["A", "B"] (solverSuccess [("A", 1), ("B",  1), ("C", 1)])
         ]
     -- Build-tools dependencies
     , testGroup "build-tools" [
-          runTest $ mkTest dbBuildTools1 "bt1" ["A"] (SolverSuccess [("A", 1), ("alex", 1)])
-        , runTest $ mkTest dbBuildTools2 "bt2" ["A"] (SolverSuccess [("A", 1)])
-        , runTest $ mkTest dbBuildTools3 "bt3" ["C"] (SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
-        , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (SolverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
-        , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (SolverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
+          runTest $ mkTest dbBuildTools1 "bt1" ["A"] (solverSuccess [("A", 1), ("alex", 1)])
+        , runTest $ mkTest dbBuildTools2 "bt2" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ mkTest dbBuildTools3 "bt3" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
+        , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
+        , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
+        ]
+      -- Tests for the contents of the solver's log
+    , testGroup "Solver log" [
+          -- See issue #3203. The solver should only choose a version for A once.
+          runTest $
+              let db = [Right $ exAv "A" 1 []]
+                  p lg =    elem "targets: A" lg
+                         && length (filter ("trying: A" `isInfixOf`) lg) == 1
+              in mkTest db "deduplicate targets" ["A", "A"] $
+                 SolverResult p $ Right [("A", 1)]
         ]
     ]
   where
@@ -198,15 +208,27 @@ data SolverTest = SolverTest {
   , testPkgConfigDb    :: PkgConfigDb
   }
 
--- | Result of a solver test.
-data SolverResult =
-    SolverSuccess [(String, Int)]  -- ^ succeeds with given plan
-  | SolverFailure (String -> Bool) -- ^ fails, and the error message satisfies the predicate
+-- | Expected result of a solver test.
+data SolverResult = SolverResult {
+    -- | The solver's log should satisfy this predicate. Note that we also print
+    -- the log, so evaluating a large log here can cause a space leak.
+    resultLogPredicate            :: [String] -> Bool,
+
+    -- | Fails with an error message satisfying the predicate, or succeeds with
+    -- the given plan.
+    resultErrorMsgPredicateOrPlan :: Either (String -> Bool) [(String, Int)]
+  }
+
+solverSuccess :: [(String, Int)] -> SolverResult
+solverSuccess = SolverResult (const True) . Right
+
+solverFaiure :: (String -> Bool) -> SolverResult
+solverFaiure = SolverResult (const True) . Left
 
 -- | Can be used for test cases where we just want to verify that
 -- they fail, but do not care about the error message.
 anySolverFailure :: SolverResult
-anySolverFailure = SolverFailure (const True)
+anySolverFailure = solverFaiure (const True)
 
 -- | Makes a solver test case, consisting of the following components:
 --
@@ -276,25 +298,30 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
 runTest :: SolverTest -> TF.TestTree
 runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
     testCase testLabel $ do
-      let lg = exResolve testDb testSupportedExts
-               testSupportedLangs testPkgConfigDb testTargets
-               Modular Nothing testIndepGoals (ReorderGoals False)
-               (EnableBackjumping True) testGoalOrder testSoftConstraints
-          logMsg msg = if showSolverLog
-                       then putStrLn msg
-                       else return ()
-      result <- foldProgress ((>>) . logMsg) (return . Left) (return . Right) lg
+      let progress = exResolve testDb testSupportedExts
+                     testSupportedLangs testPkgConfigDb testTargets
+                     Modular Nothing testIndepGoals (ReorderGoals False)
+                     (EnableBackjumping True) testGoalOrder testSoftConstraints
+          printMsg msg = if showSolverLog
+                         then putStrLn msg
+                         else return ()
+          msgs = foldProgress (:) (const []) (const []) progress
+      assertBool ("Unexpected solver log:\n" ++ unlines msgs) $
+                 resultLogPredicate testResult $ concatMap lines msgs
+      result <- foldProgress ((>>) . printMsg) (return . Left) (return . Right) progress
       case result of
-        Left  err  -> assertBool ("Unexpected error:\n" ++ err) (check testResult err)
+        Left  err  -> assertBool ("Unexpected error:\n" ++ err)
+                                 (checkErrorMsg testResult err)
         Right plan -> assertEqual "" (toMaybe testResult) (Just (extractInstallPlan plan))
   where
-    toMaybe :: SolverResult -> Maybe ([(String, Int)])
-    toMaybe (SolverSuccess plan) = Just plan
-    toMaybe (SolverFailure _   ) = Nothing
+    toMaybe :: SolverResult -> Maybe [(String, Int)]
+    toMaybe = either (const Nothing) Just . resultErrorMsgPredicateOrPlan
 
-    check :: SolverResult -> (String -> Bool)
-    check (SolverFailure f) = f
-    check _                 = const False
+    checkErrorMsg :: SolverResult -> String -> Bool
+    checkErrorMsg result msg =
+        case resultErrorMsgPredicateOrPlan result of
+          Left f  -> f msg
+          Right _ -> False
 
 {-------------------------------------------------------------------------------
   Specific example database for the tests
@@ -638,7 +665,7 @@ testIndepGoals2 :: String -> SolverTest
 testIndepGoals2 name =
     goalOrder goals $ indep $
     mkTest db name ["A", "B"] $
-    SolverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
+    solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
   where
     db :: ExampleDb
     db = [
@@ -763,7 +790,7 @@ testIndepGoals4 :: String -> SolverTest
 testIndepGoals4 name =
     goalOrder goals $ indep $
     mkTest db name ["A", "B", "C"] $
-    SolverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
+    solverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
   where
     db :: ExampleDb
     db = [
@@ -838,7 +865,7 @@ testIndepGoals5 name fixGoalOrder =
   where
     test :: SolverTest
     test = indep $ mkTest db name ["X", "Y"] $
-           SolverSuccess
+           solverSuccess
            [("A", 1), ("A", 2), ("B", 1), ("C", 1), ("C", 2), ("X", 1), ("Y", 1)]
 
     db :: ExampleDb
@@ -873,7 +900,7 @@ testIndepGoals6 name fixGoalOrder =
   where
     test :: SolverTest
     test = indep $ mkTest db name ["X", "Y"] $
-           SolverSuccess
+           solverSuccess
            [("A", 1), ("A", 2), ("B", 1), ("B", 2), ("X", 1), ("Y", 1)]
 
     db :: ExampleDb
@@ -919,7 +946,7 @@ testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
     runTest $ mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
   where
-    expected = SolverSuccess [("false-dep", 1), ("pkg", 1)]
+    expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
         Right $ exAv "pkg" 1
             [ unavailableDep
