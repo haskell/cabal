@@ -156,7 +156,7 @@ data SetupScriptOptions = SetupScriptOptions {
     usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
     usePackageIndex          :: Maybe InstalledPackageIndex,
-    useProgramConfig         :: ProgramDb,
+    useProgramDb         :: ProgramDb,
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
@@ -226,7 +226,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDependencies          = [],
     useDependenciesExclusive = False,
     useVersionMacros         = False,
-    useProgramConfig         = emptyProgramDb,
+    useProgramDb         = emptyProgramDb,
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
@@ -340,7 +340,7 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
 
   searchpath <- programSearchPathAsPATHVar
                 (map ProgramSearchPathDir (useExtraPathEnv options) ++
-                 getProgramSearchPath (useProgramConfig options))
+                 getProgramSearchPath (useProgramDb options))
   env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                         ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
@@ -546,17 +546,17 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                     -> IO (Compiler, ProgramDb, SetupScriptOptions)
   configureCompiler options' = do
     (comp, progdb) <- case useCompiler options' of
-      Just comp -> return (comp, useProgramConfig options')
+      Just comp -> return (comp, useProgramDb options')
       Nothing   -> do (comp, _, progdb) <-
                         configCompilerEx (Just GHC) Nothing Nothing
-                        (useProgramConfig options') verbosity
+                        (useProgramDb options') verbosity
                       return (comp, progdb)
     -- Whenever we need to call configureCompiler, we also need to access the
     -- package index, so let's cache it in SetupScriptOptions.
     index <- maybeGetInstalledPackages options' comp progdb
     return (comp, progdb, options' { useCompiler      = Just comp,
                                      usePackageIndex  = Just index,
-                                     useProgramConfig = progdb })
+                                     useProgramDb = progdb })
 
   -- | Path to the setup exe cache directory and path to the cached setup
   -- executable.
@@ -607,7 +607,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           installExecutableFile verbosity src cachedSetupProgFile
           -- Do not strip if we're using GHCJS, since the result may be a script
           when (maybe True ((/=GHCJS).compilerFlavor) $ useCompiler options') $
-            Strip.stripExe verbosity platform (useProgramConfig options')
+            Strip.stripExe verbosity platform (useProgramDb options')
               cachedSetupProgFile
     return cachedSetupProgFile
       where
@@ -721,7 +721,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       doInvoke path' = do
         searchpath <- programSearchPathAsPATHVar
                       (map ProgramSearchPathDir (useExtraPathEnv options') ++
-                       getProgramSearchPath (useProgramConfig options'))
+                       getProgramSearchPath (useProgramDb options'))
         env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                               ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
