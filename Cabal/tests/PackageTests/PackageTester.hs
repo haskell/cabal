@@ -207,8 +207,8 @@ data SuiteConfig = SuiteConfig
     }
 
 getProgram :: ProgramDb -> Program -> ConfiguredProgram
-getProgram conf program = prog
-    where Just prog = lookupProgram program conf -- invariant!
+getProgram progdb program = prog
+    where Just prog = lookupProgram program progdb -- invariant!
 
 getBootProgram :: SuiteConfig -> Program -> ConfiguredProgram
 getBootProgram suite = getProgram (bootProgramsConfig suite)

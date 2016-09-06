@@ -79,14 +79,14 @@ fetch :: Verbosity
 fetch verbosity _ _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-fetch verbosity packageDBs repoCtxt comp platform conf
+fetch verbosity packageDBs repoCtxt comp platform progdb
       globalFlags fetchFlags userTargets = do
 
     mapM_ checkTarget userTargets
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-    pkgConfigDb       <- readPkgConfigDb      verbosity conf
+    pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)

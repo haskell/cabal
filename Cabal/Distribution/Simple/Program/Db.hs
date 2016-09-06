@@ -248,7 +248,7 @@ userSpecifyPaths :: [(String, FilePath)]
                  -> ProgramDb
                  -> ProgramDb
 userSpecifyPaths paths progdb =
-  foldl' (\conf' (prog, path) -> userSpecifyPath prog path conf') progdb paths
+  foldl' (\progdb' (prog, path) -> userSpecifyPath prog path progdb') progdb paths
 
 
 -- | Like 'userSpecifyPath' but for a list of progs and their args.
@@ -257,7 +257,7 @@ userSpecifyArgss :: [(String, [ProgArg])]
                  -> ProgramDb
                  -> ProgramDb
 userSpecifyArgss argss progdb =
-  foldl' (\conf' (prog, args) -> userSpecifyArgs prog args conf') progdb argss
+  foldl' (\progdb' (prog, args) -> userSpecifyArgs prog args progdb') progdb argss
 
 
 -- | Get the path that has been previously specified for a program, if any.
@@ -402,13 +402,13 @@ requireProgram :: Verbosity -> Program -> ProgramDb
 requireProgram verbosity prog progdb = do
 
   -- If it's not already been configured, try to configure it now
-  conf' <- case lookupProgram prog progdb of
+  progdb' <- case lookupProgram prog progdb of
     Nothing -> configureProgram verbosity prog progdb
     Just _  -> return progdb
 
-  case lookupProgram prog conf' of
+  case lookupProgram prog progdb' of
     Nothing             -> die notFound
-    Just configuredProg -> return (configuredProg, conf')
+    Just configuredProg -> return (configuredProg, progdb')
 
   where notFound       = "The program '" ++ programName prog
                       ++ "' is required but it could not be found."

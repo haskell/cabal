@@ -47,12 +47,12 @@ import System.FilePath
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath _hcPkgPath conf = do
+configure verbosity hcPath _hcPkgPath progdb = do
 
-  (_uhcProg, uhcVersion, conf') <-
+  (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion verbosity uhcProgram
     (orLaterVersion (Version [1,0,2] []))
-    (userMaybeSpecifyPath "uhc" hcPath conf)
+    (userMaybeSpecifyPath "uhc" hcPath progdb)
 
   let comp = Compiler {
                compilerId         =  CompilerId UHC uhcVersion,
@@ -63,7 +63,7 @@ configure verbosity hcPath _hcPkgPath conf = do
                compilerProperties =  Map.empty
              }
       compPlatform = Nothing
-  return (comp, compPlatform, conf')
+  return (comp, compPlatform, progdb')
 
 uhcLanguages :: [(Language, C.Flag)]
 uhcLanguages = [(Haskell98, "")]
@@ -91,9 +91,9 @@ uhcLanguageExtensions =
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs progdb = do
   let compilerid = compilerId comp
-  systemPkgDir <- getGlobalPackageDir verbosity conf
+  systemPkgDir <- getGlobalPackageDir verbosity progdb
   userPkgDir   <- getUserPackageDir
   let pkgDirs    = nub (concatMap (packageDbPaths userPkgDir systemPkgDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
@@ -109,9 +109,9 @@ getInstalledPackages verbosity comp packagedbs conf = do
   return (fromList iPkgs)
 
 getGlobalPackageDir :: Verbosity -> ProgramDb -> IO FilePath
-getGlobalPackageDir verbosity conf = do
+getGlobalPackageDir verbosity progdb = do
     output <- getDbProgramOutput verbosity
-                uhcProgram conf ["--meta-pkgdir-system"]
+                uhcProgram progdb ["--meta-pkgdir-system"]
     -- call to "lines" necessary, because pkgdir contains an extra newline at the end
     let [pkgdir] = lines output
     return pkgdir

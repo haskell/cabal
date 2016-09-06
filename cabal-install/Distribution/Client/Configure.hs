@@ -111,12 +111,12 @@ configure :: Verbosity
           -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDBs repoCtxt comp platform conf
+configure verbosity packageDBs repoCtxt comp platform progdb
   configFlags configExFlags extraArgs = do
 
-  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
   sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-  pkgConfigDb       <- readPkgConfigDb      verbosity conf
+  pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
   checkConfigExFlags verbosity installedPkgIndex
                      (packageIndex sourcePkgDb) configExFlags
@@ -159,7 +159,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
         packageDBs
         comp
         platform
-        conf
+        progdb
         (fromFlagOrDefault
            (useDistPref defaultSetupScriptOptions)
            (configDistPref configFlags))
@@ -185,7 +185,7 @@ configureSetupScript :: PackageDBStack
 configureSetupScript packageDBs
                      comp
                      platform
-                     conf
+                     progdb
                      distPref
                      cabalVersion
                      lock
@@ -199,7 +199,7 @@ configureSetupScript packageDBs
     , usePlatform              = Just platform
     , usePackageDB             = packageDBs'
     , usePackageIndex          = index'
-    , useProgramDb             = conf
+    , useProgramDb             = progdb
     , useDistPref              = distPref
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing

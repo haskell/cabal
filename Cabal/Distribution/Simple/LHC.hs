@@ -76,17 +76,17 @@ import System.IO (hClose, hPutStrLn)
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath hcPkgPath conf = do
+configure verbosity hcPath hcPkgPath progdb = do
 
-  (lhcProg, lhcVersion, conf') <-
+  (lhcProg, lhcVersion, progdb') <-
     requireProgramVersion verbosity lhcProgram
       (orLaterVersion (Version [0,7] []))
-      (userMaybeSpecifyPath "lhc" hcPath conf)
+      (userMaybeSpecifyPath "lhc" hcPath progdb)
 
-  (lhcPkgProg, lhcPkgVersion, conf'') <-
+  (lhcPkgProg, lhcPkgVersion, progdb'') <-
     requireProgramVersion verbosity lhcPkgProgram
       (orLaterVersion (Version [0,7] []))
-      (userMaybeSpecifyPath "lhc-pkg" hcPkgPath conf')
+      (userMaybeSpecifyPath "lhc-pkg" hcPkgPath progdb')
 
   when (lhcVersion /= lhcPkgVersion) $ die $
        "Version mismatch between lhc and lhc-pkg: "
@@ -104,9 +104,9 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerExtensions     = extensions,
         compilerProperties     = Map.empty
       }
-      conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
+      progdb''' = configureToolchain lhcProg progdb'' -- configure gcc and ld
       compPlatform = Nothing
-  return (comp, compPlatform, conf''')
+  return (comp, compPlatform, progdb''')
 
 -- | Adjust the way we find and configure gcc and ld
 --
@@ -195,9 +195,9 @@ getExtensions verbosity lhcProg = do
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf = do
+getInstalledPackages verbosity packagedbs progdb = do
   checkPackageDbStack packagedbs
-  pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
+  pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs progdb
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
   return $! (mconcat indexes)
@@ -206,8 +206,8 @@ getInstalledPackages verbosity packagedbs conf = do
     -- On Windows, various fields have $topdir/foo rather than full
     -- paths. We need to substitute the right value in so that when
     -- we, for example, call gcc, we have proper paths to give it
-    Just ghcProg = lookupProgram lhcProgram conf
-    Just lhcPkg  = lookupProgram lhcPkgProgram conf
+    Just ghcProg = lookupProgram lhcProgram progdb
+    Just lhcPkg  = lookupProgram lhcPkgProgram progdb
     compilerDir  = takeDirectory (programPath ghcProg)
     topDir       = takeDirectory compilerDir
 
@@ -223,10 +223,10 @@ checkPackageDbStack _ =
 getInstalledPackages' :: ConfiguredProgram -> Verbosity
                       -> [PackageDB] -> ProgramDb
                       -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' lhcPkg verbosity packagedbs conf
+getInstalledPackages' lhcPkg verbosity packagedbs progdb
   =
   sequenceA
-    [ do str <- getDbProgramOutput verbosity lhcPkgProgram conf
+    [ do str <- getDbProgramOutput verbosity lhcPkgProgram progdb
                   ["dump", packageDbGhcPkgFlag packagedb]
            `catchExit` \_ -> die $ "ghc-pkg dump failed"
          case parsePackages str of
@@ -758,14 +758,14 @@ registerPackage verbosity progdb packageDbs installedPkgInfo =
     (Right installedPkgInfo)
 
 hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
-hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
-                                 , HcPkg.noPkgDbStack    = False
-                                 , HcPkg.noVerboseFlag   = False
-                                 , HcPkg.flagPackageConf = False
-                                 , HcPkg.supportsDirDbs  = True
-                                 , HcPkg.requiresDirDbs  = True
-                                 , HcPkg.nativeMultiInstance  = False -- ?
-                                 , HcPkg.recacheMultiInstance = False -- ?
-                                 }
+hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
+                                   , HcPkg.noPkgDbStack    = False
+                                   , HcPkg.noVerboseFlag   = False
+                                   , HcPkg.flagPackageConf = False
+                                   , HcPkg.supportsDirDbs  = True
+                                   , HcPkg.requiresDirDbs  = True
+                                   , HcPkg.nativeMultiInstance  = False -- ?
+                                   , HcPkg.recacheMultiInstance = False -- ?
+                                   }
   where
-    Just lhcPkgProg = lookupProgram lhcPkgProgram conf
+    Just lhcPkgProg = lookupProgram lhcPkgProgram progdb
