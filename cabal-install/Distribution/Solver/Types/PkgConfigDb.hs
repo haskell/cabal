@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
@@ -15,6 +16,7 @@ module Distribution.Solver.Types.PkgConfigDb
     , readPkgConfigDb
     , pkgConfigDbFromList
     , pkgConfigPkgIsPresent
+    , pkgConfigDbPkgVersion
     , getPkgConfigDbDirs
     ) where
 
@@ -43,6 +45,8 @@ import Distribution.Simple.Program
       requireProgram )
 import Distribution.Simple.Utils
     ( info )
+import Distribution.Compat.Binary (Binary(..))
+import GHC.Generics (Generic)
 
 -- | The list of packages installed in the system visible to
 -- @pkg-config@. This is an opaque datatype, to be constructed with
@@ -54,7 +58,9 @@ data PkgConfigDb =  PkgConfigDb (M.Map PackageName (Maybe Version))
                  -- number failed).
                  | NoPkgConfigDb
                  -- ^ For when we could not run pkg-config successfully.
-     deriving (Show)
+     deriving (Show, Generic)
+
+instance Binary PkgConfigDb
 
 -- | Query pkg-config for the list of installed packages, together
 -- with their versions. Return a `PkgConfigDb` encapsulating this
@@ -104,6 +110,19 @@ pkgConfigPkgIsPresent (PkgConfigDb db) pn vr =
 -- executed later on, but we have no grounds for rejecting the plan at
 -- this stage.
 pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
+
+
+-- | Query the version of a package in the @pkg-config@ database.
+-- @Nothing@ indicates the package is not in the database, while
+-- @Just Nothing@ indicates that the package is in the database,
+-- but its version is not known.
+pkgConfigDbPkgVersion :: PkgConfigDb -> PackageName -> Maybe (Maybe Version)
+pkgConfigDbPkgVersion (PkgConfigDb db) pn = M.lookup pn db
+-- NB: Since the solver allows solving to succeed if there is
+-- NoPkgConfigDb, we should report that we *guess* that there
+-- is a matching pkg-config configuration, but that we just
+-- don't know about it.
+pkgConfigDbPkgVersion NoPkgConfigDb _ = Just Nothing
 
 
 -- | Query pkg-config for the locations of pkg-config's package files. Use this
