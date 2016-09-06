@@ -20,7 +20,7 @@ import System.FilePath
 import Distribution.Package
          ( PackageId, UnitId(..) )
 import Distribution.Compiler
-import Distribution.Simple.Compiler (PackageDB(..))
+import Distribution.Simple.Compiler (PackageDB(..), OptimisationLevel(..))
 import Distribution.Text
 import Distribution.Types.ComponentName
 import Distribution.System
@@ -37,7 +37,8 @@ data DistDirParams = DistDirParams {
     distParamPackageId      :: PackageId,
     distParamComponentName  :: Maybe ComponentName,
     distParamCompilerId     :: CompilerId,
-    distParamPlatform       :: Platform
+    distParamPlatform       :: Platform,
+    distParamOptimization   :: OptimisationLevel
     -- TODO (see #3343):
     --  Flag assignments
     --  Optimization
@@ -123,6 +124,10 @@ defaultDistDirLayout projectRootDirectory =
             Nothing         -> ""
             Just Nothing    -> ""
             Just (Just str) -> "c" </> str) </>
+        (case distParamOptimization params of
+            NoOptimisation -> "noopt"
+            NormalOptimisation -> ""
+            MaximumOptimisation -> "opt") </>
         (case distParamUnitId params of -- For Backpack
             SimpleUnitId _ -> "")
 

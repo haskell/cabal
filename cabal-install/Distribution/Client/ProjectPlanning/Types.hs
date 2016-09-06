@@ -287,7 +287,8 @@ elabDistDirParams shared elab = DistDirParams {
             ElabComponent comp -> compComponentName comp
             ElabPackage _ -> Nothing,
         distParamCompilerId = compilerId (pkgConfigCompiler shared),
-        distParamPlatform = pkgConfigPlatform shared
+        distParamPlatform = pkgConfigPlatform shared,
+        distParamOptimization = elabOptimization elab
     }
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
