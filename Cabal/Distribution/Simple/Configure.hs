@@ -1248,7 +1248,7 @@ getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -- ^ The stack of package databases.
                      -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packageDBs progconf = do
+getInstalledPackages verbosity comp packageDBs progdb = do
   when (null packageDBs) $
     die $ "No package databases have been specified. If you use "
        ++ "--package-db=clear, you must follow it with --package-db= "
@@ -1256,13 +1256,13 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progconf
-    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progconf
-    JHC   -> JHC.getInstalledPackages verbosity packageDBs progconf
-    LHC   -> LHC.getInstalledPackages verbosity packageDBs progconf
-    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progconf
+    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
+    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
+    JHC   -> JHC.getInstalledPackages verbosity packageDBs progdb
+    LHC   -> LHC.getInstalledPackages verbosity packageDBs progdb
+    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
     HaskellSuite {} ->
-      HaskellSuite.getInstalledPackages verbosity packageDBs progconf
+      HaskellSuite.getInstalledPackages verbosity packageDBs progdb
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
 
@@ -1275,13 +1275,13 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 getPackageDBContents :: Verbosity -> Compiler
                      -> PackageDB -> ProgramDb
                      -> IO InstalledPackageIndex
-getPackageDBContents verbosity comp packageDB progconf = do
+getPackageDBContents verbosity comp packageDB progdb = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC -> GHC.getPackageDBContents verbosity packageDB progconf
-    GHCJS -> GHCJS.getPackageDBContents verbosity packageDB progconf
+    GHC -> GHC.getPackageDBContents verbosity packageDB progdb
+    GHCJS -> GHCJS.getPackageDBContents verbosity packageDB progdb
     -- For other compilers, try to fall back on 'getInstalledPackages'.
-    _   -> getInstalledPackages verbosity comp [packageDB] progconf
+    _   -> getInstalledPackages verbosity comp [packageDB] progdb
 
 
 -- | A set of files (or directories) that can be monitored to detect when
@@ -1291,10 +1291,10 @@ getInstalledPackagesMonitorFiles :: Verbosity -> Compiler
                                  -> PackageDBStack
                                  -> ProgramDb -> Platform
                                  -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity comp packageDBs progconf platform =
+getInstalledPackagesMonitorFiles verbosity comp packageDBs progdb platform =
   case compilerFlavor comp of
     GHC   -> GHC.getInstalledPackagesMonitorFiles
-               verbosity platform progconf packageDBs
+               verbosity platform progdb packageDBs
     other -> do
       warn verbosity $ "don't know how to find change monitoring files for "
                     ++ "the installed package databases for " ++ display other
