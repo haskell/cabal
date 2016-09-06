@@ -316,7 +316,8 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0', pbi) cfg = do
     let pkg_descr0 =
-          -- Ignore '--allow-{older,newer}' when we're given '--exact-configuration'.
+          -- Ignore '--allow-{older,newer}' when we're given
+          -- '--exact-configuration'.
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
           else relaxPackageDeps removeLowerBound
@@ -401,9 +402,11 @@ configure (pkg_descr0', pbi) cfg = do
                     Just cname -> OneComponentEnabledSpec cname
                     Nothing -> ComponentEnabledSpec
                                 { testsEnabled = fromFlag (configTests cfg)
-                                , benchmarksEnabled = fromFlag (configBenchmarks cfg) }
+                                , benchmarksEnabled =
+                                  fromFlag (configBenchmarks cfg) }
     -- Some sanity checks related to enabling components.
-    when (isJust mb_cname && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
+    when (isJust mb_cname
+          && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
         die $ "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."
 
@@ -693,7 +696,8 @@ configure (pkg_descr0', pbi) cfg = do
             else return True
 
     let buildComponentsMap =
-            foldl' (\m clbi -> Map.insertWith (++) (componentLocalName clbi) [clbi] m)
+            foldl' (\m clbi -> Map.insertWith (++)
+                               (componentLocalName clbi) [clbi] m)
                    Map.empty buildComponents
 
     let lbi = (configCoverage . configProf)
@@ -1159,7 +1163,8 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Map PackageName InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
                     -- use
-                 -> UseExternalInternalDeps -- ^ Are we configuring a single component?
+                 -> UseExternalInternalDeps -- ^ Are we configuring a
+                                            -- single component?
                  -> Dependency
                  -> Either FailedDependency ResolvedDependency
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
@@ -1196,7 +1201,8 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         []   -> Left  $
                   case is_internal of
                     Just cname -> DependencyMissingInternal dep_pkgname
-                                    (computeCompatPackageName (packageName pkgid) cname)
+                                    (computeCompatPackageName
+                                     (packageName pkgid) cname)
                     Nothing -> DependencyNotExists dep_pkgname
         pkgs -> Right $ ExternalDependency dep $
                 case last pkgs of
@@ -1231,7 +1237,8 @@ reportFailedDependencies failed =
     reportFailedDependency (DependencyMissingInternal pkgname real_pkgname) =
          "internal dependency " ++ display pkgname ++ " not installed.\n"
       ++ "Perhaps you need to configure and install it first?\n"
-      ++ "(Munged package name we searched for was " ++ display real_pkgname ++ ")"
+      ++ "(Munged package name we searched for was "
+      ++ display real_pkgname ++ ")"
 
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
@@ -1773,8 +1780,8 @@ mkComponentsLocalBuildInfo :: ConfigFlags
                            -> [(Component, [ComponentName])]
                            -> FlagAssignment
                            -> IO [ComponentLocalBuildInfo]
-mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_descr
-                           internalPkgDeps externalPkgDeps
+mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
+                           pkg_descr internalPkgDeps externalPkgDeps
                            graph flagAssignment =
     foldM go [] graph
   where
@@ -1788,7 +1795,8 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
     componentLocalBuildInfo :: [ComponentLocalBuildInfo]
-                            -> Component -> [ComponentName] -> IO ComponentLocalBuildInfo
+                            -> Component -> [ComponentName]
+                            -> IO ComponentLocalBuildInfo
     componentLocalBuildInfo internalComps component dep_cnames =
       -- NB: We want to preserve cdeps because it contains extra
       -- information like build-tools ordering
@@ -1855,7 +1863,8 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         }
       where
 
-        cid = computeComponentId (configIPID cfg) (configCID cfg) (package pkg_descr)
+        cid = computeComponentId (configIPID cfg) (configCID cfg)
+                (package pkg_descr)
                 (componentName component)
                 (getDeps (componentName component))
                 flagAssignment
