@@ -179,7 +179,7 @@ data SuiteConfig = SuiteConfig
     -- | The programs that are requested using @--with-compiler@
     -- and @--with-hc-pkg@ to Cabal the under-test.
     -- Invariant: ghc and ghc-pkg are configured.
-    , withProgramsConfig :: ProgramDb
+    , withProgramDb :: ProgramDb
     -- | The build directory that was used to build Cabal (used
     -- to compile Setup scripts.)
     , cabalDistPref :: FilePath
@@ -214,7 +214,7 @@ getBootProgram :: SuiteConfig -> Program -> ConfiguredProgram
 getBootProgram suite = getProgram (bootProgramsConfig suite)
 
 getWithProgram :: SuiteConfig -> Program -> ConfiguredProgram
-getWithProgram suite = getProgram (withProgramsConfig suite)
+getWithProgram suite = getProgram (withProgramDb suite)
 
 ghcProg :: SuiteConfig -> ConfiguredProgram
 ghcProg suite = getBootProgram suite ghcProgram
