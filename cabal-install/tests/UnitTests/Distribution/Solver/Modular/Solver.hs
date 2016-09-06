@@ -164,6 +164,16 @@ tests = [
         , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
         , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
         ]
+      -- Tests for the contents of the solver's log
+    , testGroup "Solver log" [
+          -- See issue #3203. The solver should only choose a version for A once.
+          runTest $
+              let db = [Right $ exAv "A" 1 []]
+                  p lg =    elem "targets: A" lg
+                         && length (filter ("trying: A" `isInfixOf`) lg) == 1
+              in mkTest db "deduplicate targets" ["A", "A"] $
+                 SolverResult p $ Right [("A", 1)]
+        ]
     ]
   where
     soft prefs test = test { testSoftConstraints = prefs }
