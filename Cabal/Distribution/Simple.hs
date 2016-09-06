@@ -640,8 +640,8 @@ runConfigureScript :: Verbosity -> Bool -> ConfigFlags -> LocalBuildInfo
                    -> IO ()
 runConfigureScript verbosity backwardsCompatHack flags lbi = do
   env <- getEnvironment
-  let programConfig = withPrograms lbi
-  (ccProg, ccFlags) <- configureCCompiler verbosity programConfig
+  let programDb = withPrograms lbi
+  (ccProg, ccFlags) <- configureCCompiler verbosity programDb
   ccProgShort <- getShortPathName ccProg
   -- The C compiler's compilation and linker flags (e.g.
   -- "C compiler flags" and "Gcc Linker flags" from GHC) have already
