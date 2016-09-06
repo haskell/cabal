@@ -65,7 +65,7 @@ import Distribution.Simple.Setup
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
-         , programConfigurationPaths', programConfigurationOptions
+         , programDbPaths', programDbOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
@@ -1047,14 +1047,14 @@ haddockFlagsFields = [ field
 withProgramsFields :: [FieldDescr [(String, FilePath)]]
 withProgramsFields =
   map viewAsFieldDescr $
-  programConfigurationPaths' (++ "-location") defaultProgramDb
+  programDbPaths' (++ "-location") defaultProgramDb
                              ParseArgs id (++)
 
 -- | Fields for the 'program-default-options' section.
 withProgramOptionsFields :: [FieldDescr [(String, [String])]]
 withProgramOptionsFields =
   map viewAsFieldDescr $
-  programConfigurationOptions defaultProgramDb ParseArgs id (++)
+  programDbOptions defaultProgramDb ParseArgs id (++)
 
 -- | Get the differences (as a pseudo code diff) between the user's
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
