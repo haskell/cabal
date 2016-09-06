@@ -391,7 +391,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = projectConfigWorldFile,
+      globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
@@ -468,7 +468,7 @@ convertToLegacySharedConfig
       globalCacheDir          = projectConfigCacheDir,
       globalLocalRepos        = projectConfigLocalRepos,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = projectConfigWorldFile,
+      globalWorldFile         = mempty,
       globalRequireSandbox    = mempty,
       globalIgnoreSandbox     = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
@@ -787,7 +787,7 @@ legacySharedConfigFieldDescrs =
       ]
   . filterFields
       [ "remote-repo-cache"
-      , "logs-dir", "world-file", "ignore-expiry", "http-transport"
+      , "logs-dir", "ignore-expiry", "http-transport"
       ]
   . commandOptionsToFields
   ) (commandOptions (globalCommand []) ParseArgs)

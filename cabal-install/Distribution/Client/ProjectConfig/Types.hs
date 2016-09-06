@@ -135,8 +135,7 @@ data ProjectConfigBuildOnly
        projectConfigHttpTransport         :: Flag String,
        projectConfigIgnoreExpiry          :: Flag Bool,
        projectConfigCacheDir              :: Flag FilePath,
-       projectConfigLogsDir               :: Flag FilePath,
-       projectConfigWorldFile             :: Flag FilePath
+       projectConfigLogsDir               :: Flag FilePath
      }
   deriving (Eq, Show, Generic)
 
