@@ -125,7 +125,7 @@ import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , CompilerInfo(..), compilerInfo, PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Program (ProgramDb)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -201,7 +201,7 @@ install
   -> RepoContext
   -> Compiler
   -> Platform
-  -> ProgramConfiguration
+  -> ProgramDb
   -> UseSandbox
   -> Maybe SandboxPackageInfo
   -> GlobalFlags
@@ -211,7 +211,7 @@ install
   -> HaddockFlags
   -> [UserTarget]
   -> IO ()
-install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
+install verbosity packageDBs repos comp platform progdb useSandbox mSandboxPkgInfo
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
@@ -235,9 +235,9 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
             processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
-    args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
-            globalFlags, configFlags, configExFlags, installFlags,
-            haddockFlags)
+    args = (packageDBs, repos, comp, platform, progdb, useSandbox,
+            mSandboxPkgInfo, globalFlags, configFlags, configExFlags,
+            installFlags, haddockFlags)
 
     die' message = die (message ++ if isUseSandbox useSandbox
                                    then installFailedInSandbox else [])
@@ -263,7 +263,7 @@ type InstallArgs = ( PackageDBStack
                    , RepoContext
                    , Compiler
                    , Platform
-                   , ProgramConfiguration
+                   , ProgramDb
                    , UseSandbox
                    , Maybe SandboxPackageInfo
                    , GlobalFlags
@@ -276,12 +276,12 @@ type InstallArgs = ( PackageDBStack
 makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
-  (packageDBs, repoCtxt, comp, _, conf,_,_,
+  (packageDBs, repoCtxt, comp, _, progdb,_,_,
    globalFlags, _, configExFlags, _, _) mUserTargets = do
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-    pkgConfigDb       <- readPkgConfigDb      verbosity conf
+    pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     checkConfigExFlags verbosity installedPkgIndex
                        (packageIndex sourcePkgDb) configExFlags
@@ -810,7 +810,7 @@ postInstallActions :: Verbosity
                    -> BuildOutcomes
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, platform, conf, useSandbox, mSandboxPkgInfo
+  (packageDBs, _, comp, platform, progdb, useSandbox, mSandboxPkgInfo
   ,globalFlags, configFlags, _, installFlags, _)
   targets installPlan buildOutcomes = do
 
@@ -831,7 +831,7 @@ postInstallActions verbosity
   when (reportingLevel == DetailedReports) $
     storeDetailedBuildReports verbosity logsDir buildReports
 
-  regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
+  regenerateHaddockIndex verbosity packageDBs comp platform progdb useSandbox
                          configFlags installFlags buildOutcomes
 
   symlinkBinaries verbosity platform comp configFlags installFlags
@@ -886,13 +886,13 @@ regenerateHaddockIndex :: Verbosity
                        -> [PackageDB]
                        -> Compiler
                        -> Platform
-                       -> ProgramConfiguration
+                       -> ProgramDb
                        -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
                        -> BuildOutcomes
                        -> IO ()
-regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
+regenerateHaddockIndex verbosity packageDBs comp platform progdb useSandbox
                        configFlags installFlags buildOutcomes
   | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
@@ -907,8 +907,8 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
      "Updating documentation index " ++ indexFile
 
   --TODO: might be nice if the install plan gave us the new InstalledPackageInfo
-  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-  Haddock.regenerateHaddockIndex verbosity installedPkgIndex conf indexFile
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
+  Haddock.regenerateHaddockIndex verbosity installedPkgIndex progdb indexFile
 
   | otherwise = return ()
   where
@@ -1063,7 +1063,7 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO BuildOutcomes
 performInstallations verbosity
-  (packageDBs, repoCtxt, comp, platform, conf, useSandbox, _,
+  (packageDBs, repoCtxt, comp, platform, progdb, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
@@ -1089,7 +1089,7 @@ performInstallations verbosity
                                  (setupScriptOptions installedPkgIndex
                                   cacheLock rpkg)
                                  configFlags'
-                                 installFlags haddockFlags comp conf
+                                 installFlags haddockFlags comp progdb
                                  platform pkg rpkg pkgoverride mpath useLogFile
 
   where
@@ -1107,7 +1107,7 @@ performInstallations verbosity
         packageDBs
         comp
         platform
-        conf
+        progdb
         distPref
         (chooseCabalVersion configFlags (libVersion miscOptions))
         (Just lock)
@@ -1347,7 +1347,7 @@ installUnpackedPackage
   -> InstallFlags
   -> HaddockFlags
   -> Compiler
-  -> ProgramConfiguration
+  -> ProgramDb
   -> Platform
   -> PackageDescription
   -> ReadyPackage
@@ -1357,7 +1357,7 @@ installUnpackedPackage
   -> IO BuildOutcome
 installUnpackedPackage verbosity installLock numJobs
                        scriptOptions
-                       configFlags installFlags haddockFlags comp conf
+                       configFlags installFlags haddockFlags comp progdb
                        platform pkg rpkg pkgoverride workingDir useLogFile = do
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1430,7 +1430,7 @@ installUnpackedPackage verbosity installLock numJobs
                                 (fromFlag (configUserInstall configFlags))
                                 (configPackageDBs configFlags)
             forM_ ipkgs' $ \ipkg' ->
-                registerPackage verbosity comp conf
+                registerPackage verbosity comp progdb
                                       NoMultiInstance
                                       packageDBs ipkg'
 
@@ -1440,7 +1440,7 @@ installUnpackedPackage verbosity installLock numJobs
     pkgid            = packageId pkg
     uid              = installedUnitId rpkg
     cinfo            = compilerInfo comp
-    buildCommand'    = buildCommand conf
+    buildCommand'    = buildCommand progdb
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'

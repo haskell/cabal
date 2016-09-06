@@ -39,8 +39,7 @@ import Distribution.Version
 import Distribution.Compat.Environment
     ( lookupEnv )
 import Distribution.Simple.Program
-    ( ProgramConfiguration, pkgConfigProgram, getProgramOutput,
-      requireProgram )
+    ( ProgramDb, pkgConfigProgram, getProgramOutput, requireProgram )
 import Distribution.Simple.Utils
     ( info )
 
@@ -59,9 +58,9 @@ data PkgConfigDb =  PkgConfigDb (M.Map PackageName (Maybe Version))
 -- | Query pkg-config for the list of installed packages, together
 -- with their versions. Return a `PkgConfigDb` encapsulating this
 -- information.
-readPkgConfigDb :: Verbosity -> ProgramConfiguration -> IO PkgConfigDb
-readPkgConfigDb verbosity conf = handle ioErrorHandler $ do
-  (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
+readPkgConfigDb :: Verbosity -> ProgramDb -> IO PkgConfigDb
+readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
+  (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
   pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
   -- The output of @pkg-config --list-all@ also includes a description
   -- for each package, which we do not need.
@@ -109,8 +108,8 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
 -- | Query pkg-config for the locations of pkg-config's package files. Use this
 -- to monitor for changes in the pkg-config DB.
 --
-getPkgConfigDbDirs :: Verbosity -> ProgramConfiguration -> IO [FilePath]
-getPkgConfigDbDirs verbosity conf =
+getPkgConfigDbDirs :: Verbosity -> ProgramDb -> IO [FilePath]
+getPkgConfigDbDirs verbosity progdb =
     (++) <$> getEnvPath <*> getDefPath
  where
     -- According to @man pkg-config@:
@@ -131,7 +130,7 @@ getPkgConfigDbDirs verbosity conf =
     -- > pkg-config --variable pc_path pkg-config
     --
     getDefPath = handle ioErrorHandler $ do
-      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
+      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
       parseSearchPath <$>
         getProgramOutput verbosity pkgConfig
                          ["--variable", "pc_path", "pkg-config"]

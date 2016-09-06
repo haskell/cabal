@@ -148,7 +148,7 @@ import Distribution.Simple.Configure
          , ConfigStateFileError(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Program (defaultProgramConfiguration
+import Distribution.Simple.Program (defaultProgramDb
                                    ,configureAllKnownPrograms
                                    ,simpleProgramInvocation
                                    ,getProgramInvocationOutput)
@@ -330,7 +330,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAuxEx configFlags'
+  (comp, platform, progdb) <- configCompilerAuxEx configFlags'
 
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
@@ -341,7 +341,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
                                    comp platform configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
-    initPackageDBIfNeeded verbosity configFlags'' comp conf
+    initPackageDBIfNeeded verbosity configFlags'' comp progdb
     -- NOTE: We do not write the new sandbox package DB location to
     -- 'cabal.sandbox.config' here because 'configure -w' must not affect
     -- subsequent 'install' (for UI compatibility with non-sandboxed mode).
@@ -355,7 +355,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
     configure verbosity
               (configPackageDB' configFlags'')
               repoContext
-              comp platform conf configFlags'' configExFlags' extraArgs
+              comp platform progdb configFlags'' configExFlags' extraArgs
 
 buildAction :: (BuildFlags, BuildExFlags) -> [String] -> Action
 buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
@@ -380,9 +380,9 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
-               (Cabal.buildCommand progConf) mkBuildFlags extraArgs
+               (Cabal.buildCommand progDb) mkBuildFlags extraArgs
   where
-    progConf     = defaultProgramConfiguration
+    progDb       = defaultProgramDb
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
     mkBuildFlags version = filterBuildFlags version config buildFlags'
@@ -432,7 +432,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
         reconfigure verbosity (replDistPref replFlags)
                     mempty [] globalFlags noAddSource NoFlag
                     (const Nothing)
-      let progConf     = defaultProgramConfiguration
+      let progDb       = defaultProgramDb
           setupOptions = defaultSetupScriptOptions
             { useCabalVersion = orLaterVersion $ Version [1,18,0] []
             , useDistPref     = distPref
@@ -444,7 +444,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
 
       maybeWithSandboxDirOnSearchPath useSandbox $
         setupWrapper verbosity setupOptions Nothing
-        (Cabal.replCommand progConf) (const replFlags') extraArgs
+        (Cabal.replCommand progDb) (const replFlags') extraArgs
 
     -- No .cabal file in the current directory: just start the REPL (possibly
     -- using the sandbox package DB).
@@ -738,10 +738,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         savedHaddockFlags     config `mappend`
                         haddockFlags { haddockDistPref = toFlag distPref }
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAux' configFlags'
+  (comp, platform, progdb) <- configCompilerAux' configFlags'
   -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the
   -- future.
-  conf' <- configureAllKnownPrograms verbosity conf
+  progdb' <- configureAllKnownPrograms verbosity progdb
 
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
@@ -752,7 +752,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                                                      configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
-    initPackageDBIfNeeded verbosity configFlags'' comp conf'
+    initPackageDBIfNeeded verbosity configFlags'' comp progdb'
 
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
@@ -764,13 +764,13 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- 'some-package'. This can also prevent packages that depend on older
   -- versions of add-source'd packages from building (see #1362).
   maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
-                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              comp platform progdb useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
     withRepoContext verbosity globalFlags' $ \repoContext ->
       install verbosity
               (configPackageDB' configFlags'')
               repoContext
-              comp platform conf'
+              comp platform progdb'
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
               installFlags' haddockFlags'
@@ -938,13 +938,13 @@ listAction listFlags extraArgs globalFlags = do
                            `mappend` listPackageDBs listFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags
+  (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.list verbosity
        (configPackageDB' configFlags)
        repoContext
        comp
-       conf
+       progdb
        listFlags
        extraArgs
 
@@ -960,13 +960,13 @@ infoAction infoFlags extraArgs globalFlags = do
                            `mappend` infoPackageDBs infoFlags
         }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAuxEx configFlags
+  (comp, _, progdb) <- configCompilerAuxEx configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     List.info verbosity
        (configPackageDB' configFlags)
        repoContext
        comp
-       conf
+       progdb
        globalFlags'
        infoFlags
        targets
@@ -1004,12 +1004,12 @@ fetchAction fetchFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags)
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAux' configFlags
+  (comp, platform, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     fetch verbosity
         (configPackageDB' configFlags)
         repoContext
-        comp platform conf globalFlags' fetchFlags
+        comp platform progdb globalFlags' fetchFlags
         targets
 
 freezeAction :: FreezeFlags -> [String] -> Action
@@ -1018,16 +1018,16 @@ freezeAction freezeFlags _extraArgs globalFlags = do
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAux' configFlags
+  (comp, platform, progdb) <- configCompilerAux' configFlags
 
   maybeWithSandboxPackageInfo verbosity configFlags globalFlags'
-                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              comp platform progdb useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
     withRepoContext verbosity globalFlags' $ \repoContext ->
       freeze verbosity
             (configPackageDB' configFlags)
             repoContext
-            comp platform conf
+            comp platform progdb
             mSandboxPkgInfo
             globalFlags' freezeFlags
 
@@ -1037,16 +1037,16 @@ genBoundsAction freezeFlags _extraArgs globalFlags = do
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAux' configFlags
+  (comp, platform, progdb) <- configCompilerAux' configFlags
 
   maybeWithSandboxPackageInfo verbosity configFlags globalFlags'
-                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              comp platform progdb useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
     withRepoContext verbosity globalFlags' $ \repoContext ->
       genBounds verbosity
             (configPackageDB' configFlags)
             repoContext
-            comp platform conf
+            comp platform progdb
             mSandboxPkgInfo
             globalFlags' freezeFlags
 
@@ -1218,13 +1218,13 @@ initAction initFlags extraArgs globalFlags = do
                            (globalFlags { globalRequireSandbox = Flag False })
   let configFlags  = savedConfigureFlags config
   let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags
+  (comp, _, progdb) <- configCompilerAux' configFlags
   withRepoContext verbosity globalFlags' $ \repoContext ->
     initCabal verbosity
             (configPackageDB' configFlags)
             repoContext
             comp
-            conf
+            progdb
             initFlags
 
 sandboxAction :: SandboxFlags -> [String] -> Action
@@ -1267,8 +1267,8 @@ execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
   let configFlags = savedConfigureFlags config
-  (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
-  exec verbosity useSandbox comp platform conf extraArgs
+  (comp, platform, progdb) <- getPersistOrConfigCompiler configFlags
+  exec verbosity useSandbox comp platform progdb extraArgs
 
 userConfigAction :: UserConfigFlags -> [String] -> Action
 userConfigAction ucflags extraArgs globalFlags = do

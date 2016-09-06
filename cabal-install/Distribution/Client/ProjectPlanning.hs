@@ -470,7 +470,7 @@ rebuildInstallPlan verbosity
         rerunIfChanged verbosity fileMonitorSolverPlan
                        (solverSettings, cabalPackageCacheDirectory,
                         localPackages, localPackagesEnabledStanzas,
-                        compiler, platform, programsDbSignature progdb) $ do
+                        compiler, platform, programDbSignature progdb) $ do
 
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
@@ -634,8 +634,8 @@ programsMonitorFiles progdb =
 -- | Select the bits of a 'ProgramDb' to monitor for value changes.
 -- Use 'programsMonitorFiles' for the files to monitor.
 --
-programsDbSignature :: ProgramDb -> [ConfiguredProgram]
-programsDbSignature progdb =
+programDbSignature :: ProgramDb -> [ConfiguredProgram]
+programDbSignature progdb =
     [ prog { programMonitorFiles = []
            , programOverrideEnv  = filter ((/="PATH") . fst)
                                           (programOverrideEnv prog) }
@@ -2170,10 +2170,11 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
       useDependencies          = [ (uid, srcid)
-                                 | ConfiguredId srcid uid <- elabSetupDependencies elab ],
+                                 | ConfiguredId srcid uid
+                                 <- elabSetupDependencies elab ],
       useDependenciesExclusive = True,
       useVersionMacros         = elabSetupScriptStyle == SetupCustomExplicitDeps,
-      useProgramConfig         = pkgConfigCompilerProgs,
+      useProgramDb             = pkgConfigCompilerProgs,
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,

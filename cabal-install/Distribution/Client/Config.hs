@@ -65,7 +65,7 @@ import Distribution.Simple.Setup
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
          , installDirsOptions, optionDistPref
-         , programConfigurationPaths', programConfigurationOptions
+         , programDbPaths', programDbOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
@@ -89,7 +89,7 @@ import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
          , viewAsFieldDescr )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration )
+         ( defaultProgramDb )
 import Distribution.Simple.Utils
          ( die, notice, warn, lowercase, cabalVersion )
 import Distribution.Compiler
@@ -634,7 +634,7 @@ commentSavedConfig = do
     savedGlobalFlags       = defaultGlobalFlags,
     savedInstallFlags      = defaultInstallFlags,
     savedConfigureExFlags  = defaultConfigExFlags,
-    savedConfigureFlags    = (defaultConfigFlags defaultProgramConfiguration) {
+    savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
       configUserInstall    = toFlag defaultUserInstall,
       configAllowNewer     = Just (AllowNewer RelaxDepsNone),
       configAllowOlder     = Just (AllowOlder RelaxDepsNone)
@@ -1047,14 +1047,14 @@ haddockFlagsFields = [ field
 withProgramsFields :: [FieldDescr [(String, FilePath)]]
 withProgramsFields =
   map viewAsFieldDescr $
-  programConfigurationPaths' (++ "-location") defaultProgramConfiguration
+  programDbPaths' (++ "-location") defaultProgramDb
                              ParseArgs id (++)
 
 -- | Fields for the 'program-default-options' section.
 withProgramOptionsFields :: [FieldDescr [(String, [String])]]
 withProgramOptionsFields =
   map viewAsFieldDescr $
-  programConfigurationOptions defaultProgramConfiguration ParseArgs id (++)
+  programDbOptions defaultProgramDb ParseArgs id (++)
 
 -- | Get the differences (as a pseudo code diff) between the user's
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.

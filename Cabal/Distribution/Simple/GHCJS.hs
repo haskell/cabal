@@ -53,24 +53,24 @@ import System.FilePath          ( (</>), (<.>), takeExtension
 import Distribution.Compat.Environment ( lookupEnv )
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration
-          -> IO (Compiler, Maybe Platform, ProgramConfiguration)
-configure verbosity hcPath hcPkgPath conf0 = do
-  (ghcjsProg, ghcjsVersion, conf1) <-
+          -> ProgramDb
+          -> IO (Compiler, Maybe Platform, ProgramDb)
+configure verbosity hcPath hcPkgPath progdb0 = do
+  (ghcjsProg, ghcjsVersion, progdb1) <-
     requireProgramVersion verbosity ghcjsProgram
       (orLaterVersion (Version [0,1] []))
-      (userMaybeSpecifyPath "ghcjs" hcPath conf0)
+      (userMaybeSpecifyPath "ghcjs" hcPath progdb0)
   Just ghcjsGhcVersion <- findGhcjsGhcVersion verbosity (programPath ghcjsProg)
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
 
   -- This is slightly tricky, we have to configure ghcjs first, then we use the
   -- location of ghcjs to help find ghcjs-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcjsPkgProg, ghcjsPkgVersion, conf2) <-
+  (ghcjsPkgProg, ghcjsPkgVersion, progdb2) <-
     requireProgramVersion verbosity ghcjsPkgProgram {
       programFindLocation = guessGhcjsPkgFromGhcjsPath ghcjsProg
     }
-    anyVersion (userMaybeSpecifyPath "ghcjs-pkg" hcPkgPath conf1)
+    anyVersion (userMaybeSpecifyPath "ghcjs-pkg" hcPkgPath progdb1)
 
   Just ghcjsPkgGhcjsVersion <- findGhcjsPkgGhcjsVersion
                                   verbosity (programPath ghcjsPkgProg)
@@ -98,7 +98,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
       haddockProgram' =
         haddockProgram { programFindLocation =
                           guessHaddockFromGhcjsPath ghcjsProg }
-      conf3 = addKnownPrograms [ hsc2hsProgram', c2hsProgram', haddockProgram' ] conf2
+      progdb3 = addKnownPrograms [ hsc2hsProgram', c2hsProgram', haddockProgram' ] progdb2
 
   languages  <- Internal.getLanguages  verbosity implInfo ghcjsProg
   extensions <- Internal.getExtensions verbosity implInfo ghcjsProg
@@ -117,11 +117,11 @@ configure verbosity hcPath hcPkgPath conf0 = do
       }
       compPlatform = Internal.targetPlatform ghcInfo
   -- configure gcc and ld
-  let conf4 = if ghcjsNativeToo comp
+  let progdb4 = if ghcjsNativeToo comp
                      then Internal.configureToolchain implInfo
-                            ghcjsProg ghcInfoMap conf3
-                     else conf3
-  return (comp, compPlatform, conf4)
+                            ghcjsProg ghcInfoMap progdb3
+                     else progdb3
+  return (comp, compPlatform, progdb4)
 
 ghcjsNativeToo :: Compiler -> Bool
 ghcjsNativeToo = Internal.ghcLookupProperty "Native Too"
@@ -179,29 +179,29 @@ guessToolFromGhcjsPath tool ghcjsProg verbosity searchpath
                             reverse
 
 -- | Given a single package DB, return all installed packages.
-getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
+getPackageDBContents :: Verbosity -> PackageDB -> ProgramDb
                      -> IO InstalledPackageIndex
-getPackageDBContents verbosity packagedb conf = do
-  pkgss <- getInstalledPackages' verbosity [packagedb] conf
-  toPackageIndex verbosity pkgss conf
+getPackageDBContents verbosity packagedb progdb = do
+  pkgss <- getInstalledPackages' verbosity [packagedb] progdb
+  toPackageIndex verbosity pkgss progdb
 
 -- | Given a package DB stack, return all installed packages.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf = do
+getInstalledPackages verbosity packagedbs progdb = do
   checkPackageDbStack packagedbs
   envPackageDBs <- maybe []
                    (map SpecificPackageDB . unintersperse searchPathSeparator)
                    <$> lookupEnv "GHCJS_PACKAGE_PATH"
-  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) conf
-  index <- toPackageIndex verbosity pkgss conf
+  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) progdb
+  index <- toPackageIndex verbosity pkgss progdb
   return $! index
 
 toPackageIndex :: Verbosity
                -> [(PackageDB, [InstalledPackageInfo])]
-               -> ProgramConfiguration
+               -> ProgramDb
                -> IO InstalledPackageIndex
-toPackageIndex verbosity pkgss conf = do
+toPackageIndex verbosity pkgss progdb = do
   -- On Windows, various fields have $topdir/foo rather than full
   -- paths. We need to substitute the right value in so that when
   -- we, for example, call gcc, we have proper paths to give it.
@@ -211,7 +211,7 @@ toPackageIndex verbosity pkgss conf = do
   return $! (mconcat indices)
 
   where
-    Just ghcjsProg = lookupProgram ghcjsProgram conf
+    Just ghcjsProg = lookupProgram ghcjsProgram progdb
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
@@ -225,30 +225,30 @@ checkPackageDbStack _ =
   die $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
-getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
+getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                       -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs conf =
+getInstalledPackages' verbosity packagedbs progdb =
   sequenceA
-    [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
+    [ do pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdoutConf verbosity ghcjsProgram
+     getDbProgramOutput verbosity ghcjsProgram
      (withPrograms lbi) ["--print-libdir"]
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcjsProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcjsProg ["--print-libdir"]
+     getProgramOutput verbosity ghcjsProg ["--print-libdir"]
 
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcjsProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcjsProg ["--print-global-package-db"]
+     getProgramOutput verbosity ghcjsProg ["--print-global-package-db"]
 
 toJSLibName :: String -> String
 toJSLibName lib
@@ -489,15 +489,15 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         runGhcjsProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
-startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler -> Platform
+startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
-startInterpreter verbosity conf comp platform packageDBs = do
+startInterpreter verbosity progdb comp platform packageDBs = do
   let replOpts = mempty {
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack packageDBs
-  (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram conf
+  (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram progdb
   runGHC verbosity ghcjsProg comp platform replOpts
 
 buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
@@ -756,7 +756,7 @@ installExe verbosity lbi installDirs buildPref
   let exeFileName = exeName exe
       fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
       installBinary dest = do
-        rawSystemProgramConf verbosity ghcjsProgram (withPrograms lbi) $
+        runDbProgram verbosity ghcjsProgram (withPrograms lbi) $
           [ "--install-executable"
           , buildPref </> exeName exe </> exeFileName
           , "-o", dest
@@ -799,7 +799,7 @@ adjustExts hiSuf objSuf opts =
   }
 
 registerPackage :: Verbosity
-                -> ProgramConfiguration
+                -> ProgramDb
                 -> HcPkg.MultiInstance
                 -> PackageDBStack
                 -> InstalledPackageInfo
@@ -847,31 +847,31 @@ findGhcjsPkgGhcjsVersion verbosity pgm =
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
-hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
-                                 , HcPkg.noPkgDbStack    = False
-                                 , HcPkg.noVerboseFlag   = False
-                                 , HcPkg.flagPackageConf = False
-                                 , HcPkg.supportsDirDbs  = True
-                                 , HcPkg.requiresDirDbs  = v >= [7,10]
-                                 , HcPkg.nativeMultiInstance  = v >= [7,10]
-                                 , HcPkg.recacheMultiInstance = True
-                                 }
+hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
+hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
+                                   , HcPkg.noPkgDbStack    = False
+                                   , HcPkg.noVerboseFlag   = False
+                                   , HcPkg.flagPackageConf = False
+                                   , HcPkg.supportsDirDbs  = True
+                                   , HcPkg.requiresDirDbs  = v >= [7,10]
+                                   , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                   , HcPkg.recacheMultiInstance = True
+                                   }
   where
     v                 = versionBranch ver
-    Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram conf
+    Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram progdb
     Just ver          = programVersion ghcjsPkgProg
 
 -- | Get the JavaScript file name and command and arguments to run a
 --   program compiled by GHCJS
 --   the exe should be the base program name without exe extension
-runCmd :: ProgramConfiguration -> FilePath
+runCmd :: ProgramDb -> FilePath
             -> (FilePath, FilePath, [String])
-runCmd conf exe =
+runCmd progdb exe =
   ( script
   , programPath ghcjsProg
   , programDefaultArgs ghcjsProg ++ programOverrideArgs ghcjsProg ++ ["--run"]
   )
   where
     script = exe <.> "jsexe" </> "all" <.> "js"
-    Just ghcjsProg = lookupProgram ghcjsProgram conf
+    Just ghcjsProg = lookupProgram ghcjsProgram progdb

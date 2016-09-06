@@ -86,7 +86,7 @@ import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , findDistPref )
 import qualified Distribution.Simple.LocalBuildInfo as LocalBuildInfo
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
-import Distribution.Simple.Program            ( ProgramConfiguration )
+import Distribution.Simple.Program            ( ProgramDb )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
                                               , fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.SrcDist            ( prepareTree )
@@ -250,11 +250,11 @@ getSandboxPackageDB configFlags = do
 
 -- | Which packages are installed in the sandbox package DB?
 getInstalledPackagesInSandbox :: Verbosity -> ConfigFlags
-                                 -> Compiler -> ProgramConfiguration
+                                 -> Compiler -> ProgramDb
                                  -> IO InstalledPackageIndex
-getInstalledPackagesInSandbox verbosity configFlags comp conf = do
+getInstalledPackagesInSandbox verbosity configFlags comp progdb = do
     sandboxDB <- getSandboxPackageDB configFlags
-    getPackageDBContents verbosity comp sandboxDB conf
+    getPackageDBContents verbosity comp sandboxDB progdb
 
 -- | Temporarily add $SANDBOX_DIR/bin to $PATH.
 withSandboxBinDirOnSearchPath :: FilePath -> IO a -> IO a
@@ -282,13 +282,13 @@ withSandboxBinDirOnSearchPath sandboxDir = bracket_ addBinDir rmBinDir
 
 -- | Initialise a package DB for this compiler if it doesn't exist.
 initPackageDBIfNeeded :: Verbosity -> ConfigFlags
-                         -> Compiler -> ProgramConfiguration
+                         -> Compiler -> ProgramDb
                          -> IO ()
-initPackageDBIfNeeded verbosity configFlags comp conf = do
+initPackageDBIfNeeded verbosity configFlags comp progdb = do
   SpecificPackageDB dbPath <- getSandboxPackageDB configFlags
   packageDBExists <- doesDirectoryExist dbPath
   unless packageDBExists $
-    Register.initPackageDB verbosity comp conf dbPath
+    Register.initPackageDB verbosity comp progdb dbPath
   when packageDBExists $
     debug verbosity $ "The package database already exists: " ++ dbPath
 
@@ -320,7 +320,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig <- loadConfig verbosity (globalConfigFile globalFlags)
-  (comp, platform, conf) <- configCompilerAuxEx (savedConfigureFlags userConfig)
+  (comp, platform, progdb) <- configCompilerAuxEx (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags
@@ -338,7 +338,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   Index.createEmpty verbosity indexFile
 
   -- Create the package DB for the default compiler.
-  initPackageDBIfNeeded verbosity configFlags comp conf
+  initPackageDBIfNeeded verbosity configFlags comp progdb
   maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
     (compilerId comp) platform
 
@@ -553,10 +553,10 @@ sandboxHcPkg verbosity _sandboxFlags globalFlags extraArgs = do
   let configFlags = savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv
   -- Invoke hc-pkg for the most recently configured compiler (if any),
   -- using the right package-db for the compiler (see #1935).
-  (comp, platform, conf) <- getPersistOrConfigCompiler configFlags
+  (comp, platform, progdb) <- getPersistOrConfigCompiler configFlags
   let dir         = sandboxPackageDBPath sandboxDir comp platform
       dbStack     = [GlobalPackageDB, SpecificPackageDB dir]
-  Register.invokeHcPkg verbosity comp conf dbStack extraArgs
+  Register.invokeHcPkg verbosity comp progdb dbStack extraArgs
 
 updateInstallDirs :: Flag Bool
                   -> (UseSandbox, SavedConfig) -> (UseSandbox, SavedConfig)
@@ -675,18 +675,18 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
                             { configDistPref  = Flag sandboxDistPref }
       haddockFlags        = mempty
                             { haddockDistPref = Flag sandboxDistPref }
-  (comp, platform, conf) <- configCompilerAux' configFlags
-  retVal                 <- newIORef NoDepsReinstalled
+  (comp, platform, progdb) <- configCompilerAux' configFlags
+  retVal                   <- newIORef NoDepsReinstalled
 
   withSandboxPackageInfo verbosity configFlags globalFlags
-                         comp platform conf sandboxDir $ \sandboxPkgInfo ->
+                         comp platform progdb sandboxDir $ \sandboxPkgInfo ->
     unless (null $ modifiedAddSourceDependencies sandboxPkgInfo) $ do
 
      withRepoContext verbosity globalFlags $ \repoContext -> do
       let args :: InstallArgs
           args = ((configPackageDB' configFlags)
                  ,repoContext
-                 ,comp, platform, conf
+                 ,comp, platform, progdb
                  ,UseSandbox sandboxDir, Just sandboxPkgInfo
                  ,globalFlags, configFlags, configExFlags, installFlags
                  ,haddockFlags)
@@ -723,12 +723,12 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
 -- we don't update the timestamp file here - this is done in
 -- 'postInstallActions'.
 withSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
-                          -> Compiler -> Platform -> ProgramConfiguration
+                          -> Compiler -> Platform -> ProgramDb
                           -> FilePath
                           -> (SandboxPackageInfo -> IO ())
                           -> IO ()
 withSandboxPackageInfo verbosity configFlags globalFlags
-                       comp platform conf sandboxDir cont = do
+                       comp platform progdb sandboxDir cont = do
   -- List all add-source deps.
   indexFile              <- tryGetIndexFilePath' globalFlags
   buildTreeRefs          <- Index.listBuildTreeRefs verbosity
@@ -737,7 +737,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
 
   -- List all packages installed in the sandbox.
   installedPkgIndex <- getInstalledPackagesInSandbox verbosity
-                       configFlags comp conf
+                       configFlags comp progdb
   let err = "Error reading sandbox package information."
   -- Get the package descriptions for all add-source deps.
   depsCabalFiles <- mapM (flip tryFindAddSourcePackageDesc err) buildTreeRefs
@@ -777,17 +777,17 @@ withSandboxPackageInfo verbosity configFlags globalFlags
 -- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and the
 -- identity otherwise.
 maybeWithSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
-                               -> Compiler -> Platform -> ProgramConfiguration
+                               -> Compiler -> Platform -> ProgramDb
                                -> UseSandbox
                                -> (Maybe SandboxPackageInfo -> IO ())
                                -> IO ()
 maybeWithSandboxPackageInfo verbosity configFlags globalFlags
-                            comp platform conf useSandbox cont =
+                            comp platform progdb useSandbox cont =
   case useSandbox of
     NoSandbox             -> cont Nothing
     UseSandbox sandboxDir -> withSandboxPackageInfo verbosity
                              configFlags globalFlags
-                             comp platform conf sandboxDir
+                             comp platform progdb sandboxDir
                              (\spi -> cont (Just spi))
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
@@ -866,7 +866,7 @@ configPackageDB' cfg =
     userInstall = fromFlagOrDefault True (configUserInstall cfg)
 
 configCompilerAux' :: ConfigFlags
-                   -> IO (Compiler, Platform, ProgramConfiguration)
+                   -> IO (Compiler, Platform, ProgramDb)
 configCompilerAux' configFlags =
   configCompilerAuxEx configFlags
     --FIXME: make configCompilerAux use a sensible verbosity
@@ -876,7 +876,7 @@ configCompilerAux' configFlags =
 -- 'localBuildInfoFile', falling back on 'configCompilerAuxEx' if it
 -- cannot be read.
 getPersistOrConfigCompiler :: ConfigFlags
-                           -> IO (Compiler, Platform, ProgramConfiguration)
+                           -> IO (Compiler, Platform, ProgramDb)
 getPersistOrConfigCompiler configFlags = do
   distPref <- findDistPrefOrDefault (configDistPref configFlags)
   mlbi <- maybeGetPersistBuildConfig distPref

@@ -101,11 +101,11 @@ import qualified System.Info
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration
-          -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramDb
+          -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
 
-  (ghcProg, ghcVersion, conf1) <-
+  (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion verbosity ghcProgram
       (orLaterVersion (Version [6,11] []))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
@@ -114,11 +114,11 @@ configure verbosity hcPath hcPkgPath conf0 = do
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, ghcPkgVersion, conf2) <-
+  (ghcPkgProg, ghcPkgVersion, progdb2) <-
     requireProgramVersion verbosity ghcPkgProgram {
       programFindLocation = guessGhcPkgFromGhcPath ghcProg
     }
-    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf1)
+    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
 
   when (ghcVersion /= ghcPkgVersion) $ die $
        "Version mismatch between ghc and ghc-pkg: "
@@ -135,9 +135,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       hpcProgram' = hpcProgram {
                         programFindLocation = guessHpcFromGhcPath ghcProg
                     }
-      conf3 = addKnownProgram haddockProgram' $
+      progdb3 = addKnownProgram haddockProgram' $
               addKnownProgram hsc2hsProgram' $
-              addKnownProgram hpcProgram' conf2
+              addKnownProgram hpcProgram' progdb2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
@@ -165,8 +165,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
       }
       compPlatform = Internal.targetPlatform ghcInfo
       -- configure gcc and ld
-      conf4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap conf3
-  return (comp, compPlatform, conf4)
+      progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
+  return (comp, compPlatform, progdb4)
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
@@ -273,23 +273,23 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
     implInfo = ghcVersionImplInfo version
 
 -- | Given a single package DB, return all installed packages.
-getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
+getPackageDBContents :: Verbosity -> PackageDB -> ProgramDb
                         -> IO InstalledPackageIndex
-getPackageDBContents verbosity packagedb conf = do
-  pkgss <- getInstalledPackages' verbosity [packagedb] conf
-  toPackageIndex verbosity pkgss conf
+getPackageDBContents verbosity packagedb progdb = do
+  pkgss <- getInstalledPackages' verbosity [packagedb] progdb
+  toPackageIndex verbosity pkgss progdb
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs progdb = do
   checkPackageDbStack comp packagedbs
   envPackageDBs <- maybe []
                    (map SpecificPackageDB . unintersperse searchPathSeparator)
                    <$> lookupEnv "GHC_PACKAGE_PATH"
-  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) conf
-  index <- toPackageIndex verbosity pkgss conf
+  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) progdb
+  index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
 
   where
@@ -305,9 +305,9 @@ getInstalledPackages verbosity comp packagedbs conf = do
 -- 'getInstalledPackages'.
 toPackageIndex :: Verbosity
                -> [(PackageDB, [InstalledPackageInfo])]
-               -> ProgramConfiguration
+               -> ProgramDb
                -> IO InstalledPackageIndex
-toPackageIndex verbosity pkgss conf = do
+toPackageIndex verbosity pkgss progdb = do
   -- On Windows, various fields have $topdir/foo rather than full
   -- paths. We need to substitute the right value in so that when
   -- we, for example, call gcc, we have proper paths to give it.
@@ -317,25 +317,25 @@ toPackageIndex verbosity pkgss conf = do
   return $! mconcat indices
 
   where
-    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcProg = lookupProgram ghcProgram progdb
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdoutConf verbosity ghcProgram
+     getDbProgramOutput verbosity ghcProgram
      (withPrograms lbi) ["--print-libdir"]
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
+     getProgramOutput verbosity ghcProg ["--print-libdir"]
 
 
 -- | Return the 'FilePath' to the global GHC package database.
 getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
-     rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
+     getProgramOutput verbosity ghcProg ["--print-global-package-db"]
 
 -- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> IO FilePath
@@ -392,21 +392,21 @@ removeMingwIncludeDir pkg =
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
-getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
+getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                      -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs conf
+getInstalledPackages' verbosity packagedbs progdb
   | ghcVersion >= Version [6,9] [] =
   sequenceA
-    [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
+    [ do pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
 
   where
-    Just ghcProg    = lookupProgram ghcProgram conf
+    Just ghcProg    = lookupProgram ghcProgram progdb
     Just ghcVersion = programVersion ghcProg
 
-getInstalledPackages' verbosity packagedbs conf = do
-    str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf ["list"]
+getInstalledPackages' verbosity packagedbs progdb = do
+    str <- getDbProgramOutput verbosity ghcPkgProgram progdb ["list"]
     let pkgFiles = [ init line | line <- lines str, last line == ':' ]
         dbFile packagedb = case (packagedb, pkgFiles) of
           (GlobalPackageDB, global:_)      -> return $ Just global
@@ -431,12 +431,12 @@ getInstalledPackages' verbosity packagedbs conf = do
       -- We dropped support for 6.4.2 and earlier.
       | otherwise
       = \file _ -> failToRead file
-    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcProg = lookupProgram ghcProgram progdb
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
 
 getInstalledPackagesMonitorFiles :: Verbosity -> Platform
-                                 -> ProgramConfiguration
+                                 -> ProgramDb
                                  -> [PackageDB]
                                  -> IO [FilePath]
 getInstalledPackagesMonitorFiles verbosity platform progdb =
@@ -753,15 +753,15 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         runGhcProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
-startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler -> Platform
+startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
-startInterpreter verbosity conf comp platform packageDBs = do
+startInterpreter verbosity progdb comp platform packageDBs = do
   let replOpts = mempty {
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack comp packageDBs
-  (ghcProg, _) <- requireProgram verbosity ghcProgram conf
+  (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
   runGHC verbosity ghcProg comp platform replOpts
 
 -- | Build an executable with GHC.
@@ -1188,24 +1188,24 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 -- -----------------------------------------------------------------------------
 -- Registering
 
-hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
-hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
-                                 , HcPkg.noPkgDbStack    = v < [6,9]
-                                 , HcPkg.noVerboseFlag   = v < [6,11]
-                                 , HcPkg.flagPackageConf = v < [7,5]
-                                 , HcPkg.supportsDirDbs  = v >= [6,8]
-                                 , HcPkg.requiresDirDbs  = v >= [7,10]
-                                 , HcPkg.nativeMultiInstance  = v >= [7,10]
-                                 , HcPkg.recacheMultiInstance = v >= [6,12]
-                                 }
+hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
+hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
+                                   , HcPkg.noPkgDbStack    = v < [6,9]
+                                   , HcPkg.noVerboseFlag   = v < [6,11]
+                                   , HcPkg.flagPackageConf = v < [7,5]
+                                   , HcPkg.supportsDirDbs  = v >= [6,8]
+                                   , HcPkg.requiresDirDbs  = v >= [7,10]
+                                   , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                   , HcPkg.recacheMultiInstance = v >= [6,12]
+                                   }
   where
     v               = versionBranch ver
-    Just ghcPkgProg = lookupProgram ghcPkgProgram conf
+    Just ghcPkgProg = lookupProgram ghcPkgProgram progdb
     Just ver        = programVersion ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> ProgramConfiguration
+  -> ProgramDb
   -> HcPkg.MultiInstance
   -> PackageDBStack
   -> InstalledPackageInfo

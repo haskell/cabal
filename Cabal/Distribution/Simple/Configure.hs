@@ -316,7 +316,8 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0', pbi) cfg = do
     let pkg_descr0 =
-          -- Ignore '--allow-{older,newer}' when we're given '--exact-configuration'.
+          -- Ignore '--allow-{older,newer}' when we're given
+          -- '--exact-configuration'.
           if fromFlagOrDefault False (configExactConfiguration cfg)
           then pkg_descr0'
           else relaxPackageDeps removeLowerBound
@@ -373,22 +374,22 @@ configure (pkg_descr0', pbi) cfg = do
 
     -- comp:            the compiler we're building with
     -- compPlatform:    the platform we're building for
-    -- programsConfig:  location and args of all programs we're
+    -- programDb:  location and args of all programs we're
     --                  building with
-    (comp           :: Compiler,
-     compPlatform   :: Platform,
-     programsConfig :: ProgramConfiguration)
+    (comp         :: Compiler,
+     compPlatform :: Platform,
+     programDb    :: ProgramDb)
         <- configCompilerEx
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
             (flagToMaybe (configHcPkg cfg))
-            (mkProgramsConfig cfg (configPrograms cfg))
+            (mkProgramDb cfg (configPrograms cfg))
             (lessVerbose verbosity)
 
     -- The InstalledPackageIndex of all installed packages
     installedPackageSet :: InstalledPackageIndex
         <- getInstalledPackages (lessVerbose verbosity) comp
-                                  packageDbs programsConfig
+                                  packageDbs programDb
 
     -- The set of package names which are "shadowed" by internal
     -- packages, and which component they map to
@@ -401,9 +402,11 @@ configure (pkg_descr0', pbi) cfg = do
                     Just cname -> OneComponentEnabledSpec cname
                     Nothing -> ComponentEnabledSpec
                                 { testsEnabled = fromFlag (configTests cfg)
-                                , benchmarksEnabled = fromFlag (configBenchmarks cfg) }
+                                , benchmarksEnabled =
+                                  fromFlag (configBenchmarks cfg) }
     -- Some sanity checks related to enabling components.
-    when (isJust mb_cname && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
+    when (isJust mb_cname
+          && (fromFlag (configTests cfg) || fromFlag (configBenchmarks cfg))) $
         die $ "--enable-tests/--enable-benchmarks are incompatible with" ++
               " explicitly specifying a component to configure."
 
@@ -606,12 +609,12 @@ configure (pkg_descr0', pbi) cfg = do
                  && packageVersion pkg_descr `withinRange` reqVer
           , not isInternal ]
 
-    programsConfig' <-
-          configureAllKnownPrograms (lessVerbose verbosity) programsConfig
+    programDb' <-
+          configureAllKnownPrograms (lessVerbose verbosity) programDb
       >>= configureRequiredPrograms verbosity requiredBuildTools
 
-    (pkg_descr', programsConfig'') <-
-      configurePkgconfigPackages verbosity pkg_descr programsConfig'
+    (pkg_descr', programDb'') <-
+      configurePkgconfigPackages verbosity pkg_descr programDb'
 
     -- Compute internal component graph
     --
@@ -693,7 +696,8 @@ configure (pkg_descr0', pbi) cfg = do
             else return True
 
     let buildComponentsMap =
-            foldl' (\m clbi -> Map.insertWith (++) (componentLocalName clbi) [clbi] m)
+            foldl' (\m clbi -> Map.insertWith (++)
+                               (componentLocalName clbi) [clbi] m)
                    Map.empty buildComponents
 
     let lbi = (configCoverage . configProf)
@@ -713,7 +717,7 @@ configure (pkg_descr0', pbi) cfg = do
                 installedPkgs       = packageDependsIndex,
                 pkgDescrFile        = Nothing,
                 localPkgDescr       = pkg_descr',
-                withPrograms        = programsConfig'',
+                withPrograms        = programDb'',
                 withVanillaLib      = fromFlag $ configVanillaLib cfg,
                 withSharedLib       = withSharedLib_,
                 withDynExe          = withDynExe_,
@@ -770,23 +774,23 @@ configure (pkg_descr0', pbi) cfg = do
     dirinfo "Configuration files" (sysconfdir dirs) (sysconfdir relative)
 
     sequence_ [ reportProgram verbosity prog configuredProg
-              | (prog, configuredProg) <- knownPrograms programsConfig'' ]
+              | (prog, configuredProg) <- knownPrograms programDb'' ]
 
     return lbi
 
     where
       verbosity = fromFlag (configVerbosity cfg)
 
-mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
-mkProgramsConfig cfg initialProgramsConfig = programsConfig
+mkProgramDb :: ConfigFlags -> ProgramDb -> ProgramDb
+mkProgramDb cfg initialProgramDb = programDb
   where
-    programsConfig = userSpecifyArgss (configProgramArgs cfg)
-                   . userSpecifyPaths (configProgramPaths cfg)
-                   . setProgramSearchPath searchpath
-                   $ initialProgramsConfig
-    searchpath     = getProgramSearchPath (initialProgramsConfig)
-                  ++ map ProgramSearchPathDir
-                     (fromNubList $ configProgramPathExtra cfg)
+    programDb  = userSpecifyArgss (configProgramArgs cfg)
+                 . userSpecifyPaths (configProgramPaths cfg)
+                 . setProgramSearchPath searchpath
+                 $ initialProgramDb
+    searchpath = getProgramSearchPath (initialProgramDb)
+                 ++ map ProgramSearchPathDir
+                 (fromNubList $ configProgramPathExtra cfg)
 
 -- -----------------------------------------------------------------------------
 -- Helper functions for configure
@@ -1159,7 +1163,8 @@ selectDependency :: PackageId -- ^ Package id of current package
                  -> Map PackageName InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to
                     -- use
-                 -> UseExternalInternalDeps -- ^ Are we configuring a single component?
+                 -> UseExternalInternalDeps -- ^ Are we configuring a
+                                            -- single component?
                  -> Dependency
                  -> Either FailedDependency ResolvedDependency
 selectDependency pkgid internalIndex installedIndex requiredDepsMap
@@ -1196,7 +1201,8 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         []   -> Left  $
                   case is_internal of
                     Just cname -> DependencyMissingInternal dep_pkgname
-                                    (computeCompatPackageName (packageName pkgid) cname)
+                                    (computeCompatPackageName
+                                     (packageName pkgid) cname)
                     Nothing -> DependencyNotExists dep_pkgname
         pkgs -> Right $ ExternalDependency dep $
                 case last pkgs of
@@ -1231,7 +1237,8 @@ reportFailedDependencies failed =
     reportFailedDependency (DependencyMissingInternal pkgname real_pkgname) =
          "internal dependency " ++ display pkgname ++ " not installed.\n"
       ++ "Perhaps you need to configure and install it first?\n"
-      ++ "(Munged package name we searched for was " ++ display real_pkgname ++ ")"
+      ++ "(Munged package name we searched for was "
+      ++ display real_pkgname ++ ")"
 
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
@@ -1239,9 +1246,9 @@ reportFailedDependencies failed =
 -- | List all installed packages in the given package databases.
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -- ^ The stack of package databases.
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packageDBs progconf = do
+getInstalledPackages verbosity comp packageDBs progdb = do
   when (null packageDBs) $
     die $ "No package databases have been specified. If you use "
        ++ "--package-db=clear, you must follow it with --package-db= "
@@ -1249,13 +1256,13 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progconf
-    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progconf
-    JHC   -> JHC.getInstalledPackages verbosity packageDBs progconf
-    LHC   -> LHC.getInstalledPackages verbosity packageDBs progconf
-    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progconf
+    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progdb
+    GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progdb
+    JHC   -> JHC.getInstalledPackages verbosity packageDBs progdb
+    LHC   -> LHC.getInstalledPackages verbosity packageDBs progdb
+    UHC   -> UHC.getInstalledPackages verbosity comp packageDBs progdb
     HaskellSuite {} ->
-      HaskellSuite.getInstalledPackages verbosity packageDBs progconf
+      HaskellSuite.getInstalledPackages verbosity packageDBs progdb
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
 
@@ -1266,15 +1273,15 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 -- on the package database stack in question.  However, when sandboxes
 -- are involved these sanity checks are not desirable.
 getPackageDBContents :: Verbosity -> Compiler
-                     -> PackageDB -> ProgramConfiguration
+                     -> PackageDB -> ProgramDb
                      -> IO InstalledPackageIndex
-getPackageDBContents verbosity comp packageDB progconf = do
+getPackageDBContents verbosity comp packageDB progdb = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC -> GHC.getPackageDBContents verbosity packageDB progconf
-    GHCJS -> GHCJS.getPackageDBContents verbosity packageDB progconf
+    GHC -> GHC.getPackageDBContents verbosity packageDB progdb
+    GHCJS -> GHCJS.getPackageDBContents verbosity packageDB progdb
     -- For other compilers, try to fall back on 'getInstalledPackages'.
-    _   -> getInstalledPackages verbosity comp [packageDB] progconf
+    _   -> getInstalledPackages verbosity comp [packageDB] progdb
 
 
 -- | A set of files (or directories) that can be monitored to detect when
@@ -1282,12 +1289,12 @@ getPackageDBContents verbosity comp packageDB progconf = do
 --
 getInstalledPackagesMonitorFiles :: Verbosity -> Compiler
                                  -> PackageDBStack
-                                 -> ProgramConfiguration -> Platform
+                                 -> ProgramDb -> Platform
                                  -> IO [FilePath]
-getInstalledPackagesMonitorFiles verbosity comp packageDBs progconf platform =
+getInstalledPackagesMonitorFiles verbosity comp packageDBs progdb platform =
   case compilerFlavor comp of
     GHC   -> GHC.getInstalledPackagesMonitorFiles
-               verbosity platform progconf packageDBs
+               verbosity platform progdb packageDBs
     other -> do
       warn verbosity $ "don't know how to find change monitoring files for "
                     ++ "the installed package databases for " ++ display other
@@ -1383,42 +1390,42 @@ combinedConstraints constraints dependencies installedPackages = do
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
-configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration
-                             -> IO ProgramConfiguration
-configureRequiredPrograms verbosity deps conf =
-  foldM (configureRequiredProgram verbosity) conf deps
+configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramDb
+                             -> IO ProgramDb
+configureRequiredPrograms verbosity deps progdb =
+  foldM (configureRequiredProgram verbosity) progdb deps
 
-configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency
-                            -> IO ProgramConfiguration
-configureRequiredProgram verbosity conf
+configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
+                            -> IO ProgramDb
+configureRequiredProgram verbosity progdb
   (Dependency (PackageName progName) verRange) =
-  case lookupKnownProgram progName conf of
+  case lookupKnownProgram progName progdb of
     Nothing ->
       -- Try to configure it as a 'simpleProgram' automatically
-      configureProgram verbosity (simpleProgram progName) conf
+      configureProgram verbosity (simpleProgram progName) progdb
     Just prog
       -- requireProgramVersion always requires the program have a version
       -- but if the user says "build-depends: foo" ie no version constraint
       -- then we should not fail if we cannot discover the program version.
       | verRange == anyVersion -> do
-          (_, conf') <- requireProgram verbosity prog conf
-          return conf'
+          (_, progdb') <- requireProgram verbosity prog progdb
+          return progdb'
       | otherwise -> do
-          (_, _, conf') <- requireProgramVersion verbosity prog verRange conf
-          return conf'
+          (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
+          return progdb'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
 
 configurePkgconfigPackages :: Verbosity -> PackageDescription
-                           -> ProgramConfiguration
-                           -> IO (PackageDescription, ProgramConfiguration)
-configurePkgconfigPackages verbosity pkg_descr conf
-  | null allpkgs = return (pkg_descr, conf)
+                           -> ProgramDb
+                           -> IO (PackageDescription, ProgramDb)
+configurePkgconfigPackages verbosity pkg_descr progdb
+  | null allpkgs = return (pkg_descr, progdb)
   | otherwise    = do
-    (_, _, conf') <- requireProgramVersion
+    (_, _, progdb') <- requireProgramVersion
                        (lessVerbose verbosity) pkgConfigProgram
-                       (orLaterVersion $ Version [0,9,0] []) conf
+                       (orLaterVersion $ Version [0,9,0] []) progdb
     traverse_ requirePkg allpkgs
     mlib' <- traverse addPkgConfigBILib (library pkg_descr)
     libs' <- traverse addPkgConfigBILib (subLibraries pkg_descr)
@@ -1428,12 +1435,12 @@ configurePkgconfigPackages verbosity pkg_descr conf
     let pkg_descr' = pkg_descr { library = mlib',
                                  subLibraries = libs', executables = exes',
                                  testSuites = tests', benchmarks = benches' }
-    return (pkg_descr', conf')
+    return (pkg_descr', progdb')
 
   where
     allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
-    pkgconfig = rawSystemProgramStdoutConf (lessVerbose verbosity)
-                  pkgConfigProgram conf
+    pkgconfig = getDbProgramOutput (lessVerbose verbosity)
+                  pkgConfigProgram progdb
 
     requirePkg dep@(Dependency (PackageName pkg) range) = do
       version <- pkgconfig ["--modversion", pkg]
@@ -1493,8 +1500,8 @@ configurePkgconfigPackages verbosity pkg_descr conf
 -- and similar package-specific programs like mysql-config, freealut-config etc.
 -- For example:
 --
--- > ccflags <- rawSystemProgramStdoutConf verbosity prog conf ["--cflags"]
--- > ldflags <- rawSystemProgramStdoutConf verbosity prog conf ["--libs"]
+-- > ccflags <- getDbProgramOutput verbosity prog progdb ["--cflags"]
+-- > ldflags <- getDbProgramOutput verbosity prog progdb ["--libs"]
 -- > return (ccldOptionsBuildInfo (words ccflags) (words ldflags))
 --
 ccLdOptionsBuildInfo :: [String] -> [String] -> BuildInfo
@@ -1514,30 +1521,30 @@ ccLdOptionsBuildInfo cflags ldflags =
 -- Determining the compiler details
 
 configCompilerAuxEx :: ConfigFlags
-                    -> IO (Compiler, Platform, ProgramConfiguration)
+                    -> IO (Compiler, Platform, ProgramDb)
 configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            (flagToMaybe $ configHcPath cfg)
                                            (flagToMaybe $ configHcPkg cfg)
-                                           programsConfig
+                                           programDb
                                            (fromFlag (configVerbosity cfg))
   where
-    programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
+    programDb = mkProgramDb cfg defaultProgramDb
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-                 -> ProgramConfiguration -> Verbosity
-                 -> IO (Compiler, Platform, ProgramConfiguration)
+                 -> ProgramDb -> Verbosity
+                 -> IO (Compiler, Platform, ProgramDb)
 configCompilerEx Nothing _ _ _ _ = die "Unknown compiler"
-configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
-  (comp, maybePlatform, programsConfig) <- case hcFlavor of
-    GHC   -> GHC.configure  verbosity hcPath hcPkg conf
-    GHCJS -> GHCJS.configure verbosity hcPath hcPkg conf
-    JHC   -> JHC.configure  verbosity hcPath hcPkg conf
-    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg conf
+configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
+  (comp, maybePlatform, programDb) <- case hcFlavor of
+    GHC   -> GHC.configure  verbosity hcPath hcPkg progdb
+    GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
+    JHC   -> JHC.configure  verbosity hcPath hcPkg progdb
+    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg progdb
                 LHC.configure  verbosity hcPath Nothing ghcConf
-    UHC   -> UHC.configure  verbosity hcPath hcPkg conf
-    HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg conf
+    UHC   -> UHC.configure  verbosity hcPath hcPkg progdb
+    HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die "Unknown compiler"
-  return (comp, fromMaybe buildPlatform maybePlatform, programsConfig)
+  return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
 -- Ideally we would like to not have separate configCompiler* and
 -- configCompiler*Ex sets of functions, but there are many custom setup scripts
@@ -1547,15 +1554,15 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
 {-# DEPRECATED configCompiler
     "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramConfiguration -> Verbosity
-               -> IO (Compiler, ProgramConfiguration)
-configCompiler mFlavor hcPath hcPkg conf verbosity =
-  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg conf verbosity
+               -> ProgramDb -> Verbosity
+               -> IO (Compiler, ProgramDb)
+configCompiler mFlavor hcPath hcPkg progdb verbosity =
+  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg progdb verbosity
 
 {-# DEPRECATED configCompilerAux
     "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
 configCompilerAux :: ConfigFlags
-                  -> IO (Compiler, ProgramConfiguration)
+                  -> IO (Compiler, ProgramDb)
 configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 -- -----------------------------------------------------------------------------
@@ -1773,8 +1780,8 @@ mkComponentsLocalBuildInfo :: ConfigFlags
                            -> [(Component, [ComponentName])]
                            -> FlagAssignment
                            -> IO [ComponentLocalBuildInfo]
-mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_descr
-                           internalPkgDeps externalPkgDeps
+mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
+                           pkg_descr internalPkgDeps externalPkgDeps
                            graph flagAssignment =
     foldM go [] graph
   where
@@ -1788,7 +1795,8 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
     componentLocalBuildInfo :: [ComponentLocalBuildInfo]
-                            -> Component -> [ComponentName] -> IO ComponentLocalBuildInfo
+                            -> Component -> [ComponentName]
+                            -> IO ComponentLocalBuildInfo
     componentLocalBuildInfo internalComps component dep_cnames =
       -- NB: We want to preserve cdeps because it contains extra
       -- information like build-tools ordering
@@ -1855,7 +1863,8 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages pkg_
         }
       where
 
-        cid = computeComponentId (configIPID cfg) (configCID cfg) (package pkg_descr)
+        cid = computeComponentId (configIPID cfg) (configCID cfg)
+                (package pkg_descr)
                 (componentName component)
                 (getDeps (componentName component))
                 flagAssignment
@@ -2139,7 +2148,7 @@ checkForeignDeps pkg lbi verbosity = do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd
-                _ <- rawSystemProgramStdoutConf verbosity
+                _ <- getDbProgramOutput verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
            `catchIO`   (\_ -> return False)

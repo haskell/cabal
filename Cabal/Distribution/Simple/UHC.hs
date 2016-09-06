@@ -46,13 +46,13 @@ import System.FilePath
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
-configure verbosity hcPath _hcPkgPath conf = do
+          -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
+configure verbosity hcPath _hcPkgPath progdb = do
 
-  (_uhcProg, uhcVersion, conf') <-
+  (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion verbosity uhcProgram
     (orLaterVersion (Version [1,0,2] []))
-    (userMaybeSpecifyPath "uhc" hcPath conf)
+    (userMaybeSpecifyPath "uhc" hcPath progdb)
 
   let comp = Compiler {
                compilerId         =  CompilerId UHC uhcVersion,
@@ -63,7 +63,7 @@ configure verbosity hcPath _hcPkgPath conf = do
                compilerProperties =  Map.empty
              }
       compPlatform = Nothing
-  return (comp, compPlatform, conf')
+  return (comp, compPlatform, progdb')
 
 uhcLanguages :: [(Language, C.Flag)]
 uhcLanguages = [(Haskell98, "")]
@@ -89,11 +89,11 @@ uhcLanguageExtensions =
      (OverlappingInstances,         alwaysOn),
      (FlexibleInstances,            alwaysOn)]
 
-getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs progdb = do
   let compilerid = compilerId comp
-  systemPkgDir <- getGlobalPackageDir verbosity conf
+  systemPkgDir <- getGlobalPackageDir verbosity progdb
   userPkgDir   <- getUserPackageDir
   let pkgDirs    = nub (concatMap (packageDbPaths userPkgDir systemPkgDir) packagedbs)
   -- putStrLn $ "pkgdirs: " ++ show pkgDirs
@@ -108,10 +108,10 @@ getInstalledPackages verbosity comp packagedbs conf = do
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
   return (fromList iPkgs)
 
-getGlobalPackageDir :: Verbosity -> ProgramConfiguration -> IO FilePath
-getGlobalPackageDir verbosity conf = do
-    output <- rawSystemProgramStdoutConf verbosity
-                uhcProgram conf ["--meta-pkgdir-system"]
+getGlobalPackageDir :: Verbosity -> ProgramDb -> IO FilePath
+getGlobalPackageDir verbosity progdb = do
+    output <- getDbProgramOutput verbosity
+                uhcProgram progdb ["--meta-pkgdir-system"]
     -- call to "lines" necessary, because pkgdir contains an extra newline at the end
     let [pkgdir] = lines output
     return pkgdir
@@ -171,7 +171,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
-  let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
+  let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- set package name
                    ["--pkg-build=" ++ display (packageId pkg_descr)]
                    -- common flags lib/exe
@@ -185,7 +185,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                        (map display (libModules lib))
 
   runUhcProg uhcArgs
-  
+
   return ()
 
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
@@ -193,7 +193,7 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildExe verbosity _pkg_descr lbi exe clbi = do
   systemPkgDir <- getGlobalPackageDir verbosity (withPrograms lbi)
   userPkgDir   <- getUserPackageDir
-  let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
+  let runUhcProg = runDbProgram verbosity uhcProgram (withPrograms lbi)
   let uhcArgs =    -- common flags lib/exe
                    constructUHCCmdLine userPkgDir systemPkgDir
                                        lbi (buildInfo exe) clbi
@@ -268,7 +268,7 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 registerPackage
   :: Verbosity
   -> Compiler
-  -> ProgramConfiguration
+  -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()

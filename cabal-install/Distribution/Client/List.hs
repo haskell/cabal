@@ -28,7 +28,7 @@ import Distribution.PackageDescription.Configuration
 
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.Simple.Program (ProgramDb)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
 import Distribution.Simple.Setup (fromFlag)
@@ -80,12 +80,12 @@ getPkgList :: Verbosity
            -> PackageDBStack
            -> RepoContext
            -> Compiler
-           -> ProgramConfiguration
+           -> ProgramDb
            -> ListFlags
            -> [String]
            -> IO [PackageDisplayInfo]
-getPkgList verbosity packageDBs repoCtxt comp conf listFlags pats = do
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+getPkgList verbosity packageDBs repoCtxt comp progdb listFlags pats = do
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion
@@ -136,12 +136,12 @@ list :: Verbosity
      -> PackageDBStack
      -> RepoContext
      -> Compiler
-     -> ProgramConfiguration
+     -> ProgramDb
      -> ListFlags
      -> [String]
      -> IO ()
-list verbosity packageDBs repos comp conf listFlags pats = do
-    matches <- getPkgList verbosity packageDBs repos comp conf listFlags pats
+list verbosity packageDBs repos comp progdb listFlags pats = do
+    matches <- getPkgList verbosity packageDBs repos comp progdb listFlags pats
 
     if simpleOutput
       then putStr $ unlines
@@ -166,7 +166,7 @@ info :: Verbosity
      -> PackageDBStack
      -> RepoContext
      -> Compiler
-     -> ProgramConfiguration
+     -> ProgramDb
      -> GlobalFlags
      -> InfoFlags
      -> [UserTarget]
@@ -174,10 +174,10 @@ info :: Verbosity
 info verbosity _ _ _ _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-info verbosity packageDBs repoCtxt comp conf
+info verbosity packageDBs repoCtxt comp progdb
      globalFlags _listFlags userTargets = do
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages verbosity repoCtxt
     let sourcePkgIndex = packageIndex sourcePkgDb
         prefs name = fromMaybe anyVersion

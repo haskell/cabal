@@ -156,7 +156,7 @@ defaultMainHelper hooks args = topHandler $
     printVersion        = putStrLn $ "Cabal library version "
                                   ++ display cabalVersion
 
-    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     commands =
       [configureCommand progs `commandAddAction` \fs as ->
                                                  configureAction    hooks fs as >> return ()
@@ -456,7 +456,7 @@ getBuildConfig hooks verbosity distPref = do
   lbi_wo_programs <- getPersistBuildConfig distPref
   -- Restore info about unconfigured programs, since it is not serialized
   let lbi = lbi_wo_programs {
-    withPrograms = restoreProgramConfiguration
+    withPrograms = restoreProgramDb
                      (builtinPrograms ++ hookedPrograms hooks)
                      (withPrograms lbi_wo_programs)
   }
@@ -480,7 +480,7 @@ getBuildConfig hooks verbosity distPref = do
             -- Since the list of unconfigured programs is not serialized,
             -- restore it to the same value as normally used at the beginning
             -- of a configure run:
-            configPrograms_ = restoreProgramConfiguration
+            configPrograms_ = restoreProgramDb
                                (builtinPrograms ++ hookedPrograms hooks)
                                `fmap` configPrograms_ cFlags,
 
@@ -640,8 +640,8 @@ runConfigureScript :: Verbosity -> Bool -> ConfigFlags -> LocalBuildInfo
                    -> IO ()
 runConfigureScript verbosity backwardsCompatHack flags lbi = do
   env <- getEnvironment
-  let programConfig = withPrograms lbi
-  (ccProg, ccFlags) <- configureCCompiler verbosity programConfig
+  let programDb = withPrograms lbi
+  (ccProg, ccFlags) <- configureCCompiler verbosity programDb
   ccProgShort <- getShortPathName ccProg
   -- The C compiler's compilation and linker flags (e.g.
   -- "C compiler flags" and "Gcc Linker flags" from GHC) have already

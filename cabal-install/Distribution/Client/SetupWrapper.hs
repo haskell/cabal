@@ -48,7 +48,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.Build.Macros
          ( generatePackageVersionMacros )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, emptyProgramConfiguration
+         ( ProgramDb, emptyProgramDb
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
          , ghcjsProgram )
 import Distribution.Simple.Program.Find
@@ -156,7 +156,7 @@ data SetupScriptOptions = SetupScriptOptions {
     usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
     usePackageIndex          :: Maybe InstalledPackageIndex,
-    useProgramConfig         :: ProgramConfiguration,
+    useProgramDb             :: ProgramDb,
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
@@ -226,7 +226,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDependencies          = [],
     useDependenciesExclusive = False,
     useVersionMacros         = False,
-    useProgramConfig         = emptyProgramConfiguration,
+    useProgramDb             = emptyProgramDb,
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
@@ -340,7 +340,7 @@ selfExecSetupMethod verbosity options _pkg bt mkargs = do
 
   searchpath <- programSearchPathAsPATHVar
                 (map ProgramSearchPathDir (useExtraPathEnv options) ++
-                 getProgramSearchPath (useProgramConfig options))
+                 getProgramSearchPath (useProgramDb options))
   env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                         ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
@@ -382,12 +382,12 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
-                            -> ProgramConfiguration -> IO InstalledPackageIndex
-  maybeGetInstalledPackages options' comp conf =
+                            -> ProgramDb -> IO InstalledPackageIndex
+  maybeGetInstalledPackages options' comp progdb =
     case usePackageIndex options' of
       Just index -> return index
       Nothing    -> getInstalledPackages verbosity
-                    comp (usePackageDB options') conf
+                    comp (usePackageDB options') progdb
 
   -- Choose the version of Cabal to use if the setup script has a dependency on
   -- Cabal, and possibly update the setup script options. The version also
@@ -453,8 +453,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       installedVersion :: IO (Version, Maybe InstalledPackageId
                              ,SetupScriptOptions)
       installedVersion = do
-        (comp,    conf,    options')  <- configureCompiler options
-        (version, mipkgid, options'') <- installedCabalVersion options' comp conf
+        (comp,    progdb,  options')  <- configureCompiler options
+        (version, mipkgid, options'') <- installedCabalVersion options' comp progdb
         updateSetupScript version bt
         writeSetupVersionFile version
         return (version, mipkgid, options'')
@@ -496,11 +496,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     Custom             -> error "buildTypeScript Custom"
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
-  installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
+  installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
-  installedCabalVersion options' compiler conf = do
-    index <- maybeGetInstalledPackages options' compiler conf
+  installedCabalVersion options' compiler progdb = do
+    index <- maybeGetInstalledPackages options' compiler progdb
     let cabalDep   = Dependency (PackageName "Cabal") (useCabalVersion options')
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
@@ -543,20 +543,20 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           latestVersion    = version
 
   configureCompiler :: SetupScriptOptions
-                    -> IO (Compiler, ProgramConfiguration, SetupScriptOptions)
+                    -> IO (Compiler, ProgramDb, SetupScriptOptions)
   configureCompiler options' = do
-    (comp, conf) <- case useCompiler options' of
-      Just comp -> return (comp, useProgramConfig options')
-      Nothing   -> do (comp, _, conf) <-
+    (comp, progdb) <- case useCompiler options' of
+      Just comp -> return (comp, useProgramDb options')
+      Nothing   -> do (comp, _, progdb) <-
                         configCompilerEx (Just GHC) Nothing Nothing
-                        (useProgramConfig options') verbosity
-                      return (comp, conf)
+                        (useProgramDb options') verbosity
+                      return (comp, progdb)
     -- Whenever we need to call configureCompiler, we also need to access the
     -- package index, so let's cache it in SetupScriptOptions.
-    index <- maybeGetInstalledPackages options' comp conf
-    return (comp, conf, options' { useCompiler      = Just comp,
-                                   usePackageIndex  = Just index,
-                                   useProgramConfig = conf })
+    index <- maybeGetInstalledPackages options' comp progdb
+    return (comp, progdb, options' { useCompiler      = Just comp,
+                                     usePackageIndex  = Just index,
+                                     useProgramDb = progdb })
 
   -- | Path to the setup exe cache directory and path to the cached setup
   -- executable.
@@ -607,7 +607,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           installExecutableFile verbosity src cachedSetupProgFile
           -- Do not strip if we're using GHCJS, since the result may be a script
           when (maybe True ((/=GHCJS).compilerFlavor) $ useCompiler options') $
-            Strip.stripExe verbosity platform (useProgramConfig options')
+            Strip.stripExe verbosity platform (useProgramDb options')
               cachedSetupProgFile
     return cachedSetupProgFile
       where
@@ -627,7 +627,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     let outOfDate = setupHsNewer || cabalVersionNewer
     when (outOfDate || forceCompile) $ do
       debug verbosity "Setup executable needs to be updated, compiling..."
-      (compiler, conf, options'') <- configureCompiler options'
+      (compiler, progdb, options'') <- configureCompiler options'
       let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
           (program, extraOpts)
             = case compilerFlavor compiler of
@@ -683,11 +683,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
         rewriteFile cppMacrosFile (generatePackageVersionMacros
                                      [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
-        Nothing          -> runDbProgram verbosity program conf ghcCmdLine
+        Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 
         -- If build logging is enabled, redirect compiler output to the log file.
         (Just logHandle) -> do output <- getDbProgramOutput verbosity program
-                                         conf ghcCmdLine
+                                         progdb ghcCmdLine
                                hPutStr logHandle output
     return setupProgFile
 
@@ -721,7 +721,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       doInvoke path' = do
         searchpath <- programSearchPathAsPATHVar
                       (map ProgramSearchPathDir (useExtraPathEnv options') ++
-                       getProgramSearchPath (useProgramConfig options'))
+                       getProgramSearchPath (useProgramDb options'))
         env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                               ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 

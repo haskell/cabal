@@ -44,7 +44,7 @@ import System.IO
 createArLibArchive :: Verbosity -> LocalBuildInfo
                    -> FilePath -> [FilePath] -> IO ()
 createArLibArchive verbosity lbi targetPath files = do
-  (ar, _) <- requireProgram verbosity arProgram progConf
+  (ar, _) <- requireProgram verbosity arProgram progDb
 
   let (targetDir, targetName) = splitFileName targetPath
   withTempDirectory verbosity targetDir "objs" $ \ tmpDir -> do
@@ -92,7 +92,7 @@ createArLibArchive verbosity lbi targetPath files = do
   unless equal $ renameFile tmpPath targetPath
 
   where
-    progConf = withPrograms lbi
+    progDb = withPrograms lbi
     Platform hostArch hostOS = hostPlatform lbi
     verbosityOpts v | v >= deafening = ["-v"]
                     | v >= verbose   = []

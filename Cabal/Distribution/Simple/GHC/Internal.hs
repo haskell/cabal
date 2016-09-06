@@ -71,8 +71,8 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 configureToolchain :: GhcImplInfo
                    -> ConfiguredProgram
                    -> Map String String
-                   -> ProgramConfiguration
-                   -> ProgramConfiguration
+                   -> ProgramDb
+                   -> ProgramDb
 configureToolchain _implInfo ghcProg ghcInfo =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgramName extraGccPath,
@@ -177,12 +177,12 @@ configureToolchain _implInfo ghcProg ghcInfo =
              withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                                   "-o", testofile]
+               runProgram verbosity ghcProg ["-c", testcfile,
+                                             "-o", testofile]
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
-                   _ <- rawSystemProgramStdout verbosity ldProg
+                   _ <- getProgramOutput verbosity ldProg
                      ["-x", "-r", testofile, "-o", testofile']
                    return True
                  `catchIO`   (\_ -> return False)

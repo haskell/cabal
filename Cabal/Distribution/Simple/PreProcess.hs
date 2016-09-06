@@ -302,7 +302,7 @@ ppGreenCard _ lbi _
     = PreProcessor {
         platformIndependent = False,
         runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-          rawSystemProgramConf verbosity greencardProgram (withPrograms lbi)
+          runDbProgram verbosity greencardProgram (withPrograms lbi)
               (["-tffi", "-o" ++ outFile, inFile])
       }
 
@@ -337,7 +337,7 @@ ppGhcCpp program xHs extraArgs _bi lbi clbi =
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (prog, version, _) <- requireProgramVersion verbosity
                               program anyVersion (withPrograms lbi)
-      rawSystemProgram verbosity prog $
+      runProgram verbosity prog $
           ["-E", "-cpp"]
           -- This is a bit of an ugly hack. We're going to
           -- unlit the file ourselves later on if appropriate,
@@ -357,7 +357,7 @@ ppCpphs extraArgs _bi lbi clbi =
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (cpphsProg, cpphsVersion, _) <- requireProgramVersion verbosity
                                         cpphsProgram anyVersion (withPrograms lbi)
-      rawSystemProgram verbosity cpphsProg $
+      runProgram verbosity cpphsProg $
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
         : (if cpphsVersion >= Version [1,6] []
@@ -372,7 +372,7 @@ ppHsc2hs bi lbi clbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $
+      runDbProgram verbosity hsc2hsProgram (withPrograms lbi) $
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
@@ -465,7 +465,7 @@ ppC2hs bi lbi clbi =
                             c2hsProgram (orLaterVersion (Version [0,15] []))
                             (withPrograms lbi)
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      rawSystemProgram verbosity c2hsProg $
+      runProgram verbosity c2hsProg $
 
           -- Options from the current package:
            [ "--cpp=" ++ programPath gccProg, "--cppopts=-E" ]
@@ -605,7 +605,7 @@ standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      rawSystemProgramConf verbosity prog (withPrograms lbi)
+      runDbProgram verbosity prog (withPrograms lbi)
                            (args ++ ["-o", outFile, inFile])
   }
 

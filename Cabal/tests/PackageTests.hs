@@ -13,9 +13,10 @@ import PackageTests.Tests
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile
     , interpretPackageDbFlags, configCompilerEx )
-import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack, CompilerFlavor(GHC))
+import Distribution.Simple.Compiler (PackageDB(..), PackageDBStack
+                                    ,CompilerFlavor(GHC))
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.Program (defaultProgramDb)
 import Distribution.Simple.Setup (Flag(..), readPackageDbList, showPackageDbList)
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
@@ -110,15 +111,15 @@ main = do
                 return (withPrograms lbi)
             _ -> do
                 putStrLn "(Re)configuring test suite (ignoring LBI)"
-                (_comp, _compPlatform, programsConfig)
+                (_comp, _compPlatform, programDb)
                     <- configCompilerEx
                         (Just GHC) mb_ghc_path mb_ghc_pkg_path
                         -- NB: if we accept full ConfigFlags parser then
-                        -- should use (mkProgramsConfig cfg (configPrograms cfg))
+                        -- should use (mkProgramDb cfg (configPrograms cfg))
                         -- instead.
-                        defaultProgramConfiguration
+                        defaultProgramDb
                         (lessVerbose verbosity)
-                return programsConfig
+                return programDb
 
     mb_with_ghc_path     <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC"
     mb_with_ghc_pkg_path <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_PKG"
@@ -130,7 +131,7 @@ main = do
                 (_comp, _compPlatform, with_programs)
                     <- configCompilerEx
                         (Just GHC) mb_with_ghc_path mb_with_ghc_pkg_path
-                        defaultProgramConfiguration
+                        defaultProgramDb
                         (lessVerbose verbosity)
                 return with_programs
 
@@ -202,14 +203,14 @@ main = do
     (mtimeChange, mtimeChange') <- calibrateMtimeChangeDelay
 
     let suite = SuiteConfig
-                 { cabalDistPref = dist_dir
-                 , bootProgramsConfig = boot_programs
-                 , withProgramsConfig = with_programs
-                 , packageDBStack = package_db_stack
-                 , withGhcDBStack = with_ghc_db_stack
-                 , suiteVerbosity = verbosity
-                 , absoluteCWD = cabal_dir
-                 , mtimeChangeDelay = mtimeChange'
+                 { cabalDistPref      = dist_dir
+                 , bootProgramDb      = boot_programs
+                 , withProgramDb      = with_programs
+                 , packageDBStack     = package_db_stack
+                 , withGhcDBStack     = with_ghc_db_stack
+                 , suiteVerbosity     = verbosity
+                 , absoluteCWD        = cabal_dir
+                 , mtimeChangeDelay   = mtimeChange'
                  }
 
     let toMillis :: Int -> Double

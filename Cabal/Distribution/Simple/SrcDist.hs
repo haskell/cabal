@@ -401,7 +401,7 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
 
   (tarProg, _) <- requireProgram verbosity tarProgram
-                    (maybe defaultProgramConfiguration withPrograms mb_lbi)
+                    (maybe defaultProgramDb withPrograms mb_lbi)
   let formatOptSupported = maybe False (== "YES") $
                            Map.lookup "Supports --format"
                            (programProperties tarProg)
