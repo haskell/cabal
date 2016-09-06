@@ -1392,27 +1392,27 @@ combinedConstraints constraints dependencies installedPackages = do
 
 configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramDb
                              -> IO ProgramDb
-configureRequiredPrograms verbosity deps conf =
-  foldM (configureRequiredProgram verbosity) conf deps
+configureRequiredPrograms verbosity deps progdb =
+  foldM (configureRequiredProgram verbosity) progdb deps
 
 configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
                             -> IO ProgramDb
-configureRequiredProgram verbosity conf
+configureRequiredProgram verbosity progdb
   (Dependency (PackageName progName) verRange) =
-  case lookupKnownProgram progName conf of
+  case lookupKnownProgram progName progdb of
     Nothing ->
       -- Try to configure it as a 'simpleProgram' automatically
-      configureProgram verbosity (simpleProgram progName) conf
+      configureProgram verbosity (simpleProgram progName) progdb
     Just prog
       -- requireProgramVersion always requires the program have a version
       -- but if the user says "build-depends: foo" ie no version constraint
       -- then we should not fail if we cannot discover the program version.
       | verRange == anyVersion -> do
-          (_, conf') <- requireProgram verbosity prog conf
-          return conf'
+          (_, progdb') <- requireProgram verbosity prog progdb
+          return progdb'
       | otherwise -> do
-          (_, _, conf') <- requireProgramVersion verbosity prog verRange conf
-          return conf'
+          (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
+          return progdb'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
@@ -1420,12 +1420,12 @@ configureRequiredProgram verbosity conf
 configurePkgconfigPackages :: Verbosity -> PackageDescription
                            -> ProgramDb
                            -> IO (PackageDescription, ProgramDb)
-configurePkgconfigPackages verbosity pkg_descr conf
-  | null allpkgs = return (pkg_descr, conf)
+configurePkgconfigPackages verbosity pkg_descr progdb
+  | null allpkgs = return (pkg_descr, progdb)
   | otherwise    = do
-    (_, _, conf') <- requireProgramVersion
+    (_, _, progdb') <- requireProgramVersion
                        (lessVerbose verbosity) pkgConfigProgram
-                       (orLaterVersion $ Version [0,9,0] []) conf
+                       (orLaterVersion $ Version [0,9,0] []) progdb
     traverse_ requirePkg allpkgs
     mlib' <- traverse addPkgConfigBILib (library pkg_descr)
     libs' <- traverse addPkgConfigBILib (subLibraries pkg_descr)
@@ -1435,12 +1435,12 @@ configurePkgconfigPackages verbosity pkg_descr conf
     let pkg_descr' = pkg_descr { library = mlib',
                                  subLibraries = libs', executables = exes',
                                  testSuites = tests', benchmarks = benches' }
-    return (pkg_descr', conf')
+    return (pkg_descr', progdb')
 
   where
     allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
     pkgconfig = getDbProgramOutput (lessVerbose verbosity)
-                  pkgConfigProgram conf
+                  pkgConfigProgram progdb
 
     requirePkg dep@(Dependency (PackageName pkg) range) = do
       version <- pkgconfig ["--modversion", pkg]
@@ -1534,15 +1534,15 @@ configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                  -> ProgramDb -> Verbosity
                  -> IO (Compiler, Platform, ProgramDb)
 configCompilerEx Nothing _ _ _ _ = die "Unknown compiler"
-configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
+configCompilerEx (Just hcFlavor) hcPath hcPkg progdb verbosity = do
   (comp, maybePlatform, programDb) <- case hcFlavor of
-    GHC   -> GHC.configure  verbosity hcPath hcPkg conf
-    GHCJS -> GHCJS.configure verbosity hcPath hcPkg conf
-    JHC   -> JHC.configure  verbosity hcPath hcPkg conf
-    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg conf
+    GHC   -> GHC.configure  verbosity hcPath hcPkg progdb
+    GHCJS -> GHCJS.configure verbosity hcPath hcPkg progdb
+    JHC   -> JHC.configure  verbosity hcPath hcPkg progdb
+    LHC   -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg progdb
                 LHC.configure  verbosity hcPath Nothing ghcConf
-    UHC   -> UHC.configure  verbosity hcPath hcPkg conf
-    HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg conf
+    UHC   -> UHC.configure  verbosity hcPath hcPkg progdb
+    HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg progdb
     _    -> die "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programDb)
 
@@ -1556,8 +1556,8 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramDb -> Verbosity
                -> IO (Compiler, ProgramDb)
-configCompiler mFlavor hcPath hcPkg conf verbosity =
-  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg conf verbosity
+configCompiler mFlavor hcPath hcPkg progdb verbosity =
+  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg progdb verbosity
 
 {-# DEPRECATED configCompilerAux
     "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
