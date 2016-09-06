@@ -50,11 +50,11 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
-configure verbosity hcPath _hcPkgPath conf = do
+configure verbosity hcPath _hcPkgPath progdb = do
 
-  (jhcProg, _, conf') <- requireProgramVersion verbosity
+  (jhcProg, _, progdb') <- requireProgramVersion verbosity
                            jhcProgram (orLaterVersion (Version [0,7,2] []))
-                           (userMaybeSpecifyPath "jhc" hcPath conf)
+                           (userMaybeSpecifyPath "jhc" hcPath progdb)
 
   let Just version = programVersion jhcProg
       comp = Compiler {
@@ -66,7 +66,7 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerProperties     = Map.empty
       }
       compPlatform = Nothing
-  return (comp, compPlatform, conf')
+  return (comp, compPlatform, progdb')
 
 jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]
@@ -86,11 +86,11 @@ jhcLanguageExtensions =
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                     -> IO InstalledPackageIndex
-getInstalledPackages verbosity _packageDBs conf = do
+getInstalledPackages verbosity _packageDBs progdb = do
    -- jhc --list-libraries lists all available libraries.
    -- How shall I find out, whether they are global or local
    -- without checking all files and locations?
-   str <- getDbProgramOutput verbosity jhcProgram conf ["--list-libraries"]
+   str <- getDbProgramOutput verbosity jhcProgram progdb ["--list-libraries"]
    let pCheck :: [(a, String)] -> [a]
        pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
    let parseLine ln =

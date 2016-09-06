@@ -104,8 +104,8 @@ import qualified Hackage.Security.Util.Some as Sec
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packageDbs conf =
-    Configure.getInstalledPackages verbosity' comp packageDbs conf
+getInstalledPackages verbosity comp packageDbs progdb =
+    Configure.getInstalledPackages verbosity' comp packageDbs progdb
   where
     verbosity'  = lessVerbose verbosity
 

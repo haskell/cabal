@@ -59,8 +59,8 @@ data PkgConfigDb =  PkgConfigDb (M.Map PackageName (Maybe Version))
 -- with their versions. Return a `PkgConfigDb` encapsulating this
 -- information.
 readPkgConfigDb :: Verbosity -> ProgramDb -> IO PkgConfigDb
-readPkgConfigDb verbosity conf = handle ioErrorHandler $ do
-  (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
+readPkgConfigDb verbosity progdb = handle ioErrorHandler $ do
+  (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
   pkgList <- lines <$> getProgramOutput verbosity pkgConfig ["--list-all"]
   -- The output of @pkg-config --list-all@ also includes a description
   -- for each package, which we do not need.
@@ -109,7 +109,7 @@ pkgConfigPkgIsPresent NoPkgConfigDb _ _ = True
 -- to monitor for changes in the pkg-config DB.
 --
 getPkgConfigDbDirs :: Verbosity -> ProgramDb -> IO [FilePath]
-getPkgConfigDbDirs verbosity conf =
+getPkgConfigDbDirs verbosity progdb =
     (++) <$> getEnvPath <*> getDefPath
  where
     -- According to @man pkg-config@:
@@ -130,7 +130,7 @@ getPkgConfigDbDirs verbosity conf =
     -- > pkg-config --variable pc_path pkg-config
     --
     getDefPath = handle ioErrorHandler $ do
-      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram conf
+      (pkgConfig, _) <- requireProgram verbosity pkgConfigProgram progdb
       parseSearchPath <$>
         getProgramOutput verbosity pkgConfig
                          ["--variable", "pc_path", "pkg-config"]

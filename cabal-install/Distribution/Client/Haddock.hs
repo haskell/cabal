@@ -38,14 +38,14 @@ regenerateHaddockIndex :: Verbosity
                        -> InstalledPackageIndex -> ProgramDb
                        -> FilePath
                        -> IO ()
-regenerateHaddockIndex verbosity pkgs conf index = do
+regenerateHaddockIndex verbosity pkgs progdb index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing
       let paths' = [ (interface, html) | (interface, Just html) <- paths]
       forM_ warns (debug verbosity)
 
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram
-                                    (orLaterVersion (Version [0,6] [])) conf
+                                    (orLaterVersion (Version [0,6] [])) progdb
 
       createDirectoryIfMissing True destDir
 

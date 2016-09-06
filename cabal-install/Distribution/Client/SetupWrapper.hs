@@ -383,11 +383,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
                             -> ProgramDb -> IO InstalledPackageIndex
-  maybeGetInstalledPackages options' comp conf =
+  maybeGetInstalledPackages options' comp progdb =
     case usePackageIndex options' of
       Just index -> return index
       Nothing    -> getInstalledPackages verbosity
-                    comp (usePackageDB options') conf
+                    comp (usePackageDB options') progdb
 
   -- Choose the version of Cabal to use if the setup script has a dependency on
   -- Cabal, and possibly update the setup script options. The version also
@@ -453,8 +453,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       installedVersion :: IO (Version, Maybe InstalledPackageId
                              ,SetupScriptOptions)
       installedVersion = do
-        (comp,    conf,    options')  <- configureCompiler options
-        (version, mipkgid, options'') <- installedCabalVersion options' comp conf
+        (comp,    progdb,  options')  <- configureCompiler options
+        (version, mipkgid, options'') <- installedCabalVersion options' comp progdb
         updateSetupScript version bt
         writeSetupVersionFile version
         return (version, mipkgid, options'')
@@ -499,8 +499,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramDb
                         -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
-  installedCabalVersion options' compiler conf = do
-    index <- maybeGetInstalledPackages options' compiler conf
+  installedCabalVersion options' compiler progdb = do
+    index <- maybeGetInstalledPackages options' compiler progdb
     let cabalDep   = Dependency (PackageName "Cabal") (useCabalVersion options')
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
@@ -545,18 +545,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   configureCompiler :: SetupScriptOptions
                     -> IO (Compiler, ProgramDb, SetupScriptOptions)
   configureCompiler options' = do
-    (comp, conf) <- case useCompiler options' of
+    (comp, progdb) <- case useCompiler options' of
       Just comp -> return (comp, useProgramConfig options')
-      Nothing   -> do (comp, _, conf) <-
+      Nothing   -> do (comp, _, progdb) <-
                         configCompilerEx (Just GHC) Nothing Nothing
                         (useProgramConfig options') verbosity
-                      return (comp, conf)
+                      return (comp, progdb)
     -- Whenever we need to call configureCompiler, we also need to access the
     -- package index, so let's cache it in SetupScriptOptions.
-    index <- maybeGetInstalledPackages options' comp conf
-    return (comp, conf, options' { useCompiler      = Just comp,
-                                   usePackageIndex  = Just index,
-                                   useProgramConfig = conf })
+    index <- maybeGetInstalledPackages options' comp progdb
+    return (comp, progdb, options' { useCompiler      = Just comp,
+                                     usePackageIndex  = Just index,
+                                     useProgramConfig = progdb })
 
   -- | Path to the setup exe cache directory and path to the cached setup
   -- executable.
@@ -627,7 +627,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     let outOfDate = setupHsNewer || cabalVersionNewer
     when (outOfDate || forceCompile) $ do
       debug verbosity "Setup executable needs to be updated, compiling..."
-      (compiler, conf, options'') <- configureCompiler options'
+      (compiler, progdb, options'') <- configureCompiler options'
       let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
           (program, extraOpts)
             = case compilerFlavor compiler of
@@ -683,11 +683,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
         rewriteFile cppMacrosFile (generatePackageVersionMacros
                                      [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
-        Nothing          -> runDbProgram verbosity program conf ghcCmdLine
+        Nothing          -> runDbProgram verbosity program progdb ghcCmdLine
 
         -- If build logging is enabled, redirect compiler output to the log file.
         (Just logHandle) -> do output <- getDbProgramOutput verbosity program
-                                         conf ghcCmdLine
+                                         progdb ghcCmdLine
                                hPutStr logHandle output
     return setupProgFile
 

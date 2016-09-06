@@ -103,13 +103,13 @@ defaultProgramDb = restoreProgramDb builtinPrograms emptyProgramDb
 -- internal helpers:
 updateUnconfiguredProgs :: (UnconfiguredProgs -> UnconfiguredProgs)
                         -> ProgramDb -> ProgramDb
-updateUnconfiguredProgs update conf =
-  conf { unconfiguredProgs = update (unconfiguredProgs conf) }
+updateUnconfiguredProgs update progdb =
+  progdb { unconfiguredProgs = update (unconfiguredProgs progdb) }
 
 updateConfiguredProgs :: (ConfiguredProgs -> ConfiguredProgs)
                       -> ProgramDb -> ProgramDb
-updateConfiguredProgs update conf =
-  conf { configuredProgs = update (configuredProgs conf) }
+updateConfiguredProgs update progdb =
+  progdb { configuredProgs = update (configuredProgs progdb) }
 
 
 -- Read & Show instances are based on listToFM
@@ -169,7 +169,7 @@ addKnownProgram prog = updateUnconfiguredProgs $
 
 
 addKnownPrograms :: [Program] -> ProgramDb -> ProgramDb
-addKnownPrograms progs conf = foldl' (flip addKnownProgram) conf progs
+addKnownPrograms progs progdb = foldl' (flip addKnownProgram) progdb progs
 
 
 lookupKnownProgram :: String -> ProgramDb -> Maybe Program
@@ -178,9 +178,9 @@ lookupKnownProgram name =
 
 
 knownPrograms :: ProgramDb -> [(Program, Maybe ConfiguredProgram)]
-knownPrograms conf =
-  [ (p,p') | (p,_,_) <- Map.elems (unconfiguredProgs conf)
-           , let p' = Map.lookup (programName p) (configuredProgs conf) ]
+knownPrograms progdb =
+  [ (p,p') | (p,_,_) <- Map.elems (unconfiguredProgs progdb)
+           , let p' = Map.lookup (programName p) (configuredProgs progdb) ]
 
 -- | Get the current 'ProgramSearchPath' used by the 'ProgramDb'.
 -- This is the default list of locations where programs are looked for when
@@ -221,8 +221,8 @@ userSpecifyPath name path = updateUnconfiguredProgs $
 
 userMaybeSpecifyPath :: String -> Maybe FilePath
                      -> ProgramDb -> ProgramDb
-userMaybeSpecifyPath _    Nothing conf     = conf
-userMaybeSpecifyPath name (Just path) conf = userSpecifyPath name path conf
+userMaybeSpecifyPath _    Nothing progdb     = progdb
+userMaybeSpecifyPath name (Just path) progdb = userSpecifyPath name path progdb
 
 
 -- |User-specify the arguments for this program.  Basically override
@@ -247,8 +247,8 @@ userSpecifyArgs name args' =
 userSpecifyPaths :: [(String, FilePath)]
                  -> ProgramDb
                  -> ProgramDb
-userSpecifyPaths paths conf =
-  foldl' (\conf' (prog, path) -> userSpecifyPath prog path conf') conf paths
+userSpecifyPaths paths progdb =
+  foldl' (\conf' (prog, path) -> userSpecifyPath prog path conf') progdb paths
 
 
 -- | Like 'userSpecifyPath' but for a list of progs and their args.
@@ -256,8 +256,8 @@ userSpecifyPaths paths conf =
 userSpecifyArgss :: [(String, [ProgArg])]
                  -> ProgramDb
                  -> ProgramDb
-userSpecifyArgss argss conf =
-  foldl' (\conf' (prog, args) -> userSpecifyArgs prog args conf') conf argss
+userSpecifyArgss argss progdb =
+  foldl' (\conf' (prog, args) -> userSpecifyArgs prog args conf') progdb argss
 
 
 -- | Get the path that has been previously specified for a program, if any.
@@ -314,17 +314,17 @@ configureProgram :: Verbosity
                  -> Program
                  -> ProgramDb
                  -> IO ProgramDb
-configureProgram verbosity prog conf = do
+configureProgram verbosity prog progdb = do
   let name = programName prog
-  maybeLocation <- case userSpecifiedPath prog conf of
+  maybeLocation <- case userSpecifiedPath prog progdb of
     Nothing   ->
-      programFindLocation prog verbosity (progSearchPath conf)
+      programFindLocation prog verbosity (progSearchPath progdb)
       >>= return . fmap (swap . fmap FoundOnSystem . swap)
     Just path -> do
       absolute <- doesExecutableExist path
       if absolute
         then return (Just (UserSpecified path, []))
-        else findProgramOnSearchPath verbosity (progSearchPath conf) path
+        else findProgramOnSearchPath verbosity (progSearchPath progdb) path
              >>= maybe (die notFound)
                        (return . Just . swap . fmap UserSpecified . swap)
       where notFound = "Cannot find the program '" ++ name
@@ -332,22 +332,22 @@ configureProgram verbosity prog conf = do
                      ++ path ++ "' does not refer to an executable and "
                      ++ "the program is not on the system path."
   case maybeLocation of
-    Nothing -> return conf
+    Nothing -> return progdb
     Just (location, triedLocations) -> do
       version <- programFindVersion prog verbosity (locationPath location)
-      newPath <- programSearchPathAsPATHVar (progSearchPath conf)
+      newPath <- programSearchPathAsPATHVar (progSearchPath progdb)
       let configuredProg        = ConfiguredProgram {
             programId           = name,
             programVersion      = version,
             programDefaultArgs  = [],
-            programOverrideArgs = userSpecifiedArgs prog conf,
+            programOverrideArgs = userSpecifiedArgs prog progdb,
             programOverrideEnv  = [("PATH", Just newPath)],
             programProperties   = Map.empty,
             programLocation     = location,
             programMonitorFiles = triedLocations
           }
       configuredProg' <- programPostConf prog verbosity configuredProg
-      return (updateConfiguredProgs (Map.insert name configuredProg') conf)
+      return (updateConfiguredProgs (Map.insert name configuredProg') progdb)
 
 
 -- | Configure a bunch of programs using 'configureProgram'. Just a 'foldM'.
@@ -356,8 +356,8 @@ configurePrograms :: Verbosity
                   -> [Program]
                   -> ProgramDb
                   -> IO ProgramDb
-configurePrograms verbosity progs conf =
-  foldM (flip (configureProgram verbosity)) conf progs
+configurePrograms verbosity progs progdb =
+  foldM (flip (configureProgram verbosity)) progdb progs
 
 
 -- | Try to configure all the known programs that have not yet been configured.
@@ -365,12 +365,12 @@ configurePrograms verbosity progs conf =
 configureAllKnownPrograms :: Verbosity
                           -> ProgramDb
                           -> IO ProgramDb
-configureAllKnownPrograms verbosity conf =
+configureAllKnownPrograms verbosity progdb =
   configurePrograms verbosity
-    [ prog | (prog,_,_) <- Map.elems notYetConfigured ] conf
+    [ prog | (prog,_,_) <- Map.elems notYetConfigured ] progdb
   where
-    notYetConfigured = unconfiguredProgs conf
-      `Map.difference` configuredProgs conf
+    notYetConfigured = unconfiguredProgs progdb
+      `Map.difference` configuredProgs progdb
 
 
 -- | reconfigure a bunch of programs given new user-specified args. It takes
@@ -382,14 +382,14 @@ reconfigurePrograms :: Verbosity
                     -> [(String, [ProgArg])]
                     -> ProgramDb
                     -> IO ProgramDb
-reconfigurePrograms verbosity paths argss conf = do
+reconfigurePrograms verbosity paths argss progdb = do
   configurePrograms verbosity progs
    . userSpecifyPaths paths
    . userSpecifyArgss argss
-   $ conf
+   $ progdb
 
   where
-    progs = catMaybes [ lookupKnownProgram name conf | (name,_) <- paths ]
+    progs = catMaybes [ lookupKnownProgram name progdb | (name,_) <- paths ]
 
 
 -- | Check that a program is configured and available to be run.
@@ -399,12 +399,12 @@ reconfigurePrograms verbosity paths argss conf = do
 --
 requireProgram :: Verbosity -> Program -> ProgramDb
                -> IO (ConfiguredProgram, ProgramDb)
-requireProgram verbosity prog conf = do
+requireProgram verbosity prog progdb = do
 
   -- If it's not already been configured, try to configure it now
-  conf' <- case lookupProgram prog conf of
-    Nothing -> configureProgram verbosity prog conf
-    Just _  -> return conf
+  conf' <- case lookupProgram prog progdb of
+    Nothing -> configureProgram verbosity prog progdb
+    Just _  -> return progdb
 
   case lookupProgram prog conf' of
     Nothing             -> die notFound

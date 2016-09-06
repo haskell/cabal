@@ -101,7 +101,7 @@ genBounds
     -> GlobalFlags
     -> FreezeFlags
     -> IO ()
-genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       globalFlags freezeFlags = do
 
     let cinfo = compilerInfo comp
@@ -126,7 +126,7 @@ genBounds verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
   where
      go needBounds = do
        pkgs  <- getFreezePkgs
-                  verbosity packageDBs repoCtxt comp platform conf
+                  verbosity packageDBs repoCtxt comp platform progdb
                   mSandboxPkgInfo globalFlags freezeFlags
 
        putStrLn boundsNeededMsg

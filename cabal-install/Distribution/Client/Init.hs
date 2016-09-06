@@ -112,9 +112,9 @@ initCabal :: Verbosity
           -> ProgramDb
           -> InitFlags
           -> IO ()
-initCabal verbosity packageDBs repoCtxt comp conf initFlags = do
+initCabal verbosity packageDBs repoCtxt comp progdb initFlags = do
 
-  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
   sourcePkgDb <- getSourcePackages verbosity repoCtxt
 
   hSetBuffering stdout NoBuffering

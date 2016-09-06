@@ -275,21 +275,21 @@ getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents :: Verbosity -> PackageDB -> ProgramDb
                         -> IO InstalledPackageIndex
-getPackageDBContents verbosity packagedb conf = do
-  pkgss <- getInstalledPackages' verbosity [packagedb] conf
-  toPackageIndex verbosity pkgss conf
+getPackageDBContents verbosity packagedb progdb = do
+  pkgss <- getInstalledPackages' verbosity [packagedb] progdb
+  toPackageIndex verbosity pkgss progdb
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
                      -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity comp packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs progdb = do
   checkPackageDbStack comp packagedbs
   envPackageDBs <- maybe []
                    (map SpecificPackageDB . unintersperse searchPathSeparator)
                    <$> lookupEnv "GHC_PACKAGE_PATH"
-  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) conf
-  index <- toPackageIndex verbosity pkgss conf
+  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) progdb
+  index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
 
   where
@@ -307,7 +307,7 @@ toPackageIndex :: Verbosity
                -> [(PackageDB, [InstalledPackageInfo])]
                -> ProgramDb
                -> IO InstalledPackageIndex
-toPackageIndex verbosity pkgss conf = do
+toPackageIndex verbosity pkgss progdb = do
   -- On Windows, various fields have $topdir/foo rather than full
   -- paths. We need to substitute the right value in so that when
   -- we, for example, call gcc, we have proper paths to give it.
@@ -317,7 +317,7 @@ toPackageIndex verbosity pkgss conf = do
   return $! mconcat indices
 
   where
-    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcProg = lookupProgram ghcProgram progdb
 
 getLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 getLibDir verbosity lbi =
@@ -394,19 +394,19 @@ removeMingwIncludeDir pkg =
 --
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                      -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs conf
+getInstalledPackages' verbosity packagedbs progdb
   | ghcVersion >= Version [6,9] [] =
   sequenceA
-    [ do pkgs <- HcPkg.dump (hcPkgInfo conf) verbosity packagedb
+    [ do pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, pkgs)
     | packagedb <- packagedbs ]
 
   where
-    Just ghcProg    = lookupProgram ghcProgram conf
+    Just ghcProg    = lookupProgram ghcProgram progdb
     Just ghcVersion = programVersion ghcProg
 
-getInstalledPackages' verbosity packagedbs conf = do
-    str <- getDbProgramOutput verbosity ghcPkgProgram conf ["list"]
+getInstalledPackages' verbosity packagedbs progdb = do
+    str <- getDbProgramOutput verbosity ghcPkgProgram progdb ["list"]
     let pkgFiles = [ init line | line <- lines str, last line == ':' ]
         dbFile packagedb = case (packagedb, pkgFiles) of
           (GlobalPackageDB, global:_)      -> return $ Just global
@@ -431,7 +431,7 @@ getInstalledPackages' verbosity packagedbs conf = do
       -- We dropped support for 6.4.2 and earlier.
       | otherwise
       = \file _ -> failToRead file
-    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcProg = lookupProgram ghcProgram progdb
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
 
@@ -755,13 +755,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramDb -> Compiler -> Platform
                  -> PackageDBStack -> IO ()
-startInterpreter verbosity conf comp platform packageDBs = do
+startInterpreter verbosity progdb comp platform packageDBs = do
   let replOpts = mempty {
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
   checkPackageDbStack comp packageDBs
-  (ghcProg, _) <- requireProgram verbosity ghcProgram conf
+  (ghcProg, _) <- requireProgram verbosity ghcProgram progdb
   runGHC verbosity ghcProg comp platform replOpts
 
 -- | Build an executable with GHC.
@@ -1189,18 +1189,18 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 -- Registering
 
 hcPkgInfo :: ProgramDb -> HcPkg.HcPkgInfo
-hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
-                                 , HcPkg.noPkgDbStack    = v < [6,9]
-                                 , HcPkg.noVerboseFlag   = v < [6,11]
-                                 , HcPkg.flagPackageConf = v < [7,5]
-                                 , HcPkg.supportsDirDbs  = v >= [6,8]
-                                 , HcPkg.requiresDirDbs  = v >= [7,10]
-                                 , HcPkg.nativeMultiInstance  = v >= [7,10]
-                                 , HcPkg.recacheMultiInstance = v >= [6,12]
-                                 }
+hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
+                                   , HcPkg.noPkgDbStack    = v < [6,9]
+                                   , HcPkg.noVerboseFlag   = v < [6,11]
+                                   , HcPkg.flagPackageConf = v < [7,5]
+                                   , HcPkg.supportsDirDbs  = v >= [6,8]
+                                   , HcPkg.requiresDirDbs  = v >= [7,10]
+                                   , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                   , HcPkg.recacheMultiInstance = v >= [6,12]
+                                   }
   where
     v               = versionBranch ver
-    Just ghcPkgProg = lookupProgram ghcPkgProgram conf
+    Just ghcPkgProg = lookupProgram ghcPkgProgram progdb
     Just ver        = programVersion ghcPkgProg
 
 registerPackage

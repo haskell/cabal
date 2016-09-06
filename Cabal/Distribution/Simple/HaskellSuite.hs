@@ -119,10 +119,10 @@ getLanguages verbosity prog = do
 -- if we need something like that as well.
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf =
+getInstalledPackages verbosity packagedbs progdb =
   liftM (PackageIndex.fromList . concat) $ for packagedbs $ \packagedb ->
     do str <-
-        getDbProgramOutput verbosity haskellSuitePkgProgram conf
+        getDbProgramOutput verbosity haskellSuitePkgProgram progdb
                 ["dump", packageDbOpt packagedb]
          `catchExit` \_ -> die $ "pkg dump failed"
        case parsePackages str of
@@ -160,10 +160,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       srcDirs = hsSourceDirs bi ++ [odir]
       dbStack = withPackageDB lbi
       language = fromMaybe Haskell98 (defaultLanguage bi)
-      conf = withPrograms lbi
+      progdb = withPrograms lbi
       pkgid = packageId pkg_descr
 
-  runDbProgram verbosity haskellSuiteProgram conf $
+  runDbProgram verbosity haskellSuiteProgram progdb $
     [ "compile", "--build-dir", odir ] ++
     concat [ ["-i", d] | d <- srcDirs ] ++
     concat [ ["-I", d] | d <- [autogenComponentModulesDir lbi clbi
@@ -191,8 +191,8 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
-  let conf = withPrograms lbi
-  runDbProgram verbosity haskellSuitePkgProgram conf $
+  let progdb = withPrograms lbi
+  runDbProgram verbosity haskellSuitePkgProgram progdb $
     [ "install-library"
     , "--build-dir", builtDir
     , "--target-dir", targetDir
@@ -215,8 +215,8 @@ registerPackage verbosity progdb packageDbs installedPkgInfo = do
       { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
 
 initPackageDB :: Verbosity -> ProgramDb -> FilePath -> IO ()
-initPackageDB verbosity conf dbPath =
-  runDbProgram verbosity haskellSuitePkgProgram conf
+initPackageDB verbosity progdb dbPath =
+  runDbProgram verbosity haskellSuitePkgProgram progdb
     ["init", dbPath]
 
 packageDbOpt :: PackageDB -> String
