@@ -2142,15 +2142,15 @@ configureArgs bcHack flags
 
 configureCCompiler :: Verbosity -> ProgramDb
                       -> IO (FilePath, [String])
-configureCCompiler verbosity lbi = configureProg verbosity lbi gccProgram
+configureCCompiler verbosity progdb = configureProg verbosity progdb gccProgram
 
 configureLinker :: Verbosity -> ProgramDb -> IO (FilePath, [String])
-configureLinker verbosity lbi = configureProg verbosity lbi ldProgram
+configureLinker verbosity progdb = configureProg verbosity progdb ldProgram
 
 configureProg :: Verbosity -> ProgramDb -> Program
                  -> IO (FilePath, [String])
-configureProg verbosity programConfig prog = do
-    (p, _) <- requireProgram verbosity prog programConfig
+configureProg verbosity programDb prog = do
+    (p, _) <- requireProgram verbosity prog programDb
     let pInv = programInvocation p []
     return (progInvokePath pInv, progInvokeArgs pInv)
 

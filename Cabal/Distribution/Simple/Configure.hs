@@ -383,7 +383,7 @@ configure (pkg_descr0', pbi) cfg = do
             (flagToMaybe (configHcFlavor cfg))
             (flagToMaybe (configHcPath cfg))
             (flagToMaybe (configHcPkg cfg))
-            (mkProgramsConfig cfg (configPrograms cfg))
+            (mkProgramDb cfg (configPrograms cfg))
             (lessVerbose verbosity)
 
     -- The InstalledPackageIndex of all installed packages
@@ -781,14 +781,14 @@ configure (pkg_descr0', pbi) cfg = do
     where
       verbosity = fromFlag (configVerbosity cfg)
 
-mkProgramsConfig :: ConfigFlags -> ProgramDb -> ProgramDb
-mkProgramsConfig cfg initialProgramsConfig = programDb
+mkProgramDb :: ConfigFlags -> ProgramDb -> ProgramDb
+mkProgramDb cfg initialProgramDb = programDb
   where
     programDb  = userSpecifyArgss (configProgramArgs cfg)
                  . userSpecifyPaths (configProgramPaths cfg)
                  . setProgramSearchPath searchpath
-                 $ initialProgramsConfig
-    searchpath = getProgramSearchPath (initialProgramsConfig)
+                 $ initialProgramDb
+    searchpath = getProgramSearchPath (initialProgramDb)
                  ++ map ProgramSearchPathDir
                  (fromNubList $ configProgramPathExtra cfg)
 
@@ -1528,7 +1528,7 @@ configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
                                            programDb
                                            (fromFlag (configVerbosity cfg))
   where
-    programDb = mkProgramsConfig cfg defaultProgramDb
+    programDb = mkProgramDb cfg defaultProgramDb
 
 configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                  -> ProgramDb -> Verbosity

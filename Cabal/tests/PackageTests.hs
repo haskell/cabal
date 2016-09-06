@@ -115,7 +115,7 @@ main = do
                     <- configCompilerEx
                         (Just GHC) mb_ghc_path mb_ghc_pkg_path
                         -- NB: if we accept full ConfigFlags parser then
-                        -- should use (mkProgramsConfig cfg (configPrograms cfg))
+                        -- should use (mkProgramDb cfg (configPrograms cfg))
                         -- instead.
                         defaultProgramDb
                         (lessVerbose verbosity)

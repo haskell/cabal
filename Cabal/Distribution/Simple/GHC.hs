@@ -105,7 +105,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> IO (Compiler, Maybe Platform, ProgramDb)
 configure verbosity hcPath hcPkgPath conf0 = do
 
-  (ghcProg, ghcVersion, conf1) <-
+  (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion verbosity ghcProgram
       (orLaterVersion (Version [6,11] []))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
@@ -114,11 +114,11 @@ configure verbosity hcPath hcPkgPath conf0 = do
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, ghcPkgVersion, conf2) <-
+  (ghcPkgProg, ghcPkgVersion, progdb2) <-
     requireProgramVersion verbosity ghcPkgProgram {
       programFindLocation = guessGhcPkgFromGhcPath ghcProg
     }
-    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf1)
+    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath progdb1)
 
   when (ghcVersion /= ghcPkgVersion) $ die $
        "Version mismatch between ghc and ghc-pkg: "
@@ -135,9 +135,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
       hpcProgram' = hpcProgram {
                         programFindLocation = guessHpcFromGhcPath ghcProg
                     }
-      conf3 = addKnownProgram haddockProgram' $
+      progdb3 = addKnownProgram haddockProgram' $
               addKnownProgram hsc2hsProgram' $
-              addKnownProgram hpcProgram' conf2
+              addKnownProgram hpcProgram' progdb2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
   extensions0 <- Internal.getExtensions verbosity implInfo ghcProg
@@ -165,8 +165,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
       }
       compPlatform = Internal.targetPlatform ghcInfo
       -- configure gcc and ld
-      conf4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap conf3
-  return (comp, compPlatform, conf4)
+      progdb4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap progdb3
+  return (comp, compPlatform, progdb4)
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
