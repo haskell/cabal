@@ -79,7 +79,7 @@ import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import           Distribution.Simple.Setup (HaddockFlags)
 
-import           Distribution.Simple.Utils (die, notice, debug)
+import           Distribution.Simple.Utils (die, notice, noticeNoWrap, debug)
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -427,34 +427,36 @@ printPlan verbosity
   | null pkgs
   = notice verbosity "Up to date"
 
-  | verbosity >= verbose
-  = notice verbosity $ unlines $
-      ("In order, the following " ++ wouldWill ++ " be built:")
+  | otherwise
+  = noticeNoWrap verbosity $ unlines $
+      ("In order, the following " ++ wouldWill ++ " be built" ++
+      ifNormal " (use -v for more details)" ++ ":")
     : map showPkgAndReason pkgs
 
-  | otherwise
-  = notice verbosity $ unlines $
-      ("In order, the following " ++ wouldWill
-       ++ " be built (use -v for more details):")
-    : map (\(ReadyPackage pkg) -> showPkg pkg (elabPkgOrComp pkg)) pkgs
   where
     pkgs = InstallPlan.executionOrder elaboratedPlan
+
+    ifVerbose s | verbosity >= verbose = s
+                | otherwise            = ""
+
+    ifNormal s | verbosity >= verbose = ""
+               | otherwise            = s
 
     wouldWill | buildSettingDryRun = "would"
               | otherwise          = "will"
 
-    showPkg elab (ElabPackage _) = display (packageId elab)
-    showPkg elab (ElabComponent comp) =
-        display (packageId elab) ++
-        " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
-
     showPkgAndReason :: ElaboratedReadyPackage -> String
     showPkgAndReason (ReadyPackage elab) =
-      display (installedUnitId elab) ++
+      " - " ++
+      (if verbosity >= verbose
+        then display (installedUnitId elab)
+        else display (packageId elab)
+        ) ++
       (case elabPkgOrComp elab of
-          ElabPackage pkg -> showTargets elab ++ showStanzas pkg
+          ElabPackage pkg -> showTargets elab ++ ifVerbose (showStanzas pkg)
           ElabComponent comp ->
-            " (" ++ maybe "custom" display (compComponentName comp) ++ ")") ++
+            " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
+            ) ++
       showFlagAssignment (nonDefaultFlags elab) ++
       let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
       " (" ++ showBuildStatus buildStatus ++ ")"
@@ -471,7 +473,7 @@ printPlan verbosity
     showTargets elab
       | null (elabBuildTargets elab) = ""
       | otherwise
-      = " (" ++ unwords [ showComponentTarget (packageId elab) t | t <- elabBuildTargets elab ]
+      = " (" ++ intercalate ", " [ showComponentTarget (packageId elab) t | t <- elabBuildTargets elab ]
              ++ ")"
 
     -- TODO: [code cleanup] this should be a proper function in a proper place
@@ -497,7 +499,7 @@ printPlan verbosity
           BuildReasonEphemeralTargets -> "ephemeral targets"
       BuildStatusUpToDate {} -> "up to date" -- doesn't happen
 
-    showMonitorChangedReason (MonitoredFileChanged file) = "file " ++ file
+    showMonitorChangedReason (MonitoredFileChanged file) = "file " ++ file ++ " changed"
     showMonitorChangedReason (MonitoredValueChanged _)   = "value changed"
     showMonitorChangedReason  MonitorFirstRun     = "first run"
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
