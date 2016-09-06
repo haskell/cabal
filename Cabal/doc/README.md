@@ -106,3 +106,17 @@ So, you cannot have
   `index.rst`.
   This will effectively "push down" all blocks by one layer and solve
   the problem without having to change `cabal.rst`.
+
+
+* We use [`extlinks`](http://www.sphinx-doc.org/en/stable/ext/extlinks.html)
+  to shorten links to commonly referred resources (wiki, issue trackers).
+
+  E.g. you can use the more convenient short syntax
+
+        :issue:`123`
+
+  which is expanded into a hyperlink
+
+        `#123 <https://github.com/haskell/cabal/issues/123>`__
+
+  See `conf.py` for list of currently defined link shorteners.

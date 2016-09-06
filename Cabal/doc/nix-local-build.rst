@@ -340,15 +340,15 @@ Unsupported commands
 
 The following commands are not currently supported:
 
-``cabal new-test`` (`#3638 <https://github.com/haskell/cabal/issues/3638>`__)
+``cabal new-test`` (:issue:`3638`)
     Workaround: run the test executable directly (see `Where are my
     build products <#where-are-my-build-products>`__?)
 
-``cabal new-bench`` (`#3638 <https://github.com/haskell/cabal/issues/3638>`__)
+``cabal new-bench`` (:issue:`3638`)
     Workaround: run the benchmark executable directly (see `Where are my
     build products <#where-are-my-build-products>`__?)
 
-``cabal new-run`` (`#3638 <https://github.com/haskell/cabal/issues/3638>`__)
+``cabal new-run`` (:issue:`3638`)
     Workaround: run the executable directly (see `Where are my build
     products <#where-are-my-build-products>`__?)
 
@@ -357,12 +357,12 @@ The following commands are not currently supported:
     ``cabal new-repl`` instead. Otherwise, use ``-v`` to find the list
     of flags GHC is being invoked with and pass it manually.
 
-``cabal new-haddock`` (`#3535 <https://github.com/haskell/cabal/issues/3535>`__)
+``cabal new-haddock`` (:issue:`3535`)
     Workaround: run
     ``cabal act-as-setup -- haddock --builddir=dist-newstyle/build/pkg-0.1``
     (or execute the Custom setup script directly).
 
-``cabal new-install`` (`#3737 <https://github.com/haskell/cabal/issues/3737>`__)
+``cabal new-install`` (:issue:`3737`)
     Workaround: no good workaround at the moment. (But note that you no
     longer need to install libraries before building!)
 
@@ -428,8 +428,7 @@ default: ``./*.cabal``)
        URL, representing the path to a remote tarball to be downloaded
        and built.] (not implemented yet)
 
-    There is no command line variant of this field; see
-    `#3585 <https://github.com/haskell/cabal/issues/3585>`__.
+    There is no command line variant of this field; see :issue:`3585`.
 
 ``optional-packages:`` *package location list* (space or comma-separated, default: ``./*/*.cabal``)
     Like ``packages:``, specifies a list of package locations containing
@@ -677,7 +676,7 @@ an external dependency) should be built with ``-fno-state-hack``:
 but is one of many fields for configuring programs.  They take the form
 ``progname-options`` and ``progname-location``, and
 can only be set inside package stanzas.  (TODO: They are not supported
-at top-level, see `#3579 <https://github.com/haskell/cabal/issues/3579>`__).
+at top-level, see :issue:`3579`.
 
 At the moment, there is no way to specify an option to apply to all
 external packages or all inplace packages. Additionally, it is only
@@ -776,8 +775,7 @@ feature was added.
     to 0).
 
     Note that as of GHC 8.0, GHC does not recompile when optimization
-    levels change (see
-    `#10923 <https://ghc.haskell.org/trac/ghc/ticket/10923>`__), so if
+    levels change (see :ghc-ticket:`10923`), so if
     you change the optimization level for a local package you may need
     to blow away your old build products in order to rebuild with the
     new optimization level.
@@ -849,9 +847,8 @@ Object code options
 ``debug-info:`` *boolean* (default: False, added in Cabal 1.22)
     If the compiler (e.g., GHC 7.10 and later) supports outputing OS
     native debug info (e.g., DWARF), setting ``debug-info: True`` will
-    instruct it to do so. See the GHC wiki page on
-    `DWARF <https://ghc.haskell.org/trac/ghc/wiki/DWARF>`__ for more
-    information about this feature.
+    instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
+    for more information about this feature.
 
     (This field also accepts numeric syntax, but as of GHC 8.0 this
     doesn't do anything.)
@@ -1298,9 +1295,7 @@ Most users generally won't need these.
     heuristics. Slows things down on average, but may make backtracking
     faster for some packages. It's unlikely to help for small projects,
     but for big install plans it may help you find a plan when otherwise
-    this is not possible. See
-    `#1780 <https://github.com/haskell/cabal/issues/1780>`__ for more
-    commentary.
+    this is not possible. See :issue:`1780` for more commentary.
 
     The command line variant of this field is ``--(no-)reorder-goals``.
 

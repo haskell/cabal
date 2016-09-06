@@ -20,6 +20,14 @@ source_suffix = '.rst'
 source_encoding = 'utf-8-sig'
 master_doc = 'index'
 
+# extlinks -- see http://www.sphinx-doc.org/en/stable/ext/extlinks.html
+extlinks = {
+    'issue': ('https://github.com/haskell/cabal/issues/%s', '#'),
+
+    'ghc-wiki': ('http://ghc.haskell.org/trac/ghc/wiki/%s', ''),
+    'ghc-ticket': ('http://ghc.haskell.org/trac/ghc/ticket/%s', 'GHC #'),
+}
+
 # General information about the project.
 project = u'Cabal'
 copyright = u'2016, Cabal Team'
