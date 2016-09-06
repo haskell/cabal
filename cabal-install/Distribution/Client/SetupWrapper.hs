@@ -106,7 +106,7 @@ import Control.Applicative ( (<$>), (<*>) )
 import Data.Monoid         ( mempty )
 #endif
 import Control.Monad       ( when, unless )
-import Data.List           ( foldl1' )
+import Data.List           ( find, foldl1' )
 import Data.Maybe          ( fromMaybe, isJust )
 import Data.Char           ( isSpace )
 import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
@@ -389,26 +389,45 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing    -> getInstalledPackages verbosity
                     comp (usePackageDB options') conf
 
-  cabalLibVersionToUse :: IO (Version, (Maybe ComponentId)
+  -- Choose the version of Cabal to use if the setup script has a dependency on
+  -- Cabal, and possibly update the setup script options. The version also
+  -- determines how to filter the flags to Setup.
+  --
+  -- We first check whether the dependency solver has specified a Cabal version.
+  -- If it has, we use the solver's version without looking at the installed
+  -- package index (See issue #3436). Otherwise, we pick the Cabal version by
+  -- checking 'useCabalSpecVersion', then the saved version, and finally the
+  -- versions available in the index.
+  --
+  -- The version chosen here must match the one used in 'compileSetupExecutable'
+  -- (See issue #3433).
+  cabalLibVersionToUse :: IO (Version, Maybe ComponentId
                              ,SetupScriptOptions)
   cabalLibVersionToUse =
-    case useCabalSpecVersion options of
-      Just version -> do
+    case find (hasCabal . snd) (useDependencies options) of
+      Just (unitId, pkgId) -> do
+        let version = pkgVersion pkgId
         updateSetupScript version bt
-        writeFile setupVersionFile (show version ++ "\n")
-        return (version, Nothing, options)
-      Nothing  -> do
-        savedVer <- savedVersion
-        case savedVer of
-          Just version | version `withinRange` useCabalVersion options
-            -> do updateSetupScript version bt
-                  -- Does the previously compiled setup executable still exist
-                  -- and is it up-to date?
-                  useExisting <- canUseExistingSetup version
-                  if useExisting
-                    then return (version, Nothing, options)
-                    else installedVersion
-          _ -> installedVersion
+        writeSetupVersionFile version
+        return (version, Just unitId, options)
+      Nothing ->
+        case useCabalSpecVersion options of
+          Just version -> do
+            updateSetupScript version bt
+            writeSetupVersionFile version
+            return (version, Nothing, options)
+          Nothing  -> do
+            savedVer <- savedVersion
+            case savedVer of
+              Just version | version `withinRange` useCabalVersion options
+                -> do updateSetupScript version bt
+                      -- Does the previously compiled setup executable still exist
+                      -- and is it up-to date?
+                      useExisting <- canUseExistingSetup version
+                      if useExisting
+                        then return (version, Nothing, options)
+                        else installedVersion
+              _ -> installedVersion
     where
       -- This check duplicates the checks in 'getCachedSetupExecutable' /
       -- 'compileSetupExecutable'. Unfortunately, we have to perform it twice
@@ -424,13 +443,20 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           (&&) <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
 
+      writeSetupVersionFile :: Version -> IO ()
+      writeSetupVersionFile version =
+          writeFile setupVersionFile (show version ++ "\n")
+
+      hasCabal (PackageIdentifier (PackageName "Cabal") _) = True
+      hasCabal _                                           = False
+
       installedVersion :: IO (Version, Maybe InstalledPackageId
                              ,SetupScriptOptions)
       installedVersion = do
         (comp,    conf,    options')  <- configureCompiler options
         (version, mipkgid, options'') <- installedCabalVersion options' comp conf
         updateSetupScript version bt
-        writeFile setupVersionFile (show version ++ "\n")
+        writeSetupVersionFile version
         return (version, mipkgid, options'')
 
       savedVersion :: IO (Maybe Version)
