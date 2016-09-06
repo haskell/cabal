@@ -90,6 +90,7 @@ sdist flags exflags = do
     distPref        = fromFlag (sDistDistPref flags)
     tmpTargetDir    = fromFlagOrDefault (srcPref distPref) (sDistDirectory flags)
     setupOpts       = defaultSetupScriptOptions {
+      useDistPref     = distPref,
       -- The '--output-directory' sdist flag was introduced in Cabal 1.12, and
       -- '--list-sources' in 1.17.
       useCabalVersion = if isListSources
