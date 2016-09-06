@@ -281,7 +281,6 @@ rebuildInstallPlan verbosity
                      distProjectCacheDirectory
                    }
                    cabalDirLayout@CabalDirLayout {
-                     cabalPackageCacheDirectory,
                      cabalStoreDirectory,
                      cabalStorePackageDB
                    }
@@ -468,7 +467,7 @@ rebuildInstallPlan verbosity
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity fileMonitorSolverPlan
-                       (solverSettings, cabalPackageCacheDirectory,
+                       (solverSettings,
                         localPackages, localPackagesEnabledStanzas,
                         compiler, platform, programDbSignature progdb) $ do
 
@@ -496,7 +495,6 @@ rebuildInstallPlan verbosity
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
-                           cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
         solverSettings = resolveSolverSettings projectConfig
@@ -563,7 +561,6 @@ rebuildInstallPlan verbosity
         return (elaboratedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
-                        cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
 
