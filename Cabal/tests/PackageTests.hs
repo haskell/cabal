@@ -203,14 +203,14 @@ main = do
     (mtimeChange, mtimeChange') <- calibrateMtimeChangeDelay
 
     let suite = SuiteConfig
-                 { cabalDistPref = dist_dir
-                 , bootProgramsConfig = boot_programs
-                 , withProgramDb = with_programs
-                 , packageDBStack = package_db_stack
-                 , withGhcDBStack = with_ghc_db_stack
-                 , suiteVerbosity = verbosity
-                 , absoluteCWD = cabal_dir
-                 , mtimeChangeDelay = mtimeChange'
+                 { cabalDistPref      = dist_dir
+                 , bootProgramDb      = boot_programs
+                 , withProgramDb      = with_programs
+                 , packageDBStack     = package_db_stack
+                 , withGhcDBStack     = with_ghc_db_stack
+                 , suiteVerbosity     = verbosity
+                 , absoluteCWD        = cabal_dir
+                 , mtimeChangeDelay   = mtimeChange'
                  }
 
     let toMillis :: Int -> Double

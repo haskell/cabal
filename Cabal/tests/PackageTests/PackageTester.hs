@@ -175,7 +175,7 @@ onlyIfExists m = liftIO $
 data SuiteConfig = SuiteConfig
     -- | The programs used to build the Cabal under test.
     -- Invariant: ghc and ghc-pkg are configured.
-    { bootProgramsConfig :: ProgramDb
+    { bootProgramDb :: ProgramDb
     -- | The programs that are requested using @--with-compiler@
     -- and @--with-hc-pkg@ to Cabal the under-test.
     -- Invariant: ghc and ghc-pkg are configured.
@@ -211,7 +211,7 @@ getProgram progdb program = prog
     where Just prog = lookupProgram program progdb -- invariant!
 
 getBootProgram :: SuiteConfig -> Program -> ConfiguredProgram
-getBootProgram suite = getProgram (bootProgramsConfig suite)
+getBootProgram suite = getProgram (bootProgramDb suite)
 
 getWithProgram :: SuiteConfig -> Program -> ConfiguredProgram
 getWithProgram suite = getProgram (withProgramDb suite)
