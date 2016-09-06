@@ -23,9 +23,11 @@ build-type:     Simple
 
 extra-source-files:
   README.md tests/README.md changelog
-  doc/Cabal.css doc/developing-packages.markdown doc/index.markdown
-  doc/installing-packages.markdown
-  doc/misc.markdown
+  doc/bugs-and-stability.rst doc/concepts-and-development.rst
+  doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
+  doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
+  doc/intro.rst doc/misc.rst doc/nix-local-build-overview.rst
+  doc/nix-local-build.rst doc/README.md
 
   -- Generated with 'misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
