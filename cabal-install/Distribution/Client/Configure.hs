@@ -199,7 +199,7 @@ configureSetupScript packageDBs
     , usePlatform              = Just platform
     , usePackageDB             = packageDBs'
     , usePackageIndex          = index'
-    , useProgramDb         = conf
+    , useProgramDb             = conf
     , useDistPref              = distPref
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing
