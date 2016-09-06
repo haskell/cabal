@@ -1,4 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
+-- | This is a set of unit tests for the dependency solver,
+-- which uses the solver DSL ("UnitTests.Distribution.Solver.Modular.DSL")
+-- to more conveniently create package databases to run the solver tests on.
 module UnitTests.Distribution.Solver.Modular.Solver (tests)
        where
 
@@ -163,6 +166,7 @@ tests = [
         , runTest $ mkTest dbBuildTools3 "bt3" ["C"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("alex", 1), ("alex", 2)])
         , runTest $ mkTest dbBuildTools4 "bt4" ["B"] (solverSuccess [("A", 1), ("A", 2), ("B", 1), ("alex", 1)])
         , runTest $ mkTest dbBuildTools5 "bt5" ["A"] (solverSuccess [("A", 1), ("alex", 1), ("happy", 1)])
+        , runTest $ mkTest dbBuildTools6 "bt6" ["B"] (solverSuccess [("A", 2), ("B", 2), ("warp", 1)])
         ]
       -- Tests for the contents of the solver's log
     , testGroup "Solver log" [
@@ -1140,4 +1144,15 @@ dbBuildTools5 = [
     Right $ exAv "alex" 1 [],
     Right $ exAv "happy" 1 [ExBuildToolAny "alex"],
     Right $ exAv "A" 1 [ExBuildToolAny "happy"]
+  ]
+
+-- Test that build-depends on library/executable package works.
+-- Extracted from https://github.com/haskell/cabal/issues/3775
+dbBuildTools6 :: ExampleDb
+dbBuildTools6 = [
+    Right $ exAv "warp" 1 [],
+    -- NB: the warp build-depends refers to the package, not the internal
+    -- executable!
+    Right $ exAv "A" 2 [ExFix "warp" 1] `withExe` ExExe "warp" [ExAny "A"],
+    Right $ exAv "B" 2 [ExAny "A", ExAny "warp"]
   ]
