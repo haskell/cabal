@@ -40,6 +40,7 @@ import Distribution.Solver.Types.OptionalStanza
 import Distribution.Solver.Types.PackageFixedDeps
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Compat.Graph (IsNode(..))
+import Distribution.Simple.Utils (ordNub)
 
 import Data.Map (Map)
 import Network.URI (URI(..), URIAuth(..), nullURI)
@@ -118,8 +119,9 @@ instance IsNode (ConfiguredPackage loc) where
     type Key (ConfiguredPackage loc) = UnitId
     nodeKey       = SimpleUnitId . confPkgId
     -- TODO: if we update ConfiguredPackage to support order-only
-    -- dependencies, need to include those here
-    nodeNeighbors = CD.flatDeps . depends
+    -- dependencies, need to include those here.
+    -- NB: have to deduplicate, otherwise the planner gets confused
+    nodeNeighbors = ordNub . CD.flatDeps . depends
 
 instance (Binary loc) => Binary (ConfiguredPackage loc)
 
