@@ -603,7 +603,7 @@ renderBadPackageLocationMatch bplm = case bplm of
     BadLocUnexpectedFile pkglocstr ->
         "The package location '" ++ pkglocstr ++ "' is not recognised. The "
      ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
-     ++ "directories (ie directories containing a .cabal file)."
+     ++ "directories (i.e. directories containing a .cabal file)."
     BadLocNonexistantFile pkglocstr ->
         "The package location '" ++ pkglocstr ++ "' does not exist."
     BadLocDirNoCabalFile pkglocstr ->
@@ -839,7 +839,7 @@ renderBadPerPackageCompilerPaths
   (BadPerPackageCompilerPaths ((pkgname, progname) : _)) =
     "The path to the compiler program (or programs used by the compiler) "
  ++ "cannot be specified on a per-package basis in the cabal.project file "
- ++ "(ie setting the '" ++ progname ++ "-location' for package '"
+ ++ "(i.e. setting the '" ++ progname ++ "-location' for package '"
  ++ display pkgname ++ "'). All packages have to use the same compiler, so "
  ++ "specify the path in a global 'program-locations' section."
  --TODO: [nice to have] better format control so we can pretty-print the
