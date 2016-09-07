@@ -75,7 +75,7 @@ import Distribution.Simple.Program
          ( ConfiguredProgram(..) )
 import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, flagToMaybe, flagToList
-         , fromFlag, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
+         , fromFlag, fromFlagOrDefault, AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
          ( defaultSolver, defaultMaxBackjumps, )
 import Distribution.Simple.InstallDirs
@@ -153,18 +153,18 @@ projectConfigWithBuilderRepoContext verbosity BuildTimeSettings{..} =
 -- to the 'BuildTimeSettings'
 --
 projectConfigWithSolverRepoContext :: Verbosity
-                                   -> FilePath
                                    -> ProjectConfigShared
                                    -> ProjectConfigBuildOnly
                                    -> (RepoContext -> IO a) -> IO a
-projectConfigWithSolverRepoContext verbosity downloadCacheRootDir
+projectConfigWithSolverRepoContext verbosity
                                    ProjectConfigShared{..}
                                    ProjectConfigBuildOnly{..} =
     withRepoContext'
       verbosity
       (fromNubList projectConfigRemoteRepos)
       (fromNubList projectConfigLocalRepos)
-      downloadCacheRootDir
+      (fromFlagOrDefault (error "projectConfigWithSolverRepoContext: projectConfigCacheDir")
+                         projectConfigCacheDir)
       (flagToMaybe projectConfigHttpTransport)
       (flagToMaybe projectConfigIgnoreExpiry)
 
@@ -236,8 +236,7 @@ resolveBuildTimeSettings :: Verbosity
                          -> BuildTimeSettings
 resolveBuildTimeSettings verbosity
                          CabalDirLayout {
-                           cabalLogsDirectory,
-                           cabalPackageCacheDirectory
+                           cabalLogsDirectory
                          }
                          ProjectConfigShared {
                            projectConfigRemoteRepos,
@@ -261,7 +260,7 @@ resolveBuildTimeSettings verbosity
     buildSettingKeepTempFiles = fromFlag    projectConfigKeepTempFiles
     buildSettingRemoteRepos   = fromNubList projectConfigRemoteRepos
     buildSettingLocalRepos    = fromNubList projectConfigLocalRepos
-    buildSettingCacheDir      = cabalPackageCacheDirectory
+    buildSettingCacheDir      = fromFlag    projectConfigCacheDir
     buildSettingHttpTransport = flagToMaybe projectConfigHttpTransport
     buildSettingIgnoreExpiry  = fromFlag    projectConfigIgnoreExpiry
     buildSettingReportPlanningFailure

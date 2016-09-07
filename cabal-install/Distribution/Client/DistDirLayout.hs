@@ -101,7 +101,6 @@ data CabalDirLayout = CabalDirLayout {
        cabalStorePackageDBPath    :: CompilerId -> FilePath,
        cabalStorePackageDB        :: CompilerId -> PackageDB,
 
-       cabalPackageCacheDirectory :: FilePath,
        cabalLogsDirectory         :: FilePath,
        cabalWorldFile             :: FilePath
      }
@@ -166,8 +165,6 @@ defaultCabalDirLayout cabalDir =
 
     cabalStorePackageDB =
       SpecificPackageDB . cabalStorePackageDBPath
-
-    cabalPackageCacheDirectory = cabalDir </> "packages"
 
     cabalLogsDirectory = cabalDir </> "logs"
 
