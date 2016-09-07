@@ -169,12 +169,12 @@ Extra-Source-Files:
   tests/IntegrationTests2/build/setup-simple/A.hs
   tests/IntegrationTests2/build/setup-simple/Setup.hs
   tests/IntegrationTests2/build/setup-simple/a.cabal
+  tests/IntegrationTests2/exception/bad-config/cabal.project
   tests/IntegrationTests2/exception/build/Main.hs
   tests/IntegrationTests2/exception/build/a.cabal
   tests/IntegrationTests2/exception/configure/a.cabal
   tests/IntegrationTests2/exception/no-pkg/empty.in
   tests/IntegrationTests2/exception/no-pkg2/cabal.project
-  tests/IntegrationTests2/exception/bad-config/cabal.project
   tests/IntegrationTests2/regression/3324/cabal.project
   tests/IntegrationTests2/regression/3324/p/P.hs
   tests/IntegrationTests2/regression/3324/p/p.cabal
