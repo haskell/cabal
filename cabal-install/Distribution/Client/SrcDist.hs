@@ -90,6 +90,7 @@ sdist flags exflags = do
     distPref        = fromFlag (sDistDistPref flags)
     tmpTargetDir    = fromFlagOrDefault (srcPref distPref) (sDistDirectory flags)
     setupOpts       = defaultSetupScriptOptions {
+      useDistPref     = distPref,
       -- The '--output-directory' sdist flag was introduced in Cabal 1.12, and
       -- '--list-sources' in 1.17.
       useCabalVersion = if isListSources
@@ -147,7 +148,8 @@ createZipArchive verbosity pkg tmpDir targetPref = do
 
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
-allPackageSourceFiles :: Verbosity -> SetupScriptOptions -> FilePath -> IO [FilePath]
+allPackageSourceFiles :: Verbosity -> SetupScriptOptions -> FilePath
+                         -> IO [FilePath]
 allPackageSourceFiles verbosity setupOpts0 packageDir = do
   pkg <- do
     let err = "Error reading source files of package."
