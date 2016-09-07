@@ -413,7 +413,7 @@ default: ``./*.cabal``)
     following forms:
 
     1. They can specify a Cabal file, or a directory containing a Cabal
-       file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``
+       file, e.g., ``packages: Cabal cabal-install/cabal-install.cabal``.
 
     2. They can specify a glob-style wildcards, which must match one or
        more (a) directories containing a (single) Cabal file, (b) Cabal
@@ -449,6 +449,22 @@ default: ``./*.cabal``)
 [STRIKEOUT:There is also a stanza ``source-repository-package`` for
 specifying packages from an external version control.] (Not
 implemented.)
+
+All local packages are *vendored*, in the sense that if other packages
+(including external ones from Hackage) depend on a package with the name
+of a local package, the local package is preferentially used.  This
+motivates the default settings::
+
+    packages: ./*.cabal
+    optional-packages: ./*/*.cabal
+
+...any package can be vendored simply by making a checkout in the
+top-level project directory, as might be seen in this hypothetical
+directory layout::
+
+    foo.cabal
+    foo-helper/     # local package
+    unix/           # vendored external package
 
 All of these options support globs. ``cabal new-build`` has its own glob
 format:
