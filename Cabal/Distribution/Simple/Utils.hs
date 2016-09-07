@@ -22,7 +22,7 @@ module Distribution.Simple.Utils (
         die,
         dieWithLocation,
         topHandler, topHandlerWith,
-        warn, notice, setupMessage, info, debug,
+        warn, notice, noticeNoWrap, setupMessage, info, debug,
         debugNoWrap, chattyTry,
         printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
@@ -317,6 +317,11 @@ notice :: Verbosity -> String -> IO ()
 notice verbosity msg =
   when (verbosity >= normal) $
     putStr (wrapText msg)
+
+noticeNoWrap :: Verbosity -> String -> IO ()
+noticeNoWrap verbosity msg =
+  when (verbosity >= normal) $
+    putStr msg
 
 setupMessage :: Verbosity -> String -> PackageIdentifier -> IO ()
 setupMessage verbosity msg pkgid =
