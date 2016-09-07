@@ -409,6 +409,15 @@ The following options are understood by all commands:
     Set the verbosity level (0-3). The normal level is 1; a missing *n*
     defaults to 2.
 
+    There is also an extended version of this command which can be
+    used to fine-tune the verbosity of output.  It takes the
+    form ``[silent|normal|verbose|debug]``\ *flags*, where *flags*
+    is a list of ``+`` flags which toggle various aspects of
+    output.  At the moment, only ``+callsite`` and ``+callstack``
+    are supported, which respectively toggle call site and call
+    stack printing (these are only supported if Cabal
+    is built with a sufficiently recent GHC.)
+
 The various commands and the additional options they support are
 described below. In the simple build infrastructure, any other options
 will be reported as errors.

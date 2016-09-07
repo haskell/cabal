@@ -77,6 +77,14 @@
 	'GHCJS_PACKAGE_PATH', lifting the restriction that they be unset.
 	(#3728,#2711).
 	* Add support for new caret-style version range operator `^>=` (#3705)
+	* Verbosity `-v` now takes an extended format which allows
+	  specifying exactly what you want to be logged.  The format is
+	  "[silent|normal|verbose|debug] flags", where flags is a space
+	  separated list of flags. At the moment, only the flags
+	  +callsite and +callstack are supported; these report the
+	  call site/stack of a logging output respectively (these
+	  are only supported if Cabal is built with GHC 8.0/7.10.2
+	  or greater, respectively).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

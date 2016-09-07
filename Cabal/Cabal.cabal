@@ -313,6 +313,7 @@ library
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
+    Distribution.Compat.Stack
     Distribution.Compat.Time
     Distribution.Compiler
     Distribution.InstalledPackageInfo

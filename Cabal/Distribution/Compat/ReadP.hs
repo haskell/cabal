@@ -37,6 +37,7 @@ module Distribution.Compat.ReadP
 
   -- * Other operations
   pfail,      -- :: ReadP a
+  eof,        -- :: ReadP ()
   satisfy,    -- :: (Char -> Bool) -> ReadP Char
   char,       -- :: Char -> ReadP Char
   string,     -- :: String -> ReadP String
@@ -203,6 +204,12 @@ look = R Look
 pfail :: ReadP r a
 -- ^ Always fails.
 pfail = R (const Fail)
+
+eof :: ReadP r ()
+-- ^ Succeeds iff we are at the end of input
+eof = do { s <- look
+         ; if null s then return ()
+                     else pfail }
 
 (+++) :: ReadP r a -> ReadP r a -> ReadP r a
 -- ^ Symmetric choice.
