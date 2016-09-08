@@ -296,7 +296,8 @@ resolveBuildTimeSettings verbosity
       | otherwise          = fmap  substLogFileName givenTemplate
 
     defaultTemplate = toPathTemplate $
-                        cabalLogsDirectory </> "$pkgid" <.> "log"
+                        cabalLogsDirectory </>
+                        "$compiler" </> "$libname" <.> "log"
     givenTemplate   = flagToMaybe projectConfigLogFile
 
     useDefaultTemplate

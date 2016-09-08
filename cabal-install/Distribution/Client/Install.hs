@@ -1124,7 +1124,8 @@ performInstallations verbosity
                  logFileTemplate
       where
         installLogFile' = flagToMaybe $ installLogFile installFlags
-        defaultTemplate = toPathTemplate $ logsDir </> "$pkgid" <.> "log"
+        defaultTemplate = toPathTemplate $
+                            logsDir </> "$compiler" </> "$libname" <.> "log"
 
         -- If the user has specified --remote-build-reporting=detailed, use the
         -- default log file location. If the --build-log option is set, use the
