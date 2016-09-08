@@ -76,6 +76,7 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PkgConfigDb
+import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
@@ -1523,7 +1524,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
     pkgsUseSharedLibrary :: Set PackageId
     pkgsUseSharedLibrary =
-        packagesWithDownwardClosedProperty needsSharedLib
+        packagesWithLibDepsDownwardClosedProperty needsSharedLib
       where
         needsSharedLib pkg =
             fromMaybe compilerShouldUseSharedLibByDefault
@@ -1544,7 +1545,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
     pkgsUseProfilingLibrary :: Set PackageId
     pkgsUseProfilingLibrary =
-        packagesWithDownwardClosedProperty needsProfilingLib
+        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
       where
         needsProfilingLib pkg =
             fromFlagOrDefault False (profBothFlag <> profLibFlag)
@@ -1554,11 +1555,15 @@ elaborateInstallPlan platform compiler compilerprogdb
             profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
             --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
 
-    packagesWithDownwardClosedProperty property =
+    libDepGraph = Graph.fromList (map LibDepSolverPlanPackage
+                                      (SolverInstallPlan.toList solverPlan))
+
+    packagesWithLibDepsDownwardClosedProperty property =
         Set.fromList
-      $ map packageId
-      $ SolverInstallPlan.dependencyClosure
-          solverPlan
+      . map packageId
+      . fromMaybe []
+      $ Graph.closure
+          libDepGraph
           [ Graph.nodeKey pkg
           | pkg <- SolverInstallPlan.toList solverPlan
           , property pkg ] -- just the packages that satisfy the propety
@@ -1572,6 +1577,22 @@ elaborateInstallPlan platform compiler compilerprogdb
       -- + shared libs & exes, exe needs lib, recursive
       -- + vanilla libs & exes, exe needs lib, recursive
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
+
+-- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
+-- dependency graph considers only library dependencies (so, no setup
+-- dependencies or executable dependencies.)  Used to compute the set
+-- of packages needed for profiling and dynamic libraries.
+newtype LibDepSolverPlanPackage
+    = LibDepSolverPlanPackage { unLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage }
+
+instance Package LibDepSolverPlanPackage where
+    packageId = packageId . unLibDepSolverPlanPackage
+
+instance IsNode LibDepSolverPlanPackage where
+    type Key LibDepSolverPlanPackage = SolverId
+    nodeKey = nodeKey . unLibDepSolverPlanPackage
+    nodeNeighbors (LibDepSolverPlanPackage spkg)
+        = ordNub $ CD.libraryDeps (resolverPackageLibDeps spkg)
 
 ---------------------------
 -- Build targets
