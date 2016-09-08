@@ -177,7 +177,7 @@ getProgramInvocationOutput verbosity
             IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
 
 
-getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> IO [(String, Maybe String)]
+getExtraPathEnv :: [(String, Maybe String)] -> [FilePath] -> NoCallStackIO [(String, Maybe String)]
 getExtraPathEnv _ [] = return []
 getExtraPathEnv env extras = do
     mb_path <- case lookup "PATH" env of
@@ -192,7 +192,7 @@ getExtraPathEnv env extras = do
 -- | Return the current environment extended with the given overrides.
 --
 getEffectiveEnvironment :: [(String, Maybe String)]
-                        -> IO (Maybe [(String, String)])
+                        -> NoCallStackIO (Maybe [(String, String)])
 getEffectiveEnvironment []        = return Nothing
 getEffectiveEnvironment overrides =
     fmap (Just . Map.toList . apply overrides . Map.fromList) getEnvironment

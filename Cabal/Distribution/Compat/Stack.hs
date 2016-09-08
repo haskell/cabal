@@ -5,6 +5,7 @@ module Distribution.Compat.Stack (
     WithCallStack,
     CallStack,
     withFrozenCallStack,
+    withLexicalCallStack,
     callStack,
     prettyCallStack,
     parentSrcLocPrefix
@@ -25,7 +26,7 @@ import GHC.Stack
 #if MIN_VERSION_base(4,9,0)
 type WithCallStack a = HasCallStack => a
 #elif MIN_VERSION_base(4,8,1)
-type WithCallStack a = (?loc :: CallStack) => a
+type WithCallStack a = (?callStack :: CallStack) => a
 #endif
 
 #if !MIN_VERSION_base(4,9,0)
@@ -37,8 +38,8 @@ type WithCallStack a = (?loc :: CallStack) => a
 withFrozenCallStack :: WithCallStack (a -> a)
 withFrozenCallStack x = x
 
-callStack :: (?loc :: CallStack) => CallStack
-callStack = ?loc
+callStack :: (?callStack :: CallStack) => CallStack
+callStack = ?callStack
 
 prettyCallStack :: CallStack -> String
 prettyCallStack = showCallStack
@@ -64,6 +65,12 @@ parentSrcLocPrefix =
 parentSrcLocPrefix = "Call sites not available with base < 4.9.0.0 (GHC 8.0): "
 #endif
 
+-- Yeah, this uses skivvy implementation details.
+withLexicalCallStack :: (a -> WithCallStack (IO b)) -> WithCallStack (a -> IO b)
+withLexicalCallStack f =
+    let stk = ?callStack
+    in \x -> let ?callStack = stk in f x
+
 #else
 
 data CallStack = CallStack
@@ -82,5 +89,8 @@ prettyCallStack _ = "Call stacks not available with base < 4.8.1.0 (GHC 7.10)"
 
 parentSrcLocPrefix :: String
 parentSrcLocPrefix = "Call sites not available with base < 4.9.0.0 (GHC 8.0): "
+
+withLexicalCallStack :: (a -> IO b) -> a -> IO b
+withLexicalCallStack f = f
 
 #endif

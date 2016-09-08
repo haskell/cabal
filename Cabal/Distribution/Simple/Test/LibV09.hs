@@ -188,7 +188,7 @@ writeSimpleTestStub :: PD.TestSuite -- ^ library 'TestSuite' for which a stub
                                     -- is being created
                     -> FilePath     -- ^ path to directory where stub source
                                     -- should be located
-                    -> IO ()
+                    -> NoCallStackIO ()
 writeSimpleTestStub t dir = do
     createDirectoryIfMissing True dir
     let filename = dir </> stubFilePath t
@@ -212,11 +212,11 @@ stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents -- TODO: eradicateNoParse
     dir <- getCurrentDirectory
-    results <- (tests >>= stubRunTests) `CE.catch` errHandler 
+    results <- (tests >>= stubRunTests) `CE.catch` errHandler
     setCurrentDirectory dir
     stubWriteLog f n results
-  where 
-    errHandler :: CE.SomeException -> IO TestLogs
+  where
+    errHandler :: CE.SomeException -> NoCallStackIO TestLogs
     errHandler e = case CE.fromException e of
         Just CE.UserInterrupt -> CE.throwIO e
         _ -> return $ TestLog { testName = "Cabal test suite exception",
@@ -257,7 +257,7 @@ stubRunTests tests = do
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
 -- Cabal process to read.
-stubWriteLog :: FilePath -> String -> TestLogs -> IO ()
+stubWriteLog :: FilePath -> String -> TestLogs -> NoCallStackIO ()
 stubWriteLog f n logs = do
     let testLog = TestSuiteLog { testSuiteName = n, testLogs = logs, logFile = f }
     writeFile (logFile testLog) $ show testLog

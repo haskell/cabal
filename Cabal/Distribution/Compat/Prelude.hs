@@ -18,7 +18,7 @@
 module Distribution.Compat.Prelude (
     -- * Prelude
     --
-    -- Prelude is re-exported, following is hided:
+    -- Prelude is re-exported, following is hidden:
     module BasePrelude,
 
 #if !MINVER_base_48
@@ -39,6 +39,7 @@ module Distribution.Compat.Prelude (
     MonadPlus (..),
 
     -- * Some types
+    IO, NoCallStackIO,
     Map,
 
     -- * Data.Maybe
@@ -84,7 +85,7 @@ module Distribution.Compat.Prelude (
 
 -- We also could hide few partial function
 import Prelude                       as BasePrelude hiding
-  ( mapM, mapM_, sequence, null, length, foldr
+  ( IO, mapM, mapM_, sequence, null, length, foldr
 #if MINVER_base_48
   -- We hide them, as we import only some members
   , Traversable, traverse, sequenceA
@@ -121,6 +122,12 @@ import Data.List                     (intercalate, intersperse, isPrefixOf,
 import Data.Maybe
 
 import qualified Text.PrettyPrint as Disp
+
+import qualified Prelude as OrigPrelude
+import Distribution.Compat.Stack
+
+type IO a = WithCallStack (OrigPrelude.IO a)
+type NoCallStackIO a = OrigPrelude.IO a
 
 -- | New name for 'Text.PrettyPrint.<>'
 (<<>>) :: Disp.Doc -> Disp.Doc -> Disp.Doc

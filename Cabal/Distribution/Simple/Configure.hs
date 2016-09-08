@@ -87,6 +87,7 @@ import Distribution.Version
 import Distribution.Verbosity
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Node(..))
+import Distribution.Compat.Stack
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -198,6 +199,8 @@ getConfigStateFile filename = do
               throw $ ConfigStateFileBadVersion cabalId compId eResult
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
+  where
+    _ = callStack -- TODO: attach call stack to exception
 
 -- | Read the 'localBuildInfoFile', returning either an error or the local build
 -- info.
@@ -227,7 +230,7 @@ maybeGetPersistBuildConfig =
 -- 'localBuildInfoFile'.
 writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                         -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
-                        -> IO ()
+                        -> NoCallStackIO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
@@ -272,7 +275,7 @@ showHeader pkgId = BLC8.unwords
 
 -- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
-checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
+checkPersistBuildConfigOutdated :: FilePath -> FilePath -> NoCallStackIO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
   pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
@@ -290,7 +293,7 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- \"CABAL_BUILDDIR\" environment variable, or the default prefix.
 findDistPref :: FilePath  -- ^ default \"dist\" prefix
              -> Setup.Flag FilePath  -- ^ override \"dist\" prefix
-             -> IO FilePath
+             -> NoCallStackIO FilePath
 findDistPref defDistPref overrideDistPref = do
     envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
     return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
@@ -307,7 +310,7 @@ findDistPref defDistPref overrideDistPref = do
 -- set. (The @*DistPref@ flags are always set to a definite value before
 -- invoking 'UserHooks'.)
 findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
-                      -> IO FilePath
+                      -> NoCallStackIO FilePath
 findDistPrefOrDefault = findDistPref defaultDistPref
 
 -- |Perform the \"@.\/setup configure@\" action.
@@ -1486,7 +1489,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb
     addPkgConfigBIBench = addPkgConfigBI benchmarkBuildInfo $
                           \bench bi -> bench { benchmarkBuildInfo = bi }
 
-    pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
+    pkgconfigBuildInfo :: [Dependency] -> NoCallStackIO BuildInfo
     pkgconfigBuildInfo []      = return mempty
     pkgconfigBuildInfo pkgdeps = do
       let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]

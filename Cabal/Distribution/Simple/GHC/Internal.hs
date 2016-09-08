@@ -54,6 +54,7 @@ import Distribution.System
 import Distribution.Text ( display, simpleParse )
 import Distribution.Utils.NubList ( toNubListR )
 import Distribution.Verbosity
+import Distribution.Compat.Stack
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
@@ -155,7 +156,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
             | (flags', ""):_ <- reads flags -> flags'
             | otherwise -> tokenizeQuotedWords flags
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGcc :: Verbosity -> ConfiguredProgram -> NoCallStackIO ConfiguredProgram
     configureGcc _v gccProg = do
       return gccProg {
         programDefaultArgs = programDefaultArgs gccProg
@@ -192,7 +193,7 @@ configureToolchain _implInfo ghcProg ghcInfo =
         else return ldProg
 
 getLanguages :: Verbosity -> GhcImplInfo -> ConfiguredProgram
-             -> IO [(Language, String)]
+             -> NoCallStackIO [(Language, String)]
 getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
   | supportsHaskell2010 implInfo = return [(Haskell98,   "-XHaskell98")
@@ -353,7 +354,7 @@ ghcLookupProperty prop comp =
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
 getHaskellObjects :: GhcImplInfo -> Library -> LocalBuildInfo
-                  -> FilePath -> String -> Bool -> IO [FilePath]
+                  -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
 getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
@@ -409,7 +410,7 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
         mcsPP <- lookupEnv "CABAL_SANDBOX_PACKAGE_PATH"
         unless (mPP == mcsPP) abort
     where
-        lookupEnv :: String -> IO (Maybe String)
+        lookupEnv :: String -> NoCallStackIO (Maybe String)
         lookupEnv name = (Just `fmap` getEnv name)
                          `catchIO` const (return Nothing)
         abort =
@@ -417,6 +418,8 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
                ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "
                ++ "flag --package-db to specify a package database (it can be "
                ++ "used multiple times)."
+
+        _ = callStack -- TODO: output stack when erroring
 
 profDetailLevelFlag :: Bool -> ProfDetailLevel -> Flag GhcProfAuto
 profDetailLevelFlag forLib mpl =

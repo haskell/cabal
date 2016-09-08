@@ -5,6 +5,7 @@ import System.IO (Handle, hSetEncoding, localeEncoding)
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Compat.Stack
 
 -- The mingw32_HOST_OS CPP macro is GHC-specific
 #if mingw32_HOST_OS
@@ -47,6 +48,8 @@ createPipe = do
     close :: CInt -> IO ()
     close = throwErrnoIfMinus1_ "_close" . c__close
 
+    _ = callStack -- TODO: attach call stack to exceptions
+
 foreign import ccall "io.h _pipe" c__pipe ::
     Ptr CInt -> CUInt -> CInt -> IO CInt
 
@@ -54,6 +57,8 @@ foreign import ccall "io.h _close" c__close ::
     CInt -> IO CInt
 #elif ghcjs_HOST_OS
 createPipe = error "createPipe"
+  where
+    _ = callStack
 #else
 createPipe = do
     (readfd, writefd) <- Posix.createPipe
@@ -62,4 +67,6 @@ createPipe = do
     hSetEncoding readh localeEncoding
     hSetEncoding writeh localeEncoding
     return (readh, writeh)
+  where
+    _ = callStack
 #endif

@@ -39,7 +39,7 @@ foreign import WINAPI unsafe "windows.h GetShortPathNameW"
 --      will always return the required buffer size for a
 --      specified lpszLongPath.
 --
-getShortPathName :: FilePath -> IO FilePath
+getShortPathName :: FilePath -> NoCallStackIO FilePath
 getShortPathName path =
   Win32.withTString path $ \c_path -> do
     c_len <- Win32.failIfZero "GetShortPathName #1 failed!" $
@@ -52,7 +52,7 @@ getShortPathName path =
 
 #else
 
-getShortPathName :: FilePath -> IO FilePath
+getShortPathName :: FilePath -> NoCallStackIO FilePath
 getShortPathName path = return path
 
 #endif

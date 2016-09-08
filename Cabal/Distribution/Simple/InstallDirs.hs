@@ -539,7 +539,7 @@ instance Read PathTemplate where
 -- ---------------------------------------------------------------------------
 -- Internal utilities
 
-getWindowsProgramFilesDir :: IO FilePath
+getWindowsProgramFilesDir :: NoCallStackIO FilePath
 getWindowsProgramFilesDir = do
 #if mingw32_HOST_OS
   m <- shGetFolderPath csidl_PROGRAM_FILES

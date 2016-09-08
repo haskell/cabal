@@ -196,10 +196,10 @@ registrationPackageDB dbs = last dbs
 -- | Make package paths absolute
 
 
-absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
+absolutePackageDBPaths :: PackageDBStack -> NoCallStackIO PackageDBStack
 absolutePackageDBPaths = traverse absolutePackageDBPath
 
-absolutePackageDBPath :: PackageDB -> IO PackageDB
+absolutePackageDBPath :: PackageDB -> NoCallStackIO PackageDB
 absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB
 absolutePackageDBPath UserPackageDB          = return UserPackageDB
 absolutePackageDBPath (SpecificPackageDB db) =

@@ -7,6 +7,7 @@ module Distribution.Compat.Environment
        where
 
 import Prelude ()
+import qualified Prelude
 import Distribution.Compat.Prelude
 
 #ifndef mingw32_HOST_OS
@@ -25,6 +26,8 @@ import System.Environment (unsetEnv)
 import Distribution.Compat.Exception (catchIO)
 #endif
 
+import Distribution.Compat.Stack
+
 #ifdef mingw32_HOST_OS
 import Foreign.C
 import GHC.Windows
@@ -35,7 +38,7 @@ import Foreign.C.Error (throwErrnoIfMinus1_)
 import System.Posix.Internals ( withFilePath )
 #endif /* mingw32_HOST_OS */
 
-getEnvironment :: IO [(String, String)]
+getEnvironment :: NoCallStackIO [(String, String)]
 #ifdef mingw32_HOST_OS
 -- On Windows, the names of environment variables are case-insensitive, but are
 -- often given in mixed-case (e.g. "PATH" is "Path"), so we have to normalise
@@ -74,6 +77,8 @@ setEnv_ :: String -> String -> IO ()
 setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
   success <- c_SetEnvironmentVariable k v
   unless success (throwGetLastError "setEnv")
+ where
+  _ = callStack -- TODO: attach CallStack to exception
 
 # if defined(i386_HOST_ARCH)
 #  define WINDOWS_CCONV stdcall
@@ -84,16 +89,18 @@ setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
 # endif /* i386_HOST_ARCH */
 
 foreign import WINDOWS_CCONV unsafe "windows.h SetEnvironmentVariableW"
-  c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> IO Bool
+  c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> Prelude.IO Bool
 #else
 setEnv_ key value = do
   withFilePath key $ \ keyP ->
     withFilePath value $ \ valueP ->
       throwErrnoIfMinus1_ "setenv" $
         c_setenv keyP valueP (fromIntegral (fromEnum True))
+ where
+  _ = callStack -- TODO: attach CallStack to exception
 
 foreign import ccall unsafe "setenv"
-   c_setenv :: CString -> CString -> CInt -> IO CInt
+   c_setenv :: CString -> CString -> CInt -> Prelude.IO CInt
 #endif /* mingw32_HOST_OS */
 
 #if __GLASGOW_HASKELL__ < 708
@@ -118,10 +125,10 @@ unsetEnv key = withCWString key $ \k -> do
 #else
 unsetEnv key = withFilePath key (throwErrnoIf_ (/= 0) "unsetEnv" . c_unsetenv)
 #if __GLASGOW_HASKELL__ > 706
-foreign import ccall unsafe "__hsbase_unsetenv" c_unsetenv :: CString -> IO CInt
+foreign import ccall unsafe "__hsbase_unsetenv" c_unsetenv :: CString -> Prelude.IO CInt
 #else
 -- HACK: We hope very hard that !UNSETENV_RETURNS_VOID
-foreign import ccall unsafe "unsetenv" c_unsetenv :: CString -> IO CInt
+foreign import ccall unsafe "unsetenv" c_unsetenv :: CString -> Prelude.IO CInt
 #endif
 #endif
 
