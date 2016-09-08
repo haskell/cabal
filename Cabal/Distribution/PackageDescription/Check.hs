@@ -62,8 +62,7 @@ import Text.PrettyPrint ((<+>))
 import qualified System.Directory (getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
-         ( (</>), takeExtension, isRelative, isAbsolute
-         , splitDirectories,  splitPath, splitExtension )
+         ( (</>), takeExtension, splitDirectories, splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -627,7 +626,7 @@ checkSourceRepos pkg =
         ++ "field. It should specify the tag corresponding to this version "
         ++ "or release of the package."
 
-  , check (maybe False System.FilePath.isAbsolute (repoSubdir repo)) $
+  , check (maybe False isAbsolute (repoSubdir repo)) $
       PackageDistInexcusable
         "The 'subdir' field of a source-repository must be a relative path."
   ]
@@ -1904,3 +1903,25 @@ fileExtensionSupportedLanguage path =
     extension = takeExtension path
     isHaskell = extension `elem` [".hs", ".lhs"]
     isC       = isJust (filenameCDialect extension)
+
+-- Don't use System.FilePath.isRelative. The System.FilePath exists in two
+-- versions, Windows and Posix. The two versions don't agree on what is a
+-- relative path and we don't know if we're given Windows or Posix paths.
+-- This results in false positives when running on Posix and inspecting Windows
+-- paths, like the hackage server does.
+isRelative :: FilePath -> Bool
+isRelative = not . isAbsolute
+
+-- | Platform independent heuristic. Why we don't use the filepath package;
+-- System.FilePath.Posix.isAbsolute \"C:\\hello\" == False
+-- System.FilePath.Windows.isAbsolute \"/hello\" == False
+-- This means that we would treat paths that start with \"/\" to be absolute.
+-- On Posix they are indeed absolute, while on Windows they are not.
+isAbsolute :: FilePath -> Bool
+-- C:\\
+isAbsolute (drive:':':'\\':_) = isAlpha drive
+-- UNC
+isAbsolute ('\\':'\\':_) = True
+-- Posix root
+isAbsolute ('/':_) = True
+isAbsolute _ = False
