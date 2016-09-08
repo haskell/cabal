@@ -9,6 +9,7 @@ import Distribution.Compat.Stack
 
 -- The mingw32_HOST_OS CPP macro is GHC-specific
 #if mingw32_HOST_OS
+import qualified Prelude
 import Control.Exception (onException)
 import Foreign.C.Error (throwErrnoIfMinus1_)
 import Foreign.C.Types (CInt(..), CUInt(..))
@@ -40,21 +41,22 @@ createPipe = do
         hSetEncoding writeh localeEncoding
         return (readh, writeh)) `onException` (close readfd >> close writefd)
   where
-    fdToHandle :: CInt -> IOMode -> IO Handle
+    fdToHandle :: CInt -> IOMode -> NoCallStackIO Handle
     fdToHandle fd mode = do
         (fd', deviceType) <- mkFD fd mode (Just (Stream, 0, 0)) False False
         mkHandleFromFD fd' deviceType "" mode False Nothing
 
     close :: CInt -> IO ()
     close = throwErrnoIfMinus1_ "_close" . c__close
+      where _ = callStack -- TODO: attach call stack to exception
 
     _ = callStack -- TODO: attach call stack to exceptions
 
 foreign import ccall "io.h _pipe" c__pipe ::
-    Ptr CInt -> CUInt -> CInt -> IO CInt
+    Ptr CInt -> CUInt -> CInt -> Prelude.IO CInt
 
 foreign import ccall "io.h _close" c__close ::
-    CInt -> IO CInt
+    CInt -> Prelude.IO CInt
 #elif ghcjs_HOST_OS
 createPipe = error "createPipe"
   where

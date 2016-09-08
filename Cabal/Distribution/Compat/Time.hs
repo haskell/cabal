@@ -29,6 +29,7 @@ import System.Time ( getClockTime, diffClockTimes
 
 #if defined mingw32_HOST_OS
 
+import qualified Prelude
 import Data.Bits          ((.|.), unsafeShiftL)
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits          (finiteBitSize)
@@ -105,9 +106,9 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
 #endif
 
 foreign import CALLCONV "windows.h GetFileAttributesExW"
-  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> IO BOOL
+  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> Prelude.IO BOOL
 
-getFileAttributesEx :: String -> LPVOID -> IO BOOL
+getFileAttributesEx :: String -> LPVOID -> NoCallStackIO BOOL
 getFileAttributesEx path lpFileInformation =
   withTString path $ \c_path ->
       c_getFileAttributesEx c_path getFileExInfoStandard lpFileInformation

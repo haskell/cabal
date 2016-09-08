@@ -59,6 +59,7 @@ import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 
 #if mingw32_HOST_OS
+import qualified Prelude
 import Foreign
 import Foreign.C
 #endif
@@ -549,7 +550,7 @@ getWindowsProgramFilesDir = do
   return (fromMaybe "C:\\Program Files" m)
 
 #if mingw32_HOST_OS
-shGetFolderPath :: CInt -> IO (Maybe FilePath)
+shGetFolderPath :: CInt -> NoCallStackIO (Maybe FilePath)
 shGetFolderPath n =
   allocaArray long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath
@@ -576,5 +577,5 @@ foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
                               -> Ptr ()
                               -> CInt
                               -> CWString
-                              -> IO CInt
+                              -> Prelude.IO CInt
 #endif
