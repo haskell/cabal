@@ -4,6 +4,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)
   , Dependencies(..)
   , ExTest(..)
+  , ExExe(..)
   , ExPreference(..)
   , ExampleDb
   , ExampleVersionRange
@@ -21,6 +22,8 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , withSetupDeps
   , withTest
   , withTests
+  , withExe
+  , withExes
   , runProgress
   ) where
 
@@ -110,6 +113,7 @@ type ExamplePkgVersion = Int
 type ExamplePkgHash    = String  -- for example "installed" packages
 type ExampleFlagName   = String
 type ExampleTestName   = String
+type ExampleExeName    = String
 type ExampleVersionRange = C.VersionRange
 
 data Dependencies = NotBuildable | Buildable [ExampleDependency]
@@ -142,6 +146,8 @@ data ExampleDependency =
   deriving Show
 
 data ExTest = ExTest ExampleTestName [ExampleDependency]
+
+data ExExe = ExExe ExampleExeName [ExampleDependency]
 
 exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
        -> ExampleDependency
@@ -194,6 +200,15 @@ withTests ex tests =
                             | ExTest name deps <- tests]
   in ex { exAvDeps = exAvDeps ex <> testCDs }
 
+withExe :: ExampleAvailable -> ExExe -> ExampleAvailable
+withExe ex exe = withExes ex [exe]
+
+withExes :: ExampleAvailable -> [ExExe] -> ExampleAvailable
+withExes ex exes =
+  let exeCDs = CD.fromList [(CD.ComponentExe name, deps)
+                           | ExExe name deps <- exes]
+  in ex { exAvDeps = exAvDeps ex <> exeCDs }
+
 -- | An installed package in 'ExampleDb'; construct me with 'exInst'.
 data ExampleInstalled = ExInst {
     exInstName         :: ExamplePkgName
@@ -230,6 +245,7 @@ exAvSrcPkg :: ExampleAvailable -> UnresolvedSourcePackage
 exAvSrcPkg ex =
     let (libraryDeps, exts, mlang, pcpkgs, exes) = splitTopLevel (CD.libraryDeps (exAvDeps ex))
         testSuites = [(name, deps) | (CD.ComponentTest name, deps) <- CD.toList (exAvDeps ex)]
+        executables = [(name, deps) | (CD.ComponentExe name, deps) <- CD.toList (exAvDeps ex)]
     in SourcePackage {
            packageInfoId        = exAvPkgId ex
          , packageSource        = LocalTarballPackage "<<path>>"
@@ -249,13 +265,19 @@ exAvSrcPkg ex =
                      }
                  }
              , C.genPackageFlags = nub $ concatMap extractFlags $
-                                   CD.libraryDeps (exAvDeps ex) ++ concatMap snd testSuites
+                                   CD.libraryDeps (exAvDeps ex)
+                                    ++ concatMap snd testSuites
+                                    ++ concatMap snd executables
              , C.condLibrary = Just (mkCondTree
                     (extsLib exts <> langLib mlang <> pcpkgLib pcpkgs <> buildtoolsLib exes)
                                                      disableLib
                                                      (Buildable libraryDeps))
              , C.condSubLibraries = []
-             , C.condExecutables = []
+             , C.condExecutables =
+                 -- Executables not presently disableable.  We can't
+                 -- error in the disable case
+                 let mkTree = mkCondTree mempty disableExe . Buildable
+                 in map (\(t, deps) -> (t, mkTree deps)) executables
              , C.condTestSuites  =
                  let mkTree = mkCondTree mempty disableTest . Buildable
                  in map (\(t, deps) -> (t, mkTree deps)) testSuites
@@ -394,6 +416,10 @@ exAvSrcPkg ex =
     disableTest :: C.TestSuite -> C.TestSuite
     disableTest test =
         test { C.testBuildInfo = (C.testBuildInfo test) { C.buildable = False }}
+
+    disableExe :: C.Executable -> C.Executable
+    disableExe exe =
+        exe { C.buildInfo = (C.buildInfo exe) { C.buildable = False }}
 
     -- A 'C.Library' with just the given pkgconfig-depends in its 'BuildInfo'
     pcpkgLib :: [(ExamplePkgName, ExamplePkgVersion)] -> C.Library
