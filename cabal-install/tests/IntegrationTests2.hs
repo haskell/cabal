@@ -48,6 +48,7 @@ tests config =
   [ testGroup "Exceptions during discovey and planning" $
     [ testCase "no package"  (testExceptionInFindingPackage config)
     , testCase "no package2" (testExceptionInFindingPackage2 config)
+    , testCase "proj conf1"  (testExceptionInProjectConfig config)
     ]
   , testGroup "Exceptions during building (local inplace)" $
     [ testCase "configure"   (testExceptionInConfigureStep config)
@@ -83,11 +84,24 @@ testExceptionInFindingPackage2 config = do
     BadPackageLocations locs <- expectException "BadPackageLocations" $
       void $ planProject testdir config
     case locs of
-      [BadLocGlobBadMatches "./" [BadLocDirNoCabalFile "."]] -> return ()
-      _ -> assertFailure $ "expected BadLocGlobBadMatches, got " ++ show locs
+      [BadPackageLocationFile (BadLocDirNoCabalFile ".")] -> return ()
+      _ -> assertFailure $ "expected BadLocDirNoCabalFile, got " ++ show locs
     cleanProject testdir
   where
     testdir = "exception/no-pkg2"
+
+
+testExceptionInProjectConfig :: ProjectConfig -> Assertion
+testExceptionInProjectConfig config = do
+    BadPerPackageCompilerPaths ps <- expectException "BadPerPackageCompilerPaths" $
+      void $ planProject testdir config
+    case ps of
+      [(PackageName "foo","ghc")] -> return ()
+      _ -> assertFailure $ "expected (PackageName \"foo\",\"ghc\"), got "
+                        ++ show ps
+    cleanProject testdir
+  where
+    testdir = "exception/bad-config"
 
 
 testExceptionInConfigureStep :: ProjectConfig -> Assertion

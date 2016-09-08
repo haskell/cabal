@@ -534,10 +534,19 @@ data ProjectPackageLocation =
 -- | Exception thrown by 'findProjectPackages'.
 --
 newtype BadPackageLocations = BadPackageLocations [BadPackageLocation]
+#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
+#else
+  deriving (Typeable)
 
-instance Exception BadPackageLocations
---TODO: [required eventually] displayException for nice rendering
+instance Show BadPackageLocations where
+  show = renderBadPackageLocations
+#endif
+
+instance Exception BadPackageLocations where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderBadPackageLocations
+#endif
 --TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
 
 data BadPackageLocation
@@ -556,6 +565,52 @@ data BadPackageLocationMatch
    | BadLocDirManyCabalFiles   String
   deriving Show
 
+renderBadPackageLocations :: BadPackageLocations -> String
+renderBadPackageLocations (BadPackageLocations bpls) =
+    unlines (map renderBadPackageLocation bpls)
+
+--TODO: [nice to have] keep track of the config file (and src loc) packages
+-- were listed, to use in error messages
+--TODO: [nice to have] keep track in the ProjectConfig and BadPackageLocations
+-- of whether the project config was explicit or implicit so we can report a
+-- better message, either pointing to the file or talking about the issues
+-- related to having no project file and no package.
+
+renderBadPackageLocation :: BadPackageLocation -> String
+renderBadPackageLocation bpl = case bpl of
+    BadPackageLocationFile badmatch ->
+        renderBadPackageLocationMatch badmatch
+    BadLocGlobEmptyMatch pkglocstr ->
+        "The package location glob '" ++ pkglocstr
+     ++ "' does not match any files or directories."
+    BadLocGlobBadMatches pkglocstr failures ->
+        "The package location glob '" ++ pkglocstr ++ "' does not match any "
+     ++ "recognised forms of package. "
+     ++ concatMap ((' ':) . renderBadPackageLocationMatch) failures
+    BadLocUnexpectedUriScheme pkglocstr ->
+        "The package location URI '" ++ pkglocstr ++ "' does not use a "
+     ++ "supported URI scheme. The supported URI schemes are http, https and "
+     ++ "file."
+    BadLocUnrecognisedUri pkglocstr ->
+        "The package location URI '" ++ pkglocstr ++ "' does not appear to "
+     ++ "be a valid absolute URI."
+    BadLocUnrecognised pkglocstr ->
+        "The package location syntax '" ++ pkglocstr ++ "' is not recognised."
+
+renderBadPackageLocationMatch :: BadPackageLocationMatch -> String
+renderBadPackageLocationMatch bplm = case bplm of
+    BadLocUnexpectedFile pkglocstr ->
+        "The package location '" ++ pkglocstr ++ "' is not recognised. The "
+     ++ "supported file targets are .cabal files, .tar.gz tarballs or package "
+     ++ "directories (i.e. directories containing a .cabal file)."
+    BadLocNonexistantFile pkglocstr ->
+        "The package location '" ++ pkglocstr ++ "' does not exist."
+    BadLocDirNoCabalFile pkglocstr ->
+        "The package directory '" ++ pkglocstr ++ "' does not contain any "
+     ++ ".cabal file."
+    BadLocDirManyCabalFiles pkglocstr ->
+        "The package directory '" ++ pkglocstr ++ "' contains multiple "
+     ++ ".cabal files (which is not currently supported)."
 
 -- | Given the project config,
 --
@@ -615,6 +670,10 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
           | recognisedScheme && not (null host) ->
             Just (Right [ProjectPackageRemoteTarball uri])
 
+          --TODO: [required eventually] handle file: urls which do have a null
+          -- host. translate URI into filepath and use ProjectPackageLocalTarball
+          -- or keep as file url and use ProjectPackageRemoteTarball?
+
           | not recognisedScheme && not (null host) ->
             Just (Left (BadLocUnexpectedUriScheme pkglocstr))
 
@@ -642,9 +701,11 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
             _  -> do
               (failures, pkglocs) <- partitionEithers <$>
                                      mapM checkFilePackageMatch matches
-              if null pkglocs
-                then return (Left (BadLocGlobBadMatches pkglocstr failures))
-                else return (Right pkglocs)
+              return $! case (failures, pkglocs) of
+                ([failure], []) | isJust (isTrivialFilePathGlob glob)
+                        -> Left (BadPackageLocationFile failure)
+                (_, []) -> Left (BadLocGlobBadMatches pkglocstr failures)
+                _       -> Right pkglocs
 
 
     checkIsSingleFilePackage pkglocstr = do
@@ -665,6 +726,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       -- Either way, </> does the right thing here. We return relative paths if
       -- they were relative in the first place.
       let abspath = projectRootDir </> pkglocstr
+      isFile <- liftIO $ doesFileExist abspath
       isDir  <- liftIO $ doesDirectoryExist abspath
       parentDirExists <- case takeDirectory abspath of
                            []  -> return False
@@ -684,6 +746,9 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
 
           | takeExtension pkglocstr == ".cabal"
          -> return (Right (ProjectPackageLocalCabalFile pkglocstr))
+
+          | isFile
+         -> return (Left (BadLocUnexpectedFile pkglocstr))
 
           | parentDirExists
          -> return (Left (BadLocNonexistantFile pkglocstr))
@@ -753,11 +818,33 @@ readSourcePackage _verbosity _ =
 
 data BadPerPackageCompilerPaths
    = BadPerPackageCompilerPaths [(PackageName, String)]
+#if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
+#else
+  deriving (Typeable)
 
-instance Exception BadPerPackageCompilerPaths
---TODO: [required eventually] displayException for nice rendering
+instance Show BadPerPackageCompilerPaths where
+  show = renderBadPerPackageCompilerPaths
+#endif
+
+instance Exception BadPerPackageCompilerPaths where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderBadPerPackageCompilerPaths
+#endif
 --TODO: [nice to have] custom exception subclass for Doc rendering, colour etc
+
+renderBadPerPackageCompilerPaths :: BadPerPackageCompilerPaths -> String
+renderBadPerPackageCompilerPaths
+  (BadPerPackageCompilerPaths ((pkgname, progname) : _)) =
+    "The path to the compiler program (or programs used by the compiler) "
+ ++ "cannot be specified on a per-package basis in the cabal.project file "
+ ++ "(i.e. setting the '" ++ progname ++ "-location' for package '"
+ ++ display pkgname ++ "'). All packages have to use the same compiler, so "
+ ++ "specify the path in a global 'program-locations' section."
+ --TODO: [nice to have] better format control so we can pretty-print the
+ -- offending part of the project file. Currently the line wrapping breaks any
+ -- formatting.
+renderBadPerPackageCompilerPaths _ = error "renderBadPerPackageCompilerPaths"
 
 -- | The project configuration is not allowed to specify program locations for
 -- programs used by the compiler as these have to be the same for each set of
