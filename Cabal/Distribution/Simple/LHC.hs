@@ -139,7 +139,7 @@ configureToolchain lhcProg =
                           programFindLocation prog verbosity searchpath
       | otherwise = programFindLocation prog
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGcc :: Verbosity -> ConfiguredProgram -> NoCallStackIO ConfiguredProgram
     configureGcc
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
@@ -175,7 +175,7 @@ configureToolchain lhcProg =
         then return ldProg { programDefaultArgs = ["-x"] }
         else return ldProg
 
-getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
+getLanguages :: Verbosity -> ConfiguredProgram -> NoCallStackIO [(Language, Flag)]
 getLanguages _ _ = return [(Haskell98, "")]
 --FIXME: does lhc support -XHaskell98 flag? from what version?
 
@@ -533,7 +533,7 @@ hackThreadedFlag verbosity comp prof bi
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
 getHaskellObjects :: Library -> LocalBuildInfo
-                  -> FilePath -> String -> Bool -> IO [FilePath]
+                  -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
 getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")

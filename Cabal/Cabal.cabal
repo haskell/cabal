@@ -429,6 +429,7 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
+  default-extensions: Rank2Types, FlexibleContexts
 
 -- Small, fast running tests.
 test-suite unit-tests

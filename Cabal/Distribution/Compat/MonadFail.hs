@@ -25,7 +25,7 @@ instance MonadFail Maybe where
 instance MonadFail [] where
     fail _ = []
 
-instance MonadFail IO where
+instance MonadFail P.IO where
     fail = P.fail
 
 instance MonadFail ReadPrec where

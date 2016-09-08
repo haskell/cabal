@@ -116,7 +116,7 @@ getGlobalPackageDir verbosity progdb = do
     let [pkgdir] = lines output
     return pkgdir
 
-getUserPackageDir :: IO FilePath
+getUserPackageDir :: NoCallStackIO FilePath
 getUserPackageDir = do
     homeDir <- getHomeDirectory
     return $ homeDir </> ".cabal" </> "lib"  -- TODO: determine in some other way
@@ -145,7 +145,7 @@ installedPkgConfig = "installed-pkg-config"
 -- | Check if a certain dir contains a valid package. Currently, we are
 -- looking only for the presence of an installed package configuration.
 -- TODO: Actually make use of the information provided in the file.
-isPkgDir :: String -> String -> String -> IO Bool
+isPkgDir :: String -> String -> String -> NoCallStackIO Bool
 isPkgDir _ _   ('.' : _)  = return False  -- ignore files starting with a .
 isPkgDir c dir xs         = do
                               let candidate = dir </> uhcPackageDir xs c

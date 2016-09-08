@@ -286,7 +286,7 @@ createPackageDB verbosity comp progdb preferCompat dbPath =
       _              -> die $ "Distribution.Simple.Register.createPackageDB: "
                            ++ "not implemented for this compiler"
 
-doesPackageDBExist :: FilePath -> IO Bool
+doesPackageDBExist :: FilePath -> NoCallStackIO Bool
 doesPackageDBExist dbPath = do
     -- currently one impl for all compiler flavours, but could change if needed
     dir_exists <- doesDirectoryExist dbPath
@@ -294,7 +294,7 @@ doesPackageDBExist dbPath = do
         then return True
         else doesFileExist dbPath
 
-deletePackageDB :: FilePath -> IO ()
+deletePackageDB :: FilePath -> NoCallStackIO ()
 deletePackageDB dbPath = do
     -- currently one impl for all compiler flavours, but could change if needed
     dir_exists <- doesDirectoryExist dbPath

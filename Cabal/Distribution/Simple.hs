@@ -515,7 +515,7 @@ clean pkg_descr flags = do
     traverse_ (writePersistBuildConfig distPref) maybeConfig
 
   where
-        removeFileOrDirectory :: FilePath -> IO ()
+        removeFileOrDirectory :: FilePath -> NoCallStackIO ()
         removeFileOrDirectory fname = do
             isDir <- doesDirectoryExist fname
             isFile <- doesFileExist fname

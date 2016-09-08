@@ -433,7 +433,7 @@ instance Binary ConfigFlags
 configPrograms :: ConfigFlags -> ProgramDb
 configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
 
-configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
+configAbsolutePaths :: ConfigFlags -> NoCallStackIO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
   `liftM` traverse (maybe (return Nothing) (liftM Just . absolutePackageDBPath))

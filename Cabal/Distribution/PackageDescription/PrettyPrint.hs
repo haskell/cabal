@@ -48,7 +48,7 @@ simplifiedPrinting :: Bool
 simplifiedPrinting = False
 
 -- | Writes a .cabal file from a generic package description
-writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> IO ()
+writeGenericPackageDescription :: FilePath -> GenericPackageDescription -> NoCallStackIO ()
 writeGenericPackageDescription fpath pkg = writeUTF8File fpath (showGenericPackageDescription pkg)
 
 -- | Writes a generic package description to a string
@@ -272,7 +272,7 @@ emptyLine :: Doc -> Doc
 emptyLine d                              = text "" $+$ d
 
 -- | @since 1.26.0.0@
-writePackageDescription :: FilePath -> PackageDescription -> IO ()
+writePackageDescription :: FilePath -> PackageDescription -> NoCallStackIO ()
 writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
 
 --TODO: make this use section syntax
@@ -357,7 +357,7 @@ benchmarkInterfaceToMaybeMainIs BenchmarkUnsupported{} = Nothing
 
 
 -- | @since 1.26.0.0@
-writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
+writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> NoCallStackIO ()
 writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
                              . showHookedBuildInfo
 

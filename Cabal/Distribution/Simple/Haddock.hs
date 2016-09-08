@@ -567,7 +567,7 @@ renderPureArgs version comp platform args = concat
 -- HTML paths, and an optional warning for packages with missing documentation.
 haddockPackagePaths :: [InstalledPackageInfo]
                     -> Maybe (InstalledPackageInfo -> FilePath)
-                    -> IO ([(FilePath, Maybe FilePath)], Maybe String)
+                    -> NoCallStackIO ([(FilePath, Maybe FilePath)], Maybe String)
 haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <- sequenceA
     [ case interfaceAndHtmlPath ipkg of

@@ -1,4 +1,5 @@
 {-# LANGUAGE NondecreasingIndentation #-}
+{-# LANGUAGE FlexibleContexts #-}
 -- Implements the \"@.\/cabal sdist@\" command, which creates a source
 -- distribution for this package.  That is, packs up the source code
 -- into a tarball, making use of the corresponding Cabal module.
@@ -51,7 +52,8 @@ sdist :: SDistFlags -> SDistExFlags -> IO ()
 sdist flags exflags = do
   pkg <- liftM flattenPackageDescription
     (readPackageDescription verbosity =<< defaultPackageDesc verbosity)
-  let withDir = if not needMakeArchive then (\f -> f tmpTargetDir)
+  let withDir :: (FilePath -> IO a) -> IO a
+      withDir = if not needMakeArchive then \f -> f tmpTargetDir
                 else withTempDirectory verbosity tmpTargetDir "sdist."
   -- 'withTempDir' fails if we don't create 'tmpTargetDir'...
   when needMakeArchive $
