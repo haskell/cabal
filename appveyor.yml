@@ -10,7 +10,7 @@ install:
 
 build_script:
   - cd Cabal
-  - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
+  - ghc --make -threaded -i -i. Setup.hs -Wall -Werror -XRank2Types -XFlexibleContexts
 
   # 'echo "" |' works around an AppVeyor issue:
   # https://github.com/commercialhaskell/stack/issues/1097#issuecomment-145747849
