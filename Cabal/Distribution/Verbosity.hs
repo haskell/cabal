@@ -43,14 +43,16 @@ import Distribution.ReadE
 import Distribution.Compat.ReadP
 
 import Data.List (elemIndex)
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 data Verbosity = Verbosity {
     vLevel :: VerbosityLevel,
-    vCallStack :: CallStackLevel
+    vFlags :: Set VerbosityFlag
   } deriving (Generic)
 
 mkVerbosity :: VerbosityLevel -> Verbosity
-mkVerbosity l = Verbosity { vLevel = l, vCallStack = NoStack }
+mkVerbosity l = Verbosity { vLevel = l, vFlags = Set.empty }
 
 instance Show Verbosity where
     showsPrec n = showsPrec n . vLevel
@@ -159,23 +161,25 @@ showForGHC   v = maybe (error "unknown verbosity") show $
     elemIndex v [silent,normal,__,verbose,deafening]
         where __ = silent -- this will be always ignored by elemIndex
 
-data CallStackLevel = NoStack | TopStackFrame | FullStack
+data VerbosityFlag
+    = VCallStack
+    | VCallSite
     deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
 
-instance Binary CallStackLevel
+instance Binary VerbosityFlag
 
--- | Turn on verbose call-site printing when we log.  Overrides 'verboseCallStack'.
+-- | Turn on verbose call-site printing when we log.
 verboseCallSite :: Verbosity -> Verbosity
-verboseCallSite v = v { vCallStack = TopStackFrame }
+verboseCallSite v = v { vFlags = Set.insert VCallSite (vFlags v) }
 
--- | Turn on verbose call-stack printing when we log.  Overrides 'verboseCallSite'.
+-- | Turn on verbose call-stack printing when we log.
 verboseCallStack :: Verbosity -> Verbosity
-verboseCallStack v = v { vCallStack = FullStack }
+verboseCallStack v = v { vFlags = Set.insert VCallStack (vFlags v) }
 
 -- | Test if we should output call sites when we log.
 isVerboseCallSite :: Verbosity -> Bool
-isVerboseCallSite = (== TopStackFrame) . vCallStack
+isVerboseCallSite = (Set.member VCallSite) . vFlags
 
 -- | Test if we should output call stacks when we log.
 isVerboseCallStack :: Verbosity -> Bool
-isVerboseCallStack = (== FullStack) . vCallStack
+isVerboseCallStack = (Set.member VCallStack) . vFlags
