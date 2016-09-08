@@ -360,7 +360,7 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make ${JOBS} Setup -o Setup ||
+  ${GHC} --make ${JOBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
