@@ -30,6 +30,20 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/IntegrationTests/custom-setup/common.sh
+  tests/IntegrationTests/custom-setup/should_run/Cabal-99998/Cabal.cabal
+  tests/IntegrationTests/custom-setup/should_run/Cabal-99998/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/should_run/Cabal-99999/Cabal.cabal
+  tests/IntegrationTests/custom-setup/should_run/Cabal-99999/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/should_run/custom-setup-without-cabal-defaultMain/Setup.hs
+  tests/IntegrationTests/custom-setup/should_run/custom-setup-without-cabal-defaultMain/custom-setup-without-cabal-defaultMain.cabal
+  tests/IntegrationTests/custom-setup/should_run/custom-setup-without-cabal/Setup.hs
+  tests/IntegrationTests/custom-setup/should_run/custom-setup-without-cabal/custom-setup-without-cabal.cabal
+  tests/IntegrationTests/custom-setup/should_run/custom-setup/Setup.hs
+  tests/IntegrationTests/custom-setup/should_run/custom-setup/custom-setup.cabal
+  tests/IntegrationTests/custom-setup/should_run/custom_setup_without_Cabal_doesnt_allow_Cabal_import.sh
+  tests/IntegrationTests/custom-setup/should_run/custom_setup_without_Cabal_doesnt_require_Cabal.sh
+  tests/IntegrationTests/custom-setup/should_run/installs_Cabal_as_setup_dep.sh
   tests/IntegrationTests/custom/common.sh
   tests/IntegrationTests/custom/should_run/plain.err
   tests/IntegrationTests/custom/should_run/plain.sh
