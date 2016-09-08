@@ -11,6 +11,7 @@ import Distribution.Verbosity
 import Distribution.Compat.Time
 
 import qualified UnitTests.Distribution.Solver.Modular.PSQ
+import qualified UnitTests.Distribution.Solver.Modular.WeightedPSQ
 import qualified UnitTests.Distribution.Solver.Modular.Solver
 import qualified UnitTests.Distribution.Solver.Modular.RetryLog
 import qualified UnitTests.Distribution.Client.FileMonitor
@@ -38,6 +39,8 @@ tests mtimeChangeCalibrated =
   testGroup "Unit Tests"
   [ testGroup "UnitTests.Distribution.Solver.Modular.PSQ"
         UnitTests.Distribution.Solver.Modular.PSQ.tests
+  , testGroup "UnitTests.Distribution.Solver.Modular.WeightedPSQ"
+        UnitTests.Distribution.Solver.Modular.WeightedPSQ.tests
   , testGroup "UnitTests.Distribution.Solver.Modular.Solver"
         UnitTests.Distribution.Solver.Modular.Solver.tests
   , testGroup "UnitTests.Distribution.Solver.Modular.RetryLog"

@@ -27,6 +27,7 @@ import Distribution.Solver.Modular.Package
 import Distribution.Solver.Modular.PSQ (PSQ)
 import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps (Component)
 import Distribution.Solver.Types.PackagePath
@@ -134,9 +135,9 @@ build = ana go
       -- We will probably want to give this case special treatment when generating error
       -- messages though.
       case M.lookup pn idx of
-        Nothing  -> PChoiceF qpn gr (P.fromList [])
-        Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
-                                                           (POption i Nothing, bs { next = Instance qpn i info gr }))
+        Nothing  -> PChoiceF qpn gr (W.fromList [])
+        Just pis -> PChoiceF qpn gr (W.fromList (L.map (\ (i, info) ->
+                                                           ([], POption i Nothing, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
 
@@ -145,12 +146,10 @@ build = ana go
     --
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-      FChoiceF qfn gr weak m (P.fromList (reorder b
-        [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
-         (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })]))
+      FChoiceF qfn gr weak m (W.fromList
+        [([if b then 0 else 1], True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True )) t) bs) { next = Goals }),
+         ([if b then 1 else 0], False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False)) f) bs) { next = Goals })])
       where
-        reorder True  = id
-        reorder False = reverse
         trivial = L.null t && L.null f
         weak = WeakOrTrivial $ unWeakOrTrivial w || trivial
 
@@ -160,9 +159,9 @@ build = ana go
     -- (try enabling the stanza if possible by moving the True branch first).
 
     go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
-      SChoiceF qsn gr trivial (P.fromList
-        [(False,                                                             bs  { next = Goals }),
-         (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
+      SChoiceF qsn gr trivial (W.fromList
+        [([0], False,                                                             bs  { next = Goals }),
+         ([1], True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn)) t) bs) { next = Goals })])
       where
         trivial = WeakOrTrivial (L.null t)
 
