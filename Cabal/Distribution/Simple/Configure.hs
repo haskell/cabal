@@ -113,7 +113,7 @@ import Numeric ( showIntAtBase )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
-    ( (</>), isAbsolute )
+    ( (</>) )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO

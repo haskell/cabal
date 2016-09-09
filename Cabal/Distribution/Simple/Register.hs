@@ -75,7 +75,7 @@ import Distribution.Text
 import Distribution.Verbosity as Verbosity
 import Distribution.Compat.Graph (IsNode(nodeKey))
 
-import System.FilePath ((</>), (<.>), isAbsolute)
+import System.FilePath ((</>), (<.>))
 import System.Directory
 
 import Data.Version
