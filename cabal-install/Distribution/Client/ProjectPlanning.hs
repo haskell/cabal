@@ -77,7 +77,6 @@ import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PkgConfigDb
 import           Distribution.Solver.Types.ResolverPackage
-import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
 import           Distribution.Solver.Types.InstSolverPackage
@@ -1722,13 +1721,14 @@ elabBuildTargetWholeComponents elab =
 --
 pruneInstallPlanToTargets :: Map UnitId [PackageTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
-pruneInstallPlanToTargets perPkgTargetsMap =
-    InstallPlan.new (IndependentGoals False)
+pruneInstallPlanToTargets perPkgTargetsMap elaboratedPlan =
+    InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan)
   . Graph.fromList
     -- We have to do this in two passes
   . pruneInstallPlanPass2
   . pruneInstallPlanPass1 perPkgTargetsMap
   . InstallPlan.toList
+  $ elaboratedPlan
 
 -- | This is a temporary data type, where we temporarily
 -- override the graph dependencies of an 'ElaboratedPackage',
