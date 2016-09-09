@@ -29,7 +29,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), ComponentId(..) )
+         ( PackageId, PackageName, PackageIdentifier(..), ComponentId(..) )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
@@ -59,6 +59,7 @@ import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
 import Data.Map          (Map)
 import Data.Function     (on)
+import Data.Version      (Version)
 import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
@@ -138,6 +139,7 @@ data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
        pkgHashComponent     :: Maybe CD.Component,
        pkgHashSourceHash    :: PackageSourceHash,
+       pkgHashPkgConfigDeps :: Set (PackageName, Maybe Version),
        pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
      }
@@ -195,6 +197,7 @@ renderPackageHashInputs PackageHashInputs{
                           pkgHashComponent,
                           pkgHashSourceHash,
                           pkgHashDirectDeps,
+                          pkgHashPkgConfigDeps,
                           pkgHashOtherConfig =
                             PackageHashConfigInputs{..}
                         } =
@@ -216,6 +219,12 @@ renderPackageHashInputs PackageHashInputs{
       [ entry "pkgid"       display pkgHashPkgId
       , mentry "component"  show pkgHashComponent
       , entry "src"         showHashValue pkgHashSourceHash
+      , entry "pkg-config-deps"
+                            (intercalate ", " . map (\(pn, mb_v) -> display pn ++
+                                                    case mb_v of
+                                                        Nothing -> ""
+                                                        Just v -> " " ++ display v)
+                                              . Set.toList) pkgHashPkgConfigDeps
       , entry "deps"        (intercalate ", " . map display
                                               . Set.toList) pkgHashDirectDeps
         -- and then all the config
