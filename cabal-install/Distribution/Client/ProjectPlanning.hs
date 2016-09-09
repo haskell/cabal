@@ -1936,7 +1936,8 @@ pruneInstallPlanPass2 pkgs =
   where
     setStanzasDepsAndTargets elab =
         elab {
-          elabBuildTargets = elabBuildTargets elab
+          elabBuildTargets = ordNub
+                           $ elabBuildTargets elab
                           ++ libTargetsRequiredForRevDeps
                           ++ exeTargetsRequiredForRevDeps,
           elabPkgOrComp =
