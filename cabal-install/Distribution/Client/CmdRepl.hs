@@ -86,7 +86,7 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
               ReplDefaultComponent
               ReplSpecificComponent
               userTargets
-              False -- onlyDepencencies, always False for repl
+              False -- onlyDependencies, always False for repl
               elaboratedPlan
             --TODO: [required eventually] reject multiple targets, or at least
             -- targets spanning multiple components. ie it's ok to have two

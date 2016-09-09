@@ -273,7 +273,7 @@ selectTargets :: Verbosity -> PackageTarget
               -> ElaboratedInstallPlan
               -> IO ElaboratedInstallPlan
 selectTargets verbosity targetDefaultComponents targetSpecificComponent
-              userBuildTargets onlyDepencencies installPlan = do
+              userBuildTargets onlyDependencies installPlan = do
 
     -- Match the user targets against the available targets. If no targets are
     -- given this uses the package in the current directory, if any.
@@ -306,7 +306,7 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     --
     let installPlan' = pruneInstallPlanToTargets
                          buildTargets' installPlan
-    if onlyDepencencies
+    if onlyDependencies
       then either throwIO return $
              pruneInstallPlanToDependencies
                (Map.keysSet buildTargets') installPlan'

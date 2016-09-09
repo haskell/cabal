@@ -333,7 +333,7 @@ preferBaseGoalChoice = trav go
     isBase _                       = False
 
 -- | Deal with setup dependencies after regular dependencies, so that we can
--- will link setup depencencies against package dependencies when possible
+-- will link setup dependencies against package dependencies when possible
 deferSetupChoices :: Tree a -> Tree a
 deferSetupChoices = trav go
   where
