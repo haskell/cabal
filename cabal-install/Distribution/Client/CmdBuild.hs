@@ -76,7 +76,17 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
         , installFlags, haddockFlags )
         PreBuildHooks {
           hookPrePlanning      = \_ _ _ -> return (),
-          hookSelectPlanSubset = selectBuildTargets userTargets
+
+          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
+            -- Interpret the targets on the command line as build targets
+            -- (as opposed to say repl or haddock targets).
+            selectTargets
+              verbosity
+              BuildDefaultComponents
+              BuildSpecificComponent
+              userTargets
+              (buildSettingOnlyDeps buildSettings)
+              elaboratedPlan
         }
 
     printPlan verbosity buildCtx
@@ -86,12 +96,4 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
       reportBuildFailures verbosity elaboratedPlan buildResults
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-
-    -- When we interpret the targets on the command line, interpret them as
-    -- repl targets (as opposed to say repl or haddock targets).
-    selectBuildTargets =
-      selectTargets
-        verbosity
-        BuildDefaultComponents
-        BuildSpecificComponent
 

@@ -90,7 +90,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import           Data.List
 import           Data.Maybe
 import           Data.Either
-import           Control.Exception (Exception(..))
+import           Control.Exception (Exception(..), throwIO)
 import           System.Exit (ExitCode(..), exitFailure)
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
@@ -114,7 +114,8 @@ data PreBuildHooks = PreBuildHooks {
                             -> DistDirLayout
                             -> ProjectConfig
                             -> IO (),
-       hookSelectPlanSubset :: ElaboratedInstallPlan
+       hookSelectPlanSubset :: BuildTimeSettings
+                            -> ElaboratedInstallPlan
                             -> IO ElaboratedInstallPlan
      }
 
@@ -177,7 +178,7 @@ runProjectPreBuildPhase
     -- Now given the specific targets the user has asked for, decide
     -- which bits of the plan we will want to execute.
     --
-    elaboratedPlan' <- hookSelectPlanSubset elaboratedPlan
+    elaboratedPlan' <- hookSelectPlanSubset buildSettings elaboratedPlan
 
     -- Check if any packages don't need rebuilding, and improve the plan.
     -- This also gives us more accurate reasons for the --dry-run output.
@@ -268,10 +269,11 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
 selectTargets :: Verbosity -> PackageTarget
               -> (ComponentTarget -> PackageTarget)
               -> [UserBuildTarget]
+              -> Bool
               -> ElaboratedInstallPlan
               -> IO ElaboratedInstallPlan
 selectTargets verbosity targetDefaultComponents targetSpecificComponent
-              userBuildTargets installPlan = do
+              userBuildTargets onlyDepencencies installPlan = do
 
     -- Match the user targets against the available targets. If no targets are
     -- given this uses the package in the current directory, if any.
@@ -300,9 +302,15 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
     debug verbosity ("buildTargets': " ++ show buildTargets')
 
     -- Finally, prune the install plan to cover just those target packages
-    -- and their deps.
+    -- and their deps (or only their deps with the --only-dependencies flag).
     --
-    return (pruneInstallPlanToTargets buildTargets' installPlan)
+    let installPlan' = pruneInstallPlanToTargets
+                         buildTargets' installPlan
+    if onlyDepencencies
+      then either throwIO return $
+             pruneInstallPlanToDependencies
+               (Map.keysSet buildTargets') installPlan'
+      else return installPlan'
   where
     localPackages =
       [ (elabPkgDescription elab, elabPkgSourceLocation elab)
