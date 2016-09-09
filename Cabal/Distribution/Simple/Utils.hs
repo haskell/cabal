@@ -1581,7 +1581,7 @@ unintersperse mark = unfoldr unintersperse1 where
 -- This means that we would treat paths that start with \"/\" to be absolute.
 -- On Posix they are indeed absolute, while on Windows they are not.
 isAbsolute :: FilePath -> Bool
--- C:\\
+-- C:\\directory
 isAbsolute (drive:':':'\\':_) = isAlpha drive
 -- UNC
 isAbsolute ('\\':'\\':_) = True
