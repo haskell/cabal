@@ -487,6 +487,8 @@ Test-Suite unit-tests
   else
     build-depends: unix
 
+  ghc-options: -fno-ignore-asserts
+
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
@@ -505,7 +507,7 @@ Test-Suite solver-quickcheck
   type: exitcode-stdio-1.0
   main-is: SolverQuickCheck.hs
   hs-source-dirs: tests, .
-  ghc-options: -Wall -fwarn-tabs
+  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
   other-modules:
     UnitTests.Distribution.Solver.Modular.DSL
     UnitTests.Distribution.Solver.Modular.QuickCheck
@@ -589,7 +591,7 @@ test-suite integration-tests
   if !(arch(arm) && impl(ghc < 7.6))
     ghc-options: -threaded
 
-  ghc-options: -Wall
+  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
   default-language: Haskell2010
 
 -- Integration tests that use the cabal-install code directly
