@@ -2,6 +2,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -- | Planning how to build everything in a project.
 --
@@ -26,6 +27,7 @@ module Distribution.Client.ProjectPlanning (
 
     -- * Selecting a plan subset
     pruneInstallPlanToTargets,
+    pruneInstallPlanToDependencies,
 
     -- * Utils required for building
     pkgHasEphemeralBuildTargets,
@@ -124,6 +126,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Control.Monad.State as State
 import           Control.Exception
+import           Data.Typeable
 import           Data.List
 import           Data.Maybe
 import           Data.Either
@@ -1996,6 +1999,86 @@ componentOptionalStanza :: Cabal.ComponentName -> Maybe OptionalStanza
 componentOptionalStanza (Cabal.CTestName  _) = Just TestStanzas
 componentOptionalStanza (Cabal.CBenchName _) = Just BenchStanzas
 componentOptionalStanza _                    = Nothing
+
+------------------------------------
+-- Support for --only-dependencies
+--
+
+-- | Try to remove the given targets from the install plan.
+--
+-- This is not always possible.
+--
+pruneInstallPlanToDependencies :: Set UnitId
+                               -> ElaboratedInstallPlan
+                               -> Either CannotPruneDependencies
+                                         ElaboratedInstallPlan
+pruneInstallPlanToDependencies pkgTargets installPlan =
+    assert (all (isJust . InstallPlan.lookup installPlan)
+                (Set.toList pkgTargets)) $
+
+    fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
+  . checkBrokenDeps
+  . Graph.fromList
+  . filter (\pkg -> installedUnitId pkg `Set.notMember` pkgTargets)
+  . InstallPlan.toList
+  $ installPlan
+    where
+      -- Our strategy is to remove the packages we don't want and then check
+      -- if the remaining graph is broken or not, ie any packages with dangling
+      -- dependencies. If there are then we cannot prune the given targets.
+      checkBrokenDeps :: Graph.Graph ElaboratedPlanPackage
+                      -> Either CannotPruneDependencies
+                                (Graph.Graph ElaboratedPlanPackage)
+      checkBrokenDeps graph =
+        case Graph.broken graph of
+          []             -> Right graph
+          brokenPackages ->
+            Left $ CannotPruneDependencies
+             [ (pkg, missingDeps)
+             | (pkg, missingDepIds) <- brokenPackages
+             , let missingDeps = catMaybes (map lookupDep missingDepIds)
+             ]
+            where
+              -- lookup in the original unpruned graph
+              lookupDep = InstallPlan.lookup installPlan
+
+-- | It is not always possible to prune to only the dependencies of a set of
+-- targets. It may be the case that removing a package leaves something else
+-- that still needed the pruned package.
+--
+-- This lists all the packages that would be broken, and their dependencies
+-- that would be missing if we did prune.
+--
+newtype CannotPruneDependencies =
+        CannotPruneDependencies [(ElaboratedPlanPackage,
+                                  [ElaboratedPlanPackage])]
+#if MIN_VERSION_base(4,8,0)
+  deriving (Show, Typeable)
+#else
+  deriving (Typeable)
+
+instance Show CannotPruneDependencies where
+  show = renderCannotPruneDependencies
+#endif
+
+instance Exception CannotPruneDependencies where
+#if MIN_VERSION_base(4,8,0)
+  displayException = renderCannotPruneDependencies
+#endif
+
+renderCannotPruneDependencies :: CannotPruneDependencies -> String
+renderCannotPruneDependencies (CannotPruneDependencies brokenPackages) =
+      "Cannot select only the dependencies (as requested by the "
+   ++ "'--only-dependencies' flag), "
+   ++ (case pkgids of
+          [pkgid] -> "the package " ++ display pkgid ++ " is "
+          _       -> "the packages "
+                     ++ intercalate ", " (map display pkgids) ++ " are ")
+   ++ "required by a dependency of one of the other targets."
+  where
+    -- throw away the details and just list the deps that are needed
+    pkgids :: [PackageId]
+    pkgids = nub . map packageId . concatMap snd $ brokenPackages
 
 
 ---------------------------
