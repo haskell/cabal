@@ -414,5 +414,5 @@ test-suite integration-tests
   else
     ghc-options: -threaded
 
-  ghc-options: -Wall
+  ghc-options: -Wall -fwarn-tabs -fno-ignore-asserts
   default-language: Haskell2010
