@@ -6,7 +6,8 @@ module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
 import Control.Monad (foldM)
 import Data.Either (lefts)
 import Data.Function (on)
-import Data.List (groupBy, isInfixOf, nub, sort)
+import Data.List (groupBy, isInfixOf, nub, nubBy, sort)
+import Data.Maybe (isJust)
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
@@ -215,9 +216,19 @@ arbitraryExInst pn v pkgs = do
 
 arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
 arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps db =
-    -- CD.fromList combines duplicate components.
-    CD.fromList <$> boundedListOf 3 (arbitraryComponentDep db)
+arbitraryComponentDeps db = CD.fromList . dedupNamedComponents <$>
+                            boundedListOf 5 (arbitraryComponentDep db)
+  where
+    dedupNamedComponents =
+        nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
+
+    componentName :: Component -> Maybe String
+    componentName ComponentLib        = Nothing
+    componentName ComponentSetup      = Nothing
+    componentName (ComponentSubLib n) = Just n
+    componentName (ComponentExe    n) = Just n
+    componentName (ComponentTest   n) = Just n
+    componentName (ComponentBench  n) = Just n
 
 arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
 arbitraryComponentDep db = do
