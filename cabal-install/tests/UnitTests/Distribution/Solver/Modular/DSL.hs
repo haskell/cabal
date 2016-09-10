@@ -274,8 +274,6 @@ exAvSrcPkg ex =
                                                      (Buildable libraryDeps))
              , C.condSubLibraries = []
              , C.condExecutables =
-                 -- Executables not presently disableable.  We can't
-                 -- error in the disable case
                  let mkTree = mkCondTree mempty disableExe . Buildable
                  in map (\(t, deps) -> (t, mkTree deps)) executables
              , C.condTestSuites  =

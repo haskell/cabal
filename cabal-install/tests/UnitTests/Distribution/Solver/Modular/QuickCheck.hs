@@ -1,12 +1,16 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module UnitTests.Distribution.Solver.Modular.QuickCheck (tests) where
 
+import Control.DeepSeq (NFData, force)
 import Control.Monad (foldM)
 import Data.Either (lefts)
 import Data.Function (on)
-import Data.List (groupBy, isInfixOf, nub, sort)
+import Data.List (groupBy, isInfixOf, nub, nubBy, sort)
+import Data.Maybe (isJust)
+import GHC.Generics (Generic)
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>), (<*>))
@@ -110,7 +114,10 @@ solve enableBj reorder indep solver targets (TestDb db) =
         | otherwise                                = OtherFailure
   in Result {
        resultLog = lg
-     , resultPlan = either (Left . failure) (Right . extractInstallPlan) result
+     , resultPlan =
+         -- Force the result so that we check for internal errors when we check
+         -- for success or failure. See D.C.Dependency.validateSolverResult.
+         force $ either (Left . failure) (Right . extractInstallPlan) result
      }
 
 -- | How to modify the order of the input targets.
@@ -129,7 +136,9 @@ data Result = Result {
   }
 
 data Failure = BackjumpLimitReached | OtherFailure
-  deriving (Eq, Show)
+  deriving (Eq, Generic, Show)
+
+instance NFData Failure
 
 -- | Package name.
 newtype PN = PN { unPN :: String }
@@ -215,9 +224,19 @@ arbitraryExInst pn v pkgs = do
 
 arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
 arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps db =
-    -- CD.fromList combines duplicate components.
-    CD.fromList <$> boundedListOf 3 (arbitraryComponentDep db)
+arbitraryComponentDeps db = CD.fromList . dedupNamedComponents <$>
+                            boundedListOf 5 (arbitraryComponentDep db)
+  where
+    dedupNamedComponents =
+        nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
+
+    componentName :: Component -> Maybe String
+    componentName ComponentLib        = Nothing
+    componentName ComponentSetup      = Nothing
+    componentName (ComponentSubLib n) = Just n
+    componentName (ComponentExe    n) = Just n
+    componentName (ComponentTest   n) = Just n
+    componentName (ComponentBench  n) = Just n
 
 arbitraryComponentDep :: TestDb -> Gen (ComponentDep [ExampleDependency])
 arbitraryComponentDep db = do
