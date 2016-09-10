@@ -94,6 +94,8 @@ import Distribution.Utils.NubList
 
 import Distribution.Compat.Semigroup (Last' (..))
 
+import Data.Function (on)
+
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
@@ -347,6 +349,7 @@ relaxDepsPrinter (Just (RelaxDepsSome pkgs)) = map (Just . display) $ pkgs
 --
 -- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
 -- should be updated.
+-- IMPORTANT: every time a new flag is added, it should be added to the Eq instance
 data ConfigFlags = ConfigFlags {
     -- This is the same hack as in 'buildArgs' and 'copyArgs'.
     -- TODO: Stop using this eventually when 'UserHooks' gets changed
@@ -432,6 +435,54 @@ instance Binary ConfigFlags
 -- 'error' if internal invariant is violated.
 configPrograms :: ConfigFlags -> ProgramDb
 configPrograms = maybe (error "FIXME: remove configPrograms") id . getLast' . configPrograms_
+
+instance Eq ConfigFlags where
+  (==) a b =
+    -- configPrograms skipped: not user specified, has no Eq instance
+    equal configProgramPaths
+    && equal configProgramArgs
+    && equal configProgramPathExtra
+    && equal configHcFlavor
+    && equal configHcPath
+    && equal configHcPkg
+    && equal configVanillaLib
+    && equal configProfLib
+    && equal configSharedLib
+    && equal configDynExe
+    && equal configProfExe
+    && equal configProf
+    && equal configProfDetail
+    && equal configProfLibDetail
+    && equal configConfigureArgs
+    && equal configOptimization
+    && equal configProgPrefix
+    && equal configProgSuffix
+    && equal configInstallDirs
+    && equal configScratchDir
+    && equal configExtraLibDirs
+    && equal configExtraIncludeDirs
+    && equal configIPID
+    && equal configDistPref
+    && equal configVerbosity
+    && equal configUserInstall
+    && equal configPackageDBs
+    && equal configGHCiLib
+    && equal configSplitObjs
+    && equal configStripExes
+    && equal configStripLibs
+    && equal configConstraints
+    && equal configDependencies
+    && equal configConfigurationsFlags
+    && equal configTests
+    && equal configBenchmarks
+    && equal configCoverage
+    && equal configLibCoverage
+    && equal configExactConfiguration
+    && equal configFlagError
+    && equal configRelocatable
+    && equal configDebugInfo
+    where
+      equal f = on (==) f a b
 
 configAbsolutePaths :: ConfigFlags -> NoCallStackIO ConfigFlags
 configAbsolutePaths f =

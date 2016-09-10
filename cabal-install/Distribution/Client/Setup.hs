@@ -20,9 +20,9 @@ module Distribution.Client.Setup
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
-                        , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand
+                        , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
@@ -498,6 +498,21 @@ instance Monoid ConfigExFlags where
 
 instance Semigroup ConfigExFlags where
   (<>) = gmappend
+
+reconfigureCommand :: CommandUI (ConfigFlags, ConfigExFlags)
+reconfigureCommand
+  = configureExCommand
+    { commandName         = "reconfigure"
+    , commandSynopsis     = "Reconfigure the package if necessary."
+    , commandDescription  = Just $ \pname -> wrapText $
+         "Run `configure` with the most recently used flags and append FLAGS. "
+         ++ "Accepts the same flags as `" ++ pname ++ " configure'. "
+         ++ "If the package has never been configured, this has the same "
+         ++ "effect as calling `configure`."
+    , commandNotes        = Nothing
+    , commandUsage        = usageAlternatives "reconfigure" [ "[FLAGS]" ]
+    , commandDefaultFlags = mempty
+    }
 
 -- ------------------------------------------------------------
 -- * Build flags
