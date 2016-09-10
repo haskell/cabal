@@ -18,6 +18,7 @@ module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), defaultGlobalFlags
     , RepoContext(..), withRepoContext
     , configureCommand, ConfigFlags(..), filterConfigureFlags
+    , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
@@ -70,11 +71,12 @@ import Distribution.Utils.NubList
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
 
-import Distribution.Simple.Compiler (PackageDB)
-import Distribution.Simple.Program
-         ( defaultProgramDb )
+import Distribution.Simple.Compiler ( Compiler, PackageDB, PackageDBStack )
+import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
+import Distribution.Simple.Configure
+       ( configCompilerAuxEx, interpretPackageDbFlags )
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
@@ -94,6 +96,7 @@ import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..) )
+import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
@@ -102,7 +105,7 @@ import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, lessVerbose, normal )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
@@ -415,6 +418,18 @@ filterConfigureFlags flags cabalLibVersion
     flags_1_10_0 = flags_1_12_0 { configTests       = NoFlag }
     -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
+
+configPackageDB' :: ConfigFlags -> PackageDBStack
+configPackageDB' cfg =
+    interpretPackageDbFlags userInstall (configPackageDBs cfg)
+  where
+    userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
+
+configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
+configCompilerAux' configFlags =
+  configCompilerAuxEx configFlags
+    --FIXME: make configCompilerAux use a sensible verbosity
+    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
 
 -- ------------------------------------------------------------
 -- * Config extra flags

@@ -19,6 +19,7 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, withRepoContext
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
+         , configCompilerAux', configPackageDB'
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
          , buildCommand, replCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
@@ -107,9 +108,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,updateSandboxConfigFileFlag
                                               ,updateInstallDirs
 
-                                              ,configCompilerAux'
-                                              ,getPersistOrConfigCompiler
-                                              ,configPackageDB')
+                                              ,getPersistOrConfigCompiler)
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
                                               ,userPackageEnvironmentFile)
