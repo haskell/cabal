@@ -88,7 +88,7 @@ updateCM cs cm =
 
 -- | A tree traversal that simultaneously propagates conflict sets up
 -- the tree from the leaves and creates a log.
-exploreLog :: EnableBackjumping -> CountConflicts -> Tree QGoalReason
+exploreLog :: EnableBackjumping -> CountConflicts -> Tree d QGoalReason
            -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
 exploreLog enableBj (CountConflicts countConflicts) = cata go
   where
@@ -97,13 +97,13 @@ exploreLog enableBj (CountConflicts countConflicts) = cata go
       | countConflicts = \ ts cm -> getBestGoal cm ts
       | otherwise      = \ ts _  -> getFirstGoal ts
 
-    go :: TreeF QGoalReason (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
-                         -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
+    go :: TreeF d QGoalReason (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
+                           -> (Assignment -> ConflictMap -> ConflictSetLog (Assignment, RevDepMap))
     go (FailF c fr)             _            = \ cm -> let failure = failWith (Failure c fr)
                                                        in if countConflicts
                                                           then failure (c, updateCM c cm)
                                                           else failure (c, cm)
-    go (DoneF rdm)              a            = \ _  -> succeedWith Success (a, rdm)
+    go (DoneF rdm _)            a            = \ _  -> succeedWith Success (a, rdm)
     go (PChoiceF qpn gr     ts) (A pa fa sa) =
       backjump enableBj (P qpn) (avoidSet (P qpn) gr) $ -- try children in order,
         W.mapWithKey                                -- when descending ...
@@ -164,7 +164,7 @@ avoidSet var gr =
 -- | Interface.
 backjumpAndExplore :: EnableBackjumping
                    -> CountConflicts
-                   -> Tree QGoalReason -> Log Message (Assignment, RevDepMap)
+                   -> Tree d QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore enableBj countConflicts t =
     toLog $ exploreLog enableBj countConflicts t (A M.empty M.empty M.empty) M.empty
   where
