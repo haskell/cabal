@@ -516,6 +516,7 @@ Test-Suite solver-quickcheck
         bytestring,
         Cabal,
         containers,
+        deepseq >= 1.2,
         mtl,
         pretty,
         process,
