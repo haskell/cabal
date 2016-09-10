@@ -419,12 +419,15 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
 
+-- | Get the package database settings from 'ConfigFlags', accounting for
+-- @--package-db@ and @--user@ flags.
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
     interpretPackageDbFlags userInstall (configPackageDBs cfg)
   where
     userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
 
+-- | Configure the compiler, but reduce verbosity during this step.
 configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
 configCompilerAux' configFlags =
   configCompilerAuxEx configFlags
