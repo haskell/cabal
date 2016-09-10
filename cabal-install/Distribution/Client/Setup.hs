@@ -18,10 +18,11 @@ module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), defaultGlobalFlags
     , RepoContext(..), withRepoContext
     , configureCommand, ConfigFlags(..), filterConfigureFlags
+    , configPackageDB', configCompilerAux'
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
-                        , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand
+                        , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , defaultSolver, defaultMaxBackjumps
     , listCommand, ListFlags(..)
@@ -70,11 +71,12 @@ import Distribution.Utils.NubList
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
 
-import Distribution.Simple.Compiler (PackageDB)
-import Distribution.Simple.Program
-         ( defaultProgramDb )
+import Distribution.Simple.Compiler ( Compiler, PackageDB, PackageDBStack )
+import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
+import Distribution.Simple.Configure
+       ( configCompilerAuxEx, interpretPackageDbFlags )
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
@@ -94,6 +96,7 @@ import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( BuildType(..), RepoKind(..) )
+import Distribution.System ( Platform )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
@@ -102,7 +105,7 @@ import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
 import Distribution.Compat.Semigroup
 import Distribution.Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, lessVerbose, normal )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine )
 import Distribution.Client.GlobalFlags
@@ -416,6 +419,21 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
 
+-- | Get the package database settings from 'ConfigFlags', accounting for
+-- @--package-db@ and @--user@ flags.
+configPackageDB' :: ConfigFlags -> PackageDBStack
+configPackageDB' cfg =
+    interpretPackageDbFlags userInstall (configPackageDBs cfg)
+  where
+    userInstall = Cabal.fromFlagOrDefault True (configUserInstall cfg)
+
+-- | Configure the compiler, but reduce verbosity during this step.
+configCompilerAux' :: ConfigFlags -> IO (Compiler, Platform, ProgramDb)
+configCompilerAux' configFlags =
+  configCompilerAuxEx configFlags
+    --FIXME: make configCompilerAux use a sensible verbosity
+    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
+
 -- ------------------------------------------------------------
 -- * Config extra flags
 -- ------------------------------------------------------------
@@ -483,6 +501,21 @@ instance Monoid ConfigExFlags where
 
 instance Semigroup ConfigExFlags where
   (<>) = gmappend
+
+reconfigureCommand :: CommandUI (ConfigFlags, ConfigExFlags)
+reconfigureCommand
+  = configureExCommand
+    { commandName         = "reconfigure"
+    , commandSynopsis     = "Reconfigure the package if necessary."
+    , commandDescription  = Just $ \pname -> wrapText $
+         "Run `configure` with the most recently used flags and append FLAGS. "
+         ++ "Accepts the same flags as `" ++ pname ++ " configure'. "
+         ++ "If the package has never been configured, this has the same "
+         ++ "effect as calling `configure`."
+    , commandNotes        = Nothing
+    , commandUsage        = usageAlternatives "reconfigure" [ "[FLAGS]" ]
+    , commandDefaultFlags = mempty
+    }
 
 -- ------------------------------------------------------------
 -- * Build flags

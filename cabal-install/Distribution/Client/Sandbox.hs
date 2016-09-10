@@ -39,12 +39,13 @@ module Distribution.Client.Sandbox (
     updateSandboxConfigFileFlag,
     updateInstallDirs,
 
-    configPackageDB', configCompilerAux', getPersistOrConfigCompiler
+    getPersistOrConfigCompiler
   ) where
 
 import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
-  , GlobalFlags(..), defaultConfigExFlags, defaultInstallFlags
+  , GlobalFlags(..), configCompilerAux', configPackageDB'
+  , defaultConfigExFlags, defaultInstallFlags
   , defaultSandboxLocation, withRepoContext )
 import Distribution.Client.Sandbox.Timestamp  ( listModifiedDeps
                                               , maybeAddCompilerTimestampRecord
@@ -77,10 +78,8 @@ import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
-import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
-                                              , PackageDBStack )
+import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..) )
 import Distribution.Simple.Configure          ( configCompilerAuxEx
-                                              , interpretPackageDbFlags
                                               , getPackageDBContents
                                               , maybeGetPersistBuildConfig
                                               , findDistPrefOrDefault
@@ -98,7 +97,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info, warn
 import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
 import Distribution.Text                      ( display )
-import Distribution.Verbosity                 ( Verbosity, lessVerbose )
+import Distribution.Verbosity                 ( Verbosity )
 import Distribution.Compat.Environment        ( lookupEnv, setEnv )
 import Distribution.Client.Compat.FilePerms   ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
@@ -683,25 +682,25 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
                          comp platform progdb sandboxDir $ \sandboxPkgInfo ->
     unless (null $ modifiedAddSourceDependencies sandboxPkgInfo) $ do
 
-     withRepoContext verbosity globalFlags $ \repoContext -> do
-      let args :: InstallArgs
-          args = ((configPackageDB' configFlags)
-                 ,repoContext
-                 ,comp, platform, progdb
-                 ,UseSandbox sandboxDir, Just sandboxPkgInfo
-                 ,globalFlags, configFlags, configExFlags, installFlags
-                 ,haddockFlags)
+      withRepoContext verbosity globalFlags $ \repoContext -> do
+        let args :: InstallArgs
+            args = ((configPackageDB' configFlags)
+                  ,repoContext
+                  ,comp, platform, progdb
+                  ,UseSandbox sandboxDir, Just sandboxPkgInfo
+                  ,globalFlags, configFlags, configExFlags, installFlags
+                  ,haddockFlags)
 
-      -- This can actually be replaced by a call to 'install', but we use a
-      -- lower-level API because of layer separation reasons. Additionally, we
-      -- might want to use some lower-level features this in the future.
-      withSandboxBinDirOnSearchPath sandboxDir $ do
-        installContext <- makeInstallContext verbosity args Nothing
-        installPlan    <- foldProgress logMsg die' return =<<
-                          makeInstallPlan verbosity args installContext
+        -- This can actually be replaced by a call to 'install', but we use a
+        -- lower-level API because of layer separation reasons. Additionally, we
+        -- might want to use some lower-level features this in the future.
+        withSandboxBinDirOnSearchPath sandboxDir $ do
+          installContext <- makeInstallContext verbosity args Nothing
+          installPlan    <- foldProgress logMsg die' return =<<
+                            makeInstallPlan verbosity args installContext
 
-        processInstallPlan verbosity args installContext installPlan
-        writeIORef retVal ReinstalledSomeDeps
+          processInstallPlan verbosity args installContext installPlan
+          writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
 
@@ -856,22 +855,6 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags'
 --
 -- Utils (transitionary)
 --
--- FIXME: configPackageDB' and configCompilerAux' don't really belong in this
--- module
---
-
-configPackageDB' :: ConfigFlags -> PackageDBStack
-configPackageDB' cfg =
-    interpretPackageDbFlags userInstall (configPackageDBs cfg)
-  where
-    userInstall = fromFlagOrDefault True (configUserInstall cfg)
-
-configCompilerAux' :: ConfigFlags
-                   -> IO (Compiler, Platform, ProgramDb)
-configCompilerAux' configFlags =
-  configCompilerAuxEx configFlags
-    --FIXME: make configCompilerAux use a sensible verbosity
-    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
 
 -- | Try to read the most recently configured compiler from the
 -- 'localBuildInfoFile', falling back on 'configCompilerAuxEx' if it

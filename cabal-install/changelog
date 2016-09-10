@@ -22,6 +22,8 @@
 	verbose GHC output (#3540, #3671).
 	* Changed the default logfile template from
 	'.../$pkgid.log' to '.../$compiler/$libname.log' (#3807).
+	* Added a new command, 'cabal reconfigure', which re-runs 'configure'
+	with the most recently used flags (#2214).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* If there are multiple remote repos, 'cabal update' now updates

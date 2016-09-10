@@ -278,13 +278,15 @@ executable cabal
         Distribution.Client.ProjectPlanning
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.ProjectPlanOutput
-        Distribution.Client.Run
         Distribution.Client.RebuildMonad
+        Distribution.Client.Reconfigure
+        Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
         Distribution.Client.Sandbox.Timestamp
         Distribution.Client.Sandbox.Types
+        Distribution.Client.SavedFlags
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
