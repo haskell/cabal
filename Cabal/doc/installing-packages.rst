@@ -139,8 +139,7 @@ recommended instead to use a *secure* local repository:
       key-threshold: <key-threshold>
 
 The layout of these secure local repos matches the layout of remote
-repositories exactly; the
-`hackage-repo-tool <http://hackage.haskell.org/package/hackage-repo-tool>`__
+repositories exactly; the :hackage-pkg:`hackage-repo-tool`
 can be used to create and manage such repositories.
 
 Building and installing packages
@@ -201,7 +200,7 @@ Installing packages from Hackage
 --------------------------------
 
 The ``cabal`` tool also can download, configure, build and install a
-`Hackage <http://hackage.haskell.org/>`__ package and all of its
+Hackage_ package and all of its
 dependencies in a single step. To do this, run:
 
 ::
@@ -209,7 +208,7 @@ dependencies in a single step. To do this, run:
     cabal install [PACKAGE...]
 
 To browse the list of available packages, visit the
-`Hackage <http://hackage.haskell.org/>`__ web site.
+Hackage_ web site.
 
 Developing with sandboxes
 -------------------------
@@ -243,9 +242,8 @@ To initialise a fresh sandbox in the current directory, run
 It can be useful to make a source package available for installation in
 the sandbox - for example, if your package depends on a patched or an
 unreleased version of a library. This can be done with the
-``cabal sandbox add-source`` command - think of it as "local
-`Hackage <http://hackage.haskell.org/>`__". If an add-source dependency
-is later modified, it is reinstalled automatically.
+``cabal sandbox add-source`` command - think of it as "local Hackage_".
+If an add-source dependency is later modified, it is reinstalled automatically.
 
 .. code-block:: bash
 
@@ -1146,27 +1144,24 @@ This command takes the following options:
 setup haddock
 -------------
 
-Build the documentation for the package using
-`haddock <http://www.haskell.org/haddock/>`__. By default, only the
-documentation for the exposed modules is generated (but see the
-``--executables`` and ``--internal`` flags below).
+Build the documentation for the package using Haddock_.
+By default, only the documentation for the exposed modules is generated
+(but see the ``--executables`` and ``--internal`` flags below).
 
 This command takes the following options:
 
 ``--hoogle``
     Generate a file ``dist/doc/html/``\ *pkgid*\ ``.txt``, which can be
-    converted by `Hoogle <http://www.haskell.org/hoogle/>`__ into a
-    database for searching. This is equivalent to running
-    `haddock <http://www.haskell.org/haddock/>`__ with the ``--hoogle``
-    flag.
+    converted by Hoogle_ into a
+    database for searching. This is equivalent to running Haddock_
+    with the ``--hoogle`` flag.
 ``--html-location=``\ *url*
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions (`see
     listing <#paths-in-the-simple-build-system>`__) are applied to the
     template to obtain a location for each package, which will be used
     by hyperlinks in the generated documentation. For example, the
-    following command generates links pointing at
-    `Hackage <http://hackage.haskell.org/>`__ pages:
+    following command generates links pointing at Hackage_ pages:
 
         setup haddock
         --html-location='http://hackage.haskell.org/packages/archive/$pkg/latest/doc/html'
@@ -1176,28 +1171,26 @@ This command takes the following options:
     using the package tool (e.g. ``ghc-pkg``).
 
 ``--executables``
-    Also run `haddock <http://www.haskell.org/haddock/>`__ for the
-    modules of all the executable programs. By default
-    `haddock <http://www.haskell.org/haddock/>`__ is run only on the
-    exported modules.
+    Also run Haddock_ for the modules of all the executable programs. By default
+    Haddock_ is run only on the exported modules.
 ``--internal``
-    Run `haddock <http://www.haskell.org/haddock/>`__ for the all
+    Run Haddock_ for the all
     modules, including unexposed ones, and make
-    `haddock <http://www.haskell.org/haddock/>`__ generate documentation
+    Haddock_ generate documentation
     for unexported symbols as well.
 ``--css=``\ *path*
     The argument *path* denotes a CSS file, which is passed to
-    `haddock <http://www.haskell.org/haddock/>`__ and used to set the
+    Haddock_ and used to set the
     style of the generated documentation. This is only needed to
     override the default style that
-    `haddock <http://www.haskell.org/haddock/>`__ uses.
+    Haddock_ uses.
 ``--hyperlink-source``
-    Generate `haddock <http://www.haskell.org/haddock/>`__ documentation
+    Generate Haddock_ documentation
     integrated with
     `HsColour <http://www.cs.york.ac.uk/fp/darcs/hscolour/>`__. First,
     `HsColour <http://www.cs.york.ac.uk/fp/darcs/hscolour/>`__ is run to
     generate colourised code. Then
-    `haddock <http://www.haskell.org/haddock/>`__ is run to generate
+    Haddock_ is run to generate
     HTML documentation. Each entity shown in the documentation is linked
     to its definition in the colourised code.
 ``--hscolour-css=``\ *path*
@@ -1399,3 +1392,6 @@ This command takes the following option:
 ``--snapshot``
     Append today's date (in "YYYYMMDD" format) to the version number for
     the generated source package. The original package is unaffected.
+
+
+.. include:: references.inc

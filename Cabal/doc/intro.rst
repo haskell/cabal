@@ -1,5 +1,5 @@
 Cabal is the standard package system for
-`Haskell <http://www.haskell.org/>`__ software. It helps people to
+Haskell_ software. It helps people to
 configure, build and install Haskell software and to distribute it
 easily to other users and developers.
 
@@ -8,7 +8,7 @@ packages. It helps with installing existing packages and also helps
 people developing their own packages. It can be used to work with local
 packages or to install packages from online package archives, including
 automatically installing dependencies. By default it is configured to
-use `Hackage <http://hackage.haskell.org/>`__ which is Haskell's central
+use Hackage_ which is Haskell's central
 package archive that contains thousands of libraries and applications in
 the Cabal package format.
 
@@ -76,7 +76,7 @@ It is also possible to install several local packages at once, e.g.
 Developers and users can use the tool to install packages from remote
 Cabal package archives. By default, the ``cabal`` tool is configured to
 use the central Haskell package archive called
-`Hackage <http://hackage.haskell.org/>`__ but it is possible to use it
+Hackage_ but it is possible to use it
 with any other suitable archive.
 
 ::
@@ -193,3 +193,6 @@ possible for tools to install a package and all of its dependencies
 automatically. It also makes it possible to translate (in a
 mostly-automatically way) into another package format like RPM or deb
 which also have automatic dependency resolution.
+
+
+.. include:: references.inc

@@ -54,8 +54,7 @@ Unstable command-line
 Functions and Types
 -------------------
 
-The Cabal library follows the `Package Versioning
-Policy <http://www.haskell.org/haskellwiki/Package_versioning_policy>`__.
+The Cabal library follows the `Package Versioning Policy`_.
 This means that within a stable major release, for example 1.2.x, there
 will be no incompatible API changes. But minor versions increments, for
 example 1.2.3, indicate compatible API additions.
@@ -99,3 +98,6 @@ may contain more kinds of files so do not assume every file is a
 ``.cabal`` file. Incompatible revisions to the format would involve
 bumping the name of the index file, i.e., ``00-index.tar.gz``,
 ``01-index.tar.gz`` etc.
+
+
+.. include:: references.inc

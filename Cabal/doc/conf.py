@@ -26,6 +26,8 @@ extlinks = {
 
     'ghc-wiki': ('http://ghc.haskell.org/trac/ghc/wiki/%s', ''),
     'ghc-ticket': ('http://ghc.haskell.org/trac/ghc/ticket/%s', 'GHC #'),
+
+    'hackage-pkg': ('http://hackage.haskell.org/package/%s', ''),
 }
 
 # General information about the project.

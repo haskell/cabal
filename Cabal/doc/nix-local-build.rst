@@ -1136,10 +1136,9 @@ The following commands are equivalent to ones that would be passed when
 running ``setup haddock``. (TODO: Where does the documentation get put.)
 
 ``haddock-hoogle:`` *boolean* (default: False)
-    Generate a text file which can be converted by
-    `Hoogle <http://www.haskell.org/hoogle/>`__ into a database for
-    searching. This is equivalent to running ``haddock`` with the
-    ``--hoogle`` flag.
+    Generate a text file which can be converted by Hoogle_
+    into a database for searching. This is equivalent to running ``haddock``
+    with the ``--hoogle`` flag.
 
     The command line variant of this flag is ``--hoogle`` (for the
     ``haddock`` command).
@@ -1336,3 +1335,6 @@ Most users generally won't need these.
 
     The command line variant of this field is
     ``--cabal-lib-version=1.24.0.1``.
+
+
+.. include:: references.inc

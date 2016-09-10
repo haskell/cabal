@@ -712,13 +712,12 @@ with names ending in "``.hs``" or "``.lhs``", or to inputs for various
 Haskell preprocessors. The simple build infrastructure understands the
 extensions:
 
--  ``.gc``
-   (`greencard <http://hackage.haskell.org/package/greencard>`__)
--  ``.chs`` (`c2hs <http://www.cse.unsw.edu.au/~chak/haskell/c2hs/>`__)
--  ``.hsc`` (``hsc2hs``)
--  ``.y`` and ``.ly`` (`happy <http://www.haskell.org/happy/>`__)
--  ``.x`` (`alex <http://www.haskell.org/alex/>`__)
--  ``.cpphs`` (`cpphs <http://projects.haskell.org/cpphs/>`__)
+-  ``.gc`` (:hackage-pkg:`greencard`)
+-  ``.chs`` (:hackage-pkg:`c2hs`)
+-  ``.hsc`` (:hackage-pkg:`hsc2hs`)
+-  ``.y`` and ``.ly`` (happy_)
+-  ``.x`` (alex_)
+-  ``.cpphs`` (cpphs_)
 
 When building, Cabal will automatically run the appropriate preprocessor
 and compile the Haskell module it produces. For the ``c2hs`` and
@@ -884,13 +883,12 @@ describe the package as a whole:
 
     For library packages, this field is used as prologue text by
     ```setup haddock`` <installing-packages.html#setup-haddock>`__, and
-    thus may contain the same markup as
-    `haddock <http://www.haskell.org/haddock/>`__ documentation
+    thus may contain the same markup as Haddock_ documentation
     comments.
 
 ``category:`` *freeform*
     A classification category for future use by the package catalogue
-    `Hackage <http://hackage.haskell.org/>`__. These categories have not
+    Hackage_. These categories have not
     yet been specified, but the upper levels of the module hierarchy
     make a good start.
 ``tested-with:`` *compiler list*
@@ -1070,8 +1068,7 @@ Generating dependency version bounds
 """"""""""""""""""""""""""""""""""""
 
 Cabal also has the ability to suggest dependency version bounds that
-conform to `Package Versioning
-Policy <https://wiki.haskell.org/Package_versioning_policy>`__, which is
+conform to `Package Versioning Policy`_, which is
 a recommended versioning system for publicly released Cabal packages.
 This is done by running the ``gen-bounds`` command:
 
@@ -1391,8 +1388,7 @@ system-dependent values for these fields.
 
     Dependencies like ``foo >= 1.2.3 && < 1.3`` turn out to be very
     common because it is recommended practise for package versions to
-    correspond to API versions (see
-    `PVP <https://wiki.haskell.org/Package_versioning_policy>`__).
+    correspond to API versions (see PVP_).
 
     Since Cabal 1.6, there is a special wildcard syntax to help with
     such ranges
@@ -1405,7 +1401,7 @@ system-dependent values for these fields.
     ``foo >= 1.2 && < 1.3``.
 
     Starting with Cabal 2.0, there's a new syntactic sugar to support
-    `PVP <https://wiki.haskell.org/Package_versioning_policy>`__-style
+    PVP_-style
     major upper bounds conveniently, and is inspired by similiar
     syntactic sugar found in other language ecosystems where it's often
     called the "Caret" operator:
@@ -2159,7 +2155,7 @@ Accessing the package version
 
 The aforementioned auto generated ``Paths_``\ *pkgname* module also
 exports the constant ``version ::``
-`Version <http://hackage.haskell.org/packages/archive/base/latest/doc/html/Data-Version.html>`__
+`Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
 which is defined as the version of your package as specified in the
 ``version`` field.
 
@@ -2340,7 +2336,7 @@ preprocessor.
 
 Cabal also allows to detect when the source code is being used for
 generating documentation. The ``__HADDOCK_VERSION__`` macro is defined
-only when compiling via `haddock <http://www.haskell.org/haddock/>`__
+only when compiling via Haddock_
 instead of a normal Haskell compiler. The value of the
 ``__HADDOCK_VERSION__`` macro is defined as ``A*1000 + B*10 + C``, where
 ``A.B.C`` is the Haddock version. This can be useful for working around
@@ -2422,3 +2418,6 @@ a few options:
    packages <installing-packages.html>`__, and you may use the Cabal
    library for all or part of the work. One option is to copy the source
    of ``Distribution.Simple``, and alter it for your needs. Good luck.
+
+
+.. include:: references.inc
