@@ -94,7 +94,7 @@ import System.Directory
          , canonicalizePath, removeFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension
-                                , isRelative, searchPathSeparator )
+                                , searchPathSeparator )
 import qualified System.Info
 
 -- -----------------------------------------------------------------------------

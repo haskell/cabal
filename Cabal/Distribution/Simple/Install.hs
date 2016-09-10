@@ -29,7 +29,7 @@ import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
-         , die, info, notice, warn, matchDirFileGlob )
+         , die, info, notice, warn, matchDirFileGlob, isRelative )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
@@ -47,7 +47,7 @@ import Distribution.Compat.Graph (IsNode(..))
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath
-         ( takeFileName, takeDirectory, (</>), isAbsolute )
+         ( takeFileName, takeDirectory, (</>) )
 
 import Distribution.Verbosity
 import Distribution.Text
@@ -241,7 +241,7 @@ installDataFiles verbosity pkg_descr destDataDir =
 --
 installIncludeFiles :: Verbosity -> Library -> FilePath -> IO ()
 installIncludeFiles verbosity lib destIncludeDir = do
-    let relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
+    let relincdirs = "." : filter isRelative (includeDirs lbi)
         lbi = libBuildInfo lib
     incs <- traverse (findInc relincdirs) (installIncludes lbi)
     sequence_

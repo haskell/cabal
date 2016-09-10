@@ -57,8 +57,7 @@ import Distribution.Compat.Semigroup (All (..), Any (..))
 import Data.Either      ( rights )
 
 import System.Directory (doesFileExist)
-import System.FilePath  ( (</>), (<.>)
-                        , normalise, splitPath, joinPath, isAbsolute )
+import System.FilePath  ( (</>), (<.>), normalise, splitPath, joinPath )
 import System.IO        (hClose, hPutStr, hPutStrLn, hSetEncoding, utf8)
 
 -- ------------------------------------------------------------------------------

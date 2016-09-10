@@ -145,6 +145,10 @@ module Distribution.Simple.Utils (
         unintersperse,
         wrapText,
         wrapLine,
+
+        -- * FilePath stuff
+        isAbsolute,
+        isRelative,
   ) where
 
 import Prelude ()
@@ -1585,3 +1589,30 @@ unintersperse mark = unfoldr unintersperse1 where
     | otherwise =
         let (this, rest) = break (== mark) str in
         Just (this, safeTail rest)
+
+-- ------------------------------------------------------------
+-- * FilePath stuff
+-- ------------------------------------------------------------
+
+-- | 'isAbsolute' and 'isRelative' has platform independent heuristic.
+-- The System.FilePath exists in two versions, Windows and Posix. The two
+-- versions don't agree on what is a relative path and we don't know if we're
+-- given Windows or Posix paths.
+-- This results in false positives when running on Posix and inspecting
+-- Windows paths, like the hackage server does.
+-- System.FilePath.Posix.isAbsolute \"C:\\hello\" == False
+-- System.FilePath.Windows.isAbsolute \"/hello\" == False
+-- This means that we would treat paths that start with \"/\" to be absolute.
+-- On Posix they are indeed absolute, while on Windows they are not.
+isAbsolute :: FilePath -> Bool
+-- C:\\directory
+isAbsolute (drive:':':'\\':_) = isAlpha drive
+-- UNC
+isAbsolute ('\\':'\\':_) = True
+-- Posix root
+isAbsolute ('/':_) = True
+isAbsolute _ = False
+
+-- | @isRelative = not . 'isAbsolute'@
+isRelative :: FilePath -> Bool
+isRelative = not . isAbsolute

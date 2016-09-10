@@ -62,8 +62,7 @@ import Text.PrettyPrint ((<+>))
 import qualified System.Directory (getDirectoryContents)
 import System.IO (openBinaryFile, IOMode(ReadMode), hGetContents)
 import System.FilePath
-         ( (</>), takeExtension, isRelative, isAbsolute
-         , splitDirectories,  splitPath, splitExtension )
+         ( (</>), takeExtension, splitDirectories, splitPath, splitExtension )
 import System.FilePath.Windows as FilePath.Windows
          ( isValid )
 
@@ -627,7 +626,7 @@ checkSourceRepos pkg =
         ++ "field. It should specify the tag corresponding to this version "
         ++ "or release of the package."
 
-  , check (maybe False System.FilePath.isAbsolute (repoSubdir repo)) $
+  , check (maybe False isAbsolute (repoSubdir repo)) $
       PackageDistInexcusable
         "The 'subdir' field of a source-repository must be a relative path."
   ]
