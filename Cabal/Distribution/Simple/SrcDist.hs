@@ -63,7 +63,7 @@ import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
-import System.FilePath ((</>), (<.>), dropExtension)
+import System.FilePath ((</>), (<.>), dropExtension, isRelative)
 
 -- |Create a source distribution.
 sdist :: PackageDescription     -- ^information from the tarball

@@ -29,7 +29,7 @@ import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
          , installDirectoryContents, installOrdinaryFile, isInSearchPath
-         , die, info, notice, warn, matchDirFileGlob, isRelative )
+         , die, info, notice, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup
@@ -47,7 +47,7 @@ import Distribution.Compat.Graph (IsNode(..))
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath
-         ( takeFileName, takeDirectory, (</>) )
+         ( takeFileName, takeDirectory, (</>), isRelative )
 
 import Distribution.Verbosity
 import Distribution.Text

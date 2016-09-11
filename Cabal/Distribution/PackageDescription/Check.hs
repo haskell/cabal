@@ -626,7 +626,7 @@ checkSourceRepos pkg =
         ++ "field. It should specify the tag corresponding to this version "
         ++ "or release of the package."
 
-  , check (maybe False isAbsolute (repoSubdir repo)) $
+  , check (maybe False isAbsoluteOnAnyPlatform (repoSubdir repo)) $
       PackageDistInexcusable
         "The 'subdir' field of a source-repository must be a relative path."
   ]
@@ -872,7 +872,7 @@ checkPaths pkg =
   [ PackageDistInexcusable $
       quote (kind ++ ": " ++ path) ++ " is an absolute path."
   | (path, kind) <- relPaths
-  , isAbsolute path ]
+  , isAbsoluteOnAnyPlatform path ]
   ++
   [ PackageDistInexcusable $
          quote (kind ++ ": " ++ path) ++ " points inside the 'dist' "
@@ -1755,7 +1755,7 @@ checkLocalPathsExist ops pkg = do
                   | dir <- extraFrameworkDirs  bi ]
                ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
                ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
-             , isRelative dir ]
+             , isRelativeOnAnyPlatform dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {
              explanation = quote (kind ++ ": " ++ dir)

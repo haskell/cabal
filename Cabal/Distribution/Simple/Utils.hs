@@ -147,8 +147,8 @@ module Distribution.Simple.Utils (
         wrapLine,
 
         -- * FilePath stuff
-        isAbsolute,
-        isRelative,
+        isAbsoluteOnAnyPlatform,
+        isRelativeOnAnyPlatform,
   ) where
 
 import Prelude ()
@@ -1594,7 +1594,9 @@ unintersperse mark = unfoldr unintersperse1 where
 -- * FilePath stuff
 -- ------------------------------------------------------------
 
--- | 'isAbsolute' and 'isRelative' has platform independent heuristic.
+-- | 'isAbsoluteOnAnyPlatform' and 'isRelativeOnAnyPlatform' are like
+-- 'System.FilePath.isAbsolute' and 'System.FilePath.isRelative' but have
+-- platform independent heuristics.
 -- The System.FilePath exists in two versions, Windows and Posix. The two
 -- versions don't agree on what is a relative path and we don't know if we're
 -- given Windows or Posix paths.
@@ -1604,15 +1606,22 @@ unintersperse mark = unfoldr unintersperse1 where
 -- System.FilePath.Windows.isAbsolute \"/hello\" == False
 -- This means that we would treat paths that start with \"/\" to be absolute.
 -- On Posix they are indeed absolute, while on Windows they are not.
-isAbsolute :: FilePath -> Bool
+--
+-- The portable versions should be used when we might deal with paths that
+-- are from another OS than the host OS. For example, the Hackage Server
+-- deals with both Windows and Posix paths while performing the
+-- PackageDescription checks. In contrast, when we run 'cabal configure' we
+-- do expect the paths to be correct for our OS and we should not have to use
+-- the platform independent heuristics.
+isAbsoluteOnAnyPlatform :: FilePath -> Bool
 -- C:\\directory
-isAbsolute (drive:':':'\\':_) = isAlpha drive
+isAbsoluteOnAnyPlatform (drive:':':'\\':_) = isAlpha drive
 -- UNC
-isAbsolute ('\\':'\\':_) = True
+isAbsoluteOnAnyPlatform ('\\':'\\':_) = True
 -- Posix root
-isAbsolute ('/':_) = True
-isAbsolute _ = False
+isAbsoluteOnAnyPlatform ('/':_) = True
+isAbsoluteOnAnyPlatform _ = False
 
--- | @isRelative = not . 'isAbsolute'@
-isRelative :: FilePath -> Bool
-isRelative = not . isAbsolute
+-- | @isRelativeOnAnyPlatform = not . 'isAbsoluteOnAnyPlatform'@
+isRelativeOnAnyPlatform :: FilePath -> Bool
+isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
