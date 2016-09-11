@@ -303,12 +303,12 @@ getInstalledPackages verbosity comp packagedbs progdb = do
 
 -- | Check the consistency of the given package databases.
 checkPackageDBs :: Verbosity -> Compiler -> PackageDBStack
-                -> ProgramConfiguration
+                -> ProgramDb
                 -> IO [(PackageDB, [String])]
-checkPackageDBs verbosity comp packagedbs conf = do
+checkPackageDBs verbosity comp packagedbs progdb = do
   checkPackageDbStack comp packagedbs
   sequenceA
-    [ do strs <- HcPkg.check (hcPkgInfo conf) verbosity packagedb
+    [ do strs <- HcPkg.check (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, strs)
     | packagedb <- packagedbs ]
 

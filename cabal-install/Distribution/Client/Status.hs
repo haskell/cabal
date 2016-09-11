@@ -138,11 +138,11 @@ status verbosity globalFlags statusFlags = do
   (useSandbox, config) <- loadConfigOrSandboxConfig
     verbosity
     (globalFlags { globalRequireSandbox = Cabal.Flag False })
-  (_defaultComp, platform, _defaultConf) <- configCompilerAux'
-                                            $ savedConfigureFlags config
+  (_defaultComp, platform, _defaultProgDb) <- configCompilerAux'
+                                              $ savedConfigureFlags config
   let distPref = useDistPref defaultSetupScriptOptions
   buildConfig <- tryGetPersistBuildConfig distPref
-  (comp, conf, dbs) <- case buildConfig of
+  (comp, progdb, dbs) <- case buildConfig of
     Left _ -> die $ "Couldn't load the saved package config file. "
               ++ "Most likely reason: the package was configured with a different "
               ++ "version of Cabal than the one cabal-install was built with."
@@ -266,7 +266,7 @@ status verbosity globalFlags statusFlags = do
     return ()
   printProgramVersions = do
     putStrLn "Program versions:"
-    flip mapM_ (configuredPrograms conf) $ \cp ->
+    flip mapM_ (configuredPrograms progdb) $ \cp ->
       case programVersion cp of
         Nothing -> return ()
         Just v  -> putStrLn
@@ -318,11 +318,11 @@ status verbosity globalFlags statusFlags = do
                            verbosity
                            comp
                            dbs
-                           conf
+                           progdb
     sourcePkgDb       <- withRepoContext verbosity
                                          globalFlags'
                                          (getSourcePackages verbosity)
-    pkgConfigDb       <- readPkgConfigDb verbosity conf
+    pkgConfigDb       <- readPkgConfigDb verbosity progdb
     pkgSpecifiers     <- withRepoContext verbosity
                                          globalFlags'
                          $ \repoContext -> resolveUserTargets
@@ -337,7 +337,7 @@ status verbosity globalFlags statusFlags = do
       globalFlags'
       comp
       platform
-      conf
+      progdb
       useSandbox $ \mSandboxPkgInfo ->
         maybeWithSandboxDirOnSearchPath useSandbox $ do
           planPkgs <- planPackages
@@ -383,7 +383,7 @@ status verbosity globalFlags statusFlags = do
         Just op -> putStrLn $ ";\n  But there is a sandbox in parent:\n  "
                             ++ op
   printPackageDbs = do
-    installedPackageIndex <- getInstalledPackages verbosity comp dbs conf
+    installedPackageIndex <- getInstalledPackages verbosity comp dbs progdb
     let pkgs = allPackages installedPackageIndex
         pkgTuples = [ (root, disp $ sourcePackageId pkg)
                     | pkg <- pkgs
@@ -412,7 +412,7 @@ status verbosity globalFlags statusFlags = do
                           packageDoc ps))
   printPackageDBChecks = do
     putStrLn $ "Package database checks:"
-    checks <- checkPackageDBs verbosity comp dbs conf
+    checks <- checkPackageDBs verbosity comp dbs progdb
     flip mapM_ checks $ \(db, output) -> if null output
       then putStrLn $ "  clean for database " ++ show db ++ "."
       else do
