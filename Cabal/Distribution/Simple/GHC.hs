@@ -86,15 +86,13 @@ import Distribution.Text
 import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
-import Distribution.Compat.Environment ( lookupEnv )
 import qualified Data.Map as Map
 import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
          , canonicalizePath, removeFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
-                                , takeDirectory, replaceExtension
-                                , searchPathSeparator )
+                                , takeDirectory, replaceExtension )
 import qualified System.Info
 
 -- -----------------------------------------------------------------------------
@@ -284,11 +282,9 @@ getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack
                      -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs progdb = do
+  checkPackageDbEnvVar
   checkPackageDbStack comp packagedbs
-  envPackageDBs <- maybe []
-                   (map SpecificPackageDB . unintersperse searchPathSeparator)
-                   <$> lookupEnv "GHC_PACKAGE_PATH"
-  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) progdb
+  pkgss <- getInstalledPackages' verbosity packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! hackRtsPackage index
 
@@ -353,6 +349,10 @@ getUserPackageDB _verbosity ghcProg (Platform arch os) = do
       | ghcVersion >= Version [6,12] []  = "package.conf.d"
       | otherwise                        = "package.conf"
     Just ghcVersion = programVersion ghcProg
+
+checkPackageDbEnvVar :: IO ()
+checkPackageDbEnvVar =
+    Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
 checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
 checkPackageDbStack comp = if flagPackageConf implInfo

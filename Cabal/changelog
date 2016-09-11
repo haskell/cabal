@@ -73,9 +73,6 @@
 	* Internal 'build-tools' dependencies are now added to PATH
 	  upon invocation of GHC, so that they can be conveniently
 	  used via `-pgmF`. (#1541)
-	* Respect the environment variables 'GHC_PACKAGE_PATH' and
-	'GHCJS_PACKAGE_PATH', lifting the restriction that they be unset.
-	(#3728,#2711).
 	* Add support for new caret-style version range operator `^>=` (#3705)
 	* Verbosity `-v` now takes an extended format which allows
 	  specifying exactly what you want to be logged.  The format is

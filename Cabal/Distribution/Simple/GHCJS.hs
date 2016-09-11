@@ -48,9 +48,7 @@ import Language.Haskell.Extension
 import qualified Data.Map as Map
 import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension
-                                , takeDirectory, replaceExtension
-                                , searchPathSeparator )
-import Distribution.Compat.Environment ( lookupEnv )
+                                , takeDirectory, replaceExtension )
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramDb
@@ -189,11 +187,9 @@ getPackageDBContents verbosity packagedb progdb = do
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs progdb = do
+  checkPackageDbEnvVar
   checkPackageDbStack packagedbs
-  envPackageDBs <- maybe []
-                   (map SpecificPackageDB . unintersperse searchPathSeparator)
-                   <$> lookupEnv "GHCJS_PACKAGE_PATH"
-  pkgss <- getInstalledPackages' verbosity (envPackageDBs ++ packagedbs) progdb
+  pkgss <- getInstalledPackages' verbosity packagedbs progdb
   index <- toPackageIndex verbosity pkgss progdb
   return $! index
 
@@ -212,6 +208,10 @@ toPackageIndex verbosity pkgss progdb = do
 
   where
     Just ghcjsProg = lookupProgram ghcjsProgram progdb
+
+checkPackageDbEnvVar :: IO ()
+checkPackageDbEnvVar =
+    Internal.checkPackageDbEnvVar "GHCJS" "GHCJS_PACKAGE_PATH"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
