@@ -1287,11 +1287,11 @@ findPackageDesc dir = do
                   ++ intercalate ", " l
 
 -- | List all package descriptions in the given directory.
--- 
+--
 -- In contrast to 'findPackageDesc', finding more than one
 -- package description is possible and does not lead
 -- to an error/'Left' value.
-listPackageDescs :: FilePath -> IO [FilePath]
+listPackageDescs :: FilePath -> NoCallStackIO [FilePath]
 listPackageDescs dir = do
   files <- getDirectoryContents dir
   -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
