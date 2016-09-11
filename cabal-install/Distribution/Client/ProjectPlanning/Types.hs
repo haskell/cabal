@@ -448,12 +448,12 @@ data PackageTarget =
   deriving (Eq, Show, Generic)
 
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data SubComponentTarget = WholeComponent
                         | ModuleTarget ModuleName
                         | FileTarget   FilePath
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary PackageTarget
 instance Binary ComponentTarget
