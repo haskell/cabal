@@ -147,8 +147,8 @@ module Distribution.Simple.Utils (
         wrapLine,
 
         -- * FilePath stuff
-        isPortableAbsolute,
-        isPortableRelative,
+        isAbsoluteOnAnyPlatform,
+        isRelativeOnAnyPlatform,
   ) where
 
 import Prelude ()
@@ -1594,7 +1594,7 @@ unintersperse mark = unfoldr unintersperse1 where
 -- * FilePath stuff
 -- ------------------------------------------------------------
 
--- | 'isPortableAbsolute' and 'isPortableRelative' are like
+-- | 'isAbsoluteOnAnyPlatform' and 'isRelativeOnAnyPlatform' are like
 -- 'System.FilePath.isAbsolute' and 'System.FilePath.isRelative' but have
 -- platform independent heuristics.
 -- The System.FilePath exists in two versions, Windows and Posix. The two
@@ -1613,15 +1613,15 @@ unintersperse mark = unfoldr unintersperse1 where
 -- PackageDescription checks. In contrast, when we run 'cabal configure' we
 -- do expect the paths to be correct for our OS and we should not have to use
 -- the platform independent heuristics.
-isPortableAbsolute :: FilePath -> Bool
+isAbsoluteOnAnyPlatform :: FilePath -> Bool
 -- C:\\directory
-isPortableAbsolute (drive:':':'\\':_) = isAlpha drive
+isAbsoluteOnAnyPlatform (drive:':':'\\':_) = isAlpha drive
 -- UNC
-isPortableAbsolute ('\\':'\\':_) = True
+isAbsoluteOnAnyPlatform ('\\':'\\':_) = True
 -- Posix root
-isPortableAbsolute ('/':_) = True
-isPortableAbsolute _ = False
+isAbsoluteOnAnyPlatform ('/':_) = True
+isAbsoluteOnAnyPlatform _ = False
 
--- | @isPortableRelative = not . 'isPortableAbsolute'@
-isPortableRelative :: FilePath -> Bool
-isPortableRelative = not . isPortableAbsolute
+-- | @isRelativeOnAnyPlatform = not . 'isAbsoluteOnAnyPlatform'@
+isRelativeOnAnyPlatform :: FilePath -> Bool
+isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
