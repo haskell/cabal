@@ -224,10 +224,14 @@ arbitraryExInst pn v pkgs = do
 
 arbitraryComponentDeps :: TestDb -> Gen (ComponentDeps [ExampleDependency])
 arbitraryComponentDeps (TestDb []) = return $ CD.fromList []
-arbitraryComponentDeps db = CD.fromList . dedupNamedComponents <$>
-                            boundedListOf 5 (arbitraryComponentDep db)
+arbitraryComponentDeps db =
+    -- dedupComponentNames removes components with duplicate names, for example,
+    -- 'ComponentExe x' and 'ComponentTest x', and then CD.fromList combines
+    -- duplicate unnamed components.
+    CD.fromList . dedupComponentNames <$>
+    boundedListOf 5 (arbitraryComponentDep db)
   where
-    dedupNamedComponents =
+    dedupComponentNames =
         nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
 
     componentName :: Component -> Maybe String
