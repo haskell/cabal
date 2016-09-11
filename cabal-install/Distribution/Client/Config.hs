@@ -56,7 +56,7 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo, readRepo )
 import Distribution.Utils.NubList
-         ( NubList, fromNubList, toNubList)
+         ( NubList, fromNubList, toNubList, overNubList )
 
 import Distribution.Simple.Compiler
          ( DebugInfoLevel(..), OptimisationLevel(..) )
@@ -104,7 +104,7 @@ import Data.List
 import Data.Maybe
          ( fromMaybe )
 import Control.Monad
-         ( when, unless, foldM, liftM, liftM2 )
+         ( when, unless, foldM, liftM )
 import qualified Distribution.Compat.ReadP as Parse
          ( (<++), option )
 import Distribution.Compat.Semigroup
@@ -445,7 +445,7 @@ initialSavedConfig = do
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [addInfoForKnownRepos defaultRemoteRepo],
+      globalRemoteRepos  = toNubList [defaultRemoteRepo],
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
@@ -514,23 +514,91 @@ defaultRemoteRepo = RemoteRepo name uri Nothing [] 0 False
 -- we might have only have older info. This lets us fill that in even for old
 -- config files.
 --
--- TODO: Once we migrate from opt-in to opt-out security for the central
--- Hackage repository, we should enable security and specify keys and threshold
--- for repositories that have their security setting as 'Nothing' (default).
 addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
-addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
-      tryHttps
-    $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
+addInfoForKnownRepos repo
+  | remoteRepoName repo == remoteRepoName defaultRemoteRepo
+  = useSecure . tryHttps . fixOldURI $ repo
   where
+    fixOldURI r
+      | isOldHackageURI (remoteRepoURI r)
+                  = r { remoteRepoURI = remoteRepoURI defaultRemoteRepo }
+      | otherwise = r
+
     tryHttps r = r { remoteRepoShouldTryHttps = True }
+
+    useSecure r@RemoteRepo{
+                  remoteRepoSecure       = secure,
+                  remoteRepoRootKeys     = [],
+                  remoteRepoKeyThreshold = 0
+                } | secure /= Just False
+            = r {
+              --TODO: When we want to switch us from using opt-in to opt-out
+              -- security for the central hackage server, uncomment the
+              -- following line. That will cause the default (of unspecified)
+              -- to get interpreted as if it were "secure: True". For the
+              -- moment it means the keys get added but you have to manually
+              -- set "secure: True" to opt-in.
+              --remoteRepoSecure       = Just True,
+                remoteRepoRootKeys     = defaultHackageRemoteRepoKeys,
+                remoteRepoKeyThreshold = defaultHackageRemoteRepoKeyThreshold
+              }
+    useSecure r = r
 addInfoForKnownRepos other = other
+
+-- | The current hackage.haskell.org repo root keys that we ship with cabal.
+---
+-- This lets us bootstrap trust in this repo without user intervention.
+-- These keys need to be periodically updated when new root keys are added.
+-- See the root key procedures for details.
+--
+defaultHackageRemoteRepoKeys :: [String]
+defaultHackageRemoteRepoKeys =
+    [ "fe331502606802feac15e514d9b9ea83fee8b6ffef71335479a2e68d84adc6b0",
+      "1ea9ba32c526d1cc91ab5e5bd364ec5e9e8cb67179a471872f6e26f0ae773d42",
+      "2c6c3627bd6c982990239487f1abd02e08a02e6cf16edb105a8012d444d870c3",
+      "0a5c7ea47cd1b15f01f5f51a33adda7e655bc0f0b0615baa8e271f4c3351e21d",
+      "51f0161b906011b52c6613376b1ae937670da69322113a246a09f807c62f6921"
+    ]
+
+-- | The required threshold of root key signatures for hackage.haskell.org
+--
+defaultHackageRemoteRepoKeyThreshold :: Int
+defaultHackageRemoteRepoKeyThreshold = 3
 
 --
 -- * Config file reading
 --
 
+-- | Loads the main configuration, and applies additional defaults to give the
+-- effective configuration. To loads just what is actually in the config file,
+-- use 'loadRawConfig'.
+--
 loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
-loadConfig verbosity configFileFlag = addBaseConf $ do
+loadConfig verbosity configFileFlag = do
+  config <- loadRawConfig verbosity configFileFlag
+  extendToEffectiveConfig config
+
+extendToEffectiveConfig :: SavedConfig -> IO SavedConfig
+extendToEffectiveConfig config = do
+  base <- baseSavedConfig
+  let effective0   = base `mappend` config
+      globalFlags0 = savedGlobalFlags effective0
+      effective  = effective0 {
+                     savedGlobalFlags = globalFlags0 {
+                       globalRemoteRepos =
+                         overNubList (map addInfoForKnownRepos)
+                                     (globalRemoteRepos globalFlags0)
+                     }
+                   }
+  return effective
+
+-- | Like 'loadConfig' but does not apply any additional defaults, it just
+-- loads what is actually in the config file. This is thus suitable for
+-- comparing or editing a config file, but not suitable for using as the
+-- effective configuration.
+--
+loadRawConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
+loadRawConfig verbosity configFileFlag = do
   (source, configFile) <- getConfigFilePathAndSource configFileFlag
   minp <- readConfigFile mempty configFile
   case minp of
@@ -538,7 +606,6 @@ loadConfig verbosity configFileFlag = addBaseConf $ do
       notice verbosity $ "Config file path source is " ++ sourceMsg source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
       createDefaultConfigFile verbosity configFile
-      loadConfig verbosity configFileFlag
     Just (ParseOk ws conf) -> do
       unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
@@ -550,11 +617,6 @@ loadConfig verbosity configFileFlag = addBaseConf $ do
         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
 
   where
-    addBaseConf body = do
-      base  <- baseSavedConfig
-      extra <- body
-      return (base `mappend` extra)
-
     sourceMsg CommandlineOption =   "commandline option"
     sourceMsg EnvironmentVariable = "env var CABAL_CONFIG"
     sourceMsg Default =             "default config file"
@@ -592,12 +654,13 @@ readConfigFile initial file = handleNotExists $
         then return Nothing
         else ioError ioe
 
-createDefaultConfigFile :: Verbosity -> FilePath -> IO ()
+createDefaultConfigFile :: Verbosity -> FilePath -> IO SavedConfig
 createDefaultConfigFile verbosity filePath = do
   commentConf <- commentSavedConfig
   initialConf <- initialSavedConfig
   notice verbosity $ "Writing default configuration to " ++ filePath
   writeConfigFile filePath commentConf initialConf
+  return initialConf
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
@@ -869,8 +932,7 @@ parseConfig src initial = \str -> do
           knownSections
 
   let remoteRepoSections =
-          map addInfoForKnownRepos
-        . reverse
+          reverse
         . nubBy ((==) `on` remoteRepoName)
         $ remoteRepoSections0
 
@@ -1060,8 +1122,8 @@ withProgramOptionsFields =
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
 userConfigDiff :: GlobalFlags -> IO [String]
 userConfigDiff globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags)
-  testConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
+  userConfig <- loadRawConfig normal (globalConfigFile globalFlags)
+  testConfig <- initialSavedConfig
   return $ reverse . foldl' createDiff [] . M.toList
                 $ M.unionWith combine
                     (M.fromList . map justFst $ filterShow testConfig)
@@ -1105,8 +1167,8 @@ userConfigDiff globalFlags = do
 -- | Update the user's ~/.cabal/config' keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> IO ()
 userConfigUpdate verbosity globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags)
-  newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
+  userConfig  <- loadRawConfig normal (globalConfigFile globalFlags)
+  newConfig   <- initialSavedConfig
   commentConf <- commentSavedConfig
   cabalFile <- getConfigFilePath $ globalConfigFile globalFlags
   let backup = cabalFile ++ ".backup"
