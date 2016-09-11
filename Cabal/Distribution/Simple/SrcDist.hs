@@ -216,7 +216,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , fmap concat
     . withAllLib $ \ l -> do
        let lbi = libBuildInfo l
-           relincdirs = "." : filter isRelative (includeDirs lbi)
+           relincdirs = "." : filter isPortableRelative (includeDirs lbi)
        traverse (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
 
     -- Setup script, if it exists.

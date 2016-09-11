@@ -92,7 +92,8 @@ import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
          , canonicalizePath, removeFile )
 import System.FilePath          ( (</>), (<.>), takeExtension
-                                , takeDirectory, replaceExtension )
+                                , takeDirectory, replaceExtension
+                                ,isRelative )
 import qualified System.Info
 
 -- -----------------------------------------------------------------------------
