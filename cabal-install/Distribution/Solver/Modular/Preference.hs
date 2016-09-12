@@ -51,17 +51,26 @@ import qualified Distribution.Solver.Modular.WeightedPSQ as W
 -- | Update the weights of children under 'PChoice' nodes. 'addWeights' takes a
 -- list of weight-calculating functions in order to avoid sorting the package
 -- choices multiple times. Each function takes the package name, sorted list of
--- siblings' versions, and package option. 'addWeights' prepends the new
+-- children's versions, and package option. 'addWeights' prepends the new
 -- weights to the existing weights, which gives precedence to preferences that
 -- are applied later.
 addWeights :: [PN -> [Ver] -> POption -> Weight] -> Tree a -> Tree a
 addWeights fs = trav go
   where
+    go :: TreeF a (Tree a) -> TreeF a (Tree a)
     go (PChoiceF qpn@(Q _ pn) x cs) =
-      let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
+      let versions = L.map version (W.keys cs)
+          sortedVersions = L.sortBy (flip compare) versions
           weights k = [f pn sortedVersions k | f <- fs]
-      in  PChoiceF qpn x $
-          W.mapWeightsWithKey (\k w -> weights k ++ w) cs
+
+          elemsToWhnf :: [a] -> ()
+          elemsToWhnf = foldr seq ()
+      in  PChoiceF qpn x
+          -- Evaluate the children's versions before evaluating any of the
+          -- subtrees, so that 'versions' doesn't hold onto all of the
+          -- subtrees (referenced by cs) and cause a space leak.
+          (elemsToWhnf versions `seq`
+             W.mapWeightsWithKey (\k w -> weights k ++ w) cs)
     go x                            = x
 
 addWeight :: (PN -> [Ver] -> POption -> Weight) -> Tree a -> Tree a
