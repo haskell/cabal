@@ -1314,6 +1314,7 @@ demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 
 .. code-block:: cabal
     :caption: foo.cabal
+    :name: foo-bench.cabal
 
     Name:           foo
     Version:        1.0

@@ -37,7 +37,7 @@ copyright = u'2016, Cabal Team'
 release = version  # The full version, including alpha/beta/rc tags.
 
 # Syntax highlighting
-highlight_language = 'haskell'
+highlight_language = 'cabal'
 #pygments_style = 'tango'
 
 # List of patterns, relative to source directory, that match files and
@@ -221,7 +221,7 @@ class CabalLexer(lexer.RegexLexer):
           (r'^([\w\-_]+)', token.Keyword), # library, executable, flag etc.
           (r'[^\S\n]+', token.Text),
           (r'(\n\s*|\t)', token.Whitespace),
-          (r'&&|\|\||==|<=|>=|<|>|^=', token.Operator),
+          (r'&&|\|\||==|<=|>=|<|>|^>=', token.Operator),
           (r',|:|{|}', token.Punctuation),
           (r'.', token.Text)
       ],

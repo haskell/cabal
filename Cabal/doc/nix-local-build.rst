@@ -1,4 +1,4 @@
-.. highlight:: shell
+.. highlight:: console
 
 Quickstart
 ==========
@@ -9,13 +9,13 @@ local builds with this command (configuring is not necessary):
 
 ::
 
-    cabal new-build
+    $ cabal new-build
 
 To open a GHCi shell with this package, use this command:
 
 ::
 
-    cabal new-repl
+    $ cabal new-repl
 
 Developing multiple packages
 ----------------------------
@@ -44,29 +44,29 @@ this behavior; you will need to upgrade to HEAD.)
 
 ::
 
-    cabal new-build
+    $ cabal new-build
 
 To build a specific package, you can either run ``new-build`` from the
 directory of the package in question:
 
 ::
 
-    cd cabal-install
-    cabal new-build
+    $ cd cabal-install
+    $ cabal new-build
 
 or you can pass the name of the package as an argument to
 ``cabal new-build`` (this works in any subdirectory of the project):
 
 ::
 
-    cabal new-build cabal-install
+    $ cabal new-build cabal-install
 
 You can also specify a specific component of the package to build. For
 example, to build a test suite named ``package-tests``, use the command:
 
 ::
 
-    cabal new-build package-tests
+    $ cabal new-build package-tests
 
 Targets can be qualified with package names. So to request
 ``package-tests`` *from* the ``Cabal`` package, use
@@ -288,8 +288,8 @@ Some example targets:
 
 ::
 
-    cabal new-build lib:foo-pkg       # build the library named foo-pkg
-    cabal new-build foo-pkg:foo-tests # build foo-tests in foo-pkg
+    $ cabal new-build lib:foo-pkg       # build the library named foo-pkg
+    $ cabal new-build foo-pkg:foo-tests # build foo-tests in foo-pkg
 
 (There is also syntax for specifying module and file targets, but it
 doesn't currently do anything.)
@@ -324,6 +324,7 @@ this:
 .. highlight:: cabal
 
 ::
+
     constraints: HTTP ==4000.3.3,
                  HTTP +warp-tests -warn-as-error -network23 +network-uri -mtl1 -conduit10,
                  QuickCheck ==2.9.1,
