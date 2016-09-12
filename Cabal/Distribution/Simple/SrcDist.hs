@@ -372,7 +372,6 @@ prepareTree verbosity pkg_descr mb_lbi targetDir pps = do
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
   maybeCreateDefaultSetupScript targetDir
 
-<<<<<<< HEAD
 -- | Remove autogen modules before calling preprocessComponent.
 preprocessComponentSdist :: PackageDescription
                          -> Component
