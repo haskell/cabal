@@ -6,6 +6,8 @@ Haskell module or two.
 
 Every project needs a name, we'll call this example "proglet".
 
+.. highlight:: console
+
 ::
 
     $ cd proglet/
@@ -79,6 +81,8 @@ some build information about the library or executable.
 
 Editing the .cabal file
 -----------------------
+
+.. highlight:: cabal
 
 Load up the ``.cabal`` file in a text editor. The first part of the
 ``.cabal`` file has the package metadata and towards the end of the file
@@ -184,16 +188,16 @@ Building the package
 For simple packages that's it! We can now try configuring and building
 the package:
 
-::
+.. code-block:: console
 
-    cabal configure
-    cabal build
+    $ cabal configure
+    $ cabal build
 
 Assuming those two steps worked then you can also install the package:
 
-::
+.. code-block:: console
 
-    cabal install
+    $ cabal install
 
 For libraries this makes them available for use in GHCi or to be used by
 other packages. For executables it installs the program so that you can
@@ -564,7 +568,7 @@ The HUnit package contains a file ``HUnit.cabal`` containing:
 
 and the following ``Setup.hs``:
 
-::
+.. code-block:: haskell
 
     import Distribution.Simple
     main = defaultMain
@@ -793,7 +797,7 @@ describe the package as a whole:
 
     For build type ``Simple``, the contents of ``Setup.hs`` must be:
 
-    ::
+    .. code-block:: haskell
 
         import Distribution.Simple
         main = defaultMain
@@ -802,7 +806,7 @@ describe the package as a whole:
     parameters <#system-dependent-parameters>`__ below), the contents of
     ``Setup.hs`` must be:
 
-    ::
+    .. code-block:: haskell
 
         import Distribution.Simple
         main = defaultMainWithHooks autoconfUserHooks
@@ -811,7 +815,7 @@ describe the package as a whole:
     packages <installing-packages.html#more-complex-packages>`__ below),
     the contents of ``Setup.hs`` must be:
 
-    ::
+    .. code-block:: haskell
 
         import Distribution.Make
         main = defaultMain
@@ -1028,9 +1032,9 @@ While developing a package, it is often useful to make its code
 available inside an interpreter session. This can be done with the
 ``repl`` command:
 
-::
+.. code-block:: console
 
-    cabal repl
+    $ cabal repl
 
 The name comes from the acronym
 `REPL <http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop>`__,
@@ -1040,12 +1044,12 @@ components, the name can be given as an argument to ``repl``. The name
 can be also optionally prefixed with the component's type for
 disambiguation purposes. Example:
 
-::
+.. code-block:: console
 
-    cabal repl foo
-    cabal repl exe:foo
-    cabal repl test:bar
-    cabal repl bench:baz
+    $ cabal repl foo
+    $ cabal repl exe:foo
+    $ cabal repl test:bar
+    $ cabal repl bench:baz
 
 Freezing dependency versions
 """"""""""""""""""""""""""""
@@ -1056,9 +1060,9 @@ environment, it may be necessary or desirable to ensure that the same
 dependency versions are selected in each environment. This can be done
 with the ``freeze`` command:
 
-::
+.. code-block:: console
 
-    cabal freeze
+    $ cabal freeze
 
 The command writes the selected version for all dependencies to the
 ``cabal.config`` file. All environments which share this file will use
@@ -1072,24 +1076,26 @@ conform to `Package Versioning Policy`_, which is
 a recommended versioning system for publicly released Cabal packages.
 This is done by running the ``gen-bounds`` command:
 
-::
+.. code-block:: console
 
-    cabal gen-bounds
+    $ cabal gen-bounds
 
 For example, given the following dependencies specified in
 ``build-depends``:
 
 ::
 
-    foo == 0.5.2
-    bar == 1.1
+    build-depends:
+      foo == 0.5.2
+      bar == 1.1
 
 ``gen-bounds`` will suggest changing them to the following:
 
 ::
 
-    foo >= 0.5.2 && < 0.6
-    bar >= 1.1 && < 1.2
+    build-depends:
+      foo >= 0.5.2 && < 0.6
+      bar >= 1.1 && < 1.2
 
 Executables
 ^^^^^^^^^^^
@@ -1116,7 +1122,7 @@ Running executables
 You can have Cabal build and run your executables by using the ``run``
 command:
 
-::
+.. code-block:: console
 
     $ cabal run EXECUTABLE [-- EXECUTABLE_FLAGS]
 
@@ -1180,9 +1186,8 @@ Example: Package using ``exitcode-stdio-1.0`` interface
 The example package description and executable source file below
 demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 
-foo.cabal:
-
-::
+.. code-block:: cabal
+    :caption: foo.cabal
 
     Name:           foo
     Version:        1.0
@@ -1195,9 +1200,8 @@ foo.cabal:
         main-is:    test-foo.hs
         build-depends: base
 
-test-foo.hs:
-
-::
+.. code-block:: haskell
+    :caption: test-foo.hs
 
     module Main where
 
@@ -1216,9 +1220,8 @@ also develops a simple implementation of the interface set by
 ``Distribution.TestSuite``, but in actual usage the implementation would
 be provided by the library that provides the testing facility.
 
-bar.cabal:
-
-.. code-block:: none
+.. code-block:: cabal
+    :caption: bar.cabal
 
     Name:           bar
     Version:        1.0
@@ -1232,9 +1235,8 @@ bar.cabal:
         build-depends: base, Cabal >= 1.9.2
 
 
-Bar.hs:
-
-::
+.. code-block:: haskell
+    :caption: Bar.hs
 
     module Bar ( tests ) where
 
@@ -1310,9 +1312,8 @@ Example: Package using ``exitcode-stdio-1.0`` interface
 The example package description and executable source file below
 demonstrate the use of the ``exitcode-stdio-1.0`` interface.
 
-foo.cabal:
-
-::
+.. code-block:: cabal
+    :caption: foo.cabal
 
     Name:           foo
     Version:        1.0
@@ -1325,9 +1326,8 @@ foo.cabal:
         main-is:    bench-foo.hs
         build-depends: base, time
 
-bench-foo.hs:
-
-::
+.. code-block:: haskell
+    :caption: bench-foo.hs
 
     {-# LANGUAGE BangPatterns #-}
     module Main where
@@ -1455,7 +1455,7 @@ system-dependent values for these fields.
     modules. From GHC version 6.6 onward, these may be specified by
     placing a ``LANGUAGE`` pragma in the source files affected e.g.
 
-    ::
+    .. code-block:: haskell
 
         {-# LANGUAGE CPP, MultiParamTypeClasses #-}
 
@@ -2110,7 +2110,7 @@ module called ``Paths_``\ *pkgname* (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
 modules of the package. This module defines a function
 
-::
+.. code-block:: haskell
 
     getDataFileName :: FilePath -> IO FilePath
 
@@ -2132,7 +2132,7 @@ functions and values, which record the version of the package and some
 other directories which the package has been configured to be installed
 into (e.g. data files live in ``getDataDir``):
 
-::
+.. code-block:: haskell
 
     version :: Version
 
@@ -2167,7 +2167,7 @@ implementation details and the build procedure depend on the build
 environment. The ``build-type`` ``Configure`` can be used to handle many
 such situations. In this case, ``Setup.hs`` should be:
 
-::
+.. code-block:: haskell
 
     import Distribution.Simple
     main = defaultMainWithHooks autoconfUserHooks
@@ -2220,7 +2220,7 @@ This example is for people familiar with the
 
 In the X11 package, the file ``configure.ac`` contains:
 
-::
+.. code-block:: shell
 
     AC_INIT([Haskell X11 package], [1.1], [libraries@haskell.org], [X11])
 
@@ -2309,7 +2309,7 @@ dependent packages; for example, suppose your package works with either
 version 3 or version 4 of the ``base`` package, you could select the
 available version in your Haskell modules like this:
 
-::
+.. code-block:: cpp
 
     #if MIN_VERSION_base(4,0,0)
     ... code that works with base-4 ...
@@ -2355,7 +2355,7 @@ a few options:
    and after each command is run, and also to specify additional
    preprocessors. A typical ``Setup.hs`` may look like this:
 
-   ::
+   .. code-block:: haskell
 
        import Distribution.Simple
        main = defaultMainWithHooks simpleUserHooks { postHaddock = posthaddock }
@@ -2379,7 +2379,7 @@ a few options:
    which simply parses the command line arguments and invokes ``make``.
    Here ``Setup.hs`` should look like this:
 
-   ::
+   .. code-block:: haskell
 
        import Distribution.Make
        main = defaultMain
@@ -2402,7 +2402,7 @@ a few options:
       supplied ``Makefile`` should provide a ``copy`` target, which will
       probably look like this:
 
-      ::
+      .. code-block:: make
 
           copy :
                   $(MAKE) install prefix=$(destdir)/$(prefix) \
