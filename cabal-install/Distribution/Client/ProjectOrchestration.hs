@@ -78,11 +78,14 @@ import           Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import           Distribution.PackageDescription (FlagAssignment)
 import           Distribution.Simple.Setup (HaddockFlags)
+import qualified Distribution.Simple.Setup as Setup
+import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils (die, notice, noticeNoWrap, debug)
 import           Distribution.Verbosity
 import           Distribution.Text
 
+import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
@@ -92,6 +95,7 @@ import           Data.Maybe
 import           Data.Either
 import           Control.Exception (Exception(..))
 import           System.Exit (ExitCode(..), exitFailure)
+import qualified System.Process.Internals as Process (translate)
 #ifdef MIN_VERSION_unix
 import           System.Posix.Signals (sigKILL, sigSEGV)
 #endif
@@ -420,6 +424,7 @@ printPlan :: Verbosity -> ProjectBuildContext -> IO ()
 printPlan verbosity
           ProjectBuildContext {
             elaboratedPlan,
+            elaboratedShared,
             pkgsBuildStatus,
             buildSettings = BuildTimeSettings{buildSettingDryRun}
           }
@@ -458,6 +463,7 @@ printPlan verbosity
             " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
             ) ++
       showFlagAssignment (nonDefaultFlags elab) ++
+      showConfigureFlags elab ++
       let buildStatus = pkgsBuildStatus Map.! installedUnitId elab in
       " (" ++ showBuildStatus buildStatus ++ ")"
 
@@ -482,6 +488,40 @@ printPlan verbosity
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
     showFlagName (PD.FlagName f) = f
+
+    showConfigureFlags elab =
+        let fullConfigureFlags
+              = setupHsConfigureFlags
+                    (ReadyPackage elab)
+                    elaboratedShared
+                    verbosity
+                    "$builddir"
+            -- | Given a default value @x@ for a flag, nub @Flag x@
+            -- into @NoFlag@.  This gives us a tidier command line
+            -- rendering.
+            nubFlag :: Eq a => a -> Setup.Flag a -> Setup.Flag a
+            nubFlag x (Setup.Flag x') | x == x' = Setup.NoFlag
+            nubFlag _ f = f
+            -- TODO: Closely logic from 'configureProfiling'.
+            tryExeProfiling = Setup.fromFlagOrDefault False
+                                (configProf fullConfigureFlags)
+            tryLibProfiling = Setup.fromFlagOrDefault False
+                                (Mon.mappend (configProf    fullConfigureFlags)
+                                             (configProfExe fullConfigureFlags))
+            partialConfigureFlags
+              = Mon.mempty {
+                configProf    =
+                    nubFlag False (configProf fullConfigureFlags),
+                configProfExe =
+                    nubFlag tryExeProfiling (configProfExe fullConfigureFlags),
+                configProfLib =
+                    nubFlag tryLibProfiling (configProfLib fullConfigureFlags)
+                -- Maybe there are more we can add
+              }
+        in unwords . ("":) . map Process.translate $
+            commandShowOptions
+            (Setup.configureCommand (pkgConfigCompilerProgs elaboratedShared))
+            partialConfigureFlags
 
     showBuildStatus status = case status of
       BuildStatusPreExisting -> "already installed"
