@@ -46,4 +46,3 @@ instance Text BuildType where
       "Custom"    -> Custom
       "Make"      -> Make
       _           -> UnknownBuildType name
-

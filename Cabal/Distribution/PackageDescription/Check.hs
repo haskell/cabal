@@ -985,6 +985,12 @@ checkCabalVersion pkg =
         ++ "different modules then list the other ones in the "
         ++ "'other-languages' field."
 
+  , checkVersion [1,18]
+    (not . null $ extraDocFiles pkg) $
+      PackageDistInexcusable $
+           "To use the 'extra-doc-files' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.18'."
+
   , checkVersion [1,23]
     (not (null (subLibraries pkg))) $
       PackageDistInexcusable $
