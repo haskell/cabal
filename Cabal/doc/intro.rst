@@ -1,3 +1,5 @@
+.. highlight:: console
+
 Cabal is the standard package system for
 Haskell_ software. It helps people to
 configure, build and install Haskell software and to distribute it
@@ -60,8 +62,8 @@ Developers can use the tool with packages in local directories, e.g.
 
 ::
 
-    cd foo/
-    cabal install
+    $ cd foo/
+    $ cabal install
 
 While working on a package in a local directory, developers can run the
 individual steps to configure and build, and also generate documentation
@@ -71,7 +73,7 @@ It is also possible to install several local packages at once, e.g.
 
 ::
 
-    cabal install foo/ bar/
+    $ cabal install foo/ bar/
 
 Developers and users can use the tool to install packages from remote
 Cabal package archives. By default, the ``cabal`` tool is configured to
@@ -81,7 +83,7 @@ with any other suitable archive.
 
 ::
 
-    cabal install xmonad
+    $ cabal install xmonad
 
 This will install the ``xmonad`` package plus all of its dependencies.
 
@@ -91,8 +93,8 @@ example
 
 ::
 
-    cabal install foo-1.0.tar.gz
-    cabal install http://example.com/foo-1.0.tar.gz
+    $ cabal install foo-1.0.tar.gz
+    $ cabal install http://example.com/foo-1.0.tar.gz
 
 Cabal provides a number of ways for a user to customise how and where a
 package is installed. They can decide where a package will be installed,
@@ -165,17 +167,17 @@ parameters.
 
 ::
 
-    ./configure --prefix=...
-    make
-    make install
+    $ ./configure --prefix=...
+    $ make
+    $ make install
 
 compared to
 
 ::
 
-    cabal configure --prefix=...
-    cabal build
-    cabal install
+    $ cabal configure --prefix=...
+    $ cabal build
+    $ cabal install
 
 Cabal's build system for simple packages is considerably less flexible
 than make/automake, but has builtin knowledge of how to build Haskell

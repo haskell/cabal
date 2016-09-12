@@ -1,6 +1,8 @@
 Configuration
 =============
 
+.. highlight:: cabal
+
 Overview
 --------
 
@@ -9,7 +11,9 @@ The global configuration file for ``cabal-install`` is
 it for you on the first call to ``cabal update``. Alternatively, you can
 explicitly ask ``cabal`` to create it for you using
 
-    ``cabal user-config update``
+.. code-block:: console
+
+    $ cabal user-config update
 
 Most of the options in this configuration file are also available as
 command line arguments, and the corresponding documentation can be used
@@ -130,7 +134,7 @@ Secure local repositories
 If you want to use repositories on your local file system, it is
 recommended instead to use a *secure* local repository:
 
-.. code-block:: none
+::
 
     repository my-local-repo
       url: file:/path/to/local/repo
@@ -145,39 +149,51 @@ can be used to create and manage such repositories.
 Building and installing packages
 ================================
 
+.. highlight:: console
+
 After you've unpacked a Cabal package, you can build it by moving into
 the root directory of the package and running the ``cabal`` tool there:
 
-    ``cabal [command] [option...]``
+::
+
+    $ cabal [command] [option...]
 
 The *command* argument selects a particular step in the build/install
 process.
 
 You can also get a summary of the command syntax with
 
-    ``cabal help``
+::
+
+    $ cabal help
 
 Alternatively, you can also use the ``Setup.hs`` or ``Setup.lhs``
 script:
 
-    ``runhaskell Setup.hs [command] [option...]``
+::
+
+    $ runhaskell Setup.hs [command] [option...]
 
 For the summary of the command syntax, run:
 
-    ``cabal help``
+::
+
+    $ cabal help
 
 or
 
-    ``runhaskell Setup.hs --help``
+::
+
+    $ runhaskell Setup.hs --help
 
 Building and installing a system package
 ----------------------------------------
 
-.. code-block:: bash
+::
 
-    runhaskell Setup.hs configure --ghc
-    runhaskell Setup.hs build
-    runhaskell Setup.hs install
+    $ runhaskell Setup.hs configure --ghc
+    $ runhaskell Setup.hs build
+    $ runhaskell Setup.hs install
 
 The first line readies the system to build the tool using GHC; for
 example, it checks that GHC exists on the system. The second line
@@ -187,11 +203,11 @@ results to some permanent place and registers the package with GHC.
 Building and installing a user package
 --------------------------------------
 
-.. code-block:: bash
+::
 
-    runhaskell Setup.hs configure --user
-    runhaskell Setup.hs build
-    runhaskell Setup.hs install
+    $ runhaskell Setup.hs configure --user
+    $ runhaskell Setup.hs build
+    $ runhaskell Setup.hs install
 
 The package is installed under the user's home directory and is
 registered in the user's package database (``--user``).
@@ -205,7 +221,7 @@ dependencies in a single step. To do this, run:
 
 ::
 
-    cabal install [PACKAGE...]
+   $ cabal install [PACKAGE...]
 
 To browse the list of available packages, visit the
 Hackage_ web site.
@@ -232,7 +248,7 @@ To initialise a fresh sandbox in the current directory, run
 ``cabal sandbox init``. All subsequent commands (such as ``build`` and
 ``install``) from this point will use the sandbox.
 
-.. code-block:: bash
+::
 
     $ cd /path/to/my/haskell/library
     $ cabal sandbox init                   # Initialise the sandbox
@@ -245,7 +261,7 @@ unreleased version of a library. This can be done with the
 ``cabal sandbox add-source`` command - think of it as "local Hackage_".
 If an add-source dependency is later modified, it is reinstalled automatically.
 
-.. code-block:: bash
+::
 
     $ cabal sandbox add-source /my/patched/library # Add a new add-source dependency
     $ cabal install --dependencies-only            # Install it into the sandbox
@@ -261,7 +277,7 @@ the same directory with your ``cabal.sandbox.config`` (which was created
 by ``sandbox init``). This file has the same syntax as the main Cabal
 config file.
 
-.. code-block:: console
+::
 
     $ cat cabal.config
     documentation: True
@@ -271,7 +287,7 @@ config file.
 When you have decided that you no longer want to build your package
 inside a sandbox, just delete it:
 
-.. code-block:: bash
+::
 
     $ cabal sandbox delete                       # Built-in command
     $ rm -rf .cabal-sandbox cabal.sandbox.config # Alternative manual method
@@ -289,7 +305,7 @@ change tracking. In addition to ``add-source``, there are also
 Sometimes one wants to share a single sandbox between multiple packages.
 This can be easily done with the ``--sandbox`` option:
 
-.. code-block:: bash
+::
 
     $ mkdir -p /path/to/shared-sandbox
     $ cd /path/to/shared-sandbox
@@ -307,7 +323,7 @@ directory (``./.cabal-sandbox``).
 Using multiple different compiler versions simultaneously is also
 supported, via the ``-w`` option:
 
-.. code-block:: bash
+::
 
     $ cabal sandbox init
     $ cabal install --only-dependencies -w /path/to/ghc-1 # Install dependencies for both compilers
@@ -323,7 +339,7 @@ manager tool (e.g. ``ghc-pkg``) tool on the sandbox package DB directly
 ``cabal sandbox hc-pkg`` command is a convenient wrapper that runs the
 compiler-specific package manager tool with the arguments:
 
-.. code-block:: console
+::
 
     $ cabal -v sandbox hc-pkg list
     Using a sandbox located at /path/to/.cabal-sandbox
@@ -363,7 +379,7 @@ The sandbox config file can be also specified via the
 Finally, the flag ``--ignore-sandbox`` lets you temporarily ignore an
 existing sandbox:
 
-.. code-block:: bash
+::
 
     $ mkdir my/sandbox
     $ cd my/sandbox
@@ -380,17 +396,17 @@ root directory:
 
 ::
 
-    runhaskell Setup.hs configure --prefix=/usr
-    runhaskell Setup.hs build
-    runhaskell Setup.hs copy --destdir=/tmp/mypkg
-    tar -czf mypkg.tar.gz /tmp/mypkg/
+    $ runhaskell Setup.hs configure --prefix=/usr
+    $ runhaskell Setup.hs build
+    $ runhaskell Setup.hs copy --destdir=/tmp/mypkg
+    $ tar -czf mypkg.tar.gz /tmp/mypkg/
 
 If the package contains a library, you need two additional steps:
 
 ::
 
-    runhaskell Setup.hs register --gen-script
-    runhaskell Setup.hs unregister --gen-script
+    $ runhaskell Setup.hs register --gen-script
+    $ runhaskell Setup.hs unregister --gen-script
 
 This creates shell scripts ``register.sh`` and ``unregister.sh``, which
 must also be sent to the target system. After unpacking there, the

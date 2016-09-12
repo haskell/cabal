@@ -37,7 +37,7 @@ copyright = u'2016, Cabal Team'
 release = version  # The full version, including alpha/beta/rc tags.
 
 # Syntax highlighting
-highlight_language = 'haskell'
+highlight_language = 'cabal'
 #pygments_style = 'tango'
 
 # List of patterns, relative to source directory, that match files and
@@ -209,18 +209,20 @@ class CabalLexer(lexer.RegexLexer):
     name = 'Cabal'
     aliases = ['cabal']
     filenames = ['.cabal']
-    flags = re.MULTILINE# | re.DOTALL
+    flags = re.MULTILINE
 
     tokens = {
       'root' : [
-         (r'\n', token.Text),
-         (r'^\s*(--.*)$', token.Comment.Single),
-         (r'[^\S\n]+', token.Text),
-         (r'(\n\s*|\t)', token.Whitespace),
-         (r'&&|\|\||==|<=|>=|<|>|^=', token.Operator),
-         (r',', token.Punctuation),
-         (r'^\s*([\w\-_]+:)', token.Keyword),
-         (r'^\s*([\w\-_]+)(\s+)([\w\-_]+).*$', lexer.bygroups(token.Keyword, token.Whitespace, token.Name)),
-         (r'.', token.Text)
+          (r'\n', token.Text),
+          (r'^\s*(--.*)$', token.Comment.Single),
+          # key: value
+          (r'^(\s*)([\w\-_]+)(:)',
+           lexer.bygroups(token.Whitespace, token.Keyword, token.Punctuation)),
+          (r'^([\w\-_]+)', token.Keyword), # library, executable, flag etc.
+          (r'[^\S\n]+', token.Text),
+          (r'(\n\s*|\t)', token.Whitespace),
+          (r'&&|\|\||==|<=|>=|<|>|^>=', token.Operator),
+          (r',|:|{|}', token.Punctuation),
+          (r'.', token.Text)
       ],
     }
