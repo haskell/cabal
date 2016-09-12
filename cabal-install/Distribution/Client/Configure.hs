@@ -15,7 +15,11 @@ module Distribution.Client.Configure (
     configure,
     configureSetupScript,
     chooseCabalVersion,
-    checkConfigExFlags
+    checkConfigExFlags,
+    -- * Saved configure flags
+    readConfigFlagsFrom, readConfigFlags,
+    cabalConfigFlagsFile,
+    writeConfigFlagsTo, writeConfigFlags,
   ) where
 
 import Distribution.Client.Dependency
@@ -24,8 +28,8 @@ import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup
-         ( ConfigExFlags(..), configureCommand, filterConfigureFlags
-         , RepoContext(..) )
+         ( ConfigExFlags(..), RepoContext(..)
+         , configureCommand, configureExCommand, filterConfigureFlags )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -46,7 +50,8 @@ import           Distribution.Solver.Types.SourcePackage
 
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration )
+import Distribution.Simple.Program (ProgramDb)
+import Distribution.Client.SavedFlags ( readCommandFlags, writeCommandFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), AllowNewer(..), AllowOlder(..), RelaxDeps(..)
          , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
@@ -82,6 +87,7 @@ import Control.Monad (unless)
 import Data.Monoid (Monoid(..))
 #endif
 import Data.Maybe (isJust, fromMaybe)
+import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.
@@ -106,17 +112,17 @@ configure :: Verbosity
           -> RepoContext
           -> Compiler
           -> Platform
-          -> ProgramConfiguration
+          -> ProgramDb
           -> ConfigFlags
           -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDBs repoCtxt comp platform conf
+configure verbosity packageDBs repoCtxt comp platform progdb
   configFlags configExFlags extraArgs = do
 
-  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
   sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-  pkgConfigDb       <- readPkgConfigDb      verbosity conf
+  pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
   checkConfigExFlags verbosity installedPkgIndex
                      (packageIndex sourcePkgDb) configExFlags
@@ -159,7 +165,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
         packageDBs
         comp
         platform
-        conf
+        progdb
         (fromFlagOrDefault
            (useDistPref defaultSetupScriptOptions)
            (configDistPref configFlags))
@@ -174,7 +180,7 @@ configure verbosity packageDBs repoCtxt comp platform conf
 configureSetupScript :: PackageDBStack
                      -> Compiler
                      -> Platform
-                     -> ProgramConfiguration
+                     -> ProgramDb
                      -> FilePath
                      -> VersionRange
                      -> Maybe Lock
@@ -185,7 +191,7 @@ configureSetupScript :: PackageDBStack
 configureSetupScript packageDBs
                      comp
                      platform
-                     conf
+                     progdb
                      distPref
                      cabalVersion
                      lock
@@ -199,7 +205,7 @@ configureSetupScript packageDBs
     , usePlatform              = Just platform
     , usePackageDB             = packageDBs'
     , usePackageIndex          = index'
-    , useProgramConfig         = conf
+    , useProgramDb             = progdb
     , useDistPref              = distPref
     , useLoggingHandle         = Nothing
     , useWorkingDir            = Nothing
@@ -401,3 +407,40 @@ configurePackage verbosity platform comp scriptOptions configFlags
            platform comp [] gpkg of
       Left _ -> error "finalizePD ReadyPackage failed"
       Right (desc, _) -> desc
+
+-- -----------------------------------------------------------------------------
+-- * Saved configure environments and flags
+-- -----------------------------------------------------------------------------
+
+-- | Read saved configure flags and restore the saved environment from the
+-- specified files.
+readConfigFlagsFrom :: FilePath  -- ^ path to saved flags file
+                    -> IO (ConfigFlags, ConfigExFlags)
+readConfigFlagsFrom flags = do
+  readCommandFlags flags configureExCommand
+
+-- | The path (relative to @--build-dir@) where the arguments to @configure@
+-- should be saved.
+cabalConfigFlagsFile :: FilePath -> FilePath
+cabalConfigFlagsFile dist = dist </> "cabal-config-flags"
+
+-- | Read saved configure flags and restore the saved environment from the
+-- usual location.
+readConfigFlags :: FilePath  -- ^ @--build-dir@
+                -> IO (ConfigFlags, ConfigExFlags)
+readConfigFlags dist =
+  readConfigFlagsFrom (cabalConfigFlagsFile dist)
+
+-- | Save the configure flags and environment to the specified files.
+writeConfigFlagsTo :: FilePath  -- ^ path to saved flags file
+                   -> Verbosity -> (ConfigFlags, ConfigExFlags)
+                   -> IO ()
+writeConfigFlagsTo file verb flags = do
+  writeCommandFlags verb file configureExCommand flags
+
+-- | Save the build flags to the usual location.
+writeConfigFlags :: Verbosity
+                 -> FilePath  -- ^ @--build-dir@
+                 -> (ConfigFlags, ConfigExFlags) -> IO ()
+writeConfigFlags verb dist =
+  writeConfigFlagsTo (cabalConfigFlagsFile dist) verb

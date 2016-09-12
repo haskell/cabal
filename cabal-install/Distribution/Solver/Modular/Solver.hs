@@ -10,6 +10,7 @@ module Distribution.Solver.Modular.Solver
 
 import Data.Map as M
 import Data.List as L
+import Data.Set as S
 import Data.Version
 
 import Distribution.Compiler (CompilerInfo)
@@ -42,6 +43,7 @@ import Distribution.Simple.Setup (BooleanFlag(..))
 #ifdef DEBUG_TRACETREE
 import Distribution.Solver.Modular.Flag
 import qualified Distribution.Solver.Modular.ConflictSet as CS
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Debug.Trace.Tree (gtraceJson)
 import Debug.Trace.Tree.Simple
@@ -93,7 +95,7 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> PkgConfigDb                          -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
-      -> [PN]                                 -- ^ global goals
+      -> Set PN                               -- ^ global goals
       -> Log Message (Assignment, RevDepMap)
 solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
   explorePhase     $
@@ -134,7 +136,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                                                   ])
     buildPhase       = traceTree "build.json" id
                      $ addLinking
-                     $ buildTree idx (independentGoals sc) userGoals
+                     $ buildTree idx (independentGoals sc) (S.toList userGoals)
 
     -- Counting conflicts and reordering goals interferes, as both are strategies to
     -- change the order of goals.
@@ -186,12 +188,15 @@ instance GSimpleTree (Tree QGoalReason) where
   fromGeneric = go
     where
       go :: Tree QGoalReason -> SimpleTree
-      go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ PSQ.toList psq
-      go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ PSQ.toList psq
-      go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ PSQ.toList psq
+      go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
+      go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
+      go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
       go (GoalChoice        psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
       go (Done _rdm)             = Node "D" $ Assoc []
       go (Fail cs _reason)       = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
+
+      psqToList :: W.WeightedPSQ w k v -> [(k, v)]
+      psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
 
       -- Show package choice
       goP :: QPN -> POption -> Tree QGoalReason -> (String, SimpleTree)

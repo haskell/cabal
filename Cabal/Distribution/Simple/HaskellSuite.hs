@@ -24,8 +24,8 @@ import Distribution.Simple.Program.Builtin
 
 configure
   :: Verbosity -> Maybe FilePath -> Maybe FilePath
-  -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
-configure verbosity mbHcPath hcPkgPath conf0 = do
+  -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
+configure verbosity mbHcPath hcPkgPath progdb0 = do
 
   -- We have no idea how a haskell-suite tool is named, so we require at
   -- least some information from the user.
@@ -36,23 +36,23 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
   when (isJust hcPkgPath) $
     warn verbosity "--with-hc-pkg option is ignored for haskell-suite"
 
-  (comp, confdCompiler, conf1) <- configureCompiler hcPath conf0
+  (comp, confdCompiler, progdb1) <- configureCompiler hcPath progdb0
 
   -- Update our pkg tool. It uses the same executable as the compiler, but
   -- all command start with "pkg"
-  (confdPkg, _) <- requireProgram verbosity haskellSuitePkgProgram conf1
-  let conf2 =
+  (confdPkg, _) <- requireProgram verbosity haskellSuitePkgProgram progdb1
+  let progdb2 =
         updateProgram
           confdPkg
             { programLocation = programLocation confdCompiler
             , programDefaultArgs = ["pkg"]
             }
-          conf1
+          progdb1
 
-  return (comp, Nothing, conf2)
+  return (comp, Nothing, progdb2)
 
   where
-    configureCompiler hcPath conf0' = do
+    configureCompiler hcPath progdb0' = do
       let
         haskellSuiteProgram' =
           haskellSuiteProgram
@@ -61,8 +61,8 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
       -- NB: cannot call requireProgram right away — it'd think that
       -- the program is already configured and won't reconfigure it again.
       -- Instead, call configureProgram directly first.
-      conf1 <- configureProgram verbosity haskellSuiteProgram' conf0'
-      (confdCompiler, conf2) <- requireProgram verbosity haskellSuiteProgram' conf1
+      progdb1 <- configureProgram verbosity haskellSuiteProgram' progdb0'
+      (confdCompiler, progdb2) <- requireProgram verbosity haskellSuiteProgram' progdb1
 
       extensions <- getExtensions verbosity confdCompiler
       languages  <- getLanguages  verbosity confdCompiler
@@ -79,7 +79,7 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
           compilerProperties     = Map.empty
         }
 
-      return (comp, confdCompiler, conf2)
+      return (comp, confdCompiler, progdb2)
 
 hstoolVersion :: Verbosity -> FilePath -> IO (Maybe Version)
 hstoolVersion = findProgramVersion "--hspkg-version" id
@@ -117,12 +117,12 @@ getLanguages verbosity prog = do
 
 -- Other compilers do some kind of a packagedb stack check here. Not sure
 -- if we need something like that as well.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf =
+getInstalledPackages verbosity packagedbs progdb =
   liftM (PackageIndex.fromList . concat) $ for packagedbs $ \packagedb ->
     do str <-
-        getDbProgramOutput verbosity haskellSuitePkgProgram conf
+        getDbProgramOutput verbosity haskellSuitePkgProgram progdb
                 ["dump", packageDbOpt packagedb]
          `catchExit` \_ -> die $ "pkg dump failed"
        case parsePackages str of
@@ -160,10 +160,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       srcDirs = hsSourceDirs bi ++ [odir]
       dbStack = withPackageDB lbi
       language = fromMaybe Haskell98 (defaultLanguage bi)
-      conf = withPrograms lbi
+      progdb = withPrograms lbi
       pkgid = packageId pkg_descr
 
-  runDbProgram verbosity haskellSuiteProgram conf $
+  runDbProgram verbosity haskellSuiteProgram progdb $
     [ "compile", "--build-dir", odir ] ++
     concat [ ["-i", d] | d <- srcDirs ] ++
     concat [ ["-I", d] | d <- [autogenComponentModulesDir lbi clbi
@@ -191,8 +191,8 @@ installLib
   -> ComponentLocalBuildInfo
   -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
-  let conf = withPrograms lbi
-  runDbProgram verbosity haskellSuitePkgProgram conf $
+  let progdb = withPrograms lbi
+  runDbProgram verbosity haskellSuitePkgProgram progdb $
     [ "install-library"
     , "--build-dir", builtDir
     , "--target-dir", targetDir
@@ -202,7 +202,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
 
 registerPackage
   :: Verbosity
-  -> ProgramConfiguration
+  -> ProgramDb
   -> PackageDBStack
   -> InstalledPackageInfo
   -> IO ()
@@ -214,9 +214,9 @@ registerPackage verbosity progdb packageDbs installedPkgInfo = do
       ["update", packageDbOpt $ last packageDbs])
       { progInvokeInput = Just $ showInstalledPackageInfo installedPkgInfo }
 
-initPackageDB :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
-initPackageDB verbosity conf dbPath =
-  runDbProgram verbosity haskellSuitePkgProgram conf
+initPackageDB :: Verbosity -> ProgramDb -> FilePath -> IO ()
+initPackageDB verbosity progdb dbPath =
+  runDbProgram verbosity haskellSuitePkgProgram progdb
     ["init", dbPath]
 
 packageDbOpt :: PackageDB -> String

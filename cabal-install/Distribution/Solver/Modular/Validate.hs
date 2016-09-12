@@ -25,9 +25,9 @@ import Distribution.Solver.Modular.Dependency
 import Distribution.Solver.Modular.Flag
 import Distribution.Solver.Modular.Index
 import Distribution.Solver.Modular.Package
-import qualified Distribution.Solver.Modular.PSQ as P
 import Distribution.Solver.Modular.Tree
 import Distribution.Solver.Modular.Version (VR)
+import qualified Distribution.Solver.Modular.WeightedPSQ as W
 
 import Distribution.Solver.Types.ComponentDeps (Component)
 
@@ -106,7 +106,7 @@ validate = cata go
   where
     go :: TreeF a (Validate (Tree a)) -> Validate (Tree a)
 
-    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) ts)
+    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (W.mapWithKey (goP qpn) ts)
     go (FChoiceF qfn gr b m ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
@@ -115,22 +115,22 @@ validate = cata go
         PA _ pfa _ <- asks pa -- obtain current flag-preassignment
         case M.lookup qfn pfa of
           Just rb -> -- flag has already been assigned; collapse choice to the correct branch
-                     case P.lookup rb ts of
+                     case W.lookup rb ts of
                        Just t  -> goF qfn rb t
                        Nothing -> return $ Fail (varToConflictSet (F qfn)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn) ts)
+                     FChoice qfn gr b m <$> sequence (W.mapWithKey (goF qfn) ts)
     go (SChoiceF qsn gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
         PA _ _ psa <- asks pa -- obtain current stanza-preassignment
         case M.lookup qsn psa of
           Just rb -> -- stanza choice has already been made; collapse choice to the correct branch
-                     case P.lookup rb ts of
+                     case W.lookup rb ts of
                        Just t  -> goS qsn rb t
                        Nothing -> return $ Fail (varToConflictSet (S qsn)) (MalformedStanzaChoice qsn)
           Nothing -> -- stanza choice is new, follow both branches
-                     SChoice qsn gr b <$> sequence (P.mapWithKey (goS qsn) ts)
+                     SChoice qsn gr b <$> sequence (W.mapWithKey (goS qsn) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
     go (GoalChoiceF              ts) = GoalChoice <$> sequence ts

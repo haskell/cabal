@@ -39,7 +39,7 @@ import Distribution.Simple.Setup
          ( Flag(Flag), toFlag, fromFlagOrDefault
          , ConfigFlags(..), configureOptions
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
-         , programConfigurationPaths', splitArgs
+         , programDbPaths', splitArgs
          , AllowNewer(..), AllowOlder(..), RelaxDeps(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
@@ -391,7 +391,7 @@ convertLegacyBuildOnlyFlags globalFlags configFlags
     GlobalFlags {
       globalCacheDir          = projectConfigCacheDir,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = projectConfigWorldFile,
+      globalWorldFile         = _,
       globalHttpTransport     = projectConfigHttpTransport,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry
     } = globalFlags
@@ -468,7 +468,7 @@ convertToLegacySharedConfig
       globalCacheDir          = projectConfigCacheDir,
       globalLocalRepos        = projectConfigLocalRepos,
       globalLogsDir           = projectConfigLogsDir,
-      globalWorldFile         = projectConfigWorldFile,
+      globalWorldFile         = mempty,
       globalRequireSandbox    = mempty,
       globalIgnoreSandbox     = mempty,
       globalIgnoreExpiry      = projectConfigIgnoreExpiry,
@@ -787,7 +787,7 @@ legacySharedConfigFieldDescrs =
       ]
   . filterFields
       [ "remote-repo-cache"
-      , "logs-dir", "world-file", "ignore-expiry", "http-transport"
+      , "logs-dir", "ignore-expiry", "http-transport"
       ]
   . commandOptionsToFields
   ) (commandOptions (globalCommand []) ParseArgs)
@@ -898,13 +898,13 @@ legacyPackageConfigFieldDescrs =
           (\v conf -> conf { configConfigurationsFlags = v })
       ]
   . filterFields
-      [ "compiler", "with-compiler", "with-hc-pkg"
+      [ "with-compiler", "with-hc-pkg"
       , "program-prefix", "program-suffix"
       , "library-vanilla", "library-profiling"
       , "shared", "executable-dynamic"
       , "profiling", "executable-profiling"
       , "profiling-detail", "library-profiling-detail"
-      , "optimization", "debug-info", "library-for-ghci", "split-objs"
+      , "library-for-ghci", "split-objs"
       , "executable-stripping", "library-stripping"
       , "tests", "benchmarks"
       , "coverage", "library-coverage"
@@ -1104,7 +1104,7 @@ programOptionsFieldDescrs :: (a -> [(String, [String])])
                           -> [FieldDescr a]
 programOptionsFieldDescrs get set =
     commandOptionsToFields
-  $ programConfigurationOptions
+  $ programDbOptions
       defaultProgramDb
       ParseArgs get set
 
@@ -1131,7 +1131,7 @@ programOptionsSectionDescr =
 programLocationsFieldDescrs :: [FieldDescr ConfigFlags]
 programLocationsFieldDescrs =
      commandOptionsToFields
-   $ programConfigurationPaths'
+   $ programDbPaths'
        (++ "-location")
        defaultProgramDb
        ParseArgs
@@ -1157,20 +1157,20 @@ programLocationsSectionDescr =
     }
 
 
--- | For each known program @PROG@ in 'progConf', produce a @PROG-options@
+-- | For each known program @PROG@ in 'progDb', produce a @PROG-options@
 -- 'OptionField'.
-programConfigurationOptions
+programDbOptions
   :: ProgramDb
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationOptions progConf showOrParseArgs get set =
+programDbOptions progDb showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOptions  "PROG"]
     ParseArgs -> map (programOptions . programName . fst)
-                 (knownPrograms progConf)
+                 (knownPrograms progDb)
   where
     programOptions prog =
       option "" [prog ++ "-options"]

@@ -63,8 +63,7 @@ import qualified Data.Map as Map
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
-import System.FilePath
-         ( (</>), (<.>), dropExtension, isAbsolute )
+import System.FilePath ((</>), (<.>), dropExtension, isRelative)
 
 -- | Create a source distribution.
 sdist :: PackageDescription     -- ^information from the tarball
@@ -239,7 +238,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
   , fmap concat
     . withAllLib $ \ l -> do
        let lbi = libBuildInfo l
-           relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
+           relincdirs = "." : filter isRelative (includeDirs lbi)
        traverse (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
 
     -- Setup script, if it exists.
@@ -339,7 +338,7 @@ findIncludeFile (d:ds) f = do
   if b then return (f,path) else findIncludeFile ds f
 
 -- | Find the setup script file, if it exists.
-findSetupFile :: FilePath -> IO (Maybe FilePath)
+findSetupFile :: FilePath -> NoCallStackIO (Maybe FilePath)
 findSetupFile targetDir = do
   hsExists  <- doesFileExist setupHs
   lhsExists <- doesFileExist setupLhs
@@ -373,6 +372,7 @@ prepareTree verbosity pkg_descr mb_lbi targetDir pps = do
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
   maybeCreateDefaultSetupScript targetDir
 
+<<<<<<< HEAD
 -- | Remove autogen modules before calling preprocessComponent.
 preprocessComponentSdist :: PackageDescription
                          -> Component
@@ -408,7 +408,7 @@ preprocessComponentSdist pd comp lbi clbi isSrcDist verbosity handlers =
       preprocessComponent pd c lbi clbi isSrcDist verbosity handlers
 
 -- | Create a default setup script in the target directory, if it doesn't exist.
-maybeCreateDefaultSetupScript :: FilePath -> IO ()
+maybeCreateDefaultSetupScript :: FilePath -> NoCallStackIO ()
 maybeCreateDefaultSetupScript targetDir = do
   mSetupFile <- findSetupFile targetDir
   case mSetupFile of
@@ -491,7 +491,7 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
 
   (tarProg, _) <- requireProgram verbosity tarProgram
-                    (maybe defaultProgramConfiguration withPrograms mb_lbi)
+                    (maybe defaultProgramDb withPrograms mb_lbi)
   let formatOptSupported = maybe False (== "YES") $
                            Map.lookup "Supports --format"
                            (programProperties tarProg)

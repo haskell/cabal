@@ -14,6 +14,7 @@ import           Distribution.Client.Types
 
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.Utils.Json as J
+import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 
@@ -25,6 +26,7 @@ import qualified Paths_cabal_install as Our (version)
 
 import           Data.Monoid
 import qualified Data.ByteString.Builder as BB
+import           System.FilePath
 
 
 -- | Write out a representation of the elaborated install plan.
@@ -40,13 +42,13 @@ writePlanExternalRepresentation distDirLayout elaboratedInstallPlan
     writeFileAtomic (distProjectCacheFile distDirLayout "plan.json") $
         BB.toLazyByteString
       . J.encodeToBuilder
-      $ encodePlanAsJson elaboratedInstallPlan elaboratedSharedConfig
+      $ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig
 
 -- | Renders a subset of the elaborated install plan in a semi-stable JSON
 -- format.
 --
-encodePlanAsJson :: ElaboratedInstallPlan -> ElaboratedSharedConfig -> J.Value
-encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
+encodePlanAsJson :: DistDirLayout -> ElaboratedInstallPlan -> ElaboratedSharedConfig -> J.Value
+encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     --TODO: [nice to have] include all of the sharedPackageConfig and all of
     --      the parts of the elaboratedInstallPlan
     J.object [ "cabal-version"     J..= jdisplay Our.version
@@ -76,21 +78,48 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
         , "flags"      J..= J.object [ fn J..= v
                                      | (PD.FlagName fn,v) <-
                                             elabFlagAssignment elab ]
+        , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         ] ++
+        (case elabBuildStyle elab of
+            BuildInplaceOnly ->
+                ["dist-dir"   J..= J.String dist_dir]
+            BuildAndInstall ->
+                -- TODO: install dirs?
+                []
+            ) ++
         case elabPkgOrComp elab of
           ElabPackage pkg ->
             let components = J.object $
-                  [ comp2str c J..= J.object
+                  [ comp2str c J..= (J.object $
                     [ "depends"     J..= map (jdisplay . confInstId) ldeps
-                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ]
+                    , "exe-depends" J..= map (jdisplay . confInstId) edeps ] ++
+                    bin_file c)
                   | (c,(ldeps,edeps))
                       <- ComponentDeps.toList $
                          ComponentDeps.zip (pkgLibDependencies pkg)
                                            (pkgExeDependencies pkg) ]
             in ["components" J..= components]
-          ElabComponent _ ->
+          ElabComponent comp ->
             ["depends"     J..= map (jdisplay . confInstId) (elabLibDependencies elab)
-            ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)]
+            ,"exe-depends" J..= map jdisplay (elabExeDependencies elab)
+            ,"component-name" J..= J.String (comp2str (compSolverName comp))
+            ] ++
+            bin_file (compSolverName comp)
+     where
+      dist_dir = distBuildDirectory distDirLayout
+                    (elabDistDirParams elaboratedSharedConfig elab)
+
+      bin_file c = case c of
+        ComponentDeps.ComponentExe s   -> bin_file' s
+        ComponentDeps.ComponentTest s  -> bin_file' s
+        ComponentDeps.ComponentBench s -> bin_file' s
+        _ -> []
+      bin_file' s =
+        ["bin-file" J..= J.String bin]
+       where
+        bin = if elabBuildStyle elab == BuildInplaceOnly
+               then dist_dir </> "build" </> s </> s
+               else InstallDirs.bindir (elabInstallDirs elab) </> s
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
@@ -102,6 +131,11 @@ encodePlanAsJson elaboratedInstallPlan _elaboratedSharedConfig =
         ComponentDeps.ComponentTest s  -> "test:"  <> s
         ComponentDeps.ComponentBench s -> "bench:" <> s
         ComponentDeps.ComponentSetup   -> "setup"
+
+    style2str :: Bool -> BuildStyle -> String
+    style2str True  _                = "local"
+    style2str False BuildInplaceOnly = "inplace"
+    style2str False BuildAndInstall  = "global"
 
     jdisplay :: Text a => a -> J.Value
     jdisplay = J.String . display

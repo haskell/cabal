@@ -164,7 +164,7 @@ report verbosity repoCtxt mUsername mPassword = do
            contents <- getDirectoryContents srcDir
            forM_ (filter (\c -> takeExtension c ==".log") contents) $ \logFile ->
              do inp <- readFile (srcDir </> logFile)
-                let (reportStr, buildLog) = read inp :: (String,String)
+                let (reportStr, buildLog) = read inp :: (String,String) -- TODO: eradicateNoParse
                 case BuildReport.parse reportStr of
                   Left errs -> warn verbosity $ "Errors: " ++ errs -- FIXME
                   Right report' ->

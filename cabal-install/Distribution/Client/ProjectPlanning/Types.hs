@@ -18,6 +18,7 @@ module Distribution.Client.ProjectPlanning.Types (
     elabLibDependencies,
     elabExeDependencies,
     elabSetupDependencies,
+    elabPkgConfigDependencies,
 
     ElaboratedPackageOrComponent(..),
     ElaboratedComponent(..),
@@ -287,7 +288,8 @@ elabDistDirParams shared elab = DistDirParams {
             ElabComponent comp -> compComponentName comp
             ElabPackage _ -> Nothing,
         distParamCompilerId = compilerId (pkgConfigCompiler shared),
-        distParamPlatform = pkgConfigPlatform shared
+        distParamPlatform = pkgConfigPlatform shared,
+        distParamOptimization = elabOptimization elab
     }
 
 -- | The library dependencies (i.e., the libraries we depend on, NOT
@@ -316,6 +318,12 @@ elabSetupDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage 
 elabSetupDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
     = compSetupDependencies comp
 
+elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PackageName, Maybe Version)]
+elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
+    = pkgPkgConfigDependencies pkg
+elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
+    = compPkgConfigDependencies comp
+
 
 -- | Some extra metadata associated with an
 -- 'ElaboratedConfiguredPackage' which indicates that the "package"
@@ -335,6 +343,8 @@ data ElaboratedComponent
     compLibDependencies :: [ConfiguredId],
     -- | The executable dependencies of this component.
     compExeDependencies :: [ComponentId],
+    -- | The @pkg-config@ dependencies of the component
+    compPkgConfigDependencies :: [(PackageName, Maybe Version)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [FilePath],
@@ -368,6 +378,13 @@ data ElaboratedPackage
        -- | Paths where executable dependencies live.
        --
        pkgExeDependencyPaths :: ComponentDeps [FilePath],
+
+       -- | Dependencies on @pkg-config@ packages.
+       -- NB: this is NOT per-component (although it could be)
+       -- because Cabal library does not track per-component
+       -- pkg-config depends; it always does them all at once.
+       --
+       pkgPkgConfigDependencies :: [(PackageName, Maybe Version)],
 
        -- | Which optional stanzas (ie testsuites, benchmarks) will actually
        -- be enabled during the package configure step.
@@ -431,12 +448,12 @@ data PackageTarget =
   deriving (Eq, Show, Generic)
 
 data ComponentTarget = ComponentTarget ComponentName SubComponentTarget
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 data SubComponentTarget = WholeComponent
                         | ModuleTarget ModuleName
                         | FileTarget   FilePath
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Ord, Show, Generic)
 
 instance Binary PackageTarget
 instance Binary ComponentTarget

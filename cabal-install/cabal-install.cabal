@@ -23,6 +23,19 @@ Extra-Source-Files:
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
   tests/IntegrationTests/common.sh
+  tests/IntegrationTests/custom-setup/Cabal-99998/Cabal.cabal
+  tests/IntegrationTests/custom-setup/Cabal-99998/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/Cabal-99999/Cabal.cabal
+  tests/IntegrationTests/custom-setup/Cabal-99999/CabalMessage.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal-defaultMain/custom-setup-without-cabal-defaultMain.cabal
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup-without-cabal/custom-setup-without-cabal.cabal
+  tests/IntegrationTests/custom-setup/custom-setup/Setup.hs
+  tests/IntegrationTests/custom-setup/custom-setup/custom-setup.cabal
+  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_allow_Cabal_import.sh
+  tests/IntegrationTests/custom-setup/custom_setup_without_Cabal_doesnt_require_Cabal.sh
+  tests/IntegrationTests/custom-setup/installs_Cabal_as_setup_dep.sh
   tests/IntegrationTests/custom/custom_dep.sh
   tests/IntegrationTests/custom/custom_dep/client/B.hs
   tests/IntegrationTests/custom/custom_dep/client/Setup.hs
@@ -169,6 +182,7 @@ Extra-Source-Files:
   tests/IntegrationTests2/build/setup-simple/A.hs
   tests/IntegrationTests2/build/setup-simple/Setup.hs
   tests/IntegrationTests2/build/setup-simple/a.cabal
+  tests/IntegrationTests2/exception/bad-config/cabal.project
   tests/IntegrationTests2/exception/build/Main.hs
   tests/IntegrationTests2/exception/build/a.cabal
   tests/IntegrationTests2/exception/configure/a.cabal
@@ -264,13 +278,15 @@ executable cabal
         Distribution.Client.ProjectPlanning
         Distribution.Client.ProjectPlanning.Types
         Distribution.Client.ProjectPlanOutput
-        Distribution.Client.Run
         Distribution.Client.RebuildMonad
+        Distribution.Client.Reconfigure
+        Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
         Distribution.Client.Sandbox.Timestamp
         Distribution.Client.Sandbox.Types
+        Distribution.Client.SavedFlags
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
@@ -317,6 +333,7 @@ executable cabal
         Distribution.Solver.Modular.ConfiguredConversion
         Distribution.Solver.Modular.ConflictSet
         Distribution.Solver.Modular.Cycles
+        Distribution.Solver.Modular.Degree
         Distribution.Solver.Modular.Dependency
         Distribution.Solver.Modular.Explore
         Distribution.Solver.Modular.Flag
@@ -335,6 +352,7 @@ executable cabal
         Distribution.Solver.Modular.Validate
         Distribution.Solver.Modular.Var
         Distribution.Solver.Modular.Version
+        Distribution.Solver.Modular.WeightedPSQ
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
@@ -359,7 +377,7 @@ executable cabal
         tar        >= 0.5.0.3  && < 0.6,
         time       >= 1.4      && < 1.7,
         zlib       >= 0.5.3    && < 0.7,
-        hackage-security >= 0.5.2 && < 0.6
+        hackage-security >= 0.5.2.2 && < 0.6
 
     if flag(old-bytestring)
       build-depends: bytestring <  0.10.2, bytestring-builder >= 0.10 && < 1
@@ -426,6 +444,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Solver.Modular.RetryLog
     UnitTests.Distribution.Solver.Modular.Solver
     UnitTests.Distribution.Solver.Modular.DSL
+    UnitTests.Distribution.Solver.Modular.WeightedPSQ
     UnitTests.Options
   build-depends:
         base,
@@ -499,6 +518,7 @@ Test-Suite solver-quickcheck
         bytestring,
         Cabal,
         containers,
+        deepseq >= 1.2,
         mtl,
         pretty,
         process,

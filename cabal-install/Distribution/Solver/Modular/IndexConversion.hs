@@ -121,9 +121,7 @@ convGPD os arch cinfo strfl pi
     -- by creating a set of package names which are "internal"
     -- and dropping them as we convert.
     ipns = S.fromList $ [ PackageName nm
-                        | (nm, _) <- sub_libs ] ++
-                        [ PackageName nm
-                        | (nm, _) <- exes ]
+                        | (nm, _) <- sub_libs ]
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN

@@ -17,6 +17,7 @@ import Distribution.Compat.Prelude
 
 #ifdef mingw32_HOST_OS
 
+import qualified Prelude
 import qualified System.Win32 as Win32
 import System.Win32          (LPCTSTR, LPTSTR, DWORD)
 import Foreign.Marshal.Array (allocaArray)
@@ -28,7 +29,7 @@ import Foreign.Marshal.Array (allocaArray)
 #endif
 
 foreign import WINAPI unsafe "windows.h GetShortPathNameW"
-  c_GetShortPathName :: LPCTSTR -> LPTSTR -> DWORD -> IO DWORD
+  c_GetShortPathName :: LPCTSTR -> LPTSTR -> DWORD -> Prelude.IO DWORD
 
 -- | On Windows, retrieves the short path form of the specified path. On
 -- non-Windows, does nothing. See https://github.com/haskell/cabal/issues/3185.
@@ -39,7 +40,7 @@ foreign import WINAPI unsafe "windows.h GetShortPathNameW"
 --      will always return the required buffer size for a
 --      specified lpszLongPath.
 --
-getShortPathName :: FilePath -> IO FilePath
+getShortPathName :: FilePath -> NoCallStackIO FilePath
 getShortPathName path =
   Win32.withTString path $ \c_path -> do
     c_len <- Win32.failIfZero "GetShortPathName #1 failed!" $
@@ -52,7 +53,7 @@ getShortPathName path =
 
 #else
 
-getShortPathName :: FilePath -> IO FilePath
+getShortPathName :: FilePath -> NoCallStackIO FilePath
 getShortPathName path = return path
 
 #endif

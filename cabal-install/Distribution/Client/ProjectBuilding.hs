@@ -1077,13 +1077,13 @@ buildAndInstallUnpackedPackage verbosity
 
     isParallelBuild = buildSettingNumJobs >= 2
 
-    configureCommand = Cabal.configureCommand defaultProgramConfiguration
+    configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
     configureArgs    = setupHsConfigureArgs pkg
 
-    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
+    buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared verbosity builddir
 
     generateInstalledPackageInfo :: IO InstalledPackageInfo
@@ -1276,18 +1276,18 @@ buildInplaceUnpackedPackage verbosity
       BuildStatusBuild Nothing      _ -> action
       BuildStatusBuild (Just mipkg) _ -> return mipkg
 
-    configureCommand = Cabal.configureCommand defaultProgramConfiguration
+    configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
                        setupHsConfigureFlags rpkg pkgshared
                                              verbosity builddir
     configureArgs    = setupHsConfigureArgs pkg
 
-    buildCommand     = Cabal.buildCommand defaultProgramConfiguration
+    buildCommand     = Cabal.buildCommand defaultProgramDb
     buildFlags   _   = setupHsBuildFlags pkg pkgshared
                                          verbosity builddir
     buildArgs        = setupHsBuildArgs  pkg
 
-    replCommand      = Cabal.replCommand defaultProgramConfiguration
+    replCommand      = Cabal.replCommand defaultProgramDb
     replFlags _      = setupHsReplFlags pkg pkgshared
                                         verbosity builddir
     replArgs         = setupHsReplArgs  pkg

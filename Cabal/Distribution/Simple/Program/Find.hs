@@ -92,7 +92,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
           where
             alltried = concat (reverse (notfoundat : tried))
 
-    tryPathElem :: ProgramSearchPathEntry -> IO (Maybe FilePath, [FilePath])
+    tryPathElem :: ProgramSearchPathEntry -> NoCallStackIO (Maybe FilePath, [FilePath])
     tryPathElem (ProgramSearchPathDir dir) =
         findFirstExe [ dir </> prog <.> ext | ext <- exeExtensions ]
 
@@ -117,7 +117,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
       dirs <- getSystemSearchPath
       findFirstExe [ dir </> prog <.> ext | dir <- dirs, ext <- exeExtensions ]
 
-    findFirstExe :: [FilePath] -> IO (Maybe FilePath, [FilePath])
+    findFirstExe :: [FilePath] -> NoCallStackIO (Maybe FilePath, [FilePath])
     findFirstExe = go []
       where
         go fs' []     = return (Nothing, reverse fs')
@@ -130,7 +130,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search
 -- algorithm looks at more than just the @%PATH%@.
-programSearchPathAsPATHVar :: ProgramSearchPath -> IO String
+programSearchPathAsPATHVar :: ProgramSearchPath -> NoCallStackIO String
 programSearchPathAsPATHVar searchpath = do
     ess <- traverse getEntries searchpath
     return (intercalate [searchPathSeparator] (concat ess))
@@ -143,7 +143,7 @@ programSearchPathAsPATHVar searchpath = do
 -- | Get the system search path. On Unix systems this is just the @$PATH@ env
 -- var, but on windows it's a bit more complicated.
 --
-getSystemSearchPath :: IO [FilePath]
+getSystemSearchPath :: NoCallStackIO [FilePath]
 getSystemSearchPath = fmap nub $ do
 #if defined(mingw32_HOST_OS)
     processdir <- takeDirectory `fmap` Win32.getModuleFileName Win32.nullHANDLE
@@ -165,7 +165,7 @@ getSystemSearchPath = fmap nub $ do
 #endif
 #endif
 
-findExecutable :: FilePath -> IO (Maybe FilePath)
+findExecutable :: FilePath -> NoCallStackIO (Maybe FilePath)
 #ifdef HAVE_directory_121
 findExecutable = Directory.findExecutable
 #else

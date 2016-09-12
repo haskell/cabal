@@ -29,7 +29,7 @@ module Distribution.Client.PackageHash (
   ) where
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), ComponentId(..) )
+         ( PackageId, PackageName, PackageIdentifier(..), ComponentId(..) )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
@@ -51,12 +51,15 @@ import qualified Crypto.Hash.SHA256         as SHA256
 import qualified Data.ByteString.Base16     as Base16
 import qualified Data.ByteString.Char8      as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 import           Data.Set (Set)
 
 import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
+import Data.Map          (Map)
 import Data.Function     (on)
+import Data.Version      (Version)
 import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))
@@ -136,6 +139,7 @@ data PackageHashInputs = PackageHashInputs {
        pkgHashPkgId         :: PackageId,
        pkgHashComponent     :: Maybe CD.Component,
        pkgHashSourceHash    :: PackageSourceHash,
+       pkgHashPkgConfigDeps :: Set (PackageName, Maybe Version),
        pkgHashDirectDeps    :: Set InstalledPackageId,
        pkgHashOtherConfig   :: PackageHashConfigInputs
      }
@@ -164,13 +168,13 @@ data PackageHashConfigInputs = PackageHashConfigInputs {
        pkgHashStripLibs           :: Bool,
        pkgHashStripExes           :: Bool,
        pkgHashDebugInfo           :: DebugInfoLevel,
+       pkgHashProgramArgs         :: Map String [String],
        pkgHashExtraLibDirs        :: [FilePath],
        pkgHashExtraFrameworkDirs  :: [FilePath],
        pkgHashExtraIncludeDirs    :: [FilePath],
        pkgHashProgPrefix          :: Maybe PathTemplate,
        pkgHashProgSuffix          :: Maybe PathTemplate
 
---     TODO: [required eventually] extra program options
 --     TODO: [required eventually] pkgHashToolsVersions     ?
 --     TODO: [required eventually] pkgHashToolsExtraOptions ?
 --     TODO: [research required] and what about docs?
@@ -193,6 +197,7 @@ renderPackageHashInputs PackageHashInputs{
                           pkgHashComponent,
                           pkgHashSourceHash,
                           pkgHashDirectDeps,
+                          pkgHashPkgConfigDeps,
                           pkgHashOtherConfig =
                             PackageHashConfigInputs{..}
                         } =
@@ -210,10 +215,16 @@ renderPackageHashInputs PackageHashInputs{
     --TODO: [nice to have] ultimately we probably want to put this config info
     -- into the ghc-pkg db. At that point this should probably be changed to
     -- use the config file infrastructure so it can be read back in again.
-    LBS.pack $ unlines $ catMaybes
+    LBS.pack $ unlines $ catMaybes $
       [ entry "pkgid"       display pkgHashPkgId
       , mentry "component"  show pkgHashComponent
       , entry "src"         showHashValue pkgHashSourceHash
+      , entry "pkg-config-deps"
+                            (intercalate ", " . map (\(pn, mb_v) -> display pn ++
+                                                    case mb_v of
+                                                        Nothing -> ""
+                                                        Just v -> " " ++ display v)
+                                              . Set.toList) pkgHashPkgConfigDeps
       , entry "deps"        (intercalate ", " . map display
                                               . Set.toList) pkgHashDirectDeps
         -- and then all the config
@@ -240,7 +251,7 @@ renderPackageHashInputs PackageHashInputs{
       , opt   "extra-include-dirs" [] unwords pkgHashExtraIncludeDirs
       , opt   "prog-prefix" Nothing (maybe "" fromPathTemplate) pkgHashProgPrefix
       , opt   "prog-suffix" Nothing (maybe "" fromPathTemplate) pkgHashProgSuffix
-      ]
+      ] ++ Map.foldrWithKey (\prog args acc -> opt (prog ++ "-options") [] unwords args : acc) [] pkgHashProgramArgs
   where
     entry key     format value = Just (key ++ ": " ++ format value)
     mentry key    format value = fmap (\v -> key ++ ": " ++ format v) value

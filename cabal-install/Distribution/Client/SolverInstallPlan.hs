@@ -25,6 +25,7 @@ module Distribution.Client.SolverInstallPlan(
   -- * Operations on 'SolverInstallPlan's
   new,
   toList,
+  toMap,
 
   remove,
 
@@ -142,6 +143,9 @@ new indepGoals index =
 
 toList :: SolverInstallPlan -> [SolverPlanPackage]
 toList = Graph.toList . planIndex
+
+toMap :: SolverInstallPlan -> Map SolverId SolverPlanPackage
+toMap = Graph.toMap . planIndex
 
 -- | Remove packages from the install plan. This will result in an
 -- error if there are remaining packages that depend on any matching

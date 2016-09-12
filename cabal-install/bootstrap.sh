@@ -261,7 +261,7 @@ CRYPTOHASH_SHA256_VER="0.11.7.1"; CRYPTOHASH_SHA256_VER_REGEXP="0\.11\.?"
                        # 0.11.*
 ED25519_VER="0.0.5.0"; ED25519_VER_REGEXP="0\.0\.?"
                        # 0.0.*
-HACKAGE_SECURITY_VER="0.5.2.1"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.[1-9]"
+HACKAGE_SECURITY_VER="0.5.2.2"; HACKAGE_SECURITY_VER_REGEXP="0\.5\.(2\.[2-9]|[3-9])"
                        # >= 0.5.2 && < 0.6
 BYTESTRING_BUILDER_VER="0.10.8.1.0"; BYTESTRING_BUILDER_VER_REGEXP="0\.10\.?"
 TAR_VER="0.5.0.3";     TAR_VER_REGEXP="0\.5\.([1-9]|1[0-9]|0\.[3-9]|0\.1[0-9])\.?"
@@ -360,7 +360,7 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make ${JOBS} Setup -o Setup ||
+  ${GHC} --make ${JOBS} Setup -o Setup -XRank2Types -XFlexibleContexts ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"

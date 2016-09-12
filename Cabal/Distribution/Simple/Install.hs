@@ -47,7 +47,7 @@ import Distribution.Compat.Graph (IsNode(..))
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath
-         ( takeFileName, takeDirectory, (</>), isAbsolute )
+         ( takeFileName, takeDirectory, (</>), isRelative )
 
 import Distribution.Verbosity
 import Distribution.Text
@@ -241,7 +241,7 @@ installDataFiles verbosity pkg_descr destDataDir =
 --
 installIncludeFiles :: Verbosity -> Library -> FilePath -> IO ()
 installIncludeFiles verbosity lib destIncludeDir = do
-    let relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
+    let relincdirs = "." : filter isRelative (includeDirs lbi)
         lbi = libBuildInfo lib
     incs <- traverse (findInc relincdirs) (installIncludes lbi)
     sequence_

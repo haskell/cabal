@@ -23,9 +23,11 @@ build-type:     Simple
 
 extra-source-files:
   README.md tests/README.md changelog
-  doc/Cabal.css doc/developing-packages.markdown doc/index.markdown
-  doc/installing-packages.markdown
-  doc/misc.markdown
+  doc/bugs-and-stability.rst doc/concepts-and-development.rst
+  doc/conf.py doc/config-and-install.rst doc/developing-packages.rst
+  doc/images/Cabal-dark.png doc/index.rst doc/installing-packages.rst
+  doc/intro.rst doc/misc.rst doc/nix-local-build-overview.rst
+  doc/nix-local-build.rst doc/README.md doc/references.inc
 
   -- Generated with 'misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
@@ -122,6 +124,7 @@ extra-source-files:
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
+  tests/PackageTests/CaretOperator/my.cabal
   tests/PackageTests/Configure/A.hs
   tests/PackageTests/Configure/Setup.hs
   tests/PackageTests/Configure/include/HsZlibConfig.h.in
@@ -325,6 +328,7 @@ library
     Distribution.Compat.Internal.TempFile
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
+    Distribution.Compat.Stack
     Distribution.Compat.Time
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -440,6 +444,7 @@ library
       Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
+  default-extensions: Rank2Types, FlexibleContexts
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -482,6 +487,7 @@ test-suite package-tests
     PackageTests.AutogenModules.Package.Check
     PackageTests.AutogenModules.SrcDist.Check
     PackageTests.BenchmarkStanza.Check
+    PackageTests.CaretOperator.Check
     PackageTests.TestStanza.Check
     PackageTests.DeterministicAr.Check
     PackageTests.TestSuiteTests.ExeV10.Check

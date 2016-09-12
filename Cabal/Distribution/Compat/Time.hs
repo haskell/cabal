@@ -29,6 +29,7 @@ import System.Time ( getClockTime, diffClockTimes
 
 #if defined mingw32_HOST_OS
 
+import qualified Prelude
 import Data.Bits          ((.|.), unsafeShiftL)
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits          (finiteBitSize)
@@ -69,7 +70,7 @@ instance Read ModTime where
 --
 -- This is a modified version of the code originally written for Shake by Neil
 -- Mitchell. See module Development.Shake.FileInfo.
-getModTime :: FilePath -> IO ModTime
+getModTime :: FilePath -> NoCallStackIO ModTime
 
 #if defined mingw32_HOST_OS
 
@@ -105,9 +106,9 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
 #endif
 
 foreign import CALLCONV "windows.h GetFileAttributesExW"
-  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> IO BOOL
+  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> Prelude.IO BOOL
 
-getFileAttributesEx :: String -> LPVOID -> IO BOOL
+getFileAttributesEx :: String -> LPVOID -> NoCallStackIO BOOL
 getFileAttributesEx path lpFileInformation =
   withTString path $ \c_path ->
       c_getFileAttributesEx c_path getFileExInfoStandard lpFileInformation
@@ -156,7 +157,7 @@ posixTimeToModTime p = ModTime $ (ceiling $ p * 1e7) -- 100 ns precision
                        + (secToUnixEpoch * windowsTick)
 
 -- | Return age of given file in days.
-getFileAge :: FilePath -> IO Double
+getFileAge :: FilePath -> NoCallStackIO Double
 getFileAge file = do
   t0 <- getModificationTime file
 #if MIN_VERSION_directory(1,2,0)
@@ -169,7 +170,7 @@ getFileAge file = do
 #endif
 
 -- | Return the current time as 'ModTime'.
-getCurTime :: IO ModTime
+getCurTime :: NoCallStackIO ModTime
 getCurTime = posixTimeToModTime `fmap` getPOSIXTime -- Uses 'gettimeofday'.
 
 -- | Based on code written by Neil Mitchell for Shake. See

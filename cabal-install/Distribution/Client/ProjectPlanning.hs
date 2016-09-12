@@ -76,6 +76,7 @@ import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PkgConfigDb
+import           Distribution.Solver.Types.ResolverPackage
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.SolverPackage
@@ -281,7 +282,6 @@ rebuildInstallPlan verbosity
                      distProjectCacheDirectory
                    }
                    cabalDirLayout@CabalDirLayout {
-                     cabalPackageCacheDirectory,
                      cabalStoreDirectory,
                      cabalStorePackageDB
                    }
@@ -305,12 +305,15 @@ rebuildInstallPlan verbosity
           localPackages <- phaseReadLocalPackages projectConfig
           compilerEtc   <- phaseConfigureCompiler projectConfig
           _             <- phaseConfigurePrograms projectConfig compilerEtc
-          solverPlan    <- phaseRunSolver         projectConfigTransient
-                                                  compilerEtc localPackages
+          (solverPlan, pkgConfigDB)
+                        <- phaseRunSolver         projectConfigTransient
+                                                  compilerEtc
+                                                  localPackages
           (elaboratedPlan,
            elaboratedShared) <- phaseElaboratePlan projectConfigTransient
-                                                   compilerEtc
-                                                   solverPlan localPackages
+                                                   compilerEtc pkgConfigDB
+                                                   solverPlan
+                                                   localPackages
 
           return (elaboratedPlan, elaboratedShared, projectConfig)
 
@@ -460,7 +463,7 @@ rebuildInstallPlan verbosity
     phaseRunSolver :: ProjectConfig
                    -> (Compiler, Platform, ProgramDb)
                    -> [UnresolvedSourcePackage]
-                   -> Rebuild SolverInstallPlan
+                   -> Rebuild (SolverInstallPlan, PkgConfigDb)
     phaseRunSolver projectConfig@ProjectConfig {
                      projectConfigShared,
                      projectConfigBuildOnly
@@ -468,9 +471,9 @@ rebuildInstallPlan verbosity
                    (compiler, platform, progdb)
                    localPackages =
         rerunIfChanged verbosity fileMonitorSolverPlan
-                       (solverSettings, cabalPackageCacheDirectory,
+                       (solverSettings,
                         localPackages, localPackagesEnabledStanzas,
-                        compiler, platform, programsDbSignature progdb) $ do
+                        compiler, platform, programDbSignature progdb) $ do
 
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
@@ -489,14 +492,14 @@ rebuildInstallPlan verbosity
                                    (compilerInfo compiler)
 
             notice verbosity "Resolving dependencies..."
-            foldProgress logMsg die return $
+            plan <- foldProgress logMsg die return $
               planPackages compiler platform solver solverSettings
                            installedPkgIndex sourcePkgDb pkgConfigDB
                            localPackages localPackagesEnabledStanzas
+            return (plan, pkgConfigDB)
       where
         corePackageDbs = [GlobalPackageDB]
         withRepoCtx    = projectConfigWithSolverRepoContext verbosity
-                           cabalPackageCacheDirectory
                            projectConfigShared
                            projectConfigBuildOnly
         solverSettings = resolveSolverSettings projectConfig
@@ -526,6 +529,7 @@ rebuildInstallPlan verbosity
     --
     phaseElaboratePlan :: ProjectConfig
                        -> (Compiler, Platform, ProgramDb)
+                       -> PkgConfigDb
                        -> SolverInstallPlan
                        -> [SourcePackage loc]
                        -> Rebuild ( ElaboratedInstallPlan
@@ -536,7 +540,7 @@ rebuildInstallPlan verbosity
                          projectConfigSpecificPackage,
                          projectConfigBuildOnly
                        }
-                       (compiler, platform, progdb)
+                       (compiler, platform, progdb) pkgConfigDB
                        solverPlan localPackages = do
 
         liftIO $ debug verbosity "Elaborating the install plan..."
@@ -549,7 +553,7 @@ rebuildInstallPlan verbosity
         defaultInstallDirs <- liftIO $ userInstallDirTemplates compiler
         let (elaboratedPlan, elaboratedShared) =
               elaborateInstallPlan
-                platform compiler progdb
+                platform compiler progdb pkgConfigDB
                 distDirLayout
                 cabalDirLayout
                 solverPlan
@@ -563,7 +567,6 @@ rebuildInstallPlan verbosity
         return (elaboratedPlan, elaboratedShared)
       where
         withRepoCtx = projectConfigWithSolverRepoContext verbosity
-                        cabalPackageCacheDirectory
                         projectConfigShared
                         projectConfigBuildOnly
 
@@ -634,8 +637,8 @@ programsMonitorFiles progdb =
 -- | Select the bits of a 'ProgramDb' to monitor for value changes.
 -- Use 'programsMonitorFiles' for the files to monitor.
 --
-programsDbSignature :: ProgramDb -> [ConfiguredProgram]
-programsDbSignature progdb =
+programDbSignature :: ProgramDb -> [ConfiguredProgram]
+programDbSignature progdb =
     [ prog { programMonitorFiles = []
            , programOverrideEnv  = filter ((/="PATH") . fst)
                                           (programOverrideEnv prog) }
@@ -1026,7 +1029,7 @@ planPackages comp platform solver SolverSettings{..}
 -- matching that of the classic @cabal install --user@ or @--global@
 --
 elaborateInstallPlan
-  :: Platform -> Compiler -> ProgramDb
+  :: Platform -> Compiler -> ProgramDb -> PkgConfigDb
   -> DistDirLayout
   -> CabalDirLayout
   -> SolverInstallPlan
@@ -1037,7 +1040,7 @@ elaborateInstallPlan
   -> PackageConfig
   -> Map PackageName PackageConfig
   -> (ElaboratedInstallPlan, ElaboratedSharedConfig)
-elaborateInstallPlan platform compiler compilerprogdb
+elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                      DistDirLayout{..}
                      cabalDirLayout@CabalDirLayout{cabalStorePackageDB}
                      solverPlan localPackages
@@ -1151,6 +1154,11 @@ elaborateInstallPlan platform compiler compilerprogdb
                 concatMap (elaborateExePath mapDep)
                           (CD.select (== compSolverName) exe_deps0) ++
                 internal_exe_paths
+            compPkgConfigDependencies =
+                [ (pn, fromMaybe (error $ "compPkgConfigDependencies: impossible! "
+                                            ++ display pn ++ " from " ++ display elabPkgSourceId)
+                                 (pkgConfigDbPkgVersion pkgConfigDB pn))
+                | Dependency pn _ <- PD.pkgconfigDepends bi ]
 
             bi = Cabal.componentBuildInfo comp
             confid = ConfiguredId elabPkgSourceId cid
@@ -1301,6 +1309,14 @@ elaborateInstallPlan platform compiler compilerprogdb
         pkgLibDependencies  = deps
         pkgExeDependencies  = fmap (concatMap (elaborateExeSolverId mapDep)) exe_deps0
         pkgExeDependencyPaths = fmap (concatMap (elaborateExePath mapDep)) exe_deps0
+        pkgPkgConfigDependencies =
+              ordNub
+            $ [ (pn, fromMaybe (error $ "pkgPkgConfigDependencies: impossible! "
+                                          ++ display pn ++ " from " ++ display pkgid)
+                               (pkgConfigDbPkgVersion pkgConfigDB pn))
+              | Dependency pn _ <- concatMap PD.pkgconfigDepends
+                                        (PD.allBuildInfo elabPkgDescription)
+              ]
 
         -- Filled in later
         pkgStanzasEnabled  = Set.empty
@@ -1526,7 +1542,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
     pkgsUseSharedLibrary :: Set PackageId
     pkgsUseSharedLibrary =
-        packagesWithDownwardClosedProperty needsSharedLib
+        packagesWithLibDepsDownwardClosedProperty needsSharedLib
       where
         needsSharedLib pkg =
             fromMaybe compilerShouldUseSharedLibByDefault
@@ -1547,7 +1563,7 @@ elaborateInstallPlan platform compiler compilerprogdb
 
     pkgsUseProfilingLibrary :: Set PackageId
     pkgsUseProfilingLibrary =
-        packagesWithDownwardClosedProperty needsProfilingLib
+        packagesWithLibDepsDownwardClosedProperty needsProfilingLib
       where
         needsProfilingLib pkg =
             fromFlagOrDefault False (profBothFlag <> profLibFlag)
@@ -1557,11 +1573,15 @@ elaborateInstallPlan platform compiler compilerprogdb
             profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
             --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
 
-    packagesWithDownwardClosedProperty property =
+    libDepGraph = Graph.fromList (map LibDepSolverPlanPackage
+                                      (SolverInstallPlan.toList solverPlan))
+
+    packagesWithLibDepsDownwardClosedProperty property =
         Set.fromList
-      $ map packageId
-      $ SolverInstallPlan.dependencyClosure
-          solverPlan
+      . map packageId
+      . fromMaybe []
+      $ Graph.closure
+          libDepGraph
           [ Graph.nodeKey pkg
           | pkg <- SolverInstallPlan.toList solverPlan
           , property pkg ] -- just the packages that satisfy the propety
@@ -1575,6 +1595,22 @@ elaborateInstallPlan platform compiler compilerprogdb
       -- + shared libs & exes, exe needs lib, recursive
       -- + vanilla libs & exes, exe needs lib, recursive
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
+
+-- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
+-- dependency graph considers only library dependencies (so, no setup
+-- dependencies or executable dependencies.)  Used to compute the set
+-- of packages needed for profiling and dynamic libraries.
+newtype LibDepSolverPlanPackage
+    = LibDepSolverPlanPackage { unLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage }
+
+instance Package LibDepSolverPlanPackage where
+    packageId = packageId . unLibDepSolverPlanPackage
+
+instance IsNode LibDepSolverPlanPackage where
+    type Key LibDepSolverPlanPackage = SolverId
+    nodeKey = nodeKey . unLibDepSolverPlanPackage
+    nodeNeighbors (LibDepSolverPlanPackage spkg)
+        = ordNub $ CD.libraryDeps (resolverPackageLibDeps spkg)
 
 ---------------------------
 -- Build targets
@@ -1900,7 +1936,8 @@ pruneInstallPlanPass2 pkgs =
   where
     setStanzasDepsAndTargets elab =
         elab {
-          elabBuildTargets = elabBuildTargets elab
+          elabBuildTargets = ordNub
+                           $ elabBuildTargets elab
                           ++ libTargetsRequiredForRevDeps
                           ++ exeTargetsRequiredForRevDeps,
           elabPkgOrComp =
@@ -2170,10 +2207,11 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       usePackageDB             = elabSetupPackageDBStack,
       usePackageIndex          = Nothing,
       useDependencies          = [ (uid, srcid)
-                                 | ConfiguredId srcid uid <- elabSetupDependencies elab ],
+                                 | ConfiguredId srcid uid
+                                 <- elabSetupDependencies elab ],
       useDependenciesExclusive = True,
       useVersionMacros         = elabSetupScriptStyle == SetupCustomExplicitDeps,
-      useProgramConfig         = pkgConfigCompilerProgs,
+      useProgramDb             = pkgConfigCompilerProgs,
       useDistPref              = builddir,
       useLoggingHandle         = Nothing, -- this gets set later
       useWorkingDir            = Just srcdir,
@@ -2515,6 +2553,7 @@ packageHashInputs
       pkgHashPkgId       = packageId elab,
       pkgHashComponent   = Nothing,
       pkgHashSourceHash  = srchash,
+      pkgHashPkgConfigDeps = Set.fromList (elabPkgConfigDependencies elab),
       pkgHashDirectDeps  =
         case elabPkgOrComp elab of
           ElabPackage (ElaboratedPackage{..}) ->
@@ -2570,6 +2609,7 @@ packageHashConfigInputs
       pkgHashStripLibs           = elabStripLibs,
       pkgHashStripExes           = elabStripExes,
       pkgHashDebugInfo           = elabDebugInfo,
+      pkgHashProgramArgs         = elabProgramArgs,
       pkgHashExtraLibDirs        = elabExtraLibDirs,
       pkgHashExtraFrameworkDirs  = elabExtraFrameworkDirs,
       pkgHashExtraIncludeDirs    = elabExtraIncludeDirs,

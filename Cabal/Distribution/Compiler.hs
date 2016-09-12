@@ -15,8 +15,8 @@
 -- case analysis on this compiler flavour enumeration like:
 --
 -- > case compilerFlavor comp of
--- >   GHC -> GHC.getInstalledPackages verbosity packageDb progconf
--- >   JHC -> JHC.getInstalledPackages verbosity packageDb progconf
+-- >   GHC -> GHC.getInstalledPackages verbosity packageDb progdb
+-- >   JHC -> JHC.getInstalledPackages verbosity packageDb progdb
 --
 -- Obviously it would be better to use the proper 'Compiler' abstraction
 -- because that would keep all the compiler-specific code together.

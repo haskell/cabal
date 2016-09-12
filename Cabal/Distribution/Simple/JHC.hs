@@ -49,12 +49,12 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
-configure verbosity hcPath _hcPkgPath conf = do
+          -> ProgramDb -> IO (Compiler, Maybe Platform, ProgramDb)
+configure verbosity hcPath _hcPkgPath progdb = do
 
-  (jhcProg, _, conf') <- requireProgramVersion verbosity
+  (jhcProg, _, progdb') <- requireProgramVersion verbosity
                            jhcProgram (orLaterVersion (Version [0,7,2] []))
-                           (userMaybeSpecifyPath "jhc" hcPath conf)
+                           (userMaybeSpecifyPath "jhc" hcPath progdb)
 
   let Just version = programVersion jhcProg
       comp = Compiler {
@@ -66,7 +66,7 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerProperties     = Map.empty
       }
       compPlatform = Nothing
-  return (comp, compPlatform, conf')
+  return (comp, compPlatform, progdb')
 
 jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]
@@ -84,13 +84,13 @@ jhcLanguageExtensions =
     ,(DisableExtension CPP                        , "-fno-cpp")
     ]
 
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramDb
                     -> IO InstalledPackageIndex
-getInstalledPackages verbosity _packageDBs conf = do
+getInstalledPackages verbosity _packageDBs progdb = do
    -- jhc --list-libraries lists all available libraries.
    -- How shall I find out, whether they are global or local
    -- without checking all files and locations?
-   str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
+   str <- getDbProgramOutput verbosity jhcProgram progdb ["--list-libraries"]
    let pCheck :: [(a, String)] -> [a]
        pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
    let parseLine ln =
@@ -120,7 +120,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       pfile = buildDir lbi </> "jhc-pkg.conf"
       hlfile= buildDir lbi </> (pkgid ++ ".hl")
   writeFileAtomic pfile . BS.Char8.pack $ jhcPkgConf pkg_descr
-  rawSystemProgram verbosity jhcProg $
+  runProgram verbosity jhcProg $
      ["--build-hl="++pfile, "-o", hlfile] ++
      args ++ map display (libModules lib)
 
@@ -133,7 +133,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
   let exeBi = buildInfo exe
   let out   = buildDir lbi </> exeName exe
   let args  = constructJHCCmdLine lbi exeBi clbi (buildDir lbi) verbosity
-  rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
+  runProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                     -> FilePath -> Verbosity -> [String]

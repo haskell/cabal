@@ -46,7 +46,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
-         ( ProgramConfiguration )
+         ( ProgramDb )
 import Distribution.Simple.Setup
          ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
@@ -82,16 +82,16 @@ freeze :: Verbosity
       -> RepoContext
       -> Compiler
       -> Platform
-      -> ProgramConfiguration
+      -> ProgramDb
       -> Maybe SandboxPackageInfo
       -> GlobalFlags
       -> FreezeFlags
       -> IO ()
-freeze verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+freeze verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       globalFlags freezeFlags = do
 
     pkgs  <- getFreezePkgs
-               verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+               verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
                globalFlags freezeFlags
 
     if null pkgs
@@ -114,17 +114,17 @@ getFreezePkgs :: Verbosity
               -> RepoContext
               -> Compiler
               -> Platform
-              -> ProgramConfiguration
+              -> ProgramDb
               -> Maybe SandboxPackageInfo
               -> GlobalFlags
               -> FreezeFlags
               -> IO [SolverPlanPackage]
-getFreezePkgs verbosity packageDBs repoCtxt comp platform conf mSandboxPkgInfo
+getFreezePkgs verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
       globalFlags freezeFlags = do
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
     sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
-    pkgConfigDb       <- readPkgConfigDb      verbosity conf
+    pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     pkgSpecifiers <- resolveUserTargets verbosity repoCtxt
                        (fromFlag $ globalWorldFile globalFlags)
