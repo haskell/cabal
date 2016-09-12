@@ -59,17 +59,16 @@ addWeights fs = trav go
   where
     go :: TreeF a (Tree a) -> TreeF a (Tree a)
     go (PChoiceF qpn@(Q _ pn) x cs) =
-      let versions = L.map version (W.keys cs)
-          sortedVersions = L.sortBy (flip compare) versions
+      let sortedVersions = L.sortBy (flip compare) $ L.map version (W.keys cs)
           weights k = [f pn sortedVersions k | f <- fs]
 
           elemsToWhnf :: [a] -> ()
           elemsToWhnf = foldr seq ()
       in  PChoiceF qpn x
           -- Evaluate the children's versions before evaluating any of the
-          -- subtrees, so that 'versions' doesn't hold onto all of the
+          -- subtrees, so that 'sortedVersions' doesn't hold onto all of the
           -- subtrees (referenced by cs) and cause a space leak.
-          (elemsToWhnf versions `seq`
+          (elemsToWhnf sortedVersions `seq`
              W.mapWeightsWithKey (\k w -> weights k ++ w) cs)
     go x                            = x
 
