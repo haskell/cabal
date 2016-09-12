@@ -190,6 +190,7 @@ def setup(app):
                         doc_field_types=[
                             Field('since', label='Introduced in GHC version', names=['since']),
                         ])
+    app.add_lexer('cabal', CabalLexer())
 
 def increase_python_stack():
     # Workaround sphinx-build recursion limit overflow:
@@ -198,3 +199,28 @@ def increase_python_stack():
     #
     # Default python allows recursion depth of 1000 calls.
     sys.setrecursionlimit(10000)
+
+
+import pygments.lexer as lexer
+import pygments.token as token
+import re
+
+class CabalLexer(lexer.RegexLexer):
+    name = 'Cabal'
+    aliases = ['cabal']
+    filenames = ['.cabal']
+    flags = re.MULTILINE# | re.DOTALL
+
+    tokens = {
+      'root' : [
+         (r'\n', token.Text),
+         (r'^\s*(--.*)$', token.Comment.Single),
+         (r'[^\S\n]+', token.Text),
+         (r'(\n\s*|\t)', token.Whitespace),
+         (r'&&|\|\||==|<=|>=|<|>|^=', token.Operator),
+         (r',', token.Punctuation),
+         (r'^\s*([\w\-_]+:)', token.Keyword),
+         (r'^\s*([\w\-_]+)(\s+)([\w\-_]+).*$', lexer.bygroups(token.Keyword, token.Whitespace, token.Name)),
+         (r'.', token.Text)
+      ],
+    }

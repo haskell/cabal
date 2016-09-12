@@ -1,3 +1,4 @@
+.. highlight:: shell
 
 Quickstart
 ==========
@@ -27,7 +28,7 @@ directory with a folder per package, e.g., the folders ``Cabal`` and
 ``cabal-install``. The ``cabal.project`` file specifies each folder as
 part of the project:
 
-::
+.. code-block:: cabal
 
     packages: Cabal/
               cabal-install/
@@ -320,8 +321,9 @@ solver under the current index and flags. A ``cabal.project.freeze``
 file has the same syntax as ``cabal.project`` and looks something like
 this:
 
-::
+.. highlight:: cabal
 
+::
     constraints: HTTP ==4000.3.3,
                  HTTP +warp-tests -warn-as-error -network23 +network-uri -mtl1 -conduit10,
                  QuickCheck ==2.9.1,
@@ -547,15 +549,15 @@ The following settings control the behavior of the dependency solver:
     Version bounds have the same syntax as ``build-depends``. You can
     also specify flag assignments:
 
-     .. code-block:: yaml
+    ::
 
-        # Require bar to be installed with the foo flag turned on and
-        # the baz flag turned off
+        -- Require bar to be installed with the foo flag turned on and
+        -- the baz flag turned off
         constraints: bar +foo -baz
 
-        # Require that bar NOT be present in the install plan. Note:
-        # this is just syntax sugar for '> 1 && < 1', and is supported
-        # by build-depends.
+        -- Require that bar NOT be present in the install plan. Note:
+        -- this is just syntax sugar for '> 1 && < 1', and is supported
+        -- by build-depends.
         constraints: bar -none
 
     A package can be specified multiple times in ``constraints``, in
@@ -574,20 +576,20 @@ The following settings control the behavior of the dependency solver:
 
     ::
 
-        # Require bar to be preinstalled in the global package database
-        # (this does NOT include the Nix-local build global store.)
+        -- Require bar to be preinstalled in the global package database
+        -- (this does NOT include the Nix-local build global store.)
         constraints: bar installed
 
-        # Require the local source copy of bar to be used
-        # (Note: By default, if we have a local package we will
-        # automatically use it, so it generally not be necessary to
-        # specify this)
+        -- Require the local source copy of bar to be used
+        -- (Note: By default, if we have a local package we will
+        -- automatically use it, so it generally not be necessary to
+        -- specify this)
         constraints: bar source
 
-        # Require that bar be solved with test suites and benchmarks enabled
-        # (Note: By default, new-build configures the solver to make
-        # a best-effort attempt to enable these stanzas, so this generally
-        # should not be necessary.)
+        -- Require that bar be solved with test suites and benchmarks enabled
+        -- (Note: By default, new-build configures the solver to make
+        -- a best-effort attempt to enable these stanzas, so this generally
+        -- should not be necessary.)
         constraints: bar test,
                      bar bench
 
@@ -643,11 +645,11 @@ The following settings control the behavior of the dependency solver:
 
     ::
 
-        # Disregard upper bounds involving the dependencies on
-        # packages bar, baz and quux
+        -- Disregard upper bounds involving the dependencies on
+        -- packages bar, baz and quux
         allow-newer: bar, baz, quux
 
-        # Disregard all upper bounds when dependency solving
+        -- Disregard all upper bounds when dependency solving
         allow-newer: all
 
     ``allow-newer`` is often used in conjunction with a constraint (in
