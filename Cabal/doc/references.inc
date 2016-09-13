@@ -17,4 +17,6 @@
 
 .. _Hoogle: http://www.haskell.org/hoogle/
 
+.. _HsColour: http://www.cs.york.ac.uk/fp/darcs/hscolour/
+
 .. _cpphs: http://projects.haskell.org/cpphs/
