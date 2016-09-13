@@ -17,10 +17,6 @@ module Distribution.Compat.Binary
 #endif
        ) where
 
-#if __GLASGOW_HASKELL__ < 706
-import Prelude hiding (catch)
-#endif
-
 import Control.Exception (catch, evaluate)
 #if __GLASGOW_HASKELL__ >= 711
 import Control.Exception (pattern ErrorCall)
