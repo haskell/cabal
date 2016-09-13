@@ -44,7 +44,8 @@ module Distribution.Simple (
         defaultMain, defaultMainNoRead, defaultMainArgs,
         -- * Customization
         UserHooks(..), Args,
-        defaultMainWithHooks, defaultMainWithHooksArgs, defaultMainWithHooksNoRead,
+        defaultMainWithHooks, defaultMainWithHooksArgs,
+        defaultMainWithHooksNoRead,
         -- ** Standard sets of hooks
         simpleUserHooks,
         autoconfUserHooks,
@@ -158,8 +159,8 @@ defaultMainHelper hooks args = topHandler $
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramDb
     commands =
-      [configureCommand progs `commandAddAction` \fs as ->
-                                                 configureAction    hooks fs as >> return ()
+      [configureCommand progs `commandAddAction`
+        \fs as -> configureAction hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
@@ -214,7 +215,8 @@ configureAction hooks flags args = do
   where
     verbosity = fromFlag (configVerbosity flags)
 
-confPkgDescr :: UserHooks -> Verbosity -> Maybe FilePath -> IO (Maybe FilePath, GenericPackageDescription)
+confPkgDescr :: UserHooks -> Verbosity -> Maybe FilePath
+             -> IO (Maybe FilePath, GenericPackageDescription)
 confPkgDescr hooks verbosity mb_path = do
   mdescr <- readDesc hooks
   case mdescr of
@@ -415,7 +417,8 @@ hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
         -> IO LocalBuildInfo
         -> UserHooks -> flags -> Args -> IO ()
 hookedAction pre_hook cmd_hook =
-    hookedActionWithArgs pre_hook (\h _ pd lbi uh flags -> cmd_hook h pd lbi uh flags)
+    hookedActionWithArgs pre_hook (\h _ pd lbi uh flags ->
+                                     cmd_hook h pd lbi uh flags)
 
 hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
         -> (UserHooks -> Args -> PackageDescription -> LocalBuildInfo
@@ -424,7 +427,8 @@ hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
                       -> LocalBuildInfo -> IO ())
         -> IO LocalBuildInfo
         -> UserHooks -> flags -> Args -> IO ()
-hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags args = do
+hookedActionWithArgs pre_hook cmd_hook post_hook
+  get_build_config hooks flags args = do
    pbi <- pre_hook hooks args flags
    lbi0 <- get_build_config
    let pkg_descr0 = localPkgDescr lbi0
@@ -535,7 +539,8 @@ simpleUserHooks =
        postConf  = finalChecks,
        buildHook = defaultBuildHook,
        replHook  = defaultReplHook,
-       copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
+       copyHook  = \desc lbi _ f -> install desc lbi f,
+                   -- 'install' has correct 'copy' behavior with params
        testHook  = defaultTestHook,
        benchHook = defaultBenchHook,
        instHook  = defaultInstallHook,
@@ -606,7 +611,8 @@ autoconfUserHooks
        preReg      = readHook regVerbosity,
        preUnreg    = readHook regVerbosity
       }
-    where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+    where defaultPostConf :: Args -> ConfigFlags -> PackageDescription
+                          -> LocalBuildInfo -> IO ()
           defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
                    confExists <- doesFileExist "configure"
@@ -623,7 +629,8 @@ autoconfUserHooks
 
           backwardsCompatHack = False
 
-          readHookWithArgs :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
+          readHookWithArgs :: (a -> Flag Verbosity) -> Args -> a
+                           -> IO HookedBuildInfo
           readHookWithArgs get_verbosity _ flags = do
               getHookedBuildInfo verbosity
             where
@@ -650,24 +657,32 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- We don't try and tell configure which ld to use, as we don't have
   -- a way to pass its flags too
   let extraPath = fromNubList $ configProgramPathExtra flags
-  let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags)) $ lookup "CFLAGS" env
+  let cflagsEnv = maybe (unwords ccFlags) (++ (" " ++ unwords ccFlags))
+                  $ lookup "CFLAGS" env
       spSep = [searchPathSeparator]
-      pathEnv = maybe (intercalate spSep extraPath) ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
-      overEnv = ("CFLAGS", Just cflagsEnv) : [("PATH", Just pathEnv) | not (null extraPath)]
+      pathEnv = maybe (intercalate spSep extraPath)
+                ((intercalate spSep extraPath ++ spSep)++) $ lookup "PATH" env
+      overEnv = ("CFLAGS", Just cflagsEnv) :
+                [("PATH", Just pathEnv) | not (null extraPath)]
       args' = args ++ ["CC=" ++ ccProgShort]
       shProg = simpleProgram "sh"
-      progDb = modifyProgramSearchPath (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
-  shConfiguredProg <- lookupProgram shProg `fmap` configureProgram  verbosity shProg progDb
+      progDb = modifyProgramSearchPath
+               (\p -> map ProgramSearchPathDir extraPath ++ p) emptyProgramDb
+  shConfiguredProg <- lookupProgram shProg
+                      `fmap` configureProgram  verbosity shProg progDb
   case shConfiguredProg of
-      Just sh -> runProgramInvocation verbosity (programInvocation (sh {programOverrideEnv = overEnv}) args')
+      Just sh -> runProgramInvocation verbosity
+                 (programInvocation (sh {programOverrideEnv = overEnv}) args')
       Nothing -> die notFoundMsg
 
   where
     args = "./configure" : configureArgs backwardsCompatHack flags
 
-    notFoundMsg = "The package has a './configure' script. If you are on Windows, This requires a "
+    notFoundMsg = "The package has a './configure' script. "
+               ++ "If you are on Windows, This requires a "
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin. "
-               ++ "If you are not on Windows, ensure that an 'sh' command is discoverable in your path."
+               ++ "If you are not on Windows, ensure that an 'sh' command "
+               ++ "is discoverable in your path."
 
 getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
 getHookedBuildInfo verbosity = do
