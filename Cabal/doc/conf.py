@@ -15,7 +15,7 @@ version = "1.25"
 
 extensions = ['sphinx.ext.extlinks']
 
-templates_path = ['.templates']
+templates_path = ['_templates']
 source_suffix = '.rst'
 source_encoding = 'utf-8-sig'
 master_doc = 'index'
