@@ -747,44 +747,44 @@ For the simple build system, the following defaults apply:
 .. list-table:: Default installation paths
 
     * - Option
-      - Windows Default
       - Unix Default
+      - Windows Default
     * - :option:`--prefix` (global)
-      - ``C:\Program Files\Haskell``
       - ``/usr/local``
+      - ``%PROGRAMFILES%\Haskell``
     * - :option:`--prefix` (per-user)
-      - ``C:\Documents And Settings\user\Application Data\cabal``
       - ``$HOME/.cabal``
+      - ``%APPDATA%\cabal``
     * - :option:`--bindir`
-      - ``$prefix\bin``
       - ``$prefix/bin``
+      - ``$prefix\bin``
     * - :option:`--libdir`
-      - ``$prefix``
       - ``$prefix/lib``
-    * - :option:`--libsubdir` (others)
-      - ``$pkgid\$compiler``
-      - ``$pkgid/$compiler``
-    * - :option:`--libexecdir`
-      - ``$prefix\$pkgid``
-      - ``$prefix/libexec``
-    * - :option:`--datadir` (executable)
       - ``$prefix``
+    * - :option:`--libsubdir` (others)
+      - ``$pkgid/$compiler``
+      - ``$pkgid\$compiler``
+    * - :option:`--libexecdir`
+      - ``$prefix/libexec``
+      - ``$prefix\$pkgid``
+    * - :option:`--datadir` (executable)
       - ``$prefix/share``
+      - ``$prefix``
     * - :option:`--datadir` (library)
-      - ``C:\Program Files\Haskell``
       - ``$prefix/share``
+      - ``%PROGRAMFILES%\Haskell``
     * - :option:`--datasubdir`
       - ``$pkgid``
       - ``$pkgid``
     * - :option:`--docdir`
-      - ``$prefix\doc\$pkgid``
       - ``$datadir/doc/$pkgid``
+      - ``$prefix\doc\$pkgid``
     * - :option:`--sysconfdir`
-      - ``$prefix\etc``
       - ``$prefix/etc``
+      - ``$prefix\etc``
     * - :option:`--htmldir`
-      - ``$docdir\html``
       - ``$docdir/html``
+      - ``$docdir\html``
     * - :option:`--program-prefix`
       - (empty)
       - (empty)
