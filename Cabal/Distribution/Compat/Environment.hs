@@ -51,6 +51,13 @@ getEnvironment = fmap upcaseVars System.getEnvironment
 getEnvironment = System.getEnvironment
 #endif
 
+#if __GLASGOW_HASKELL__ < 706
+-- | @lookupEnv var@ returns the value of the environment variable @var@, or
+-- @Nothing@ if there is no such value.
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = (Just `fmap` System.getEnv name) `catchIO` const (return Nothing)
+#endif /* __GLASGOW_HASKELL__ < 706 */
+
 -- | @setEnv name value@ sets the specified environment variable to @value@.
 --
 -- Throws `Control.Exception.IOException` if either @name@ or @value@ is the
