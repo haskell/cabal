@@ -14,11 +14,6 @@ from sphinx.locale import l_, _
 from sphinx.roles import XRefRole
 from sphinx.util.nodes import make_refnode
 
-class ExtraData(object):
-    def __init__(self, title=None, parent=None):
-        self.title = title
-        self.parent = parent
-
 class CabalPackageSection(Directive):
     """
     Directive marks a package.cabal section described next
@@ -48,9 +43,8 @@ class CabalPackageSection(Directive):
         inode = addnodes.index(entries=[('pair', indexentry,
                                          targetname, '', None)])
 
-        extra = ExtraData(title = section)
         env.domaindata['cabal']['pkg-sections'][section] = \
-            env.docname, targetname, extra
+            env.docname, targetname
 
         return [inode, node]
 
@@ -74,10 +68,10 @@ class CabalPackageField(ObjectDescription):
 
         if section is not None:
             parts = (self.objtype, section, name)
-            indexentry = name + '; package.config ' + section + ' field '
+            indexentry = section + ':' + name + '; package.cabal field'
         else:
             parts = (self.objtype, name)
-            indexentry = name + '; package.config field'
+            indexentry = name + '; package.cabal field'
 
         targetname = '-'.join(parts)
         signode['ids'].append(targetname)
@@ -88,9 +82,8 @@ class CabalPackageField(ObjectDescription):
         signode.insert(0, inode)
 
         #for ref finding
-        extra = ExtraData(title = section, parent=section)
         env.domaindata['cabal']['pkg-fields'][section,name] = \
-            env.docname, targetname, extra
+            env.docname, targetname
 
 class CabalPackageFieldXRef(XRefRole):
     def process_link(self, env, refnode, has_explicit_title, title, target):
@@ -111,18 +104,27 @@ def make_data_keys(typ, target, node):
     else:
         return [target]
 
-def make_title(typ, name, extras):
-    title = extras.title if extras.title else name
+def make_title(typ, key):
     if typ == 'pkg-section':
-        return "package.cabal " + title + "section"
+        return "package.cabal " + key + "section"
 
     if typ == 'pkg-field':
-        if extras.parent is not None:
-            base = "package.cabal " + extras.parent + "section field "
+        section, name = key
+        if section is not None:
+            return "package.cabal " + section + " section " + name + " field"
         else:
-            base = "package.cabal field "
-        return base + title
+            return "package.cabal " + name + " field"
 
+def make_full_name(typ, key):
+    if typ == 'pkg-section':
+        return 'pkg-section-' + key
+
+    if typ == 'pkg-field':
+        section, name = key
+        if section is not None:
+            return '-'.join(('pkg-field',section, name))
+        else:
+            return 'pkg-field-' + name
 
 class CabalDomain(Domain):
     name = 'cabal'
@@ -152,11 +154,8 @@ class CabalDomain(Domain):
         'pkg-field'  : 'pkg-fields'
     }
     def clear_doc(self, docname):
-        for fullname, (fn, _) in self.data['objects'].items():
-            if fn == docname:
-                del self.data['objects'][fullname]
-        for k in ['pkg-sections', 'pkg-fields']:
-            for name, (fn, _, _) in self.data[k].items():
+        for k in ['objects', 'pkg-sections', 'pkg-fields']:
+            for name, (fn, _) in self.data[k].items():
                 if fn == docname:
                     del self.data[k][comname]
 
@@ -168,9 +167,16 @@ class CabalDomain(Domain):
                 data = env.domaindata['cabal'][self.types[typ]][key]
             except KeyError:
                 continue
-            doc, name, extras = data
-            title = make_title(typ, name, extras)
-            return make_refnode(builder, fromdocname, doc, name, contnode, title)
+            doc, ref = data
+            title = make_title(typ, key)
+            return make_refnode(builder, fromdocname, doc, ref, contnode, title)
+
+    def get_objects(self):
+        for typ in ['pkg-section', 'pkg-field']:
+            key = self.types[typ]
+            for name, (fn, target) in self.data[key].items():
+                title = make_title(typ, name)
+                yield title, title, typ, fn, target, 0
 
 class CabalLexer(lexer.RegexLexer):
     name = 'Cabal'
