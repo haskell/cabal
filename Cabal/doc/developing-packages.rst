@@ -480,11 +480,13 @@ more integers separated by dots. These can be combined to form a single
 text string called the *package ID*, using a hyphen to separate the name
 from the version, e.g. "``HUnit-1.1``".
 
-Note: Packages are not part of the Haskell language; they simply
-populate the hierarchical space of module names. In GHC 6.6 and later a
-program may contain multiple modules with the same name if they come
-from separate packages; in all other current Haskell systems packages
-may not overlap in the modules they provide, including hidden modules.
+.. Note::
+
+   Packages are not part of the Haskell language; they simply
+   populate the hierarchical space of module names. In GHC 6.6 and later a
+   program may contain multiple modules with the same name if they come
+   from separate packages; in all other current Haskell systems packages
+   may not overlap in the modules they provide, including hidden modules.
 
 Creating a package
 ------------------
@@ -638,9 +640,8 @@ builds packages for all the Haskell implementations.
 
 The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
-(see the section on `system-dependent
-parameters <#system-dependent-parameters>`__). A few packages require
-`more elaborate solutions <#more-complex-packages>`__.
+(see the section on `system-dependent parameters`_).
+A few packages require `more elaborate solutions <more complex packages>`_.
 
 Package descriptions
 --------------------
@@ -811,7 +812,7 @@ describe the package as a whole:
         main = defaultMain
 
     For build type ``Configure`` (see the section on `system-dependent
-    parameters <#system-dependent-parameters>`__ below), the contents of
+    parameters`_ below), the contents of
     ``Setup.hs`` must be:
 
     .. code-block:: haskell
@@ -819,8 +820,7 @@ describe the package as a whole:
         import Distribution.Simple
         main = defaultMainWithHooks autoconfUserHooks
 
-    For build type ``Make`` (see the section on `more complex
-    packages <installing-packages.html#more-complex-packages>`__ below),
+    For build type ``Make`` (see the section on `more complex packages`_ below),
     the contents of ``Setup.hs`` must be:
 
     .. code-block:: haskell
@@ -937,8 +937,7 @@ describe the package as a whole:
     A list of files to be installed for run-time use by the package.
     This is useful for packages that use a large amount of static data,
     such as tables of values or code templates. Cabal provides a way to
-    `find these files at
-    run-time <#accessing-data-files-from-package-code>`__.
+    `find these files at run-time <accessing data files from package code>`_.
 
     A limited form of ``*`` wildcards in file names, for example
     ``data-files: images/*.png`` matches all the ``.png`` files in the
@@ -1156,8 +1155,7 @@ defines the name of the executable. This is a freeform argument but may
 not contain spaces.
 
 The executable may be described using the following fields, as well as
-build information fields (see the section on `build
-information <#build-information>`__).
+build information fields (see the section on `build information`_).
 
 .. pkg-field:: main-is: filename (required)
 
@@ -1350,8 +1348,7 @@ and the package itself. Using benchmark sections requires at least Cabal
 version 1.9.2.
 
 The benchmark may be described using the following fields, as well as
-build information fields (see the section on `build
-information <#build-information>`__).
+build information fields (see the section on `build information`_).
 
 .. pkg-field:: type: interface (required)
 
@@ -1436,8 +1433,7 @@ Build information
 The following fields may be optionally present in a library, executable,
 test suite or benchmark section, and give information for the building
 of the corresponding library or executable. See also the sections on
-`system-dependent parameters <#system-dependent-parameters>`__ and
-`configurations <#configurations>`__ for a way to supply
+`system-dependent parameters`_ and `configurations`_ for a way to supply
 system-dependent values for these fields.
 
 .. pkg-field:: build-depends: package list
@@ -1490,15 +1486,19 @@ system-dependent values for these fields.
         build-depends: foo >= 1.2.3.4 && < 1.3,
                        bar >= 1 && < 1.1
 
-    Note: Prior to Cabal 1.8, ``build-depends`` specified in each
-    section were global to all sections. This was unintentional, but
-    some packages were written to depend on it, so if you need your
-    ``build-depends`` to be local to each section, you must specify at
-    least ``Cabal-Version: >= 1.8`` in your ``.cabal`` file.
+    .. Note::
 
-    Note: Cabal 1.20 experimentally supported module thinning and
-    renaming in ``build-depends``; however, this support has since been
-    removed and should not be used.
+       Prior to Cabal 1.8, ``build-depends`` specified in each
+       section were global to all sections. This was unintentional, but
+       some packages were written to depend on it, so if you need your
+       :pkg-field:`build-depends` to be local to each section, you must specify
+       at least ``Cabal-Version: >= 1.8`` in your ``.cabal`` file.
+
+    .. Note::
+
+       Cabal 1.20 experimentally supported module thinning and
+       renaming in ``build-depends``; however, this support has since been
+       removed and should not be used.
 
 .. pkg-field:: other-modules: identifier list
 
@@ -1507,9 +1507,11 @@ system-dependent values for these fields.
     library. For an executable, these would be auxiliary modules to be
     linked with the file named in the ``main-is`` field.
 
-    Note: Every module in the package *must* be listed in one of
-    :pkg-field:`other-modules`, :pkg-field:`library:exposed-modules` or
-    :pkg-field:`executable:main-is` fields.
+    .. Note::
+
+       Every module in the package *must* be listed in one of
+       :pkg-field:`other-modules`, :pkg-field:`library:exposed-modules` or
+       :pkg-field:`executable:main-is` fields.
 
 .. pkg-field:: hs-source-dirs: directory list
 
@@ -1557,6 +1559,11 @@ system-dependent values for these fields.
     for information only, but it is recommended to replicate them in
     :pkg-field:`other-extensions` declarations.
 
+.. pkg-field:: extensions: identifier list
+   :deprecated:
+
+   Deprecated in favor of :pkg-field:`default-extensions`.
+
 .. pkg-field:: build-tools: program list
 
     A list of programs, possibly annotated with versions, needed to
@@ -1573,7 +1580,7 @@ system-dependent values for these fields.
     Is the component buildable? Like some of the other fields below,
     this field is more useful with the slightly more elaborate form of
     the simple build infrastructure described in the section on
-    `system-dependent parameters <#system-dependent-parameters>`__.
+    `system-dependent parameters`_.
 
 .. pkg-field:: ghc-options: token list
 
@@ -1693,8 +1700,7 @@ system-dependent values for these fields.
 
     Command-line arguments to be passed to the C compiler. Since the
     arguments are compiler-dependent, this field is more useful with the
-    setup described in the section on `system-dependent
-    parameters <#system-dependent-parameters>`__.
+    setup described in the section on `system-dependent parameters`_.
 
 .. pkg-field:: cpp-options: token list
 
@@ -1706,8 +1712,7 @@ system-dependent values for these fields.
 
     Command-line arguments to be passed to the linker. Since the
     arguments are compiler-dependent, this field is more useful with the
-    setup described in the section on `system-dependent
-    parameters <#system-dependent-parameters>`__>.
+    setup described in the section on `system-dependent parameters`_.
 
 .. pkg-field:: pkgconfig-depends: package list
 
@@ -2258,10 +2263,12 @@ If the argument is a filename listed in the :pkg-field:`data-files` field, the
 result is the name of the corresponding file on the system on which the
 program is running.
 
-Note: If you decide to import the :file:`Paths_{pkgname}` module then it
-*must* be listed in the :pkg-field:`other-modules` field just like any other
-module in your package and on :pkg-field:`autogen-modules` as the file is
-autogenerated.
+.. Note::
+
+   If you decide to import the :file:`Paths_{pkgname}` module then it
+   *must* be listed in the :pkg-field:`other-modules` field just like any other
+   module in your package and on :pkg-field:`autogen-modules` as the file is
+   autogenerated.
 
 The :file:`Paths_{pkgname}` module is not platform independent, as any
 other autogenerated module, so it does not get included in the source
@@ -2313,7 +2320,7 @@ such situations. In this case, ``Setup.hs`` should be:
     main = defaultMainWithHooks autoconfUserHooks
 
 Most packages, however, would probably do better using the ``Simple``
-build type and `configurations <#configurations>`__.
+build type and `configurations`_.
 
 The :pkg-field:`build-type` ``Configure`` differs from ``Simple`` in two ways:
 
@@ -2330,7 +2337,7 @@ The :pkg-field:`build-type` ``Configure`` differs from ``Simple`` in two ways:
 -  If the package root directory contains a file called
    *package*\ ``.buildinfo`` after the configuration step, subsequent
    steps will read it to obtain additional settings for `build
-   information <#build-information>`__ fields,to be merged with the ones
+   information`_ fields,to be merged with the ones
    given in the ``.cabal`` file. In particular, this file may be
    generated by the ``configure`` script mentioned above, allowing these
    settings to vary depending on the build environment.
@@ -2344,7 +2351,7 @@ The build information file should have the following structure:
     ``executable:`` *name* *buildinfo* ...
 
 where each *buildinfo* consists of settings of fields listed in the
-section on `build information <#build-information>`__. The first one (if
+section on `build information`_. The first one (if
 present) relates to the library, while each of the others relate to the
 named executable. (The names must match the package description, but you
 don't have to have entries for all of them.)
@@ -2408,13 +2415,15 @@ The ``configure`` script also generates a header file
 the results of various tests. This file may be included by C source
 files and preprocessed Haskell source files in the package.
 
-Note: Packages using these features will also need to list additional
-files such as ``configure``, templates for ``.buildinfo`` files, files
-named only in ``.buildinfo`` files, header files and so on in the
-:pkg-field:`extra-source-files` field to ensure that they are included in
-source distributions. They should also list files and directories generated by
-``configure`` in the :pkg-field:`extra-tmp-files` field to ensure that they are
-removed by ``setup clean``.
+.. Note::
+
+   Packages using these features will also need to list additional
+   files such as ``configure``, templates for ``.buildinfo`` files, files
+   named only in ``.buildinfo`` files, header files and so on in the
+   :pkg-field:`extra-source-files` field to ensure that they are included in
+   source distributions. They should also list files and directories generated
+   by ``configure`` in the :pkg-field:`extra-tmp-files` field to ensure that
+   they are removed by ``setup clean``.
 
 Quite often the files generated by ``configure`` need to be listed
 somewhere in the package description (for example, in the
