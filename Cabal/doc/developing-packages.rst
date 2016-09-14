@@ -133,16 +133,17 @@ Modules included in the package
 
 For a library, ``cabal init`` looks in the project directory for files
 that look like Haskell modules and adds all the modules to the
-``exposed-modules`` field. For modules that do not form part of your
-package's public interface, you can move those modules to the
-``other-modules`` field. Either way, all modules in the library need to
-be listed.
+:pkg-field:`library:exposed-modules` field. For modules that do not form part
+of your package's public interface, you can move those modules to the
+:pkg-field:`other-modules` field. Either way, all modules in the library need
+to be listed.
 
 For an executable, ``cabal init`` does not try to guess which file
 contains your program's ``Main`` module. You will need to fill in the
-``main-is`` field with the file name of your program's ``Main`` module
-(including ``.hs`` or ``.lhs`` extension). Other modules included in the
-executable should be listed in the ``other-modules`` field.
+:pkg-field:`executable:main-is` field with the file name of your program's
+``Main`` module (including ``.hs`` or ``.lhs`` extension). Other modules
+included in the executable should be listed in the :pkg-field:`other-modules`
+field.
 
 Modules imported from other packages
 ------------------------------------
@@ -492,24 +493,23 @@ Suppose you have a directory hierarchy containing the source files that
 make up your package. You will need to add two more files to the root
 directory of the package:
 
-*package*\ ``.cabal``
+:file:`{package}.cabal`
     a Unicode UTF-8 text file containing a package description. For
-    details of the syntax of this file, see the `section on package
-    descriptions <#package-descriptions>`__.
+    details of the syntax of this file, see the section on
+    `package descriptions`_.
 
-``Setup.hs``
+:file:`Setup.hs`
     a single-module Haskell program to perform various setup tasks (with
-    the interface described in the section on `building and installing
-    packages <installing-packages.html>`__. This module should import
-    only modules that will be present in all Haskell implementations,
-    including modules of the Cabal library. The content of this file is
-    determined by the ``build-type`` setting in the ``.cabal`` file. In
-    most cases it will be trivial, calling on the Cabal library to do
-    most of the work.
+    the interface described in the section on :ref:`installing-packages`).
+    This module should import only modules that will be present in all Haskell
+    implementations, including modules of the Cabal library. The content of
+    this file is determined by the :pkg-field:`build-type` setting in the
+    ``.cabal`` file. In most cases it will be trivial, calling on the Cabal
+    library to do most of the work.
 
 Once you have these, you can create a source bundle of this directory
 for distribution. Building of the package is discussed in the section on
-`building and installing packages <installing-packages.html>`__.
+:ref:`installing-packages`.
 
 One of the purposes of Cabal is to make it easier to build a package
 with different Haskell implementations. So it provides abstractions of
@@ -657,20 +657,18 @@ characters are "``--``" are treated as comments and ignored.
 This file should contain of a number global property descriptions and
 several sections.
 
--  The `global properties <#package-properties>`__ describe the package
+-  The `package properties`_ describe the package
    as a whole, such as name, license, author, etc.
 
 -  Optionally, a number of *configuration flags* can be declared. These
    can be used to enable or disable certain features of a package. (see
-   the section on `configurations <#configurations>`__).
+   the section on `configurations`_).
 
--  The (optional) library section specifies the `library
-   properties <#library>`__ and relevant `build
-   information <#build-information>`__.
+-  The (optional) library section specifies the `library`_ properties and
+   relevant `build information`_.
 
--  Following is an arbitrary number of executable sections which
-   describe an executable program and relevant `build
-   information <#build-information>`__.
+-  Following is an arbitrary number of executable sections which describe
+   an executable program and relevant `build information`_.
 
 Each section consists of a number of property descriptions in the form
 of field/value pairs, with a syntax roughly like mail message headers.
@@ -737,18 +735,25 @@ mandatory.
 Some fields are marked as required. All others are optional, and unless
 otherwise specified have empty default values.
 
+.. pkg-section:: None
+
 Package properties
 ^^^^^^^^^^^^^^^^^^
 
 These fields may occur in the first top-level properties section and
 describe the package as a whole:
 
-``name:`` *package-name* (required)
+.. pkg-field:: name: package-name (required)
+
     The unique name of the package, without the version number.
-``version:`` *numbers* (required)
+
+.. pkg-field:: version: numbers (required)
+
     The package version number, usually consisting of a sequence of
     natural numbers separated by dots.
-``cabal-version:`` *>= x.y*
+
+.. pkg-field:: cabal-version: >= x.y
+
     The version of the Cabal specification that this package description
     uses. The Cabal specification does slowly evolve, introducing new
     features and occasionally changing the meaning of existing features.
@@ -775,14 +780,17 @@ describe the package as a whole:
     appropriate to the version given in the package description.
 
     In particular, the syntax of package descriptions changed
-    significantly with Cabal version 1.2 and the ``cabal-version`` field
-    is now required. Files written in the old syntax are still
+    significantly with Cabal version 1.2 and the :pkg-field:`cabal-version`
+    field is now required. Files written in the old syntax are still
     recognized, so if you require compatibility with very old Cabal
     versions then you may write your package description file using the
     old syntax. Please consult the user's guide of an older Cabal
     version for a description of that syntax.
 
-``build-type:`` *identifier*
+.. pkg-field:: build-type: identifier
+
+    :default: ``Custom``
+
     The type of build used by this package. Build types are the
     constructors of the
     `BuildType <../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType>`__
@@ -825,39 +833,57 @@ describe the package as a whole:
 
     For most packages, the build type ``Simple`` is sufficient.
 
-``license:`` *identifier* (default: ``AllRightsReserved``)
+.. pkg-field:: license: identifier
+
+    :default: ``AllRightsReserved``
+
     The type of license under which this package is distributed. License
     names are the constants of the
     `License <../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License>`__
     type.
-``license-file:`` *filename* or ``license-files:`` *filename list*
+
+.. pkg-field:: license-file: filename
+.. pkg-field:: license-files: filename list
+
     The name of a file(s) containing the precise copyright license for
     this package. The license file(s) will be installed with the
     package.
 
-    If you have multiple license files then use the ``license-files``
-    field instead of (or in addition to) the ``license-file`` field.
+    If you have multiple license files then use the :pkg-field:`license-files`
+    field instead of (or in addition to) the :pkg-field:`license-file` field.
 
-``copyright:`` *freeform*
+.. pkg-field:: copyright: freeform
+
     The content of a copyright notice, typically the name of the holder
     of the copyright on the package and the year(s) from which copyright
-    is claimed. For example: ``Copyright: (c) 2006-2007 Joe Bloggs``
-``author:`` *freeform*
+    is claimed. For example::
+
+      copyright: (c) 2006-2007 Joe Bloggs
+
+.. pkg-field:: author: freeform
+
     The original author of the package.
 
     Remember that ``.cabal`` files are Unicode, using the UTF-8
     encoding.
 
-``maintainer:`` *address*
+.. pkg-field:: maintainer: address
+
     The current maintainer or maintainers of the package. This is an
     e-mail address to which users should send bug reports, feature
     requests and patches.
-``stability:`` *freeform*
+
+.. pkg-field:: stability: freeform
+
     The stability level of the package, e.g. ``alpha``,
     ``experimental``, ``provisional``, ``stable``.
-``homepage:`` *URL*
+
+.. pkg-field:: homepage: URL
+
     The package homepage.
-``bug-reports:`` *URL*
+
+.. pkg-field:: bug-reports: URL
+
     The URL where users should direct bug reports. This would normally
     be either:
 
@@ -872,33 +898,42 @@ describe the package as a whole:
 
         bug-reports: http://hackage.haskell.org/trac/hackage/
 
-``package-url:`` *URL*
+.. pkg-field:: package-url: URL
+
     The location of a source bundle for the package. The distribution
     should be a Cabal package.
-``synopsis:`` *freeform*
+
+.. pkg-field:: synopsis: freeform
+
     A very short description of the package, for use in a table of
     packages. This is your headline, so keep it short (one line) but as
     informative as possible. Save space by not including the package
     name or saying it's written in Haskell.
-``description:`` *freeform*
+
+.. pkg-field:: description: freeform
+
     Description of the package. This may be several paragraphs, and
     should be aimed at a Haskell programmer who has never heard of your
     package before.
 
     For library packages, this field is used as prologue text by
-    ```setup haddock`` <installing-packages.html#setup-haddock>`__, and
-    thus may contain the same markup as Haddock_ documentation
-    comments.
+    :ref:`setup-haddock` and thus may contain the same markup as Haddock_
+    documentation comments.
 
-``category:`` *freeform*
+.. pkg-field:: category: freeform
+
     A classification category for future use by the package catalogue
     Hackage_. These categories have not
     yet been specified, but the upper levels of the module hierarchy
     make a good start.
-``tested-with:`` *compiler list*
+
+.. pkg-field:: tested-with: compiler list
+
     A list of compilers and versions against which the package has been
     tested (or at least built).
-``data-files:`` *filename list*
+
+.. pkg-field:: data-files: filename list
+
     A list of files to be installed for run-time use by the package.
     This is useful for packages that use a large amount of static data,
     such as tables of values or code templates. Cabal provides a way to
@@ -924,37 +959,49 @@ describe the package as a whole:
     of the same file type without making it too easy to accidentally
     include unwanted files.
 
-``data-dir:`` *directory*
+.. pkg-field:: data-dir: directory
+
     The directory where Cabal looks for data files to install, relative
     to the source directory. By default, Cabal will look in the source
     directory itself.
-``extra-source-files:`` *filename list*
+
+.. pkg-field:: extra-source-files: filename list
+
     A list of additional files to be included in source distributions
-    built with
-    ```setup sdist`` <installing-packages.html#setup-sdist>`__. As with
-    ``data-files`` it can use a limited form of ``*`` wildcards in file
-    names.
-``extra-doc-files:`` *filename list*
+    built with :ref:`setup-sdist`. As with :pkg-field:`data-files` it can use
+    a limited form of ``*`` wildcards in file names.
+
+.. pkg-field:: extra-doc-files: filename list
+
     A list of additional files to be included in source distributions,
     and also copied to the html directory when Haddock documentation is
-    generated. As with ``data-files`` it can use a limited form of ``*``
-    wildcards in file names.
-``extra-tmp-files:`` *filename list*
+    generated. As with :pkg-field:`data-files` it can use a limited form of
+    ``*`` wildcards in file names.
+
+.. pkg-field:: extra-tmp-files: filename list
+
     A list of additional files or directories to be removed by
-    ```setup clean`` <installing-packages.html#setup-clean>`__. These
-    would typically be additional files created by additional hooks,
-    such as the scheme described in the section on `system-dependent
-    parameters <#system-dependent-parameters>`__.
+    :ref:`setup-clean`. These  would typically be additional files created by
+    additional hooks, such as the scheme described in the section on
+    `system-dependent parameters`_
+
+.. pkg-section:: library
 
 Library
 ^^^^^^^
 
 The library section should contain the following fields:
 
-``exposed-modules:`` *identifier list* (required if this package contains a library)
+.. pkg-field:: exposed-modules: identifier list
+
+    :required: if this package contains a library
+
     A list of modules added by this package.
 
-``exposed:`` *boolean* (default: ``True``)
+.. pkg-field:: exposed: boolean
+
+    :default: ``True``
+
     Some Haskell compilers (notably GHC) support the notion of packages
     being "exposed" or "hidden" which means the modules they provide can
     be easily imported without always having to specify which package
@@ -968,7 +1015,8 @@ The library section should contain the following fields:
     that use a flat module namespace or where it is known that the
     exposed modules would clash with other common modules.
 
-``reexported-modules:`` *exportlist*
+.. pkg-field:: reexported-modules: exportlist
+
     Supported only in GHC 7.10 and later. A list of modules to
     *reexport* from this package. The syntax of this field is
     ``orig-pkg:Name as NewName`` to reexport module ``Name`` from
@@ -986,14 +1034,14 @@ The library section should contain the following fields:
     used to resolve name conflicts.
 
 The library section may also contain build information fields (see the
-section on `build information <#build-information>`__).
+section on `build information`_).
 
 Cabal 1.25 and later support "internal libraries", which are extra named
 libraries (as opposed to the usual unnamed library section). For
 example, suppose that your test suite needs access to some internal
 modules in your library, which you do not otherwise want to export. You
 could put these modules in an internal library, which the main library
-and the test suite ``build-depends`` upon. Then your Cabal file might
+and the test suite :pkg-field:`build-depends` upon. Then your Cabal file might
 look something like this:
 
 ::
@@ -1020,7 +1068,7 @@ look something like this:
 Internal libraries are also useful for packages that define multiple
 executables, but do not define a publically accessible library. Internal
 libraries are only visible internally in the package (so they can only
-be added to the ``build-depends`` of same-package libraries,
+be added to the :pkg-field:`build-depends` of same-package libraries,
 executables, test suites, etc.) Internal libraries locally shadow any
 packages which have the same name (so don't name an internal library
 with the same name as an external dependency.)
@@ -1081,7 +1129,7 @@ This is done by running the ``gen-bounds`` command:
     $ cabal gen-bounds
 
 For example, given the following dependencies specified in
-``build-depends``:
+:pkg-field:`build-depends`:
 
 ::
 
@@ -1097,6 +1145,8 @@ For example, given the following dependencies specified in
       foo >= 0.5.2 && < 0.6
       bar >= 1.1 && < 1.2
 
+.. pkg-section:: executable
+
 Executables
 ^^^^^^^^^^^
 
@@ -1109,12 +1159,13 @@ The executable may be described using the following fields, as well as
 build information fields (see the section on `build
 information <#build-information>`__).
 
-``main-is:`` *filename* (required)
+.. pkg-field:: main-is: filename (required)
+
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    ``hs-source-dirs``.
+    :pkg-field:`hs-source-dirs`.
 
 Running executables
 """""""""""""""""""
@@ -1133,6 +1184,8 @@ executable defined in the whole package, the executable's name can be
 omitted. See the output of ``cabal help run`` for a list of options you
 can pass to ``cabal run``.
 
+.. pkg-section:: test
+
 Test suites
 ^^^^^^^^^^^
 
@@ -1144,10 +1197,10 @@ package's executables, and the package itself. Using test suite sections
 requires at least Cabal version 1.9.2.
 
 The test suite may be described using the following fields, as well as
-build information fields (see the section on `build
-information <#build-information>`__).
+build information fields (see the section on `build information`_).
 
-``type:`` *interface* (required)
+.. pkg-field:: type: interface (required)
+
     The interface type and version of the test suite. Cabal supports two
     test suite interfaces, called ``exitcode-stdio-1.0`` and
     ``detailed-0.9``. Each of these types may require or disallow other
@@ -1159,12 +1212,17 @@ provide human-readable log information through the standard output and
 error channels. The ``exitcode-stdio-1.0`` type requires the ``main-is``
 field.
 
-``main-is:`` *filename* (required: ``exitcode-stdio-1.0``, disallowed: ``detailed-0.9``)
+.. pkg-field:: main-is: filename
+..    :name: test-main-is
+
+    :required: ``exitcode-stdio-1.0``
+    :disallowed: ``detailed-0.9``
+
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    ``hs-source-dirs``. This field is analogous to the ``main-is`` field
+    :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is`` field
     of an executable section.
 
 Test suites using the ``detailed-0.9`` interface are modules exporting
@@ -1175,9 +1233,13 @@ see the example below.
 The ``detailed-0.9`` interface allows Cabal and other test agents to
 inspect a test suite's results case by case, producing detailed human-
 and machine-readable log files. The ``detailed-0.9`` interface requires
-the ``test-module`` field.
+the :pkg-field:`test-module` field.
 
-``test-module:`` *identifier* (required: ``detailed-0.9``, disallowed: ``exitcode-stdio-1.0``)
+.. pkg-field:: test-module: identifier
+
+    :required: ``detailed-0.9``
+    :disallowed: ``exitcode-stdio-1.0``
+
     The module exporting the ``tests`` symbol.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
@@ -1274,6 +1336,8 @@ You can have Cabal run your test suites using its built-in test runner:
 See the output of ``cabal help test`` for a list of options you can pass
 to ``cabal test``.
 
+.. pkg-section:: benchmark
+
 Benchmarks
 ^^^^^^^^^^
 
@@ -1289,7 +1353,8 @@ The benchmark may be described using the following fields, as well as
 build information fields (see the section on `build
 information <#build-information>`__).
 
-``type:`` *interface* (required)
+.. pkg-field:: type: interface (required)
+
     The interface type and version of the benchmark. At the moment Cabal
     only support one benchmark interface, called ``exitcode-stdio-1.0``.
 
@@ -1298,13 +1363,16 @@ that indicate failure to run the benchmark with a non-zero exit code
 when run; they may provide human-readable information through the
 standard output and error channels.
 
-``main-is:`` *filename* (required: ``exitcode-stdio-1.0``)
+.. pkg-field:: main-is: filename
+
+    :required: ``exitcode-stdio-1.0``
+
     The name of the ``.hs`` or ``.lhs`` file containing the ``Main``
     module. Note that it is the ``.hs`` filename that must be listed,
     even if that file is generated using a preprocessor. The source file
     must be relative to one of the directories listed in
-    ``hs-source-dirs``. This field is analogous to the ``main-is`` field
-    of an executable section.
+    :pkg-field:`hs-source-dirs`. This field is analogous to the ``main-is``
+    field of an executable section.
 
 Example: Package using ``exitcode-stdio-1.0`` interface
 """""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -1360,6 +1428,8 @@ runner:
 See the output of ``cabal help bench`` for a list of options you can
 pass to ``cabal bench``.
 
+.. pkg-section:: None
+
 Build information
 ^^^^^^^^^^^^^^^^^
 
@@ -1370,7 +1440,8 @@ of the corresponding library or executable. See also the sections on
 `configurations <#configurations>`__ for a way to supply
 system-dependent values for these fields.
 
-``build-depends:`` *package list*
+.. pkg-field:: build-depends: package list
+
     A list of packages needed to build this one. Each package can be
     annotated with a version constraint.
 
@@ -1429,29 +1500,37 @@ system-dependent values for these fields.
     renaming in ``build-depends``; however, this support has since been
     removed and should not be used.
 
-``other-modules:`` *identifier list*
+.. pkg-field:: other-modules: identifier list
+
     A list of modules used by the component but not exposed to users.
     For a library component, these would be hidden modules of the
     library. For an executable, these would be auxiliary modules to be
     linked with the file named in the ``main-is`` field.
 
     Note: Every module in the package *must* be listed in one of
-    ``other-modules``, ``exposed-modules`` or ``main-is`` fields.
+    :pkg-field:`other-modules`, :pkg-field:`library:exposed-modules` or
+    :pkg-field:`executable:main-is` fields.
 
-``hs-source-dirs:`` *directory list* (default: "``.``")
+.. pkg-field:: hs-source-dirs: directory list
+
+    :default: ``.``
+
     Root directories for the module hierarchy.
 
     For backwards compatibility, the old variant ``hs-source-dir`` is
     also recognized.
 
-``default-extensions:`` *identifier list*
+.. pkg-field:: default-extensions: identifier list
+
     A list of Haskell extensions used by every module. These determine
     corresponding compiler options enabled for all files. Extension
     names are the constructors of the
     `Extension <../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension>`__
     type. For example, ``CPP`` specifies that Haskell source files are
     to be preprocessed with a C preprocessor.
-``other-extensions:`` *identifier list*
+
+.. pkg-field:: other-extensions: identifier list
+
     A list of Haskell extensions used by some (but not necessarily all)
     modules. From GHC version 6.6 onward, these may be specified by
     placing a ``LANGUAGE`` pragma in the source files affected e.g.
@@ -1461,12 +1540,12 @@ system-dependent values for these fields.
         {-# LANGUAGE CPP, MultiParamTypeClasses #-}
 
     In Cabal-1.24 the dependency solver will use this and
-    ``default-extensions`` information. Cabal prior to 1.24 will abort
+    :pkg-field:`default-extensions` information. Cabal prior to 1.24 will abort
     compilation if the current compiler doesn't provide the extensions.
 
     If you use some extensions conditionally, using CPP or conditional
     module lists, it is good to replicate the condition in
-    ``other-extensions`` declarations:
+    :pkg-field:`other-extensions` declarations:
 
     ::
 
@@ -1476,23 +1555,30 @@ system-dependent values for these fields.
 
     You could also omit the conditionally used extensions, as they are
     for information only, but it is recommended to replicate them in
-    ``other-extensions`` declarations.
+    :pkg-field:`other-extensions` declarations.
 
-``build-tools:`` *program list*
+.. pkg-field:: build-tools: program list
+
     A list of programs, possibly annotated with versions, needed to
     build this package, e.g. ``c2hs >= 0.15, cpphs``. If no version
     constraint is specified, any version is assumed to be acceptable.
     ``build-tools`` can refer to locally defined executables, in which
     case Cabal will make sure that executable is built first and add it
     to the PATH upon invocations to the compiler.
-``buildable:`` *boolean* (default: ``True``)
+
+.. pkg-field:: buildable: boolean
+
+    :default: ``True``
+
     Is the component buildable? Like some of the other fields below,
     this field is more useful with the slightly more elaborate form of
     the simple build infrastructure described in the section on
     `system-dependent parameters <#system-dependent-parameters>`__.
-``ghc-options:`` *token list*
+
+.. pkg-field:: ghc-options: token list
+
     Additional options for GHC. You can often achieve the same effect
-    using the ``extensions`` field, which is preferred.
+    using the :pkg-field:`extensions` field, which is preferred.
 
     Options required only by one module may be specified by placing an
     ``OPTIONS_GHC`` pragma in the source file affected.
@@ -1501,7 +1587,8 @@ system-dependent values for these fields.
     Haskell string syntax. Example:
     ``ghc-options: -Wcompat "-with-rtsopts=-T -I1" -Wall``.
 
-``ghc-prof-options:`` *token list*
+.. pkg-field:: ghc-prof-options: token list
+
     Additional options for GHC when the package is built with profiling
     enabled.
 
@@ -1518,44 +1605,45 @@ system-dependent values for these fields.
     unless you have special needs it is probably better not to specify
     any of the GHC ``-fprof-auto*`` flags here. However if you wish to
     override the profiling detail level, you can do so using the
-    ``ghc-prof-options`` field: use ``-fno-prof-auto`` or one of the
+    :pkg-field:`ghc-prof-options` field: use ``-fno-prof-auto`` or one of the
     other ``-fprof-auto*`` flags.
 
-``ghc-shared-options:`` *token list*
+.. pkg-field:: ghc-shared-options: token list
+
     Additional options for GHC when the package is built as shared
     library. The options specified via this field are combined with the
-    ones specified via ``ghc-options``, and are passed to GHC during
+    ones specified via :pkg-field:`ghc-options`, and are passed to GHC during
     both the compile and link phases.
-``includes:`` *filename list*
+
+.. pkg-field:: includes: filename list
+
     A list of header files to be included in any compilations via C.
     This field applies to both header files that are already installed
     on the system and to those coming with the package to be installed.
     The former files should be found in absolute paths, while the latter
     files should be found in paths relative to the top of the source
     tree or relative to one of the directories listed in
-    ``include-dirs``.
+    :pkg-field:`include-dirs`.
 
     These files typically contain function prototypes for foreign
     imports used by the package. This is in contrast to
-    ``install-includes``, which lists header files that are intended to
-    be exposed to other packages that transitively depend on this
+    :pkg-field:`install-includes`, which lists header files that are intended
+    to be exposed to other packages that transitively depend on this
     library.
 
-``install-includes:`` *filename list*
+.. pkg-field:: install-includes: filename list
+
     A list of header files from this package to be installed into
     ``$libdir/includes`` when the package is installed. Files listed in
-    ``install-includes:`` should be found in relative to the top of the
+    :pkg-field:`install-includes` should be found in relative to the top of the
     source tree or relative to one of the directories listed in
-    ``include-dirs``.
+    :pkg-field:`include-dirs`.
 
-    ``install-includes`` is typically used to name header files that
+    :pkg-field:`install-includes` is typically used to name header files that
     contain prototypes for foreign imports used in Haskell code in this
     package, for which the C implementations are also provided with the
     package. For example, here is a ``.cabal`` file for a hypothetical
-    ``bindings-clib`` package that bundles the C source code for
-    ``clib``:
-
-    ::
+    ``bindings-clib`` package that bundles the C source code for ``clib``::
 
         include-dirs:     cbits
         c-sources:        clib.c
@@ -1564,45 +1652,65 @@ system-dependent values for these fields.
     Now any package that depends (directly or transitively) on the
     ``bindings-clib`` library can use ``clib.h``.
 
-    Note that in order for files listed in ``install-includes`` to be
+    Note that in order for files listed in :pkg-field:`install-includes` to be
     usable when compiling the package itself, they need to be listed in
-    the ``includes:`` field as well.
+    the :pkg-field:`includes` field as well.
 
-``include-dirs:`` *directory list*
+.. pkg-field:: include-dirs: directory list
+
     A list of directories to search for header files, when preprocessing
     with ``c2hs``, ``hsc2hs``, ``cpphs`` or the C preprocessor, and also
     when compiling via C. Directories can be absolute paths (e.g., for
     system directories) or paths that are relative to the top of the
     source tree. Cabal looks in these directories when attempting to
-    locate files listed in ``includes`` and ``install-includes``.
-``c-sources:`` *filename list*
+    locate files listed in :pkg-field:`includes` and
+    :pkg-field:`install-includes`.
+
+.. pkg-field:: c-sources: filename list
+
     A list of C source files to be compiled and linked with the Haskell
     files.
-``js-sources:`` *filename list*
+
+.. pkg-field:: js-sources: filename list
+
     A list of JavaScript source files to be linked with the Haskell
     files (only for JavaScript targets).
-``extra-libraries:`` *token list*
+
+.. pkg-field:: extra-libraries: token list
+
     A list of extra libraries to link with.
-``extra-ghci-libraries:`` *token list*
+
+.. pkg-field:: extra-ghci-libraries: token list
+
     A list of extra libraries to be used instead of 'extra-libraries'
     when the package is loaded with GHCi.
-``extra-lib-dirs:`` *directory list*
+
+.. pkg-field:: extra-lib-dirs: directory list
+
     A list of directories to search for libraries.
-``cc-options:`` *token list*
+
+.. pkg-field:: cc-options: token list
+
     Command-line arguments to be passed to the C compiler. Since the
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent
     parameters <#system-dependent-parameters>`__.
-``cpp-options:`` *token list*
+
+.. pkg-field:: cpp-options: token list
+
     Command-line arguments for pre-processing Haskell code. Applies to
     haskell source and other pre-processed Haskell source like .hsc
     .chs. Does not apply to C code, that's what cc-options is for.
-``ld-options:`` *token list*
+
+.. pkg-field:: ld-options: token list
+
     Command-line arguments to be passed to the linker. Since the
     arguments are compiler-dependent, this field is more useful with the
     setup described in the section on `system-dependent
     parameters <#system-dependent-parameters>`__>.
-``pkgconfig-depends:`` *package list*
+
+.. pkg-field:: pkgconfig-depends: package list
+
     A list of
     `pkg-config <http://www.freedesktop.org/wiki/Software/pkg-config/>`__
     packages, needed to build this package. They can be annotated with
@@ -1617,11 +1725,14 @@ system-dependent values for these fields.
     much preferable to use this field rather than hard code options into
     the other fields.
 
-``frameworks:`` *token list*
+.. pkg-field:: frameworks: token list
+
     On Darwin/MacOS X, a list of frameworks to link to. See Apple's
     developer documentation for more details on frameworks. This entry
     is ignored on all other platforms.
-``extra-frameworks-dirs:`` *directory list*
+
+.. pkg-field:: extra-frameworks-dirs: directory list
+
     On Darwin/MacOS X, a list of directories to search for frameworks.
     This entry is ignored on all other platforms.
 
@@ -1727,15 +1838,22 @@ Example: Using explicit braces rather than indentation for layout
       }
     }
 
+.. pkg-section:: flag
+
 Configuration Flags
 """""""""""""""""""
 
 A flag section takes the flag name as an argument and may contain the
 following fields.
 
-``description:`` *freeform*
+.. pkg-field:: description: freeform
+
     The description of this flag.
-``default:`` *boolean* (default: ``True``)
+
+.. pkg-field:: default: boolean
+
+    :default: ``True``
+
     The default value of this flag.
 
     Note that this value may be `overridden in several
@@ -1746,7 +1864,10 @@ following fields.
     experimental features or debugging support) should therefore
     explicitly override the default to False.
 
-``manual:`` *boolean* (default: ``False``)
+.. pkg-field:: manual: boolean
+
+    :default: ``False``
+
     By default, Cabal will first try to satisfy dependencies with the
     default flag value and then, if that is not possible, with the
     negated value. However, if the flag is manual, then the default
@@ -1913,6 +2034,8 @@ and outside then they are combined using the following rules.
        else
          Main-is: Main.hs
 
+.. pkg-section source-repository::
+
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^
 
@@ -1961,7 +2084,8 @@ repository specifies a tag.
 
 The exact fields are as follows:
 
-``type:`` *token*
+.. pkg-field:: type: token
+
     The name of the source control system used for this repository. The
     currently recognised types are:
 
@@ -1976,7 +2100,8 @@ The exact fields are as follows:
 
     This field is required.
 
-``location:`` *URL*
+.. pkg-field:: location: URL
+
     The location of the repository. The exact form of this field depends
     on the repository type. For example:
 
@@ -1986,14 +2111,16 @@ The exact fields are as follows:
 
     This field is required.
 
-``module:`` *token*
+.. pkg-field:: module: token
+
     CVS requires a named module, as each CVS server can host multiple
     named repositories.
 
     This field is required for the CVS repository type and should not be
     used otherwise.
 
-``branch:`` *token*
+.. pkg-field:: branch: token
+
     Many source control systems support the notion of a branch, as a
     distinct concept from having repositories in separate locations. For
     example CVS, SVN and git use branches while for darcs uses different
@@ -2002,7 +2129,8 @@ The exact fields are as follows:
 
     This field is optional.
 
-``tag:`` *token*
+.. pkg-field:: tag: token
+
     A tag identifies a particular state of a source repository. The tag
     can be used with a ``this`` repository kind to identify the state of
     a repository corresponding to a particular package version or
@@ -2010,7 +2138,8 @@ The exact fields are as follows:
 
     This field is required for the ``this`` repository kind.
 
-``subdir:`` *directory*
+.. pkg-field:: subdir: directory
+
     Some projects put the sources for multiple packages under a single
     source repository. This field lets you specify the relative path
     from the root of the repository to the top directory for the
@@ -2041,11 +2170,13 @@ The ``get`` command supports the following options:
     control system. The optional argument allows to choose a specific
     repository kind.
 
+.. pkg-section:: custom-setup
+
 Custom setup scripts
 --------------------
 
-The optional ``custom-setup`` stanza contains information needed for the
-compilation of custom ``Setup.hs`` scripts,
+The optional :pkg-section:`custom-setup` stanza contains information needed for
+the compilation of custom ``Setup.hs`` scripts,
 
 ::
 
@@ -2054,7 +2185,8 @@ compilation of custom ``Setup.hs`` scripts,
         base >= 4.5 && < 4.11,
         Cabal < 1.25
 
-``setup-depends:`` *package list*
+.. pkg-field:: setup-depends: package list
+
     The dependencies needed to compile ``Setup.hs``. See the
     ```build-depends`` <#build-information>`__ section for a description
     of the syntax expected by this field.
@@ -2063,18 +2195,23 @@ Autogenerated modules
 ---------------------
 
 Modules that are built automatically at setup, created with a custom
-setup script, must appear on ``other-modules`` for the library,
+setup script, must appear on :pkg-field:`other-modules` for the library,
 executable, test-suite or benchmark stanzas or also on
-``exposed-modules`` for libraries to be used, but are not really on the
-package when distributed. This makes commands like sdist fail because
-the file is not found.
+:pkg-field:`library:exposed-modules` for libraries to be used, but are not
+really on the package when distributed. This makes commands like sdist fail
+because the file is not found.
 
-This special modules must appear again on the ``autogen-modules`` field
-of the stanza that is using it, besides ``other-modules`` or
-``exposed-modules``. With this there is no need to create complex build
-hooks for this poweruser case.
+This special modules must appear again on the :pkg-field:`autogen-modules`
+field of the stanza that is using it, besides :pkg-field:`other-modules` or
+:pkg-field:`library:exposed-modules`. With this there is no need to create
+complex build hooks for this poweruser case.
 
-Right now ``main-is`` modules are not supported on ``autogen-modules``.
+.. pkg-field:: autogen-modules: module list
+
+   .. TODO: document autogen-modules field
+
+Right now :pkg-field:`executable:main-is` modules are not supported on
+:pkg-field:`autogen-modules`.
 
 ::
 
@@ -2102,12 +2239,12 @@ Right now ``main-is`` modules are not supported on ``autogen-modules``.
 Accessing data files from package code
 --------------------------------------
 
-The placement on the target system of files listed in the ``data-files``
-field varies between systems, and in some cases one can even move
-packages around after installation (see `prefix
+The placement on the target system of files listed in
+the :pkg-field:`data-files` field varies between systems, and in some cases
+one can even move packages around after installation (see `prefix
 independence <installing-packages.html#prefix-independence>`__). To
 enable packages to find these files in a portable way, Cabal generates a
-module called ``Paths_``\ *pkgname* (with any hyphens in *pkgname*
+module called :file:`Paths_{pkgname}` (with any hyphens in *pkgname*
 replaced by underscores) during building, so that it may be imported by
 modules of the package. This module defines a function
 
@@ -2115,20 +2252,20 @@ modules of the package. This module defines a function
 
     getDataFileName :: FilePath -> IO FilePath
 
-If the argument is a filename listed in the ``data-files`` field, the
+If the argument is a filename listed in the :pkg-field:`data-files` field, the
 result is the name of the corresponding file on the system on which the
 program is running.
 
-Note: If you decide to import the ``Paths_``\ *pkgname* module then it
-*must* be listed in the ``other-modules`` field just like any other
-module in your package and on ``autogen-modules`` as the file is
+Note: If you decide to import the :file:`Paths_{pkgname}` module then it
+*must* be listed in the :pkg-field:`other-modules` field just like any other
+module in your package and on :pkg-field:`autogen-modules` as the file is
 autogenerated.
 
-The ``Paths_``\ *pkgname* module is not platform independent, as any
+The :file:`Paths_{pkgname}` module is not platform independent, as any
 other autogenerated module, so it does not get included in the source
 tarballs generated by ``sdist``.
 
-The ``Paths_``\ *pkgname* module also includes some other useful
+The :file:`Paths_{pkgname}` module also includes some other useful
 functions and values, which record the version of the package and some
 other directories which the package has been configured to be installed
 into (e.g. data files live in ``getDataDir``):
@@ -2154,7 +2291,7 @@ the configured data directory for ``pretty-show`` is controlled with the
 Accessing the package version
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The aforementioned auto generated ``Paths_``\ *pkgname* module also
+The aforementioned auto generated :file:`Paths_{pkgname}` module also
 exports the constant ``version ::``
 `Version <http://hackage.haskell.org/package/base/docs/Data-Version.html>`__
 which is defined as the version of your package as specified in the
@@ -2176,7 +2313,7 @@ such situations. In this case, ``Setup.hs`` should be:
 Most packages, however, would probably do better using the ``Simple``
 build type and `configurations <#configurations>`__.
 
-The ``build-type`` ``Configure`` differs from ``Simple`` in two ways:
+The :pkg-field:`build-type` ``Configure`` differs from ``Simple`` in two ways:
 
 -  The package root directory must contain a shell script called
    ``configure``. The configure step will run the script. This
@@ -2272,14 +2409,14 @@ files and preprocessed Haskell source files in the package.
 Note: Packages using these features will also need to list additional
 files such as ``configure``, templates for ``.buildinfo`` files, files
 named only in ``.buildinfo`` files, header files and so on in the
-``extra-source-files`` field to ensure that they are included in source
-distributions. They should also list files and directories generated by
-``configure`` in the ``extra-tmp-files`` field to ensure that they are
+:pkg-field:`extra-source-files` field to ensure that they are included in
+source distributions. They should also list files and directories generated by
+``configure`` in the :pkg-field:`extra-tmp-files` field to ensure that they are
 removed by ``setup clean``.
 
 Quite often the files generated by ``configure`` need to be listed
 somewhere in the package description (for example, in the
-``install-includes`` field). However, we usually don't want generated
+:pkg-field:`install-includes` field). However, we usually don't want generated
 files to be included in the source tarball. The solution is again
 provided by the ``.buildinfo`` file. In the above example, the following
 line should be added to ``X11.buildinfo``:
@@ -2299,7 +2436,7 @@ Conditional compilation
 
 Sometimes you want to write code that works with more than one version
 of a dependency. You can specify a range of versions for the dependency
-in the ``build-depends``, but how do you then write the code that can
+in the :pkg-field:`build-depends`, but how do you then write the code that can
 use different versions of the API?
 
 Haskell lets you preprocess your code using the C preprocessor (either
@@ -2320,7 +2457,7 @@ available version in your Haskell modules like this:
 
 In general, Cabal supplies a macro
 ``MIN_VERSION_``\ *``package``*\ ``_(A,B,C)`` for each package depended
-on via ``build-depends``. This macro is true if the actual version of
+on via :pkg-field:`build-depends`. This macro is true if the actual version of
 the package in use is greater than or equal to ``A.B.C`` (using the
 conventional ordering on version numbers, which is lexicographic on the
 sequence, but numeric on each component, so for example 1.2.0 is greater
@@ -2350,7 +2487,7 @@ More complex packages
 For packages that don't fit the simple schemes described above, you have
 a few options:
 
--  By using the ``build-type`` ``Custom``, you can supply your own
+-  By using the :pkg-field:`build-type` ``Custom``, you can supply your own
    ``Setup.hs`` file, and customize the simple build infrastructure
    using *hooks*. These allow you to perform additional actions before
    and after each command is run, and also to specify additional
@@ -2369,12 +2506,12 @@ a few options:
    likely to change in future releases.
 
    If you use a custom ``Setup.hs`` file you should strongly consider
-   adding a ``custom-setup`` stanza with a ``setup-depends`` field to
-   ensure that your setup script does not break with future dependency
-   versions.
+   adding a :pkg-section:`custom-setup` stanza with a
+   :pkg-field:`custom-setup:setup-depends` field to ensure that your setup
+   script does not break with future dependency versions.
 
 -  You could delegate all the work to ``make``, though this is unlikely
-   to be very portable. Cabal supports this with the ``build-type``
+   to be very portable. Cabal supports this with the :pkg-field:`build-type`
    ``Make`` and a trivial setup library
    `Distribution.Make <../release/cabal-latest/doc/API/Cabal/Distribution-Make.html>`__,
    which simply parses the command line arguments and invokes ``make``.
@@ -2413,7 +2550,7 @@ a few options:
                                   libexecdir=$(destdir)/$(libexecdir) \
                                   sysconfdir=$(destdir)/$(sysconfdir) \
 
--  Finally, with the ``build-type`` ``Custom``, you can also write your
+-  Finally, with the :pkg-field:`build-type` ``Custom``, you can also write your
    own setup script from scratch. It must conform to the interface
    described in the section on `building and installing
    packages <installing-packages.html>`__, and you may use the Cabal

@@ -11,6 +11,8 @@ import sphinx_rtd_theme
 
 # Support for :base-ref:, etc.
 sys.path.insert(0, os.path.abspath('.'))
+import cabaldomain
+
 version = "1.25"
 
 extensions = ['sphinx.ext.extlinks']
@@ -39,6 +41,8 @@ release = version  # The full version, including alpha/beta/rc tags.
 # Syntax highlighting
 highlight_language = 'cabal'
 #pygments_style = 'tango'
+
+primary_domain = 'cabal'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -190,7 +194,8 @@ def setup(app):
                         doc_field_types=[
                             Field('since', label='Introduced in GHC version', names=['since']),
                         ])
-    app.add_lexer('cabal', CabalLexer())
+
+    cabaldomain.setup(app)
 
 def increase_python_stack():
     # Workaround sphinx-build recursion limit overflow:
@@ -200,29 +205,3 @@ def increase_python_stack():
     # Default python allows recursion depth of 1000 calls.
     sys.setrecursionlimit(10000)
 
-
-import pygments.lexer as lexer
-import pygments.token as token
-import re
-
-class CabalLexer(lexer.RegexLexer):
-    name = 'Cabal'
-    aliases = ['cabal']
-    filenames = ['.cabal']
-    flags = re.MULTILINE
-
-    tokens = {
-      'root' : [
-          (r'\n', token.Text),
-          (r'^\s*(--.*)$', token.Comment.Single),
-          # key: value
-          (r'^(\s*)([\w\-_]+)(:)',
-           lexer.bygroups(token.Whitespace, token.Keyword, token.Punctuation)),
-          (r'^([\w\-_]+)', token.Keyword), # library, executable, flag etc.
-          (r'[^\S\n]+', token.Text),
-          (r'(\n\s*|\t)', token.Whitespace),
-          (r'&&|\|\||==|<=|>=|<|>|^>=', token.Operator),
-          (r',|:|{|}', token.Punctuation),
-          (r'.', token.Text)
-      ],
-    }
