@@ -6,13 +6,25 @@ from docutils.parsers.rst import Directive, directives, roles
 import pygments.lexer as lexer
 import pygments.token as token
 
+from distutils.version import StrictVersion
+
 from sphinx import addnodes
 from sphinx.directives import ObjectDescription
 from sphinx.domains import ObjType, Domain
 from sphinx.domains.std import StandardDomain
 from sphinx.locale import l_, _
 from sphinx.roles import XRefRole
+from sphinx.util.docfields import Field, DocFieldTransformer
 from sphinx.util.nodes import make_refnode
+
+def parse_deprecated(txt):
+    if txt is None:
+        return True
+    try:
+        return StrictVersion(txt)
+    except ValueError:
+        return True
+
 
 class CabalPackageSection(Directive):
     """
@@ -24,7 +36,10 @@ class CabalPackageSection(Directive):
     required_arguments = 1
     optional_arguments = 0
     final_argument_whitespace = True
-    option_spec = {}
+    option_spec = {
+        'deprecated': parse_deprecated,
+        'since' : StrictVersion
+    }
 
     def run(self):
         env = self.state.document.settings.env
@@ -43,27 +58,80 @@ class CabalPackageSection(Directive):
         inode = addnodes.index(entries=[('pair', indexentry,
                                          targetname, '', None)])
 
+        meta = Meta(since=self.options.get('since'),
+                    deprecated=self.options.get('deprecated'))
+
         env.domaindata['cabal']['pkg-sections'][section] = \
-            env.docname, targetname
+            env.docname, targetname, meta
 
         return [inode, node]
 
-class CabalPackageField(ObjectDescription):
+class Meta(object):
+    def __init__(self, since=None, deprecated=None):
+        self.since = since
+        self.deprecated = deprecated
+
+class CabalField(ObjectDescription):
+    option_spec = {
+        'noindex': directives.flag,
+        'deprecated': parse_deprecated,
+        'since' : StrictVersion
+    }
+
+    doc_field_types = [
+        Field('default', label='Default value', names=['default'], has_arg=False)
+    ]
+
+    def get_meta(self):
+        return Meta(since=self.options.get('since'),
+                    deprecated=self.options.get('deprecated'))
+
+    def get_index_entry(self, env, name):
+        return name, self.objtype + '-' + name
+
+    def get_env_key(self, env, name):
+        return self.name
+
     def handle_signature(self, sig, signode):
-        sig.strip()
+        sig = sig.strip()
         parts = sig.split(':',1)
         name = parts[0]
-        signode += addnodes.desc_name(name+':', name+':')
+        signode += addnodes.desc_name(name, name)
+        signode += addnodes.desc_name(':', ':')
 
         if len(parts) > 1:
-            rest = parts[1]
-            rest.strip()
-            signode += addnodes.desc_annotation(rest, rest)
+            rest = parts[1].strip()
+            signode += addnodes.desc_addname(rest, rest)
+
+        meta = self.get_meta()
+
+        rendered = render_meta(meta)
+        if rendered != '':
+            signode += addnodes.desc_annotation(' ' + rendered, ' '+rendered)
+
         return name
 
     def add_target_and_index(self, name, sig, signode):
         env = self.state.document.settings.env
 
+        indexentry, targetname = self.get_index_entry(self, name)
+
+        signode['ids'].append(targetname)
+        self.state.document.note_explicit_target(signode)
+
+        inode = addnodes.index(
+            entries=[('pair', indexentry, targetname, '', None)])
+        signode.insert(0, inode)
+
+        meta = Meta(since=self.options.get('since'),
+                    deprecated=self.options.get('deprecated'))
+         #for ref finding
+        key = self.get_env_key(env, name)
+        store = CabalDomain.types[self.objtype]
+        env.domaindata['cabal'][store][key] = env.docname, targetname, meta
+
+class CabalPackageField(CabalField):
+    def get_index_entry(self, env, name):
         section = self.env.ref_context.get('cabal:section')
 
         if section is not None:
@@ -74,28 +142,24 @@ class CabalPackageField(ObjectDescription):
             indexentry = name + '; package.cabal field'
 
         targetname = '-'.join(parts)
-        signode['ids'].append(targetname)
-        self.state.document.note_explicit_target(signode)
+        return indexentry, targetname
 
-        inode = addnodes.index(entries=[('pair', indexentry,
-                                         targetname, '', None)])
-        signode.insert(0, inode)
-
-        #for ref finding
-        env.domaindata['cabal']['pkg-fields'][section,name] = \
-            env.docname, targetname
+    def get_env_key(self, env, name):
+        section = env.ref_context.get('cabal:section')
+        return section, name
 
 class CabalPackageFieldXRef(XRefRole):
     def process_link(self, env, refnode, has_explicit_title, title, target):
         parts = target.split(':',1)
         if len(parts) == 2:
             section, target = parts
-            section.strip()
-            target.strip()
+            section = section.strip()
+            target = target.strip()
             refnode['cabal:section'] = section
         else:
             refnode['cabal:section'] = env.ref_context.get('cabal:section')
         return title, target
+
 
 def make_data_keys(typ, target, node):
     if typ == 'pkg-field':
@@ -104,18 +168,31 @@ def make_data_keys(typ, target, node):
     else:
         return [target]
 
-def make_title(typ, key):
+def render_meta(meta):
+    if meta.deprecated is not None:
+        if isinstance(meta.deprecated, StrictVersion):
+            return ' (deprecated since:'+str(meta.deprecated) + ')'
+        else:
+            return '(deprecated)'
+    elif meta.since is not None:
+        return ' (since version: ' + str(meta.since) + ')'
+    else:
+        return ''
+
+def make_title(typ, key, meta):
     if typ == 'pkg-section':
-        return "package.cabal " + key + "section"
+        return "package.cabal " + key + "section" + render_meta(meta)
 
     if typ == 'pkg-field':
         section, name = key
         if section is not None:
-            return "package.cabal " + section + " section " + name + " field"
+            base = "package.cabal " + section + " section " + name + " field"
         else:
-            return "package.cabal " + name + " field"
+            base = "package.cabal " + name + " field"
 
-def make_full_name(typ, key):
+        return base + render_meta(meta)
+
+def make_full_name(typ, key, meta):
     if typ == 'pkg-section':
         return 'pkg-section-' + key
 
@@ -142,7 +219,6 @@ class CabalDomain(Domain):
         'pkg-field'  : CabalPackageFieldXRef(warn_dangling=True),
     }
     initial_data = {
-        'objects': {},
         'pkg-sections': {},
         'pkg-fields': {},
     }
@@ -154,8 +230,8 @@ class CabalDomain(Domain):
         'pkg-field'  : 'pkg-fields'
     }
     def clear_doc(self, docname):
-        for k in ['objects', 'pkg-sections', 'pkg-fields']:
-            for name, (fn, _) in self.data[k].items():
+        for k in ['pkg-sections', 'pkg-fields']:
+            for name, (fn, _, _) in self.data[k].items():
                 if fn == docname:
                     del self.data[k][comname]
 
@@ -167,15 +243,15 @@ class CabalDomain(Domain):
                 data = env.domaindata['cabal'][self.types[typ]][key]
             except KeyError:
                 continue
-            doc, ref = data
-            title = make_title(typ, key)
+            doc, ref, meta = data
+            title = make_title(typ, key, meta)
             return make_refnode(builder, fromdocname, doc, ref, contnode, title)
 
     def get_objects(self):
         for typ in ['pkg-section', 'pkg-field']:
             key = self.types[typ]
-            for name, (fn, target) in self.data[key].items():
-                title = make_title(typ, name)
+            for name, (fn, target, meta) in self.data[key].items():
+                title = make_title(typ, name, meta)
                 yield title, title, typ, fn, target, 0
 
 class CabalLexer(lexer.RegexLexer):
@@ -186,15 +262,13 @@ class CabalLexer(lexer.RegexLexer):
 
     tokens = {
       'root' : [
-          (r'\n', token.Text),
-          (r'^\s*(--.*)$', token.Comment.Single),
+          (r'^(\s*)(--.*)$', lexer.bygroups(token.Whitespace, token.Comment.Single)),
           # key: value
           (r'^(\s*)([\w\-_]+)(:)',
            lexer.bygroups(token.Whitespace, token.Keyword, token.Punctuation)),
           (r'^([\w\-_]+)', token.Keyword), # library, executable, flag etc.
           (r'[^\S\n]+', token.Text),
-          (r'(\n\s*|\t)', token.Whitespace),
-          (r'&&|\|\||==|<=|>=|<|>|^>=', token.Operator),
+          (r'&&|\|\||==|<=|\^>=|>=|<|>', token.Operator),
           (r',|:|{|}', token.Punctuation),
           (r'.', token.Text)
       ],
