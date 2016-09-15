@@ -405,10 +405,13 @@ following sources (later entries override earlier ones):
 Specifying the local packages
 -----------------------------
 
+.. cfg-section:: packages
+
 The following top-level options specify what the local packages of a
 project are:
 
 .. cfg-field:: packages: package location list (space or comma separated)
+    :synopsis: Project packages.
 
     :default: ``./*.cabal``
 
@@ -435,19 +438,21 @@ project are:
     There is no command line variant of this field; see :issue:`3585`.
 
 .. cfg-field:: optional-packages: package location list (space or comma-separated)
+    :synopsis: Optional project packages.
 
     :default: ``./*/*.cabal``
 
-    Like ``packages:``, specifies a list of package locations containing
-    local packages to be built. Unlike ``packages:``, if we glob for a
-    package, it is permissible for the glob to match against zero
-    packages. The intended use-case for ``optional-packages`` is to make
-    it so that vendored packages can be automatically picked up if they
-    are placed in a subdirectory, but not error if there aren't any.
+    Like :cfg-field:`packages`, specifies a list of package locations
+    containing local packages to be built. Unlike :cfg-field:`packages`,
+    if we glob for a package, it is permissible for the glob to match against
+    zero packages. The intended use-case for :cfg-field:`optional-packages`
+    is to make it so that vendored packages can be automatically picked up if
+    they are placed in a subdirectory, but not error if there aren't any.
 
     There is no command line variant of this field.
 
 .. cfg-field:: extra-packages: package list with version bounds (comma separated)
+    :synopsis: Adds external pacakges as local
 
     [STRIKEOUT:Specifies a list of external packages from Hackage which
     should be considered local packages.] (Not implemented)
@@ -510,11 +515,14 @@ Formally, the format described by the following BNF:
 Global configuration options
 ----------------------------
 
+.. cfg-section:: global
+
 The following top-level configuration options are not specific to any
 package, and thus apply globally:
 
 .. cfg-field:: verbose: nat
                --verbose=n, -vn
+    :synopsis: Build verbosity level.
 
     :default: 1
 
@@ -526,6 +534,7 @@ package, and thus apply globally:
 
 .. cfg-field:: jobs: nat or $ncpus
                --jobs=n, -jn, --jobs=$ncpus
+    :synopsis: Number of builds running in parallel.
 
     :default: 1
 
@@ -540,6 +549,7 @@ package, and thus apply globally:
 
 .. cfg-field::  keep-going: boolean
                 --keep-going
+    :synopsis: Try to continue building on failure.
 
     :default: False
 
@@ -552,10 +562,13 @@ package, and thus apply globally:
 Solver configuration options
 ----------------------------
 
+.. cfg-section:: solver
+
 The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: constraints: constraints list (comma separated)
                --constrant="pkg >= 2.0"
+    :synopsis: Extra dependencies constraints.
 
     Add extra constraints to the version bounds, flag settings, and
     other properties a solver can pick for a package. For example, to
@@ -619,6 +632,7 @@ The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: preferences: preference (comma separated)
                --preference="pkg >= 2.0"
+    :synopsis: Prefered dependency versions.
 
     Like :cfg-field:`constraints`, but the solver will attempt to satisfy
     these preferences on a best-effort basis. The resulting install is locally
@@ -643,6 +657,7 @@ The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
                --allow-newer, --allow-newer=[none,all,pkg]
+    :synopsis: Lift dependencies upper bound constaints.
 
     :default: ``none``
 
@@ -687,6 +702,7 @@ The following settings control the behavior of the dependency solver:
 
 .. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
                --allow-older, --allow-older=[none,all,pkg]
+    :synopsis: Lift dependency lower bound constaints.
 
     :default: ``none``
 
@@ -698,6 +714,8 @@ The following settings control the behavior of the dependency solver:
 
 Package configuration options
 -----------------------------
+
+.. cfg-section:: package
 
 Package options affect the building of specific packages. There are two
 ways a package option can be specified:
@@ -736,6 +754,7 @@ feature was added.
 
 .. cfg-field:: flags: list of +flagname or -flagname (space separated)
                --flags="+foo -bar", -ffoo, -f-bar
+    :synopsis: Enable or disable package flags.
 
     Force all flags specified as ``+flagname`` to be true, and all flags
     specified as ``-flagname`` to be false. For example, to enable the
@@ -770,6 +789,7 @@ feature was added.
 
 .. cfg-field:: with-compiler: executable
                --with-compiler=executable
+    :synopsis: Path to compiler executable.
 
     Specify the path to a particular compiler to be used. If not an
     absolute path, it will be resolved according to the :envvar:`PATH`
@@ -801,6 +821,7 @@ feature was added.
 
 .. cfg-field:: with-hc-pkg: executable
                --with-hc-pkg=executable
+    :synopsis: Specifies package tool.
 
     Specify the path to the package tool, e.g., ``ghc-pkg``. This
     package tool must be compatible with the compiler specified by
@@ -814,6 +835,7 @@ feature was added.
 .. cfg-field:: optimization: nat
                --enable-optimization
                --disable-optimization
+    :synopsis: Build with optimization.
 
     :default: ``1``
 
@@ -843,6 +865,7 @@ feature was added.
 
 .. cfg-field:: configure-options: args (space separated)
                --configure-option=arg
+    :synopsis: Options to pass to configure script.
 
     A list of extra arguments to pass to the external ``./configure``
     script, if one is used. This is only useful for packages which have
@@ -855,6 +878,7 @@ feature was added.
 
 .. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, uhc or haskell-suite
                --compiler=compiler
+    :synopsis: Compiler to build with.
 
     :default: ``ghc``
 
@@ -867,6 +891,7 @@ feature was added.
 .. cfg-field:: tests: boolean
                --enable-tests
                --disable-tests
+    :synopsis: Build tests.
 
     :default: ``False``
 
@@ -881,6 +906,7 @@ feature was added.
 .. cfg-field:: benchmarks: boolean
                --enable-benchmarks
                --disable-benchmarks
+    :synopsis: Build benchmarks.
 
     :default: ``False``
 
@@ -894,6 +920,7 @@ feature was added.
 
 .. cfg-field:: extra-prog-path: paths (newline or comma separated)
                --extra-prog-path=PATH
+    :synopsis: Add directories to program search path.
     :since: 1.18
 
     A list of directories to search for extra required programs. Most
@@ -907,6 +934,7 @@ feature was added.
 
 .. cfg-field:: run-tests: boolean
                --run-tests
+    :synopsis: Run package test suite upon installation.
 
     :default: ``False``
 
@@ -927,9 +955,12 @@ feature was added.
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: object
+
 .. cfg-field:: debug-info: boolean
                --enable-debug-info
                --disable-debug-info
+    :synopsis: Build with debug info enabled.
     :since: 1.22
 
     :default: False
@@ -948,6 +979,7 @@ Object code options
 .. cfg-field:: split-objs: boolean
                --enable-split-objs
                --disable-split-objs
+    :synopsis: Use GHC split objects feature.
 
     :default: False
 
@@ -963,6 +995,7 @@ Object code options
 .. cfg-field:: executable-stripping: boolean
                --enable-executable-stripping
                --disable-executable-stripping
+    :synopsis: Strip installed programs.
 
     :default: True
 
@@ -983,6 +1016,7 @@ Object code options
 .. cfg-field:: library-stripping: boolean
                --enable-library-stripping
                --disable-library-stripping
+    :synopsis: Strip installed libraries.
     :since: 1.19
 
     When installing binary libraries, run the ``strip`` program on the
@@ -995,8 +1029,11 @@ Object code options
 Executable options
 ^^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: exectuable
+
 .. cfg-field:: program-prefix: prefix
                --program-prefix=prefix
+    :synopsis: Prepend prefix to program names.
 
     [STRIKEOUT:Prepend *prefix* to installed program names.] (Currently
     implemented in a silly and not useful way. If you need this to work
@@ -1010,6 +1047,7 @@ Executable options
 
 .. cfg-field:: program-suffix: suffix
                --program-suffix=suffix
+    :synopsis: Append refix to program names.
 
     [STRIKEOUT:Append *suffix* to installed program names.] (Currently
     implemented in a silly and not useful way. If you need this to work
@@ -1029,9 +1067,12 @@ Executable options
 Dynamic linking options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: linking
+
 .. cfg-field:: shared: boolean
                --enable-shared
                --disable-shared
+    :synopsis: Build shared library.
 
     :default: False
 
@@ -1044,6 +1085,7 @@ Dynamic linking options
 .. cfg-field:: executable-dynamic: boolean
                --enable-executable-dynamic
                --disable-executable-dynamic
+    :synopsis: Link executables dynamically.
 
     :default: False
 
@@ -1058,6 +1100,7 @@ Dynamic linking options
 .. cfg-field:: library-for-ghci: boolean
                --enable-library-for-ghci
                --disable-library-for-ghci
+    :synopsis: Build libraries suitable for use with GHCi.
 
     :default: True
 
@@ -1073,6 +1116,7 @@ Dynamic linking options
 
 .. cfg-field:: relocatable:
                --relocatable
+    :synopsis: Build relocatable package.
     :since: 1.21
 
     :default: False
@@ -1085,8 +1129,11 @@ Dynamic linking options
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: ffi
+
 .. cfg-field:: extra-include-dirs: directories (comma or newline separated list)
                --extra-include-dirs=DIR
+    :synopsis: Adds C header search path.
 
     An extra directory to search for C header files. You can use this
     flag multiple times to get a list of directories.
@@ -1106,6 +1153,7 @@ Foreign function interface options
 
 .. cfg-field:: extra-lib-dirs: directories (comma or newline separated list)
                --extra-lib-dirs=DIR
+    :synopsis: Adds library search directory.
 
     An extra directory to search for system libraries files.
 
@@ -1114,6 +1162,7 @@ Foreign function interface options
 
 .. cfg-field:: extra-framework-dirs: directories (comma or newline separated list)
                --extra-framework-dirs=DIR
+    :synopsis: Adds framework search directory (OS X only).
 
     An extra directory to search for frameworks (OS X only).
 
@@ -1134,9 +1183,12 @@ Foreign function interface options
 Profiling options
 ^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: profiling
+
 .. cfg-field:: profiling: boolean
                --enable-profiling
                --disable-profiling
+    :synopsis: Enable profiling builds.
     :since: 1.21
 
     :default: False
@@ -1159,6 +1211,7 @@ Profiling options
 .. cfg-field:: library-vanilla: boolean
                --enable-library-vanilla
                --disable-library-vanilla
+    :synopsis: Build libraries without profiling.
 
     :default: True
 
@@ -1172,6 +1225,7 @@ Profiling options
 .. cfg-field:: library-profiling: boolean
                --enable-library-profiling
                --disable-library-profiling
+    :synopsis: Build libraries with profiling enabled.
     :since: 1.21
 
     :default: False
@@ -1184,6 +1238,7 @@ Profiling options
 .. cfg-field:: executable-profiling: boolean
                --enable-executable-profiling
                --disable-executable-profiling
+    :synopsis: Build executables with profiling enabled.
     :since: 1.21
 
     :default: False
@@ -1196,6 +1251,7 @@ Profiling options
 
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
+    :synopsis: Profiling detail level.
     :since: 1.23
 
     Some compilers that support profiling, notably GHC, can allocate
@@ -1235,6 +1291,7 @@ Profiling options
 
 .. cfg-field:: library-profiling-detail: level
                --library-profiling-detail=level
+    :synopsis: Libraries profiling detail level.
     :since: 1.23
 
     Like :cfg-field:`profiling-detail`, but applied only to libraries
@@ -1245,9 +1302,12 @@ Profiling options
 Coverage options
 ^^^^^^^^^^^^^^^^
 
+.. cfg-section:: coverage
+
 .. cfg-field:: coverage: boolean
                --enable-coverage
                --disable-coverage
+    :synopsis: Build with coverage enabled.
     :since: 1.21
 
     :default: False
@@ -1275,12 +1335,15 @@ Coverage options
 Haddock options
 ^^^^^^^^^^^^^^^
 
+.. cfg-section:: haddock
+
 Documentation building support is fairly sparse at the moment. Let us
 know if it's a priority for you!
 
 .. cfg-field:: documentation: boolean
                --enable-documentation
                --disable-documentation
+    :synopsis: Enable building of documentation.
 
     :default: False
 
@@ -1291,6 +1354,7 @@ know if it's a priority for you!
 
 .. cfg-field:: doc-index-file: templated path
                --doc-index-file=TEMPLATE
+    :synopsis: Path to haddock templates.
 
     A central index of Haddock API documentation (template cannot use
     ``$pkgid``), which should be updated as documentation is built.
@@ -1302,6 +1366,7 @@ The following commands are equivalent to ones that would be passed when
 running ``setup haddock``. (TODO: Where does the documentation get put.)
 
 .. cfg-field:: haddock-hoogle: boolean
+    :synopsis: Generate Hoogle file.
 
     :default: False
 
@@ -1313,6 +1378,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` command).
 
 .. cfg-field:: haddock-html: boolean
+    :synopsis: Build HTML documentation.
 
     :default: True
 
@@ -1322,6 +1388,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` command).
 
 .. cfg-field:: haddock-html-location: templated path
+    :synopsis: Haddock HTML templates location.
 
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions are applied to the template
@@ -1341,6 +1408,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     the ``haddock`` subcommand).
 
 .. cfg-field:: haddock-executables: boolean
+    :synopsis: Generate documentation for executables.
 
     :default: False
 
@@ -1350,6 +1418,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-tests: boolean
+    :synopsis: Generate documentation for tests.
 
     :default: False
 
@@ -1359,6 +1428,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-benchmarks: boolean
+    :synopsis: Generate documentation for benchmarks.
 
     :default: False
 
@@ -1368,6 +1438,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-all: boolean
+    :synopsis: Generate documentation for everything
 
     :default: False
 
@@ -1377,6 +1448,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-internal: boolean
+    :synopsis: Generate documentation for internal modules
 
     :default: False
 
@@ -1387,6 +1459,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-css: path
+    :synopsis: Location of Haddoc CSS file.
 
     The CSS file that should be used to style the generated
     documentation (overriding haddock's default.)
@@ -1395,6 +1468,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-hyperlink-source: boolean
+    :synopsis: Generate hyperlinked source code for documentation
 
     :default: False
 
@@ -1405,6 +1479,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     the ``haddock`` subcommand).
 
 .. cfg-field:: haddock-hscolour-css: path
+    :synopsis: Location of CSS file for HsColour
 
     The CSS file that should be used to style the generated hyperlinked
     source code (from `HsColour`_).
@@ -1413,6 +1488,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     ``haddock`` subcommand).
 
 .. cfg-field:: haddock-contents-location: URL
+    :synopsis: URL for contents page.
 
     A baked-in URL to be used as the location for the contents page.
 
@@ -1420,6 +1496,7 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     (for the ``haddock`` subcommand).
 
 .. cfg-field:: haddock-keep-temp-files: boolean
+    :synopsis: Keep temporary Haddock files.
 
     Keep temporary files.
 
@@ -1429,8 +1506,11 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
+.. cfg-section:: advanced-global
+
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
+    :synopsis: Transport to use with http(s) requests.
 
     :default: ``curl``
 
@@ -1440,6 +1520,7 @@ Advanced global configuration options
 
 .. cfg-field:: ignore-expiry: boolean
                --ignore-expiry
+    :synopsis: Ignore Hackage expiration dates.
 
     :default: False
 
@@ -1455,6 +1536,7 @@ Advanced global configuration options
 
 .. cfg-field:: remote-repo-cache: directory
                --remote-repo-cache=DIR
+    :synopsis: Location of packages cache.
 
     :default: ``~/.cabal/packages``
 
@@ -1466,6 +1548,7 @@ Advanced global configuration options
 
 .. cfg-field:: logs-dir: directory
                --logs-dir=DIR
+    :synopsis: Directory to store build logs.
 
     :default: ``~/.cabal/logs``
 
@@ -1476,6 +1559,7 @@ Advanced global configuration options
 
 .. cfg-field:: build-summary: template filepath
                --build-summary=TEMPLATE
+    :synopsis: Build summaries location.
 
     :default: ``~/.cabal/logs/build.log``
 
@@ -1510,10 +1594,13 @@ Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+.. cfg-section:: advanced-solver
+
 Most users generally won't need these.
 
 .. cfg-field:: solver: modular
                --solver=modular
+    :synopsis: Which solver to use.
 
     This field is reserved to allow the specification of alternative
     dependency solvers. At the moment, the only accepted option is
@@ -1523,6 +1610,7 @@ Most users generally won't need these.
 
 .. cfg-field:: max-backjumps: nat
                --max-backjumps=N
+    :synopsis: Maximum number of solver backjumps.
 
     :default: 2000
 
@@ -1535,6 +1623,7 @@ Most users generally won't need these.
 .. cfg-field:: reorder-goals: boolean
                --reorder-goals
                --no-reorder-goals
+    :synopsis: Allow solver to reorder goals.
 
     :default: False
 
@@ -1549,6 +1638,7 @@ Most users generally won't need these.
 .. cfg-field:: count-conflicts: boolean
                --count-conflicts
                --no-count-conflicts
+    :synopsis: Solver prefers versions with less conflicts.
 
     :default: True
 
@@ -1561,6 +1651,7 @@ Most users generally won't need these.
 .. cfg-field:: strong-flags: boolean
                --strong-flags
                --no-strong-flags
+    :synopsis: Do not defer flag choices when solving.
 
     :default: False
 
@@ -1570,6 +1661,7 @@ Most users generally won't need these.
 
 .. cfg-field:: cabal-lib-version: version
                --cabal-lib-version=version
+    :synopsis: Version of Cabal library used to build package.
 
     This field selects the version of the Cabal library which should be
     used to build packages. This option is intended primarily for

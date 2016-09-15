@@ -736,10 +736,10 @@ mandatory.
 Some fields are marked as required. All others are optional, and unless
 otherwise specified have empty default values.
 
-.. pkg-section:: None
-
 Package properties
 ^^^^^^^^^^^^^^^^^^
+
+.. pkg-section:: global
 
 These fields may occur in the first top-level properties section and
 describe the package as a whole:
@@ -984,10 +984,10 @@ describe the package as a whole:
     additional hooks, such as the scheme described in the section on
     `system-dependent parameters`_
 
-.. pkg-section:: library
-
 Library
 ^^^^^^^
+
+.. pkg-section:: library
 
 The library section should contain the following fields:
 
@@ -1144,10 +1144,10 @@ For example, given the following dependencies specified in
       foo >= 0.5.2 && < 0.6
       bar >= 1.1 && < 1.2
 
-.. pkg-section:: executable
-
 Executables
 ^^^^^^^^^^^
+
+.. pkg-section:: executable
 
 Executable sections (if present) describe executable programs contained
 in the package and must have an argument after the section label, which
@@ -1182,10 +1182,10 @@ executable defined in the whole package, the executable's name can be
 omitted. See the output of ``cabal help run`` for a list of options you
 can pass to ``cabal run``.
 
-.. pkg-section:: test
-
 Test suites
 ^^^^^^^^^^^
+
+.. pkg-section:: test
 
 Test suite sections (if present) describe package test suites and must
 have an argument after the section label, which defines the name of the
@@ -1334,10 +1334,10 @@ You can have Cabal run your test suites using its built-in test runner:
 See the output of ``cabal help test`` for a list of options you can pass
 to ``cabal test``.
 
-.. pkg-section:: benchmark
-
 Benchmarks
 ^^^^^^^^^^
+
+.. pkg-section:: benchmark
 
 Benchmark sections (if present) describe benchmarks contained in the
 package and must have an argument after the section label, which defines
@@ -1425,10 +1425,10 @@ runner:
 See the output of ``cabal help bench`` for a list of options you can
 pass to ``cabal bench``.
 
-.. pkg-section:: None
-
 Build information
 ^^^^^^^^^^^^^^^^^
+
+.. pkg-section:: build
 
 The following fields may be optionally present in a library, executable,
 test suite or benchmark section, and give information for the building
@@ -1843,10 +1843,10 @@ Example: Using explicit braces rather than indentation for layout
       }
     }
 
-.. pkg-section:: flag
-
 Configuration Flags
 """""""""""""""""""
+
+.. pkg-section:: flags
 
 A flag section takes the flag name as an argument and may contain the
 following fields.
@@ -2039,10 +2039,10 @@ and outside then they are combined using the following rules.
        else
          Main-is: Main.hs
 
-.. pkg-section source-repository::
-
 Source Repositories
 ^^^^^^^^^^^^^^^^^^^
+
+.. pkg-section:: source-repository
 
 It is often useful to be able to specify a source revision control
 repository for a package. Cabal lets you specifying this information in
@@ -2175,11 +2175,11 @@ The ``get`` command supports the following options:
     control system. The optional argument allows to choose a specific
     repository kind.
 
-.. pkg-section:: custom-setup
-   :since: 1.24
-
 Custom setup scripts
 --------------------
+
+.. pkg-section:: custom-setup
+   :since: 1.24
 
 The optional :pkg-section:`custom-setup` stanza contains information needed for
 the compilation of custom ``Setup.hs`` scripts,
