@@ -1573,7 +1573,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
             profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
             --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
 
-    libDepGraph = Graph.fromList (map LibDepSolverPlanPackage
+    libDepGraph = Graph.fromList (map NonSetupLibDepSolverPlanPackage
                                       (SolverInstallPlan.toList solverPlan))
 
     packagesWithLibDepsDownwardClosedProperty property =
@@ -1597,20 +1597,21 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
       -- + ghci or shared lib needed by TH, recursive, ghc version dependent
 
 -- | A newtype for 'SolverInstallPlan.SolverPlanPackage' for which the
--- dependency graph considers only library dependencies (so, no setup
--- dependencies or executable dependencies.)  Used to compute the set
+-- dependency graph considers only dependencies on libraries which are
+-- NOT from setup dependencies.  Used to compute the set
 -- of packages needed for profiling and dynamic libraries.
-newtype LibDepSolverPlanPackage
-    = LibDepSolverPlanPackage { unLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage }
+newtype NonSetupLibDepSolverPlanPackage
+    = NonSetupLibDepSolverPlanPackage
+    { unNonSetupLibDepSolverPlanPackage :: SolverInstallPlan.SolverPlanPackage }
 
-instance Package LibDepSolverPlanPackage where
-    packageId = packageId . unLibDepSolverPlanPackage
+instance Package NonSetupLibDepSolverPlanPackage where
+    packageId = packageId . unNonSetupLibDepSolverPlanPackage
 
-instance IsNode LibDepSolverPlanPackage where
-    type Key LibDepSolverPlanPackage = SolverId
-    nodeKey = nodeKey . unLibDepSolverPlanPackage
-    nodeNeighbors (LibDepSolverPlanPackage spkg)
-        = ordNub $ CD.libraryDeps (resolverPackageLibDeps spkg)
+instance IsNode NonSetupLibDepSolverPlanPackage where
+    type Key NonSetupLibDepSolverPlanPackage = SolverId
+    nodeKey = nodeKey . unNonSetupLibDepSolverPlanPackage
+    nodeNeighbors (NonSetupLibDepSolverPlanPackage spkg)
+        = ordNub $ CD.nonSetupDeps (resolverPackageLibDeps spkg)
 
 ---------------------------
 -- Build targets
