@@ -532,13 +532,9 @@ addInfoForKnownRepos repo
                   remoteRepoKeyThreshold = 0
                 } | secure /= Just False
             = r {
-              --TODO: When we want to switch us from using opt-in to opt-out
-              -- security for the central hackage server, uncomment the
-              -- following line. That will cause the default (of unspecified)
-              -- to get interpreted as if it were "secure: True". For the
-              -- moment it means the keys get added but you have to manually
-              -- set "secure: True" to opt-in.
-              --remoteRepoSecure       = Just True,
+                -- Use hackage-security by default unless you opt-out with
+                -- secure: False
+                remoteRepoSecure       = Just True,
                 remoteRepoRootKeys     = defaultHackageRemoteRepoKeys,
                 remoteRepoKeyThreshold = defaultHackageRemoteRepoKeyThreshold
               }

@@ -27,6 +27,10 @@ import Network.Browser
 import Control.Applicative
 #endif
 import qualified Control.Exception as Exception
+import Control.Exception
+         ( evaluate )
+import Control.DeepSeq
+         ( force )
 import Control.Monad
          ( when, guard )
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -56,6 +60,8 @@ import System.FilePath
          ( (<.>) )
 import System.Directory
          ( doesFileExist, renameFile )
+import System.IO
+         ( withFile, IOMode(ReadMode), hGetContents, hClose )
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Simple.Program
@@ -70,7 +76,6 @@ import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
 import Numeric (showHex)
 import System.Directory (canonicalizePath)
-import System.IO (hClose)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
@@ -340,9 +345,10 @@ curlTransport prog =
 
           resp <- getProgramInvocationOutput verbosity
                     (programInvocation prog args)
-          headers <- readFile tmpFile
-          (code, _err, etag') <- parseResponse uri resp headers
-          return (code, etag')
+          withFile tmpFile ReadMode $ \hnd -> do
+            headers <- hGetContents hnd
+            (code, _err, etag') <- parseResponse uri resp headers
+            evaluate $ force (code, etag')
 
     posthttp = noPostYet
 
@@ -387,8 +393,9 @@ curlTransport prog =
         (code, err, _etag) <- parseResponse uri resp ""
         return (code, err)
 
-    -- on success these curl involcations produces an output like "200"
+    -- on success these curl invocations produces an output like "200"
     -- and on failure it has the server error response first
+    parseResponse :: URI -> String -> String -> IO (Int, String, Maybe ETag)
     parseResponse uri resp headers =
       let codeerr =
             case reverse (lines resp) of
@@ -450,8 +457,9 @@ wgetTransport prog =
                                               "boundary=" ++ boundary ]
           out <- runWGet verbosity (addUriAuth auth uri) args
           (code, _etag) <- parseOutput uri out
-          resp <- readFile responseFile
-          return (code, resp)
+          withFile responseFile ReadMode $ \hnd -> do
+            resp <- hGetContents hnd
+            evaluate $ force (code, resp)
 
     puthttpfile verbosity uri path auth headers =
         withTempFile (takeDirectory path) "response" $ \responseFile responseHandle -> do
@@ -466,8 +474,9 @@ wgetTransport prog =
 
             out <- runWGet verbosity (addUriAuth auth uri) args
             (code, _etag) <- parseOutput uri out
-            resp <- readFile responseFile
-            return (code, resp)
+            withFile responseFile ReadMode $ \hnd -> do
+              resp <- hGetContents hnd
+              evaluate $ force (code, resp)
 
     addUriAuth Nothing uri = uri
     addUriAuth (Just (user, pass)) uri = uri

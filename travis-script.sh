@@ -86,6 +86,11 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck
 
+# The integration-tests2 need the hackage index, and need it in the secure
+# format, which is not necessarily the default format of the bootstrap cabal.
+# If the format does match then this will be very quick.
+timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
+
 # Run tests
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS) || exit $?
 (cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000) || exit $?

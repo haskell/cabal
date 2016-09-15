@@ -92,6 +92,7 @@ cache:
 before_cache:
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index*
+ - rm -fv $HOME/.cabal/packages/hackage.haskell.org/*.json
 
 # Deploy Haddocks to the haskell/cabal-website repo.
 after_success:
