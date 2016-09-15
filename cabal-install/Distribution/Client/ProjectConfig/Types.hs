@@ -8,6 +8,7 @@ module Distribution.Client.ProjectConfig.Types (
     ProjectConfig(..),
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
+    ProjectConfigProvenance(..),
     PackageConfig(..),
 
     -- * Resolving configuration
@@ -53,6 +54,7 @@ import Distribution.Verbosity
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Set (Set)
 import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup
 import GHC.Generics (Generic)
@@ -104,6 +106,7 @@ data ProjectConfig
        -- values are about:
        projectConfigBuildOnly       :: ProjectConfigBuildOnly,
        projectConfigShared          :: ProjectConfigShared,
+       projectConfigProvenance      :: Set ProjectConfigProvenance,
 
        -- | Configuration to be applied to *local* packages; i.e.,
        -- any packages which are explicitly named in `cabal.project`.
@@ -186,6 +189,21 @@ data ProjectConfigShared
   deriving (Eq, Show, Generic)
 
 
+-- | Specifies the provenance of project configuration, whether defaults were
+-- used or if the configuration was read from an explicit file path.
+data ProjectConfigProvenance
+
+     -- | The configuration is implicit due to no explicit configuration
+     -- being found. See 'Distribution.Client.ProjectConfig.readProjectConfig'
+     -- for how implicit configuration is determined.
+   = Implicit
+
+     -- | The path the project configuration was explicitly read from.
+     -- | The configuration was explicitly read from the specified 'FilePath'.
+   | Explicit FilePath
+  deriving (Eq, Ord, Show, Generic)
+
+
 -- | Project configuration that is specific to each package, that is where we
 -- can in principle have different values for different packages in the same
 -- project.
@@ -239,6 +257,7 @@ data PackageConfig
 instance Binary ProjectConfig
 instance Binary ProjectConfigBuildOnly
 instance Binary ProjectConfigShared
+instance Binary ProjectConfigProvenance
 instance Binary PackageConfig
 
 

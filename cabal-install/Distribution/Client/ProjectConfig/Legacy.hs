@@ -242,6 +242,7 @@ convertLegacyProjectConfig
 
       projectConfigBuildOnly       = configBuildOnly,
       projectConfigShared          = configAllPackages,
+      projectConfigProvenance      = mempty,
       projectConfigLocalPackages   = configLocalPackages,
       projectConfigSpecificPackage = fmap perPackage legacySpecificConfig
     }

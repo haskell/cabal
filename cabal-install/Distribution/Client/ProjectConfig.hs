@@ -8,6 +8,7 @@ module Distribution.Client.ProjectConfig (
     ProjectConfig(..),
     ProjectConfigBuildOnly(..),
     ProjectConfigShared(..),
+    ProjectConfigProvenance(..),
     PackageConfig(..),
     MapLast(..),
     MapMappend(..),
@@ -100,10 +101,12 @@ import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
 import Data.Typeable
+import Data.List (intercalate)
 import Data.Maybe
 import Data.Either
-import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Set (Set)
 import qualified Data.Set as Set
 import Distribution.Compat.Semigroup
 import System.FilePath hiding (combine)
@@ -382,7 +385,7 @@ readProjectLocalConfig verbosity projectRootDir = do
   if usesExplicitProjectRoot
     then do
       monitorFiles [monitorFileHashed projectFile]
-      liftIO readProjectFile
+      addProjectFileProvenance <$> liftIO readProjectFile
     else do
       monitorFiles [monitorNonExistentFile projectFile]
       return defaultImplicitProjectConfig
@@ -394,6 +397,12 @@ readProjectLocalConfig verbosity projectRootDir = do
         . parseProjectConfig
       =<< readFile projectFile
 
+    addProjectFileProvenance config =
+      config {
+        projectConfigProvenance =
+          Set.insert (Explicit projectFile) (projectConfigProvenance config)
+      }
+
     defaultImplicitProjectConfig :: ProjectConfig
     defaultImplicitProjectConfig =
       mempty {
@@ -401,9 +410,10 @@ readProjectLocalConfig verbosity projectRootDir = do
         projectPackages         = [ "./*.cabal" ],
 
         -- This is to automatically pick up deps that we unpack locally.
-        projectPackagesOptional = [ "./*/*.cabal" ]
-      }
+        projectPackagesOptional = [ "./*/*.cabal" ],
 
+        projectConfigProvenance = Set.singleton Implicit
+      }
 
 -- | Reads a @cabal.project.local@ file in the given project root dir,
 -- or returns empty. This file gets written by @cabal configure@, or in
@@ -534,7 +544,8 @@ data ProjectPackageLocation =
 
 -- | Exception thrown by 'findProjectPackages'.
 --
-newtype BadPackageLocations = BadPackageLocations [BadPackageLocation]
+data BadPackageLocations
+   = BadPackageLocations (Set ProjectConfigProvenance) [BadPackageLocation]
 #if MIN_VERSION_base(4,8,0)
   deriving (Show, Typeable)
 #else
@@ -567,15 +578,58 @@ data BadPackageLocationMatch
   deriving Show
 
 renderBadPackageLocations :: BadPackageLocations -> String
-renderBadPackageLocations (BadPackageLocations bpls) =
-    unlines (map renderBadPackageLocation bpls)
+renderBadPackageLocations (BadPackageLocations provenance bpls)
+      -- There is no provenance information,
+      -- render standard bad package error information.
+    | Set.null provenance = renderErrors renderBadPackageLocation
+
+      -- The configuration is implicit, render bad package locations
+      -- using possibly specialized error messages.
+    | Set.singleton Implicit == provenance =
+        renderErrors renderImplicitBadPackageLocation
+
+      -- The configuration contains both implicit and explicit provenance.
+      -- This should not occur, and a message is output to assist debugging.
+    | Implicit `Set.member` provenance =
+           "Warning: both implicit and explicit configuration is present."
+        ++ renderExplicit
+
+      -- The configuration was read from one or more explicit path(s),
+      -- list the locations and render the bad package error information.
+      -- The intent is to supersede this with the relevant location information
+      -- per package error.
+    | otherwise = renderExplicit
+  where
+    renderErrors f = unlines (map f bpls)
+
+    renderExplicit =
+           "When using configuration(s) from "
+        ++ intercalate ", " (mapMaybe getExplicit (Set.toList provenance))
+        ++ ", the following errors occurred:\n"
+        ++ renderErrors renderBadPackageLocation
+
+    getExplicit (Explicit path) = Just path
+    getExplicit Implicit        = Nothing
 
 --TODO: [nice to have] keep track of the config file (and src loc) packages
 -- were listed, to use in error messages
---TODO: [nice to have] keep track in the ProjectConfig and BadPackageLocations
--- of whether the project config was explicit or implicit so we can report a
--- better message, either pointing to the file or talking about the issues
--- related to having no project file and no package.
+
+-- | Render bad package location error information for the implicit
+-- @cabal.project@ configuration.
+--
+-- TODO: This is currently not fully realized, with only one of the implicit
+-- cases handled. More cases should be added with informative help text
+-- about the issues related specifically when having no project configuration
+-- is present.
+renderImplicitBadPackageLocation :: BadPackageLocation -> String
+renderImplicitBadPackageLocation bpl = case bpl of
+    BadLocGlobEmptyMatch pkglocstr ->
+        "No cabal.project file or cabal file matching the default glob '"
+     ++ pkglocstr ++ "' was found.\n"
+     ++ "Please create a package description file <pkgname>.cabal "
+     ++ "or a cabal.project file referencing the packages you "
+     ++ "want to build."
+    _ -> renderBadPackageLocation bpl
 
 renderBadPackageLocation :: BadPackageLocation -> String
 renderBadPackageLocation bpl = case bpl of
@@ -632,7 +686,7 @@ findProjectPackages projectRootDir ProjectConfig{..} = do
       (problems, pkglocs) <-
         partitionEithers <$> mapM (findPackageLocation required) pkglocstr
       unless (null problems) $
-        liftIO $ throwIO $ BadPackageLocations problems
+        liftIO $ throwIO $ BadPackageLocations projectConfigProvenance problems
       return (concat pkglocs)
 
 
