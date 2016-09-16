@@ -284,13 +284,14 @@ class CabalObject(ObjectDescription):
     # used by default deg_index_entry method
     indextemplate = ''
 
-    def get_meta(self, env):
+    def get_meta(self):
         '''
         Collect meta data for fields
 
         Reads optional arguments passed to directive and also
         tries to find current section title and adds it as section
         '''
+        env = self.state.document.settings.env
         # find title of current section, will group references page by it
         num = env.domaindata['cabal']['index-num'].get(env.docname, 0)
         env.domaindata['cabal']['index-num'][env.docname] = num + 1
@@ -349,11 +350,66 @@ class CabalObject(ObjectDescription):
             entries=[('pair', indexentry, targetname, '', None)])
         signode.insert(0, inode)
 
-        meta = self.get_meta(env)
-         #for ref finding
-
         key, store = self.get_env_key(env, name)
-        env.domaindata['cabal'][store][key] = env.docname, targetname, meta
+        env.domaindata['cabal'][store][key] = env.docname, targetname, self.cabal_meta
+
+    def run(self):
+        self.cabal_meta = self.get_meta()
+        result = super(CabalObject, self).run()
+
+        if self.cabal_meta.since is not None \
+           or self.cabal_meta.deprecated is not None:
+
+            #find content part of description
+            for item in result:
+                if isinstance(item, addnodes.desc):
+                    desc = item
+                    break
+            else:
+                return result
+
+            for item in desc:
+                if isinstance(item, addnodes.desc_content):
+                    contents = item
+                    break
+            else:
+                return result
+
+            # find exsting field list and add to it
+            # or create new one
+            for item in contents:
+                if isinstance(item, nodes.field_list):
+                    field_list = item
+                    break
+            else:
+                field_list = nodes.field_list('')
+                contents.insert(0, field_list)
+
+
+            if self.cabal_meta.since is not None:
+                #docutils horror
+                field = nodes.field('')
+                field_name = nodes.field_name('Since', 'Since')
+                since = 'Cabal ' + str(self.cabal_meta.since)
+                field_body = nodes.field_body(since, nodes.paragraph(since, since))
+                field += field_name
+                field += field_body
+                field_list.insert(0, field)
+
+            if self.cabal_meta.deprecated is not None:
+                field = nodes.field('')
+                field_name = nodes.field_name('Deprecated', 'Deprecated')
+                if isinstance(self.cabal_meta.deprecated, StrictVersion):
+                    since = 'Cabal ' + str(self.cabal_meta.deprecated)
+                else:
+                    since = ''
+
+                field_body = nodes.field_body(since, nodes.paragraph(since, since))
+                field += field_name
+                field += field_body
+                field_list.insert(0, field)
+
+        return result
 
 class CabalPackageSection(CabalObject):
     """
@@ -375,18 +431,10 @@ class CabalPackageSection(CabalObject):
         parts = sig.split(' ',1)
         name = parts[0]
         signode += addnodes.desc_name(name, name)
-
+        signode += addnodes.desc_addname(' ', ' ')
         if len(parts) > 1:
             rest = parts[1].strip()
-            signode += addnodes.desc_name(' ', ' ')
-            signode += addnodes.desc_addname(rest, rest)
-
-        meta = self.get_meta(env)
-
-        rendered = render_meta_title(meta)
-        if rendered != '':
-            signode += addnodes.desc_addname(' ', ' ')
-            signode += addnodes.desc_annotation(rendered, rendered)
+            signode += addnodes.desc_annotation(rest, rest)
 
         return name
 
@@ -432,18 +480,11 @@ class CabalField(CabalObject):
         parts = sig.split(':',1)
         name = parts[0]
         signode += addnodes.desc_name(name, name)
-        signode += addnodes.desc_name(': ', ': ')
+        signode += addnodes.desc_addname(': ', ': ')
 
         if len(parts) > 1:
             rest = parts[1].strip()
-            signode += addnodes.desc_addname(rest, rest)
-
-        meta = self.get_meta(env)
-
-        rendered = render_meta_title(meta)
-        if rendered != '':
-            signode += addnodes.desc_addname(' ', ' ')
-            signode += addnodes.desc_annotation(rendered, rendered)
+            signode += addnodes.desc_annotation(rest, rest)
 
         return name
 
@@ -599,7 +640,7 @@ class ConfigFieldIndex(Index):
         # (title, section store, fields store)
         entries = [('project.cabal fields', 'cfg-section', 'cfg-field'),
                    ('cabal project flags', 'cfg-section', 'cfg-flag'),
-                   ('project.cabal fields', 'pkg-section', 'pkg-field')]
+                   ('package.cabal fields', 'pkg-section', 'pkg-field')]
 
         result = []
         for label, section_key, key in entries:
@@ -654,6 +695,14 @@ def make_data_keys(typ, target, node):
     else:
         return [target]
 
+
+def render_deprecated(deprecated):
+    if isinstance(deprecated, StrictVersion):
+        return 'deprecated since: '+str(deprecated)
+    else:
+        return 'deprecated'
+
+
 def render_meta(meta):
     '''
     Render meta as short text
@@ -661,10 +710,7 @@ def render_meta(meta):
     Will render either deprecated or since info
     '''
     if meta.deprecated is not None:
-        if isinstance(meta.deprecated, StrictVersion):
-            return 'deprecated since: '+str(meta.deprecated)
-        else:
-            return 'deprecated'
+        return render_deprecated(meta.deprecated)
     elif meta.since is not None:
         return 'since version: ' + str(meta.since)
     else:
