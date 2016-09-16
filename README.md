@@ -152,15 +152,16 @@ Conventions
   support window, except Template Haskell, which would cause
   bootstrapping problems in the GHC compilation process.
 
-* Our GHC support window is three years: that is, the Cabal library
-  must be buildable out-of-the-box with the dependencies that shipped
-  with GHC for at least three years.  The Travis CI checks this, so
-  most developers submit a PR to see if their code works on all
-  these versions of Haskell.  cabal-install must also be buildable
-  on all these GHCs, although it does not have to be buildable
+* Our GHC support window is five years for the Cabal library and three
+  years for cabal-install: that is, the Cabal library must be
+  buildable out-of-the-box with the dependencies that shipped with GHC
+  for at least five years.  The Travis CI checks this, so most
+  developers submit a PR to see if their code works on all these
+  versions of GHC.  cabal-install must also be buildable on all
+  supported GHCs, although it does not have to be buildable
   out-of-the-box. Instead, the `cabal-install/bootstrap.sh` script
-  must be able to download and install all of the dependencies.
-  (This is also checked by CI!)
+  must be able to download and install all of the dependencies.  (This
+  is also checked by CI!)
 
 * `Cabal` has its own Prelude, in `Distribution.Compat.Prelude`,
   that provides a compatibility layer and exports some commonly
