@@ -21,20 +21,20 @@ Most directives have at least following optional arguments
 
 Added directives
 
-.. rst:directive:: .. cabal::pkg-section
+.. rst:directive:: .. cabal::cfg-section
 
-   Marks a package.cabal section, such as library or exectuble.
+   Describes a package.cabal section, such as library or exectuble.
 
-   Needed to disambiguate fields with duplicate names, you can reset
-   the section to empty with `.. pkg-section:: None`.
+   All following `pkg-field` directives will add section name
+   to their fields name for disambiguating duplicates.
 
-   TODO: make this an ObjectDescription actually
+   You can reset the section disambguation with with `.. pkg-section:: None`.
 
 .. rst::role:: pkg-section
 
    References section added by `.. pkg-section`
 
-.. rst:directive:: .. cabal::pkg-fields
+.. rst:directive:: .. cabal::pkg-field
 
    Describes a package.cabal field.
 
@@ -44,9 +44,15 @@ Added directives
 .. rst::role:: pkg-field
 
    References field added by `.. pkg-field`, fields can be disambiguated
-   with section `:pkg-field:`section:field`.
+   with section name `:pkg-field:`section:field`.
 
-.. rst:directive:: .. cabal::cfg-field
+
+.. rst:directive:: .. cabal:cfg-section::
+
+   Same as `.. cabal::pkg-section` but does not produce any visible output
+   currently unused.
+
+.. rst:directive:: .. cabal:cfg-field::
 
    Describes a project.cabal field.
 
@@ -264,16 +270,7 @@ class CabalSection(Directive):
         return [inode, node]
 
 
-class CabalPackageSection(CabalSection):
-    """
-    Marks section in package.cabal file
-    """
-    indextemplate = '%s; package.cabal section'
-    section_key = 'cabal:pkg-section'
-    target_prefix = 'pkg-section-'
-
-
-class CabalField(ObjectDescription):
+class CabalObject(ObjectDescription):
     option_spec = {
         'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
@@ -281,15 +278,11 @@ class CabalField(ObjectDescription):
         'synopsis'  : lambda x:x
     }
 
-    doc_field_types = [
-        Field('default', label='Default value', names=['default'], has_arg=False)
-    ]
-
     # node attribute marking which section field belongs to
-    section_key = 'cabal:pkg-section'
+    section_key = ''
     # template for index, it is passed a field name as argument
     # used by default deg_index_entry method
-    indextemplate = '%s; package.cabal section'
+    indextemplate = ''
 
     def get_meta(self, env):
         '''
@@ -338,6 +331,94 @@ class CabalField(ObjectDescription):
         return indexentry, targetname
 
 
+    def add_target_and_index(self, name, sig, signode):
+        '''
+        As in sphinx.directive.ObjectDescription
+
+        By default adds 'pair' index as returned by get_index_entry and
+        stores object data into domain data store as returned by get_env_data
+        '''
+        env = self.state.document.settings.env
+
+        indexentry, targetname = self.get_index_entry(self, name)
+
+        signode['ids'].append(targetname)
+        self.state.document.note_explicit_target(signode)
+
+        inode = addnodes.index(
+            entries=[('pair', indexentry, targetname, '', None)])
+        signode.insert(0, inode)
+
+        meta = self.get_meta(env)
+         #for ref finding
+
+        key, store = self.get_env_key(env, name)
+        env.domaindata['cabal'][store][key] = env.docname, targetname, meta
+
+class CabalPackageSection(CabalObject):
+    """
+    Cabal section in package.cabal file
+    """
+    section_key = 'cabal:pkg-section'
+    indextemplate = '%s; package.cabal section'
+
+    def handle_signature(self, sig, signode):
+        '''
+        As in sphinx.directives.ObjectDescription
+
+        By default make an object description from name and adding
+        either deprecated or since as annotation.
+        '''
+        env = self.state.document.settings.env
+
+        sig = sig.strip()
+        parts = sig.split(' ',1)
+        name = parts[0]
+        signode += addnodes.desc_name(name, name)
+
+        if len(parts) > 1:
+            rest = parts[1].strip()
+            signode += addnodes.desc_name(' ', ' ')
+            signode += addnodes.desc_addname(rest, rest)
+
+        meta = self.get_meta(env)
+
+        rendered = render_meta_title(meta)
+        if rendered != '':
+            signode += addnodes.desc_addname(' ', ' ')
+            signode += addnodes.desc_annotation(rendered, rendered)
+
+        return name
+
+    def get_env_key(self, env, name):
+        store = CabalDomain.types[self.objtype]
+        return name, store
+
+    def run(self):
+        env = self.state.document.settings.env
+        section = self.arguments[0].strip().split(' ',1)[0]
+        if section == 'None':
+            env.ref_context.pop('cabal:pkg-section', None)
+            return []
+        env.ref_context['cabal:pkg-section'] = section
+        return super(CabalPackageSection, self).run()
+
+
+class CabalField(CabalObject):
+    '''
+    Base for fields in *.cabal files
+    '''
+    option_spec = {
+        'noindex'   : directives.flag,
+        'deprecated': parse_deprecated,
+        'since'     : StrictVersion,
+        'synopsis'  : lambda x:x
+    }
+
+    doc_field_types = [
+        Field('default', label='Default value', names=['default'], has_arg=False)
+    ]
+
     def handle_signature(self, sig, signode):
         '''
         As in sphinx.directives.ObjectDescription
@@ -366,30 +447,6 @@ class CabalField(ObjectDescription):
 
         return name
 
-    def add_target_and_index(self, name, sig, signode):
-        '''
-        As in sphinx.directive.ObjectDescription
-
-        By default adds 'pair' index as returned by get_index_entry and
-        stores object data into domain data store as returned by get_env_data
-        '''
-        env = self.state.document.settings.env
-
-        indexentry, targetname = self.get_index_entry(self, name)
-
-        signode['ids'].append(targetname)
-        self.state.document.note_explicit_target(signode)
-
-        inode = addnodes.index(
-            entries=[('pair', indexentry, targetname, '', None)])
-        signode.insert(0, inode)
-
-        meta = self.get_meta(env)
-         #for ref finding
-
-        key, store = self.get_env_key(env, name)
-        env.domaindata['cabal'][store][key] = env.docname, targetname, meta
-
 class CabalPackageField(CabalField):
     '''
     Describes section in package.cabal file
@@ -417,6 +474,10 @@ class CabalFieldXRef(XRefRole):
             refnode[self.section_key] = env.ref_context.get(self.section_key)
 
         return title, target
+
+#
+# Directives for config files.
+#
 
 class CabalPackageFieldXRef(CabalFieldXRef):
     '''
@@ -467,6 +528,11 @@ class ConfigField(CabalField):
 
 class CabalConfigFieldXRef(CabalFieldXRef):
     section_key = 'cabal:cfg-section'
+
+
+#
+# Cabal domain
+#
 
 class ConfigFieldIndex(Index):
     name = 'projectindex'
@@ -525,7 +591,6 @@ class ConfigFieldIndex(Index):
 
         sort by (document, index)
         group on (document, doc_section)
-        in groups sort so sections are first
 
         TODO: Check how to extract section numbers from (document,doc_section)
               and add it as annotation to titles
@@ -646,7 +711,7 @@ def make_title(typ, key, meta):
 
 def make_full_name(typ, key, meta):
     '''
-    Return an ancor name for object type
+    Return an anchor name for object type
     '''
     if typ == 'pkg-section':
         return 'pkg-section-' + key
@@ -665,13 +730,18 @@ def make_full_name(typ, key, meta):
         raise ValueError('Unknown object type: ' + typ)
 
 class CabalDomain(Domain):
+    '''
+    Sphinx domain for cabal
+
+    needs Domain.merge_doc for parallel building, just union all dicts
+    '''
     name = 'cabal'
     label = 'Cabal'
     object_types = {
         'pkg-section': ObjType(l_('pkg-section'), 'pkg-section'),
         'pkg-field'  : ObjType(l_('pkg-field')  , 'pkg-field'  ),
         'cfg-section': ObjType(l_('cfg-section'), 'cfg-section'),
-        'cfg-field'  : ObjType(l_('cfg-field') , 'cfg-field' ),
+        'cfg-field'  : ObjType(l_('cfg-field')  , 'cfg-field' ),
     }
     directives = {
         'pkg-section': CabalPackageSection,
@@ -690,8 +760,8 @@ class CabalDomain(Domain):
         'pkg-sections': {},
         'pkg-fields'  : {},
         'cfg-sections': {},
-        'index-num' : {}, #per document number of object
-                          # used to order references page
+        'index-num'   : {}, #per document number of objects
+                            # used to order references page
         'cfg-fields'  : {},
         'cfg-flags'   : {},
     }
@@ -718,8 +788,9 @@ class CabalDomain(Domain):
 
     def resolve_xref(self, env, fromdocname, builder, type, target, node, contnode):
         objtypes = self.objtypes_for_role(type)
-        for typ, key in ((typ, key) for typ in objtypes
-                                    for key in make_data_keys(typ, target, node)):
+        for typ, key in ((typ, key)
+                         for typ in objtypes
+                         for key in make_data_keys(typ, target, node)):
             try:
                 data = env.domaindata['cabal'][self.types[typ]][key]
             except KeyError:
@@ -729,6 +800,9 @@ class CabalDomain(Domain):
             return make_refnode(builder, fromdocname, doc, ref, contnode, title)
 
     def get_objects(self):
+        '''
+        Used for search functionality
+        '''
         for typ in ['pkg-section', 'pkg-field',
                     'cfg-section', 'cfg-field', 'cfg-flag']:
             key = self.types[typ]

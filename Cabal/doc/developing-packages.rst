@@ -986,6 +986,11 @@ Library
 ^^^^^^^
 
 .. pkg-section:: library
+    :synopsis: Library build information.
+
+    Build information for libraries. There can be only one library in a
+    package, and it's name is the same as package name set by global
+    :pkg-field:`name` field.
 
 The library section should contain the following fields:
 
@@ -1145,12 +1150,13 @@ For example, given the following dependencies specified in
 Executables
 ^^^^^^^^^^^
 
-.. pkg-section:: executable
+.. pkg-section:: executable name
+    :synopsis: Exectuable build info section.
 
-Executable sections (if present) describe executable programs contained
-in the package and must have an argument after the section label, which
-defines the name of the executable. This is a freeform argument but may
-not contain spaces.
+    Executable sections (if present) describe executable programs contained
+    in the package and must have an argument after the section label, which
+    defines the name of the executable. This is a freeform argument but may
+    not contain spaces.
 
 The executable may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
@@ -1183,14 +1189,15 @@ can pass to ``cabal run``.
 Test suites
 ^^^^^^^^^^^
 
-.. pkg-section:: test
+.. pkg-section:: test name
+    :synopsis: Test suit build information.
 
-Test suite sections (if present) describe package test suites and must
-have an argument after the section label, which defines the name of the
-test suite. This is a freeform argument, but may not contain spaces. It
-should be unique among the names of the package's other test suites, the
-package's executables, and the package itself. Using test suite sections
-requires at least Cabal version 1.9.2.
+    Test suite sections (if present) describe package test suites and must
+    have an argument after the section label, which defines the name of the
+    test suite. This is a freeform argument, but may not contain spaces. It
+    should be unique among the names of the package's other test suites, the
+    package's executables, and the package itself. Using test suite sections
+    requires at least Cabal version 1.9.2.
 
 The test suite may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
@@ -1209,7 +1216,7 @@ error channels. The ``exitcode-stdio-1.0`` type requires the ``main-is``
 field.
 
 .. pkg-field:: main-is: filename
-..    :name: test-main-is
+    :synopsis: Module containing tests main function.
 
     :required: ``exitcode-stdio-1.0``
     :disallowed: ``detailed-0.9``
@@ -1335,15 +1342,17 @@ to ``cabal test``.
 Benchmarks
 ^^^^^^^^^^
 
-.. pkg-section:: benchmark
+.. pkg-section:: benchmark name
+    :since: 1.9.2
+    :synopsis: Benchmark build information.
 
-Benchmark sections (if present) describe benchmarks contained in the
-package and must have an argument after the section label, which defines
-the name of the benchmark. This is a freeform argument, but may not
-contain spaces. It should be unique among the names of the package's
-other benchmarks, the package's test suites, the package's executables,
-and the package itself. Using benchmark sections requires at least Cabal
-version 1.9.2.
+    Benchmark sections (if present) describe benchmarks contained in the
+    package and must have an argument after the section label, which defines
+    the name of the benchmark. This is a freeform argument, but may not
+    contain spaces. It should be unique among the names of the package's
+    other benchmarks, the package's test suites, the package's executables,
+    and the package itself. Using benchmark sections requires at least Cabal
+    version 1.9.2.
 
 The benchmark may be described using the following fields, as well as
 build information fields (see the section on `build information`_).
@@ -1843,10 +1852,12 @@ Example: Using explicit braces rather than indentation for layout
 Configuration Flags
 """""""""""""""""""
 
-.. pkg-section:: flags
+.. pkg-section:: flag name
+   :synopsis: Flag declaration.
 
-A flag section takes the flag name as an argument and may contain the
-following fields.
+   Flag section declares a flag which can be used in `conditional blocks`_.
+
+A flag section may contain the following fields:
 
 .. pkg-field:: description: freeform
 
@@ -1858,13 +1869,15 @@ following fields.
 
     The default value of this flag.
 
-    Note that this value may be `overridden in several
-    ways <installing-packages.html#controlling-flag-assignments>`__. The
-    rationale for having flags default to True is that users usually
-    want new features as soon as they are available. Flags representing
-    features that are not (yet) recommended for most users (such as
-    experimental features or debugging support) should therefore
-    explicitly override the default to False.
+    .. note::
+
+      This value may be `overridden in several
+      ways <installing-packages.html#controlling-flag-assignments>`__. The
+      rationale for having flags default to True is that users usually
+      want new features as soon as they are available. Flags representing
+      features that are not (yet) recommended for most users (such as
+      experimental features or debugging support) should therefore
+      explicitly override the default to False.
 
 .. pkg-field:: manual: boolean
 
@@ -2176,10 +2189,11 @@ Custom setup scripts
 --------------------
 
 .. pkg-section:: custom-setup
+   :synopsis: Custom Setup.hs build information.
    :since: 1.24
 
-The optional :pkg-section:`custom-setup` stanza contains information needed for
-the compilation of custom ``Setup.hs`` scripts,
+   The optional :pkg-section:`custom-setup` stanza contains information needed
+   for the compilation of custom ``Setup.hs`` scripts,
 
 ::
 
