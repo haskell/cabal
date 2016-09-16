@@ -1,4 +1,105 @@
 # -*- coding: utf-8 -*-
+'''
+Sphinx domain for documenting all things cabal
+
+The main reason to use this instead of adding object types to std domain
+is the ability to generate nice 'Reference' page and also provide some meta
+data for objects described with directives described here.
+
+Most directives have at least following optional arguments
+
+`:since: 1.23`
+    version of Cabal in which feature was added.
+
+`:deprecated: 1.23`
+`:deprecated:`
+    Feature was deprecatead, and optionally since which version.
+
+`:synopsis: Short desc`
+    Text used as short description on reference page.
+
+
+Added directives
+
+.. rst:directive:: .. cabal::pkg-section
+
+   Marks a package.cabal section, such as library or exectuble.
+
+   Needed to disambiguate fields with duplicate names, you can reset
+   the section to empty with `.. pkg-section:: None`.
+
+   Will try to guess synopsis from current section title unless explicitly
+   set with :synopsis:
+
+.. rst::role:: pkg-section
+
+   References section added by `.. pkg-section`
+
+.. rst:directive:: .. cabal::pkg-fields
+
+   Describes a package.cabal field.
+
+   Can have a :default: field. Will group on reference page under pkg-section
+   if set and parent header otherwise.
+
+.. rst::role:: pkg-field
+
+   References field added by `.. pkg-field`, fields can be disambiguated
+   with section `:pkg-field:`section:field`.
+
+.. rst:directive:: .. cabal::cfg-field
+
+   Describes a project.cabal field.
+
+   Can have multiple arguments, if arguments start with '-' then it is treated
+   as a cabal flag.
+
+   Can have a :default: field. Will group on reference page under pkg-section
+   if set and parent header otherwise.
+
+.. rst::role:: cfg-field
+
+   References field added by `.. cfg-field`.
+
+.. rst::role:: cfg-flag
+
+   References flag added by `.. cfg-field`.
+
+
+All roles can be supplied with title as in standard sphinx references::
+
+   :pkg-field:`Build dependencies<build-depends>`
+
+
+To be done:
+
+- Directives for describing executables, their subcommands and flags.
+
+  These should act in a way similar to `.. std::option` directive, but with
+  extra meta. And should also end up in reference.
+
+  At least setup and 'new-build` subcommands should get special directvies
+
+- Improve rendering of flags in `.. cfg-field::` directive. It should be
+  possible without copy-pasting code from sphinx.directives.ObjectDescription
+  by examining result of ObjectDescription.run and inserting flags into
+  desc_content node.
+
+  Alternatively Or `.. flags::` sub-directive can be added which will be aware
+  of parent `.. cfg-field` directive.
+
+- With same ObjectDescription.run trick as above, render since and deprecated
+  info same way as standard object fields, and use fancy rendering only on
+  references page.
+
+- Add 'since_version` config value to sphinx env and use it to decide if
+  version meta info should be rendered on reference page and thus reduce some
+  clutter.
+  Can also be used to generate 'Whats new' reference page
+
+'''
+
+
 import re
 
 from docutils import nodes
@@ -55,11 +156,18 @@ class Meta(object):
     '''
     Meta data associated with object
     '''
-    def __init__(self, since=None, deprecated=None, synopsis=None, title=None, index=0):
+    def __init__(self,
+                 since=None,
+                 deprecated=None,
+                 synopsis=None,
+                 title=None,
+                 section=None,
+                 index=0):
         self.since = since
         self.deprecated = deprecated
         self.synopsis = synopsis
         self.title = title
+        self.section = section
         self.index = index
 
 
@@ -82,8 +190,10 @@ def find_section_title(parent):
 
 class CabalSection(Directive):
     """
-    Marks section to which following objects belong.
-    Does not generate any output besides anchor
+    Marks section to which following objects belong, used to disambiguate
+    references to fields and flags which can have similar names
+
+    Does not generate any output besides anchor.
     """
     has_content = False
     required_arguments = 1
@@ -162,20 +272,29 @@ class CabalPackageSection(CabalSection):
 
 class CabalField(ObjectDescription):
     option_spec = {
-        'noindex': directives.flag,
+        'noindex'   : directives.flag,
         'deprecated': parse_deprecated,
-        'since' : StrictVersion,
-        'synopsis' : lambda x:x
+        'since'     : StrictVersion,
+        'synopsis'  : lambda x:x
     }
 
     doc_field_types = [
         Field('default', label='Default value', names=['default'], has_arg=False)
     ]
 
+    # node attribute marking which section field belongs to
     section_key = 'cabal:pkg-section'
+    # template for index, it is passed a field name as argument
+    # used by default deg_index_entry method
     indextemplate = '%s; package.cabal section'
 
     def get_meta(self):
+        '''
+        Collect meta data for fields
+
+        Reads optional arguments passed to directive and also
+        tries to find current section title and adds it as section
+        '''
         # find title of current section, will group references page by it
         section = None
         if isinstance(self.state.parent, nodes.section):
@@ -186,15 +305,22 @@ class CabalField(ObjectDescription):
                     deprecated=self.options.get('deprecated'),
                     synopsis=self.options.get('synopsis'))
 
-    def get_index_entry(self, env, name):
-        return name, self.objtype + '-' + name
-
     def get_env_key(self, env, name):
+        '''
+        Should return a key used to reference this field and key in domain
+        data to store this object
+        '''
         section = self.env.ref_context.get(self.section_key)
         store = CabalDomain.types[self.objtype]
         return (section, name), store
 
     def get_index_entry(self, env, name):
+        '''
+        Should return index entry and achor
+
+        By default uses indextemplate attribute to generate name and
+        index entry by joining directive name, section and field name
+        '''
         section = self.env.ref_context.get(self.section_key)
 
         if section is not None:
@@ -209,6 +335,12 @@ class CabalField(ObjectDescription):
 
 
     def handle_signature(self, sig, signode):
+        '''
+        As in sphinx.directives.ObjectDescription
+
+        By default make an object description from name and adding
+        either deprecated or since as annotation.
+        '''
         sig = sig.strip()
         parts = sig.split(':',1)
         name = parts[0]
@@ -229,6 +361,12 @@ class CabalField(ObjectDescription):
         return name
 
     def add_target_and_index(self, name, sig, signode):
+        '''
+        As in sphinx.directive.ObjectDescription
+
+        By default adds 'pair' index as returned by get_index_entry and
+        stores object data into domain data store as returned by get_env_data
+        '''
         env = self.state.document.settings.env
 
         indexentry, targetname = self.get_index_entry(self, name)
@@ -247,10 +385,20 @@ class CabalField(ObjectDescription):
         env.domaindata['cabal'][store][key] = env.docname, targetname, meta
 
 class CabalPackageField(CabalField):
+    '''
+    Describes section in package.cabal file
+    '''
     section_key = 'cabal:pkg-section'
     indextemplate = '%s; package.cabal field'
 
 class CabalFieldXRef(XRefRole):
+    '''
+    Cross ref node for all kinds of fields
+
+    Gets section_key entry from context and stores it on node, so it can
+    later be used by CabalDomain.resolve_xref to find target for reference to
+    this
+    '''
     section_key = 'cabal:pkg-section'
     def process_link(self, env, refnode, has_explicit_title, title, target):
         parts = target.split(':',1)
@@ -265,6 +413,9 @@ class CabalFieldXRef(XRefRole):
         return title, target
 
 class CabalPackageFieldXRef(CabalFieldXRef):
+    '''
+    Role referencing project.cabal section
+    '''
     section_key = 'cabal:pkg-section'
 
 class CabalConfigSection(CabalSection):
@@ -311,7 +462,6 @@ class ConfigField(CabalField):
 class CabalConfigFieldXRef(CabalFieldXRef):
     section_key = 'cabal:cfg-section'
 
-
 class ConfigFieldIndex(Index):
     name = 'projectindex'
     localname = "Cabal reference"
@@ -356,6 +506,12 @@ class ConfigFieldIndex(Index):
         return result, False
 
 def make_data_keys(typ, target, node):
+    '''
+    Returns a list of keys to search for targets of this type
+    in domain data.
+
+    Used for resolving references
+    '''
     if typ == 'pkg-field':
         section = node.get('cabal:pkg-section')
         return [(section, target),
@@ -369,6 +525,11 @@ def make_data_keys(typ, target, node):
         return [target]
 
 def render_meta(meta):
+    '''
+    Render meta as short text
+
+    Will render either deprecated or since info
+    '''
     if meta.deprecated is not None:
         if isinstance(meta.deprecated, StrictVersion):
             return 'deprecated since: '+str(meta.deprecated)
@@ -380,12 +541,18 @@ def render_meta(meta):
         return ''
 
 def render_meta_title(meta):
+    '''
+    Render meta as suitable to use in titles
+    '''
     rendered = render_meta(meta)
     if rendered != '':
         return '(' + rendered + ')'
     return ''
 
 def make_title(typ, key, meta):
+    '''
+    Render title of an object (section, field or flag)
+    '''
     if typ == 'pkg-section':
         return "package.cabal " + key + " section " + render_meta_title(meta)
 
@@ -413,6 +580,9 @@ def make_title(typ, key, meta):
         raise ValueError("Unknown type: " + typ)
 
 def make_full_name(typ, key, meta):
+    '''
+    Return an ancor name for object type
+    '''
     if typ == 'pkg-section':
         return 'pkg-section-' + key
 
@@ -501,6 +671,9 @@ class CabalDomain(Domain):
                 yield title, title, typ, fn, target, 0
 
 class CabalLexer(lexer.RegexLexer):
+    '''
+    Basic cabal lexer, does not try to be smart
+    '''
     name = 'Cabal'
     aliases = ['cabal']
     filenames = ['.cabal']
