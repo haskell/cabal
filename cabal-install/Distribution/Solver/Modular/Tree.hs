@@ -67,7 +67,7 @@ data Tree a =
 
     -- | We failed to find a solution in this path through the tree
   | Fail (ConflictSet QPN) FailReason
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show)
 
 -- | A package option is a package instance with an optional linking annotation
 --
