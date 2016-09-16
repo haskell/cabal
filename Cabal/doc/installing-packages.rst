@@ -589,7 +589,7 @@ package:
 
     In the simple build system, *dir* may contain the following path
     variables: ``$prefix``, ``$pkgid``, ``$pkg``, ``$version``,
-    ``$compiler``, ``$os``, ``$arch``, ``$abi``, \`$abitag
+    ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
 .. option:: --libdir=dir
 
