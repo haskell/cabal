@@ -429,9 +429,12 @@ wgetTransport prog =
         -- so, we not only ignore range request headers,
         -- but we also dispay a warning message when we see them.
         let hasRangeHeader =  any (\hdr -> isRangeHeader hdr) reqHeaders
-            warningMsg =    "the 'wget' transport currently doesn't support range requests, which wastes network bandwidth."
-                            ++ " To fix this, set 'http-transport' to 'curl' or 'plain-http' in '~/.cabal/config'."
-                            ++ " Note that the 'plain-http' transport doesn't support HTTPS.\n"
+            warningMsg     =  "the 'wget' transport currently doesn't support"
+                           ++ " range requests, which wastes network bandwidth."
+                           ++ " To fix this, set 'http-transport' to 'curl' or"
+                           ++ " 'plain-http' in '~/.cabal/config'."
+                           ++ " Note that the 'plain-http' transport doesn't"
+                           ++ " support HTTPS.\n"
 
         when (hasRangeHeader) $ warn verbosity warningMsg
         (code, etag') <- parseOutput uri resp
@@ -446,7 +449,8 @@ wgetTransport prog =
                [ ["--header", "If-None-Match: " ++ t]
                | t <- maybeToList etag ]
             ++ [ "--header=" ++ show name ++ ": " ++ value
-               | hdr@(Header name value) <- reqHeaders, (not (isRangeHeader hdr)) ]
+               | hdr@(Header name value) <- reqHeaders
+               , (not (isRangeHeader hdr)) ]
 
         -- wget doesn't support range requests.
         -- so, we ignore range request headers, lest we get errors.
@@ -459,7 +463,8 @@ wgetTransport prog =
     posthttpfile verbosity  uri path auth =
         withTempFile (takeDirectory path)
                      (takeFileName path) $ \tmpFile tmpHandle ->
-        withTempFile (takeDirectory path) "response" $ \responseFile responseHandle -> do
+        withTempFile (takeDirectory path) "response" $
+        \responseFile responseHandle -> do
           hClose responseHandle
           (body, boundary) <- generateMultipartBody path
           BS.hPut tmpHandle body
@@ -478,7 +483,8 @@ wgetTransport prog =
             evaluate $ force (code, resp)
 
     puthttpfile verbosity uri path auth headers =
-        withTempFile (takeDirectory path) "response" $ \responseFile responseHandle -> do
+        withTempFile (takeDirectory path) "response" $
+        \responseFile responseHandle -> do
             hClose responseHandle
             let args = [ "--method=PUT", "--body-file="++path
                        , "--user-agent=" ++ userAgent
