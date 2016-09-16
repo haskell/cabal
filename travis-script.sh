@@ -73,6 +73,10 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 
 unset CABAL_BUILDDIR
 
+if [ "x$CABAL_LIB_ONLY" = "xYES" ]; then
+    exit 0;
+fi
+
 # ---------------------------------------------------------------------
 # cabal-install
 # ---------------------------------------------------------------------
