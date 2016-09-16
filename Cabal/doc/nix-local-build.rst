@@ -408,8 +408,10 @@ Specifying the local packages
 The following top-level options specify what the local packages of a
 project are:
 
-``packages:`` *package location list* (space or comma separated,
-default: ``./*.cabal``)
+.. cfg-field:: packages: package location list (space or comma separated)
+    :synopsis: Project packages.
+
+    :default: ``./*.cabal``
 
     Specifies the list of package locations which contain the local
     packages to be built by this project. Package locations can take the
@@ -433,17 +435,23 @@ default: ``./*.cabal``)
 
     There is no command line variant of this field; see :issue:`3585`.
 
-``optional-packages:`` *package location list* (space or comma-separated, default: ``./*/*.cabal``)
-    Like ``packages:``, specifies a list of package locations containing
-    local packages to be built. Unlike ``packages:``, if we glob for a
-    package, it is permissible for the glob to match against zero
-    packages. The intended use-case for ``optional-packages`` is to make
-    it so that vendored packages can be automatically picked up if they
-    are placed in a subdirectory, but not error if there aren't any.
+.. cfg-field:: optional-packages: package location list (space or comma-separated)
+    :synopsis: Optional project packages.
+
+    :default: ``./*/*.cabal``
+
+    Like :cfg-field:`packages`, specifies a list of package locations
+    containing local packages to be built. Unlike :cfg-field:`packages`,
+    if we glob for a package, it is permissible for the glob to match against
+    zero packages. The intended use-case for :cfg-field:`optional-packages`
+    is to make it so that vendored packages can be automatically picked up if
+    they are placed in a subdirectory, but not error if there aren't any.
 
     There is no command line variant of this field.
 
-``extra-packages:`` *package list with version bounds* (comma separated)
+.. cfg-field:: extra-packages: package list with version bounds (comma separated)
+    :synopsis: Adds external pacakges as local
+
     [STRIKEOUT:Specifies a list of external packages from Hackage which
     should be considered local packages.] (Not implemented)
 
@@ -508,14 +516,24 @@ Global configuration options
 The following top-level configuration options are not specific to any
 package, and thus apply globally:
 
-``verbose:`` *nat* (default: 1)
+.. cfg-field:: verbose: nat
+               --verbose=n, -vn
+    :synopsis: Build verbosity level.
+
+    :default: 1
+
     Control the verbosity of ``cabal`` commands, valid values are from 0
     to 3.
 
     The command line variant of this field is ``--verbose=2``; a short
     form ``-v2`` is also supported.
 
-``jobs:`` *nat* or ``$ncpus`` (default: 1)
+.. cfg-field:: jobs: nat or $ncpus
+               --jobs=n, -jn, --jobs=$ncpus
+    :synopsis: Number of builds running in parallel.
+
+    :default: 1
+
     Run *nat* jobs simultaneously when building. If ``$ncpus`` is
     specified, run the number of jobs equal to the number of CPUs.
     Package building is often quite parallel, so turning on parallelism
@@ -525,7 +543,12 @@ package, and thus apply globally:
     ``-j2`` is also supported; a bare ``--jobs`` or ``-j`` is equivalent
     to ``--jobs=$ncpus``.
 
-``keep-going:`` *boolean* (default: False)
+.. cfg-field::  keep-going: boolean
+                --keep-going
+    :synopsis: Try to continue building on failure.
+
+    :default: False
+
     If true, after a build failure, continue to build other unaffected
     packages.
 
@@ -537,7 +560,10 @@ Solver configuration options
 
 The following settings control the behavior of the dependency solver:
 
-``constraints:`` *constraints* (comma separated)
+.. cfg-field:: constraints: constraints list (comma separated)
+               --constrant="pkg >= 2.0"
+    :synopsis: Extra dependencies constraints.
+
     Add extra constraints to the version bounds, flag settings, and
     other properties a solver can pick for a package. For example, to
     only consider install plans that do not use ``bar`` at all, or use
@@ -598,9 +624,12 @@ The following settings control the behavior of the dependency solver:
     ``--constraint="pkg >= 2.0"``; to specify multiple constraints, pass
     the flag multiple times.
 
-``preferences:`` *preference* (comma separated)
-    Like ``constraints``, but the solver will attempt to satisfy these
-    preferences on a best-effort basis. The resulting install is locally
+.. cfg-field:: preferences: preference (comma separated)
+               --preference="pkg >= 2.0"
+    :synopsis: Prefered dependency versions.
+
+    Like :cfg-field:`constraints`, but the solver will attempt to satisfy
+    these preferences on a best-effort basis. The resulting install is locally
     optimal with respect to preferences; specifically, no single package
     could be replaced with a more preferred version that still satisfies
     the hard constraints.
@@ -609,7 +638,7 @@ The following settings control the behavior of the dependency solver:
     version choices of a package before others, which can improve
     dependency solver runtime.
 
-    One way to use ``preferences`` is to take a known working set of
+    One way to use :cfg-field:`preferences` is to take a known working set of
     constraints (e.g., via ``cabal new-freeze``) and record them as
     preferences. In this case, the solver will first attempt to use this
     configuration, and if this violates hard constraints, it will try to
@@ -620,13 +649,18 @@ The following settings control the behavior of the dependency solver:
     ``--preference="pkg >= 2.0"``; to specify multiple preferences, pass
     the flag multiple times.
 
-``allow-newer:`` ``none`` *or* ``all`` *or* *list of scoped package names* (space or comma separated, default: ``none``)
+.. cfg-field:: allow-newer: none, all or list of scoped package names (space or comma separated)
+               --allow-newer, --allow-newer=[none,all,pkg]
+    :synopsis: Lift dependencies upper bound constaints.
+
+    :default: ``none``
+
     Allow the solver to pick an newer version of some packages than
-    would normally be permitted by than the ``build-depends`` bounds of
-    packages in the install plan. This option may be useful if the
+    would normally be permitted by than the :pkg-field:`build-depends` bounds
+    of packages in the install plan. This option may be useful if the
     dependency solver cannot otherwise find a valid install plan.
 
-    For example, to relax ``pkg``\ s ``build-depends`` upper bound on
+    For example, to relax ``pkg``\ s :pkg-field:`build-depends` upper bound on
     ``dep-pkg``, write a scoped package name of the form:
 
     ::
@@ -653,16 +687,21 @@ The following settings control the behavior of the dependency solver:
         -- Disregard all upper bounds when dependency solving
         allow-newer: all
 
-    ``allow-newer`` is often used in conjunction with a constraint (in
-    the ``constraints`` field) forcing the usage of a specific, newer
-    version of a package.
+    :cfg-field:`allow-newer` is often used in conjunction with a constraint
+    (in the cfg-field:`constraints` field) forcing the usage of a specific,
+    newer version of a package.
 
     The command line variant of this field is ``--allow-newer=bar``. A
     bare ``--allow-newer`` is equivalent to ``--allow-newer=all``.
 
-``allow-older:`` ``none`` *or* ``all`` *or* *list of scoped package names* (space or comma separated, default: ``none``)
-    Like ``allow-newer``, but applied to lower bounds rather than upper
-    bounds.
+.. cfg-field:: allow-older: none, all, list of scoped package names (space or comma separated)
+               --allow-older, --allow-older=[none,all,pkg]
+    :synopsis: Lift dependency lower bound constaints.
+
+    :default: ``none``
+
+    Like :cfg-field:`allow-newer`, but applied to lower bounds rather than
+    upper bounds.
 
     The command line variant of this field is ``--allow-older=all``. A
     bare ``--allow-older`` is equivalent to ``--allow-older=all``.
@@ -680,11 +719,9 @@ ways a package option can be specified:
    apply to the build of the package, whether or not it is local or
    external.
 
-For example, the following options specify that ``optimization`` should
-be turned off for all local packages, and that ``bytestring`` (possibly
-an external dependency) should be built with ``-fno-state-hack``:
-
-::
+For example, the following options specify that :cfg-field:`optimization`
+should be turned off for all local packages, and that ``bytestring`` (possibly
+an external dependency) should be built with ``-fno-state-hack``::
 
     optimization: False
 
@@ -707,7 +744,10 @@ means that they are NOT supported by packages which use Custom setup
 scripts that require a version of the Cabal library older than when the
 feature was added.
 
-``flags:`` *list of +flagname or -flagname* (space separated)
+.. cfg-field:: flags: list of +flagname or -flagname (space separated)
+               --flags="+foo -bar", -ffoo, -f-bar
+    :synopsis: Enable or disable package flags.
+
     Force all flags specified as ``+flagname`` to be true, and all flags
     specified as ``-flagname`` to be false. For example, to enable the
     flag ``foo`` and disable ``bar``, set:
@@ -728,7 +768,7 @@ feature was added.
     local packages support the same named flags. If a flag is not
     supported by a package, it is ignored.
 
-    See also the solver configuration field ``constraints``.
+    See also the solver configuration field :cfg-field:`constraints`.
 
     The command line variant of this flag is ``--flags``. There is also
     a shortened form ``-ffoo -f-bar``.
@@ -739,28 +779,31 @@ feature was added.
     ``haskell-tor`` is the package you want this flag to apply to, try
     ``--constraint="haskell-tor +hans"`` instead.
 
-``with-compiler:`` *executable*
+.. cfg-field:: with-compiler: executable
+               --with-compiler=executable
+    :synopsis: Path to compiler executable.
+
     Specify the path to a particular compiler to be used. If not an
-    absolute path, it will be resolved according to the ``PATH``
+    absolute path, it will be resolved according to the :envvar:`PATH`
     environment. The type of the compiler (GHC, GHCJS, etc) must be
-    consistent with the setting of the ``compiler`` field.
+    consistent with the setting of the :cfg-field:`compiler` field.
 
     The most common use of this option is to specify a different version
     of your compiler to be used; e.g., if you have ``ghc-7.8`` in your
     path, you can specify ``with-compiler: ghc-7.8`` to use it.
 
-    This flag also sets the default value of ``with-hc-pkg``, using the
-    heuristic that it is named ``ghc-pkg-7.8`` (if your executable name
+    This flag also sets the default value of :cfg-field:`with-hc-pkg`, using
+    the heuristic that it is named ``ghc-pkg-7.8`` (if your executable name
     is suffixed with a version number), or is the executable named
     ``ghc-pkg`` in the same directory as the ``ghc`` directory. If this
-    heuristic does not work, set ``with-hc-pkg`` explicitly.
+    heuristic does not work, set :cfg-field:`with-hc-pkg` explicitly.
 
     For inplace packages, ``cabal new-build`` maintains a separate build
     directory for each version of GHC, so you can maintain multiple
     build trees for different versions of GHC without clobbering each
     other.
 
-    At the moment, it's not possible to set ``with-compiler`` on a
+    At the moment, it's not possible to set :cfg-field:`with-compiler` on a
     per-package basis, but eventually we plan on relaxing this
     restriction. If this is something you need, give us a shout.
 
@@ -768,17 +811,26 @@ feature was added.
     ``--with-compiler=ghc-7.8``; there is also a short version
     ``-w ghc-7.8``.
 
-``with-hc-pkg:`` *executable*
+.. cfg-field:: with-hc-pkg: executable
+               --with-hc-pkg=executable
+    :synopsis: Specifies package tool.
+
     Specify the path to the package tool, e.g., ``ghc-pkg``. This
     package tool must be compatible with the compiler specified by
-    ``with-compiler`` (generally speaking, it should be precisely the
-    tool that was distributed with the compiler). If this option is
-    omitted, the default value is determined from ``with-compiler``.
+    :cfg-field:`with-compiler` (generally speaking, it should be precisely
+    the tool that was distributed with the compiler). If this option is
+    omitted, the default value is determined from :cfg-field:`with-compiler`.
 
     The command line variant of this flag is
     ``--with-hc-pkg=ghc-pkg-7.8``.
 
-``optimization:`` *nat* (default: ``1``)
+.. cfg-field:: optimization: nat
+               --enable-optimization
+               --disable-optimization
+    :synopsis: Build with optimization.
+
+    :default: ``1``
+
     Build with optimization. This is appropriate for production use,
     taking more time to build faster libraries and programs.
 
@@ -803,7 +855,10 @@ feature was added.
     equivalent to ``-O``). There are also long-form variants
     ``--enable-optimization`` and ``--disable-optimization``.
 
-``configure-options:`` *args* (space separated)
+.. cfg-field:: configure-options: args (space separated)
+               --configure-option=arg
+    :synopsis: Options to pass to configure script.
+
     A list of extra arguments to pass to the external ``./configure``
     script, if one is used. This is only useful for packages which have
     the ``Configure`` build type. See also the section on
@@ -813,14 +868,25 @@ feature was added.
     The command line variant of this flag is ``--configure-option=arg``,
     which can be specified multiple times to pass multiple options.
 
-``compiler:`` ``ghc`` *or* ``ghcjs`` *or* ``jhc`` *or* ``lhc`` *or* ``uhc`` *or* ``haskell-suite`` (default: ``ghc``)
+.. cfg-field:: compiler: ghc, ghcjs, jhc, lhc, uhc or haskell-suite
+               --compiler=compiler
+    :synopsis: Compiler to build with.
+
+    :default: ``ghc``
+
     Specify which compiler toolchain to be used. This is independent of
     ``with-compiler``, because the choice of toolchain affects Cabal's
     build logic.
 
     The command line variant of this flag is ``--compiler=ghc``.
 
-``tests:`` *boolean* (default: ``False``)
+.. cfg-field:: tests: boolean
+               --enable-tests
+               --disable-tests
+    :synopsis: Build tests.
+
+    :default: ``False``
+
     Force test suites to be enabled. For most users this should not be
     needed, as we always attempt to solve for test suite dependencies,
     even when this value is ``False``; furthermore, test suites are
@@ -829,7 +895,13 @@ feature was added.
     The command line variant of this flag is ``--enable-tests`` and
     ``--disable-tests``.
 
-``benchmarks:`` *boolean* (default: ``False``)
+.. cfg-field:: benchmarks: boolean
+               --enable-benchmarks
+               --disable-benchmarks
+    :synopsis: Build benchmarks.
+
+    :default: ``False``
+
     Force benchmarks to be enabled. For most users this should not be
     needed, as we always attempt to solve for benchmark dependencies,
     even when this value is ``False``; furthermore, benchmarks are
@@ -838,7 +910,11 @@ feature was added.
     The command line variant of this flag is ``--enable-benchmarks`` and
     ``--disable-benchmarks``.
 
-``extra-prog-path:`` *paths* (newline or comma separated, added in Cabal 1.18)
+.. cfg-field:: extra-prog-path: paths (newline or comma separated)
+               --extra-prog-path=PATH
+    :synopsis: Add directories to program search path.
+    :since: 1.18
+
     A list of directories to search for extra required programs. Most
     users should not need this, as programs like ``happy`` and ``alex``
     will automatically be installed and added to the path. This can be
@@ -848,22 +924,37 @@ feature was added.
     The command line variant of this flag is ``--extra-prog-path=PATH``,
     which can be specified multiple times.
 
-``run-tests:`` *boolean* (default: ``False``)
+.. cfg-field:: run-tests: boolean
+               --run-tests
+    :synopsis: Run package test suite upon installation.
+
+    :default: ``False``
+
     Run the package test suite upon installation. This is useful for
     saying "When this package is installed, check that the test suite
     passes, terminating the rest of the build if it is broken."
 
-    One deficiency: the ``run-test`` setting of a package is NOT
-    recorded as part of the hash, so if you install something without
-    ``run-tests`` and then turn on ``run-tests``, we won't subsequently
-    test the package. If this is causing you problems, give us a shout.
+    .. warning::
+
+      One deficiency: the :cfg-field:`run-tests` setting of a package is NOT
+      recorded as part of the hash, so if you install something without
+      :cfg-field:`run-tests` and then turn on ``run-tests``, we won't
+      subsequently test the package. If this is causing you problems, give
+      us a shout.
 
     The command line variant of this flag is ``--run-tests``.
 
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
-``debug-info:`` *boolean* (default: False, added in Cabal 1.22)
+.. cfg-field:: debug-info: boolean
+               --enable-debug-info
+               --disable-debug-info
+    :synopsis: Build with debug info enabled.
+    :since: 1.22
+
+    :default: False
+
     If the compiler (e.g., GHC 7.10 and later) supports outputing OS
     native debug info (e.g., DWARF), setting ``debug-info: True`` will
     instruct it to do so. See the GHC wiki page on :ghc-wiki:`DWARF`
@@ -875,7 +966,13 @@ Object code options
     The command line variant of this flag is ``--enable-debug-info`` and
     ``--disable-debug-info``.
 
-``split-objs:`` *boolean* (default: False)
+.. cfg-field:: split-objs: boolean
+               --enable-split-objs
+               --disable-split-objs
+    :synopsis: Use GHC split objects feature.
+
+    :default: False
+
     Use the GHC ``-split-objs`` feature when building the library. This
     reduces the final size of the executables that use the library by
     allowing them to link with only the bits that they use rather than
@@ -885,7 +982,13 @@ Object code options
     The command line variant of this flag is ``--enable-split-objs`` and
     ``--disable-split-objs``.
 
-``executable-stripping:`` *boolean* (default: True)
+.. cfg-field:: executable-stripping: boolean
+               --enable-executable-stripping
+               --disable-executable-stripping
+    :synopsis: Strip installed programs.
+
+    :default: True
+
     When installing binary executable programs, run the ``strip``
     program on the binary. This can considerably reduce the size of the
     executable binary file. It does this by removing debugging
@@ -900,7 +1003,12 @@ Object code options
     ``--enable-executable-stripping`` and
     ``--disable-executable-stripping``.
 
-``library-stripping:`` *boolean* (added in Cabal 1.19)
+.. cfg-field:: library-stripping: boolean
+               --enable-library-stripping
+               --disable-library-stripping
+    :synopsis: Strip installed libraries.
+    :since: 1.19
+
     When installing binary libraries, run the ``strip`` program on the
     binary, saving space on the file system. See also
     ``executable-stripping``.
@@ -911,7 +1019,10 @@ Object code options
 Executable options
 ^^^^^^^^^^^^^^^^^^
 
-``program-prefix:`` *prefix*
+.. cfg-field:: program-prefix: prefix
+               --program-prefix=prefix
+    :synopsis: Prepend prefix to program names.
+
     [STRIKEOUT:Prepend *prefix* to installed program names.] (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
@@ -922,7 +1033,10 @@ Executable options
 
     The command line variant of this flag is ``--program-prefix=foo-``.
 
-``program-suffix:`` *suffix*
+.. cfg-field:: program-suffix: suffix
+               --program-suffix=suffix
+    :synopsis: Append refix to program names.
+
     [STRIKEOUT:Append *suffix* to installed program names.] (Currently
     implemented in a silly and not useful way. If you need this to work
     give us a shout.)
@@ -941,14 +1055,26 @@ Executable options
 Dynamic linking options
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-``shared:`` *boolean* (default: False)
+.. cfg-field:: shared: boolean
+               --enable-shared
+               --disable-shared
+    :synopsis: Build shared library.
+
+    :default: False
+
     Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
     The command line variant of this flag is ``--enable-shared`` and
     ``--disable-shared``.
 
-``executable-dynamic:`` *boolean* (default: False)
+.. cfg-field:: executable-dynamic: boolean
+               --enable-executable-dynamic
+               --disable-executable-dynamic
+    :synopsis: Link executables dynamically.
+
+    :default: False
+
     Link executables dynamically. The executable's library dependencies
     should be built as shared objects. This implies ``shared: True``
     unless ``shared: False`` is explicitly specified.
@@ -957,7 +1083,13 @@ Dynamic linking options
     ``--enable-executable-dynamic`` and
     ``--disable-executable-dynamic``.
 
-``library-for-ghci:`` *boolean* (default: True)
+.. cfg-field:: library-for-ghci: boolean
+               --enable-library-for-ghci
+               --disable-library-for-ghci
+    :synopsis: Build libraries suitable for use with GHCi.
+
+    :default: True
+
     Build libraries suitable for use with GHCi. This involves an extra
     linking step after the build.
 
@@ -968,7 +1100,13 @@ Dynamic linking options
     The command line variant of this flag is
     ``--enable-library-for-ghci`` and ``--disable-library-for-ghci``.
 
-``relocatable:`` (default: False, added in Cabal 1.21)
+.. cfg-field:: relocatable:
+               --relocatable
+    :synopsis: Build relocatable package.
+    :since: 1.21
+
+    :default: False
+
     [STRIKEOUT:Build a package which is relocatable.] (TODO: It is not
     clear what this actually does, or if it works at all.)
 
@@ -977,14 +1115,17 @@ Dynamic linking options
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``extra-include-dirs:`` *directories* (comma or newline separated list)
+.. cfg-field:: extra-include-dirs: directories (comma or newline separated list)
+               --extra-include-dirs=DIR
+    :synopsis: Adds C header search path.
+
     An extra directory to search for C header files. You can use this
     flag multiple times to get a list of directories.
 
     You might need to use this flag if you have standard system header
     files in a non-standard location that is not mentioned in the
     package's ``.cabal`` file. Using this option has the same affect as
-    appending the directory *dir* to the ``include-dirs`` field in each
+    appending the directory *dir* to the :pkg-field:`include-dirs` field in each
     library and executable in the package's ``.cabal`` file. The
     advantage of course is that you do not have to modify the package at
     all. These extra directories will be used while building the package
@@ -994,19 +1135,25 @@ Foreign function interface options
     The command line variant of this flag is
     ``--extra-include-dirs=DIR``, which can be specified multiple times.
 
-``extra-lib-dirs:`` *directories* (comma or newline separated list)
+.. cfg-field:: extra-lib-dirs: directories (comma or newline separated list)
+               --extra-lib-dirs=DIR
+    :synopsis: Adds library search directory.
+
     An extra directory to search for system libraries files.
 
     The command line variant of this flag is ``--extra-lib-dirs=DIR``,
     which can be specified multiple times.
 
-``extra-framework-dirs:`` *directories* (comma or newline separated list)
+.. cfg-field:: extra-framework-dirs: directories (comma or newline separated list)
+               --extra-framework-dirs=DIR
+    :synopsis: Adds framework search directory (OS X only).
+
     An extra directory to search for frameworks (OS X only).
 
     You might need to use this flag if you have standard system
     libraries in a non-standard location that is not mentioned in the
     package's ``.cabal`` file. Using this option has the same affect as
-    appending the directory *dir* to the ``extra-lib-dirs`` field in
+    appending the directory *dir* to the :cfg-field:`extra-lib-dirs` field in
     each library and executable in the package's ``.cabal`` file. The
     advantage of course is that you do not have to modify the package at
     all. These extra directories will be used while building the package
@@ -1020,23 +1167,36 @@ Foreign function interface options
 Profiling options
 ^^^^^^^^^^^^^^^^^
 
-``profiling:`` *boolean* (default: False, added in Cabal 1.21)
+.. cfg-field:: profiling: boolean
+               --enable-profiling
+               --disable-profiling
+    :synopsis: Enable profiling builds.
+    :since: 1.21
+
+    :default: False
+
     Build libraries and executables with profiling enabled (for
     compilers that support profiling as a separate mode). It is only
-    necessary to specify ``profiling`` for the specific package you want
-    to profile; ``cabal new-build`` will ensure that all of its
+    necessary to specify :cfg-field:`profiling` for the specific package you
+    want to profile; ``cabal new-build`` will ensure that all of its
     transitive dependencies are built with profiling enabled.
 
     To enable profiling for only libraries or executables, see
-    ``library-profiling`` and ``executable-profiling``.
+    :cfg-field:`library-profiling` and :cfg-field:`executable-profiling`.
 
     For useful profiling, it can be important to control precisely what
-    cost centers are allocated; see ``profiling-detail``.
+    cost centers are allocated; see :cfg-field:`profiling-detail`.
 
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
 
-``library-vanilla:`` *boolean* (default: True)
+.. cfg-field:: library-vanilla: boolean
+               --enable-library-vanilla
+               --disable-library-vanilla
+    :synopsis: Build libraries without profiling.
+
+    :default: True
+
     Build ordinary libraries (as opposed to profiling libraries).
     Mostly, you can set this to False to avoid building ordinary
     libraries when you are profiling.
@@ -1044,20 +1204,38 @@ Profiling options
     The command line variant of this flag is
     ``--enable-library-vanilla`` and ``--disable-library-vanilla``.
 
-``library-profiling:`` *boolean* (default: False, added in Cabal 1.21)
+.. cfg-field:: library-profiling: boolean
+               --enable-library-profiling
+               --disable-library-profiling
+    :synopsis: Build libraries with profiling enabled.
+    :since: 1.21
+
+    :default: False
+
     Build libraries with profiling enabled.
 
     The command line variant of this flag is
     ``--enable-library-profiling`` and ``--disable-library-profiling``.
 
-``executable-profiling:`` *boolean* (default: False, added in Cabal 1.21)
+.. cfg-field:: executable-profiling: boolean
+               --enable-executable-profiling
+               --disable-executable-profiling
+    :synopsis: Build executables with profiling enabled.
+    :since: 1.21
+
+    :default: False
+
     Build executables with profiling enabled.
 
     The command line variant of this flag is
     ``--enable-executable-profiling`` and
     ``--disable-executable-profiling``.
 
-``profiling-detail:`` *level* (added in Cabal 1.23)
+.. cfg-field:: profiling-detail: level
+               --profiling-detail=level
+    :synopsis: Profiling detail level.
+    :since: 1.23
+
     Some compilers that support profiling, notably GHC, can allocate
     costs to different parts of the program and there are different
     levels of granularity or detail with which this can be done. In
@@ -1070,21 +1248,21 @@ Profiling options
     Currently this setting is ignored for compilers other than GHC. The
     levels that cabal currently supports are:
 
-    ``default``
+    default
         For GHC this uses ``exported-functions`` for libraries and
         ``toplevel-functions`` for executables.
-    ``none``
+    none
         No costs will be assigned to any code within this component.
-    ``exported-functions``
+    exported-functions
         Costs will be assigned at the granularity of all top level
         functions exported from each module. In GHC specifically, this
         is for non-inline functions.
-    ``toplevel-functions``
+    toplevel-functions
         Costs will be assigned at the granularity of all top level
         functions in each module, whether they are exported from the
         module or not. In GHC specifically, this is for non-inline
         functions.
-    ``all-functions``
+    all-functions
         Costs will be assigned at the granularity of all functions in
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
@@ -1093,8 +1271,12 @@ Profiling options
     The command line variant of this flag is
     ``--profiling-detail=none``.
 
-``library-profiling-detail:`` *level* (added in Cabal 1.23)
-    Like ``profiling-detail``, but applied only to libraries
+.. cfg-field:: library-profiling-detail: level
+               --library-profiling-detail=level
+    :synopsis: Libraries profiling detail level.
+    :since: 1.23
+
+    Like :cfg-field:`profiling-detail`, but applied only to libraries
 
     The command line variant of this flag is
     ``--library-profiling-detail=none``.
@@ -1102,7 +1284,14 @@ Profiling options
 Coverage options
 ^^^^^^^^^^^^^^^^
 
-``coverage:`` *boolean* (default: False, added in Cabal 1.21)
+.. cfg-field:: coverage: boolean
+               --enable-coverage
+               --disable-coverage
+    :synopsis: Build with coverage enabled.
+    :since: 1.21
+
+    :default: False
+
     Build libraries and executables (including test suites) with Haskell
     Program Coverage enabled. Running the test suites will automatically
     generate coverage reports with HPC.
@@ -1110,8 +1299,15 @@ Coverage options
     The command line variant of this flag is ``--enable-coverage`` and
     ``--disable-coverage``.
 
-``library-coverage:`` *boolean* (default: False, added in Cabal 1.21)
-    Deprecated, use ``coverage``.
+.. cfg-field:: library-coverage: boolean
+               --enable-library-coverage
+               --disable-library-coverage
+    :since: 1.21
+    :deprecated:
+
+    :default: False
+
+    Deprecated, use :cfg-field:`coverage`.
 
     The command line variant of this flag is
     ``--enable-library-coverage`` and ``--disable-library-coverage``.
@@ -1122,13 +1318,22 @@ Haddock options
 Documentation building support is fairly sparse at the moment. Let us
 know if it's a priority for you!
 
-``documentation:`` *boolean* (default: False)
+.. cfg-field:: documentation: boolean
+               --enable-documentation
+               --disable-documentation
+    :synopsis: Enable building of documentation.
+
+    :default: False
+
     Enables building of Haddock documentation
 
     The command line variant of this flag is ``--enable-documentation``
     and ``--disable-documentation``.
 
-``doc-index-file``: *templated path*
+.. cfg-field:: doc-index-file: templated path
+               --doc-index-file=TEMPLATE
+    :synopsis: Path to haddock templates.
+
     A central index of Haddock API documentation (template cannot use
     ``$pkgid``), which should be updated as documentation is built.
 
@@ -1138,7 +1343,11 @@ know if it's a priority for you!
 The following commands are equivalent to ones that would be passed when
 running ``setup haddock``. (TODO: Where does the documentation get put.)
 
-``haddock-hoogle:`` *boolean* (default: False)
+.. cfg-field:: haddock-hoogle: boolean
+    :synopsis: Generate Hoogle file.
+
+    :default: False
+
     Generate a text file which can be converted by Hoogle_
     into a database for searching. This is equivalent to running ``haddock``
     with the ``--hoogle`` flag.
@@ -1146,13 +1355,19 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     The command line variant of this flag is ``--hoogle`` (for the
     ``haddock`` command).
 
-``haddock-html:`` *boolean* (default: True)
+.. cfg-field:: haddock-html: boolean
+    :synopsis: Build HTML documentation.
+
+    :default: True
+
     Build HTML documentation.
 
     The command line variant of this flag is ``--html`` (for the
     ``haddock`` command).
 
-``haddock-html-location:`` *templated path*
+.. cfg-field:: haddock-html-location: templated path
+    :synopsis: Haddock HTML templates location.
+
     Specify a template for the location of HTML documentation for
     prerequisite packages. The substitutions are applied to the template
     to obtain a location for each package, which will be used by
@@ -1170,65 +1385,97 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
     The command line variant of this flag is ``--html-location`` (for
     the ``haddock`` subcommand).
 
-``haddock-executables:`` *boolean* (default: False)
+.. cfg-field:: haddock-executables: boolean
+    :synopsis: Generate documentation for executables.
+
+    :default: False
+
     Run haddock on all executable programs.
 
     The command line variant of this flag is ``--executables`` (for the
     ``haddock`` subcommand).
 
-``haddock-tests:`` *boolean* (default: False)
+.. cfg-field:: haddock-tests: boolean
+    :synopsis: Generate documentation for tests.
+
+    :default: False
+
     Run haddock on all test suites.
 
     The command line variant of this flag is ``--tests`` (for the
     ``haddock`` subcommand).
 
-``haddock-benchmarks:`` *boolean* (default: False)
+.. cfg-field:: haddock-benchmarks: boolean
+    :synopsis: Generate documentation for benchmarks.
+
+    :default: False
+
     Run haddock on all benchmarks.
 
     The command line variant of this flag is ``--benchmarks`` (for the
     ``haddock`` subcommand).
 
-``haddock-all:`` *boolean* (default: False)
+.. cfg-field:: haddock-all: boolean
+    :synopsis: Generate documentation for everything
+
+    :default: False
+
     Run haddock on all components.
 
     The command line variant of this flag is ``--all`` (for the
     ``haddock`` subcommand).
 
-``haddock-internal:`` *boolean* (default: False)
+.. cfg-field:: haddock-internal: boolean
+    :synopsis: Generate documentation for internal modules
+
+    :default: False
+
     Build haddock documentation which includes unexposed modules and
     symbols.
 
     The command line variant of this flag is ``--internal`` (for the
     ``haddock`` subcommand).
 
-``haddock-css:`` *path*
+.. cfg-field:: haddock-css: path
+    :synopsis: Location of Haddoc CSS file.
+
     The CSS file that should be used to style the generated
     documentation (overriding haddock's default.)
 
     The command line variant of this flag is ``--css`` (for the
     ``haddock`` subcommand).
 
-``haddock-hyperlink-source:`` *boolean* (default: False)
-    Generated hyperlinked source code using ``HsColour``, and have
+.. cfg-field:: haddock-hyperlink-source: boolean
+    :synopsis: Generate hyperlinked source code for documentation
+
+    :default: False
+
+    Generated hyperlinked source code using `HsColour`_, and have
     Haddock documentation link to it.
 
     The command line variant of this flag is ``--hyperlink-source`` (for
     the ``haddock`` subcommand).
 
-``haddock-hscolour-css:`` *path*
+.. cfg-field:: haddock-hscolour-css: path
+    :synopsis: Location of CSS file for HsColour
+
     The CSS file that should be used to style the generated hyperlinked
-    source code (from ``HsColour``).
+    source code (from `HsColour`_).
 
     The command line variant of this flag is ``--hscolour-css`` (for the
     ``haddock`` subcommand).
 
-``haddock-contents-location:`` *url*
+.. cfg-field:: haddock-contents-location: URL
+    :synopsis: URL for contents page.
+
     A baked-in URL to be used as the location for the contents page.
 
     The command line variant of this flag is ``--contents-location``
     (for the ``haddock`` subcommand).
 
-``haddock-keep-temp-files:``
+.. cfg-field:: haddock-keep-temp-files: boolean
+    :synopsis: Keep temporary Haddock files.
+
     Keep temporary files.
 
     The command line variant of this flag is ``--keep-temp-files`` (for
@@ -1237,12 +1484,22 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
-``http-transport:`` ``curl`` or ``wget`` or ``powershell`` or ``plain-http`` (default: ``curl``)
+.. cfg-field:: http-transport: curl, wget, powershell, or plain-http
+               --http-transport=transport
+    :synopsis: Transport to use with http(s) requests.
+
+    :default: ``curl``
+
     Set a transport to be used when making http(s) requests.
 
     The command line variant of this field is ``--http-transport=curl``.
 
-``ignore-expiry:`` *boolean* (default: False)
+.. cfg-field:: ignore-expiry: boolean
+               --ignore-expiry
+    :synopsis: Ignore Hackage expiration dates.
+
+    :default: False
+
     If ``True``, we will ignore expiry dates on metadata from Hackage.
 
     In general, you should not set this to ``True`` as it will leave you
@@ -1253,20 +1510,35 @@ Advanced global configuration options
 
     The command line variant of this field is ``--ignore-expiry``.
 
-``remote-repo-cache:`` *directory* (default: ``~/.cabal/packages``)
+.. cfg-field:: remote-repo-cache: directory
+               --remote-repo-cache=DIR
+    :synopsis: Location of packages cache.
+
+    :default: ``~/.cabal/packages``
+
     [STRIKEOUT:The location where packages downloaded from remote
     repositories will be cached.] Not implemented yet.
 
     The command line variant of this flag is
     ``--remote-repo-cache=DIR``.
 
-``logs-dir:`` *directory* (default: ``~/.cabal/logs``)
+.. cfg-field:: logs-dir: directory
+               --logs-dir=DIR
+    :synopsis: Directory to store build logs.
+
+    :default: ``~/.cabal/logs``
+
     [STRIKEOUT:The location where build logs for packages are stored.]
     Not implemented yet.
 
     The command line variant of this flag is ``--logs-dir=DIR``.
 
-``build-summary:`` *template filepath* (default: ``~/.cabal/logs/build.log``)
+.. cfg-field:: build-summary: template filepath
+               --build-summary=TEMPLATE
+    :synopsis: Build summaries location.
+
+    :default: ``~/.cabal/logs/build.log``
+
     [STRIKEOUT:The file to save build summaries. Valid variables which
     can be used in the path are ``$pkgid``, ``$compiler``, ``$os`` and
     ``$arch``.] Not implemented yet.
@@ -1274,13 +1546,19 @@ Advanced global configuration options
     The command line variant of this flag is
     ``--build-summary=TEMPLATE``.
 
-``local-repo:`` *directory*
+.. cfg-field:: local-repo: directory
+               --local-repo=DIR
+    :deprecated:
+
     [STRIKEOUT:The location of a local repository.] Deprecated. See
     "Legacy repositories."
 
     The command line variant of this flag is ``--local-repo=DIR``.
 
-``world-file:`` *path*
+.. cfg-field:: world-file: path
+               --world-file=FILE
+    :deprecated:
+
     [STRIKEOUT:The location of the world file.] Deprecated.
 
     The command line variant of this flag is ``--world-file=FILE``.
@@ -1294,21 +1572,35 @@ Advanced solver options
 
 Most users generally won't need these.
 
-``solver:`` ``modular``
+.. cfg-field:: solver: modular
+               --solver=modular
+    :synopsis: Which solver to use.
+
     This field is reserved to allow the specification of alternative
     dependency solvers. At the moment, the only accepted option is
     ``modular``.
 
     The command line variant of this field is ``--solver=modular``.
 
-``max-backjumps:`` *nat* (default: 2000)
+.. cfg-field:: max-backjumps: nat
+               --max-backjumps=N
+    :synopsis: Maximum number of solver backjumps.
+
+    :default: 2000
+
     Maximum number of backjumps (backtracking multiple steps) allowed
     while solving. Set -1 to allow unlimited backtracking, and 0 to
     disable backtracking completely.
 
     The command line variant of this field is ``--max-backjumps=2000``.
 
-``reorder-goals:`` *boolean* (default: False)
+.. cfg-field:: reorder-goals: boolean
+               --reorder-goals
+               --no-reorder-goals
+    :synopsis: Allow solver to reorder goals.
+
+    :default: False
+
     When enabled, the solver will reorder goals according to certain
     heuristics. Slows things down on average, but may make backtracking
     faster for some packages. It's unlikely to help for small projects,
@@ -1317,19 +1609,34 @@ Most users generally won't need these.
 
     The command line variant of this field is ``--(no-)reorder-goals``.
 
-``count-conflicts:`` *boolean* (default: True)
+.. cfg-field:: count-conflicts: boolean
+               --count-conflicts
+               --no-count-conflicts
+    :synopsis: Solver prefers versions with less conflicts.
+
+    :default: True
+
     Try to speed up solving by preferring goals that are involved in a
     lot of conflicts.
 
     The command line variant of this field is
     ``--(no-)count-conflicts``.
 
-``strong-flags:`` *boolean* (default: False)
+.. cfg-field:: strong-flags: boolean
+               --strong-flags
+               --no-strong-flags
+    :synopsis: Do not defer flag choices when solving.
+
+    :default: False
+
     Do not defer flag choices. (TODO: Better documentation.)
 
     The command line variant of this field is ``--(no-)strong-flags``.
 
-``cabal-lib-version:`` *version*
+.. cfg-field:: cabal-lib-version: version
+               --cabal-lib-version=version
+    :synopsis: Version of Cabal library used to build package.
+
     This field selects the version of the Cabal library which should be
     used to build packages. This option is intended primarily for
     internal development use (e.g., forcing a package to build with a

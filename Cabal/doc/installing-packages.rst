@@ -146,6 +146,8 @@ The layout of these secure local repos matches the layout of remote
 repositories exactly; the :hackage-pkg:`hackage-repo-tool`
 can be used to create and manage such repositories.
 
+.. _installing-packages:
+
 Building and installing packages
 ================================
 
@@ -441,6 +443,8 @@ The various commands and the additional options they support are
 described below. In the simple build infrastructure, any other options
 will be reported as errors.
 
+.. _setup-configure:
+
 setup configure
 ---------------
 
@@ -585,7 +589,7 @@ package:
 
     In the simple build system, *dir* may contain the following path
     variables: ``$prefix``, ``$pkgid``, ``$pkg``, ``$version``,
-    ``$compiler``, ``$os``, ``$arch``, ``$abi``, \`$abitag
+    ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
 .. option:: --libdir=dir
 
@@ -1252,6 +1256,8 @@ Miscellaneous options
     Specify a soft constraint on versions of a package. The solver will
     attempt to satisfy these preferences on a "best-effort" basis.
 
+.. _setup-build:
+
 setup build
 -----------
 
@@ -1270,6 +1276,8 @@ This command takes the following options:
     not persistent but are used for that invocation only. They options
     specified at the build step are in addition not in replacement of
     any options specified at the configure step.
+
+.. _setup-haddock:
 
 setup haddock
 -------------
@@ -1338,6 +1346,8 @@ This command takes the following options:
 
         runhaskell Setup.hs hscolour --css=*path*
 
+.. _setup-hscolour:
+
 setup hscolour
 --------------
 
@@ -1360,6 +1370,8 @@ This command takes the following options:
     the given CSS file to the directory with the generated HTML files
     (renamed to ``hscolour.css``) rather than linking to it.
 
+.. _setup-install:
+
 setup install
 -------------
 
@@ -1370,7 +1382,7 @@ register the package with the compiler, i.e. make the modules it
 contains available to programs.
 
 The `install locations <#installation-paths>`__ are determined by
-options to ``setup configure``.
+options to `setup configure`_.
 
 This command takes the following options:
 
@@ -1386,6 +1398,8 @@ This command takes the following options:
     the default if the :option:`setup configure --user` option was supplied
     to the ``configure`` command.)
 
+.. _setup-copy:
+
 setup copy
 ----------
 
@@ -1400,6 +1414,8 @@ This command takes the following option:
 
    Specify the directory under which to place installed files. If this is
    not given, then the root directory is assumed.
+
+.. _setup-register:
 
 setup register
 --------------
@@ -1464,6 +1480,8 @@ This command takes the following options:
     supplemental files installed --- plain Haskell libraries should be
     fine.
 
+.. _setup-unregister:
+
 setup unregister
 ----------------
 
@@ -1489,12 +1507,14 @@ This command takes the following options:
     ``unregister.sh``, on Windows, ``unregister.bat``. This script might
     be included in a binary bundle, to be run on the target system.
 
+.. _setup-clean:
+
 setup clean
 -----------
 
 Remove any local files created during the ``configure``, ``build``,
 ``haddock``, ``register`` or ``unregister`` steps, and also any files
-and directories listed in the ``extra-tmp-files`` field.
+and directories listed in the :pkg-field:`extra-tmp-files` field.
 
 This command takes the following options:
 
@@ -1552,6 +1572,8 @@ the package.
     give an extra option to the test executables. There is no need to
     quote options containing spaces because a single option is assumed,
     so options will not be split on spaces.
+
+.. _setup-sdist:
 
 setup sdist
 -----------
