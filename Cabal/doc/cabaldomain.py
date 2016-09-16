@@ -28,8 +28,7 @@ Added directives
    Needed to disambiguate fields with duplicate names, you can reset
    the section to empty with `.. pkg-section:: None`.
 
-   Will try to guess synopsis from current section title unless explicitly
-   set with :synopsis:
+   TODO: make this an ObjectDescription actually
 
 .. rst::role:: pkg-section
 
@@ -173,19 +172,25 @@ class Meta(object):
 
 def find_section_title(parent):
     '''
-    Find current section title if possible
+    Find current section id and title if possible
     '''
     while parent is not None:
         if isinstance(parent, nodes.section):
             break
         parent = parent.parent
+
     if parent is None:
         return None
 
+    section_id = parent['ids'][0]
+    section_name = parent['names'][0]
+
     for kid in parent:
         if isinstance(kid, nodes.title):
-            return kid.astext()
-    return None
+            return kid.astext(), section_id
+
+    print section_name, section_id
+    return section_name, section_id
 
 
 class CabalSection(Directive):
@@ -204,7 +209,6 @@ class CabalSection(Directive):
         'deprecated': parse_deprecated,
         'since' : StrictVersion,
         'synopsis' : lambda x:x,
-        'index' : int
     }
     section_key = 'cabal:pkg-section'
     target_prefix = 'pkg-section-'
@@ -242,11 +246,10 @@ class CabalSection(Directive):
         title = find_section_title(self.state.parent)
 
         data_key = CabalDomain.types[self.objtype]
-        index_key = data_key + '-num'
 
         # find how many sections in this document were added
-        num = env.domaindata['cabal'][index_key].get(env.docname, 0)
-        env.domaindata['cabal'][index_key][env.docname] = num + 1
+        num = env.domaindata['cabal']['index-num'].get(env.docname, 0)
+        env.domaindata['cabal']['index-num'][env.docname] = num + 1
 
         meta = Meta(since=self.options.get('since'),
                     deprecated=self.options.get('deprecated'),
@@ -288,7 +291,7 @@ class CabalField(ObjectDescription):
     # used by default deg_index_entry method
     indextemplate = '%s; package.cabal section'
 
-    def get_meta(self):
+    def get_meta(self, env):
         '''
         Collect meta data for fields
 
@@ -296,13 +299,14 @@ class CabalField(ObjectDescription):
         tries to find current section title and adds it as section
         '''
         # find title of current section, will group references page by it
-        section = None
-        if isinstance(self.state.parent, nodes.section):
-            for kid in self.state.parent:
-                if isinstance(kid, nodes.title):
-                    section = kid.astext()
+        num = env.domaindata['cabal']['index-num'].get(env.docname, 0)
+        env.domaindata['cabal']['index-num'][env.docname] = num + 1
+
+        title = find_section_title(self.state.parent)
         return Meta(since=self.options.get('since'),
                     deprecated=self.options.get('deprecated'),
+                    title=title,
+                    index = num,
                     synopsis=self.options.get('synopsis'))
 
     def get_env_key(self, env, name):
@@ -341,6 +345,8 @@ class CabalField(ObjectDescription):
         By default make an object description from name and adding
         either deprecated or since as annotation.
         '''
+        env = self.state.document.settings.env
+
         sig = sig.strip()
         parts = sig.split(':',1)
         name = parts[0]
@@ -351,7 +357,7 @@ class CabalField(ObjectDescription):
             rest = parts[1].strip()
             signode += addnodes.desc_addname(rest, rest)
 
-        meta = self.get_meta()
+        meta = self.get_meta(env)
 
         rendered = render_meta_title(meta)
         if rendered != '':
@@ -378,7 +384,7 @@ class CabalField(ObjectDescription):
             entries=[('pair', indexentry, targetname, '', None)])
         signode.insert(0, inode)
 
-        meta = self.get_meta()
+        meta = self.get_meta(env)
          #for ref finding
 
         key, store = self.get_env_key(env, name)
@@ -467,39 +473,100 @@ class ConfigFieldIndex(Index):
     localname = "Cabal reference"
     shortname = "Reference"
 
+    class Entry(object):
+        def __init__(self, typ, name, doc, anchor, meta):
+            self.type = typ
+            self.name = name
+            self.doc = doc
+            self.anchor = anchor
+            self.meta = meta
+
+    def _gather_data(self, obj_types):
+        '''
+        Gather objects and return [(title, [Entry])]
+        '''
+        def massage(typ, datum):
+            name, (doc, anchor, meta) = datum
+            return self.Entry(typ, name, doc, anchor, meta)
+
+        fields = []
+        for typ in obj_types:
+            store = CabalDomain.types[typ]
+            fields += [massage(typ, x)
+                      for x in self.domain.data[store].items()]
+
+        fields.sort(key=lambda x: (x.doc, x.meta.index))
+
+        if len(fields) == 0:
+            return []
+
+        result = []
+        current = []
+        current_title = fields[0].meta.title
+        for field in fields:
+            if field.meta.title != current_title:
+                result.append((current_title, current))
+                current = []
+                current_title = field.meta.title
+            current.append(field)
+        result.append((current_title, current))
+
+        return result
+
+
     def generate(self, docnames=None):
+        '''
+        Try to group entries such that if entry has a section then put it
+        into same group.
+
+        Otherwise group it under same `title`.
+
+        Try to keep in same order as it was defined.
+
+        sort by (document, index)
+        group on (document, doc_section)
+        in groups sort so sections are first
+
+        TODO: Check how to extract section numbers from (document,doc_section)
+              and add it as annotation to titles
+        '''
+
         # (title, section store, fields store)
-        entries = [('project.cabal fields', 'cfg-sections', 'cfg-fields'),
-                   ('cabal project flags', 'cfg-sections', 'cfg-flags'),
-                   ('project.cabal fields', 'pkg-sections', 'pkg-fields')]
+        entries = [('project.cabal fields', 'cfg-section', 'cfg-field'),
+                   ('cabal project flags', 'cfg-section', 'cfg-flag'),
+                   ('project.cabal fields', 'pkg-section', 'pkg-field')]
 
         result = []
         for label, section_key, key in entries:
 
-            # sort sections by (index, name)
-            sections = sorted(self.domain.data[section_key].items(),
-                              key=lambda x: (x[1][2].index, x[0]))
-            data = {}
-            for (section, name), value in self.domain.data[key].items():
-                try:
-                    data[section].append((name,value))
-                except KeyError:
-                    data[section] = [(name,value)]
+            data = self._gather_data([section_key, key])
 
             references = []
-            for section, (sec_doc, sec_anchor, sec_meta) in sections:
-                fields = data.get(section, [])
-                sec_extra = render_meta(sec_meta)
-                sec_descr = sec_meta.synopsis if sec_meta.synopsis is not None \
-                            else sec_meta.title if sec_meta.title \
-                            else section
-                references.append(
-                    (sec_descr, 0, sec_doc, sec_anchor, sec_extra, '', ''))
-                fields.sort(key = lambda x: x[0])
-                for name, (doc, anchor, meta) in fields:
+            for section, entries in data:
+                if section is None:
+                    elem_type = 0 # Normal entry
+                else:
+                    elem_type = 2 # sub_entry
+
+                assert len(entries) != 0
+                docname = entries[0].doc
+                if section is not None:
+                    section_title, section_anchor = section
+                    references.append(
+                        (section_title, 1, docname, section_anchor, '', '', ''))
+
+                for entry in entries:
+                    #todo deal with if
+                    if isinstance(entry.name, tuple):
+                        name = entry.name[1]
+                    else:
+                        name = entry.name
+
+                    meta = entry.meta
                     extra = render_meta(meta)
                     descr = meta.synopsis if meta.synopsis is not None else ''
-                    field = (name, 2, doc, anchor, extra, '', descr)
+                    field = (name, elem_type, docname,
+                             entry.anchor, extra, '', descr)
                     references.append(field)
             result.append((label, references))
 
@@ -515,9 +582,7 @@ def make_data_keys(typ, target, node):
     if typ == 'pkg-field':
         section = node.get('cabal:pkg-section')
         return [(section, target),
-                (None, target),
-                ('global', target),
-                ('build', target)]
+                (None, target)]
     elif typ in ('cfg-field', 'cfg-flag'):
         section = node.get('cabal:cfg-section')
         return [(section, target), (None, target)]
@@ -625,8 +690,8 @@ class CabalDomain(Domain):
         'pkg-sections': {},
         'pkg-fields'  : {},
         'cfg-sections': {},
-        'pkg-sections-num' : {}, #per document number of sections
-        'cfg-sections-num' : {}, #used to order references page
+        'index-num' : {}, #per document number of object
+                          # used to order references page
         'cfg-fields'  : {},
         'cfg-flags'   : {},
     }
@@ -646,9 +711,10 @@ class CabalDomain(Domain):
             for name, (fn, _, _) in self.data[k].items():
                 if fn == docname:
                     del self.data[k][comname]
-        for k in ['pkg-sections-num', 'cfg-sections-num']:
-            if docname in self.data[k]:
-                self.data[k][docname]
+        try:
+            del self.data['index-num'][docname]
+        except KeyError:
+            pass
 
     def resolve_xref(self, env, fromdocname, builder, type, target, node, contnode):
         objtypes = self.objtypes_for_role(type)

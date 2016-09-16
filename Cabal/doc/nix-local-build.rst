@@ -405,8 +405,6 @@ following sources (later entries override earlier ones):
 Specifying the local packages
 -----------------------------
 
-.. cfg-section:: packages
-
 The following top-level options specify what the local packages of a
 project are:
 
@@ -515,8 +513,6 @@ Formally, the format described by the following BNF:
 Global configuration options
 ----------------------------
 
-.. cfg-section:: global
-
 The following top-level configuration options are not specific to any
 package, and thus apply globally:
 
@@ -561,8 +557,6 @@ package, and thus apply globally:
 
 Solver configuration options
 ----------------------------
-
-.. cfg-section:: solver
 
 The following settings control the behavior of the dependency solver:
 
@@ -714,8 +708,6 @@ The following settings control the behavior of the dependency solver:
 
 Package configuration options
 -----------------------------
-
-.. cfg-section:: package
 
 Package options affect the building of specific packages. There are two
 ways a package option can be specified:
@@ -955,8 +947,6 @@ feature was added.
 Object code options
 ^^^^^^^^^^^^^^^^^^^
 
-.. cfg-section:: object
-
 .. cfg-field:: debug-info: boolean
                --enable-debug-info
                --disable-debug-info
@@ -1029,8 +1019,6 @@ Object code options
 Executable options
 ^^^^^^^^^^^^^^^^^^
 
-.. cfg-section:: exectuable
-
 .. cfg-field:: program-prefix: prefix
                --program-prefix=prefix
     :synopsis: Prepend prefix to program names.
@@ -1066,8 +1054,6 @@ Executable options
 
 Dynamic linking options
 ^^^^^^^^^^^^^^^^^^^^^^^
-
-.. cfg-section:: linking
 
 .. cfg-field:: shared: boolean
                --enable-shared
@@ -1129,8 +1115,6 @@ Dynamic linking options
 Foreign function interface options
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. cfg-section:: ffi
-
 .. cfg-field:: extra-include-dirs: directories (comma or newline separated list)
                --extra-include-dirs=DIR
     :synopsis: Adds C header search path.
@@ -1182,8 +1166,6 @@ Foreign function interface options
 
 Profiling options
 ^^^^^^^^^^^^^^^^^
-
-.. cfg-section:: profiling
 
 .. cfg-field:: profiling: boolean
                --enable-profiling
@@ -1302,8 +1284,6 @@ Profiling options
 Coverage options
 ^^^^^^^^^^^^^^^^
 
-.. cfg-section:: coverage
-
 .. cfg-field:: coverage: boolean
                --enable-coverage
                --disable-coverage
@@ -1334,8 +1314,6 @@ Coverage options
 
 Haddock options
 ^^^^^^^^^^^^^^^
-
-.. cfg-section:: haddock
 
 Documentation building support is fairly sparse at the moment. Let us
 know if it's a priority for you!
@@ -1506,8 +1484,6 @@ running ``setup haddock``. (TODO: Where does the documentation get put.)
 Advanced global configuration options
 -------------------------------------
 
-.. cfg-section:: advanced-global
-
 .. cfg-field:: http-transport: curl, wget, powershell, or plain-http
                --http-transport=transport
     :synopsis: Transport to use with http(s) requests.
@@ -1593,8 +1569,6 @@ Undocumented fields: ``root-cmd``, ``symlink-bindir``, ``build-log``,
 
 Advanced solver options
 ^^^^^^^^^^^^^^^^^^^^^^^
-
-.. cfg-section:: advanced-solver
 
 Most users generally won't need these.
 

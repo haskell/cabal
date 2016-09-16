@@ -739,8 +739,6 @@ otherwise specified have empty default values.
 Package properties
 ^^^^^^^^^^^^^^^^^^
 
-.. pkg-section:: global
-
 These fields may occur in the first top-level properties section and
 describe the package as a whole:
 
@@ -1427,8 +1425,7 @@ pass to ``cabal bench``.
 
 Build information
 ^^^^^^^^^^^^^^^^^
-
-.. pkg-section:: build
+.. pkg-section:: None
 
 The following fields may be optionally present in a library, executable,
 test suite or benchmark section, and give information for the building
