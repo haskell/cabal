@@ -2,8 +2,8 @@
 
 1.25.x.x (current development version)
 	* Dropped support for versions of GHC earlier than 6.12 (#3111).
-	* Cabal/cabal-install can no longer be compiled by versions of GHC
-	earlier than 7.6 (#3833).
+	* GHC compatibility window for the Cabal library has been extended
+	  to five years (#3838).
 	* Convenience/internal libraries are now supported (#269).
 	  An internal library is declared using the stanza "library
 	  'libname'".  Packages which use internal libraries can
