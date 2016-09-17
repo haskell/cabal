@@ -508,11 +508,18 @@ reconfigureCommand
     { commandName         = "reconfigure"
     , commandSynopsis     = "Reconfigure the package if necessary."
     , commandDescription  = Just $ \pname -> wrapText $
-         "Run `configure` with the most recently used flags and append FLAGS. "
+         "Run `configure` with the most recently used flags, or append FLAGS "
+         ++ "to the most recently used configuration. "
          ++ "Accepts the same flags as `" ++ pname ++ " configure'. "
-         ++ "If the package has never been configured, this has the same "
-         ++ "effect as calling `configure`."
-    , commandNotes        = Nothing
+         ++ "If the package has never been configured, the default flags are "
+         ++ "used."
+    , commandNotes        = Just $ \pname ->
+        "Examples:\n"
+        ++ "  " ++ pname ++ " reconfigure\n"
+        ++ "    Configure with the most recently used flags.\n"
+        ++ "  " ++ pname ++ " reconfigure -w PATH\n"
+        ++ "    Reconfigure with the most recently used flags,\n"
+        ++ "    but use the compiler at PATH.\n\n"
     , commandUsage        = usageAlternatives "reconfigure" [ "[FLAGS]" ]
     , commandDefaultFlags = mempty
     }
