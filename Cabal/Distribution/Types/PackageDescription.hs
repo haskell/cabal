@@ -40,6 +40,7 @@ module Distribution.Types.PackageDescription (
     hasBenchmarks,
     withBenchmark,
     allBuildInfo,
+    enabledBuildInfos,
     updatePackageDescription,
     pkgComponents,
     pkgBuildableComponents,
@@ -298,8 +299,12 @@ allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
 
---enabledBuildInfos :: PackageDescription -> ComponentRequestedSpec -> [BuildInfo]
--- enabledBuildInfos pkg enabled = enabledComponents pkg enabled
+-- | Return all of the 'BuildInfo's of enabled components, i.e., all of
+-- the ones that would be built if you run @./Setup build@.
+enabledBuildInfos :: PackageDescription -> ComponentRequestedSpec -> [BuildInfo]
+enabledBuildInfos pkg enabled =
+    [ componentBuildInfo comp
+    | comp <- enabledComponents pkg enabled ]
 
 
 -- ------------------------------------------------------------

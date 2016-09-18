@@ -70,6 +70,7 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD hiding (Flag)
+import Distribution.Types.PackageDescription as PD
 import Distribution.ModuleName
 import Distribution.PackageDescription.PrettyPrint
 import Distribution.PackageDescription.Configuration
@@ -482,7 +483,7 @@ configure (pkg_descr0', pbi) cfg = do
     debug verbosity $ "Finalized build-depends: "
                   ++ intercalate ", " (map display (buildDepends pkg_descr))
 
-    checkCompilerProblems comp pkg_descr
+    checkCompilerProblems comp pkg_descr enabled
     checkPackageProblems verbosity pkg_descr0
         (updatePackageDescription pbi pkg_descr)
 
@@ -588,14 +589,14 @@ configure (pkg_descr0', pbi) cfg = do
     -- Check languages and extensions
     -- TODO: Move this into a helper function.
     let langlist = nub $ catMaybes $ map defaultLanguage
-                   (allBuildInfo pkg_descr)
+                   (enabledBuildInfos pkg_descr enabled)
     let langs = unsupportedLanguages comp langlist
     when (not (null langs)) $
       die $ "The package " ++ display (packageId pkg_descr0)
          ++ " requires the following languages which are not "
          ++ "supported by " ++ display (compilerId comp) ++ ": "
          ++ intercalate ", " (map display langs)
-    let extlist = nub $ concatMap allExtensions (allBuildInfo pkg_descr)
+    let extlist = nub $ concatMap allExtensions (enabledBuildInfos pkg_descr enabled)
     let exts = unsupportedExtensions comp extlist
     when (not (null exts)) $
       die $ "The package " ++ display (packageId pkg_descr0)
@@ -610,7 +611,7 @@ configure (pkg_descr0', pbi) cfg = do
     let requiredBuildTools =
           [ buildTool
           | let exeNames = map exeName (executables pkg_descr)
-          , bi <- allBuildInfo pkg_descr
+          , bi <- enabledBuildInfos pkg_descr enabled
           , buildTool@(Dependency (PackageName toolName) reqVer)
             <- buildTools bi
           , let isInternal =
@@ -625,7 +626,7 @@ configure (pkg_descr0', pbi) cfg = do
       >>= configureRequiredPrograms verbosity requiredBuildTools
 
     (pkg_descr', programDb'') <-
-      configurePkgconfigPackages verbosity pkg_descr programDb'
+      configurePkgconfigPackages verbosity pkg_descr programDb' enabled
 
     -- Compute internal component graph
     --
@@ -993,11 +994,11 @@ configureFinalizedPackage verbosity cfg enabled
                                       executables pkg_descr}
 
 -- | Check for use of Cabal features which require compiler support
-checkCompilerProblems :: Compiler -> PackageDescription -> IO ()
-checkCompilerProblems comp pkg_descr = do
+checkCompilerProblems :: Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
+checkCompilerProblems comp pkg_descr enabled = do
     unless (renamingPackageFlagsSupported comp ||
                 and [ True
-                    | bi <- allBuildInfo pkg_descr
+                    | bi <- enabledBuildInfos pkg_descr enabled
                     , _ <- Map.elems (targetBuildRenaming bi)]) $
         die $ "Your compiler does not support thinning and renaming on "
            ++ "package flags.  To use this feature you probably must use "
@@ -1429,9 +1430,9 @@ configureRequiredProgram verbosity progdb
 -- Configuring pkg-config package dependencies
 
 configurePkgconfigPackages :: Verbosity -> PackageDescription
-                           -> ProgramDb
+                           -> ProgramDb -> ComponentRequestedSpec
                            -> IO (PackageDescription, ProgramDb)
-configurePkgconfigPackages verbosity pkg_descr progdb
+configurePkgconfigPackages verbosity pkg_descr progdb enabled
   | null allpkgs = return (pkg_descr, progdb)
   | otherwise    = do
     (_, _, progdb') <- requireProgramVersion
@@ -1449,7 +1450,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb
     return (pkg_descr', progdb')
 
   where
-    allpkgs = concatMap pkgconfigDepends (allBuildInfo pkg_descr)
+    allpkgs = concatMap pkgconfigDepends (enabledBuildInfos pkg_descr enabled)
     pkgconfig = getDbProgramOutput (lessVerbose verbosity)
                   pkgConfigProgram progdb
 
@@ -2149,7 +2150,7 @@ checkForeignDeps pkg lbi verbosity = do
                            ["int main(int argc, char** argv) { return 0; }"]
 
         collectField f = concatMap f allBi
-        allBi = allBuildInfo pkg
+        allBi = enabledBuildInfos pkg (componentEnabledSpec lbi)
         deps = PackageIndex.topologicalOrder (installedPkgs lbi)
 
         builds program args = do

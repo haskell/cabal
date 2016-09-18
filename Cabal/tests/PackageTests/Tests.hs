@@ -507,6 +507,11 @@ tests config = do
     cabal "build" []
     runExe' "T3294" [] >>= assertOutputContains "bbb"
 
+  -- Test that other-extensions of disabled component do not
+  -- effect configure step.
+  tc "Regression/T3847" $ do
+    cabal "configure" ["--disable-tests"]
+
   -- Test build --assume-deps-up-to-date
   mtc "BuildAssumeDepsUpToDate" $ \step -> do
     step "Initial build"
