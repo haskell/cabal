@@ -87,7 +87,6 @@ import           Distribution.Solver.Types.SourcePackage
 import           Distribution.Package hiding
   (InstalledPackageId, installedPackageId)
 import           Distribution.System
-import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
@@ -611,7 +610,7 @@ rebuildInstallPlan verbosity
                                               compiler progdb platform
                                               storePackageDb
         storeExeIndex <- getExecutableDBContents storeDirectory
-        let improvedPlan = improveInstallPlanWithPreExistingPackages
+        let improvedPlan = improveInstallPlanWithInstalledPackages
                              storePkgIndex
                              storeExeIndex
                              elaboratedPlan
@@ -2710,19 +2709,19 @@ packageHashConfigInputs
 
 
 -- | Given the 'InstalledPackageIndex' for a nix-style package store, and an
--- 'ElaboratedInstallPlan', replace configured source packages by pre-existing
--- installed packages whenever they exist.
+-- 'ElaboratedInstallPlan', replace configured source packages by installed
+-- packages from the store whenever they exist.
 --
-improveInstallPlanWithPreExistingPackages :: InstalledPackageIndex
-                                          -> Set ComponentId
-                                          -> ElaboratedInstallPlan
-                                          -> ElaboratedInstallPlan
-improveInstallPlanWithPreExistingPackages installedPkgIndex installedExes installPlan =
-    replaceWithPreExisting installPlan
-      [ ipkg
+improveInstallPlanWithInstalledPackages :: InstalledPackageIndex
+                                        -> Set ComponentId
+                                        -> ElaboratedInstallPlan
+                                        -> ElaboratedInstallPlan
+improveInstallPlanWithInstalledPackages installedPkgIndex installedExes installPlan =
+    replaceWithInstalled installPlan
+      [ installedUnitId pkg
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
-      , ipkg <- maybeToList (canPackageBeImproved pkg) ]
+      , canPackageBeImproved pkg ]
   where
     --TODO: sanity checks:
     -- * the installed package must have the expected deps etc
@@ -2734,15 +2733,13 @@ improveInstallPlanWithPreExistingPackages installedPkgIndex installedExes instal
     canPackageBeImproved pkg =
       case PackageIndex.lookupUnitId
             installedPkgIndex (installedUnitId pkg) of
-        Just x -> Just x
+        Just _ -> True
         Nothing | SimpleUnitId cid <- installedUnitId pkg
                 , cid `Set.member` installedExes
                 -- Same hack as replacewithPrePreExisting
-                -> Just (Installed.emptyInstalledPackageInfo {
-                            Installed.installedUnitId = installedUnitId pkg
-                        })
-                | otherwise -> Nothing
+                -> True
+                | otherwise -> False
 
-    replaceWithPreExisting =
-      foldl' (\plan ipkg -> InstallPlan.preexisting
-                              (installedUnitId ipkg) ipkg plan)
+    replaceWithInstalled :: ElaboratedInstallPlan -> [UnitId]
+                         -> ElaboratedInstallPlan
+    replaceWithInstalled = foldl' (flip InstallPlan.installed)
