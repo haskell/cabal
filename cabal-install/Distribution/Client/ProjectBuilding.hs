@@ -146,6 +146,10 @@ data BuildStatus =
      --   need building.
      BuildStatusPreExisting
 
+     -- | The package is in the 'InstallPlan.Installed' state, so does not
+     --   need building.
+   | BuildStatusInstalled
+
      -- | The package has not been downloaded yet, so it will have to be
      --   downloaded, unpacked and built.
    | BuildStatusDownload
@@ -166,6 +170,7 @@ data BuildStatus =
 
 buildStatusToString :: BuildStatus -> String
 buildStatusToString BuildStatusPreExisting      = "BuildStatusPreExisting"
+buildStatusToString BuildStatusInstalled        = "BuildStatusInstalled"
 buildStatusToString BuildStatusDownload         = "BuildStatusDownload"
 buildStatusToString (BuildStatusUnpack fp)      = "BuildStatusUnpack " ++ show fp
 buildStatusToString (BuildStatusRebuild fp _)   = "BuildStatusRebuild " ++ show fp
@@ -229,6 +234,7 @@ data BuildReason =
 --
 buildStatusRequiresBuild :: BuildStatus -> Bool
 buildStatusRequiresBuild BuildStatusPreExisting = False
+buildStatusRequiresBuild BuildStatusInstalled   = False
 buildStatusRequiresBuild BuildStatusUpToDate {} = False
 buildStatusRequiresBuild _                      = True
 
@@ -263,7 +269,7 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
       return BuildStatusPreExisting
 
     dryRunPkg (InstallPlan.Installed _pkg) _depsBuildStatus =
-      return BuildStatusPreExisting --TODO: distinguish installed state
+      return BuildStatusInstalled
 
     dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
       mloc <- checkFetched (elabPkgSourceLocation pkg)
@@ -743,6 +749,7 @@ rebuildTarget verbosity
 
       -- TODO: perhaps re-nest the types to make these impossible
       BuildStatusPreExisting {} -> unexpectedState
+      BuildStatusInstalled   {} -> unexpectedState
       BuildStatusUpToDate    {} -> unexpectedState
   where
     unexpectedState = error "rebuildTarget: unexpected package status"
