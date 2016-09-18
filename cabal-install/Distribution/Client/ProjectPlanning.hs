@@ -1221,6 +1221,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                 case elabPkgOrComp elab of
                     ElabPackage _ -> True
                     ElabComponent comp -> compSolverName comp == CD.ComponentLib
+            is_lib (InstallPlan.Installed _) = unexpectedState
 
     elaborateExeSolverId :: (SolverId -> [ElaboratedPlanPackage])
                       -> SolverId -> [ConfiguredId]
@@ -1233,6 +1234,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                         case compSolverName comp of
                             CD.ComponentExe _ -> True
                             _ -> False
+            is_exe (InstallPlan.Installed _) = unexpectedState
 
     elaborateExePath :: (SolverId -> [ElaboratedPlanPackage])
                      -> SolverId -> [FilePath]
@@ -1255,6 +1257,9 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                                     Just (Just n) -> n
                                     _ -> ""
               else InstallDirs.bindir (elabInstallDirs elab)]
+        get_exe_path (InstallPlan.Installed _) = unexpectedState
+
+    unexpectedState = error "elaborateInstallPlan: unexpected Installed state"
 
     elaborateSolverToPackage :: (SolverId -> [ElaboratedPlanPackage])
                              -> SolverPackage UnresolvedPkgLoc
@@ -1980,6 +1985,8 @@ mapConfiguredPackage :: (srcpkg -> srcpkg')
                      -> InstallPlan.GenericPlanPackage ipkg srcpkg'
 mapConfiguredPackage f (InstallPlan.Configured pkg) =
   InstallPlan.Configured (f pkg)
+mapConfiguredPackage f (InstallPlan.Installed pkg) =
+  InstallPlan.Installed (f pkg)
 mapConfiguredPackage _ (InstallPlan.PreExisting pkg) =
   InstallPlan.PreExisting pkg
 
