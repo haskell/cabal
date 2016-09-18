@@ -38,6 +38,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.ComponentRequestedSpec
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -972,11 +973,12 @@ checkBuildTargets verbosity pkg_descr lbi targets = do
 
     let (enabled, disabled) =
           partitionEithers
-            [ case componentNameDisabledReason (componentEnabledSpec lbi) cname of
+            [ case componentDisabledReason (componentEnabledSpec lbi) comp of
                 Nothing     -> Left  target'
                 Just reason -> Right (cname, reason)
             | target <- targets
-            , let target'@(cname,_) = swizzleTarget target ]
+            , let target'@(cname,_) = swizzleTarget target
+            , let comp = getComponent pkg_descr cname ]
 
     case disabled of
       []                 -> return ()

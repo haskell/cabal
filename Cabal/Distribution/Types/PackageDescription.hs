@@ -58,7 +58,7 @@ import Distribution.Types.Benchmark
 
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
-import Distribution.Types.ComponentEnabledSpec
+import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.SetupBuildInfo
 import Distribution.Types.BuildInfo
 import Distribution.Types.BuildType
@@ -222,7 +222,7 @@ allLibraries p = maybeToList (library p) ++ subLibraries p
 -- call the given function with the library build info as argument.
 -- You probably want 'withLibLBI' if you have a 'LocalBuildInfo',
 -- see the note in
--- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
@@ -238,7 +238,7 @@ hasExes p = any (buildable . buildInfo) (executables p)
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  You probably want 'withExeLBI' if you have a
 -- 'LocalBuildInfo', see the note in
--- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
 withExe :: PackageDescription -> (Executable -> IO ()) -> IO ()
 withExe pkg_descr f =
@@ -253,7 +253,7 @@ hasTests = any (buildable . testBuildInfo) . testSuites
 
 -- | Perform an action on each buildable 'TestSuite' in a package.
 -- You probably want 'withTestLBI' if you have a 'LocalBuildInfo', see the note in
--- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
 
 withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
@@ -269,7 +269,7 @@ hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
 
 -- | Perform an action on each buildable 'Benchmark' in a package.
 -- You probably want 'withBenchLBI' if you have a 'LocalBuildInfo', see the note in
--- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components"
+-- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components"
 -- for more information.
 
 withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()
@@ -297,6 +297,9 @@ allBuildInfo pkg_descr = [ bi | lib <- allLibraries pkg_descr
                               , buildable bi ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
+
+--enabledBuildInfos :: PackageDescription -> ComponentRequestedSpec -> [BuildInfo]
+-- enabledBuildInfos pkg enabled = enabledComponents pkg enabled
 
 
 -- ------------------------------------------------------------
@@ -352,7 +355,7 @@ pkgBuildableComponents = filter componentBuildable . pkgComponents
 --
 -- @since 2.0.0.0
 --
-enabledComponents :: PackageDescription -> ComponentEnabledSpec -> [Component]
+enabledComponents :: PackageDescription -> ComponentRequestedSpec -> [Component]
 enabledComponents pkg enabled = filter (componentEnabled enabled) $ pkgBuildableComponents pkg
 
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component

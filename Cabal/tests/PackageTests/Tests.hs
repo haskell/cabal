@@ -577,6 +577,14 @@ tests config = do
       cabal "register" ["--assume-deps-up-to-date", "RegisterAssumeDepsUpToDate", "--gen-pkg-config=" ++ main_reg]
       ghcPkg "register" [pkg_dir </> main_reg]
 
+  -- Test error message we report when a non-buildable target is
+  -- requested to be built
+  -- TODO: We can give a better error message here, see #3858.
+  tcs "BuildTargetErrors" "non-buildable" $ do
+    cabal "configure" []
+    assertOutputContains "There is no component"
+        =<< shouldFail (cabal' "build" ["not-buildable-exe"])
+
   where
     ghc_pkg_guess bin_name = do
         cwd <- packageDir

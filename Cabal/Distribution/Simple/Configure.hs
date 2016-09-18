@@ -80,6 +80,7 @@ import Distribution.Simple.BuildTarget
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.ComponentRequestedSpec
 import Distribution.Simple.Utils
 import Distribution.Simple.Register (createInternalPackageDB)
 import Distribution.System
@@ -400,12 +401,19 @@ configure (pkg_descr0', pbi) cfg = do
         internalPackageSet = getInternalPackages pkg_descr0
 
     -- Make a data structure describing what components are enabled.
-    let enabled :: ComponentEnabledSpec
+    let enabled :: ComponentRequestedSpec
         enabled = case mb_cname of
-                    Just cname -> OneComponentEnabledSpec cname
-                    Nothing -> ComponentEnabledSpec
-                                { testsEnabled = fromFlag (configTests cfg)
-                                , benchmarksEnabled =
+                    Just cname -> OneComponentRequestedSpec cname
+                    Nothing -> ComponentRequestedSpec
+                                -- The flag name (@--enable-tests@) is a
+                                -- little bit of a misnomer, because
+                                -- just passing this flag won't
+                                -- "enable", in our internal
+                                -- nomenclature; it's just a request; a
+                                -- @buildable: False@ might make it
+                                -- not possible to enable.
+                                { testsRequested = fromFlag (configTests cfg)
+                                , benchmarksRequested =
                                   fromFlag (configBenchmarks cfg) }
     -- Some sanity checks related to enabling components.
     when (isJust mb_cname
@@ -933,7 +941,7 @@ relaxPackageDeps vrtrans (RelaxDepsSome allowNewerDeps') gpd =
 configureFinalizedPackage
     :: Verbosity
     -> ConfigFlags
-    -> ComponentEnabledSpec
+    -> ComponentRequestedSpec
     -> [Dependency]
     -> (Dependency -> Bool) -- ^ tests if a dependency is satisfiable.
                             -- Might say it's satisfiable even when not.
@@ -1576,7 +1584,7 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 -- libraries are considered internal), create a graph of dependencies
 -- between the components.  This is NOT necessarily the build order
 -- (although it is in the absence of Backpack.)
-mkComponentsGraph :: ComponentEnabledSpec
+mkComponentsGraph :: ComponentRequestedSpec
                   -> PackageDescription
                   -> Map PackageName ComponentName
                   -> Either [ComponentName]

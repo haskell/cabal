@@ -99,6 +99,8 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildTargetErrors/BuildTargetErrors.cabal
+  tests/PackageTests/BuildTargetErrors/Main.hs
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/BuildToolsPath/A.hs
   tests/PackageTests/BuildToolsPath/MyCustomPreprocessor.hs
@@ -402,7 +404,7 @@ library
     Distribution.Types.Component
     Distribution.Types.ComponentLocalBuildInfo
     Distribution.Types.LocalBuildInfo
-    Distribution.Types.ComponentEnabledSpec
+    Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
     Distribution.Utils.NubList
     Distribution.Verbosity

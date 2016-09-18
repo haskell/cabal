@@ -42,7 +42,7 @@ componentBuildInfo =
 
 -- | Is a component buildable (i.e., not marked with @buildable: False@)?
 -- See also this note in
--- "Distribution.Types.ComponentEnabledSpec#buildable_vs_enabled_components".
+-- "Distribution.Types.ComponentRequestedSpec#buildable_vs_enabled_components".
 --
 -- @since 2.0.0.0
 --

@@ -49,7 +49,7 @@ import           Distribution.Client.SolverInstallPlan
                    ( SolverInstallPlan )
 import           Distribution.Client.DistDirLayout
 
-import           Distribution.Types.ComponentEnabledSpec
+import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Package
                    hiding (InstalledPackageId, installedPackageId)
 import           Distribution.System
@@ -152,7 +152,7 @@ data ElaboratedConfiguredPackage
        elabBuildStyle             :: BuildStyle,
 
        -- | Another way of phrasing 'pkgStanzasAvailable'.
-       elabEnabledSpec      :: ComponentEnabledSpec,
+       elabEnabledSpec      :: ComponentRequestedSpec,
 
        -- | Which optional stanzas (ie testsuites, benchmarks) can be built.
        -- This means the solver produced a plan that has them available.
