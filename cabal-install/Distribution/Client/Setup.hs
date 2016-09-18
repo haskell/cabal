@@ -353,20 +353,34 @@ configureCommand = c
 configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
 
+-- | Given some 'ConfigFlags' for the version of Cabal that
+-- cabal-install was built with, and a target older 'Version' of
+-- Cabal that we want to pass these flags to, convert the
+-- flags into a form that will be accepted by the older
+-- Setup script.  Generally speaking, this just means filtering
+-- out flags that the old Cabal library doesn't understand, but
+-- in some cases it may also mean "emulating" a feature using
+-- some more legacy flags.
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
+  -- NB: we expect the latest version to be the most common case,
+  -- so test it first.
   | cabalLibVersion >= Version [1,23,0] [] = flags_latest
-  -- NB: we expect the latest version to be the most common case.
+  -- The naming convention is that flags_version gives flags with
+  -- all flags *introduced* in version eliminated.
+  -- It is NOT the latest version of Cabal library that
+  -- these flags work for; version of introduction is a more
+  -- natural metric.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,12,0] [] = flags_1_12_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
-  | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
-  | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
-  | cabalLibVersion <  Version [1,21,1] [] = flags_1_20_0
-  | cabalLibVersion <  Version [1,22,0] [] = flags_1_21_0
-  | cabalLibVersion <  Version [1,23,0] [] = flags_1_22_0
+  | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_1
+  | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_2
+  | cabalLibVersion <  Version [1,21,1] [] = flags_1_21_1
+  | cabalLibVersion <  Version [1,22,0] [] = flags_1_22_0
+  | cabalLibVersion <  Version [1,23,0] [] = flags_1_23_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -379,17 +393,17 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
-    flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
+    flags_1_23_0 = flags_latest { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
                                 , configIPID          = NoFlag }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
-    flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
+    flags_1_22_0 = flags_1_23_0 { configDebugInfo = NoFlag }
 
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
-    flags_1_20_0 =
-      flags_1_21_0 { configRelocatable = NoFlag
+    flags_1_21_1 =
+      flags_1_22_0 { configRelocatable = NoFlag
                    , configProf = NoFlag
                    , configProfExe = configProf flags
                    , configProfLib =
@@ -399,13 +413,13 @@ filterConfigureFlags flags cabalLibVersion
                    }
     -- Cabal < 1.19.2 doesn't know about '--exact-configuration' and
     -- '--enable-library-stripping'.
-    flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag
+    flags_1_19_2 = flags_1_21_1 { configExactConfiguration = NoFlag
                                 , configStripLibs = NoFlag }
     -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
-    flags_1_19_0 = flags_1_19_1 { configDependencies = []
+    flags_1_19_1 = flags_1_19_2 { configDependencies = []
                                 , configConstraints  = configConstraints flags }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
-    flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = toNubList []
+    flags_1_18_0 = flags_1_19_1 { configProgramPathExtra = toNubList []
                                 , configInstallDirs = configInstallDirs_1_18_0}
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
