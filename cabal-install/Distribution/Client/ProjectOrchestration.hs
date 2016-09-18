@@ -492,7 +492,8 @@ printPlan verbosity
     showFlagName (PD.FlagName f) = f
 
     showBuildStatus status = case status of
-      BuildStatusPreExisting -> "already installed"
+      BuildStatusPreExisting -> "existing package"
+      BuildStatusInstalled   -> "already installed"
       BuildStatusDownload {} -> "requires download & build"
       BuildStatusUnpack   {} -> "requires build"
       BuildStatusRebuild _ rebuild -> case rebuild of
