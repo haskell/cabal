@@ -63,7 +63,7 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
             -- planning phase.
             writeProjectLocalExtraConfig projectRootDir cliConfig,
 
-          hookSelectPlanSubset = return
+          hookSelectPlanSubset = \_ -> return
         }
 
     --TODO: Hmm, but we don't have any targets. Currently this prints what we

@@ -25,12 +25,12 @@ import Distribution.Simple.Setup
 import Distribution.Verbosity
          ( normal )
 
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
 import Distribution.Simple.Utils
-         ( wrapText )
+         ( wrapText, die )
 import qualified Distribution.Client.Setup as Client
 
 replCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
@@ -73,7 +73,25 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
         , installFlags, haddockFlags )
         PreBuildHooks {
           hookPrePlanning      = \_ _ _ -> return (),
-          hookSelectPlanSubset = selectReplTargets userTargets
+
+          hookSelectPlanSubset = \buildSettings elaboratedPlan -> do
+            when (buildSettingOnlyDeps buildSettings) $
+              die $ "The repl command does not support '--only-dependencies'. "
+                 ++ "You may wish to use 'build --only-dependencies' and then "
+                 ++ "use 'repl'."
+            -- Interpret the targets on the command line as repl targets
+            -- (as opposed to say build or haddock targets).
+            selectTargets
+              verbosity
+              ReplDefaultComponent
+              ReplSpecificComponent
+              userTargets
+              False -- onlyDependencies, always False for repl
+              elaboratedPlan
+            --TODO: [required eventually] reject multiple targets, or at least
+            -- targets spanning multiple components. ie it's ok to have two
+            -- module/file targets in the same component, but not two that live
+            -- in different components.
         }
 
     printPlan verbosity buildCtx
@@ -83,12 +101,4 @@ replAction (configFlags, configExFlags, installFlags, haddockFlags)
       reportBuildFailures verbosity elaboratedPlan buildResults
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-
-    -- When we interpret the targets on the command line, interpret them as
-    -- repl targets (as opposed to say build or haddock targets).
-    selectReplTargets =
-      selectTargets
-        verbosity
-        ReplDefaultComponent
-        ReplSpecificComponent
 

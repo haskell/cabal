@@ -194,7 +194,7 @@ data BuildStatusRebuild =
    | BuildStatusBuild (Maybe (Maybe InstalledPackageInfo)) BuildReason
 
 data BuildReason =
-     -- | The depencencies of this package have been (re)built so the build
+     -- | The dependencies of this package have been (re)built so the build
      -- phase needs to be rerun.
      --
      -- The optional registration info here tells us if we've registered the
@@ -325,10 +325,10 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
 -- | A specialised traversal over the packages in an install plan.
 --
 -- The packages are visited in dependency order, starting with packages with no
--- depencencies. The result for each package is accumulated into a 'Map' and
+-- dependencies. The result for each package is accumulated into a 'Map' and
 -- returned as the final result. In addition, when visting a package, the
 -- visiting function is passed the results for all the immediate package
--- depencencies. This can be used to propagate information from depencencies.
+-- dependencies. This can be used to propagate information from dependencies.
 --
 foldMInstallPlanDepOrder
   :: forall m ipkg srcpkg b.
@@ -480,7 +480,7 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
       MonitorUnchanged () _
           -- The configChanged here includes the identity of the dependencies,
           -- so depsBuildStatus is just needed for the changes in the content
-          -- of depencencies.
+          -- of dependencies.
         | any buildStatusRequiresBuild depsBuildStatus -> do
             regChanged <- checkFileMonitorChanged pkgFileMonitorReg srcdir ()
             let mreg = changedToMaybe regChanged

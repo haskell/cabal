@@ -2,3 +2,7 @@ packages: Cabal/ cabal-install/
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
+
+program-options
+  -- So us hackers get all the assertion failures early:
+  ghc-options: -fno-ignore-asserts

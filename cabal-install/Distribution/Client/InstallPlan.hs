@@ -311,7 +311,7 @@ lookup :: (IsUnit ipkg, IsUnit srcpkg)
        -> Maybe (GenericPlanPackage ipkg srcpkg)
 lookup plan pkgid = Graph.lookup pkgid (planIndex plan)
 
--- | Find all the direct depencencies of the given package.
+-- | Find all the direct dependencies of the given package.
 --
 -- Note that the package must exist in the plan or it is an error.
 --
@@ -323,7 +323,7 @@ directDeps plan pkgid =
     Just deps -> deps
     Nothing   -> internalError "directDeps: package not in graph"
 
--- | Find all the direct reverse depencencies of the given package.
+-- | Find all the direct reverse dependencies of the given package.
 --
 -- Note that the package must exist in the plan or it is an error.
 --
@@ -342,7 +342,7 @@ revDirectDeps plan pkgid =
 
 
 -- | Return all the packages in the 'InstallPlan' in reverse topological order.
--- That is, for each package, all depencencies of the package appear first.
+-- That is, for each package, all dependencies of the package appear first.
 --
 -- Compared to 'executionOrder', this function returns all the installed and
 -- source packages rather than just the source ones. Also, while both this
