@@ -33,7 +33,6 @@ module Distribution.Client.InstallPlan (
   fromSolverInstallPlan,
   configureInstallPlan,
   remove,
-  preexisting,
   installed,
   lookup,
   directDeps,
@@ -290,26 +289,6 @@ remove shouldRemove plan =
   where
     newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
-
--- | Replace a ready package with a pre-existing one. The pre-existing one
--- must have exactly the same dependencies as the source one was configured
--- with.
---
-preexisting :: (IsUnit ipkg,
-                IsUnit srcpkg)
-            => UnitId
-            -> ipkg
-            -> GenericInstallPlan ipkg srcpkg
-            -> GenericInstallPlan ipkg srcpkg
-preexisting pkgid ipkg plan = plan'
-  where
-    plan' = plan {
-      planIndex   = Graph.insert (PreExisting ipkg)
-                    -- ...but be sure to use the *old* IPID for the lookup for
-                    -- the preexisting record
-                  . Graph.deleteKey pkgid
-                  $ planIndex plan
-    }
 
 -- | Change a package in a 'Configured' state to an 'Installed' state.
 --
