@@ -34,6 +34,7 @@ module Distribution.Client.InstallPlan (
   configureInstallPlan,
   remove,
   preexisting,
+  installed,
   lookup,
   directDeps,
   revDirectDeps,
@@ -309,6 +310,25 @@ preexisting pkgid ipkg plan = plan'
                   . Graph.deleteKey pkgid
                   $ planIndex plan
     }
+
+-- | Change a package in a 'Configured' state to an 'Installed' state.
+--
+-- To preserve invariants, the package must have all of its dependencies
+-- already installed too (that is 'PreExisting' or 'Installed').
+--
+installed :: (IsUnit ipkg,
+              IsUnit srcpkg)
+          => UnitId
+          -> GenericInstallPlan ipkg srcpkg
+          -> GenericInstallPlan ipkg srcpkg
+installed pkgid plan =
+    case lookup plan pkgid of
+      Just (Configured srcpkg) ->
+        assert (all isInstalled (directDeps plan pkgid)) $
+        plan {
+          planIndex = Graph.insert (Installed srcpkg) (planIndex plan)
+        }
+      _ -> error "InstallPlan.installed: unexpected state"
 
 -- | Lookup a package in the plan.
 --
