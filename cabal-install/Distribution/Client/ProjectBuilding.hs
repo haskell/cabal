@@ -363,25 +363,20 @@ improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
                                        -> BuildStatusMap
                                        -> ElaboratedInstallPlan
 improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
-    replaceWithPrePreExisting installPlan
-      [ (installedUnitId pkg, mipkg)
+    replaceWithInstalled installPlan
+      [ installedUnitId pkg
       | InstallPlan.Configured pkg
           <- InstallPlan.reverseTopologicalOrder installPlan
-      , let uid = installedUnitId pkg
-            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
-      , BuildStatusUpToDate (BuildResult { buildResultLibInfo = mipkg })
-          <- [pkgBuildStatus]
+      , case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
+          Just BuildStatusUpToDate {} -> True
+          Just _                      -> False
+          Nothing -> error "improveInstallPlanWithUpToDatePackages: impossible"
       ]
   where
-    replaceWithPrePreExisting =
-      foldl' (\plan (uid, mipkg) ->
-                -- TODO: A grievous hack.  Better to have a special type
-                -- of entry representing pre-existing executables.
-                let stub_ipkg = Installed.emptyInstalledPackageInfo {
-                                    Installed.installedUnitId = uid
-                                }
-                    ipkg = fromMaybe stub_ipkg mipkg
-                in InstallPlan.preexisting uid ipkg plan)
+    replaceWithInstalled :: ElaboratedInstallPlan -> [UnitId]
+                         -> ElaboratedInstallPlan
+    replaceWithInstalled =
+      foldl' (flip InstallPlan.installed)
 
 
 -----------------------------
