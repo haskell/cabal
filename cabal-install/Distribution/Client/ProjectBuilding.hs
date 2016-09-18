@@ -262,6 +262,9 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
     dryRunPkg (InstallPlan.PreExisting _pkg) _depsBuildStatus =
       return BuildStatusPreExisting
 
+    dryRunPkg (InstallPlan.Installed _pkg) _depsBuildStatus =
+      return BuildStatusPreExisting --TODO: distinguish installed state
+
     dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
       mloc <- checkFetched (elabPkgSourceLocation pkg)
       case mloc of
