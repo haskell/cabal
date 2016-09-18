@@ -91,7 +91,6 @@ import qualified Distribution.PackageDescription as Cabal
 import qualified Distribution.PackageDescription as PD
 import qualified Distribution.PackageDescription.Configuration as PD
 import           Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import           Distribution.Simple.Compiler hiding (Flag)
 import qualified Distribution.Simple.GHC   as GHC   --TODO: [code cleanup] eliminate
 import qualified Distribution.Simple.GHCJS as GHCJS --TODO: [code cleanup] eliminate
@@ -605,22 +604,23 @@ rebuildInstallPlan verbosity
 
         liftIO $ debug verbosity "Improving the install plan..."
         createDirectoryMonitored True storeDirectory
-        storePkgIndex <- getPackageDBContents verbosity
-                                              compiler progdb platform
-                                              storePackageDb
-        storeExeIndex <- getExecutableDBContents storeDirectory
+        liftIO $ createPackageDBIfMissing verbosity
+                                          compiler progdb
+                                          storePackageDb
+        storePkgIdSet <- getInstalledStorePackages storeDirectory
         let improvedPlan = improveInstallPlanWithInstalledPackages
-                             storePkgIndex
-                             storeExeIndex
+                             storePkgIdSet
                              elaboratedPlan
         liftIO $ debugNoWrap verbosity (InstallPlan.showInstallPlan improvedPlan)
+        -- TODO: [nice to have] having checked which packages from the store
+        -- we're using, it may be sensible to sanity check those packages
+        -- by loading up the compiler package db and checking everything
+        -- matches up as expected, e.g. no dangling deps, files deleted.
         return improvedPlan
-
       where
         storeDirectory  = cabalStoreDirectory (compilerId compiler)
         storePackageDb  = cabalStorePackageDB (compilerId compiler)
         ElaboratedSharedConfig {
-          pkgConfigPlatform      = platform,
           pkgConfigCompiler      = compiler,
           pkgConfigCompilerProgs = progdb
         } = elaboratedShared
@@ -657,6 +657,8 @@ getInstalledPackages verbosity compiler progdb platform packagedbs = do
                verbosity compiler
                packagedbs progdb
 
+{-
+--TODO: [nice to have] use this but for sanity / consistency checking
 getPackageDBContents :: Verbosity
                      -> Compiler -> ProgramDb -> Platform
                      -> PackageDB
@@ -670,19 +672,21 @@ getPackageDBContents verbosity compiler progdb platform packagedb = do
       createPackageDBIfMissing verbosity compiler progdb packagedb
       Cabal.getPackageDBContents verbosity compiler
                                  packagedb progdb
+-}
 
--- | Return the list of all already installed executables
-getExecutableDBContents
-    :: FilePath -- store directory
-    -> Rebuild (Set ComponentId)
-getExecutableDBContents storeDirectory = do
+-- | Return the 'UnitId's of all packages\/components already installed in the
+-- store.
+--
+getInstalledStorePackages :: FilePath -- ^ store directory
+                          -> Rebuild (Set UnitId)
+getInstalledStorePackages storeDirectory = do
     paths <- getDirectoryContentsMonitored storeDirectory
-    return (Set.fromList (map ComponentId (filter valid paths)))
+    return $ Set.fromList [ SimpleUnitId (ComponentId path)
+                          | path <- paths, valid path ]
   where
-    valid "." = False
-    valid ".." = False
+    valid ('.':_)      = False
     valid "package.db" = False
-    valid _ = True
+    valid _            = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
                   -> Rebuild SourcePackageDb
@@ -2698,11 +2702,10 @@ packageHashConfigInputs
 -- 'ElaboratedInstallPlan', replace configured source packages by installed
 -- packages from the store whenever they exist.
 --
-improveInstallPlanWithInstalledPackages :: InstalledPackageIndex
-                                        -> Set ComponentId
+improveInstallPlanWithInstalledPackages :: Set UnitId
                                         -> ElaboratedInstallPlan
                                         -> ElaboratedInstallPlan
-improveInstallPlanWithInstalledPackages installedPkgIndex installedExes installPlan =
+improveInstallPlanWithInstalledPackages installedPkgIdSet installPlan =
     replaceWithInstalled installPlan
       [ installedUnitId pkg
       | InstallPlan.Configured pkg
@@ -2717,14 +2720,7 @@ improveInstallPlanWithInstalledPackages installedPkgIndex installedExes installP
     -- since overwriting is never safe.
 
     canPackageBeImproved pkg =
-      case PackageIndex.lookupUnitId
-            installedPkgIndex (installedUnitId pkg) of
-        Just _ -> True
-        Nothing | SimpleUnitId cid <- installedUnitId pkg
-                , cid `Set.member` installedExes
-                -- Same hack as replacewithPrePreExisting
-                -> True
-                | otherwise -> False
+      installedUnitId pkg `Set.member` installedPkgIdSet
 
     replaceWithInstalled :: ElaboratedInstallPlan -> [UnitId]
                          -> ElaboratedInstallPlan
