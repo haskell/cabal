@@ -2715,13 +2715,11 @@ packageHashConfigInputs
 improveInstallPlanWithInstalledPackages :: Set UnitId
                                         -> ElaboratedInstallPlan
                                         -> ElaboratedInstallPlan
-improveInstallPlanWithInstalledPackages installedPkgIdSet installPlan =
-    replaceWithInstalled installPlan
-      [ installedUnitId pkg
-      | InstallPlan.Configured pkg
-          <- InstallPlan.reverseTopologicalOrder installPlan
-      , canPackageBeImproved pkg ]
+improveInstallPlanWithInstalledPackages installedPkgIdSet =
+    InstallPlan.installed canPackageBeImproved
   where
+    canPackageBeImproved pkg =
+      installedUnitId pkg `Set.member` installedPkgIdSet
     --TODO: sanity checks:
     -- * the installed package must have the expected deps etc
     -- * the installed package must not be broken, valid dep closure
@@ -2729,9 +2727,3 @@ improveInstallPlanWithInstalledPackages installedPkgIdSet installPlan =
     --TODO: decide what to do if we encounter broken installed packages,
     -- since overwriting is never safe.
 
-    canPackageBeImproved pkg =
-      installedUnitId pkg `Set.member` installedPkgIdSet
-
-    replaceWithInstalled :: ElaboratedInstallPlan -> [UnitId]
-                         -> ElaboratedInstallPlan
-    replaceWithInstalled = foldl' (flip InstallPlan.installed)
