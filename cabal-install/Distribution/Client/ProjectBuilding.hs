@@ -1005,8 +1005,9 @@ buildAndInstallUnpackedPackage verbosity
 
     let dispname = case elabPkgOrComp pkg of
             ElabPackage _ -> display pkgid
-            ElabComponent comp -> display pkgid ++ " "
-                ++ maybe "custom" display (compComponentName comp)
+                ++ " (all, due to Custom setup)"
+            ElabComponent comp -> display pkgid
+                ++ " (" ++ maybe "custom" display (compComponentName comp) ++ ")"
 
     -- Configure phase
     when isParallelBuild $
