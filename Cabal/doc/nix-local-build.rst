@@ -85,7 +85,7 @@ Local versus external packages
 One of the primary innovations of Nix-style local builds is the
 distinction between local packages, which users edit and recompile and
 must be built per-project, versus external packages, which can be cached
-across packages. To be more precise:
+across projects. To be more precise:
 
 1. A **local package** is one that is listed explicitly in the
    ``packages``, ``optional-packages`` or ``extra-packages`` field of a
