@@ -234,7 +234,8 @@ dump hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
               (dumpInvocation hpi verbosity packagedb)
-    `catchIO` \_ -> die $ programId (hcPkgProgram hpi) ++ " dump failed"
+    `catchIO` \e -> die $ programId (hcPkgProgram hpi) ++ " dump failed: "
+                       ++ displayException e
 
   case parsePackages output of
     Left ok -> return ok
