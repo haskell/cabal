@@ -46,6 +46,7 @@ module Distribution.Simple.Configure (configure,
                                       getPackageDBContents,
                                       configCompiler, configCompilerAux,
                                       configCompilerEx, configCompilerAuxEx,
+                                      computeEffectiveProfiling,
                                       ccLdOptionsBuildInfo,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
@@ -1074,11 +1075,18 @@ configureCoverage verbosity cfg comp = do
            ++ "program coverage. Program coverage has been disabled.")
         return apply
 
--- | Select and apply profiling settings for the build based on the
--- 'ConfigFlags' and 'Compiler'.
-configureProfiling :: Verbosity -> ConfigFlags -> Compiler
-                   -> IO (LocalBuildInfo -> LocalBuildInfo)
-configureProfiling verbosity cfg comp = do
+-- | Compute the effective value of the profiling flags
+-- @--enable-library-profiling@ and @--enable-executable-profiling@
+-- from the specified 'ConfigFlags'.  This may be useful for
+-- external Cabal tools which need to interact with Setup in
+-- a backwards-compatible way: the most predictable mechanism
+-- for enabling profiling across many legacy versions is to
+-- NOT use @--enable-profiling@ and use those two flags instead.
+--
+-- Note that @--enable-executable-profiling@ also affects profiling
+-- of benchmarks and (non-detailed) test suites.
+computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
+computeEffectiveProfiling cfg =
   -- The --profiling flag sets the default for both libs and exes,
   -- but can be overidden by --library-profiling, or the old deprecated
   -- --executable-profiling flag.
@@ -1089,6 +1097,14 @@ configureProfiling verbosity cfg comp = do
                         (mappend (configProf cfg) (configProfExe cfg))
       tryLibProfiling = fromFlagOrDefault tryExeProfiling
                         (mappend (configProf cfg) (configProfLib cfg))
+  in (tryLibProfiling, tryExeProfiling)
+
+-- | Select and apply profiling settings for the build based on the
+-- 'ConfigFlags' and 'Compiler'.
+configureProfiling :: Verbosity -> ConfigFlags -> Compiler
+                   -> IO (LocalBuildInfo -> LocalBuildInfo)
+configureProfiling verbosity cfg comp = do
+  let (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling cfg
 
       tryExeProfileLevel = fromFlagOrDefault ProfDetailDefault
                            (configProfDetail cfg)
