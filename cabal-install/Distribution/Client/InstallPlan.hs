@@ -290,24 +290,27 @@ remove shouldRemove plan =
     newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
 
--- | Change a package in a 'Configured' state to an 'Installed' state.
+-- | Change a number of packages in the 'Configured' state to the 'Installed'
+-- state.
 --
 -- To preserve invariants, the package must have all of its dependencies
 -- already installed too (that is 'PreExisting' or 'Installed').
 --
-installed :: (IsUnit ipkg,
-              IsUnit srcpkg)
-          => UnitId
+installed :: (IsUnit ipkg, IsUnit srcpkg)
+          => (srcpkg -> Bool)
           -> GenericInstallPlan ipkg srcpkg
           -> GenericInstallPlan ipkg srcpkg
-installed pkgid plan =
-    case lookup plan pkgid of
-      Just (Configured srcpkg) ->
-        assert (all isInstalled (directDeps plan pkgid)) $
-        plan {
-          planIndex = Graph.insert (Installed srcpkg) (planIndex plan)
-        }
-      _ -> error "InstallPlan.installed: unexpected state"
+installed shouldBeInstalled installPlan =
+    foldl' markInstalled installPlan
+      [ pkg
+      | Configured pkg <- reverseTopologicalOrder installPlan
+      , shouldBeInstalled pkg ]
+  where
+    markInstalled plan pkg =
+      assert (all isInstalled (directDeps plan (nodeKey pkg))) $
+      plan {
+        planIndex = Graph.insert (Installed pkg) (planIndex plan)
+      }
 
 -- | Lookup a package in the plan.
 --

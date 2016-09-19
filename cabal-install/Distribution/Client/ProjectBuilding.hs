@@ -257,7 +257,7 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
     -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
     -- 'InstallPlan.Installed'.
     let installPlan' = improveInstallPlanWithUpToDatePackages
-                         installPlan pkgsBuildStatus
+                         pkgsBuildStatus installPlan
     debugNoWrap verbosity $ InstallPlan.showInstallPlan installPlan'
 
     return (installPlan', pkgsBuildStatus)
@@ -365,24 +365,18 @@ foldMInstallPlanDepOrder plan0 visit =
       let results' = Map.insert (nodeKey pkg) result results
       go results' pkgs
 
-improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
-                                       -> BuildStatusMap
+improveInstallPlanWithUpToDatePackages :: BuildStatusMap
                                        -> ElaboratedInstallPlan
-improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
-    replaceWithInstalled installPlan
-      [ installedUnitId pkg
-      | InstallPlan.Configured pkg
-          <- InstallPlan.reverseTopologicalOrder installPlan
-      , case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
-          Just BuildStatusUpToDate {} -> True
-          Just _                      -> False
-          Nothing -> error "improveInstallPlanWithUpToDatePackages: impossible"
-      ]
+                                       -> ElaboratedInstallPlan
+improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
+    InstallPlan.installed canPackageBeImproved
   where
-    replaceWithInstalled :: ElaboratedInstallPlan -> [UnitId]
-                         -> ElaboratedInstallPlan
-    replaceWithInstalled =
-      foldl' (flip InstallPlan.installed)
+    canPackageBeImproved pkg =
+      case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
+        Just BuildStatusUpToDate {} -> True
+        Just _                      -> False
+        Nothing -> error $ "improveInstallPlanWithUpToDatePackages: "
+                        ++ display (packageId pkg) ++ " not in status map"
 
 
 -----------------------------
