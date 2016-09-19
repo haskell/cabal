@@ -69,7 +69,7 @@ tests config =
 
 testExceptionInFindingPackage :: ProjectConfig -> Assertion
 testExceptionInFindingPackage config = do
-    BadPackageLocations locs <- expectException "BadPackageLocations" $
+    BadPackageLocations _ locs <- expectException "BadPackageLocations" $
       void $ planProject testdir config
     case locs of
       [BadLocGlobEmptyMatch "./*.cabal"] -> return ()
@@ -81,7 +81,7 @@ testExceptionInFindingPackage config = do
 
 testExceptionInFindingPackage2 :: ProjectConfig -> Assertion
 testExceptionInFindingPackage2 config = do
-    BadPackageLocations locs <- expectException "BadPackageLocations" $
+    BadPackageLocations _ locs <- expectException "BadPackageLocations" $
       void $ planProject testdir config
     case locs of
       [BadPackageLocationFile (BadLocDirNoCabalFile ".")] -> return ()

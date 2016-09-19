@@ -95,8 +95,11 @@ roundtrip_legacytypes =
 
 
 prop_roundtrip_legacytypes_all :: ProjectConfig -> Bool
-prop_roundtrip_legacytypes_all =
+prop_roundtrip_legacytypes_all config =
     roundtrip_legacytypes
+      config {
+        projectConfigProvenance = mempty
+      }
 
 prop_roundtrip_legacytypes_packages :: ProjectConfig -> Bool
 prop_roundtrip_legacytypes_packages config =
@@ -104,6 +107,7 @@ prop_roundtrip_legacytypes_packages config =
       config {
         projectConfigBuildOnly       = mempty,
         projectConfigShared          = mempty,
+        projectConfigProvenance      = mempty,
         projectConfigLocalPackages   = mempty,
         projectConfigSpecificPackage = mempty
       }
@@ -140,7 +144,7 @@ roundtrip_printparse config =
         . showLegacyProjectConfig
         . convertToLegacyProjectConfig)
           config of
-      ParseOk _ x -> x == config
+      ParseOk _ x -> x == config { projectConfigProvenance = mempty }
       _           -> False
 
 
@@ -244,19 +248,21 @@ instance Arbitrary ProjectConfig where
         <*> (map getPackageLocationString <$> arbitrary)
         <*> shortListOf 3 arbitrary
         <*> arbitrary
-        <*> arbitrary <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
         <*> arbitrary
         <*> (MapMappend . fmap getNonMEmpty . Map.fromList
                <$> shortListOf 3 arbitrary)
         -- package entries with no content are equivalent to
         -- the entry not existing at all, so exclude empty
 
-    shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7) =
+    shrink (ProjectConfig x0 x1 x2 x3 x4 x5 x6 x7 x8) =
       [ ProjectConfig x0' x1' x2' x3'
-                      x4' x5' x6' (MapMappend (fmap getNonMEmpty x7'))
-      | ((x0', x1', x2', x3'), (x4', x5', x6', x7'))
+                      x4' x5' x6' x7' (MapMappend (fmap getNonMEmpty x8'))
+      | ((x0', x1', x2', x3'), (x4', x5', x6', x7', x8'))
           <- shrink ((x0, x1, x2, x3),
-                     (x4, x5, x6, fmap NonMEmpty (getMapMappend x7)))
+                     (x4, x5, x6, x7, fmap NonMEmpty (getMapMappend x8)))
       ]
 
 newtype PackageLocationString
@@ -373,6 +379,9 @@ instance Arbitrary ProjectConfigShared where
 projectConfigConstraintSource :: ConstraintSource
 projectConfigConstraintSource = 
     ConstraintSourceProjectConfig "TODO"
+
+instance Arbitrary ProjectConfigProvenance where
+    arbitrary = elements [Implicit, Explicit "cabal.project"]
 
 instance Arbitrary PackageConfig where
     arbitrary =
