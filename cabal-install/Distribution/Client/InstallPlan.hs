@@ -32,7 +32,6 @@ module Distribution.Client.InstallPlan (
 
   fromSolverInstallPlan,
   configureInstallPlan,
-  remove,
   installed,
   lookup,
   directDeps,
@@ -274,12 +273,14 @@ toList :: GenericInstallPlan ipkg srcpkg
        -> [GenericPlanPackage ipkg srcpkg]
 toList = Graph.toList . planIndex
 
+{-
 -- | Remove packages from the install plan. This will result in an
 -- error if there are remaining packages that depend on any matching
 -- package. This is primarily useful for obtaining an install plan for
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
 --
+--TODO: [code cleanup] use this in --only-depencencies impl
 remove :: (IsUnit ipkg, IsUnit srcpkg)
        => (GenericPlanPackage ipkg srcpkg -> Bool)
        -> GenericInstallPlan ipkg srcpkg
@@ -289,6 +290,7 @@ remove shouldRemove plan =
   where
     newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
+-}
 
 -- | Change a number of packages in the 'Configured' state to the 'Installed'
 -- state.

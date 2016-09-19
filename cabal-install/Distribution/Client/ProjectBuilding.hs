@@ -23,7 +23,8 @@ module Distribution.Client.ProjectBuilding (
     BuildResult(..),
     BuildFailure(..),
     BuildFailureReason(..),
-    rebuildTargets
+    rebuildTargets,
+    updateInstallPlanWithBuildOutcomes,
   ) where
 
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
@@ -1316,6 +1317,18 @@ buildInplaceUnpackedPackage verbosity
                                 pkgConfDest
         setup Cabal.registerCommand registerFlags []
 
+
+updateInstallPlanWithBuildOutcomes :: BuildOutcomes
+                                   -> ElaboratedInstallPlan
+                                   -> ElaboratedInstallPlan
+updateInstallPlanWithBuildOutcomes buildOutcomes =
+    InstallPlan.installed canPackageBeImproved
+  where
+    canPackageBeImproved pkg =
+      case Map.lookup (installedUnitId pkg) buildOutcomes of
+        Just (Right _) -> True
+        Just (Left  _) -> False
+        Nothing        -> False
 
 -- helper
 annotateFailureNoLog :: (SomeException -> BuildFailureReason)
