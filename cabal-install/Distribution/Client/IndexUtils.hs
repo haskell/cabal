@@ -90,7 +90,7 @@ import Distribution.Compat.Exception (catchIO)
 import Distribution.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist, doesDirectoryExist)
 import System.FilePath
-         ( (</>), takeExtension, replaceExtension, splitDirectories, normalise )
+         ( (</>), (<.>), takeExtension, replaceExtension, splitDirectories, normalise )
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
 import System.IO
@@ -108,6 +108,23 @@ getInstalledPackages verbosity comp packageDbs progdb =
     Configure.getInstalledPackages verbosity' comp packageDbs progdb
   where
     verbosity'  = lessVerbose verbosity
+
+
+-- | Get filename base (i.e. without file extension) for index-related files
+--
+-- /Secure/ cabal repositories use a new extended & incremental
+-- @01-index.tar@. In order to avoid issues resulting from clobbering
+-- new/old-style index data, we save them locally to different names.
+--
+-- Example: Use @indexBaseName repo <.> "tar.gz"@ to compute the 'FilePath' of the
+-- @00-index.tar.gz@/@01-index.tar.gz@ file.
+indexBaseName :: Repo -> FilePath
+indexBaseName repo = repoLocalDir repo </> fn
+  where
+    fn = case repo of
+           RepoSecure {} -> "01-index"
+           RepoRemote {} -> "00-index"
+           RepoLocal  {} -> "00-index"
 
 ------------------------------------------------------------------------
 -- Reading the source package index
@@ -206,15 +223,14 @@ readRepoIndex verbosity repoCtxt repo =
 
 -- | Return the age of the index file in days (as a Double).
 getIndexFileAge :: Repo -> IO Double
-getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
+getIndexFileAge repo = getFileAge $ indexBaseName repo <.> "tar"
 
 -- | A set of files (or directories) that can be monitored to detect when
 -- there might have been a change in the source packages.
 --
 getSourcePackagesMonitorFiles :: [Repo] -> [FilePath]
 getSourcePackagesMonitorFiles repos =
-    [ repoLocalDir repo </> "00-index.cache"
-    | repo <- repos ]
+    [ indexBaseName repo <.> "cache" | repo <- repos ]
 
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.
@@ -386,11 +402,11 @@ data Index =
   | SandboxIndex FilePath
 
 indexFile :: Index -> FilePath
-indexFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.tar"
+indexFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "tar"
 indexFile (SandboxIndex index)   = index
 
 cacheFile :: Index -> FilePath
-cacheFile (RepoIndex _ctxt repo) = repoLocalDir repo </> "00-index.cache"
+cacheFile (RepoIndex _ctxt repo) = indexBaseName repo <.> "cache"
 cacheFile (SandboxIndex index)   = index `replaceExtension` "cache"
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
