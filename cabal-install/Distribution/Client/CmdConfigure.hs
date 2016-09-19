@@ -66,16 +66,16 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
           hookSelectPlanSubset = \_ -> return
         }
 
+    let buildCtx' = buildCtx {
+                      buildSettings = (buildSettings buildCtx) {
+                        buildSettingDryRun = True
+                      }
+                    }
+
     --TODO: Hmm, but we don't have any targets. Currently this prints what we
     -- would build if we were to build everything. Could pick implicit target like "."
     --TODO: should we say what's in the project (+deps) as a whole?
-    printPlan
-      verbosity
-      buildCtx {
-        buildSettings = (buildSettings buildCtx) {
-          buildSettingDryRun = True
-        }
-      }
+    printPlan verbosity buildCtx'
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 

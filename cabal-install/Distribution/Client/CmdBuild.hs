@@ -8,9 +8,6 @@ module Distribution.Client.CmdBuild (
   ) where
 
 import Distribution.Client.ProjectOrchestration
-         ( PreBuildHooks(..), runProjectPreBuildPhase, selectTargets
-         , ProjectBuildContext(..), runProjectBuildPhase
-         , printPlan, reportBuildFailures )
 import Distribution.Client.ProjectConfig
          ( BuildTimeSettings(..) )
 import Distribution.Client.ProjectPlanning
@@ -24,8 +21,6 @@ import Distribution.Simple.Setup
          ( HaddockFlags, fromFlagOrDefault )
 import Distribution.Verbosity
          ( normal )
-
-import Control.Monad (unless)
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
@@ -69,7 +64,7 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     userTargets <- readUserBuildTargets targetStrings
 
-    buildCtx@ProjectBuildContext{buildSettings, elaboratedPlan} <-
+    buildCtx <-
       runProjectPreBuildPhase
         verbosity
         ( globalFlags, configFlags, configExFlags
@@ -91,9 +86,8 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
 
     printPlan verbosity buildCtx
 
-    unless (buildSettingDryRun buildSettings) $ do
-      buildResults <- runProjectBuildPhase verbosity buildCtx
-      reportBuildFailures verbosity elaboratedPlan buildResults
+    buildOutcomes <- runProjectBuildPhase verbosity buildCtx
+    runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 

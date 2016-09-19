@@ -53,6 +53,7 @@ module Distribution.Client.ProjectOrchestration (
     runProjectBuildPhase,
 
     -- * Post build actions
+    runProjectPostBuildPhase,
     reportBuildFailures,
   ) where
 
@@ -124,7 +125,7 @@ data PreBuildHooks = PreBuildHooks {
                             -> IO ElaboratedInstallPlan
      }
 
--- | This holds the context between the pre-build and build phases.
+-- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
       distDirLayout    :: DistDirLayout,
@@ -210,6 +211,10 @@ runProjectPreBuildPhase
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
                      -> IO BuildOutcomes
+runProjectBuildPhase _ ProjectBuildContext {buildSettings}
+  | buildSettingDryRun buildSettings
+  = return Map.empty
+
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
@@ -225,6 +230,30 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
         BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
         --TODO: [nice to have] record build failures persistently
         _                                  -> Nothing
+
+-- | Post-build phase: various administrative tasks
+--
+-- Update bits of state based on the build outcomes and report any failures.
+--
+runProjectPostBuildPhase :: Verbosity
+                         -> ProjectBuildContext
+                         -> BuildOutcomes
+                         -> IO ()
+runProjectPostBuildPhase _ ProjectBuildContext {buildSettings} _
+  | buildSettingDryRun buildSettings
+  = return ()
+
+runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
+    -- Update other build artefacts
+    -- TODO: currently none, but could include:
+    --        - .ghc.environment
+    --        - bin symlinks/wrappers
+    --        - haddock/hoogle/ctags indexes
+    --        - delete stale lib registrations
+    --        - delete stale package dirs
+
+    -- Report any build failures
+    reportBuildFailures verbosity elaboratedPlan buildOutcomes
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
