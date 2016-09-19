@@ -184,31 +184,31 @@ traceTree _ _ = id
 #endif
 
 #ifdef DEBUG_TRACETREE
-instance GSimpleTree (Tree QGoalReason) where
+instance GSimpleTree (Tree d QGoalReason) where
   fromGeneric = go
     where
-      go :: Tree QGoalReason -> SimpleTree
+      go :: Tree d QGoalReason -> SimpleTree
       go (PChoice qpn _     psq) = Node "P" $ Assoc $ L.map (uncurry (goP qpn)) $ psqToList  psq
       go (FChoice _   _ _ _ psq) = Node "F" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
       go (SChoice _   _ _   psq) = Node "S" $ Assoc $ L.map (uncurry goFS)      $ psqToList  psq
       go (GoalChoice        psq) = Node "G" $ Assoc $ L.map (uncurry goG)       $ PSQ.toList psq
-      go (Done _rdm)             = Node "D" $ Assoc []
+      go (Done _rdm _s)          = Node "D" $ Assoc []
       go (Fail cs _reason)       = Node "X" $ Assoc [("CS", Leaf $ goCS cs)]
 
       psqToList :: W.WeightedPSQ w k v -> [(k, v)]
       psqToList = L.map (\(_, k, v) -> (k, v)) . W.toList
 
       -- Show package choice
-      goP :: QPN -> POption -> Tree QGoalReason -> (String, SimpleTree)
+      goP :: QPN -> POption -> Tree d QGoalReason -> (String, SimpleTree)
       goP _        (POption (I ver _loc) Nothing)  subtree = (showVersion ver, go subtree)
       goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
 
       -- Show flag or stanza choice
-      goFS :: Bool -> Tree QGoalReason -> (String, SimpleTree)
+      goFS :: Bool -> Tree d QGoalReason -> (String, SimpleTree)
       goFS val subtree = (show val, go subtree)
 
       -- Show goal choice
-      goG :: Goal QPN -> Tree QGoalReason -> (String, SimpleTree)
+      goG :: Goal QPN -> Tree d QGoalReason -> (String, SimpleTree)
       goG (Goal var gr) subtree = (showVar var ++ " (" ++ shortGR gr ++ ")", go subtree)
 
       -- Variation on 'showGR' that produces shorter strings
@@ -229,18 +229,18 @@ instance GSimpleTree (Tree QGoalReason) where
 -- | Replace all goal reasons with a dummy goal reason in the tree
 --
 -- This is useful for debugging (when experimenting with the impact of GRs)
-_removeGR :: Tree QGoalReason -> Tree QGoalReason
+_removeGR :: Tree d QGoalReason -> Tree d QGoalReason
 _removeGR = trav go
   where
-   go :: TreeF QGoalReason (Tree QGoalReason) -> TreeF QGoalReason (Tree QGoalReason)
+   go :: TreeF d QGoalReason (Tree d QGoalReason) -> TreeF d QGoalReason (Tree d QGoalReason)
    go (PChoiceF qpn _     psq) = PChoiceF qpn dummy     psq
    go (FChoiceF qfn _ a b psq) = FChoiceF qfn dummy a b psq
    go (SChoiceF qsn _ a   psq) = SChoiceF qsn dummy a   psq
    go (GoalChoiceF        psq) = GoalChoiceF            (goG psq)
-   go (DoneF rdm)              = DoneF rdm
+   go (DoneF rdm s)            = DoneF rdm s
    go (FailF cs reason)        = FailF cs reason
 
-   goG :: PSQ (Goal QPN) (Tree QGoalReason) -> PSQ (Goal QPN) (Tree QGoalReason)
+   goG :: PSQ (Goal QPN) (Tree d QGoalReason) -> PSQ (Goal QPN) (Tree d QGoalReason)
    goG = PSQ.fromList
        . L.map (\(Goal var _, subtree) -> (Goal var dummy, subtree))
        . PSQ.toList

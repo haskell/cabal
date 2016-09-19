@@ -61,10 +61,10 @@ type Linker       = Reader RelatedGoals
 -- package instance. Whenever we make an unlinked choice, we extend the map.
 -- Whenever we find a choice, we look into the map in order to find out what
 -- link options we have to add.
-addLinking :: Tree a -> Tree a
+addLinking :: Tree d c -> Tree d c
 addLinking = (`runReader` M.empty) .  cata go
   where
-    go :: TreeF a (Linker (Tree a)) -> Linker (Tree a)
+    go :: TreeF d c (Linker (Tree d c)) -> Linker (Tree d c)
 
     -- The only nodes of interest are package nodes
     go (PChoiceF qpn gr cs) = do
@@ -78,7 +78,7 @@ addLinking = (`runReader` M.empty) .  cata go
 
     -- Recurse underneath package choices. Here we just need to make sure
     -- that we record the package choice so that it is available below
-    goP :: QPN -> POption -> Linker (Tree a) -> Linker (Tree a)
+    goP :: QPN -> POption -> Linker (Tree d c) -> Linker (Tree d c)
     goP (Q pp pn) (POption i Nothing) = local (M.insertWith (++) (pn, i) [pp])
     goP _ _ = alreadyLinked
 
@@ -137,10 +137,10 @@ type Validate = Reader ValidateState
 -- * Linked dependencies,
 -- * Equal flag assignments
 -- * Equal stanza assignments
-validateLinking :: Index -> Tree a -> Tree a
+validateLinking :: Index -> Tree d c -> Tree d c
 validateLinking index = (`runReader` initVS) . cata go
   where
-    go :: TreeF a (Validate (Tree a)) -> Validate (Tree a)
+    go :: TreeF d c (Validate (Tree d c)) -> Validate (Tree d c)
 
     go (PChoiceF qpn gr cs) =
       PChoice qpn gr     <$> T.sequence (W.mapWithKey (goP qpn) cs)
@@ -151,11 +151,11 @@ validateLinking index = (`runReader` initVS) . cata go
 
     -- For the other nodes we just recurse
     go (GoalChoiceF         cs)       = GoalChoice          <$> T.sequence cs
-    go (DoneF revDepMap)              = return $ Done revDepMap
+    go (DoneF revDepMap s)            = return $ Done revDepMap s
     go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
 
     -- Package choices
-    goP :: QPN -> POption -> Validate (Tree a) -> Validate (Tree a)
+    goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
     goP qpn@(Q _pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ = vsIndex vs ! pn ! i
@@ -165,7 +165,7 @@ validateLinking index = (`runReader` initVS) . cata go
         Right vs'       -> local (const vs') r
 
     -- Flag choices
-    goF :: QFN -> Bool -> Validate (Tree a) -> Validate (Tree a)
+    goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
     goF qfn b r = do
       vs <- ask
       case execUpdateState (pickFlag qfn b) vs of
@@ -173,7 +173,7 @@ validateLinking index = (`runReader` initVS) . cata go
         Right vs'       -> local (const vs') r
 
     -- Stanza choices (much the same as flag choices)
-    goS :: QSN -> Bool -> Validate (Tree a) -> Validate (Tree a)
+    goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
     goS qsn b r = do
       vs <- ask
       case execUpdateState (pickStanza qsn b) vs of

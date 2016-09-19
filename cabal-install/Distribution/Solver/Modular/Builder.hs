@@ -103,16 +103,16 @@ data BuildType =
   | Instance QPN I PInfo QGoalReason  -- ^ build a tree for a concrete instance
   deriving Show
 
-build :: BuildState -> Tree QGoalReason
+build :: BuildState -> Tree () QGoalReason
 build = ana go
   where
-    go :: BuildState -> TreeF QGoalReason BuildState
+    go :: BuildState -> TreeF () QGoalReason BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
     -- it from the queue of open goals.
     go bs@(BS { rdeps = rds, open = gs, next = Goals })
-      | P.null gs = DoneF rds
+      | P.null gs = DoneF rds ()
       | otherwise = GoalChoiceF $ P.mapKeys close
                                 $ P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
                                 $ P.splits gs
@@ -175,7 +175,7 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> IndependentGoals -> [PN] -> Tree QGoalReason
+buildTree :: Index -> IndependentGoals -> [PN] -> Tree () QGoalReason
 buildTree idx (IndependentGoals ind) igs =
     build BS {
         index = idx

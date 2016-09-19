@@ -14,11 +14,11 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 import Distribution.Solver.Types.PackagePath
 
 -- | Find and reject any solutions that are cyclic
-detectCyclesPhase :: Tree a -> Tree a
+detectCyclesPhase :: Tree d c -> Tree d c
 detectCyclesPhase = cata go
   where
     -- The only node of interest is DoneF
-    go :: TreeF a (Tree a) -> Tree a
+    go :: TreeF d c (Tree d c) -> Tree d c
     go (PChoiceF qpn gr     cs) = PChoice qpn gr     cs
     go (FChoiceF qfn gr w m cs) = FChoice qfn gr w m cs
     go (SChoiceF qsn gr w   cs) = SChoice qsn gr w   cs
@@ -27,9 +27,9 @@ detectCyclesPhase = cata go
 
     -- We check for cycles only if we have actually found a solution
     -- This minimizes the number of cycle checks we do as cycles are rare
-    go (DoneF revDeps) = do
+    go (DoneF revDeps s) = do
       case findCycles revDeps of
-        Nothing     -> Done revDeps
+        Nothing     -> Done revDeps s
         Just relSet -> Fail relSet CyclicDependencies
 
 -- | Given the reverse dependency map from a 'Done' node in the tree, check

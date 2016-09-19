@@ -101,10 +101,10 @@ newtype Validate a = Validate (Reader ValidateState a)
 runValidate :: Validate a -> ValidateState -> a
 runValidate (Validate r) = runReader r
 
-validate :: Tree a -> Validate (Tree a)
+validate :: Tree d c -> Validate (Tree d c)
 validate = cata go
   where
-    go :: TreeF a (Validate (Tree a)) -> Validate (Tree a)
+    go :: TreeF d c (Validate (Tree d c)) -> Validate (Tree d c)
 
     go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (W.mapWithKey (goP qpn) ts)
     go (FChoiceF qfn gr b m ts) =
@@ -134,11 +134,11 @@ validate = cata go
 
     -- We don't need to do anything for goal choices or failure nodes.
     go (GoalChoiceF              ts) = GoalChoice <$> sequence ts
-    go (DoneF    rdm               ) = pure (Done rdm)
+    go (DoneF    rdm s             ) = pure (Done rdm s)
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> POption -> Validate (Tree a) -> Validate (Tree a)
+    goP :: QPN -> POption -> Validate (Tree d c) -> Validate (Tree d c)
     goP qpn@(Q _pp pn) (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -169,7 +169,7 @@ validate = cata go
                                     local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> Bool -> Validate (Tree a) -> Validate (Tree a)
+    goF :: QFN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
     goF qfn@(FN (PI qpn _i) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -194,7 +194,7 @@ validate = cata go
         Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
-    goS :: QSN -> Bool -> Validate (Tree a) -> Validate (Tree a)
+    goS :: QSN -> Bool -> Validate (Tree d c) -> Validate (Tree d c)
     goS qsn@(SN (PI qpn _i) _f) b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       extSupported   <- asks supportedExt  -- obtain the supported extensions
@@ -262,7 +262,7 @@ extractNewDeps v b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree a -> Tree a
+validateTree :: CompilerInfo -> Index -> PkgConfigDb -> Tree d c -> Tree d c
 validateTree cinfo idx pkgConfigDb t = runValidate (validate t) VS {
     supportedExt   = maybe (const True) -- if compiler has no list of extensions, we assume everything is supported
                            (\ es -> let s = S.fromList es in \ x -> S.member x s)
