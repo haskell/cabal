@@ -250,8 +250,15 @@ initSecureRepo verbosity httpLib RemoteRepo{..} cachePath = \callback -> do
     cache :: Sec.Cache
     cache = Sec.Cache {
         cacheRoot   = cachePath
-      , cacheLayout = Sec.cabalCacheLayout
+      , cacheLayout = Sec.cabalCacheLayout {
+            Sec.cacheLayoutIndexTar   = cacheFn "01-index.tar"
+          , Sec.cacheLayoutIndexIdx   = cacheFn "01-index.tar.idx"
+          , Sec.cacheLayoutIndexTarGz = cacheFn "01-index.tar.gz"
+          }
       }
+
+    cacheFn :: FilePath -> Sec.CachePath
+    cacheFn = Sec.rootPath . Sec.fragment
 
     -- We display any TUF progress only in verbose mode, including any transient
     -- verification errors. If verification fails, then the final exception that
