@@ -57,15 +57,6 @@ module Distribution.Simple.LocalBuildInfo (
         enabledTestLBIs,
         enabledBenchLBIs,
 
-        -- TODO: Don't export me
-        ComponentEnabledSpec(..),
-        defaultComponentEnabled,
-        componentEnabled,
-        componentDisabledReason,
-        componentNameEnabled,
-        componentNameDisabledReason,
-        ComponentDisabledReason(..),
-
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
@@ -78,7 +69,6 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
-import Distribution.Types.ComponentEnabledSpec
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Types.LocalBuildInfo

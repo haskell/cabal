@@ -38,7 +38,7 @@
 	  use 'withTestLBI' and 'withBenchLBI'.
 	  'finalizePackageDescription' is deprecated:
 	  its replacement 'finalizePD' now takes an extra argument
-	  'ComponentEnabledSpec' which specifies what components
+	  'ComponentRequestedSpec' which specifies what components
 	  are to be enabled: use this instead of modifying the
 	  'Component' in a 'GenericPackageDescription'.  (As
 	  it's not possible now, 'finalizePackageDescription'

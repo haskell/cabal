@@ -48,7 +48,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
-import Distribution.Simple.LocalBuildInfo
+import Distribution.Types.ComponentRequestedSpec
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
@@ -208,7 +208,7 @@ instance Semigroup d => Semigroup (DepTestRslt d) where
 resolveWithFlags ::
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
-  -> ComponentEnabledSpec
+  -> ComponentRequestedSpec
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerInfo  -- ^ Compiler information
@@ -416,7 +416,7 @@ newtype TargetSet a = TargetSet [(DependencyMap, a)]
 
 -- | Combine the target-specific dependencies in a TargetSet to give the
 -- dependencies for the package as a whole.
-overallDependencies :: ComponentEnabledSpec -> TargetSet PDTagged -> DependencyMap
+overallDependencies :: ComponentRequestedSpec -> TargetSet PDTagged -> DependencyMap
 overallDependencies enabled (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
@@ -424,11 +424,11 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
     -- UGH. The embedded componentName in the 'Component's here is
     -- BLANK.  I don't know whose fault this is but I'll use the tag
     -- instead. -- ezyang
-    removeDisabledSections (Lib _)     = componentNameEnabled enabled CLibName
-    removeDisabledSections (SubLib t _) = componentNameEnabled enabled (CSubLibName t)
-    removeDisabledSections (Exe t _)   = componentNameEnabled enabled (CExeName t)
-    removeDisabledSections (Test t _)  = componentNameEnabled enabled (CTestName t)
-    removeDisabledSections (Bench t _) = componentNameEnabled enabled (CBenchName t)
+    removeDisabledSections (Lib _)     = componentNameRequested enabled CLibName
+    removeDisabledSections (SubLib t _) = componentNameRequested enabled (CSubLibName t)
+    removeDisabledSections (Exe t _)   = componentNameRequested enabled (CExeName t)
+    removeDisabledSections (Test t _)  = componentNameRequested enabled (CTestName t)
+    removeDisabledSections (Bench t _) = componentNameRequested enabled (CBenchName t)
     removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.
@@ -564,9 +564,13 @@ instance Semigroup PDTagged where
 -- On success, it will return the package description and the full flag
 -- assignment chosen.
 --
+-- Note that this drops any stanzas which have @buildable: False@.  While
+-- this is arguably the right thing to do, it means we give bad error
+-- messages in some situations, see #3858.
+--
 finalizePD ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> ComponentEnabledSpec
+  -> ComponentRequestedSpec
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
                           -- available packages?  If this is unknown then use
                           -- True.
@@ -625,7 +629,7 @@ finalizePD userflags enabled satisfyDep
                       then DepOk
                       else MissingDeps missingDeps
 
-{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentEnabledSpec to specify something more specific." #-}
+{-# DEPRECATED finalizePackageDescription "This function now always assumes tests and benchmarks are disabled; use finalizePD with ComponentRequestedSpec to specify something more specific." #-}
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
   -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
@@ -637,7 +641,7 @@ finalizePackageDescription ::
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, FlagAssignment)
-finalizePackageDescription flags = finalizePD flags defaultComponentEnabled
+finalizePackageDescription flags = finalizePD flags defaultComponentRequestedSpec
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])

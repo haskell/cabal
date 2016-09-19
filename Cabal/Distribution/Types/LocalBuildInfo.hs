@@ -57,7 +57,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.PackageDescription
 import Distribution.Types.ComponentLocalBuildInfo
-import Distribution.Types.ComponentEnabledSpec
+import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.TargetInfo
 
 import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
@@ -84,7 +84,7 @@ data LocalBuildInfo = LocalBuildInfo {
         -- Needed to re-run configuration when .cabal is out of date
         flagAssignment :: FlagAssignment,
         -- ^ The final set of flags which were picked for this package
-        componentEnabledSpec :: ComponentEnabledSpec,
+        componentEnabledSpec :: ComponentRequestedSpec,
         -- ^ What components were enabled during configuration, and why.
         extraConfigArgs     :: [String],
         -- ^ Extra args on the command line for the configuration step.

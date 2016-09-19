@@ -33,8 +33,8 @@ import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
-import Distribution.Simple.LocalBuildInfo
-         ( defaultComponentEnabled )
+import Distribution.Types.ComponentRequestedSpec
+         ( defaultComponentRequestedSpec )
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack, compilerInfo )
 import Distribution.Simple.Program
@@ -111,7 +111,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
     gpd <- readPackageDescription verbosity path
     -- NB: We don't enable tests or benchmarks, since often they
     -- don't really have useful bounds.
-    let epd = finalizePD [] defaultComponentEnabled
+    let epd = finalizePD [] defaultComponentRequestedSpec
                     (const True) platform cinfo [] gpd
     case epd of
       Left _ -> putStrLn "finalizePD failed"

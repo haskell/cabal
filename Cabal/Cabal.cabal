@@ -99,6 +99,8 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildTargetErrors/BuildTargetErrors.cabal
+  tests/PackageTests/BuildTargetErrors/Main.hs
   tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/BuildToolsPath/A.hs
   tests/PackageTests/BuildToolsPath/MyCustomPreprocessor.hs
@@ -212,6 +214,8 @@ extra-source-files:
   tests/PackageTests/RegisterAssumeDepsUpToDate/RegisterOneShot.cabal
   tests/PackageTests/RegisterAssumeDepsUpToDate/q/Q.hs
   tests/PackageTests/Regression/T3294/T3294.cabal
+  tests/PackageTests/Regression/T3847/Main.hs
+  tests/PackageTests/Regression/T3847/T3847.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
   tests/PackageTests/TemplateHaskell/dynamic/TH.hs
@@ -402,7 +406,7 @@ library
     Distribution.Types.Component
     Distribution.Types.ComponentLocalBuildInfo
     Distribution.Types.LocalBuildInfo
-    Distribution.Types.ComponentEnabledSpec
+    Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
     Distribution.Utils.NubList
     Distribution.Verbosity

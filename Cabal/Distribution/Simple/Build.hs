@@ -565,12 +565,6 @@ initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> Verbosity -- ^The verbosity to use
                   -> IO ()
 initialBuildSteps _distPref pkg_descr lbi clbi verbosity = do
-  -- check that there's something to build
-  unless (not . null $ allBuildInfo pkg_descr) $ do
-    let name = display (packageId pkg_descr)
-    die $ "No libraries, executables, tests, or benchmarks "
-       ++ "are enabled for package " ++ name ++ "."
-
   createDirectoryIfMissingVerbose verbosity True (componentBuildDir lbi clbi)
 
   writeAutogenFiles verbosity pkg_descr lbi clbi
