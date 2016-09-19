@@ -182,7 +182,9 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
           Sec.downloadPackage' rep pkgid path
         return path
 
--- | Downloads an index file to [config-dir/packages/serv-id].
+-- | Downloads an index file to [config-dir/packages/serv-id] without
+-- hackage-security. You probably don't want to call this directly;
+-- use 'updateRepo' instead.
 --
 downloadIndex :: HttpTransport -> Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
 downloadIndex transport verbosity remoteRepo cacheDir = do
