@@ -187,7 +187,11 @@ shortOpt y ys rs optDescr = short ads ys rs
         short (OptArg f _:_) xs rest     = (Opt (f (Just xs)),rest)
         short []             [] rest     = (UnreqOpt optStr,rest)
         short []             xs rest     = (UnreqOpt (optStr++xs),rest)
-        -- this part is different vs upstream GetOpt ^^
+        -- This is different vs upstream = (UnreqOpt optStr,('-':xs):rest)
+        -- Apparently this was part of the change so that flags that are
+        -- not recognised as global flags are passed on to the sub-command.
+        -- But why was no equivalent change required for longOpt? So could
+        -- this change go upstream?
 
 -- miscellaneous error formatting
 
