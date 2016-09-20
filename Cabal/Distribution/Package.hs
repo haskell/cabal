@@ -202,6 +202,8 @@ instance Text Dependency where
              Parse.skipSpaces
              return (Dependency name ver)
 
+instance NFData Dependency where rnf = genericRnf
+
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =
   Dependency n (thisVersion v)
