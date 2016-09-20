@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TypeOperators #-}
 
 #ifdef MIN_VERSION_base
 #define MINVER_base_48 MIN_VERSION_base(4,8,0)
@@ -33,7 +34,7 @@ module Distribution.Compat.Prelude (
     Typeable,
     Data,
     Generic,
-    NFData (..),
+    NFData (..), genericRnf,
     Binary (..),
     Alternative (..),
     MonadPlus (..),
@@ -109,7 +110,9 @@ import Data.Data                     (Data)
 import Data.Typeable                 (Typeable)
 import Distribution.Compat.Binary    (Binary (..))
 import Distribution.Compat.Semigroup (Semigroup (..), gmappend, gmempty)
-import GHC.Generics                  (Generic)
+import GHC.Generics                  (Generic, Rep(..),
+                                      V1, U1(U1), K1(unK1), M1(unM1),
+                                      (:*:)((:*:)), (:+:)(L1,R1))
 
 import Data.Map                      (Map)
 
@@ -146,3 +149,45 @@ null = foldr (\_ _ -> False) True
 length :: Foldable t => t a -> Int
 length = foldl' (\c _ -> c+1) 0
 #endif
+
+
+-- | "GHC.Generics"-based 'rnf' implementation
+--
+-- This is needed in order to support @deepseq < 1.4@ which didn't
+-- have a 'Generic'-based default 'rnf' implementation yet.
+--
+-- In order to define instances, use e.g.
+--
+-- > instance NFData MyType where rnf = genericRnf
+--
+-- The implementation has been taken from @deepseq-1.4.2@'s default
+-- 'rnf' implementation.
+genericRnf :: (Generic a, GNFData (Rep a)) => a -> ()
+genericRnf = grnf . from
+
+-- | Hidden internal type-class
+class GNFData f where
+  grnf :: f a -> ()
+
+instance GNFData V1 where
+  grnf = error "Control.DeepSeq.rnf: uninhabited type"
+
+instance GNFData U1 where
+  grnf U1 = ()
+
+instance NFData a => GNFData (K1 i a) where
+  grnf = rnf . unK1
+  {-# INLINEABLE grnf #-}
+
+instance GNFData a => GNFData (M1 i c a) where
+  grnf = grnf . unM1
+  {-# INLINEABLE grnf #-}
+
+instance (GNFData a, GNFData b) => GNFData (a :*: b) where
+  grnf (x :*: y) = grnf x `seq` grnf y
+  {-# INLINEABLE grnf #-}
+
+instance (GNFData a, GNFData b) => GNFData (a :+: b) where
+  grnf (L1 x) = grnf x
+  grnf (R1 x) = grnf x
+  {-# INLINEABLE grnf #-}

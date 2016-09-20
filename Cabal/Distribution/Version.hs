@@ -134,6 +134,8 @@ data VersionRange
 
 instance Binary VersionRange
 
+instance NFData VersionRange where rnf = genericRnf
+
 #if __GLASGOW_HASKELL__ < 707
 -- starting with ghc-7.7/base-4.7 this instance is provided in "Data.Data"
 deriving instance Data Version
