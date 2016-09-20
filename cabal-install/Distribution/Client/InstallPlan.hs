@@ -33,7 +33,7 @@ module Distribution.Client.InstallPlan (
   fromSolverInstallPlan,
   configureInstallPlan,
   remove,
-  installed,
+  preexisting,
   lookup,
   directDeps,
   revDirectDeps,
@@ -159,7 +159,6 @@ import Prelude hiding (lookup)
 data GenericPlanPackage ipkg srcpkg
    = PreExisting ipkg
    | Configured  srcpkg
-   | Installed   srcpkg
   deriving (Eq, Show, Generic)
 
 type IsUnit a = (IsNode a, Key a ~ UnitId)
@@ -173,11 +172,9 @@ instance (IsNode ipkg, IsNode srcpkg, Key ipkg ~ UnitId, Key srcpkg ~ UnitId)
          => IsNode (GenericPlanPackage ipkg srcpkg) where
     type Key (GenericPlanPackage ipkg srcpkg) = UnitId
     nodeKey (PreExisting ipkg) = nodeKey ipkg
-    nodeKey (Configured  spkg) = nodeKey spkg
-    nodeKey (Installed   spkg) = nodeKey spkg
+    nodeKey (Configured spkg) = nodeKey spkg
     nodeNeighbors (PreExisting ipkg) = nodeNeighbors ipkg
-    nodeNeighbors (Configured  spkg) = nodeNeighbors spkg
-    nodeNeighbors (Installed   spkg) = nodeNeighbors spkg
+    nodeNeighbors (Configured spkg) = nodeNeighbors spkg
 
 instance (Binary ipkg, Binary srcpkg)
       => Binary (GenericPlanPackage ipkg srcpkg)
@@ -189,20 +186,17 @@ instance (Package ipkg, Package srcpkg) =>
          Package (GenericPlanPackage ipkg srcpkg) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
-  packageId (Installed   spkg)     = packageId spkg
 
 instance (HasUnitId ipkg, HasUnitId srcpkg) =>
          HasUnitId
          (GenericPlanPackage ipkg srcpkg) where
   installedUnitId (PreExisting ipkg) = installedUnitId ipkg
   installedUnitId (Configured  spkg) = installedUnitId spkg
-  installedUnitId (Installed   spkg) = installedUnitId spkg
 
 instance (HasConfiguredId ipkg, HasConfiguredId srcpkg) =>
           HasConfiguredId (GenericPlanPackage ipkg srcpkg) where
     configuredId (PreExisting ipkg) = configuredId ipkg
-    configuredId (Configured  spkg) = configuredId spkg
-    configuredId (Installed   spkg) = configuredId spkg
+    configuredId (Configured pkg) = configuredId pkg
 
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
     planIndex      :: !(PlanIndex ipkg srcpkg),
@@ -261,7 +255,6 @@ showInstallPlan = showPlanIndex . planIndex
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
 showPlanPackageTag (Configured  _)   = "Configured"
-showPlanPackageTag (Installed   _)   = "Installed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
@@ -290,27 +283,25 @@ remove shouldRemove plan =
     newIndex = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
 
--- | Change a number of packages in the 'Configured' state to the 'Installed'
--- state.
+-- | Replace a ready package with a pre-existing one. The pre-existing one
+-- must have exactly the same dependencies as the source one was configured
+-- with.
 --
--- To preserve invariants, the package must have all of its dependencies
--- already installed too (that is 'PreExisting' or 'Installed').
---
-installed :: (IsUnit ipkg, IsUnit srcpkg)
-          => (srcpkg -> Bool)
-          -> GenericInstallPlan ipkg srcpkg
-          -> GenericInstallPlan ipkg srcpkg
-installed shouldBeInstalled installPlan =
-    foldl' markInstalled installPlan
-      [ pkg
-      | Configured pkg <- reverseTopologicalOrder installPlan
-      , shouldBeInstalled pkg ]
+preexisting :: (IsUnit ipkg,
+                IsUnit srcpkg)
+            => UnitId
+            -> ipkg
+            -> GenericInstallPlan ipkg srcpkg
+            -> GenericInstallPlan ipkg srcpkg
+preexisting pkgid ipkg plan = plan'
   where
-    markInstalled plan pkg =
-      assert (all isInstalled (directDeps plan (nodeKey pkg))) $
-      plan {
-        planIndex = Graph.insert (Installed pkg) (planIndex plan)
-      }
+    plan' = plan {
+      planIndex   = Graph.insert (PreExisting ipkg)
+                    -- ...but be sure to use the *old* IPID for the lookup for
+                    -- the preexisting record
+                  . Graph.deleteKey pkgid
+                  $ planIndex plan
+    }
 
 -- | Lookup a package in the plan.
 --
@@ -518,18 +509,17 @@ ready plan =
     !processing =
       Processing
         (Set.fromList [ nodeKey pkg | pkg <- readyPackages ])
-        (Set.fromList [ nodeKey pkg | pkg <- toList plan, isInstalled pkg ])
+        (Set.fromList [ nodeKey pkg | PreExisting pkg <- toList plan ])
         Set.empty
     readyPackages =
       [ ReadyPackage pkg
       | Configured pkg <- toList plan
-      , all isInstalled (directDeps plan (nodeKey pkg))
+      , all isPreExisting (directDeps plan (nodeKey pkg))
       ]
 
-isInstalled :: GenericPlanPackage a b -> Bool
-isInstalled (PreExisting {}) = True
-isInstalled (Installed   {}) = True
-isInstalled _                = False
+    isPreExisting (PreExisting {}) = True
+    isPreExisting _                = False
+
 
 -- | Given a package in the processing state, mark the package as completed
 -- and return any packages that are newly in the processing state (ie ready to
@@ -602,7 +592,6 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
  && and [ case Graph.lookup pkgid (planIndex plan) of
             Just (Configured  _) -> True
             Just (PreExisting _) -> False
-            Just (Installed   _) -> False
             Nothing              -> False 
         | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
   where

@@ -532,8 +532,7 @@ printPlan verbosity
             partialConfigureFlags
 
     showBuildStatus status = case status of
-      BuildStatusPreExisting -> "existing package"
-      BuildStatusInstalled   -> "already installed"
+      BuildStatusPreExisting -> "already installed"
       BuildStatusDownload {} -> "requires download & build"
       BuildStatusUnpack   {} -> "requires build"
       BuildStatusRebuild _ rebuild -> case rebuild of
