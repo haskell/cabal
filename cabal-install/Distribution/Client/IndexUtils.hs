@@ -79,13 +79,14 @@ import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, catMaybes, maybeToList)
 import Data.List   (isPrefixOf)
 import Data.Int    (Int64)
+import Data.Word
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
 import qualified Data.Map as Map
 import Control.DeepSeq
 import Control.Monad (when, liftM)
-import Control.Exception (evaluate)
+import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.ByteString.Char8 as BSS
@@ -169,7 +170,7 @@ getSourcePackages verbosity repoCtxt = do
 readCacheStrict :: Verbosity -> Index -> (PackageEntry -> pkg) -> IO ([pkg], [Dependency])
 readCacheStrict verbosity index mkPkg = do
     updateRepoIndexCache verbosity index
-    cache <- readIndexCache index
+    cache <- readIndexCache verbosity index
     withFile (indexFile index) ReadMode $ \indexHnd ->
       packageListFromCache mkPkg indexHnd cache ReadPackageIndexStrict
 
@@ -186,7 +187,8 @@ readRepoIndex verbosity repoCtxt repo =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
-    readPackageIndexCacheFile mkAvailablePackage (RepoIndex repoCtxt repo)
+    readPackageIndexCacheFile verbosity mkAvailablePackage
+                              (RepoIndex repoCtxt repo)
 
   where
     mkAvailablePackage pkgEntry =
@@ -513,11 +515,12 @@ data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
 
 readPackageIndexCacheFile :: Package pkg
-                          => (PackageEntry -> pkg)
+                          => Verbosity
+                          -> (PackageEntry -> pkg)
                           -> Index
                           -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile mkPkg index = do
-  cache    <- readIndexCache index
+readPackageIndexCacheFile verbosity mkPkg index = do
+  cache    <- readIndexCache verbosity index
   indexHnd <- openFile (indexFile index) ReadMode
   packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
 
@@ -606,10 +609,33 @@ packageListFromCache mkPkg hnd Cache{..} mode = accum mempty [] mempty cacheEntr
 --
 
 -- | Read the 'Index' cache from the filesystem
-readIndexCache :: Index -> IO Cache
-readIndexCache index
-  | is01Index index = decodeFile (cacheFile index)
-  | otherwise       = liftM read00IndexCache $ BSS.readFile (cacheFile index)
+--
+-- If a corrupted index cache is detected this function regenerates
+-- the index cache and then reattempt to read the index once (and
+-- 'die's if it fails again).
+readIndexCache :: Verbosity -> Index -> IO Cache
+readIndexCache verbosity index = do
+    cacheOrFail <- readIndexCache' index
+    case cacheOrFail of
+      Left msg -> do
+          warn verbosity $ concat
+              [ "Parsing the index cache failed (", msg, "). "
+              , "Trying to regenerated the index cache..."
+              ]
+
+          updatePackageIndexCacheFile verbosity index
+
+          either die return =<< readIndexCache' index
+
+      Right res -> return res
+
+-- | Read the 'Index' cache from the filesystem without attempting to
+-- regenerate on parsing failures.
+readIndexCache' :: Index -> IO (Either String Cache)
+readIndexCache' index
+  | is01Index index = decodeFileOrFail' (cacheFile index)
+  | otherwise       = liftM (Right .read00IndexCache) $
+                      BSS.readFile (cacheFile index)
 
 -- | Write the 'Index' cache to the filesystem
 writeIndexCache :: Index -> Cache -> IO ()
