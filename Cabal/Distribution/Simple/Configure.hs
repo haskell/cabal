@@ -698,9 +698,9 @@ configure (pkg_descr0', pbi) cfg = do
         ++ "is not being built. Linking will fail if any executables "
         ++ "depend on the library."
 
-    configProf <- configureProfiling verbosity cfg comp
+    setProfLBI <- configureProfiling verbosity cfg comp
 
-    configCoverage <- configureCoverage verbosity cfg comp
+    setCoverageLBI <- configureCoverage verbosity cfg comp
 
     reloc <-
        if not (fromFlag $ configRelocatable cfg)
@@ -712,7 +712,7 @@ configure (pkg_descr0', pbi) cfg = do
                                (componentLocalName clbi) [clbi] m)
                    Map.empty buildComponents
 
-    let lbi = (configCoverage . configProf)
+    let lbi = (setCoverageLBI . setProfLBI)
               LocalBuildInfo {
                 configFlags         = cfg,
                 flagAssignment      = flags,
