@@ -689,21 +689,37 @@ commentSavedConfig :: IO SavedConfig
 commentSavedConfig = do
   userInstallDirs   <- defaultInstallDirs defaultCompiler True True
   globalInstallDirs <- defaultInstallDirs defaultCompiler False True
-  return SavedConfig {
-    savedGlobalFlags       = defaultGlobalFlags,
-    savedInstallFlags      = defaultInstallFlags,
-    savedConfigureExFlags  = defaultConfigExFlags,
-    savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
-      configUserInstall    = toFlag defaultUserInstall,
-      configAllowNewer     = Just (AllowNewer RelaxDepsNone),
-      configAllowOlder     = Just (AllowOlder RelaxDepsNone)
-    },
-    savedUserInstallDirs   = fmap toFlag userInstallDirs,
-    savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
-    savedUploadFlags       = commandDefaultFlags uploadCommand,
-    savedReportFlags       = commandDefaultFlags reportCommand,
-    savedHaddockFlags      = defaultHaddockFlags
-  }
+  let conf0 = mempty {
+        savedGlobalFlags       = defaultGlobalFlags {
+            globalRemoteRepos = toNubList [defaultRemoteRepo]
+            },
+        savedInstallFlags      = defaultInstallFlags,
+        savedConfigureExFlags  = defaultConfigExFlags,
+        savedConfigureFlags    = (defaultConfigFlags defaultProgramDb) {
+            configUserInstall    = toFlag defaultUserInstall,
+            configAllowNewer     = Just (AllowNewer RelaxDepsNone),
+            configAllowOlder     = Just (AllowOlder RelaxDepsNone)
+            },
+        savedUserInstallDirs   = fmap toFlag userInstallDirs,
+        savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
+        savedUploadFlags       = commandDefaultFlags uploadCommand,
+        savedReportFlags       = commandDefaultFlags reportCommand,
+        savedHaddockFlags      = defaultHaddockFlags
+
+        }
+  conf1 <- extendToEffectiveConfig conf0
+  let globalFlagsConf1 = savedGlobalFlags conf1
+      conf2 = conf1 {
+        savedGlobalFlags = globalFlagsConf1 {
+            globalRemoteRepos = overNubList (map removeRootKeys)
+                                (globalRemoteRepos globalFlagsConf1)
+            }
+        }
+  return conf2
+    where
+      -- Most people don't want to see default root keys, so don't print them.
+      removeRootKeys :: RemoteRepo -> RemoteRepo
+      removeRootKeys r = r { remoteRepoRootKeys = [] }
 
 -- | All config file fields.
 --
@@ -1015,8 +1031,8 @@ showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
-      case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos
-           . savedGlobalFlags $ vals of
+      case fmap (uncurry ppRemoteRepoSection)
+           (zip (getRemoteRepos comment) (getRemoteRepos vals)) of
         [] -> Disp.text ""
         (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
   $+$ Disp.text ""
@@ -1036,6 +1052,7 @@ showConfigWithComments comment vals = Disp.render $
   $+$ configFlagsSection "program-default-options" withProgramOptionsFields
                          configProgramArgs
   where
+    getRemoteRepos = fromNubList . globalRemoteRepos . savedGlobalFlags
     mcomment = Just comment
     installDirsSection name field =
       ppSection "install-dirs" name installDirsFields
@@ -1053,11 +1070,9 @@ showConfigWithComments comment vals = Disp.render $
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
 
-ppRemoteRepoSection :: RemoteRepo -> Doc
-ppRemoteRepoSection vals = ppSection "repository" (remoteRepoName vals)
-        remoteRepoFields def vals
-  where
-    def = Just (emptyRemoteRepo "ignored") { remoteRepoSecure = Just False }
+ppRemoteRepoSection :: RemoteRepo -> RemoteRepo -> Doc
+ppRemoteRepoSection def vals = ppSection "repository" (remoteRepoName vals)
+        remoteRepoFields (Just def) vals
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
