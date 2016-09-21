@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 #ifdef MIN_VERSION_base
 #define MINVER_base_48 MIN_VERSION_base(4,8,0)

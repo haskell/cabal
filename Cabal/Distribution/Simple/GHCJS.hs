@@ -1,4 +1,6 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
+
 module Distribution.Simple.GHCJS (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,

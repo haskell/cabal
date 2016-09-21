@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module Distribution.Compat.CreatePipe (createPipe) where
 
 import System.IO (Handle, hSetEncoding, localeEncoding)

@@ -1,4 +1,9 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Distribution.Compat.Time
        ( ModTime(..) -- Needed for testing
        , getModTime, getFileAge, getCurTime
