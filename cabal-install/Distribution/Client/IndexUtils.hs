@@ -474,32 +474,29 @@ withIndexEntries :: Index -> ([IndexCacheEntry] -> IO a) -> IO a
 withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
     repoContextWithSecureRepo repoCtxt repo $ \repoSecure ->
       Sec.withIndex repoSecure $ \Sec.IndexCallbacks{..} -> do
-        let mk :: (Sec.DirectoryEntry, fp, Maybe (Sec.Some Sec.IndexFile))
-               -> IO [IndexCacheEntry]
-            mk (_, _fp, Nothing) =
-              return [] -- skip unrecognized file
-            mk (_, _fp, Just (Sec.Some (Sec.IndexPkgMetadata _pkgId))) =
-              return [] -- skip metadata
-            mk (dirEntry, _fp, Just (Sec.Some file@(Sec.IndexPkgCabal pkgId))) = do
-              let blockNo = Sec.directoryEntryBlockNo dirEntry
-              timestamp <- Sec.indexEntryTime `fmap` indexLookupFileEntry dirEntry file
-              return [CachePackageId pkgId blockNo timestamp]
-            mk (dirEntry, _fp, Just (Sec.Some file@(Sec.IndexPkgPrefs _pkgName))) = do
-              let blockNo = Sec.directoryEntryBlockNo dirEntry
-              content <- Sec.indexEntryContent `fmap` indexLookupFileEntry dirEntry file
-              timestamp <- Sec.indexEntryTime `fmap` indexLookupFileEntry dirEntry file
-              return $ map (\x ->  CachePreference x blockNo timestamp) (parsePreferredVersions content)
+        -- Incrementally (lazily) read all the entries in the tar file in order,
+        -- including all revisions, not just the last revision of each file
+        indexEntries <- lazyUnfold indexLookupEntry (Sec.directoryFirst indexDirectory)
+        callback [ cacheEntry
+                 | (dirEntry, indexEntry) <- indexEntries
+                 , cacheEntry <- toCacheEntries dirEntry indexEntry ]
+  where
+    toCacheEntries :: Sec.DirectoryEntry -> Sec.Some Sec.IndexEntry
+                   -> [IndexCacheEntry]
+    toCacheEntries dirEntry (Sec.Some sie) =
+        case Sec.indexEntryPathParsed sie of
+          Nothing                            -> [] -- skip unrecognized file
+          Just (Sec.IndexPkgMetadata _pkgId) -> [] -- skip metadata
+          Just (Sec.IndexPkgCabal pkgId)     -> force
+              [CachePackageId pkgId blockNo timestamp]
+          Just (Sec.IndexPkgPrefs _pkgName)  -> force
+              [ CachePreference dep blockNo timestamp
+              | dep <- parsePreferredVersions (Sec.indexEntryContent sie)
+              ]
+      where
+        blockNo = Sec.directoryEntryBlockNo dirEntry
+        timestamp = Sec.indexEntryTime sie
 
-        let mk2 :: (Sec.DirectoryEntry, Sec.Some Sec.IndexEntry)
-                -> (Sec.DirectoryEntry, Sec.IndexPath, Maybe (Sec.Some Sec.IndexFile))
-            mk2 (dent, Sec.Some sie) =
-                (dent, Sec.indexEntryPath sie, fmap Sec.Some (Sec.indexEntryPathParsed sie))
-
-        -- dirIdxEnts :: [(Sec.DirectoryEntry, Sec.Some Sec.IndexEntry)]
-        dirIdxEnts <- lazyUnfold indexLookupEntry (Sec.directoryFirst indexDirectory)
-        entriess <- lazySequence $ map (mk . mk2) dirIdxEnts
-
-        callback $ concat entriess
 withIndexEntries index callback = do -- non-secure repositories
     withFile (indexFile index) ReadMode $ \h -> do
       bs          <- maybeDecompress `fmap` BS.hGetContents h
