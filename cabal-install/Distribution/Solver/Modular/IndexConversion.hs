@@ -41,10 +41,10 @@ import Distribution.Solver.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerInfo -> ShadowPkgs -> StrongFlags ->
+convPIs :: OS -> Arch -> CompilerInfo -> ShadowPkgs -> StrongFlags -> SolveExecutables ->
            SI.InstalledPackageIndex -> CI.PackageIndex (SourcePackage loc) -> Index
-convPIs os arch comp sip strfl iidx sidx =
-  mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sidx)
+convPIs os arch comp sip strfl sexes iidx sidx =
+  mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sexes sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -93,24 +93,24 @@ convIPId pn' idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerInfo -> StrongFlags ->
+convSPI' :: OS -> Arch -> CompilerInfo -> StrongFlags -> SolveExecutables ->
             CI.PackageIndex (SourcePackage loc) -> [(PN, I, PInfo)]
-convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
+convSPI' os arch cinfo strfl sexes = L.map (convSP os arch cinfo strfl sexes) . CI.allPackages
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerInfo -> StrongFlags -> SourcePackage loc -> (PN, I, PInfo)
-convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+convSP :: OS -> Arch -> CompilerInfo -> StrongFlags -> SolveExecutables -> SourcePackage loc -> (PN, I, PInfo)
+convSP os arch cinfo strfl sexes (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
-  in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
+  in  (pn, i, convGPD os arch cinfo strfl sexes (PI pn i) gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePD'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
-convGPD :: OS -> Arch -> CompilerInfo -> StrongFlags ->
+convGPD :: OS -> Arch -> CompilerInfo -> StrongFlags -> SolveExecutables ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cinfo strfl pi
+convGPD os arch cinfo strfl sexes pi
         (GenericPackageDescription pkg flags mlib sub_libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
@@ -125,7 +125,7 @@ convGPD os arch cinfo strfl pi
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns .
+    conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns sexes .
                         PDC.addBuildableCondition getInfo
 
     flagged_deps
@@ -175,22 +175,29 @@ convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 Component ->
                 (a -> BuildInfo) ->
                 IPNs ->
+                SolveExecutables ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns (CondNode info ds branches) =
+convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes@(SolveExecutables sexes') (CondNode info ds branches) =
                  concatMap
                     (\d -> filterIPNs ipns d (D.Simple (convLibDep pn d) comp))
                     ds  -- unconditional package dependencies
               ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
               ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
               ++ L.map (\(Dependency pkn vr) -> D.Simple (Pkg pkn vr) comp) (PD.pkgconfigDepends bi) -- unconditional pkg-config dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns) branches
+              ++ concatMap (convBranch os arch cinfo pi fds comp getInfo ipns sexes) branches
               -- build-tools dependencies
-              ++ concatMap
+              -- NB: Only include these dependencies if SolveExecutables
+              -- is True.  It might be false in the legacy solver
+              -- codepath, in which case there won't be any record of
+              -- an executable we need.
+              ++ (if sexes'
+                   then concatMap
                     (\(Dependency (PackageName exe) vr) ->
                         case packageProvidingBuildTool exe of
                             Nothing -> []
                             Just pn' -> [D.Simple (convExeDep pn (Dependency pn' vr)) comp])
                     (PD.buildTools bi)
+                   else [])
   where
     bi = getInfo info
 
@@ -244,12 +251,13 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               Component ->
               (a -> BuildInfo) ->
               IPNs ->
+              SolveExecutables ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns   t')
-        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns) mf')
+convBranch os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds comp getInfo ipns sexes  t')
+        (maybe [] (convCondTree os arch cinfo pi fds comp getInfo ipns sexes) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN

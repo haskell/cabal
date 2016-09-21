@@ -61,6 +61,7 @@ data SolverConfig = SolverConfig {
   strongFlags           :: StrongFlags,
   maxBackjumps          :: Maybe Int,
   enableBackjumping     :: EnableBackjumping,
+  solveExecutables      :: SolveExecutables,
   goalOrder             :: Maybe (Variable QPN -> Variable QPN -> Ordering)
 }
 

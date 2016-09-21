@@ -51,6 +51,7 @@ module Distribution.Client.Dependency (
     setStrongFlags,
     setMaxBackjumps,
     setEnableBackjumping,
+    setSolveExecutables,
     setGoalOrder,
     removeLowerBounds,
     removeUpperBounds,
@@ -158,6 +159,11 @@ data DepResolverParams = DepResolverParams {
        depResolverStrongFlags       :: StrongFlags,
        depResolverMaxBackjumps      :: Maybe Int,
        depResolverEnableBackjumping :: EnableBackjumping,
+       -- | Whether or not to solve for dependencies on executables.
+       -- This should be true, except in the legacy code path where
+       -- we can't tell if an executable has been installed or not,
+       -- so we shouldn't solve for them.  See #3875.
+       depResolverSolveExecutables  :: SolveExecutables,
 
        -- | Function to override the solver's goal-ordering heuristics.
        depResolverGoalOrder         :: Maybe (Variable QPN -> Variable QPN -> Ordering)
@@ -235,6 +241,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverStrongFlags       = StrongFlags False,
        depResolverMaxBackjumps      = Nothing,
        depResolverEnableBackjumping = EnableBackjumping True,
+       depResolverSolveExecutables  = SolveExecutables True,
        depResolverGoalOrder         = Nothing
      }
 
@@ -314,6 +321,12 @@ setEnableBackjumping :: EnableBackjumping -> DepResolverParams -> DepResolverPar
 setEnableBackjumping b params =
     params {
       depResolverEnableBackjumping = b
+    }
+
+setSolveExecutables :: SolveExecutables -> DepResolverParams -> DepResolverParams
+setSolveExecutables b params =
+    params {
+      depResolverSolveExecutables = b
     }
 
 setGoalOrder :: Maybe (Variable QPN -> Variable QPN -> Ordering)
@@ -609,7 +622,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reordGoals cntConflicts
                       indGoals noReinstalls
-                      shadowing strFlags maxBkjumps enableBj order)
+                      shadowing strFlags maxBkjumps enableBj solveExes order)
                      platform comp installedPkgIndex sourcePkgIndex
                      pkgConfigDB preferences constraints targets
   where
@@ -627,6 +640,7 @@ resolveDependencies platform comp pkgConfigDB solver params =
       strFlags
       maxBkjumps
       enableBj
+      solveExes
       order) = dontUpgradeNonUpgradeablePackages params
 
     preferences = interpretPackagesPreference targets defpref prefs
@@ -852,7 +866,7 @@ resolveWithoutDependencies :: DepResolverParams
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
-                              _shadowing _strFlags _maxBjumps _enableBj _order) =
+                              _shadowing _strFlags _maxBjumps _enableBj _solveExes _order) =
     collectEithers $ map selectPackage (Set.toList targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError UnresolvedSourcePackage
