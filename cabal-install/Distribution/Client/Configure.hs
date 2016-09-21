@@ -39,6 +39,7 @@ import Distribution.Package (PackageId)
 import Distribution.Client.JobControl (Lock)
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
+import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.ConstraintSource
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
@@ -348,8 +349,16 @@ planLocalPackage verbosity comp platform configFlags configExFlags
               in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
             ]
 
+            -- Don't solve for executables, since we use an empty source
+            -- package database and executables never show up in the
+            -- installed package index
+        . setSolveExecutables (SolveExecutables False)
+
         $ standardInstallPolicy
             installedPkgIndex
+            -- NB: We pass in an *empty* source package database,
+            -- because cabal configure assumes that all dependencies
+            -- have already been installed
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 

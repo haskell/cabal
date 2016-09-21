@@ -8,6 +8,7 @@ module Distribution.Solver.Types.Settings
     , StrongFlags(..)
     , EnableBackjumping(..)
     , CountConflicts(..)
+    , SolveExecutables(..)
     ) where
 
 import Distribution.Simple.Setup ( BooleanFlag(..) )
@@ -35,9 +36,13 @@ newtype StrongFlags = StrongFlags Bool
 newtype EnableBackjumping = EnableBackjumping Bool
   deriving (BooleanFlag, Eq, Generic, Show)
 
+newtype SolveExecutables = SolveExecutables Bool
+  deriving (BooleanFlag, Eq, Generic, Show)
+
 instance Binary ReorderGoals
 instance Binary CountConflicts
 instance Binary IndependentGoals
 instance Binary AvoidReinstalls
 instance Binary ShadowPkgs
 instance Binary StrongFlags
+instance Binary SolveExecutables
