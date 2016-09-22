@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -- -fno-warn-deprecations for use of Map.foldWithKey
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------

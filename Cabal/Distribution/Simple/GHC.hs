@@ -1,4 +1,5 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 -----------------------------------------------------------------------------
 -- |

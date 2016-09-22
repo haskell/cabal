@@ -432,8 +432,36 @@ library
       Distribution.Compat.Binary.Class
       Distribution.Compat.Binary.Generic
 
-  default-language: Haskell98
-  default-extensions: Rank2Types, FlexibleContexts
+  default-language: Haskell2010
+  other-extensions:
+    BangPatterns
+    CPP
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    ExistentialQuantification
+    FlexibleContexts
+    FlexibleInstances
+    GeneralizedNewtypeDeriving
+    ImplicitParams
+    KindSignatures
+    NondecreasingIndentation
+    OverloadedStrings
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    Trustworthy
+    TypeFamilies
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances
+
+  if impl(ghc >= 7.11)
+    other-extensions: PatternSynonyms
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -466,7 +494,7 @@ test-suite unit-tests
     QuickCheck >= 2.7 && < 2.10,
     Cabal
   ghc-options: -Wall
-  default-language: Haskell98
+  default-language: Haskell2010
 
 -- Large, system tests that build packages.
 test-suite package-tests
@@ -501,4 +529,4 @@ test-suite package-tests
     build-depends: unix, exceptions
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
-  default-language: Haskell98
+  default-language: Haskell2010
