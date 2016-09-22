@@ -38,6 +38,7 @@ import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
 import qualified Codec.Archive.Tar.Index as Tar
 import qualified Distribution.Client.Tar as Tar
+import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
 
 import Distribution.Package
@@ -76,9 +77,8 @@ import           Distribution.Solver.Types.SourcePackage
 import GHC.Generics (Generic)
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, catMaybes, maybeToList)
+import Data.Maybe  (mapMaybe, catMaybes, maybeToList, fromMaybe)
 import Data.List   (isPrefixOf)
-import Data.Int    (Int64)
 import Data.Word
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -495,7 +495,8 @@ withIndexEntries (RepoIndex repoCtxt repo@RepoSecure{..}) callback =
               ]
       where
         blockNo = Sec.directoryEntryBlockNo dirEntry
-        timestamp = Sec.indexEntryTime sie
+        timestamp = fromMaybe (error "withIndexEntries: invalid timestamp") $
+                              epochTimeToTimestamp $ Sec.indexEntryTime sie
 
 withIndexEntries index callback = do -- non-secure repositories
     withFile (indexFile index) ReadMode $ \h -> do
@@ -504,9 +505,9 @@ withIndexEntries index callback = do -- non-secure repositories
       callback $ map toCache (catMaybes pkgsOrPrefs)
   where
     toCache :: PackageOrDep -> IndexCacheEntry
-    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo (-1)
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo nullTimestamp
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
-    toCache (Dep d) = CachePreference d 0 (-1)
+    toCache (Dep d) = CachePreference d 0 nullTimestamp
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
@@ -653,8 +654,6 @@ instance NFData Cache where
 --
 type BlockNo = Word32 -- Tar.TarEntryOffset
 
--- | UNIX timestamp (expressed in seconds since unix epoch, i.e. 1970).
-type Timestamp = Int64 -- Tar.EpochTime
 
 data IndexCacheEntry
     = CachePackageId PackageId !BlockNo !Timestamp
@@ -712,7 +711,8 @@ read00IndexCacheEntry = \line ->
       case (parseName pkgnamestr, parseVer pkgverstr [],
             parseBlockNo blocknostr) of
         (Just pkgname, Just pkgver, Just blockno)
-          -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno (-1))
+          -> Just (CachePackageId (PackageIdentifier pkgname pkgver)
+                                  blockno nullTimestamp)
         _ -> Nothing
     [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
       case (parseRefType typecodestr, parseBlockNo blocknostr) of
@@ -722,7 +722,7 @@ read00IndexCacheEntry = \line ->
 
     (key: remainder) | key == BSS.pack preferredVersionKey -> do
       pref <- simpleParse (BSS.unpack (BSS.unwords remainder))
-      return $ CachePreference pref 0 (-1)
+      return $ CachePreference pref 0 nullTimestamp
 
     _  -> Nothing
   where

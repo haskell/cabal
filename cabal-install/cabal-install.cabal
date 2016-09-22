@@ -263,6 +263,7 @@ executable cabal
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
+        Distribution.Client.IndexUtils.Timestamp
         Distribution.Client.Init
         Distribution.Client.Init.Heuristics
         Distribution.Client.Init.Licenses
@@ -446,6 +447,7 @@ Test-Suite unit-tests
     UnitTests.Distribution.Client.UserConfig
     UnitTests.Distribution.Client.ProjectConfig
     UnitTests.Distribution.Client.JobControl
+    UnitTests.Distribution.Client.IndexUtils.Timestamp
     UnitTests.Distribution.Client.InstallPlan
     UnitTests.Distribution.Solver.Modular.PSQ
     UnitTests.Distribution.Solver.Modular.RetryLog
