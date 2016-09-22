@@ -1072,6 +1072,7 @@ performInstallations verbosity
     when parallelInstall $
       notice verbosity $ "Notice: installing into a sandbox located at "
                          ++ sandboxDir
+  info verbosity $ "Using " ++ (show numJobs) ++ " threads."
 
   jobControl   <- if parallelInstall then newParallelJobControl numJobs
                                      else newSerialJobControl

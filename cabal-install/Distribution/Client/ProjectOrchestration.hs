@@ -81,7 +81,8 @@ import           Distribution.Simple.Setup (HaddockFlags)
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
-import           Distribution.Simple.Utils (die, notice, noticeNoWrap, debug)
+import           Distribution.Simple.Utils (die, info, notice, noticeNoWrap
+                                           ,debug)
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -176,7 +177,8 @@ runProjectPreBuildPhase
                           (projectConfigShared    projectConfig)
                           (projectConfigBuildOnly projectConfig)
                           (projectConfigBuildOnly cliConfig)
-
+    info verbosity $ "Using " ++ (show . buildSettingNumJobs $ buildSettings)
+      ++ " threads."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
     -- Now given the specific targets the user has asked for, decide
