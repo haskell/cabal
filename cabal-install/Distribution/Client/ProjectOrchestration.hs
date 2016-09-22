@@ -177,8 +177,8 @@ runProjectPreBuildPhase
                           (projectConfigShared    projectConfig)
                           (projectConfigBuildOnly projectConfig)
                           (projectConfigBuildOnly cliConfig)
-    info verbosity $ "Using " ++ (show . buildSettingNumJobs $ buildSettings)
-      ++ " threads."
+    info verbosity $ "Number of threads used: "
+      ++ (show . buildSettingNumJobs $ buildSettings) ++ "."
     -- The plan for what to do is represented by an 'ElaboratedInstallPlan'
 
     -- Now given the specific targets the user has asked for, decide
