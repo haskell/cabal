@@ -75,6 +75,7 @@ import Distribution.Text
 import Text.PrettyPrint
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.SolverInstallPlan (SolverInstallPlan)
+import Distribution.Client.Utils
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.Settings
@@ -85,7 +86,7 @@ import           Distribution.Solver.Types.InstSolverPackage
 -- import qualified Distribution.Simple.Configure as Configure
 
 import Data.List
-         ( foldl' )
+         ( foldl', intercalate )
 import Data.Maybe
          ( fromMaybe, isJust )
 import qualified Distribution.Compat.Graph as Graph
@@ -93,6 +94,8 @@ import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
 import GHC.Generics
 import Control.Monad
+import Control.Applicative
+import qualified Data.Foldable as F
 import Control.Exception
          ( assert )
 import qualified Data.Map as Map
@@ -503,7 +506,7 @@ ready :: (IsUnit ipkg, IsUnit srcpkg)
       => GenericInstallPlan ipkg srcpkg
       -> ([GenericReadyPackage srcpkg], Processing)
 ready plan =
-    assert (processingInvariant plan processing) $
+    assertMaybeMsg (processingInvariant plan processing) $
     (readyPackages, processing)
   where
     !processing =
@@ -531,7 +534,7 @@ completed :: (IsUnit ipkg, IsUnit srcpkg)
           -> ([GenericReadyPackage srcpkg], Processing)
 completed plan (Processing processingSet completedSet failedSet) pkgid =
     assert (pkgid `Set.member` processingSet) $
-    assert (processingInvariant plan processing') $
+    assertMaybeMsg (processingInvariant plan processing') $
 
     ( map asReadyPackage newlyReady
     , processing' )
@@ -562,12 +565,12 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     assert (all (`Set.notMember` processingSet) (tail newlyFailedIds)) $
     assert (all (`Set.notMember` completedSet)  (tail newlyFailedIds)) $
     assert (all (`Set.notMember` failedSet)     (tail newlyFailedIds)) $
-    assert (processingInvariant plan processing') $
+    assertMaybeMsg (processingInvariant plan processing') $
 
     ( map asConfiguredPackage (tail newlyFailed)
     , processing' )
   where
-    processingSet' = Set.delete pkgid processingSet
+    processingSet' = processingSet `Set.difference` Set.fromList newlyFailedIds
     failedSet'     = failedSet `Set.union` Set.fromList newlyFailedIds
     newlyFailedIds = map nodeKey newlyFailed
     newlyFailed    = fromMaybe (internalError "package not in graph")
@@ -579,21 +582,21 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
 
 processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
                     => GenericInstallPlan ipkg srcpkg
-                    -> Processing -> Bool
+                    -> Processing -> Maybe String
 processingInvariant plan (Processing processingSet completedSet failedSet) =
-    all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList processingSet)
- && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList completedSet)
- && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList failedSet)
- && noIntersection processingSet completedSet
- && noIntersection processingSet failedSet
- && noIntersection failedSet     completedSet
- && noIntersection processingClosure completedSet
- && noIntersection processingClosure failedSet
- && and [ case Graph.lookup pkgid (planIndex plan) of
-            Just (Configured  _) -> True
-            Just (PreExisting _) -> False
-            Nothing              -> False 
-        | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
+     F.asum (map (inGraph "processing") (Set.toList processingSet))
+ <|> F.asum (map (inGraph "completed")  (Set.toList completedSet))
+ <|> F.asum (map (inGraph "failed")     (Set.toList failedSet))
+ <|> noIntersection "processing/completed"        processingSet completedSet
+ <|> noIntersection "processing/failed"           processingSet failedSet
+ <|> noIntersection "failed/completed"            failedSet     completedSet
+ <|> noIntersection "processingClosure/completed" processingClosure completedSet
+ <|> noIntersection "processingClosure/failed"    processingClosure failedSet
+ <|> F.asum [ case Graph.lookup pkgid (planIndex plan) of
+                Just (Configured  _) -> Nothing
+                Just (PreExisting _) -> Just $ "unexpected preexisting " ++ display pkgid
+                Nothing              -> Just $ "missing " ++ display pkgid
+            | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
   where
     processingClosure = Set.fromList
                       . map nodeKey
@@ -601,7 +604,19 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
                       . Graph.revClosure (planIndex plan)
                       . Set.toList
                       $ processingSet
-    noIntersection a b = Set.null (Set.intersection a b)
+    inGraph msg v =
+        ifFalse ("inGraph: " ++ msg ++ " " ++ display v) $
+            isJust (Graph.lookup v (planIndex plan))
+    noIntersection :: String -> Set UnitId -> Set UnitId -> Maybe String
+    noIntersection msg a b =
+        ifFalse ("noIntersection: " ++ msg ++ " " ++
+                    dispSet a ++ " / " ++ dispSet b ++ " / " ++ dispSet processingSet) $
+            Set.null (Set.intersection a b)
+
+    ifFalse msg False = Just msg
+    ifFalse _ True = Nothing
+
+    dispSet = intercalate ", " . map display . Set.toList
 
 
 -- ------------------------------------------------------------
