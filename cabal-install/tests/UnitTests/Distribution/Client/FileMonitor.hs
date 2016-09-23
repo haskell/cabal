@@ -34,6 +34,7 @@ tests mtimeChange =
   , testCase "remove file"           testRemoveFile
   , testCase "non-existent file"     testNonExistentFile
   , testCase "changed file type"     $ testChangedFileType mtimeChange
+  , testCase "several monitor kinds" $ testMultipleMonitorKinds mtimeChange
 
   , testGroup "glob matches"
     [ testCase "no change"           testGlobNoChange
@@ -327,6 +328,34 @@ testChangedFileType mtimeChange = do
         touch' root "a"
         reason <- expectMonitorChanged root monitor ()
         reason @?= MonitoredFileChanged "a"
+
+-- Monitoring the same file with two different kinds of monitor should work
+-- both should be kept, and both checked for changes.
+-- We had a bug where only one monitor kind was kept per file.
+-- https://github.com/haskell/cabal/pull/3863#issuecomment-248495178
+testMultipleMonitorKinds :: Int -> Assertion
+testMultipleMonitorKinds mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root "a"
+    updateMonitor root monitor [monitorFile "a", monitorFileHashed "a"] () ()
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res   @?= ()
+    files @?= [monitorFile "a", monitorFileHashed "a"]
+    threadDelay mtimeChange
+    touchFile root "a" -- not changing content, just mtime
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged "a"
+
+    createDir root "dir"
+    updateMonitor root monitor [monitorDirectory "dir",
+                                monitorDirectoryExistence "dir"] () ()
+    (res2, files2) <- expectMonitorUnchanged root monitor ()
+    res2   @?= ()
+    files2 @?= [monitorDirectory "dir", monitorDirectoryExistence "dir"]
+    threadDelay mtimeChange
+    touchFile root ("dir" </> "a") -- changing dir mtime, not existence
+    reason2 <- expectMonitorChanged root monitor ()
+    reason2 @?= MonitoredFileChanged "dir"
 
 
 ------------------
