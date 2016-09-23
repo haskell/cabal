@@ -42,6 +42,9 @@ module Distribution.Client.RebuildMonad (
 
     -- * Utils
     matchFileGlob,
+    getDirectoryContentsMonitored,
+    createDirectoryMonitored,
+    monitorDirectoryStatus,
   ) where
 
 import Distribution.Client.FileMonitor
@@ -58,6 +61,7 @@ import Control.Monad.State as State
 import Control.Monad.Reader as Reader
 import Distribution.Compat.Binary     (Binary)
 import System.FilePath (takeFileName)
+import System.Directory
 
 
 -- | A monad layered on top of 'IO' to help with re-running actions when the
@@ -136,7 +140,7 @@ rerunIfChanged verbosity monitor key action = do
 -- | Utility to match a file glob against the file system, starting from a
 -- given root directory. The results are all relative to the given root.
 --
--- Since this operates in the 'Rebuild' monad, it also monitrs the given glob
+-- Since this operates in the 'Rebuild' monad, it also monitors the given glob
 -- for changes.
 --
 matchFileGlob :: FilePathGlob -> Rebuild [FilePath]
@@ -144,4 +148,23 @@ matchFileGlob glob = do
     root <- askRoot
     monitorFiles [monitorFileGlobExistence glob]
     liftIO $ Glob.matchFileGlob root glob
+
+getDirectoryContentsMonitored :: FilePath -> Rebuild [FilePath]
+getDirectoryContentsMonitored dir = do
+    monitorFiles [monitorDirectory dir]
+    liftIO $ getDirectoryContents dir
+
+createDirectoryMonitored :: Bool -> FilePath -> Rebuild ()
+createDirectoryMonitored createParents dir = do
+    monitorFiles [monitorDirectoryExistence dir]
+    liftIO $ createDirectoryIfMissing createParents dir
+
+-- | Monitor a directory as in 'monitorDirectory' if it currently exists or
+-- as 'monitorNonExistentDirectory' if it does not.
+monitorDirectoryStatus :: FilePath -> Rebuild ()
+monitorDirectoryStatus dir = do
+    exists <- liftIO $ doesDirectoryExist dir
+    monitorFiles [if exists
+                    then monitorDirectory dir
+                    else monitorNonExistentDirectory dir]
 

@@ -133,7 +133,6 @@ import           Data.Either
 import           Data.Monoid
 import           Data.Function
 import           System.FilePath
-import           System.Directory (doesDirectoryExist, getDirectoryContents)
 
 ------------------------------------------------------------------------------
 -- * Elaborated install plan
@@ -606,7 +605,7 @@ rebuildInstallPlan verbosity
     phaseImprovePlan elaboratedPlan elaboratedShared = do
 
         liftIO $ debug verbosity "Improving the install plan..."
-        recreateDirectory verbosity True storeDirectory
+        createDirectoryMonitored True storeDirectory
         storePkgIndex <- getPackageDBContents verbosity
                                               compiler progdb platform
                                               storePackageDb
@@ -678,8 +677,7 @@ getExecutableDBContents
     :: FilePath -- store directory
     -> Rebuild (Set ComponentId)
 getExecutableDBContents storeDirectory = do
-    monitorFiles [monitorFileGlob (FilePathGlob (FilePathRoot storeDirectory) (GlobFile [WildCard]))]
-    paths <- liftIO $ getDirectoryContents storeDirectory
+    paths <- getDirectoryContentsMonitored storeDirectory
     return (Set.fromList (map ComponentId (filter valid paths)))
   where
     valid "." = False
@@ -721,20 +719,8 @@ getPkgConfigDb verbosity progdb = do
     dirs <- liftIO $ getPkgConfigDbDirs verbosity progdb
     -- Just monitor the dirs so we'll notice new .pc files.
     -- Alternatively we could monitor all the .pc files too.
-    forM_ dirs $ \dir -> do
-        dirExists <- liftIO $ doesDirectoryExist dir
-        -- TODO: turn this into a utility function
-        monitorFiles [if dirExists
-                        then monitorDirectory dir
-                        else monitorNonExistentDirectory dir]
-
+    mapM_ monitorDirectoryStatus dirs
     liftIO $ readPkgConfigDb verbosity progdb
-
-
-recreateDirectory :: Verbosity -> Bool -> FilePath -> Rebuild ()
-recreateDirectory verbosity createParents dir = do
-    liftIO $ createDirectoryIfMissingVerbose verbosity createParents dir
-    monitorFiles [monitorDirectoryExistence dir]
 
 
 -- | Select the config values to monitor for changes package source hashes.
