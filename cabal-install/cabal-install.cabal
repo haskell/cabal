@@ -228,7 +228,7 @@ Flag debug-tracetree
 
 executable cabal
     main-is:        Main.hs
-    ghc-options:    -Wall -fwarn-tabs
+    ghc-options:    -Wall -fwarn-tabs -rtsopts
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
                      -Wnoncanonical-monad-instances
