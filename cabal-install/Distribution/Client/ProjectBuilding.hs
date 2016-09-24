@@ -260,27 +260,18 @@ buildStatusRequiresBuild _                      = True
 
 -- | Do the dry run pass. This is a prerequisite of 'rebuildTargets'.
 --
--- It gives us the 'BuildStatusMap' and also gives us an improved version of
+-- It gives us the 'BuildStatusMap'. This should be used with
+-- 'improveInstallPlanWithUpToDatePackages' to give an improved version of
 -- the 'ElaboratedInstallPlan' with packages switched to the
 -- 'InstallPlan.Installed' state when we find that they're already up to date.
 --
-rebuildTargetsDryRun :: Verbosity
-                     -> DistDirLayout
+rebuildTargetsDryRun :: DistDirLayout
                      -> ElaboratedSharedConfig
                      -> ElaboratedInstallPlan
-                     -> IO (ElaboratedInstallPlan, BuildStatusMap)
-rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \installPlan -> do
-
+                     -> IO BuildStatusMap
+rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
     -- Do the various checks to work out the 'BuildStatus' of each package
-    pkgsBuildStatus <- foldMInstallPlanDepOrder installPlan dryRunPkg
-
-    -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
-    -- 'InstallPlan.Installed'.
-    let installPlan' = improveInstallPlanWithUpToDatePackages
-                         pkgsBuildStatus installPlan
-    debugNoWrap verbosity $ InstallPlan.showInstallPlan installPlan'
-
-    return (installPlan', pkgsBuildStatus)
+    foldMInstallPlanDepOrder dryRunPkg
   where
     dryRunPkg :: ElaboratedPlanPackage
               -> [BuildStatus]
@@ -362,12 +353,12 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
 foldMInstallPlanDepOrder
   :: forall m ipkg srcpkg b.
      (Monad m, IsUnit ipkg, IsUnit srcpkg)
-  => GenericInstallPlan ipkg srcpkg
-  -> (GenericPlanPackage ipkg srcpkg ->
+  => (GenericPlanPackage ipkg srcpkg ->
       [b] -> m b)
+  -> GenericInstallPlan ipkg srcpkg
   -> m (Map UnitId b)
-foldMInstallPlanDepOrder plan0 visit =
-    go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
+foldMInstallPlanDepOrder visit =
+    go Map.empty . InstallPlan.reverseTopologicalOrder
   where
     go :: Map UnitId b
        -> [GenericPlanPackage ipkg srcpkg]

@@ -84,7 +84,7 @@ import           Distribution.Simple.Command (commandShowOptions)
 
 import           Distribution.Simple.Utils
                    ( die, dieMsg, dieMsgNoWrap, info
-                   , notice, noticeNoWrap, debug )
+                   , notice, noticeNoWrap, debug, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -188,12 +188,17 @@ runProjectPreBuildPhase
     --
     elaboratedPlan' <- hookSelectPlanSubset buildSettings elaboratedPlan
 
-    -- Check if any packages don't need rebuilding, and improve the plan.
+    -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
     --
-    (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
-                           elaboratedPlan'
+    pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared
+                                            elaboratedPlan'
+
+    -- Improve the plan by marking up-to-date packages as installed.
+    --
+    let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
+                             pkgsBuildStatus elaboratedPlan'
+    debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
     return ProjectBuildContext {
       projectRootDir,
