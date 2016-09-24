@@ -15,6 +15,7 @@ module Distribution.Client.IndexUtils.Timestamp
     , epochTimeToTimestamp
     , timestampToUTCTime
     , utcTimeToTimestamp
+    , maximumTimestamp
     ) where
 
 import qualified Codec.Archive.Tar.Entry    as Tar
@@ -58,7 +59,16 @@ utcTimeToTimestamp utct
     t :: Integer
     t = round . utcTimeToPOSIXSeconds $ utct
 
+-- | Compute the maximum 'Timestamp' value
+--
+-- Returns 'nullTimestamp' for the empty list.  Also note that
+-- 'nullTimestamp' compares as smaller to all non-'nullTimestamp'
+-- values.
+maximumTimestamp :: [Timestamp] -> Timestamp
+maximumTimestamp [] = nullTimestamp
+maximumTimestamp xs@(_:_) = maximum xs
 
+-- returns 'Nothing' if not representable as 'Timestamp'
 posixSecondsToTimestamp :: Integer -> Maybe Timestamp
 posixSecondsToTimestamp pt
   | minTs <= pt, pt <= maxTs  = Just (TS (fromInteger pt))

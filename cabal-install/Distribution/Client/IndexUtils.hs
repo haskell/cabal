@@ -82,6 +82,7 @@ import Data.List   (isPrefixOf)
 import Data.Word
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+import Control.Applicative
 #endif
 import qualified Data.Map as Map
 import Control.DeepSeq
@@ -447,8 +448,13 @@ updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
     info verbosity ("Updating index cache file " ++ cacheFile index)
     withIndexEntries index $ \entries -> do
-      let cache = Cache { cacheEntries = entries }
+      let !maxTs = maximumTimestamp (map cacheEntryTimestamp entries)
+          cache = Cache { cacheHeadTs  = maxTs
+                        , cacheEntries = entries
+                        }
       writeIndexCache index cache
+      info verbosity ("Index cache updated to index-state "
+                      ++ display (cacheHeadTs cache))
 
 -- | Read the index (for the purpose of building a cache)
 --
@@ -642,9 +648,14 @@ writeIndexCache index cache
   | otherwise       = writeFile (cacheFile index) (show00IndexCache cache)
 
 -- | Cabal caches various information about the Hackage index
-data Cache = Cache {
-    cacheEntries :: [IndexCacheEntry]
-  }
+data Cache = Cache
+    { cacheHeadTs  :: Timestamp
+      -- ^ maximum/latest 'Timestamp' among 'cacheEntries'; unless the
+      -- invariant of 'cacheEntries' being in chronological order is
+      -- violated, this corresponds to the last (seen) 'Timestamp' in
+      -- 'cacheEntries'
+    , cacheEntries :: [IndexCacheEntry]
+    }
 
 instance NFData Cache where
     rnf = rnf . cacheEntries
@@ -667,24 +678,30 @@ instance NFData IndexCacheEntry where
     rnf (CachePreference dep _ _) = rnf dep
     rnf (CacheBuildTreeRef _ _) = ()
 
+cacheEntryTimestamp :: IndexCacheEntry -> Timestamp
+cacheEntryTimestamp (CacheBuildTreeRef _ _)  = nullTimestamp
+cacheEntryTimestamp (CachePreference _ _ ts) = ts
+cacheEntryTimestamp (CachePackageId _ _ ts)  = ts
+
 ----------------------------------------------------------------------------
 -- new binary 01-index.cache format
 
 instance Binary Cache where
-    put (Cache ents) = do
+    put (Cache headTs ents) = do
         -- magic / format version
         --
         -- NB: this currently encodes word-size implicitly; when we
         -- switch to CBOR encoding, we will have a platform
         -- independent binary encoding
-        put (0xcaba1001::Word)
+        put (0xcaba1002::Word)
+        put headTs
         put ents
 
     get = do
         magic <- get
-        when (magic /= (0xcaba1001::Word)) $
+        when (magic /= (0xcaba1002::Word)) $
             fail ("01-index.cache: unexpected magic marker encountered: " ++ show magic)
-        liftM Cache get
+        Cache <$> get <*> get
 
 instance Binary IndexCacheEntry
 
@@ -699,8 +716,9 @@ preferredVersionKey = "pref-ver:"
 
 -- legacy 00-index.cache format
 read00IndexCache :: BSS.ByteString -> Cache
-read00IndexCache bs = Cache {
-    cacheEntries = mapMaybe read00IndexCacheEntry $ BSS.lines bs
+read00IndexCache bs = Cache
+  { cacheHeadTs  = nullTimestamp
+  , cacheEntries = mapMaybe read00IndexCacheEntry $ BSS.lines bs
   }
 
 read00IndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
