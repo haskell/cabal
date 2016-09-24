@@ -706,6 +706,29 @@ The following settings control the behavior of the dependency solver:
     The command line variant of this field is ``--allow-older=all``. A
     bare ``--allow-older`` is equivalent to ``--allow-older=all``.
 
+
+.. cfg-field:: index-state: HEAD, unix-timestamp, ISO8601 UTC timestamp.
+   :synopsis: Use source package index state as it existed at a previous time.
+   :since: 1.25
+
+   :default: ``HEAD``
+
+   This allows to change the source package index state the solver uses
+   to compute install-plans. This is particularly useful in
+   combination with freeze-files in order to also freeze the state the
+   package index was in at the time the install-plan was frozen.
+
+   ::
+
+      -- UNIX timestamp format example
+      index-state: @1474739268
+
+      -- ISO8601 UTC timestamp format example
+      -- This format is used by 'cabal new-configure'
+      -- for storing `--index-state` values.
+      index-state: 2016-09-24T17:47:48Z
+
+
 Package configuration options
 -----------------------------
 
