@@ -54,7 +54,7 @@ module Distribution.Client.ProjectOrchestration (
 
     -- * Post build actions
     runProjectPostBuildPhase,
-    reportBuildFailures,
+    dieOnBuildFailures,
   ) where
 
 import           Distribution.Client.ProjectConfig
@@ -82,8 +82,9 @@ import           Distribution.Simple.Setup (HaddockFlags)
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
-import           Distribution.Simple.Utils (die, info, notice, noticeNoWrap
-                                           ,debug)
+import           Distribution.Simple.Utils
+                   ( die, dieMsg, dieMsgNoWrap, info
+                   , notice, noticeNoWrap, debug )
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -91,7 +92,6 @@ import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
-import qualified Data.ByteString.Lazy.Char8 as BS
 import           Data.List
 import           Data.Maybe
 import           Data.Either
@@ -254,8 +254,9 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
     --        - delete stale lib registrations
     --        - delete stale package dirs
 
-    -- Report any build failures
-    reportBuildFailures verbosity elaboratedPlan buildOutcomes
+    -- Finally if there were any build failures then report them and throw
+    -- an exception to terminate the program
+    dieOnBuildFailures verbosity elaboratedPlan buildOutcomes
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -587,8 +588,11 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-reportBuildFailures :: Verbosity -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
-reportBuildFailures verbosity plan buildOutcomes
+-- | If there are build failures then report them and throw an exception.
+--
+dieOnBuildFailures :: Verbosity
+                   -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+dieOnBuildFailures verbosity plan buildOutcomes
   | null failures = return ()
 
   | isSimpleCase  = exitFailure
@@ -596,10 +600,10 @@ reportBuildFailures verbosity plan buildOutcomes
   | otherwise = do
       -- For failures where we have a build log, print the log plus a header
        sequence_
-         [ do notice verbosity $
+         [ do dieMsg $
                 '\n' : renderFailureDetail False pkg reason
                     ++ "\nBuild log ( " ++ logfile ++ " ):"
-              BS.readFile logfile >>= BS.putStrLn
+              readFile logfile >>= dieMsgNoWrap
          | verbosity >= normal
          ,  (pkg, ShowBuildSummaryAndLog reason logfile)
              <- failuresClassification
