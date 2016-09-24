@@ -58,6 +58,8 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Config
          ( loadConfig, defaultConfigFile )
+import Distribution.Client.IndexUtils.Timestamp
+         ( IndexState(..) )
 
 import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.Settings
@@ -202,6 +204,7 @@ resolveSolverSettings ProjectConfig{
     solverSettingReorderGoals      = fromFlag projectConfigReorderGoals
     solverSettingCountConflicts    = fromFlag projectConfigCountConflicts
     solverSettingStrongFlags       = fromFlag projectConfigStrongFlags
+    solverSettingIndexState        = fromFlagOrDefault IndexStateHead projectConfigIndexState
   --solverSettingIndependentGoals  = fromFlag projectConfigIndependentGoals
   --solverSettingShadowPkgs        = fromFlag projectConfigShadowPkgs
   --solverSettingReinstall         = fromFlag projectConfigReinstall

@@ -480,8 +480,9 @@ rebuildInstallPlan verbosity
           installedPkgIndex <- getInstalledPackages verbosity
                                                     compiler progdb platform
                                                     corePackageDbs
-          sourcePkgDb       <- getSourcePackages    verbosity withRepoCtx
-          pkgConfigDB       <- getPkgConfigDb      verbosity progdb
+          sourcePkgDb       <- getSourcePackages verbosity withRepoCtx
+                                 (solverSettingIndexState solverSettings)
+          pkgConfigDB       <- getPkgConfigDb verbosity progdb
 
           --TODO: [code cleanup] it'd be better if the Compiler contained the
           -- ConfiguredPrograms that it needs, rather than relying on the progdb
@@ -688,12 +689,13 @@ getExecutableDBContents storeDirectory = do
     valid _ = True
 
 getSourcePackages :: Verbosity -> (forall a. (RepoContext -> IO a) -> IO a)
-                  -> Rebuild SourcePackageDb
-getSourcePackages verbosity withRepoCtx = do
+                  -> IndexUtils.IndexState -> Rebuild SourcePackageDb
+getSourcePackages verbosity withRepoCtx idxState = do
     (sourcePkgDb, repos) <-
       liftIO $
         withRepoCtx $ \repoctx -> do
-          sourcePkgDb <- IndexUtils.getSourcePackages verbosity repoctx
+          sourcePkgDb <- IndexUtils.getSourcePackagesAtIndexState verbosity
+                                                                  repoctx idxState
           return (sourcePkgDb, repoContextRepos repoctx)
 
     monitorFiles . map monitorFile

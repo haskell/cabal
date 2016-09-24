@@ -30,6 +30,8 @@ import Distribution.Simple.InstallDirs
 
 import Distribution.Utils.NubList
 
+import Distribution.Client.IndexUtils.Timestamp
+
 import Test.QuickCheck
 
 
@@ -172,3 +174,10 @@ instance Arbitrary a => Arbitrary (NoShrink a) where
     arbitrary = NoShrink <$> arbitrary
     shrink _  = []
 
+instance Arbitrary Timestamp where
+    arbitrary = (maybe (toEnum 0) id . epochTimeToTimestamp) <$> arbitrary
+
+instance Arbitrary IndexState where
+    arbitrary = frequency [ (1, pure IndexStateHead)
+                          , (50, IndexStateTime <$> arbitrary)
+                          ]

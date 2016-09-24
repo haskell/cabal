@@ -61,6 +61,10 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
+
+import Distribution.Client.IndexUtils.Timestamp
+         ( IndexState )
+
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -1219,6 +1223,7 @@ data InstallFlags = InstallFlags {
     installUpgradeDeps      :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
+    installIndexState       :: Flag IndexState,
     installRootCmd          :: Flag String,
     installSummaryFile      :: NubList PathTemplate,
     installLogFile          :: Flag PathTemplate,
@@ -1252,6 +1257,7 @@ defaultInstallFlags = InstallFlags {
     installUpgradeDeps     = Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
+    installIndexState      = mempty,
     installRootCmd         = mempty,
     installSummaryFile     = mempty,
     installLogFile         = mempty,
@@ -1423,6 +1429,18 @@ installOptions showOrParseArgs =
           "A synonym for --only-dependencies"
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
           (yesNoOpt showOrParseArgs)
+
+      , option [] ["index-state"]
+          ("Use source package index state as it existed at a previous time. " ++
+           "Accepts unix-timestamps (e.g. '@1474732068'), ISO8601 UTC timestamps " ++
+           "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD' (default: 'HEAD').")
+          installIndexState (\v flags -> flags { installIndexState = v })
+          (reqArg "STATE" (readP_to_E (const $ "index-state must be a  " ++
+                                       "unix-timestamps (e.g. '@1474732068'), " ++
+                                       "a ISO8601 UTC timestamp " ++
+                                       "(e.g. '2016-09-24T17:47:48Z'), or 'HEAD'")
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
 
       , option [] ["root-cmd"]
           "(No longer supported, do not use.)"

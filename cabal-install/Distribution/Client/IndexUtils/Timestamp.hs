@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -15,6 +16,9 @@ module Distribution.Client.IndexUtils.Timestamp
     , epochTimeToTimestamp
     , timestampToUTCTime
     , utcTimeToTimestamp
+    , maximumTimestamp
+
+    , IndexState(..)
     ) where
 
 import qualified Codec.Archive.Tar.Entry    as Tar
@@ -31,6 +35,7 @@ import           Distribution.Compat.Binary
 import qualified Distribution.Compat.ReadP  as ReadP
 import           Distribution.Text
 import qualified Text.PrettyPrint           as Disp
+import           GHC.Generics (Generic)
 
 -- | UNIX timestamp (expressed in seconds since unix epoch, i.e. 1970).
 newtype Timestamp = TS Int64 -- Tar.EpochTime
@@ -58,7 +63,16 @@ utcTimeToTimestamp utct
     t :: Integer
     t = round . utcTimeToPOSIXSeconds $ utct
 
+-- | Compute the maximum 'Timestamp' value
+--
+-- Returns 'nullTimestamp' for the empty list.  Also note that
+-- 'nullTimestamp' compares as smaller to all non-'nullTimestamp'
+-- values.
+maximumTimestamp :: [Timestamp] -> Timestamp
+maximumTimestamp [] = nullTimestamp
+maximumTimestamp xs@(_:_) = maximum xs
 
+-- returns 'Nothing' if not representable as 'Timestamp'
 posixSecondsToTimestamp :: Integer -> Maybe Timestamp
 posixSecondsToTimestamp pt
   | minTs <= pt, pt <= maxTs  = Just (TS (fromInteger pt))
@@ -152,3 +166,27 @@ instance Text Timestamp where
 -- missing/unknown/invalid
 nullTimestamp :: Timestamp
 nullTimestamp = TS minBound
+
+----------------------------------------------------------------------------
+-- defined here for now to avoid import cycles
+
+-- | Specification of the state of a specific repo package index
+data IndexState = IndexStateHead -- ^ Use all available entries
+                | IndexStateTime !Timestamp -- ^ Use all entries that existed at
+                                            -- the specified time
+                deriving (Eq,Generic,Show)
+
+instance Binary IndexState
+instance NFData IndexState
+
+instance Text IndexState where
+    disp IndexStateHead = Disp.text "HEAD"
+    disp (IndexStateTime ts) = disp ts
+
+    parse = parseHead ReadP.+++ parseTime
+      where
+        parseHead = do
+            _ <- ReadP.string "HEAD"
+            return IndexStateHead
+
+        parseTime = IndexStateTime `fmap` parse
