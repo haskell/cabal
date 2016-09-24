@@ -9,21 +9,31 @@
 --
 module Distribution.Client.ProjectBuilding (
     -- * Dry run phase
-    BuildStatus(..),
-    buildStatusToString,
+    -- | What bits of the plan will we execute? The dry run does not change
+    -- anything but tells us what will need to be built.
+    rebuildTargetsDryRun,
+    improveInstallPlanWithUpToDatePackages,
+
+    -- ** Build status
+    -- | This is the detailed status information we get from the dry run.
     BuildStatusMap,
+    BuildStatus(..),
     BuildStatusRebuild(..),
     BuildReason(..),
     MonitorChangedReason(..),
-    rebuildTargetsDryRun,
+    buildStatusToString,
 
     -- * Build phase
-    BuildOutcome,
+    -- | Now we actually execute the plan.
+    rebuildTargets,
+    -- ** Build outcomes
+    -- | This is the outcome for each package of executing the plan.
+    -- For each package, did the build succeed or fail?
     BuildOutcomes,
+    BuildOutcome,
     BuildResult(..),
     BuildFailure(..),
     BuildFailureReason(..),
-    rebuildTargets
   ) where
 
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
@@ -89,21 +99,25 @@ import           System.Directory
 ------------------------------------------------------------------------------
 --
 -- We start with an 'ElaboratedInstallPlan' that has already been improved by
--- reusing packages from the store. So the remaining packages in the
+-- reusing packages from the store, and pruned to include only the targets of
+-- interest and their dependencies. So the remaining packages in the
 -- 'InstallPlan.Configured' state are ones we either need to build or rebuild.
 --
 -- First, we do a preliminary dry run phase where we work out which packages
 -- we really need to (re)build, and for the ones we do need to build which
 -- build phase to start at.
-
-
-------------------------------------------------------------------------------
--- * Dry run: what bits of the 'ElaboratedInstallPlan' will we execute?
-------------------------------------------------------------------------------
-
--- We split things like this for a couple reasons. Firstly we need to be able
--- to do dry runs, and these need to be reasonably accurate in terms of
--- letting users know what (and why) things are going to be (re)built.
+--
+-- We use this to improve the 'ElaboratedInstallPlan' again by changing
+-- up-to-date 'InstallPlan.Configured' packages to 'InstallPlan.Installed'
+-- so that the build phase will skip them.
+--
+-- Then we execute the plan, that is actually build packages. The outcomes of
+-- trying to build all the packages are collected and returned.
+--
+-- We split things like this (dry run and execute) for a couple reasons.
+-- Firstly we need to be able to do dry runs anyway, and these need to be
+-- reasonably accurate in terms of letting users know what (and why) things
+-- are going to be (re)built.
 --
 -- Given that we need to be able to do dry runs, it would not be great if
 -- we had to repeat all the same work when we do it for real. Not only is
@@ -117,8 +131,12 @@ import           System.Directory
 -- An additional advantage is that it makes it easier to debug rebuild
 -- errors (ie rebuilding too much or too little), since all the rebuild
 -- decisions are made without making any state changes at the same time
--- (that would make it harder to reproduce the problem sitation).
+-- (that would make it harder to reproduce the problem situation).
 
+
+------------------------------------------------------------------------------
+-- * Dry run: what bits of the 'ElaboratedInstallPlan' will we execute?
+------------------------------------------------------------------------------
 
 -- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
 --
@@ -168,6 +186,8 @@ data BuildStatus =
      --   and it does not need to be built.
    | BuildStatusUpToDate BuildResult
 
+-- | This is primarily here for debugging. It's not actually used anywhere.
+--
 buildStatusToString :: BuildStatus -> String
 buildStatusToString BuildStatusPreExisting      = "BuildStatusPreExisting"
 buildStatusToString BuildStatusInstalled        = "BuildStatusInstalled"
@@ -1325,34 +1345,6 @@ buildInplaceUnpackedPackage verbosity
                                 pkgConfDest
         setup Cabal.registerCommand registerFlags []
 
-
--- helper
-annotateFailureNoLog :: (SomeException -> BuildFailureReason)
-                     -> IO a -> IO a
-annotateFailureNoLog annotate action =
-  annotateFailure Nothing annotate action
-
-annotateFailure :: Maybe FilePath
-                -> (SomeException -> BuildFailureReason)
-                -> IO a -> IO a
-annotateFailure mlogFile annotate action =
-  action `catches`
-    -- It's not just IOException and ExitCode we have to deal with, there's
-    -- lots, including exceptions from the hackage-security and tar packages.
-    -- So we take the strategy of catching everything except async exceptions.
-    [
-#if MIN_VERSION_base(4,7,0)
-      Handler $ \async -> throwIO (async :: SomeAsyncException)
-#else
-      Handler $ \async -> throwIO (async :: AsyncException)
-#endif
-    , Handler $ \other -> handler (other :: SomeException)
-    ]
-  where
-    handler :: Exception e => e -> IO a
-    handler = throwIO . BuildFailure mlogFile . annotate . toException
-
-
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
                                   -> (FilePath -> IO ())
                                   -> IO InstalledPackageInfo
@@ -1381,3 +1373,34 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
         warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
 
       return ipkg
+
+
+------------------------------------------------------------------------------
+-- * Utilities
+------------------------------------------------------------------------------
+
+annotateFailureNoLog :: (SomeException -> BuildFailureReason)
+                     -> IO a -> IO a
+annotateFailureNoLog annotate action =
+  annotateFailure Nothing annotate action
+
+annotateFailure :: Maybe FilePath
+                -> (SomeException -> BuildFailureReason)
+                -> IO a -> IO a
+annotateFailure mlogFile annotate action =
+  action `catches`
+    -- It's not just IOException and ExitCode we have to deal with, there's
+    -- lots, including exceptions from the hackage-security and tar packages.
+    -- So we take the strategy of catching everything except async exceptions.
+    [
+#if MIN_VERSION_base(4,7,0)
+      Handler $ \async -> throwIO (async :: SomeAsyncException)
+#else
+      Handler $ \async -> throwIO (async :: AsyncException)
+#endif
+    , Handler $ \other -> handler (other :: SomeException)
+    ]
+  where
+    handler :: Exception e => e -> IO a
+    handler = throwIO . BuildFailure mlogFile . annotate . toException
+
