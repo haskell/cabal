@@ -24,12 +24,15 @@ module Distribution.Client.IndexUtils (
   getSourcePackages,
   getSourcePackagesMonitorFiles,
 
+  IndexState(..),
+  getSourcePackagesAtIndexState,
+
   Index(..),
   PackageEntry(..),
   parsePackageIndex,
   updateRepoIndexCache,
   updatePackageIndexCacheFile,
-  readCacheStrict,
+  readCacheStrict, -- only used by soon-to-be-obsolete sandbox code
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
@@ -86,7 +89,7 @@ import Control.Applicative
 #endif
 import qualified Data.Map as Map
 import Control.DeepSeq
-import Control.Monad (when, liftM)
+import Control.Monad
 import Control.Exception
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -140,6 +143,48 @@ indexBaseName repo = repoLocalDir repo </> fn
 -- Reading the source package index
 --
 
+-- Note: 'data IndexState' is defined in
+-- "Distribution.Client.IndexUtils.Timestamp" to avoid import cycles
+
+-- | 'IndexStateInfo' contains meta-information about the resulting
+-- filtered 'Cache' 'after applying 'filterCache' according to a
+-- requested 'IndexState'.
+data IndexStateInfo = IndexStateInfo
+    { isiMaxTime  :: !Timestamp
+    -- ^ 'Timestamp' of maximum/latest 'Timestamp' in the current
+    -- filtered view of the cache.
+    --
+    -- The following property holds
+    --
+    -- > filterCache (IndexState (isiMaxTime isi)) cache == (cache, isi)
+    --
+
+    , isiHeadTime :: !Timestamp
+    -- ^ 'Timestamp' equivalent to 'IndexStateHead', i.e. the latest
+    -- known 'Timestamp'; 'isiHeadTime' is always greater or equal to
+    -- 'isiMaxTime'.
+    }
+
+emptyStateInfo :: IndexStateInfo
+emptyStateInfo = IndexStateInfo nullTimestamp nullTimestamp
+
+-- | Filters a 'Cache' according to an 'IndexState'
+-- specification. Also returns 'IndexStateInfo' describing the
+-- resulting index cache.
+--
+-- Note: 'filterCache' is idempotent in the 'Cache' value
+filterCache :: IndexState -> Cache -> (Cache, IndexStateInfo)
+filterCache IndexStateHead cache = (cache, IndexStateInfo{..})
+  where
+    isiMaxTime  = cacheHeadTs cache
+    isiHeadTime = cacheHeadTs cache
+filterCache (IndexStateTime ts0) cache0 = (cache, IndexStateInfo{..})
+  where
+    cache = Cache { cacheEntries = ents, cacheHeadTs = isiMaxTime }
+    isiHeadTime = cacheHeadTs cache0
+    isiMaxTime  = maximumTimestamp (map cacheEntryTimestamp ents)
+    ents = filter ((<= ts0) . cacheEntryTimestamp) (cacheEntries cache0)
+
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.
 --
@@ -148,16 +193,67 @@ indexBaseName repo = repoLocalDir repo </> fn
 --
 -- This is a higher level wrapper used internally in cabal-install.
 getSourcePackages :: Verbosity -> RepoContext -> IO SourcePackageDb
-getSourcePackages verbosity repoCtxt | null (repoContextRepos repoCtxt) = do
-  warn verbosity $ "No remote package servers have been specified. Usually "
-                ++ "you would have one specified in the config file."
-  return SourcePackageDb {
-    packageIndex       = mempty,
-    packagePreferences = mempty
-  }
-getSourcePackages verbosity repoCtxt = do
-  info verbosity "Reading available packages..."
-  pkgss <- mapM (\r -> readRepoIndex verbosity repoCtxt r) (repoContextRepos repoCtxt)
+getSourcePackages verbosity repoCtxt =
+    getSourcePackagesAtIndexState verbosity repoCtxt IndexStateHead
+
+-- | Variant of 'getSourcePackages' which allows getting the source
+-- packages at a particular 'IndexState'.
+--
+-- Current choices are either the latest (aka HEAD), or the index as
+-- it was at a particular time.
+--
+-- TODO: Enhance to allow specifying per-repo 'IndexState's and also
+-- report back per-repo 'IndexStateInfo's (in order for @new-freeze@
+-- to access it)
+getSourcePackagesAtIndexState :: Verbosity -> RepoContext -> IndexState
+                           -> IO SourcePackageDb
+getSourcePackagesAtIndexState verbosity repoCtxt _
+  | null (repoContextRepos repoCtxt) = do
+      warn verbosity $ "No remote package servers have been specified. Usually "
+                       ++ "you would have one specified in the config file."
+      return SourcePackageDb {
+        packageIndex       = mempty,
+        packagePreferences = mempty
+      }
+getSourcePackagesAtIndexState verbosity repoCtxt idxState = do
+  case idxState of
+      IndexStateHead      -> info verbosity "Reading available packages..."
+      IndexStateTime time ->
+          info verbosity ("Reading available packages (for index-state as of "
+                          ++ display time ++ ")...")
+
+  pkgss <- forM (repoContextRepos repoCtxt) $ \r -> do
+      let rname = maybe "" remoteRepoName $ maybeRepoRemote r
+      unless (idxState == IndexStateHead) $
+          case r of
+            RepoLocal path -> warn verbosity ("index-state ignored for old-format repositories (local repository '" ++ path ++ "')")
+            RepoRemote {} -> warn verbosity ("index-state ignored for old-format (remote repository '" ++ rname ++ "')")
+            RepoSecure {} -> pure ()
+
+
+      let idxState' = case r of
+            RepoSecure {} -> idxState
+            _             -> IndexStateHead
+
+      (pis,deps,isi) <- readRepoIndex verbosity repoCtxt r idxState'
+
+      case idxState' of
+        IndexStateHead -> do
+            info verbosity ("index-state("++rname++") = " ++
+                              display (isiHeadTime isi))
+            return ()
+        IndexStateTime ts0 -> do
+            when (isiMaxTime isi /= ts0) $
+                warn verbosity ("Requested index-state " ++ display ts0
+                                ++ " does not exist in '"++rname++"'!"
+                                ++ " Falling back to older state ("
+                                ++ display (isiMaxTime isi) ++ ").")
+            info verbosity ("index-state("++rname++") = " ++
+                              display (isiMaxTime isi) ++ " (HEAD = " ++
+                              display (isiHeadTime isi) ++ ")")
+
+      pure (pis,deps)
+
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
@@ -182,14 +278,15 @@ readCacheStrict verbosity index mkPkg = do
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-readRepoIndex :: Verbosity -> RepoContext -> Repo
-              -> IO (PackageIndex UnresolvedSourcePackage, [Dependency])
-readRepoIndex verbosity repoCtxt repo =
+readRepoIndex :: Verbosity -> RepoContext -> Repo -> IndexState
+              -> IO (PackageIndex UnresolvedSourcePackage, [Dependency], IndexStateInfo)
+readRepoIndex verbosity repoCtxt repo idxState =
   handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     updateRepoIndexCache verbosity (RepoIndex repoCtxt repo)
     readPackageIndexCacheFile verbosity mkAvailablePackage
                               (RepoIndex repoCtxt repo)
+                              idxState
 
   where
     mkAvailablePackage pkgEntry =
@@ -214,7 +311,7 @@ readRepoIndex verbosity repoCtxt repo =
           RepoLocal{..}  -> warn verbosity $
                "The package list for the local repo '" ++ repoLocalDir
             ++ "' is missing. The repo is invalid."
-        return mempty
+        return (mempty,mempty,emptyStateInfo)
       else ioError e
 
     isOldThreshold = 15 --days
@@ -446,7 +543,7 @@ is01Index (SandboxIndex _)   = False
 
 updatePackageIndexCacheFile :: Verbosity -> Index -> IO ()
 updatePackageIndexCacheFile verbosity index = do
-    info verbosity ("Updating index cache file " ++ cacheFile index)
+    info verbosity ("Updating index cache file " ++ cacheFile index ++ " ...")
     withIndexEntries index $ \entries -> do
       let !maxTs = maximumTimestamp (map cacheEntryTimestamp entries)
           cache = Cache { cacheHeadTs  = maxTs
@@ -522,11 +619,15 @@ readPackageIndexCacheFile :: Package pkg
                           => Verbosity
                           -> (PackageEntry -> pkg)
                           -> Index
-                          -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexCacheFile verbosity mkPkg index = do
-  cache    <- readIndexCache verbosity index
-  indexHnd <- openFile (indexFile index) ReadMode
-  packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
+                          -> IndexState
+                          -> IO (PackageIndex pkg, [Dependency], IndexStateInfo)
+readPackageIndexCacheFile verbosity mkPkg index idxState = do
+    cache0    <- readIndexCache verbosity index
+    indexHnd <- openFile (indexFile index) ReadMode
+    let (cache,isi) = filterCache idxState cache0
+    (pkgs,deps) <- packageIndexFromCache mkPkg indexHnd cache ReadPackageIndexLazyIO
+    pure (pkgs,deps,isi)
+
 
 packageIndexFromCache :: Package pkg
                       => (PackageEntry -> pkg)
