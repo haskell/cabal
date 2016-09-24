@@ -128,6 +128,7 @@ data PreBuildHooks = PreBuildHooks {
 -- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
+      projectRootDir   :: FilePath,
       distDirLayout    :: DistDirLayout,
       elaboratedPlan   :: ElaboratedInstallPlan,
       elaboratedShared :: ElaboratedSharedConfig,
@@ -195,6 +196,7 @@ runProjectPreBuildPhase
                            elaboratedPlan'
 
     return ProjectBuildContext {
+      projectRootDir,
       distDirLayout,
       elaboratedPlan = elaboratedPlan'',
       elaboratedShared,

@@ -58,10 +58,10 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
         ( globalFlags, configFlags, configExFlags
         , installFlags, haddockFlags )
         PreBuildHooks {
-          hookPrePlanning = \projectRootDir _ cliConfig ->
+          hookPrePlanning = \rootDir _ cliConfig ->
             -- Write out the @cabal.project.local@ so it gets picked up by the
             -- planning phase.
-            writeProjectLocalExtraConfig projectRootDir cliConfig,
+            writeProjectLocalExtraConfig rootDir cliConfig,
 
           hookSelectPlanSubset = \_ -> return
         }
