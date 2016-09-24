@@ -80,7 +80,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Solver.Types.PackageFixedDeps
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getSourcePackages, getInstalledPackages )
+         ( getSourcePackagesAtIndexState, IndexState(..), getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import qualified Distribution.Client.SolverInstallPlan as SolverInstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
@@ -277,10 +277,13 @@ makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repoCtxt, comp, _, progdb,_,_,
-   globalFlags, _, configExFlags, _, _) mUserTargets = do
+   globalFlags, _, configExFlags, installFlags, _) mUserTargets = do
+
+    let idxState = fromFlagOrDefault IndexStateHead $
+                       installIndexState installFlags
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs progdb
-    sourcePkgDb       <- getSourcePackages    verbosity repoCtxt
+    sourcePkgDb       <- getSourcePackagesAtIndexState verbosity repoCtxt idxState
     pkgConfigDb       <- readPkgConfigDb      verbosity progdb
 
     checkConfigExFlags verbosity installedPkgIndex

@@ -29,6 +29,9 @@ import Distribution.Client.Targets
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 
+import Distribution.Client.IndexUtils.Timestamp
+         ( IndexState )
+
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.ConstraintSource
 
@@ -164,6 +167,7 @@ data ProjectConfigShared
        -- configuration used both by the solver and other phases
        projectConfigRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
        projectConfigLocalRepos        :: NubList FilePath,
+       projectConfigIndexState        :: Flag IndexState,
 
        -- solver configuration
        projectConfigConstraints       :: [(UserConstraint, ConstraintSource)],
@@ -347,7 +351,8 @@ data SolverSettings
        solverSettingMaxBackjumps      :: Maybe Int,
        solverSettingReorderGoals      :: ReorderGoals,
        solverSettingCountConflicts    :: CountConflicts,
-       solverSettingStrongFlags       :: StrongFlags
+       solverSettingStrongFlags       :: StrongFlags,
+       solverSettingIndexState        :: IndexState
        -- Things that only make sense for manual mode, not --local mode
        -- too much control!
      --solverSettingIndependentGoals  :: Bool,
