@@ -1772,9 +1772,6 @@ initCommand = CommandUI {
       , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
   }
-  where readMaybe s = case reads s of
-                        [(x,"")]  -> Just x
-                        _         -> Nothing
 
 -- ------------------------------------------------------------
 -- * SDist flags

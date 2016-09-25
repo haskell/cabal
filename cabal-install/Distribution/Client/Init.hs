@@ -603,11 +603,6 @@ promptList' displayItem numChoices choices def other = do
                                   = return . Right $ choices !! (n-1)
                    | otherwise    = Left `fmap` promptStr "Please specify" Nothing
 
-readMaybe :: (Read a) => String -> Maybe a
-readMaybe s = case reads s of
-                [(a,"")] -> Just a
-                _        -> Nothing
-
 ---------------------------------------------------------------------------
 --  File generation  ------------------------------------------------------
 ---------------------------------------------------------------------------
