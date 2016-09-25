@@ -730,9 +730,9 @@ readIndexCache verbosity index = do
 
           updatePackageIndexCacheFile verbosity index
 
-          either die return =<< readIndexCache' index
+          either die (return . hashConsCache) =<< readIndexCache' index
 
-      Right res -> return res
+      Right res -> return (hashConsCache res)
 
 -- | Read the 'Index' cache from the filesystem without attempting to
 -- regenerate on parsing failures.
@@ -747,6 +747,37 @@ writeIndexCache :: Index -> Cache -> IO ()
 writeIndexCache index cache
   | is01Index index = encodeFile (cacheFile index) cache
   | otherwise       = writeFile (cacheFile index) (show00IndexCache cache)
+
+-- | Optimise sharing of equal values inside 'Cache'
+--
+-- c.f. https://en.wikipedia.org/wiki/Hash_consing
+hashConsCache :: Cache -> Cache
+hashConsCache cache0
+    = cache0 { cacheEntries = go mempty mempty (cacheEntries cache0) }
+  where
+    -- TODO/NOTE:
+    --
+    -- If/when we redo the binary serialisation via e.g. CBOR and we
+    -- are able to use incremental decoding, we may want to move the
+    -- hash-consing into the incremental deserialisation, or
+    -- alterantively even do something like
+    -- http://cbor.schmorp.de/value-sharing
+    --
+    go _ _ [] = []
+    -- for now we only optimise only CachePackageIds since those
+    -- represent the vast majority
+    go !pns !pvs (CachePackageId pid bno ts : rest)
+        = CachePackageId pid' bno ts : go pns' pvs' rest
+      where
+        !pid' = PackageIdentifier pn' pv'
+        (!pn',!pns') = mapIntern pn pns
+        (!pv',!pvs') = mapIntern pv pvs
+        PackageIdentifier pn pv = pid
+
+    go pns pvs (x:xs) = x : go pns pvs xs
+
+    mapIntern :: Ord k => k -> Map.Map k k -> (k,Map.Map k k)
+    mapIntern k m = maybe (k,Map.insert k k m) (\k' -> (k',m)) (Map.lookup k m)
 
 -- | Cabal caches various information about the Hackage index
 data Cache = Cache
