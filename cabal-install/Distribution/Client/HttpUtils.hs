@@ -41,7 +41,7 @@ import Distribution.Simple.Utils
          , copyFileVerbose,  withTempFile
          , rawSystemStdInOut, toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Client.Utils
-         ( readMaybe, withTempFileName )
+         ( withTempFileName )
 import Distribution.Client.Types
          ( RemoteRepo(..) )
 import Distribution.System

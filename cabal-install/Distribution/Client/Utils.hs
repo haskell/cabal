@@ -31,10 +31,6 @@ import qualified Data.ByteString.Lazy as BS
 import Data.Bits
          ( (.|.), shiftL, shiftR )
 import System.FilePath
-#if MIN_VERSION_base(4,6,0)
-import Text.Read
-         ( readMaybe )
-#endif
 import Data.List
          ( groupBy )
 import Data.Word
@@ -92,14 +88,6 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
                _  -> False
     moreThanOne (_:_:_) = True
     moreThanOne _       = False
-
-#if !MIN_VERSION_base(4,6,0)
--- | An implementation of readMaybe, for compatability with older base versions.
-readMaybe :: Read a => String -> Maybe a
-readMaybe s = case reads s of
-                [(x,"")] -> Just x
-                _        -> Nothing
-#endif
 
 -- | Like 'removeFile', but does not throw an exception when the file does not
 -- exist.
