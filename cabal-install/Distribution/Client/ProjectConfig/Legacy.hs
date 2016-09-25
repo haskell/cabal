@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, DeriveGeneric #-}
 
 -- | Project configuration, implementation in terms of legacy types.
 --
@@ -19,6 +19,9 @@ module Distribution.Client.ProjectConfig.Legacy (
     parsePackageLocationTokenQ,
     renderPackageLocationToken,
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.Types
@@ -76,14 +79,7 @@ import Distribution.Simple.Command
          ( CommandUI(commandOptions), ShowOrParseArgs(..)
          , OptionField, option, reqArg' )
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
-import Control.Monad
 import qualified Data.Map as Map
-import Data.Char (isSpace)
-import Distribution.Compat.Semigroup
-import GHC.Generics (Generic)
 
 ------------------------------------------------------------------
 -- Representing the project config file in terms of legacy types
@@ -1106,11 +1102,11 @@ packageSpecificOptionsSectionDescr =
 programOptionsFieldDescrs :: (a -> [(String, [String])])
                           -> ([(String, [String])] -> a -> a)
                           -> [FieldDescr a]
-programOptionsFieldDescrs get set =
+programOptionsFieldDescrs get' set =
     commandOptionsToFields
   $ programDbOptions
       defaultProgramDb
-      ParseArgs get set
+      ParseArgs get' set
 
 programOptionsSectionDescr :: SectionDescr LegacyPackageConfig
 programOptionsSectionDescr =
@@ -1169,7 +1165,7 @@ programDbOptions
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programDbOptions progDb showOrParseArgs get set =
+programDbOptions progDb showOrParseArgs get' set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOptions  "PROG"]
@@ -1179,7 +1175,7 @@ programDbOptions progDb showOrParseArgs get set =
     programOptions prog =
       option "" [prog ++ "-options"]
         ("give extra options to " ++ prog)
-        get set
+        get' set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)])
            (\progArgs -> [ joinsArgs args
                          | (prog', args) <- progArgs, prog==prog' ]))
@@ -1238,11 +1234,11 @@ newLineListField = listFieldWithSep Disp.sep
 -- of parseOptCommaList below
 listFieldWithSep :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-listFieldWithSep separator name showF readF get set =
-  liftField get set' $
+listFieldWithSep separator name showF readF get' set =
+  liftField get' set' $
     ParseUtils.field name showF' (parseOptCommaList readF)
   where
-    set' xs b = set (get b ++ xs) b
+    set' xs b = set (get' b ++ xs) b
     showF'    = separator . map showF
 
 --TODO: [code cleanup] local redefinition that should replace the version in

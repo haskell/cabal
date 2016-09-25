@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | An abstraction for re-running actions if values or files have changed.
@@ -47,6 +46,9 @@ module Distribution.Client.RebuildMonad (
     monitorDirectoryStatus,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.FileMonitor
 import Distribution.Client.Glob hiding (matchFileGlob)
 import qualified Distribution.Client.Glob as Glob (matchFileGlob)
@@ -54,12 +56,8 @@ import qualified Distribution.Client.Glob as Glob (matchFileGlob)
 import Distribution.Simple.Utils (debug)
 import Distribution.Verbosity    (Verbosity)
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 import Control.Monad.State as State
 import Control.Monad.Reader as Reader
-import Distribution.Compat.Binary     (Binary)
 import System.FilePath (takeFileName)
 import System.Directory
 

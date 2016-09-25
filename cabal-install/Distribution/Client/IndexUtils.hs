@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE BangPatterns #-}
@@ -36,6 +35,9 @@ module Distribution.Client.IndexUtils (
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import qualified Codec.Archive.Tar       as Tar
 import qualified Codec.Archive.Tar.Entry as Tar
@@ -77,16 +79,7 @@ import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
-import GHC.Generics (Generic)
-
-import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, catMaybes, maybeToList, fromMaybe)
-import Data.List   (isPrefixOf)
 import Data.Word
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-import Control.Applicative
-#endif
 import qualified Data.Map as Map
 import Control.DeepSeq
 import Control.Monad

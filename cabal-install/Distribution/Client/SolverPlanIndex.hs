@@ -1,9 +1,9 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -- | These graph traversal functions mirror the ones in Cabal, but work with
 -- the more complete (and fine-grained) set of dependencies provided by
 -- PackageFixedDeps rather than only the library dependencies provided by
 -- PackageInstalled.
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE CPP #-}
 module Distribution.Client.SolverPlanIndex (
     -- * Graph traversal functions
     brokenPackages
@@ -12,17 +12,16 @@ module Distribution.Client.SolverPlanIndex (
   , dependencyInconsistencies
   ) where
 
-import Prelude hiding (lookup)
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
+-- import Prelude hiding (lookup)
 import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
-import Data.Maybe (isNothing)
+-- import Data.Maybe (isNothing)
 import Data.Either (rights)
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..), UnitId(..)

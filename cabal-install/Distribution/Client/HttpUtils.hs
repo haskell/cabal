@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists.
 -----------------------------------------------------------------------------
@@ -14,6 +14,9 @@ module Distribution.Client.HttpUtils (
     isOldHackageURI
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
          , Header(..), HeaderName(..), lookupHeader )
@@ -23,21 +26,14 @@ import Network.URI
 import Network.Browser
          ( browse, setOutHandler, setErrHandler, setProxy
          , setAuthorityGen, request, setAllowBasicAuth, setUserAgent )
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 import qualified Control.Exception as Exception
 import Control.Exception
          ( evaluate )
 import Control.DeepSeq
          ( force )
 import Control.Monad
-         ( when, guard )
+         ( guard )
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.List
-         ( isPrefixOf, find, intercalate )
-import Data.Maybe
-         ( listToMaybe, maybeToList, fromMaybe )
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
@@ -52,8 +48,6 @@ import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
-import Data.Char
-         ( isSpace )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
 import System.FilePath

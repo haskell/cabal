@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Get
@@ -17,6 +16,9 @@
 module Distribution.Client.Get (
     get
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (get)
 
 import Distribution.Package
          ( PackageId, packageId, packageName )
@@ -48,16 +50,8 @@ import Distribution.Solver.Types.SourcePackage
 import Control.Exception
          ( finally )
 import Control.Monad
-         ( filterM, forM_, unless, when )
-import Data.List
-         ( sortBy )
+         ( forM_, mapM_ )
 import qualified Data.Map
-import Data.Maybe
-         ( listToMaybe, mapMaybe )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( mempty )
-#endif
 import Data.Ord
          ( comparing )
 import System.Directory

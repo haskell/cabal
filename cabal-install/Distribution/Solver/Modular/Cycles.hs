@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Solver.Modular.Cycles (
     detectCyclesPhase
   ) where

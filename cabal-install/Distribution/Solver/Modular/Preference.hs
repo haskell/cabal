@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+-- | Reordering or pruning the tree in order to prefer or make certain choices.
 module Distribution.Solver.Modular.Preference
     ( avoidReinstalls
     , deferSetupChoices
@@ -16,18 +16,13 @@ module Distribution.Solver.Modular.Preference
     , sortGoals
     ) where
 
--- Reordering or pruning the tree in order to prefer or make certain choices.
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Data.Function (on)
 import qualified Data.List as L
 import qualified Data.Map as M
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
-import Prelude hiding (sequence)
 import Control.Monad.Reader hiding (sequence)
-import Data.Map (Map)
-import Data.Maybe (fromMaybe)
 import Data.Traversable (sequence)
 
 import Distribution.Solver.Types.ConstraintSource

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Run
@@ -10,6 +9,9 @@
 
 module Distribution.Client.Run ( run, splitRunArgs )
        where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Types.TargetInfo     (targetCLBI)
 import Distribution.Types.LocalBuildInfo (componentNameTargets')
@@ -35,11 +37,6 @@ import Distribution.Verbosity                (Verbosity)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Functor                          ((<$>))
-#endif
-import Data.List                             (find)
-import Data.Foldable                         (traverse_)
 import System.Directory                      (getCurrentDirectory)
 import Distribution.Compat.Environment       (getEnvironment)
 import System.FilePath                       ((<.>), (</>))

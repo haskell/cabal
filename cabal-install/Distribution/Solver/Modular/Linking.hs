@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -7,21 +6,17 @@ module Distribution.Solver.Modular.Linking (
   , validateLinking
   ) where
 
-import Prelude hiding (pi)
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (get,put)
+
 import Control.Exception (assert)
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe (catMaybes)
-import Data.Map (Map, (!))
-import Data.List (intercalate)
+import Data.Map ((!))
 import Data.Set (Set)
 import qualified Data.Map         as M
 import qualified Data.Set         as S
 import qualified Data.Traversable as T
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 
 import Distribution.Solver.Modular.Assignment
 import Distribution.Solver.Modular.Dependency

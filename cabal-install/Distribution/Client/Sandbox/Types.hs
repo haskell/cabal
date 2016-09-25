@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox.Types
@@ -13,13 +12,12 @@ module Distribution.Client.Sandbox.Types (
   SandboxPackageInfo(..)
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (UnresolvedSourcePackage)
-import Distribution.Compat.Semigroup (Semigroup((<>)))
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
 import qualified Data.Set as S
 
 -- | Are we using a sandbox?

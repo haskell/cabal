@@ -29,14 +29,13 @@ module Distribution.Client.Install (
     pruneInstallPlan
   ) where
 
-import Data.Foldable
-         ( traverse_ )
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Data.List
-         ( isPrefixOf, nub, sort, (\\), find )
+         ( (\\) )
 import qualified Data.Map as Map
 import qualified Data.Set as S
-import Data.Maybe
-         ( catMaybes, isJust, isNothing, fromMaybe, mapMaybe )
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -48,15 +47,9 @@ import System.Exit
          ( ExitCode(..) )
 import Distribution.Compat.Exception
          ( catchIO, catchExit )
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-         ( (<$>) )
-import Data.Traversable
-         ( traverse )
-#endif
 import Control.Exception ( assert )
 import Control.Monad
-         ( filterM, forM_, when, unless )
+         ( forM_, mapM )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory,
@@ -165,7 +158,7 @@ import Distribution.Version
          ( Version, VersionRange, foldVersionRange )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
-         , intercalate, withTempDirectory )
+         , withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
