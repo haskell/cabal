@@ -132,6 +132,14 @@ import           System.Directory
 -- errors (ie rebuilding too much or too little), since all the rebuild
 -- decisions are made without making any state changes at the same time
 -- (that would make it harder to reproduce the problem situation).
+--
+-- Finally, we can use the dry run build status and the build outcomes to
+-- give us some information on the overall status of packages in the project.
+-- This includes limited information about the status of things that were
+-- not actually in the subset of the plan that was used for the dry run or
+-- execution phases. In particular we may know that some packages are now
+-- definitely out of date. See "Distribution.Client.ProjectPlanOutput" for
+-- details.
 
 
 ------------------------------------------------------------------------------
@@ -212,7 +220,7 @@ data BuildStatusRebuild =
      -- rerun. We record the reason the (re)build is needed.
      --
      -- The optional registration info here tells us if we've registered the
-     -- package already, or if we stil need to do that after building.
+     -- package already, or if we still need to do that after building.
      -- @Just Nothing@ indicates that we know that no registration is
      -- necessary (e.g., executable.)
      --
@@ -221,9 +229,6 @@ data BuildStatusRebuild =
 data BuildReason =
      -- | The dependencies of this package have been (re)built so the build
      -- phase needs to be rerun.
-     --
-     -- The optional registration info here tells us if we've registered the
-     -- package already, or if we stil need to do that after building.
      --
      BuildReasonDepsRebuilt
 
