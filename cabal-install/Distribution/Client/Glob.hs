@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 --TODO: [code cleanup] plausibly much of this module should be merged with
 -- similar functionality in Cabal.
@@ -15,14 +15,11 @@ module Distribution.Client.Glob
     , getFilePathRootDirectory
     ) where
 
-import           Data.Char (toUpper)
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import           Data.List (stripPrefix)
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
-import           Control.Monad
-import           Distribution.Compat.Binary
-import           GHC.Generics (Generic)
+import           Control.Monad (mapM)
 
 import           Distribution.Text
 import           Distribution.Compat.ReadP (ReadP, (<++), (+++))

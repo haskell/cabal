@@ -43,6 +43,9 @@ module Distribution.Client.ProjectConfig (
     BadPerPackageCompilerPaths(..)
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.ProjectConfig.Types
 import Distribution.Client.ProjectConfig.Legacy
 import Distribution.Client.RebuildMonad
@@ -96,21 +99,14 @@ import Distribution.Text
 import Distribution.ParseUtils
          ( ParseResult(..), locatedErrorMsg, showPWarning )
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 import Control.Monad
 import Control.Monad.Trans (liftIO)
 import Control.Exception
-import Data.Typeable
-import Data.List (intercalate)
 import Data.Maybe
 import Data.Either
-import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Distribution.Compat.Semigroup
 import System.FilePath hiding (combine)
 import System.Directory
 import Network.URI (URI(..), URIAuth(..), parseAbsoluteURI)

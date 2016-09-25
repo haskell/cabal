@@ -55,6 +55,9 @@ module Distribution.Client.Setup
     , readRepo
     ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (get)
+
 import Distribution.Client.Types
          ( Username(..), Password(..), RemoteRepo(..) )
 import Distribution.Client.BuildReports.Types
@@ -107,7 +110,6 @@ import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, char, munch1, pfail,  (+++) )
-import Distribution.Compat.Semigroup
 import Distribution.Verbosity
          ( Verbosity, lessVerbose, normal )
 import Distribution.Simple.Utils
@@ -117,16 +119,8 @@ import Distribution.Client.GlobalFlags
          , RepoContext(..), withRepoContext
          )
 
-import Data.Char
-         ( isAlphaNum )
 import Data.List
-         ( intercalate, deleteFirstsBy )
-import Data.Maybe
-         ( maybeToList, fromMaybe )
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
-import Control.Monad
-         ( liftM )
+         ( deleteFirstsBy )
 import System.FilePath
          ( (</>) )
 import Network.URI

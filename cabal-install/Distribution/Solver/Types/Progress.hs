@@ -1,23 +1,11 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 module Distribution.Solver.Types.Progress
     ( Progress(..)
     , foldProgress
     ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-         ( Applicative(..) )
-#endif
-import Control.Applicative
-         ( Alternative(..) )
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
-
-import Prelude hiding (fail)
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (fail)
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Configure
@@ -21,6 +20,9 @@ module Distribution.Client.Configure (
     cabalConfigFlagsFile,
     writeConfigFlagsTo, writeConfigFlags,
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -83,11 +85,6 @@ import Distribution.Verbosity as Verbosity
 import Distribution.Version
          ( Version(..), VersionRange, orLaterVersion )
 
-import Control.Monad (unless)
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
-import Data.Maybe (isJust, fromMaybe)
 import System.FilePath ( (</>) )
 
 -- | Choose the Cabal version such that the setup scripts compiled against this

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Exec
@@ -12,7 +11,8 @@
 module Distribution.Client.Exec ( exec
                                 ) where
 
-import Control.Monad (unless)
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -34,10 +34,6 @@ import Distribution.Verbosity (Verbosity)
 
 import System.Directory ( doesDirectoryExist )
 import System.FilePath (searchPathSeparator, (</>))
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>))
-import Data.Monoid (mempty)
-#endif
 
 
 -- | Execute the given command in the package's environment.

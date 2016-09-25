@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
@@ -46,18 +45,12 @@ module Distribution.Solver.Types.PackageIndex (
   allPackagesByName,
   ) where
 
-import Prelude hiding (lookup)
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (lookup)
+
 import Control.Exception (assert)
 import qualified Data.Map as Map
-import Data.Map (Map)
-import Data.List (groupBy, sortBy, isInfixOf)
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid (Monoid(..))
-#endif
-import Data.Maybe (isJust, fromMaybe)
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup (Semigroup((<>)))
+import Data.List (groupBy, isInfixOf)
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)

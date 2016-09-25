@@ -60,6 +60,9 @@ import Distribution.Simple.Setup
          , configAbsolutePaths
          )
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (get)
+
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
@@ -170,16 +173,9 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #endif
                                 , stdout )
 import System.Directory         (doesFileExist, getCurrentDirectory)
-import Data.List                (intercalate)
-import Data.Maybe               (listToMaybe)
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid              (Monoid(..))
-import Control.Applicative      (pure, (<$>))
-#endif
 import Data.Monoid              (Any(..))
-import Distribution.Compat.Semigroup ((<>))
 import Control.Exception        (SomeException(..), try)
-import Control.Monad            (when, unless, void)
+import Control.Monad            (mapM_)
 
 -- | Entry point
 --

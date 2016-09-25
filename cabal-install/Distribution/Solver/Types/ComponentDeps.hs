@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -- | Fine-grained package dependencies
 --
 -- Like many others, this module is meant to be "double-imported":
@@ -8,9 +11,6 @@
 -- >   , ComponentDeps
 -- >   )
 -- > import qualified Distribution.Solver.Types.ComponentDeps as CD
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.ComponentDeps (
     -- * Fine-grained package dependencies
     Component(..)
@@ -36,21 +36,13 @@ module Distribution.Solver.Types.ComponentDeps (
   , select
   ) where
 
-import Prelude hiding (zip)
-import Data.Map (Map)
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (empty,zip)
+
 import qualified Data.Map as Map
-import Distribution.Compat.Binary (Binary)
-import Distribution.Compat.Semigroup (Semigroup((<>)))
-import GHC.Generics
 import Data.Foldable (fold)
 
 import qualified Distribution.Types.ComponentName as CN
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Foldable (Foldable(foldMap))
-import Data.Monoid (Monoid(..))
-import Data.Traversable (Traversable(traverse))
-#endif
 
 {-------------------------------------------------------------------------------
   Types

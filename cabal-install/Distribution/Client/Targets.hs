@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 -----------------------------------------------------------------------------
@@ -50,6 +49,9 @@ module Distribution.Client.Targets (
 
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Package
          ( Package(..), PackageName(..)
          , PackageIdentifier(..), packageName, packageVersion
@@ -86,41 +88,28 @@ import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, warn, intercalate, fromUTF8, lowercase, ignoreBOM )
+         ( die, warn, fromUTF8, lowercase, ignoreBOM )
 
-import Data.List
-         ( find, nub )
-import Data.Maybe
-         ( listToMaybe )
+-- import Data.List ( find, nub )
 import Data.Either
          ( partitionEithers )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( Monoid(..) )
-#endif
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Client.GZipUtils as GZipUtils
-import Control.Monad (liftM)
+import Control.Monad (mapM)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
-import qualified Distribution.Compat.Semigroup as Semi
-         ( Semigroup((<>)) )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
-         ( (<>), (<+>) )
-import Data.Char
-         ( isSpace, isAlphaNum )
+         ( (<+>) )
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
 import System.Directory
          ( doesFileExist, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI )
-import GHC.Generics (Generic)
-import Distribution.Compat.Binary (Binary)
 
 -- ------------------------------------------------------------
 -- * User targets
@@ -683,9 +672,9 @@ newtype PackageNameEnv = PackageNameEnv (PackageName -> [PackageName])
 
 instance Monoid PackageNameEnv where
   mempty = PackageNameEnv (const [])
-  mappend = (Semi.<>)
+  mappend = (<>)
 
-instance Semi.Semigroup PackageNameEnv where
+instance Semigroup PackageNameEnv where
   PackageNameEnv lookupA <> PackageNameEnv lookupB =
     PackageNameEnv (\name -> lookupA name ++ lookupB name)
 
@@ -794,8 +783,8 @@ instance Text UserConstraint where
 dispFlagAssignment :: FlagAssignment -> Disp.Doc
 dispFlagAssignment = Disp.hsep . map dispFlagValue
   where
-    dispFlagValue (f, True)   = Disp.char '+' <> dispFlagName f
-    dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
+    dispFlagValue (f, True)   = Disp.char '+' <<>> dispFlagName f
+    dispFlagValue (f, False)  = Disp.char '-' <<>> dispFlagName f
     dispFlagName (FlagName f) = Disp.text f
 
 parseFlagAssignment :: Parse.ReadP r FlagAssignment

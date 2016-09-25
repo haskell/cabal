@@ -35,23 +35,18 @@ module Distribution.Client.FileMonitor (
   beginUpdateFileMonitor,
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 #if MIN_VERSION_containers(0,5,0)
-import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 #else
-import           Data.Map        (Map)
 import qualified Data.Map        as Map
 #endif
 import qualified Data.ByteString.Lazy as BS
-import           Distribution.Compat.Binary
 import qualified Distribution.Compat.Binary as Binary
 import qualified Data.Hashable as Hashable
-import           Data.List (sort)
 
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
 import           Control.Monad
 import           Control.Monad.Trans (MonadIO, liftIO)
 import           Control.Monad.State (StateT, mapStateT)
@@ -68,8 +63,6 @@ import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 import           System.FilePath
 import           System.Directory
 import           System.IO
-import           GHC.Generics (Generic)
-
 
 ------------------------------------------------------------------------------
 -- Types for specifying files to monitor

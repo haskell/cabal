@@ -51,6 +51,9 @@ module Distribution.Client.ProjectPlanning (
     createPackageDBIfMissing
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
@@ -116,21 +119,14 @@ import           Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
-import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
-#if !MIN_VERSION_base(4,8,0)
-import           Control.Applicative
-#endif
 import           Control.Monad
 import           Control.Monad.State as State
 import           Control.Exception
-import           Data.Typeable
-import           Data.List
-import           Data.Maybe
+import           Data.List (groupBy, mapAccumL)
 import           Data.Either
-import           Data.Monoid
 import           Data.Function
 import           System.FilePath
 import           System.Directory (doesDirectoryExist, getDirectoryContents)
@@ -1508,8 +1504,8 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
       -- the project config specifies values that apply to packages local to
       -- but by default non-local packages get all default config values
       -- the project, and can specify per-package values for any package,
-      | isLocalToProject pkg = local <> perpkg
-      | otherwise            =          perpkg
+      | isLocalToProject pkg = local `mappend` perpkg
+      | otherwise            =                 perpkg
       where
         local  = f localPackagesConfig
         perpkg = maybe mempty f (Map.lookup (packageName pkg) perPackageConfig)

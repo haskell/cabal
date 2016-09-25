@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init
@@ -23,6 +22,9 @@ module Distribution.Client.Init (
 
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude hiding (empty)
+
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
@@ -33,23 +35,13 @@ import System.FilePath
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
-import Data.Char
-  ( toUpper )
 import Data.List
-  ( intercalate, nub, groupBy, (\\) )
-import Data.Maybe
-  ( fromMaybe, isJust, catMaybes, listToMaybe )
+  ( groupBy, (\\) )
 import Data.Function
   ( on )
 import qualified Data.Map as M
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-  ( (<$>) )
-import Data.Traversable
-  ( traverse )
-#endif
 import Control.Monad
-  ( when, unless, (>=>), join, forM_ )
+  ( (>=>), join, forM_, mapM, mapM_ )
 import Control.Arrow
   ( (&&&), (***) )
 
@@ -932,9 +924,9 @@ generateCabalFile fileName c =
                         (True, _, _)      -> (showComment com $$) . ($$ text "")
                         (False, _, _)     -> ($$ text "")
                       $
-                      comment f <> text s <> colon
-                                <> text (replicate (20 - length s) ' ')
-                                <> text (fromMaybe "" . flagToMaybe $ f)
+                      comment f <<>> text s <<>> colon
+                                <<>> text (replicate (20 - length s) ' ')
+                                <<>> text (fromMaybe "" . flagToMaybe $ f)
    comment NoFlag    = text "-- "
    comment (Flag "") = text "-- "
    comment _         = text ""

@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module Distribution.Solver.Modular.Builder (buildTree) where
 
 -- Building the search tree.

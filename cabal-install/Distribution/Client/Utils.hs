@@ -19,28 +19,24 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , relaxEncodingErrors)
        where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Compat.Environment
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
-import Control.Monad
-         ( when )
 import Data.Bits
          ( (.|.), shiftL, shiftR )
 import System.FilePath
-import Data.Char
-         ( ord, chr )
 #if MIN_VERSION_base(4,6,0)
 import Text.Read
          ( readMaybe )
 #endif
 import Data.List
-         ( isPrefixOf, sortBy, groupBy, intercalate )
+         ( groupBy )
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
@@ -66,7 +62,6 @@ import GHC.IO.Encoding.Failure
 
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
 import Prelude hiding (ioError)
-import Control.Monad (liftM2, unless)
 import System.Directory (doesDirectoryExist)
 import System.IO.Error (ioError, mkIOError, doesNotExistErrorType)
 #endif

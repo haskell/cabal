@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Solver.Types.PkgConfigDb
@@ -20,12 +19,10 @@ module Distribution.Solver.Types.PkgConfigDb
     , getPkgConfigDbDirs
     ) where
 
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ((<$>), (<*>))
-#endif
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Control.Exception (IOException, handle)
-import Data.Char (isSpace)
 import qualified Data.Map as M
 import Data.Version (parseVersion)
 import Text.ParserCombinators.ReadP (readP_to_S)
@@ -44,8 +41,6 @@ import Distribution.Simple.Program
     ( ProgramDb, pkgConfigProgram, getProgramOutput, requireProgram )
 import Distribution.Simple.Utils
     ( info )
-import Distribution.Compat.Binary (Binary(..))
-import GHC.Generics (Generic)
 
 -- | The list of packages installed in the system visible to
 -- @pkg-config@. This is an opaque datatype, to be constructed with

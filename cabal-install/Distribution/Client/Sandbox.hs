@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
@@ -41,6 +40,9 @@ module Distribution.Client.Sandbox (
 
     getPersistOrConfigCompiler
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
@@ -92,7 +94,7 @@ import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
-                                              , intercalate, topHandlerWith
+                                              , topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
@@ -111,19 +113,12 @@ import qualified Data.Map                          as M
 import qualified Data.Set                          as S
 import Data.Either                            (partitionEithers)
 import Control.Exception                      ( assert, bracket_ )
-import Control.Monad                          ( forM, liftM, liftM2, unless, when )
+import Control.Monad                          ( forM, mapM, mapM_ )
 import Data.Bits                              ( shiftL, shiftR, xor )
-import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( delete
-                                              , foldl'
-                                              , intersperse
-                                              , isPrefixOf
                                               , groupBy )
 import Data.Maybe                             ( fromJust )
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid                            ( mempty, mappend )
-#endif
 import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
 import System.Directory                       ( canonicalizePath

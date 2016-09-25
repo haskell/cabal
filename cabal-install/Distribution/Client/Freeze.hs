@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Freeze
@@ -15,6 +14,9 @@
 module Distribution.Client.Freeze (
     freeze, getFreezePkgs
   ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
 
 import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
@@ -58,13 +60,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import Control.Monad
-         ( when )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-         ( mempty )
-#endif
 import Data.Version
          ( showVersion )
 import Distribution.Version

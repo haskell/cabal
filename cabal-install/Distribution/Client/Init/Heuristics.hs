@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Heuristics
@@ -20,6 +19,10 @@ module Distribution.Client.Init.Heuristics (
     guessAuthorNameMail,
     knownCategories,
 ) where
+
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Text         (simpleParse)
 import Distribution.Simple.Setup (Flag(..), flagToMaybe)
 import Distribution.ModuleName
@@ -27,8 +30,6 @@ import Distribution.ModuleName
 import qualified Distribution.Package as P
 import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
-import Distribution.Simple.Utils
-         ( intercalate )
 import Distribution.Client.Utils
          ( tryCanonicalizePath )
 import Language.Haskell.Extension ( Extension )
@@ -39,16 +40,10 @@ import Distribution.Solver.Types.SourcePackage
     ( packageDescription )
 
 import Distribution.Client.Types ( SourcePackageDb(..) )
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative ( pure, (<$>), (<*>) )
-import Data.Monoid         ( mempty, mappend, mconcat )
-#endif
-import Control.Arrow ( first )
-import Control.Monad ( liftM )
-import Data.Char   ( isAlphaNum, isNumber, isUpper, isLower, isSpace )
+import Control.Monad ( mapM )
+import Data.Char   ( isNumber, isLower )
 import Data.Either ( partitionEithers )
-import Data.List   ( isInfixOf, isPrefixOf, isSuffixOf, sortBy )
-import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
+import Data.List   ( isInfixOf )
 import Data.Ord    ( comparing )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getCurrentDirectory, getDirectoryContents,
