@@ -755,6 +755,14 @@ hashConsCache :: Cache -> Cache
 hashConsCache cache0
     = cache0 { cacheEntries = go mempty mempty (cacheEntries cache0) }
   where
+    -- TODO/NOTE:
+    --
+    -- If/when we redo the binary serialisation via e.g. CBOR and we
+    -- are able to use incremental decoding, we may want to move the
+    -- hash-consing into the incremental deserialisation, or
+    -- alterantively even do something like
+    -- http://cbor.schmorp.de/value-sharing
+    --
     go _ _ [] = []
     -- for now we only optimise only CachePackageIds since those
     -- represent the vast majority
