@@ -311,6 +311,7 @@ executable cabal
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
         Distribution.Client.Compat.FilePerms
+        Distribution.Client.Compat.Prelude
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
         Distribution.Solver.Types.ComponentDeps
