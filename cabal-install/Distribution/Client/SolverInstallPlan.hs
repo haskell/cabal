@@ -51,7 +51,7 @@ module Distribution.Client.SolverInstallPlan(
 ) where
 
 import Distribution.Package
-         ( PackageIdentifier(..), Package(..), PackageName(..)
+         ( PackageIdentifier(..), Package(..), PackageName
          , HasUnitId(..), PackageId, packageVersion, packageName )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import Distribution.Text

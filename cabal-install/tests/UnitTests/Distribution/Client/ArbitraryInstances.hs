@@ -115,7 +115,7 @@ instance Arbitrary VersionRange where
       canonicaliseVersionRange = fromVersionIntervals . toVersionIntervals
 
 instance Arbitrary PackageName where
-    arbitrary = PackageName . intercalate "-" <$> shortListOf1 2 nameComponent
+    arbitrary = mkPackageName . intercalate "-" <$> shortListOf1 2 nameComponent
       where
         nameComponent = shortListOf1 5 (elements packageChars)
                         `suchThat` (not . all isDigit)

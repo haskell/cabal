@@ -133,7 +133,7 @@ instance IsNode InstalledPackageInfo where
 emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        sourcePackageId   = PackageIdentifier (PackageName "") (Version [] []),
+        sourcePackageId   = PackageIdentifier (mkPackageName "") (Version [] []),
         installedUnitId   = mkUnitId "",
         compatPackageKey  = "",
         license           = UnspecifiedLicense,

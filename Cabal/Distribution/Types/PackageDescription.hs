@@ -171,7 +171,7 @@ descCabalVersion pkg = case specVersionRaw pkg of
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
-                      package      = PackageIdentifier (PackageName "")
+                      package      = PackageIdentifier (mkPackageName "")
                                                        (Version [] []),
                       license      = UnspecifiedLicense,
                       licenseFiles = [],

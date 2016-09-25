@@ -18,7 +18,7 @@ suite = do
             , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
             , testBuildInfo = emptyBuildInfo
                     { targetBuildDepends =
-                            [ Dependency (PackageName "base") anyVersion ]
+                            [ Dependency (mkPackageName "base") anyVersion ]
                     , hsSourceDirs = ["."]
                     }
             }

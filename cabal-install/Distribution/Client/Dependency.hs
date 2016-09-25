@@ -74,7 +74,7 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
+         ( PackageName, mkPackageName, PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
          , Dependency(Dependency))
 import qualified Distribution.PackageDescription as PD
@@ -347,9 +347,9 @@ dontUpgradeNonUpgradeablePackages params =
       [ LabeledPackageConstraint
         (PackageConstraintInstalled pkgname)
         ConstraintSourceNonUpgradeablePackage
-      | Set.notMember (PackageName "base") (depResolverTargets params)
-      , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
-                                   , "integer-simple" ]
+      | Set.notMember (mkPackageName "base") (depResolverTargets params)
+      , pkgname <- map mkPackageName [ "base", "ghc-prim", "integer-gmp"
+                                     , "integer-simple" ]
       , isInstalled pkgname ]
 
     isInstalled = not . null
@@ -520,7 +520,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
       -- Force Cabal >= 1.24 dep when the package is affected by #3199.
       mkDefaultSetupDeps :: UnresolvedSourcePackage -> Maybe [Dependency]
       mkDefaultSetupDeps srcpkg | affected        =
-        Just [Dependency (PackageName "Cabal")
+        Just [Dependency (mkPackageName "Cabal")
               (orLaterVersion $ Version [1,24] [])]
                                 | otherwise       = Nothing
         where

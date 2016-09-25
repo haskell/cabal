@@ -467,11 +467,11 @@ lookupDependency index (Dependency name versionRange) =
 --
 searchByName :: PackageIndex a -> String -> SearchResult [a]
 searchByName index name =
-  case [ pkgs | pkgs@(PackageName name',_) <- Map.toList (packageIdIndex index)
-              , lowercase name' == lname ] of
+  case [ pkgs | pkgs@(pname,_) <- Map.toList (packageIdIndex index)
+              , lowercase (unPackageName pname) == lname ] of
     []               -> None
     [(_,pvers)]      -> Unambiguous (concat (Map.elems pvers))
-    pkgss            -> case find ((PackageName name==) . fst) pkgss of
+    pkgss            -> case find ((mkPackageName name ==) . fst) pkgss of
       Just (_,pvers) -> Unambiguous (concat (Map.elems pvers))
       Nothing        -> Ambiguous (map (concat . Map.elems . snd) pkgss)
   where lname = lowercase name
@@ -485,8 +485,8 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 searchByNameSubstring :: PackageIndex a -> String -> [a]
 searchByNameSubstring index searchterm =
   [ pkg
-  | (PackageName name, pvers) <- Map.toList (packageIdIndex index)
-  , lsearchterm `isInfixOf` lowercase name
+  | (pname, pvers) <- Map.toList (packageIdIndex index)
+  , lsearchterm `isInfixOf` lowercase (unPackageName pname)
   , pkgs <- Map.elems pvers
   , pkg <- pkgs ]
   where lsearchterm = lowercase searchterm

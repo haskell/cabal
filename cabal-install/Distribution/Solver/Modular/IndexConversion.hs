@@ -120,7 +120,7 @@ convGPD os arch cinfo strfl sexes pi
     -- and thus cannot actually be solved over.  We'll do this
     -- by creating a set of package names which are "internal"
     -- and dropping them as we convert.
-    ipns = S.fromList $ [ PackageName nm
+    ipns = S.fromList $ [ mkPackageName nm
                         | (nm, _) <- sub_libs ]
 
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
@@ -192,8 +192,8 @@ convCondTree os arch cinfo pi@(PI pn _) fds comp getInfo ipns sexes@(SolveExecut
               -- an executable we need.
               ++ (if sexes'
                    then concatMap
-                    (\(Dependency (PackageName exe) vr) ->
-                        case packageProvidingBuildTool exe of
+                    (\(Dependency exe vr) ->
+                        case packageProvidingBuildTool (unPackageName exe) of
                             Nothing -> []
                             Just pn' -> [D.Simple (convExeDep pn (Dependency pn' vr)) comp])
                     (PD.buildTools bi)
@@ -212,7 +212,7 @@ packageProvidingBuildTool :: String -> Maybe PackageName
 packageProvidingBuildTool s =
     if s `elem` ["hscolour", "haddock", "happy", "alex", "hsc2hs",
                  "c2hs", "cpphs", "greencard"]
-        then Just (PackageName s)
+        then Just (mkPackageName s)
         else Nothing
 
 -- | Branch interpreter.  Mutually recursive with 'convCondTree'.

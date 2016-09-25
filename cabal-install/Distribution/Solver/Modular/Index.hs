@@ -49,4 +49,4 @@ defaultQualifyOptions idx = QO {
     , qoSetupIndependent = True
     }
   where
-    base = PackageName "base"
+    base = mkPackageName "base"

@@ -45,7 +45,7 @@ import Distribution.Client.IndexUtils.Timestamp
 import Distribution.Client.Types
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), PackageName(..)
+         ( PackageId, PackageIdentifier(..), mkPackageName
          , Package(..), packageVersion, packageName
          , Dependency(Dependency) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -441,7 +441,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
         [pkgname,vers,_] -> case simpleParse vers of
           Just ver -> Just . return $ Just (NormalPackage pkgid descr content blockNo)
             where
-              pkgid  = PackageIdentifier (PackageName pkgname) ver
+              pkgid  = PackageIdentifier (mkPackageName pkgname) ver
               parsed = parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
                                                $ content
               descr  = case parsed of
@@ -878,7 +878,7 @@ read00IndexCacheEntry = \line ->
   where
     parseName str
       | BSS.all (\c -> isAlphaNum c || c == '-') str
-                  = Just (PackageName (BSS.unpack str))
+                  = Just (mkPackageName (BSS.unpack str))
       | otherwise = Nothing
 
     parseVer str vs =

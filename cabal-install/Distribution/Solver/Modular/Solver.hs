@@ -130,10 +130,10 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        validateTree cinfo idx pkgConfigDB
     prunePhase       = (if asBool (avoidReinstalls sc) then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
-                       P.requireInstalled (`elem` [ PackageName "base"
-                                                  , PackageName "ghc-prim"
-                                                  , PackageName "integer-gmp"
-                                                  , PackageName "integer-simple"
+                       P.requireInstalled (`elem` [ mkPackageName "base"
+                                                  , mkPackageName "ghc-prim"
+                                                  , mkPackageName "integer-gmp"
+                                                  , mkPackageName "integer-simple"
                                                   ])
     buildPhase       = traceTree "build.json" id
                      $ addLinking
@@ -248,5 +248,5 @@ _removeGR = trav go
 
    dummy :: QGoalReason
    dummy = PDependency
-         $ PI (Q (PackagePath DefaultNamespace Unqualified) (PackageName "$"))
+         $ PI (Q (PackagePath DefaultNamespace Unqualified) (mkPackageName "$"))
               (I (Version [1] []) InRepo)

@@ -25,7 +25,7 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), RepoContext )
 import Distribution.Package
-         ( Package(..), Dependency(..), PackageName(..)
+         ( Package(..), Dependency(..), unPackageName
          , packageName, packageVersion )
 import Distribution.PackageDescription
          ( buildDepends )
@@ -139,7 +139,7 @@ genBounds verbosity packageDBs repoCtxt comp platform progdb mSandboxPkgInfo
        mapM_ (putStrLn . (++",") . showBounds padTo) thePkgs
 
      depName :: Dependency -> String
-     depName (Dependency (PackageName nm) _) = nm
+     depName (Dependency pn _) = unPackageName pn
 
      depVersion :: Dependency -> VersionRange
      depVersion (Dependency _ vr) = vr

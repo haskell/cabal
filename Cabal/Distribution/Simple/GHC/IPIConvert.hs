@@ -32,7 +32,7 @@ data PackageIdentifier = PackageIdentifier {
 
 convertPackageId :: PackageIdentifier -> Current.PackageIdentifier
 convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
-  Current.PackageIdentifier (Current.PackageName n) v
+  Current.PackageIdentifier (Current.mkPackageName n) v
 
 data License = GPL | LGPL | BSD3 | BSD4
              | PublicDomain | AllRightsReserved | OtherLicense

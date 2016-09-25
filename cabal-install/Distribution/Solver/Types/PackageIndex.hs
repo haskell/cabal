@@ -60,7 +60,7 @@ import Distribution.Compat.Binary (Binary)
 import Distribution.Compat.Semigroup (Semigroup((<>)))
 
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..)
+         ( PackageName, unPackageName, PackageIdentifier(..)
          , Package(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Version
@@ -297,8 +297,8 @@ searchByName :: PackageIndex pkg
              -> String -> [(PackageName, [pkg])]
 searchByName (PackageIndex m) name =
     [ pkgs
-    | pkgs@(PackageName name',_) <- Map.toList m
-    , lowercase name' == lname ]
+    | pkgs@(pname,_) <- Map.toList m
+    , lowercase (unPackageName pname) == lname ]
   where
     lname = lowercase name
 
@@ -312,7 +312,7 @@ searchByNameSubstring :: PackageIndex pkg
                       -> String -> [(PackageName, [pkg])]
 searchByNameSubstring (PackageIndex m) searchterm =
     [ pkgs
-    | pkgs@(PackageName name, _) <- Map.toList m
-    , lsearchterm `isInfixOf` lowercase name ]
+    | pkgs@(pname, _) <- Map.toList m
+    , lsearchterm `isInfixOf` lowercase (unPackageName pname) ]
   where
     lsearchterm = lowercase searchterm

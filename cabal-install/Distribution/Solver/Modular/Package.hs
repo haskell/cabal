@@ -4,7 +4,7 @@ module Distribution.Solver.Modular.Package
   , Loc(..)
   , PackageId
   , PackageIdentifier(..)
-  , PackageName(..)
+  , PackageName, mkPackageName, unPackageName
   , PI(..)
   , PN
   , QPV
@@ -28,7 +28,7 @@ type PN = PackageName
 
 -- | Unpacking a package name.
 unPN :: PN -> String
-unPN (PackageName pn) = pn
+unPN = unPackageName
 
 -- | Package version. A package name plus a version number.
 type PV = PackageId

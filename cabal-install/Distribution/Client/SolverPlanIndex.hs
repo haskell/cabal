@@ -25,7 +25,7 @@ import Data.Monoid (Monoid(..))
 #endif
 
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), UnitId(..)
+         ( PackageName, PackageIdentifier(..), UnitId(..)
          , Package(..), packageName, packageVersion
          )
 import Distribution.Version
