@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP #-}
 
+-- to suppress WARNING in "Distribution.Compat.Prelude.Internal"
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+
 -- | This module does two things:
 --
 -- * Acts as a compatiblity layer, like @base-compat@.
@@ -10,13 +13,13 @@
 -- this module re-exports)
 --
 module Distribution.Client.Compat.Prelude
-  ( module Distribution.Compat.Prelude
+  ( module Distribution.Compat.Prelude.Internal
   , Prelude.IO
   , readMaybe
   ) where
 
 import Prelude (IO)
-import Distribution.Compat.Prelude hiding (IO)
+import Distribution.Compat.Prelude.Internal hiding (IO)
 
 #if MIN_VERSION_base(4,6,0)
 import Text.Read
