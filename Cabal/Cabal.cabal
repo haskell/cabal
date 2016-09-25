@@ -315,6 +315,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.Graph
     Distribution.Compat.Internal.TempFile
+    Distribution.Compat.Prelude
     Distribution.Compat.ReadP
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
@@ -415,7 +416,6 @@ library
     Distribution.Compat.Binary
 
   other-modules:
-    Distribution.Compat.Prelude
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
