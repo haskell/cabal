@@ -51,7 +51,7 @@ module Distribution.Client.InstallPlan (
   failed,
 
   -- * Display
-  showPlanIndex,
+  showPlanGraph,
   showInstallPlan,
 
   -- * Graph-like operations
@@ -206,7 +206,7 @@ instance (HasConfiguredId ipkg, HasConfiguredId srcpkg) =>
     configuredId (Installed   spkg) = configuredId spkg
 
 data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
-    planIndex      :: !(PlanIndex ipkg srcpkg),
+    planGraph      :: !(Graph (GenericPlanPackage ipkg srcpkg)),
     planIndepGoals :: !IndependentGoals
   }
 
@@ -214,17 +214,14 @@ data GenericInstallPlan ipkg srcpkg = GenericInstallPlan {
 type InstallPlan = GenericInstallPlan
                    InstalledPackageInfo (ConfiguredPackage UnresolvedPkgLoc)
 
-type PlanIndex ipkg srcpkg =
-     Graph (GenericPlanPackage ipkg srcpkg)
-
 -- | Smart constructor that deals with caching the 'Graph' representation.
 --
-mkInstallPlan :: PlanIndex ipkg srcpkg
+mkInstallPlan :: Graph (GenericPlanPackage ipkg srcpkg)
               -> IndependentGoals
               -> GenericInstallPlan ipkg srcpkg
-mkInstallPlan index indepGoals =
+mkInstallPlan graph indepGoals =
     GenericInstallPlan {
-      planIndex      = index,
+      planGraph      = graph,
       planIndepGoals = indepGoals
     }
 
@@ -235,19 +232,19 @@ instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
           Binary ipkg, Binary srcpkg)
        => Binary (GenericInstallPlan ipkg srcpkg) where
     put GenericInstallPlan {
-              planIndex      = index,
+              planGraph      = graph,
               planIndepGoals = indepGoals
-        } = put (index, indepGoals)
+        } = put (graph, indepGoals)
 
     get = do
       (index, indepGoals) <- get
       return $! mkInstallPlan index indepGoals
 
-showPlanIndex :: (Package ipkg, Package srcpkg,
+showPlanGraph :: (Package ipkg, Package srcpkg,
                   IsUnit ipkg, IsUnit srcpkg)
-              => PlanIndex ipkg srcpkg -> String
-showPlanIndex index = renderStyle defaultStyle $
-    vcat (map dispPlanPackage (Graph.toList index))
+              => Graph (GenericPlanPackage ipkg srcpkg) -> String
+showPlanGraph graph = renderStyle defaultStyle $
+    vcat (map dispPlanPackage (Graph.toList graph))
   where dispPlanPackage p =
             hang (hsep [ text (showPlanPackageTag p)
                        , disp (packageId p)
@@ -257,7 +254,7 @@ showPlanIndex index = renderStyle defaultStyle $
 showInstallPlan :: (Package ipkg, Package srcpkg,
                     IsUnit ipkg, IsUnit srcpkg)
                 => GenericInstallPlan ipkg srcpkg -> String
-showInstallPlan = showPlanIndex . planIndex
+showInstallPlan = showPlanGraph . planGraph
 
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg -> String
 showPlanPackageTag (PreExisting _)   = "PreExisting"
@@ -267,13 +264,13 @@ showPlanPackageTag (Installed   _)   = "Installed"
 -- | Build an installation plan from a valid set of resolved packages.
 --
 new :: IndependentGoals
-    -> PlanIndex ipkg srcpkg
+    -> Graph (GenericPlanPackage ipkg srcpkg)
     -> GenericInstallPlan ipkg srcpkg
 new indepGoals index = mkInstallPlan index indepGoals
 
 toList :: GenericInstallPlan ipkg srcpkg
        -> [GenericPlanPackage ipkg srcpkg]
-toList = Graph.toList . planIndex
+toList = Graph.toList . planGraph
 
 -- | Remove packages from the install plan. This will result in an
 -- error if there are remaining packages that depend on any matching
@@ -310,7 +307,7 @@ installed shouldBeInstalled installPlan =
     markInstalled plan pkg =
       assert (all isInstalled (directDeps plan (nodeKey pkg))) $
       plan {
-        planIndex = Graph.insert (Installed pkg) (planIndex plan)
+        planGraph = Graph.insert (Installed pkg) (planGraph plan)
       }
 
 -- | Lookup a package in the plan.
@@ -319,7 +316,7 @@ lookup :: (IsUnit ipkg, IsUnit srcpkg)
        => GenericInstallPlan ipkg srcpkg
        -> UnitId
        -> Maybe (GenericPlanPackage ipkg srcpkg)
-lookup plan pkgid = Graph.lookup pkgid (planIndex plan)
+lookup plan pkgid = Graph.lookup pkgid (planGraph plan)
 
 -- | Find all the direct dependencies of the given package.
 --
@@ -329,7 +326,7 @@ directDeps :: GenericInstallPlan ipkg srcpkg
            -> UnitId
            -> [GenericPlanPackage ipkg srcpkg]
 directDeps plan pkgid =
-  case Graph.neighbors (planIndex plan) pkgid of
+  case Graph.neighbors (planGraph plan) pkgid of
     Just deps -> deps
     Nothing   -> internalError "directDeps: package not in graph"
 
@@ -341,7 +338,7 @@ revDirectDeps :: GenericInstallPlan ipkg srcpkg
               -> UnitId
               -> [GenericPlanPackage ipkg srcpkg]
 revDirectDeps plan pkgid =
-  case Graph.revNeighbors (planIndex plan) pkgid of
+  case Graph.revNeighbors (planGraph plan) pkgid of
     Just deps -> deps
     Nothing   -> internalError "revDirectDeps: package not in graph"
 
@@ -361,7 +358,7 @@ revDirectDeps plan pkgid =
 --
 reverseTopologicalOrder :: GenericInstallPlan ipkg srcpkg
                         -> [GenericPlanPackage ipkg srcpkg]
-reverseTopologicalOrder plan = Graph.revTopSort (planIndex plan)
+reverseTopologicalOrder plan = Graph.revTopSort (planGraph plan)
 
 
 -- | Return the packages in the plan that depend directly or indirectly on the
@@ -371,7 +368,7 @@ reverseDependencyClosure :: GenericInstallPlan ipkg srcpkg
                          -> [UnitId]
                          -> [GenericPlanPackage ipkg srcpkg]
 reverseDependencyClosure plan = fromMaybe []
-                              . Graph.revClosure (planIndex plan)
+                              . Graph.revClosure (planGraph plan)
 
 
 -- Alert alert!   Why does SolverId map to a LIST of plan packages?
@@ -584,7 +581,7 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     failedSet'     = failedSet `Set.union` Set.fromList newlyFailedIds
     newlyFailedIds = map nodeKey newlyFailed
     newlyFailed    = fromMaybe (internalError "package not in graph")
-                   $ Graph.revClosure (planIndex plan) [pkgid]
+                   $ Graph.revClosure (planGraph plan) [pkgid]
     processing'    = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg
@@ -596,9 +593,9 @@ processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
 processingInvariant plan (Processing processingSet completedSet failedSet) =
 
     -- All the packages in the three sets are actually in the graph
-    assert (Foldable.all (flip Graph.member (planIndex plan)) processingSet) $
-    assert (Foldable.all (flip Graph.member (planIndex plan)) completedSet) $
-    assert (Foldable.all (flip Graph.member (planIndex plan)) failedSet) $
+    assert (Foldable.all (flip Graph.member (planGraph plan)) processingSet) $
+    assert (Foldable.all (flip Graph.member (planGraph plan)) completedSet) $
+    assert (Foldable.all (flip Graph.member (planGraph plan)) failedSet) $
 
     -- The processing, completed and failed sets are disjoint from each other
     assert (noIntersection processingSet completedSet) $
@@ -624,12 +621,12 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
                 | pkgid     <- Set.toList processingSet
                 , rdeppkgid <- maybe (internalError "processingInvariant")
                                      (map nodeKey)
-                                     (Graph.revNeighbors (planIndex plan) pkgid)
+                                     (Graph.revNeighbors (planGraph plan) pkgid)
                 ]) $
 
     -- Packages from the processing or failed sets are only ever in the
     -- configured state.
-    assert (and [ case Graph.lookup pkgid (planIndex plan) of
+    assert (and [ case Graph.lookup pkgid (planGraph plan) of
                     Just (Configured  _) -> True
                     Just (PreExisting _) -> False
                     Just (Installed   _) -> False
@@ -643,7 +640,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     reverseClosure    = Set.fromList
                       . map nodeKey
                       . fromMaybe (internalError "processingInvariant")
-                      . Graph.revClosure (planIndex plan)
+                      . Graph.revClosure (planGraph plan)
                       . Set.toList
     noIntersection a b = Set.null (Set.intersection a b)
 
