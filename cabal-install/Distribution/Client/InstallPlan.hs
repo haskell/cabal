@@ -571,7 +571,9 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     assert (pkgid `Set.member` processingSet) $
     assert (all (`Set.notMember` processingSet) (tail newlyFailedIds)) $
     assert (all (`Set.notMember` completedSet)  (tail newlyFailedIds)) $
-    assert (all (`Set.notMember` failedSet)     (tail newlyFailedIds)) $
+    -- but note that some newlyFailed may already be in the failed set
+    -- since one package can depend on two packages that both fail and
+    -- so would be in the rev-dep closure for both.
     assert (processingInvariant plan processing') $
 
     ( map asConfiguredPackage (tail newlyFailed)
