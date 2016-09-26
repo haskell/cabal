@@ -199,7 +199,7 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 -- files to be monitored (index by their path), and a list of
 -- globs, which monitor may files at once.
 data MonitorStateFileSet
-   = MonitorStateFileSet !(Map FilePath MonitorStateFile)
+   = MonitorStateFileSet ![MonitorStateFile]
                          ![MonitorStateGlob]
   deriving Show
 
@@ -216,7 +216,7 @@ type Hash = Int
 -- no longer exists at all.
 --
 data MonitorStateFile = MonitorStateFile !MonitorKindFile !MonitorKindDir
-                                         !MonitorStateFileStatus
+                                         !FilePath !MonitorStateFileStatus
   deriving (Show, Generic)
 
 data MonitorStateFileStatus
@@ -262,11 +262,10 @@ instance Binary MonitorStateGlobRel
 --
 reconstructMonitorFilePaths :: MonitorStateFileSet -> [MonitorFilePath]
 reconstructMonitorFilePaths (MonitorStateFileSet singlePaths globPaths) =
-    Map.foldrWithKey (\k x r -> getSinglePath k x : r)
-                     (map getGlobPath globPaths)
-                     singlePaths
+    map getSinglePath singlePaths
+ ++ map getGlobPath globPaths
   where
-    getSinglePath filepath (MonitorStateFile kindfile kinddir _) =
+    getSinglePath (MonitorStateFile kindfile kinddir filepath _) =
       MonitorFile kindfile kinddir filepath
 
     getGlobPath (MonitorStateGlob kindfile kinddir root gstate) =
@@ -516,7 +515,7 @@ probeFileSystem root (MonitorStateFileSet singlePaths globPaths) =
   runChangedM $ do
     sequence_
       [ probeMonitorStateFileStatus root file status
-      | (file, MonitorStateFile _ _ status) <- Map.toList singlePaths ]
+      | MonitorStateFile _ _ file status <- singlePaths ]
     -- The glob monitors can require state changes
     globPaths' <-
       sequence
@@ -793,19 +792,19 @@ buildMonitorStateFileSet :: Maybe MonitorTimestamp -- ^ optional: timestamp
                                               --   relative to root
                          -> IO MonitorStateFileSet
 buildMonitorStateFileSet mstartTime hashcache root =
-    go Map.empty []
+    go [] []
   where
-    go :: Map FilePath MonitorStateFile -> [MonitorStateGlob]
+    go :: [MonitorStateFile] -> [MonitorStateGlob]
        -> [MonitorFilePath] -> IO MonitorStateFileSet
     go !singlePaths !globPaths [] =
-      return (MonitorStateFileSet singlePaths globPaths)
+      return (MonitorStateFileSet (reverse singlePaths) (reverse globPaths))
 
     go !singlePaths !globPaths
        (MonitorFile kindfile kinddir path : monitors) = do
-      monitorState <- MonitorStateFile kindfile kinddir
+      monitorState <- MonitorStateFile kindfile kinddir path
                   <$> buildMonitorStateFile mstartTime hashcache
                                             kindfile kinddir root path
-      go (Map.insert path monitorState singlePaths) globPaths monitors
+      go (monitorState : singlePaths) globPaths monitors
 
     go !singlePaths !globPaths
        (MonitorFileGlob kindfile kinddir globPath : monitors) = do
@@ -976,15 +975,15 @@ readCacheFileHashes monitor =
                     collectAllFileHashes singlePaths
         `Map.union` collectAllGlobHashes globPaths
 
-    collectAllFileHashes =
-      Map.mapMaybe $ \(MonitorStateFile _ _ fstate) -> case fstate of
-        MonitorStateFileHashed mtime hash -> Just (mtime, hash)
-        _                                 -> Nothing
+    collectAllFileHashes singlePaths =
+      Map.fromList [ (fpath, (mtime, hash))
+                   | MonitorStateFile _ _ fpath
+                       (MonitorStateFileHashed mtime hash) <- singlePaths ]
 
     collectAllGlobHashes globPaths =
-      Map.fromList [ (fpath, hash)
+      Map.fromList [ (fpath, (mtime, hash))
                    | MonitorStateGlob _ _ _ gstate <- globPaths
-                   , (fpath, hash) <- collectGlobHashes "" gstate ]
+                   , (fpath, (mtime, hash)) <- collectGlobHashes "" gstate ]
 
     collectGlobHashes dir (MonitorStateGlobDirs _ _ _ entries) =
       [ res

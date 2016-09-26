@@ -24,6 +24,7 @@ import Test.Tasty.HUnit
 tests :: Int -> [TestTree]
 tests mtimeChange =
   [ testCase "sanity check mtimes"   $ testFileMTimeSanity mtimeChange
+  , testCase "sanity check dirs"     $ testDirChangeSanity mtimeChange
   , testCase "no monitor cache"      testNoMonitorCache
   , testCase "corrupt monitor cache" testCorruptMonitorCache
   , testCase "empty monitor"         testEmptyMonitor
@@ -34,6 +35,7 @@ tests mtimeChange =
   , testCase "remove file"           testRemoveFile
   , testCase "non-existent file"     testNonExistentFile
   , testCase "changed file type"     $ testChangedFileType mtimeChange
+  , testCase "several monitor kinds" $ testMultipleMonitorKinds mtimeChange
 
   , testGroup "glob matches"
     [ testCase "no change"           testGlobNoChange
@@ -69,6 +71,8 @@ tests mtimeChange =
   , testCase "value updated"         testValueUpdated
   ]
 
+-- Check the file system behaves the way we expect it to
+
 -- we rely on file mtimes having a reasonable resolution
 testFileMTimeSanity :: Int -> Assertion
 testFileMTimeSanity mtimeChange =
@@ -80,6 +84,62 @@ testFileMTimeSanity mtimeChange =
       IO.writeFile (dir </> "a") "content"
       t2 <- getModTime (dir </> "a")
       assertBool "expected different file mtimes" (t2 > t1)
+
+-- We rely on directories changing mtime when entries are added or removed
+testDirChangeSanity :: Int -> Assertion
+testDirChangeSanity mtimeChange =
+  withTempDirectory silent "." "dir-mtime-" $ \dir -> do
+
+    expectMTimeChange dir "file add" $
+      IO.writeFile (dir </> "file") "content"
+
+    expectMTimeSame dir "file content change" $
+      IO.writeFile (dir </> "file") "new content"
+
+    expectMTimeChange dir "file del" $
+      IO.removeFile (dir </> "file")
+
+    expectMTimeChange dir "subdir add" $
+      IO.createDirectory (dir </> "dir")
+
+    expectMTimeSame dir "subdir file add" $
+      IO.writeFile (dir </> "dir" </> "file") "content"
+
+    expectMTimeChange dir "subdir file move in" $
+      IO.renameFile (dir </> "dir" </> "file") (dir </> "file")
+
+    expectMTimeChange dir "subdir file move out" $
+      IO.renameFile (dir </> "file") (dir </> "dir" </> "file")
+
+    expectMTimeSame dir "subdir dir add" $
+      IO.createDirectory (dir </> "dir" </> "subdir")
+
+    expectMTimeChange dir "subdir dir move in" $
+      IO.renameDirectory (dir </> "dir" </> "subdir") (dir </> "subdir")
+
+    expectMTimeChange dir "subdir dir move out" $
+      IO.renameDirectory (dir </> "subdir") (dir </> "dir" </> "subdir")
+
+  where
+    expectMTimeChange, expectMTimeSame :: FilePath -> String -> IO ()
+                                       -> Assertion
+
+    expectMTimeChange dir descr action = do
+      t  <- getModTime dir
+      threadDelay mtimeChange
+      action
+      t' <- getModTime dir
+      assertBool ("expected dir mtime change on " ++ descr) (t' > t)
+
+    expectMTimeSame dir descr action = do
+      t  <- getModTime dir
+      threadDelay mtimeChange
+      action
+      t' <- getModTime dir
+      assertBool ("expected same dir mtime on " ++ descr) (t' == t)
+
+
+-- Now for the FileMonitor tests proper...
 
 -- first run, where we don't even call updateMonitor
 testNoMonitorCache :: Assertion
@@ -327,6 +387,34 @@ testChangedFileType mtimeChange = do
         touch' root "a"
         reason <- expectMonitorChanged root monitor ()
         reason @?= MonitoredFileChanged "a"
+
+-- Monitoring the same file with two different kinds of monitor should work
+-- both should be kept, and both checked for changes.
+-- We had a bug where only one monitor kind was kept per file.
+-- https://github.com/haskell/cabal/pull/3863#issuecomment-248495178
+testMultipleMonitorKinds :: Int -> Assertion
+testMultipleMonitorKinds mtimeChange =
+  withFileMonitor $ \root monitor -> do
+    touchFile root "a"
+    updateMonitor root monitor [monitorFile "a", monitorFileHashed "a"] () ()
+    (res, files) <- expectMonitorUnchanged root monitor ()
+    res   @?= ()
+    files @?= [monitorFile "a", monitorFileHashed "a"]
+    threadDelay mtimeChange
+    touchFile root "a" -- not changing content, just mtime
+    reason <- expectMonitorChanged root monitor ()
+    reason @?= MonitoredFileChanged "a"
+
+    createDir root "dir"
+    updateMonitor root monitor [monitorDirectory "dir",
+                                monitorDirectoryExistence "dir"] () ()
+    (res2, files2) <- expectMonitorUnchanged root monitor ()
+    res2   @?= ()
+    files2 @?= [monitorDirectory "dir", monitorDirectoryExistence "dir"]
+    threadDelay mtimeChange
+    touchFile root ("dir" </> "a") -- changing dir mtime, not existence
+    reason2 <- expectMonitorChanged root monitor ()
+    reason2 @?= MonitoredFileChanged "dir"
 
 
 ------------------

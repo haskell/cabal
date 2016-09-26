@@ -146,6 +146,10 @@ data BuildStatus =
      --   need building.
      BuildStatusPreExisting
 
+     -- | The package is in the 'InstallPlan.Installed' state, so does not
+     --   need building.
+   | BuildStatusInstalled
+
      -- | The package has not been downloaded yet, so it will have to be
      --   downloaded, unpacked and built.
    | BuildStatusDownload
@@ -166,6 +170,7 @@ data BuildStatus =
 
 buildStatusToString :: BuildStatus -> String
 buildStatusToString BuildStatusPreExisting      = "BuildStatusPreExisting"
+buildStatusToString BuildStatusInstalled        = "BuildStatusInstalled"
 buildStatusToString BuildStatusDownload         = "BuildStatusDownload"
 buildStatusToString (BuildStatusUnpack fp)      = "BuildStatusUnpack " ++ show fp
 buildStatusToString (BuildStatusRebuild fp _)   = "BuildStatusRebuild " ++ show fp
@@ -229,6 +234,7 @@ data BuildReason =
 --
 buildStatusRequiresBuild :: BuildStatus -> Bool
 buildStatusRequiresBuild BuildStatusPreExisting = False
+buildStatusRequiresBuild BuildStatusInstalled   = False
 buildStatusRequiresBuild BuildStatusUpToDate {} = False
 buildStatusRequiresBuild _                      = True
 
@@ -251,7 +257,7 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
     -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
     -- 'InstallPlan.Installed'.
     let installPlan' = improveInstallPlanWithUpToDatePackages
-                         installPlan pkgsBuildStatus
+                         pkgsBuildStatus installPlan
     debugNoWrap verbosity $ InstallPlan.showInstallPlan installPlan'
 
     return (installPlan', pkgsBuildStatus)
@@ -261,6 +267,9 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
               -> IO BuildStatus
     dryRunPkg (InstallPlan.PreExisting _pkg) _depsBuildStatus =
       return BuildStatusPreExisting
+
+    dryRunPkg (InstallPlan.Installed _pkg) _depsBuildStatus =
+      return BuildStatusInstalled
 
     dryRunPkg (InstallPlan.Configured pkg) depsBuildStatus = do
       mloc <- checkFetched (elabPkgSourceLocation pkg)
@@ -356,29 +365,18 @@ foldMInstallPlanDepOrder plan0 visit =
       let results' = Map.insert (nodeKey pkg) result results
       go results' pkgs
 
-improveInstallPlanWithUpToDatePackages :: ElaboratedInstallPlan
-                                       -> BuildStatusMap
+improveInstallPlanWithUpToDatePackages :: BuildStatusMap
                                        -> ElaboratedInstallPlan
-improveInstallPlanWithUpToDatePackages installPlan pkgsBuildStatus =
-    replaceWithPrePreExisting installPlan
-      [ (installedUnitId pkg, mipkg)
-      | InstallPlan.Configured pkg
-          <- InstallPlan.reverseTopologicalOrder installPlan
-      , let uid = installedUnitId pkg
-            Just pkgBuildStatus = Map.lookup uid pkgsBuildStatus
-      , BuildStatusUpToDate (BuildResult { buildResultLibInfo = mipkg })
-          <- [pkgBuildStatus]
-      ]
+                                       -> ElaboratedInstallPlan
+improveInstallPlanWithUpToDatePackages pkgsBuildStatus =
+    InstallPlan.installed canPackageBeImproved
   where
-    replaceWithPrePreExisting =
-      foldl' (\plan (uid, mipkg) ->
-                -- TODO: A grievous hack.  Better to have a special type
-                -- of entry representing pre-existing executables.
-                let stub_ipkg = Installed.emptyInstalledPackageInfo {
-                                    Installed.installedUnitId = uid
-                                }
-                    ipkg = fromMaybe stub_ipkg mipkg
-                in InstallPlan.preexisting uid ipkg plan)
+    canPackageBeImproved pkg =
+      case Map.lookup (installedUnitId pkg) pkgsBuildStatus of
+        Just BuildStatusUpToDate {} -> True
+        Just _                      -> False
+        Nothing -> error $ "improveInstallPlanWithUpToDatePackages: "
+                        ++ display (packageId pkg) ++ " not in status map"
 
 
 -----------------------------
@@ -745,6 +743,7 @@ rebuildTarget verbosity
 
       -- TODO: perhaps re-nest the types to make these impossible
       BuildStatusPreExisting {} -> unexpectedState
+      BuildStatusInstalled   {} -> unexpectedState
       BuildStatusUpToDate    {} -> unexpectedState
   where
     unexpectedState = error "rebuildTarget: unexpected package status"
