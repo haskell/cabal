@@ -596,9 +596,9 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
  && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList failedSet)
  && noIntersection processingSet completedSet
  && noIntersection processingSet failedSet
+ --   intersection processingClosure failedSet is quite possible however
  && noIntersection failedSet     completedSet
  && noIntersection processingClosure completedSet
- && noIntersection processingClosure failedSet
  && and [ case Graph.lookup pkgid (planIndex plan) of
             Just (Configured  _) -> True
             Just (PreExisting _) -> False
