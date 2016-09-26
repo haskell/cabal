@@ -61,6 +61,7 @@ import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
 import           Distribution.Client.ProjectBuilding
+import           Distribution.Client.ProjectPlanOutput
 
 import           Distribution.Client.Types
                    ( GenericReadyPackage(..), PackageLocation(..) )
@@ -128,12 +129,30 @@ data PreBuildHooks = PreBuildHooks {
 -- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
-      projectRootDir   :: FilePath,
-      distDirLayout    :: DistDirLayout,
-      elaboratedPlan   :: ElaboratedInstallPlan,
-      elaboratedShared :: ElaboratedSharedConfig,
-      pkgsBuildStatus  :: BuildStatusMap,
-      buildSettings    :: BuildTimeSettings
+      projectRootDir         :: FilePath,
+      distDirLayout          :: DistDirLayout,
+
+      -- | This is the improved plan, before we select a plan subset based on
+      -- the build targets, and before we do the dry-run. So this contains
+      -- all packages in the project.
+      elaboratedPlanOriginal :: ElaboratedInstallPlan,
+
+      -- | This is the 'elaboratedPlanOriginal' after we select a plan subset
+      -- and do the dry-run phase to find out what is up-to or out-of date.
+      -- This is the plan that will be executed during the build phase. So
+      -- this contains only a subset of packages in the project.
+      elaboratedPlanToExecute:: ElaboratedInstallPlan,
+
+      -- | The part of the install plan that's shared between all packages in
+      -- the plan. This does not change between the two plan variants above,
+      -- so there is just the one copy.
+      elaboratedShared       :: ElaboratedSharedConfig,
+
+      -- | The result of the dry-run phase. This tells us about each member of
+      -- the 'elaboratedPlanToExecute'.
+      pkgsBuildStatus        :: BuildStatusMap,
+
+      buildSettings          :: BuildTimeSettings
     }
 
 
@@ -203,7 +222,8 @@ runProjectPreBuildPhase
     return ProjectBuildContext {
       projectRootDir,
       distDirLayout,
-      elaboratedPlan = elaboratedPlan'',
+      elaboratedPlanOriginal = elaboratedPlan,
+      elaboratedPlanToExecute  = elaboratedPlan'',
       elaboratedShared,
       pkgsBuildStatus,
       buildSettings
@@ -226,7 +246,7 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
                    distDirLayout
-                   elaboratedPlan
+                   elaboratedPlanToExecute
                    elaboratedShared
                    pkgsBuildStatus
                    buildSettings
@@ -259,9 +279,16 @@ runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
     --        - delete stale lib registrations
     --        - delete stale package dirs
 
+    _postBuildStatus <- updatePostBuildProjectStatus
+                         verbosity
+                         distDirLayout
+                         elaboratedPlanOriginal
+                         pkgsBuildStatus
+                         buildOutcomes
+
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
-    dieOnBuildFailures verbosity elaboratedPlan buildOutcomes
+    dieOnBuildFailures verbosity elaboratedPlanToExecute buildOutcomes
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -470,7 +497,7 @@ reportBuildTargetProblem (BuildTargetOptionalStanzaDisabled _) = undefined
 printPlan :: Verbosity -> ProjectBuildContext -> IO ()
 printPlan verbosity
           ProjectBuildContext {
-            elaboratedPlan,
+            elaboratedPlanToExecute = elaboratedPlan,
             elaboratedShared,
             pkgsBuildStatus,
             buildSettings = BuildTimeSettings{buildSettingDryRun}
