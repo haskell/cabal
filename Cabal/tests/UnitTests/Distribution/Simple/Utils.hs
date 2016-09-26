@@ -18,6 +18,8 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 
+import Distribution.Compat.Binary (encode, decode)
+
 withTempFileTest :: Assertion
 withTempFileTest = do
   fileName <- newIORef ""
@@ -96,6 +98,11 @@ prop_ShortTextMonoid a b = Mon.mappend a b == fromShortText (mappend (toShortTex
 prop_ShortTextId :: String -> Bool
 prop_ShortTextId a = (fromShortText . toShortText) a == a
 
+prop_ShortTextBinaryId :: String -> Bool
+prop_ShortTextBinaryId a = (decode . encode) a' == a'
+  where
+    a' = toShortText a
+
 tests :: [TestTree]
 tests =
     [ testCase "withTempFile works as expected" $
@@ -112,4 +119,5 @@ tests =
     , testProperty "ShortText Id" prop_ShortTextId
     , testProperty "ShortText Ord" prop_ShortTextOrd
     , testProperty "ShortText Monoid" prop_ShortTextMonoid
+    , testProperty "ShortText BinaryId" prop_ShortTextBinaryId
     ]

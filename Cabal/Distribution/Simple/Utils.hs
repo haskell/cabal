@@ -207,8 +207,6 @@ import qualified Data.ByteString as SBS
 
 #if MIN_VERSION_bytestring(0,10,4)
 import qualified Data.ByteString.Short as BS.Short
-#else
-import qualified Data.ByteString.Char8 as SBS.Char8
 #endif
 
 import System.Directory
@@ -1455,8 +1453,7 @@ toUTF8 (c:cs)
                  : toUTF8 cs
   where w = ord c
 
-#if MIN_VERSION_bytestring(0,10,4)
--- currently only used by 'ShortText'
+-- | Variant of 'toUTF8' operating on 'Word8's directly
 toUTF8BSImpl :: String -> [Word8]
 toUTF8BSImpl []        = []
 toUTF8BSImpl (c:cs)
@@ -1475,7 +1472,6 @@ toUTF8BSImpl (c:cs)
                  : (0x80 .|.  (w .&. 0x3F))
                  : toUTF8BSImpl cs
   where w = fromIntegral (ord c) :: Word8
-#endif
 
 -- | Whether BOM is at the beginning of the input
 startsWithBOM :: String -> Bool
@@ -1677,7 +1673,8 @@ fromShortText :: ShortText -> String
 --
 -- The data is stored internally as UTF8 in an
 -- 'BS.Short.ShortByteString' when compiled against @bytestring >=
--- 0.10.4@, and otherwise in a 'SBS.ByteString'.
+-- 0.10.4@, and otherwise the fallback is to use plain old non-compat
+-- '[Char]'.
 --
 -- @since 2.0.0
 #if MIN_VERSION_bytestring(0,10,4)
@@ -1698,22 +1695,20 @@ toShortText = ST . BS.Short.pack . toUTF8BSImpl
 
 fromShortText = fromUTF8BSImpl . BS.Short.unpack . unST
 #else
-newtype ShortText = ST { unST :: SBS.ByteString }
+newtype ShortText = ST { unST :: String }
                   deriving (Eq,Ord,Generic)
 
 instance Binary ShortText where
-    put = put . unST
-    get = fmap ST get
+    put = put . toUTF8BSImpl . unST
+    get = fmap (ST . fromUTF8BSImpl) get
 
-toShortText = ST . SBS.Char8.pack . toUTF8
+toShortText = ST
 
-fromShortText = fromUTF8BS . unST
+fromShortText = unST
 #endif
 
 instance NFData ShortText where
-    -- avoid missing 'NFData ByteString' instances for older versions
-    -- of `bytestring`; for 'ByteString' & 'ShortByteString' NF==WHNF
-    rnf = flip seq ()
+    rnf = rnf . unST
 
 instance Show ShortText where
     show = show . fromShortText
