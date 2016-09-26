@@ -600,7 +600,14 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
  && noIntersection processingSet failedSet
  --   intersection processingClosure failedSet is quite possible however
  && noIntersection failedSet     completedSet
- && noIntersection processingClosure completedSet
+ && noIntersection (reverseClosure processingSet) completedSet
+ && failedSet == reverseClosure failedSet
+ && and [ rdeppkgid `Set.notMember` processingSet
+        | pkgid     <- Set.toList processingSet
+        , rdeppkgid <- maybe (internalError "processingInvariant")
+                             (map nodeKey)
+                             (Graph.revNeighbors (planIndex plan) pkgid)
+        ]
  && and [ case Graph.lookup pkgid (planIndex plan) of
             Just (Configured  _) -> True
             Just (PreExisting _) -> False
@@ -608,12 +615,11 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
             Nothing              -> False 
         | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
   where
-    processingClosure = Set.fromList
+    reverseClosure    = Set.fromList
                       . map nodeKey
-                      . fromMaybe (internalError "processingClosure")
+                      . fromMaybe (internalError "processingInvariant")
                       . Graph.revClosure (planIndex plan)
                       . Set.toList
-                      $ processingSet
     noIntersection a b = Set.null (Set.intersection a b)
 
 
