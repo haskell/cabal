@@ -46,6 +46,7 @@ module Distribution.Compat.Graph (
     -- * Query
     null,
     size,
+    member,
     lookup,
     -- * Construction
     empty,
@@ -206,6 +207,10 @@ null = Map.null . toMap
 -- | /O(1)/. The number of nodes in the graph.
 size :: Graph a -> Int
 size = Map.size . toMap
+
+-- | /O(log V)/. Check if the key is in the graph.
+member :: IsNode a => Key a -> Graph a -> Bool
+member k g = Map.member k (toMap g)
 
 -- | /O(log V)/. Lookup the node at a key in the graph.
 lookup :: IsNode a => Key a -> Graph a -> Maybe a

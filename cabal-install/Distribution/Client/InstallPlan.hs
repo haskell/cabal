@@ -86,8 +86,9 @@ import           Distribution.Solver.Types.InstSolverPackage
 
 import Data.List
          ( foldl' )
+import qualified Data.Foldable as Foldable (all)
 import Data.Maybe
-         ( fromMaybe, isJust )
+         ( fromMaybe )
 import qualified Distribution.Compat.Graph as Graph
 import Distribution.Compat.Graph (Graph, IsNode(..))
 import Distribution.Compat.Binary (Binary(..))
@@ -595,18 +596,18 @@ processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
 processingInvariant plan (Processing processingSet completedSet failedSet) =
 
     -- All the packages in the three sets are actually in the graph
-    all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList processingSet)
- && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList completedSet)
- && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList failedSet)
+    assert (Foldable.all (flip Graph.member (planIndex plan)) processingSet) $
+    assert (Foldable.all (flip Graph.member (planIndex plan)) completedSet) $
+    assert (Foldable.all (flip Graph.member (planIndex plan)) failedSet) $
 
     -- The processing, completed and failed sets are disjoint from each other
- && noIntersection processingSet completedSet
- && noIntersection processingSet failedSet
- && noIntersection failedSet     completedSet
+    assert (noIntersection processingSet completedSet) $
+    assert (noIntersection processingSet failedSet) $
+    assert (noIntersection failedSet     completedSet) $
 
     -- Packages that depend on a package that's still processing cannot be
     -- completed
- && noIntersection (reverseClosure processingSet) completedSet
+    assert (noIntersection (reverseClosure processingSet) completedSet) $
 
     -- On the other hand, packages that depend on a package that's still
     -- processing /can/ have failed (since they may have depended on multiple
@@ -615,25 +616,29 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     -- intersection (reverseClosure processingSet) failedSet
 
     -- The failed set is upwards closed, i.e. equal to its own rev dep closure
- && failedSet == reverseClosure failedSet
+    assert (failedSet == reverseClosure failedSet) $
 
     -- All immediate reverse deps of packges that are currently processing
     -- are not currently being processed (ie not in the processing set).
- && and [ rdeppkgid `Set.notMember` processingSet
-        | pkgid     <- Set.toList processingSet
-        , rdeppkgid <- maybe (internalError "processingInvariant")
-                             (map nodeKey)
-                             (Graph.revNeighbors (planIndex plan) pkgid)
-        ]
+    assert (and [ rdeppkgid `Set.notMember` processingSet
+                | pkgid     <- Set.toList processingSet
+                , rdeppkgid <- maybe (internalError "processingInvariant")
+                                     (map nodeKey)
+                                     (Graph.revNeighbors (planIndex plan) pkgid)
+                ]) $
 
     -- Packages from the processing or failed sets are only ever in the
     -- configured state.
- && and [ case Graph.lookup pkgid (planIndex plan) of
-            Just (Configured  _) -> True
-            Just (PreExisting _) -> False
-            Just (Installed   _) -> False
-            Nothing              -> False 
-        | pkgid <- Set.toList processingSet ++ Set.toList failedSet ]
+    assert (and [ case Graph.lookup pkgid (planIndex plan) of
+                    Just (Configured  _) -> True
+                    Just (PreExisting _) -> False
+                    Just (Installed   _) -> False
+                    Nothing              -> False
+                | pkgid <- Set.toList processingSet ++ Set.toList failedSet ])
+
+    -- We use asserts rather than returning False so that on failure we get
+    -- better details on which bit of the invariant was violated.
+    True
   where
     reverseClosure    = Set.fromList
                       . map nodeKey
