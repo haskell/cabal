@@ -1233,7 +1233,7 @@ buildInplaceUnpackedPackage verbosity
         --
         whenRepl $
           annotateFailureNoLog ReplFailed $
-          setup replCommand replFlags replArgs
+          setupInteractive replCommand replFlags replArgs
 
         -- Haddock phase
         whenHaddock $
@@ -1299,6 +1299,14 @@ buildInplaceUnpackedPackage verbosity
     scriptOptions    = setupHsScriptOptions rpkg pkgshared
                                             srcdir builddir
                                             isParallelBuild cacheLock
+
+    setupInteractive :: CommandUI flags
+                     -> (Version -> flags) -> [String] -> IO ()
+    setupInteractive cmd flags args =
+      setupWrapper verbosity
+                   scriptOptions { isInteractive = True }
+                   (Just (elabPkgDescription pkg))
+                   cmd flags args
 
     setup :: CommandUI flags -> (Version -> flags) -> [String] -> IO ()
     setup cmd flags args =

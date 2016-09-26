@@ -103,7 +103,9 @@ import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
 import System.Exit         ( ExitCode(..), exitWith )
-import System.Process      ( runProcess, waitForProcess )
+import System.Process      ( createProcess, StdStream(..), proc, waitForProcess
+                           , ProcessHandle )
+import qualified System.Process as Process
 import Data.List           ( foldl1' )
 import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
 
@@ -229,7 +231,12 @@ data SetupScriptOptions = SetupScriptOptions {
     -- version) combination the cache holds a compiled setup script
     -- executable. This only affects the Simple build type; for the Custom,
     -- Configure and Make build types we always compile the setup script anew.
-    setupCacheLock           :: Maybe Lock
+    setupCacheLock           :: Maybe Lock,
+
+    -- | Is the task we are going to run an interactive foreground task,
+    -- or an non-interactive background task? Based on this flag we
+    -- decide whether or not to delegate ctrl+c to the spawned task
+    isInteractive            :: Bool
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -250,7 +257,8 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useExtraPathEnv          = [],
     useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
-    setupCacheLock           = Nothing
+    setupCacheLock           = Nothing,
+    isInteractive            = False
   }
 
 workingDir :: SetupScriptOptions -> FilePath
@@ -381,6 +389,36 @@ buildTypeAction Make      = Make.defaultMainArgs
 buildTypeAction Custom               = error "buildTypeAction Custom"
 buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 
+
+-- | @runProcess'@ is a version of @runProcess@ where we have
+-- the additional option to decide whether or not we should
+-- delegate CTRL+C to the spawned process.
+runProcess' :: FilePath                 -- ^ Filename of the executable
+            -> [String]                 -- ^ Arguments to pass to executable
+            -> Maybe FilePath           -- ^ Optional path to working directory
+            -> Maybe [(String, String)] -- ^ Optional environment
+            -> Maybe Handle             -- ^ Handle for @stdin@
+            -> Maybe Handle             -- ^ Handle for @stdout@
+            -> Maybe Handle             -- ^ Handle for @stderr@
+            -> Bool                     -- ^ Delegate Ctrl+C ?
+            -> IO ProcessHandle
+runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr delegate = do
+  (_,_,_,ph) <-
+    createProcess
+      (proc cmd args){ Process.cwd = mb_cwd
+                     , Process.env = mb_env
+                     , Process.std_in  = mbToStd mb_stdin
+                     , Process.std_out = mbToStd mb_stdout
+                     , Process.std_err = mbToStd mb_stderr
+#if MIN_VERSION_process(1,2,0)
+                     , Process.delegate_ctlc = delegate
+#endif
+                     }
+  return ph
+  where
+    mbToStd :: Maybe Handle -> StdStream
+    mbToStd Nothing = Inherit
+    mbToStd (Just hdl) = UseHandle hdl
 -- ------------------------------------------------------------
 -- * Self-Exec SetupMethod
 -- ------------------------------------------------------------
@@ -402,12 +440,12 @@ selfExecSetupMethod verbosity options bt args0 = do
   searchpath <- programSearchPathAsPATHVar
                 (map ProgramSearchPathDir (useExtraPathEnv options) ++
                  getProgramSearchPath (useProgramDb options))
-  env        <- getEffectiveEnvironment [("PATH", Just searchpath)
+  env       <- getEffectiveEnvironment [("PATH", Just searchpath)
                                         ,("HASKELL_DIST_DIR", Just (useDistPref options))]
-
-  process <- runProcess path args
+  process <- runProcess' path args
              (useWorkingDir options) env Nothing
              (useLoggingHandle options) (useLoggingHandle options)
+             (isInteractive options)
   exitCode <- waitForProcess process
   unless (exitCode == ExitSuccess) $ exitWith exitCode
 
@@ -438,9 +476,10 @@ externalSetupMethod path verbosity options _ args = do
       env        <- getEffectiveEnvironment [("PATH", Just searchpath)
                                             ,("HASKELL_DIST_DIR", Just (useDistPref options))]
 
-      process <- runProcess path' args
+      process <- runProcess' path' args
                   (useWorkingDir options) env Nothing
                   (useLoggingHandle options) (useLoggingHandle options)
+                  (isInteractive options)
       exitCode <- waitForProcess process
       unless (exitCode == ExitSuccess) $ exitWith exitCode
 
@@ -483,7 +522,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                cabalLibVersion mCabalLibInstalledPkgId False
 
   -- Since useWorkingDir can change the relative path, the path argument must
-  -- be turned into an absolute path. On some systems, runProcess will take
+  -- be turned into an absolute path. On some systems, runProcess' will take
   -- path as relative to the new working directory instead of the current
   -- working directory.
   path' <- tryCanonicalizePath path
