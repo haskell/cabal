@@ -26,7 +26,11 @@ module Distribution.Client.InstallPlan (
 
   -- * Operations on 'InstallPlan's
   new,
+  toGraph,
   toList,
+  toMap,
+  keys,
+  keysSet,
   planIndepGoals,
   depends,
 
@@ -268,9 +272,23 @@ new :: IndependentGoals
     -> GenericInstallPlan ipkg srcpkg
 new indepGoals index = mkInstallPlan index indepGoals
 
+toGraph :: GenericInstallPlan ipkg srcpkg
+        -> Graph (GenericPlanPackage ipkg srcpkg)
+toGraph = planGraph
+
 toList :: GenericInstallPlan ipkg srcpkg
        -> [GenericPlanPackage ipkg srcpkg]
 toList = Graph.toList . planGraph
+
+toMap :: GenericInstallPlan ipkg srcpkg
+      -> Map UnitId (GenericPlanPackage ipkg srcpkg)
+toMap = Graph.toMap . planGraph
+
+keys :: GenericInstallPlan ipkg srcpkg -> [UnitId]
+keys = Graph.keys . planGraph
+
+keysSet :: GenericInstallPlan ipkg srcpkg -> Set UnitId
+keysSet = Graph.keysSet . planGraph
 
 -- | Remove packages from the install plan. This will result in an
 -- error if there are remaining packages that depend on any matching

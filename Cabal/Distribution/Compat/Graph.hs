@@ -74,6 +74,8 @@ module Distribution.Compat.Graph (
     fromList,
     toList,
     keys,
+    -- ** Sets
+    keysSet,
     -- ** Graphs
     toGraph,
     -- * Node type
@@ -88,6 +90,7 @@ import Distribution.Compat.Prelude hiding (lookup, null, empty)
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Array as Array
 import Data.Array ((!))
 import qualified Data.Tree as Tree
@@ -381,6 +384,10 @@ toList g = Map.elems (toMap g)
 -- | /O(V)/. Convert a graph into a list of keys.
 keys :: Graph a -> [Key a]
 keys g = Map.keys (toMap g)
+
+-- | /O(V)/. Convert a graph into a set of keys.
+keysSet :: Graph a -> Set.Set (Key a)
+keysSet g = Map.keysSet (toMap g)
 
 -- | /O(1)/. Convert a graph into a map from keys to nodes.
 -- The resulting map @m@ is guaranteed to have the property that
