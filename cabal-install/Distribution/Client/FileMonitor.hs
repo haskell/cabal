@@ -201,6 +201,11 @@ monitorFileHashedSearchPath notFoundAtPaths foundAtPath =
 data MonitorStateFileSet
    = MonitorStateFileSet ![MonitorStateFile]
                          ![MonitorStateGlob]
+     -- Morally this is not actually a set but a bag (represented by lists).
+     -- There is no principled reason to use a bag here rather than a set, but
+     -- there is also no particular gain either. That said, we do preserve the
+     -- order of the lists just to reduce confusion (and have predictable I/O
+     -- patterns).
   deriving Show
 
 type Hash = Int
