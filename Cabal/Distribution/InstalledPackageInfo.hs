@@ -82,6 +82,8 @@ import qualified Distribution.Package as Package
          ( Package(..) )
 import Distribution.ModuleName
          ( ModuleName )
+import Distribution.ModuleExport
+         ( ModuleExport(..) )
 import Distribution.Version
          ( Version(..) )
 import Distribution.Text
@@ -89,6 +91,7 @@ import Distribution.Text
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
+
 
 data InstalledPackageInfo_ m
    = InstalledPackageInfo {
@@ -108,6 +111,7 @@ data InstalledPackageInfo_ m
         -- these parts are required by an installed package only:
         exposed           :: Bool,
         exposedModules    :: [m],
+        reexportedModules :: [ModuleExport m],
         hiddenModules     :: [m],
         trusted           :: Bool,
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
@@ -150,6 +154,7 @@ emptyInstalledPackageInfo
         category          = "",
         exposed           = False,
         exposedModules    = [],
+        reexportedModules = [],
         hiddenModules     = [],
         trusted           = False,
         importDirs        = [],
@@ -247,6 +252,9 @@ installedFieldDescrs = [
  , listField   "exposed-modules"
         disp               parseModuleNameQ
         exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
+ , listField   "reexported-modules"
+        disp               parse
+        reexportedModules  (\xs    pkg -> pkg{reexportedModules=xs})
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
