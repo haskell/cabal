@@ -50,10 +50,10 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 PARSEC_VER="3.1.2";    PARSEC_VER_REGEXP="[23]\."  # == 2.* || == 3.*
 DEEPSEQ_VER="1.3.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\." # >= 1.1 && < 2
 TEXT_VER="0.11.2.0";  TEXT_VER_REGEXP="0\.([2-9]|(1[0-1]))\." # >= 0.2 && < 0.12
-NETWORK_VER="2.3.0.11"; NETWORK_VER_REGEXP="2\."    # == 2.*
+NETWORK_VER="2.3.0.13"; NETWORK_VER_REGEXP="2\."    # == 2.*
 CABAL_VER="1.14.0";    CABAL_VER_REGEXP="1\.(13\.3|14\.)"  # >= 1.13.3 && < 1.15
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."   # >= 0.2.* && < 0.4.*
-MTL_VER="2.1";     MTL_VER_REGEXP="[12]\."     # == 1.* || == 2.*
+MTL_VER="2.1.1";     MTL_VER_REGEXP="[12]\."     # == 1.* || == 2.*
 HTTP_VER="4000.2.3";   HTTP_VER_REGEXP="4000\.[012]\." # == 4000.0.* || 4000.1.* || 4000.2.*
 ZLIB_VER="0.5.3.3";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || == 0.5.*
 TIME_VER="1.4"         TIME_VER_REGEXP="1\.[1234]\.?" # >= 1.1 && < 1.5
