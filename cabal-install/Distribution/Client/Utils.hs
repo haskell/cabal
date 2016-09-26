@@ -16,15 +16,20 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , moreRecentFile, existsAndIsMoreRecentThan
                                  , tryFindAddSourcePackageDesc
                                  , tryFindPackageDesc
-                                 , relaxEncodingErrors)
+                                 , relaxEncodingErrors
+                                 , assertMsg
+                                 , assertMaybeMsg
+                                 )
        where
 
+import Distribution.Compat.Stack
 import Distribution.Compat.Environment
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
 import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
+import Control.Exception
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
 #endif
@@ -305,13 +310,13 @@ existsAndIsMoreRecentThan a b = do
 -- error. This function will ignore file handles that have a Unicode encoding
 -- set. It's a no-op for versions of `base` less than 4.4.
 relaxEncodingErrors :: Handle -> IO ()
-relaxEncodingErrors handle = do
+relaxEncodingErrors h = do
 #if MIN_VERSION_base(4,4,0)
-  maybeEncoding <- hGetEncoding handle
+  maybeEncoding <- hGetEncoding h
   case maybeEncoding of
     Just (TextEncoding name decoder encoder) | not ("UTF" `isPrefixOf` name) ->
       let relax x = x { recover = recoverEncode TransliterateCodingFailure }
-      in hSetEncoding handle (TextEncoding name decoder (fmap relax encoder))
+      in hSetEncoding h (TextEncoding name decoder (fmap relax encoder))
     _ ->
 #endif
       return ()
@@ -331,3 +336,19 @@ tryFindPackageDesc depPath err = do
     case errOrCabalFile of
         Right file -> return file
         Left _ -> die err
+
+assertMsg :: WithCallStack (Bool -> String -> a -> a)
+assertMsg b msg x =
+  assert
+   (if b then True
+         else throw . AssertionFailed $
+                parentSrcLocPrefix ++ "Assertion failed " ++ msg)
+   x
+
+assertMaybeMsg :: WithCallStack (Maybe String -> a -> a)
+assertMaybeMsg mb_msg x =
+    withFrozenCallStack
+        (case mb_msg of
+            Nothing -> x
+            Just msg -> assertMsg False msg x)
+
