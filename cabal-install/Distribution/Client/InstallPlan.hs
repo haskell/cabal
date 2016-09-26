@@ -593,21 +593,41 @@ processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
                     => GenericInstallPlan ipkg srcpkg
                     -> Processing -> Bool
 processingInvariant plan (Processing processingSet completedSet failedSet) =
+
+    -- All the packages in the three sets are actually in the graph
     all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList processingSet)
  && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList completedSet)
  && all (isJust . flip Graph.lookup (planIndex plan)) (Set.toList failedSet)
+
+    -- The processing, completed and failed sets are disjoint from each other
  && noIntersection processingSet completedSet
  && noIntersection processingSet failedSet
- --   intersection processingClosure failedSet is quite possible however
  && noIntersection failedSet     completedSet
+
+    -- Packages that depend on a package that's still processing cannot be
+    -- completed
  && noIntersection (reverseClosure processingSet) completedSet
+
+    -- On the other hand, packages that depend on a package that's still
+    -- processing /can/ have failed (since they may have depended on multiple
+    -- packages that were processing, but it only takes one to fail to cause
+    -- knock-on failures) so it is quite possible to have an
+    -- intersection (reverseClosure processingSet) failedSet
+
+    -- The failed set is upwards closed, i.e. equal to its own rev dep closure
  && failedSet == reverseClosure failedSet
+
+    -- All immediate reverse deps of packges that are currently processing
+    -- are not currently being processed (ie not in the processing set).
  && and [ rdeppkgid `Set.notMember` processingSet
         | pkgid     <- Set.toList processingSet
         , rdeppkgid <- maybe (internalError "processingInvariant")
                              (map nodeKey)
                              (Graph.revNeighbors (planIndex plan) pkgid)
         ]
+
+    -- Packages from the processing or failed sets are only ever in the
+    -- configured state.
  && and [ case Graph.lookup pkgid (planIndex plan) of
             Just (Configured  _) -> True
             Just (PreExisting _) -> False
