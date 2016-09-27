@@ -69,6 +69,10 @@ import Text.PrettyPrint ((<+>), text)
 --
 -- Use 'mkPackageName' and 'unPackageName' to convert from/to a
 -- 'String'.
+--
+-- This type is opaque since @Cabal-2.0@
+--
+-- @since 2.0
 newtype PackageName = PackageName String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
@@ -82,6 +86,8 @@ unPackageName (PackageName s) = s
 --
 -- Note: No validations are performed to ensure that the resulting
 -- 'PackageName' is valid
+--
+-- @since 2.0
 mkPackageName :: String -> PackageName
 mkPackageName = PackageName
 
