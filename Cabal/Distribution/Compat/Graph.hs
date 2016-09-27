@@ -46,6 +46,7 @@ module Distribution.Compat.Graph (
     -- * Query
     null,
     size,
+    member,
     lookup,
     -- * Construction
     empty,
@@ -73,6 +74,8 @@ module Distribution.Compat.Graph (
     fromList,
     toList,
     keys,
+    -- ** Sets
+    keysSet,
     -- ** Graphs
     toGraph,
     -- * Node type
@@ -87,6 +90,7 @@ import Distribution.Compat.Prelude hiding (lookup, null, empty)
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Array as Array
 import Data.Array ((!))
 import qualified Data.Tree as Tree
@@ -206,6 +210,10 @@ null = Map.null . toMap
 -- | /O(1)/. The number of nodes in the graph.
 size :: Graph a -> Int
 size = Map.size . toMap
+
+-- | /O(log V)/. Check if the key is in the graph.
+member :: IsNode a => Key a -> Graph a -> Bool
+member k g = Map.member k (toMap g)
 
 -- | /O(log V)/. Lookup the node at a key in the graph.
 lookup :: IsNode a => Key a -> Graph a -> Maybe a
@@ -376,6 +384,10 @@ toList g = Map.elems (toMap g)
 -- | /O(V)/. Convert a graph into a list of keys.
 keys :: Graph a -> [Key a]
 keys g = Map.keys (toMap g)
+
+-- | /O(V)/. Convert a graph into a set of keys.
+keysSet :: Graph a -> Set.Set (Key a)
+keysSet g = Map.keysSet (toMap g)
 
 -- | /O(1)/. Convert a graph into a map from keys to nodes.
 -- The resulting map @m@ is guaranteed to have the property that
