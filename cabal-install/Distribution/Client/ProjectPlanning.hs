@@ -2296,7 +2296,8 @@ setupHsScriptOptions (ReadyPackage elab@ElaboratedConfiguredPackage{..})
       useExtraPathEnv          = elabExeDependencyPaths elab,
       useWin32CleanHack        = False,   --TODO: [required eventually]
       forceExternalSetupMethod = isParallelBuild,
-      setupCacheLock           = Just cacheLock
+      setupCacheLock           = Just cacheLock,
+      isInteractive            = False
     }
 
 
