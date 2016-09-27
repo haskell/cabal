@@ -278,6 +278,7 @@ executable cabal
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
         Distribution.Client.ProjectBuilding
+        Distribution.Client.ProjectBuilding.Types
         Distribution.Client.ProjectConfig
         Distribution.Client.ProjectConfig.Types
         Distribution.Client.ProjectConfig.Legacy
