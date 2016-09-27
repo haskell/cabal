@@ -83,12 +83,12 @@ configure verbosity hcPath hcPkgPath progdb = do
 
   (lhcProg, lhcVersion, progdb') <-
     requireProgramVersion verbosity lhcProgram
-      (orLaterVersion (Version [0,7] []))
+      (orLaterVersion (mkVersion [0,7]))
       (userMaybeSpecifyPath "lhc" hcPath progdb)
 
   (lhcPkgProg, lhcPkgVersion, progdb'') <-
     requireProgramVersion verbosity lhcPkgProgram
-      (orLaterVersion (Version [0,7] []))
+      (orLaterVersion (mkVersion [0,7]))
       (userMaybeSpecifyPath "lhc-pkg" hcPkgPath progdb')
 
   when (lhcVersion /= lhcPkgVersion) $ die $
@@ -258,7 +258,7 @@ getInstalledPackages' lhcPkg verbosity packagedbs progdb
     packageDbGhcPkgFlag (SpecificPackageDB path) = "--" ++ packageDbFlag ++ "=" ++ path
 
     packageDbFlag
-      | programVersion lhcPkg < Just (Version [7,5] [])
+      | programVersion lhcPkg < Just (mkVersion [7,5])
       = "package-conf"
       | otherwise
       = "package-db"
@@ -527,7 +527,7 @@ hackThreadedFlag verbosity comp prof bi
                   ++ "profiling in ghc-6.8 and older. It will be disabled."
     return bi { options = filterHcOptions (/= "-threaded") (options bi) }
   where
-    mustFilterThreaded = prof && compilerVersion comp < Version [6, 10] []
+    mustFilterThreaded = prof && compilerVersion comp < mkVersion [6, 10]
                       && "-threaded" `elem` hcOptions GHC bi
     filterHcOptions p hcoptss =
       [ (hc, if hc == GHC then filter p opts else opts)
@@ -590,7 +590,7 @@ ghcOptions lbi bi clbi odir
      ++ [ "-optP-include", "-optP"++ (autogenComponentModulesDir lbi clbi </> cppHeaderName) ]
      ++ [ "-#include \"" ++ inc ++ "\"" | inc <- PD.includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
-     ++ (if compilerVersion c >= Version [6,8] []
+     ++ (if compilerVersion c >= mkVersion [6,8]
            then ["-stubdir", odir] else [])
      ++ ghcPackageFlags lbi clbi
      ++ (case withOptimization lbi of
@@ -604,7 +604,7 @@ ghcOptions lbi bi clbi odir
 
 ghcPackageFlags :: LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
 ghcPackageFlags lbi clbi
-  | ghcVer >= Version [6,11] []
+  | ghcVer >= mkVersion [6,11]
               = concat [ ["-package-id", display ipkgid]
                        | (ipkgid, _) <- componentPackageDeps clbi ]
 
@@ -626,7 +626,7 @@ ghcPackageDbOptions lbi = case dbstack of
 
     dbstack = withPackageDB lbi
     packageDbFlag
-      | compilerVersion (compiler lbi) < Version [7,5] []
+      | compilerVersion (compiler lbi) < mkVersion [7,5]
       = "package-conf"
       | otherwise
       = "package-db"
@@ -634,7 +634,7 @@ ghcPackageDbOptions lbi = case dbstack of
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                    -> FilePath -> FilePath -> Verbosity -> (FilePath,[String])
 constructCcCmdLine lbi bi clbi pref filename verbosity
-  =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
+  =  let odir | compilerVersion (compiler lbi) >= mkVersion [6,4,1] = pref
               | otherwise = pref </> takeDirectory filename
                         -- ghc 6.4.1 fixed a bug in -odir handling
                         -- for C compilations.

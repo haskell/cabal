@@ -42,7 +42,7 @@ instance Binary TestSuiteInterface
 
 
 instance Monoid TestSuiteInterface where
-    mempty  =  TestSuiteUnsupported (TestTypeUnknown mempty (Version [] []))
+    mempty  =  TestSuiteUnsupported (TestTypeUnknown mempty mkNullVersion)
     mappend = (<>)
 
 instance Semigroup TestSuiteInterface where

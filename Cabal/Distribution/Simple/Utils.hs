@@ -236,11 +236,11 @@ import System.Process
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
 #if defined(BOOTSTRAPPED_CABAL)
-cabalVersion = Paths_Cabal.version
+cabalVersion = mkVersion' Paths_Cabal.version
 #elif defined(CABAL_VERSION)
-cabalVersion = Version [CABAL_VERSION] []
+cabalVersion = mkVersion [CABAL_VERSION]
 #else
-cabalVersion = Version [1,9999] []  --used when bootstrapping
+cabalVersion = mkVersion [1,9999]  --used when bootstrapping
 #endif
 
 -- ----------------------------------------------------------------------------

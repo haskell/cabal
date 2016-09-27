@@ -84,7 +84,7 @@ import Distribution.Client.HttpUtils
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import qualified Distribution.Text as Text
-         ( Text(..) )
+         ( Text(..), display )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
          , viewAsFieldDescr )
@@ -676,7 +676,7 @@ writeConfigFile file comments vals = do
       ,"-- Be careful with spaces and indentation because they are"
       ,"-- used to indicate layout for nested sections."
       ,""
-      ,"-- Cabal library version: " ++ showVersion cabalVersion
+      ,"-- Cabal library version: " ++ Text.display cabalVersion
       ,"-- cabal-install version: " ++ showVersion Paths_cabal_install.version
       ,"",""
       ]

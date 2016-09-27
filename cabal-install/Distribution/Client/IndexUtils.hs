@@ -65,7 +65,7 @@ import qualified Distribution.Simple.Configure as Configure
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
-         ( Version(Version), intersectVersionRanges )
+         ( mkVersion, intersectVersionRanges )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Verbosity
@@ -880,7 +880,7 @@ read00IndexCacheEntry = \line ->
         Just (v, str') -> case BSS.uncons str' of
           Just ('.', str'') -> parseVer str'' (v:vs)
           Just _            -> Nothing
-          Nothing           -> Just (Version (reverse (v:vs)) [])
+          Nothing           -> Just (mkVersion (reverse (v:vs)))
 
     parseBlockNo str =
       case BSS.readInt str of

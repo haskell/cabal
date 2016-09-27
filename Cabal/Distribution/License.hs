@@ -129,12 +129,12 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
                 , AGPL unversioned,                        AGPL (version [3])
                 , BSD2, BSD3, MIT, ISC
-                , MPL (Version [2, 0] [])
+                , MPL (mkVersion [2, 0])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
    unversioned = Nothing
-   version   v = Just (Version v [])
+   version     = Just . mkVersion
 
 instance Text License where
   disp (GPL  version)         = Disp.text "GPL"    <<>> dispOptVersion version

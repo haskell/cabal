@@ -60,7 +60,7 @@ markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
     runProgramInvocation verbosity
       (markupInvocation hpc tixFile hpcDirs' destDir excluded)
   where
-    version07 = Version [0, 7] []
+    version07 = mkVersion [0, 7]
     (passedDirs, droppedDirs) = splitAt 1 hpcDirs
 
 markupInvocation :: ConfiguredProgram

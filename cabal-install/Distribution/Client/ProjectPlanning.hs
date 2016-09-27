@@ -1072,9 +1072,9 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                        -- per component (instead of glomming them altogether
                        -- and distributing to everything.)  I didn't feel
                        -- like implementing the legacy behavior.
-                       && PD.specVersion pd >= Version [1,7,1] []
+                       && PD.specVersion pd >= mkVersion [1,7,1]
                       )
-                    || PD.specVersion pd >= Version [2,0,0] []
+                    || PD.specVersion pd >= mkVersion [2,0,0]
             in map InstallPlan.Configured $ if eligible
                 then elaborateSolverToComponents mapDep pkg
                 else [elaborateSolverToPackage mapDep pkg]
@@ -2178,13 +2178,13 @@ defaultSetupDeps compiler platform pkg =
           -- constraints, we constrain them to use a compatible Cabal version.
           -- The exact version where we'll make this API break has not yet been
           -- decided, so for the meantime we guess at 2.x.
-          cabalCompatMaxVer = Version [2] []
+          cabalCompatMaxVer = mkVersion [2]
           -- In principle we can talk to any old Cabal version, and we need to
           -- be able to do that for custom Setup scripts that require older
           -- Cabal lib versions. However in practice we have currently have
           -- problems with Cabal-1.16. (1.16 does not know about build targets)
           -- If this is fixed we can relax this constraint.
-          cabalCompatMinVer = Version [1,18] []
+          cabalCompatMinVer = mkVersion [1,18]
 
       -- For other build types (like Simple) if we still need to compile an
       -- external Setup.hs, it'll be one of the simple ones that only depends
@@ -2470,7 +2470,7 @@ setupHsBuildFlags _ _ verbosity builddir =
 setupHsBuildArgs :: ElaboratedConfiguredPackage -> [String]
 setupHsBuildArgs elab@(ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage _ })
     -- Fix for #3335, don't pass build arguments if it's not supported
-    | elabSetupScriptCliVersion elab >= Version [1,17] []
+    | elabSetupScriptCliVersion elab >= mkVersion [1,17]
     = map (showComponentTarget (packageId elab)) (elabBuildTargets elab)
     | otherwise
     = []

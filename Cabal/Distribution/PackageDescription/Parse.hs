@@ -697,10 +697,10 @@ parsePackageDescription file = do
           head $ [ minVersionBound versionRange
                  | Just versionRange <- [ simpleParse v
                                         | F _ "cabal-version" v <- fields0 ] ]
-              ++ [Version [0] []]
+              ++ [mkVersion [0]]
         minVersionBound versionRange =
           case asVersionIntervals versionRange of
-            []                            -> Version [0] []
+            []                            -> mkVersion [0]
             ((LowerBound version _, _):_) -> version
 
     handleFutureVersionParseFailure cabalVersionNeeded $ do
@@ -753,13 +753,13 @@ parsePackageDescription file = do
           ++ "  Tabs were used at (line,column): " ++ show tabs
 
     maybeWarnCabalVersion newsyntax pkg
-      | newsyntax && specVersion pkg < Version [1,2] []
+      | newsyntax && specVersion pkg < mkVersion [1,2]
       = lift $ warning $
              "A package using section syntax must specify at least\n"
           ++ "'cabal-version: >= 1.2'."
 
     maybeWarnCabalVersion newsyntax pkg
-      | not newsyntax && specVersion pkg >= Version [1,2] []
+      | not newsyntax && specVersion pkg >= mkVersion [1,2]
       = lift $ warning $
              "A package using 'cabal-version: "
           ++ displaySpecVersion (specVersionRaw pkg)

@@ -72,7 +72,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.Version
-         ( anyVersion, thisVersion )
+         ( Version, mkVersion, anyVersion, thisVersion
+         , VersionRange, orLaterVersion )
 import Distribution.Simple.Utils as Utils
          ( warn, notice, debug, die )
 import Distribution.Simple.Setup
@@ -82,8 +83,6 @@ import Distribution.System
 import Distribution.Text ( display )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
-import Distribution.Version
-         ( Version(..), VersionRange, orLaterVersion )
 
 import System.FilePath ( (</>) )
 
@@ -101,7 +100,7 @@ chooseCabalVersion configFlags maybeVersion =
                  (maybe RelaxDepsNone unAllowOlder $ configAllowOlder configFlags)
 
     defaultVersionRange = if allowOlder || allowNewer
-                          then orLaterVersion (Version [1,19,2] [])
+                          then orLaterVersion (mkVersion [1,19,2])
                           else anyVersion
 
 -- | Configure the package found in the local directory

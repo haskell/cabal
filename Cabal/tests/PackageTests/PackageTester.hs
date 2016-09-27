@@ -99,6 +99,8 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Configure
     ( getPersistBuildConfig )
 import Distribution.Verbosity (Verbosity)
+import Distribution.Version
+
 import Distribution.Simple.BuildPaths (exeExtension)
 
 import Distribution.Simple.Utils (cabalVersion)
@@ -115,7 +117,6 @@ import Control.Monad.Trans.Writer
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Char8 as C
 import Data.List
-import Data.Version
 import System.Directory
     ( doesFileExist, canonicalizePath, createDirectoryIfMissing
     , removeDirectoryRecursive, getPermissions, setPermissions
@@ -481,7 +482,7 @@ rawCompileSetup verbosity suite e path = do
 
 ghcPackageDBParams :: Version -> PackageDBStack -> [String]
 ghcPackageDBParams ghc_version dbs
-    | ghc_version >= Version [7,6] []
+    | ghc_version >= mkVersion [7,6]
     = "-clear-package-db" : map convert dbs
     | otherwise
     = concatMap convertLegacy dbs
@@ -519,7 +520,7 @@ ghcPkgPackageDBParams version dbs = concatMap convert dbs where
     convert  GlobalPackageDB         = []
     convert  UserPackageDB           = []
     convert (SpecificPackageDB path)
-        | version >= Version [7,6] []
+        | version >= mkVersion [7,6]
         = ["--package-db=" ++ path]
         | otherwise
         = ["--package-conf=" ++ path]
@@ -733,7 +734,7 @@ ghcFileModDelay = do
     -- the granularity of the underlying filesystem.
     -- TODO: cite commit when GHC got better precision; this
     -- version bound was empirically generated.
-    let delay | withGhcVersion suite < Version [7,7] []
+    let delay | withGhcVersion suite < mkVersion [7,7]
               = 1000000 -- 1s
               | otherwise
               = mtimeChangeDelay suite
@@ -808,7 +809,7 @@ unlessWindows = testUnless (buildOS == Windows)
 
 hasSharedLibraries :: SuiteConfig -> Bool
 hasSharedLibraries config =
-    buildOS /= Windows || withGhcVersion config < Version [7,8] []
+    buildOS /= Windows || withGhcVersion config < mkVersion [7,8]
 
 hasCabalForGhc :: SuiteConfig -> Bool
 hasCabalForGhc config =

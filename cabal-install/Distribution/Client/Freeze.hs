@@ -61,8 +61,6 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-import Data.Version
-         ( showVersion )
 import Distribution.Version
          ( thisVersion )
 
@@ -260,4 +258,4 @@ formatPkgs = map $ showPkg . packageId
   where
     showPkg pid = name pid ++ " == " ++ version pid
     name = display . packageName
-    version = showVersion . packageVersion
+    version = display . packageVersion

@@ -54,7 +54,7 @@ configure verbosity hcPath _hcPkgPath progdb = do
 
   (_uhcProg, uhcVersion, progdb') <-
     requireProgramVersion verbosity uhcProgram
-    (orLaterVersion (Version [1,0,2] []))
+    (orLaterVersion (mkVersion [1,0,2]))
     (userMaybeSpecifyPath "uhc" hcPath progdb)
 
   let comp = Compiler {

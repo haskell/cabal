@@ -56,7 +56,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
 configure verbosity hcPath _hcPkgPath progdb = do
 
   (jhcProg, _, progdb') <- requireProgramVersion verbosity
-                           jhcProgram (orLaterVersion (Version [0,7,2] []))
+                           jhcProgram (orLaterVersion (mkVersion [0,7,2]))
                            (userMaybeSpecifyPath "jhc" hcPath progdb)
 
   let Just version = programVersion jhcProg

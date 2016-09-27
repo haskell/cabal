@@ -34,7 +34,7 @@ import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text ( display )
 import Distribution.Verbosity (Verbosity, normal, lessVerbose)
-import Distribution.Version   (Version(..), orLaterVersion, intersectVersionRanges)
+import Distribution.Version   (mkVersion, orLaterVersion, intersectVersionRanges)
 
 import Distribution.Client.Utils
   (tryFindAddSourcePackageDesc)
@@ -96,8 +96,8 @@ sdist flags exflags = do
       -- The '--output-directory' sdist flag was introduced in Cabal 1.12, and
       -- '--list-sources' in 1.17.
       useCabalVersion = if isListSources
-                        then orLaterVersion $ Version [1,17,0] []
-                        else orLaterVersion $ Version [1,12,0] []
+                        then orLaterVersion $ mkVersion [1,17,0]
+                        else orLaterVersion $ mkVersion [1,12,0]
       }
     format        = fromFlag (sDistFormat exflags)
     createArchive = case format of
@@ -168,7 +168,7 @@ allPackageSourceFiles verbosity setupOpts0 packageDir = do
       setupOpts = setupOpts0 {
         -- 'sdist --list-sources' was introduced in Cabal 1.18.
         useCabalVersion = intersectVersionRanges
-                            (orLaterVersion $ Version [1,18,0] [])
+                            (orLaterVersion $ mkVersion [1,18,0])
                             (useCabalVersion setupOpts0),
         useWorkingDir = Just packageDir
         }

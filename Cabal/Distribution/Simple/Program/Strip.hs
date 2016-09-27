@@ -62,7 +62,7 @@ stripLib verbosity (Platform arch os) progdb path = do
     Linux | arch == I386 ->
       -- Versions of 'strip' on 32-bit Linux older than 2.18 are
       -- broken. See #2339.
-      let okVersion = orLaterVersion (Version [2,18] [])
+      let okVersion = orLaterVersion (mkVersion [2,18])
       in case programVersion =<< lookupProgram stripProgram progdb of
           Just v | withinRange v okVersion ->
             runStrip verbosity progdb path args

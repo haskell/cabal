@@ -25,7 +25,7 @@ import Distribution.Package
 import Distribution.Simple.Haddock (haddockPackagePaths)
 import Distribution.Simple.Program (haddockProgram, ProgramDb
                                    , runProgram, requireProgramVersion)
-import Distribution.Version (Version(Version), orLaterVersion)
+import Distribution.Version (mkVersion, orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, allPackagesByName )
@@ -45,7 +45,7 @@ regenerateHaddockIndex verbosity pkgs progdb index = do
 
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram
-                                    (orLaterVersion (Version [0,6] [])) progdb
+                                    (orLaterVersion (mkVersion [0,6])) progdb
 
       createDirectoryIfMissing True destDir
 

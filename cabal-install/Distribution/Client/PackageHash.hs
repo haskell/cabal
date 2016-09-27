@@ -41,6 +41,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate )
 import Distribution.Text
          ( display )
+import Distribution.Version
 import Distribution.Client.Types
          ( InstalledPackageId )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
@@ -59,7 +60,6 @@ import Data.Maybe        (catMaybes)
 import Data.List         (sortBy, intercalate)
 import Data.Map          (Map)
 import Data.Function     (on)
-import Data.Version      (Version)
 import Distribution.Compat.Binary (Binary(..))
 import Control.Exception (evaluate)
 import System.IO         (withBinaryFile, IOMode(..))

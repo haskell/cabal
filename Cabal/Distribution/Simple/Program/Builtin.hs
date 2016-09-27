@@ -113,8 +113,8 @@ ghcProgram = (simpleProgram "ghc") {
              }
            -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
            affectedVersionRange = intersectVersionRanges
-                                  (laterVersion   $ Version [7,8,0] [])
-                                  (earlierVersion $ Version [7,8,4] [])
+                                  (laterVersion   $ mkVersion [7,8,0])
+                                  (earlierVersion $ mkVersion [7,8,4])
        return $ maybe ghcProg
          (\v -> if withinRange v affectedVersionRange
                 then ghcProg' else ghcProg)

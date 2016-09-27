@@ -15,7 +15,7 @@ suite = do
     lbi <- liftIO $ getPersistBuildConfig dist_dir
     let anticipatedTestSuite = emptyTestSuite
             { testName = "dummy"
-            , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
+            , testInterface = TestSuiteExeV10 (mkVersion [1,0]) "dummy.hs"
             , testBuildInfo = emptyBuildInfo
                     { targetBuildDepends =
                             [ Dependency (mkPackageName "base") anyVersion ]
