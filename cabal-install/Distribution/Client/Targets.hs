@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -53,7 +54,7 @@ import Prelude ()
 import Distribution.Client.Compat.Prelude
 
 import Distribution.Package
-         ( Package(..), PackageName(..)
+         ( Package(..), PackageName, unPackageName, mkPackageName
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
@@ -229,10 +230,12 @@ data UserTargetProblem
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case testNamedTargets targetstr of
-      Just (Dependency (PackageName "world") verrange)
-        | verrange == anyVersion -> return (Right UserTargetWorld)
-        | otherwise              -> return (Left  UserTargetBadWorldPkg)
-      Just dep                   -> return (Right (UserTargetNamed dep))
+      Just (Dependency pkgn verrange)
+        | pkgn == mkPackageName "world"
+          -> return $ if verrange == anyVersion
+                      then Right UserTargetWorld
+                      else Left  UserTargetBadWorldPkg
+      Just dep -> return (Right (UserTargetNamed dep))
       Nothing -> do
         fileTarget <- testFileTargets targetstr
         case fileTarget of
@@ -681,17 +684,17 @@ instance Semigroup PackageNameEnv where
 indexPackageNameEnv :: PackageIndex pkg -> PackageNameEnv
 indexPackageNameEnv pkgIndex = PackageNameEnv pkgNameLookup
   where
-    pkgNameLookup (PackageName name) =
-      map fst (PackageIndex.searchByName pkgIndex name)
+    pkgNameLookup pname =
+      map fst (PackageIndex.searchByName pkgIndex $ unPackageName pname)
 
 extraPackageNameEnv :: [PackageName] -> PackageNameEnv
 extraPackageNameEnv names = PackageNameEnv pkgNameLookup
   where
-    pkgNameLookup (PackageName name) =
-      [ PackageName name'
-      | let lname = lowercase name
-      , PackageName name' <- names
-      , lowercase name' == lname ]
+    pkgNameLookup pname =
+      [ pname'
+      | let lname = lowercase (unPackageName pname)
+      , pname' <- names
+      , lowercase (unPackageName pname') == lname ]
 
 
 -- ------------------------------------------------------------

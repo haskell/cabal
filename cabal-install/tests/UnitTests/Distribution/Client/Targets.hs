@@ -4,7 +4,7 @@ module UnitTests.Distribution.Client.Targets (
 
 import Distribution.Client.Targets     (UserConstraint (..), readUserConstraint)
 import Distribution.Compat.ReadP       (ReadP, readP_to_S)
-import Distribution.Package            (PackageName (..))
+import Distribution.Package            (mkPackageName)
 import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
 
@@ -26,7 +26,7 @@ readUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = UserConstraintInstalled (PackageName pkgName)
+    expected = UserConstraintInstalled (mkPackageName pkgName)
     actual   = let (Right r) = readUserConstraint constr in r
 
 parseUserConstraintTest :: Assertion
@@ -36,7 +36,7 @@ parseUserConstraintTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [UserConstraintInstalled (PackageName pkgName)]
+    expected = [UserConstraintInstalled (mkPackageName pkgName)]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraint constr
                    , all isSpace ys]
 
@@ -50,7 +50,7 @@ readUserConstraintsTest =
     pkgName  = "template-haskell"
     constr   = pkgName ++ " installed"
 
-    expected = [[UserConstraintInstalled (PackageName pkgName)]]
+    expected = [[UserConstraintInstalled (mkPackageName pkgName)]]
     actual   = [ x | (x, ys) <- readP_to_S parseUserConstraints constr
                    , all isSpace ys]
 

@@ -354,8 +354,8 @@ exAvSrcPkg ex =
            }
 
     mkDirect :: (ExamplePkgName, Maybe ExamplePkgVersion) -> C.Dependency
-    mkDirect (dep, Nothing) = C.Dependency (C.PackageName dep) C.anyVersion
-    mkDirect (dep, Just n)  = C.Dependency (C.PackageName dep) (C.thisVersion v)
+    mkDirect (dep, Nothing) = C.Dependency (C.mkPackageName dep) C.anyVersion
+    mkDirect (dep, Just n)  = C.Dependency (C.mkPackageName dep) (C.thisVersion v)
       where
         v = Version [n, 0, 0] []
 
@@ -431,7 +431,7 @@ exAvSrcPkg ex =
 
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
-      pkgName    = C.PackageName (exAvName ex)
+      pkgName    = C.mkPackageName (exAvName ex)
     , pkgVersion = Version [exAvVersion ex, 0, 0] []
     }
 
@@ -444,7 +444,7 @@ exInstInfo ex = C.emptyInstalledPackageInfo {
 
 exInstPkgId :: ExampleInstalled -> C.PackageIdentifier
 exInstPkgId ex = C.PackageIdentifier {
-      pkgName    = C.PackageName (exInstName ex)
+      pkgName    = C.mkPackageName (exInstName ex)
     , pkgVersion = Version [exInstVersion ex, 0, 0] []
     }
 
@@ -484,9 +484,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                      , packagePreferences = Map.empty
                      }
     enableTests  = fmap (\p -> PackageConstraintStanzas
-                              (C.PackageName p) [TestStanzas])
+                              (C.mkPackageName p) [TestStanzas])
                        (exDbPkgs db)
-    targets'     = fmap (\p -> NamedPackage (C.PackageName p) []) targets
+    targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
     params       =   addPreferences (fmap toPref prefs)
                    $ addConstraints (fmap toLpc enableTests)
                    $ setIndependentGoals indepGoals
@@ -496,7 +496,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
-    toPref (ExPref n v) = PackageVersionPreference (C.PackageName n) v
+    toPref (ExPref n v) = PackageVersionPreference (C.mkPackageName n) v
 
     goalOrder :: Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
     goalOrder = (orderFromList . map toVariable) `fmap` vars
@@ -513,13 +513,13 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
     toVariable (S q pn stanza) = StanzaVar  (toQPN q pn) stanza
 
     toQPN :: ExampleQualifier -> ExamplePkgName -> P.QPN
-    toQPN q pn = P.Q pp (C.PackageName pn)
+    toQPN q pn = P.Q pp (C.mkPackageName pn)
       where
         pp = case q of
                None           -> P.PackagePath P.DefaultNamespace P.Unqualified
                Indep x        -> P.PackagePath (P.Independent x) P.Unqualified
-               Setup p        -> P.PackagePath P.DefaultNamespace (P.Setup (C.PackageName p))
-               IndepSetup x p -> P.PackagePath (P.Independent x) (P.Setup (C.PackageName p))
+               Setup p        -> P.PackagePath P.DefaultNamespace (P.Setup (C.mkPackageName p))
+               IndepSetup x p -> P.PackagePath (P.Independent x) (P.Setup (C.mkPackageName p))
 
 extractInstallPlan :: CI.SolverInstallPlan.SolverInstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
@@ -531,9 +531,9 @@ extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
 
     srcPkg :: SolverPackage UnresolvedPkgLoc -> (String, Int)
     srcPkg cpkg =
-      let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) =
+      let C.PackageIdentifier pn (Version (n:_) _) =
             packageInfoId (solverPkgSource cpkg)
-      in (p, n)
+      in (C.unPackageName pn, n)
 
 {-------------------------------------------------------------------------------
   Auxiliary

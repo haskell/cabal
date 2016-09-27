@@ -1160,7 +1160,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
             (internal_exe_deps, internal_exe_paths)
                 = unzip $
                   [ (confInstId confid', path)
-                  | Dependency (PackageName toolname) _ <- PD.buildTools bi
+                  | Dependency (unPackageName -> toolname) _ <- PD.buildTools bi
                   , toolname `elem` map PD.exeName (PD.executables elabPkgDescription)
                   , Just (confid', path) <- [Map.lookup toolname exe_map]
                   ]
@@ -1169,7 +1169,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
                 CLibName
                     -> Map.insert (packageName elabPkgSourceId) confid internal_map
                 CSubLibName libname
-                    -> Map.insert (PackageName libname) confid internal_map
+                    -> Map.insert (mkPackageName libname) confid internal_map
                 _   -> internal_map
             exe_map' = case cname of
                 CExeName exename
@@ -2238,13 +2238,13 @@ packageSetupScriptSpecVersion _ pkg deps =
 
 
 cabalPkgname, basePkgname :: PackageName
-cabalPkgname = PackageName "Cabal"
-basePkgname  = PackageName "base"
+cabalPkgname = mkPackageName "Cabal"
+basePkgname  = mkPackageName "base"
 
 
 legacyCustomSetupPkgs :: Compiler -> Platform -> [PackageName]
 legacyCustomSetupPkgs compiler (Platform _ os) =
-    map PackageName $
+    map mkPackageName $
         [ "array", "base", "binary", "bytestring", "containers"
         , "deepseq", "directory", "filepath", "old-time", "pretty"
         , "process", "time", "transformers" ]

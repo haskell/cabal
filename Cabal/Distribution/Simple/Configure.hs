@@ -244,11 +244,11 @@ writePersistBuildConfig distPref lbi = do
 
 -- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier
-currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
+currentCabalId = PackageIdentifier (mkPackageName "Cabal") cabalVersion
 
 -- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
-currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
+currentCompilerId = PackageIdentifier (mkPackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
 -- | Parse the @setup-config@ file header, returning the package identifiers
@@ -614,10 +614,10 @@ configure (pkg_descr0', pbi) cfg = do
           [ buildTool
           | let exeNames = map exeName (executables pkg_descr)
           , bi <- enabledBuildInfos pkg_descr enabled
-          , buildTool@(Dependency (PackageName toolName) reqVer)
+          , buildTool@(Dependency toolPName reqVer)
             <- buildTools bi
           , let isInternal =
-                    toolName `elem` exeNames
+                    unPackageName toolPName `elem` exeNames
                     -- we assume all internal build-tools are
                     -- versioned with the package:
                  && packageVersion pkg_descr `withinRange` reqVer
@@ -855,7 +855,7 @@ getInternalPackages pkg_descr0 =
     let pkg_descr = flattenPackageDescription pkg_descr0
         f lib = case libName lib of
                     Nothing -> (packageName pkg_descr, CLibName)
-                    Just n' -> (PackageName n', CSubLibName n')
+                    Just n' -> (mkPackageName n', CSubLibName n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function
@@ -1427,7 +1427,7 @@ configureRequiredPrograms verbosity deps progdb =
 configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
                             -> IO ProgramDb
 configureRequiredProgram verbosity progdb
-  (Dependency (PackageName progName) verRange) =
+  (Dependency progPkgName verRange) =
   case lookupKnownProgram progName progdb of
     Nothing ->
       -- Try to configure it as a 'simpleProgram' automatically
@@ -1442,6 +1442,8 @@ configureRequiredProgram verbosity progdb
       | otherwise -> do
           (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
           return progdb'
+  where
+    progName = unPackageName progPkgName
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
@@ -1471,7 +1473,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     pkgconfig = getDbProgramOutput (lessVerbose verbosity)
                   pkgConfigProgram progdb
 
-    requirePkg dep@(Dependency (PackageName pkg) range) = do
+    requirePkg dep@(Dependency pkgn range) = do
       version <- pkgconfig ["--modversion", pkg]
                  `catchIO`   (\_ -> die notFound)
                  `catchExit` (\_ -> die notFound)
@@ -1493,6 +1495,8 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
         versionRequirement
           | isAnyVersion range = ""
           | otherwise          = " version " ++ display range
+
+        pkg = unPackageName pkgn
 
     -- Adds pkgconfig dependencies to the build info for a component
     addPkgConfigBI compBI setCompBI comp = do
@@ -1617,11 +1621,9 @@ mkComponentsGraph enabled pkg_descr internalPackageSet =
   where
     -- The dependencies for the given component
     componentDeps component =
-         [ CExeName toolname | Dependency (PackageName toolname) _
-                               <- buildTools bi
-                             , toolname `elem` map exeName
-                               (executables pkg_descr) ]
-
+         [ CExeName (unPackageName toolpname)
+         | Dependency toolpname _ <- buildTools bi
+         , unPackageName toolpname `elem` map exeName (executables pkg_descr) ]
       ++ [ cname
          | Dependency pkgname _ <- targetBuildDepends bi
          , cname <- Maybe.maybeToList (Map.lookup pkgname internalPackageSet) ]
@@ -1721,8 +1723,8 @@ computeCompatPackageName pkg_name cname
                   go ('-':z) _        r = go z (Just 0) ('-':r)
                   go ('z':z) (Just n) r = go z (Just (n+1)) ('z':r)
                   go (c:z)   _        r = go z Nothing (c:r)
-      in PackageName $ "z-" ++ zdashcode (display pkg_name)
-                   ++ "-z-" ++ zdashcode cname_str
+      in mkPackageName $ "z-" ++ zdashcode (display pkg_name)
+                     ++ "-z-" ++ zdashcode cname_str
     | otherwise
     = pkg_name
 

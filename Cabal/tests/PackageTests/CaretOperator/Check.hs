@@ -20,9 +20,9 @@ suite = do
            { libBuildInfo = emptyBuildInfo
                { defaultLanguage = Just Haskell2010
                , targetBuildDepends =
-                     [ Dependency (PackageName{unPackageName = "base"})
+                     [ Dependency (mkPackageName "base")
                        (withinVersion (Version [4] []))
-                     , Dependency (PackageName{unPackageName = "pretty"})
+                     , Dependency (mkPackageName "pretty")
                        (majorBoundVersion (Version [1,1,1,0] []))
                      ]
                , hsSourceDirs = ["."]

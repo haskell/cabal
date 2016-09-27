@@ -31,9 +31,8 @@ import Distribution.Version
          , intersectVersionRanges, orLaterVersion
          , withinRange )
 import Distribution.Package
-         ( UnitId(..), ComponentId, PackageIdentifier(..), PackageId,
-           PackageName(..), packageName
-         , packageVersion, Dependency(..) )
+         ( UnitId(..), ComponentId, PackageId, mkPackageName
+         , PackageIdentifier(..), packageVersion, packageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion
@@ -534,7 +533,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   cabalLibVersionToUse :: IO (Version, Maybe ComponentId
                              ,SetupScriptOptions)
   cabalLibVersionToUse =
-    case find (hasCabal . snd) (useDependencies options) of
+    case find (isCabalPkgId . snd) (useDependencies options) of
       Just (unitId, pkgId) -> do
         let version = pkgVersion pkgId
         updateSetupScript version bt
@@ -576,9 +575,6 @@ getExternalSetupMethod verbosity options pkg bt = do
       writeSetupVersionFile :: Version -> IO ()
       writeSetupVersionFile version =
           writeFile setupVersionFile (show version ++ "\n")
-
-      hasCabal (PackageIdentifier (PackageName "Cabal") _) = True
-      hasCabal _                                           = False
 
       installedVersion :: IO (Version, Maybe InstalledPackageId
                              ,SetupScriptOptions)
@@ -631,7 +627,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                               ,SetupScriptOptions)
   installedCabalVersion options' compiler progdb = do
     index <- maybeGetInstalledPackages options' compiler progdb
-    let cabalDep   = Dependency (PackageName "Cabal") (useCabalVersion options')
+    let cabalDep   = Dependency (mkPackageName "Cabal") (useCabalVersion options')
         options''  = options' { usePackageIndex = Just index }
     case PackageIndex.lookupDependency index cabalDep of
       []   -> die $ "The package '" ++ display (packageName pkg)
@@ -758,7 +754,7 @@ getExternalSetupMethod verbosity options pkg bt = do
     when (outOfDate || forceCompile) $ do
       debug verbosity "Setup executable needs to be updated, compiling..."
       (compiler, progdb, options'') <- configureCompiler options'
-      let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+      let cabalPkgid = PackageIdentifier (mkPackageName "Cabal") cabalLibVersion
           (program, extraOpts)
             = case compilerFlavor compiler of
                       GHCJS -> (ghcjsProgram, ["-build-runner"])
@@ -776,13 +772,10 @@ getExternalSetupMethod verbosity options pkg bt = do
           -- Both of these options should be enabled for packages that have
           -- opted-in and declared a custom-settup stanza.
           --
-          hasCabal (_, PackageIdentifier (PackageName "Cabal") _) = True
-          hasCabal _                                              = False
-
           selectedDeps | useDependenciesExclusive options'
                                    = useDependencies options'
                        | otherwise = useDependencies options' ++
-                                     if any hasCabal (useDependencies options')
+                                     if any (isCabalPkgId . snd) (useDependencies options')
                                      then []
                                      else cabalDep
           addRenaming (ipid, _) = (SimpleUnitId ipid, defaultRenaming)
@@ -820,3 +813,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                                          progdb ghcCmdLine
                                hPutStr logHandle output
     return setupProgFile
+
+
+isCabalPkgId :: PackageIdentifier -> Bool
+isCabalPkgId (PackageIdentifier pname _) = pname == mkPackageName "Cabal"

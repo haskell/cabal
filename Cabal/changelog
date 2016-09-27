@@ -46,6 +46,9 @@
 	  If you only need to test if a component is buildable
 	  (i.e., it is marked buildable in the Cabal file)
 	  use the new function 'componentBuildable'.
+	* Backwards incompatible change to 'PackageName' (#3896):
+	  'PackageName' is now opaque; conversion to/from 'String' now works
+	  via (old) 'unPackageName' and (new) 'mkPackageName' functions.
 	* Add support for `--allow-older` (dual to `--allow-newer`) (#3466)
 	* Improved an error message for process output decoding errors
 	(#3408).

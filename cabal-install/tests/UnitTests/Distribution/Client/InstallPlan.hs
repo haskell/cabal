@@ -194,7 +194,7 @@ arbitraryTestInstallPlan = do
         ipkgid = mkUnitIdV pkgv
         deps   = map mkUnitIdV depvs
     mkUnitIdV = mkUnitId . show
-    mkPkgId v = PackageIdentifier (PackageName ("pkg" ++ show v))
+    mkPkgId v = PackageIdentifier (mkPackageName ("pkg" ++ show v))
                                   (Version [1] [])
 
 

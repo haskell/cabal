@@ -636,7 +636,7 @@ parseBuildToolNameQ = parseQuoted parseBuildToolName <++ parseBuildToolName
 -- like parsePackageName but accepts symbols in components
 parseBuildToolName :: ReadP r PackageName
 parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
-                        return (PackageName (intercalate "-" ns))
+                        return (mkPackageName (intercalate "-" ns))
   where component = do
           cs <- munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
           if all isDigit cs then pfail else return cs
@@ -649,7 +649,7 @@ parsePkgconfigDependency = do name <- munch1
                                       (\c -> isAlphaNum c || c `elem` "+-._")
                               ver <- betweenSpaces $
                                      parseVersionRangeQ <++ return anyVersion
-                              return $ Dependency (PackageName name) ver
+                              return $ Dependency (mkPackageName name) ver
 
 parsePackageNameQ :: ReadP r PackageName
 parsePackageNameQ = parseQuoted parse <++ parse

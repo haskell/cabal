@@ -14,7 +14,7 @@ module Distribution.Client.List (
   ) where
 
 import Distribution.Package
-         ( PackageName(..), Package(..), packageName, packageVersion
+         ( PackageName, Package(..), packageName, packageVersion
          , Dependency(..), simplifyDependency
          , UnitId )
 import Distribution.ModuleName (ModuleName)

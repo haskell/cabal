@@ -24,7 +24,7 @@ import Data.Map (Map)
 import Data.Either (rights)
 
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), UnitId(..)
+         ( PackageName, PackageIdentifier(..), UnitId(..)
          , Package(..), packageName, packageVersion
          )
 import Distribution.Version

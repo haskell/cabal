@@ -292,7 +292,7 @@ getInstalledPackages verbosity comp packagedbs progdb = do
 
   where
     hackRtsPackage index =
-      case PackageIndex.lookupPackageName index (PackageName "rts") of
+      case PackageIndex.lookupPackageName index (mkPackageName "rts") of
         [(_,[rts])]
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
         _  -> index -- No (or multiple) ghc rts package is registered!!

@@ -19,7 +19,7 @@ suite = do
                                                    "dummy.hs"
             , benchmarkBuildInfo = emptyBuildInfo
                     { targetBuildDepends =
-                            [ Dependency (PackageName "base") anyVersion ]
+                            [ Dependency (mkPackageName "base") anyVersion ]
                     , hsSourceDirs = ["."]
                     }
             }

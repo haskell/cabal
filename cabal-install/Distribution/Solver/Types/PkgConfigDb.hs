@@ -29,7 +29,7 @@ import Text.ParserCombinators.ReadP (readP_to_S)
 import System.FilePath (splitSearchPath)
 
 import Distribution.Package
-    ( PackageName(..) )
+    ( PackageName, mkPackageName )
 import Distribution.Verbosity
     ( Verbosity )
 import Distribution.Version
@@ -84,7 +84,7 @@ pkgConfigDbFromList :: [(String, String)] -> PkgConfigDb
 pkgConfigDbFromList pairs = (PkgConfigDb . M.fromList . map convert) pairs
     where
       convert :: (String, String) -> (PackageName, Maybe Version)
-      convert (n,vs) = (PackageName n,
+      convert (n,vs) = (mkPackageName n,
                         case (reverse . readP_to_S parseVersion) vs of
                           (v, "") : _ -> Just v
                           _           -> Nothing -- Version not (fully)

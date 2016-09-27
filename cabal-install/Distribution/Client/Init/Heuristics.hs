@@ -86,7 +86,7 @@ guessMainFileCandidates flags = do
 
 -- | Guess the package name based on the given root directory.
 guessPackageName :: FilePath -> IO P.PackageName
-guessPackageName = liftM (P.PackageName . repair . last . splitDirectories)
+guessPackageName = liftM (P.mkPackageName . repair . last . splitDirectories)
                  . tryCanonicalizePath
   where
     -- Treat each span of non-alphanumeric characters as a hyphen. Each

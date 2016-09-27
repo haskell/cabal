@@ -166,7 +166,7 @@ checkSanity :: PackageDescription -> [PackageCheck]
 checkSanity pkg =
   catMaybes [
 
-    check (null . (\(PackageName n) -> n) . packageName $ pkg) $
+    check (null . unPackageName . packageName $ pkg) $
       PackageBuildImpossible "No 'name' field."
 
   , check (null . versionBranch . packageVersion $ pkg) $
@@ -536,7 +536,7 @@ checkFields pkg =
              , name `elem` map display knownLanguages ]
 
     testedWithImpossibleRanges =
-      [ Dependency (PackageName (display compiler)) vr
+      [ Dependency (mkPackageName (display compiler)) vr
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
 
@@ -1199,7 +1199,7 @@ checkCabalVersion pkg =
               , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
-        [ Dependency (PackageName (display compiler)) vr
+        [ Dependency (mkPackageName (display compiler)) vr
         | (compiler, vr) <- testedWith pkg
         , usesNewVersionRangeSyntax vr ]
 
@@ -1249,7 +1249,7 @@ checkCabalVersion pkg =
       , (name, _) <- Map.toList (targetBuildRenaming bi) ]
 
     testedWithUsingWildcardSyntax =
-      [ Dependency (PackageName (display compiler)) vr
+      [ Dependency (mkPackageName (display compiler)) vr
       | (compiler, vr) <- testedWith pkg
       , usesWildcardSyntax vr ]
 
@@ -1432,7 +1432,8 @@ checkPackageVersions pkg =
           foldr intersectVersionRanges anyVersion baseDeps
         where
           baseDeps =
-            [ vr | Dependency (PackageName "base") vr <- buildDepends pkg' ]
+            [ vr | Dependency pname vr <- buildDepends pkg'
+                 , pname == mkPackageName "base" ]
 
       -- Just in case finalizePD fails for any reason,
       -- or if the package doesn't depend on the base package at all,

@@ -461,7 +461,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
     -- that exposes the relevant test suite library.
     deps = (IPI.installedUnitId ipi, packageId ipi)
-         : (filter (\(_, x) -> let PackageName name = pkgName x
+         : (filter (\(_, x) -> let name = unPackageName $ pkgName x
                                in name == "Cabal" || name == "base")
                    (componentPackageDeps clbi))
     exeClbi = ExeComponentLocalBuildInfo {
@@ -512,7 +512,7 @@ addInternalBuildTools pkg lbi bi progs =
     internalExeNames = map exeName (executables pkg)
     buildToolNames   = map buildToolName (buildTools bi)
       where
-        buildToolName (Dependency (PackageName name) _ ) = name
+        buildToolName (Dependency pname _ ) = unPackageName pname
 
 
 -- TODO: build separate libs in separate dirs so that we can build

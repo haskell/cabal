@@ -18,7 +18,7 @@
 
 module Distribution.Package (
         -- * Package ids
-        PackageName(..),
+        PackageName, unPackageName, mkPackageName,
         PackageIdentifier(..),
         PackageId,
 
@@ -65,16 +65,39 @@ import Distribution.ModuleName
 
 import Text.PrettyPrint ((<+>), text)
 
-newtype PackageName = PackageName { unPackageName :: String }
+-- | A package name.
+--
+-- Use 'mkPackageName' and 'unPackageName' to convert from/to a
+-- 'String'.
+--
+-- This type is opaque since @Cabal-2.0@
+--
+-- @since 2.0
+newtype PackageName = PackageName String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+-- | Convert 'PackageName' to 'String'
+unPackageName :: PackageName -> String
+unPackageName (PackageName s) = s
+
+-- | Construct a 'PackageName' from a 'String'
+--
+-- 'mkPackageName' is the inverse to 'unPackageName'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'PackageName' is valid
+--
+-- @since 2.0
+mkPackageName :: String -> PackageName
+mkPackageName = PackageName
 
 instance Binary PackageName
 
 instance Text PackageName where
-  disp (PackageName n) = Disp.text n
+  disp = Disp.text . unPackageName
   parse = do
     ns <- Parse.sepBy1 component (Parse.char '-')
-    return (PackageName (intercalate "-" ns))
+    return (mkPackageName (intercalate "-" ns))
     where
       component = do
         cs <- Parse.munch1 isAlphaNum
