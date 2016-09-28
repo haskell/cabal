@@ -52,6 +52,7 @@ module Distribution.Package (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.ShortText
 
 import Distribution.Version
          ( Version, VersionRange, anyVersion, thisVersion
@@ -74,12 +75,12 @@ import Text.PrettyPrint ((<+>), text)
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0
-newtype PackageName = PackageName String
+newtype PackageName = PackageName ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String
-unPackageName (PackageName s) = s
+unPackageName (PackageName s) = fromShortText s
 
 -- | Construct a 'PackageName' from a 'String'
 --
@@ -90,7 +91,7 @@ unPackageName (PackageName s) = s
 --
 -- @since 2.0
 mkPackageName :: String -> PackageName
-mkPackageName = PackageName
+mkPackageName = PackageName . toShortText
 
 instance Binary PackageName
 
