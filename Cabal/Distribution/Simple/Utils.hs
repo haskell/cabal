@@ -205,7 +205,13 @@ import qualified Data.Set as Set
 
 import qualified Data.ByteString as SBS
 
-#if MIN_VERSION_bytestring(0,10,4)
+#if defined(MIN_VERSION_bytestring)
+# if MIN_VERSION_bytestring(0,10,4)
+# define HAVE_SHORTBYTESTRING 1
+# endif
+#endif
+
+#if HAVE_SHORTBYTESTRING
 import qualified Data.ByteString.Short as BS.Short
 #endif
 
@@ -1663,6 +1669,11 @@ isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
 -- * 'ShortText' type
 -- ------------------------------------------------------------
 
+-- TODO: if we start using this internally for more opaque types in
+-- Cabal then we will likely need to promote it to it's own module in
+-- Distribution.* to avoid cycles, or just to maintain the sanity of
+-- the Distribution.* vs Distribution.Simple.* distinction.
+
 -- | Construct 'ShortText' from 'String'
 toShortText :: String -> ShortText
 
@@ -1676,8 +1687,11 @@ fromShortText :: ShortText -> String
 -- 0.10.4@, and otherwise the fallback is to use plain old non-compat
 -- '[Char]'.
 --
+-- Note: This type is for internal uses (such as e.g. 'PackageName')
+-- and shall not be exposed in Cabal's API
+--
 -- @since 2.0.0
-#if MIN_VERSION_bytestring(0,10,4)
+#if HAVE_SHORTBYTESTRING
 newtype ShortText = ST { unST :: BS.Short.ShortByteString }
                   deriving (Eq,Ord,Generic)
 
