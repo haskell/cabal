@@ -21,6 +21,7 @@ import qualified UnitTests.Distribution.Simple.Program.Internal
 import qualified UnitTests.Distribution.Simple.Utils
 import qualified UnitTests.Distribution.System
 import qualified UnitTests.Distribution.Utils.NubList
+import qualified UnitTests.Distribution.Utils.ShortText
 import qualified UnitTests.Distribution.Version (versionTests)
 
 tests :: Int -> TestTree
@@ -45,6 +46,8 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.Simple.Utils.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
+    , testGroup "Distribution.Utils.ShortText"
+        UnitTests.Distribution.Utils.ShortText.tests
     , testGroup "Distribution.System"
         UnitTests.Distribution.System.tests
     , testGroup "Distribution.Version"

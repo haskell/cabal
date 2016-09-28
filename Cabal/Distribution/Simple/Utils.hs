@@ -152,18 +152,13 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
-
-        -- * 'ShortText' type
-        ShortText,
-        toShortText,
-        fromShortText,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
-import Data.String (IsString(..))
 
 import Distribution.Text
+import Distribution.Utils.String
 import Distribution.Package
 import Distribution.ModuleName as ModuleName
 import Distribution.System
@@ -188,7 +183,6 @@ import Distribution.Verbosity
 import qualified Paths_Cabal (version)
 #endif
 
-import Data.Word (Word8)
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.Bits
@@ -204,16 +198,6 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
 
 import qualified Data.ByteString as SBS
-
-#if defined(MIN_VERSION_bytestring)
-# if MIN_VERSION_bytestring(0,10,4)
-# define HAVE_SHORTBYTESTRING 1
-# endif
-#endif
-
-#if HAVE_SHORTBYTESTRING
-import qualified Data.ByteString.Short as BS.Short
-#endif
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -1390,55 +1374,10 @@ fromUTF8 (c:cs)
     replacementChar = '\xfffd'
 
 fromUTF8BS :: SBS.ByteString -> String
-fromUTF8BS = fromUTF8BSImpl . SBS.unpack
+fromUTF8BS = decodeStringUtf8 . SBS.unpack
 
 fromUTF8LBS :: BS.ByteString -> String
-fromUTF8LBS = fromUTF8BSImpl . BS.unpack
-
-fromUTF8BSImpl :: [Word8] -> String
-fromUTF8BSImpl = go
-  where
-    go :: [Word8] -> String
-    go []       = []
-    go (c : cs)
-      | c <= 0x7F = chr (fromIntegral c) : go cs
-      | c <= 0xBF = replacementChar : go cs
-      | c <= 0xDF = twoBytes c cs
-      | c <= 0xEF = moreBytes 3 0x800     cs (fromIntegral $ c .&. 0xF)
-      | c <= 0xF7 = moreBytes 4 0x10000   cs (fromIntegral $ c .&. 0x7)
-      | c <= 0xFB = moreBytes 5 0x200000  cs (fromIntegral $ c .&. 0x3)
-      | c <= 0xFD = moreBytes 6 0x4000000 cs (fromIntegral $ c .&. 0x1)
-      | otherwise   = replacementChar : go cs
-
-    twoBytes :: Word8 -> [Word8] -> String
-    twoBytes c0 (c1:cs')
-      | c1 .&. 0xC0 == 0x80
-      = let d = ((c0 .&. 0x1F) `shiftL` 6)
-             .|. (c1 .&. 0x3F)
-         in if d >= 0x80
-               then  chr (fromIntegral d) : go cs'
-               else  replacementChar      : go cs'
-    twoBytes _ cs' = replacementChar      : go cs'
-
-    moreBytes :: Int -> Int -> [Word8] -> Int -> [Char]
-    moreBytes 1 overlong cs' acc
-      | overlong <= acc && acc <= 0x10FFFF
-     && (acc < 0xD800 || 0xDFFF < acc)
-     && (acc < 0xFFFE || 0xFFFF < acc)
-      = chr acc : go cs'
-
-      | otherwise
-      = replacementChar : go cs'
-
-    moreBytes byteCount overlong (cn:cs') acc
-      | cn .&. 0xC0 == 0x80
-      = moreBytes (byteCount-1) overlong cs'
-          ((acc `shiftL` 6) .|. fromIntegral cn .&. 0x3F)
-
-    moreBytes _ _ cs' _
-      = replacementChar : go cs'
-
-    replacementChar = '\xfffd'
+fromUTF8LBS = decodeStringUtf8 . BS.unpack
 
 toUTF8 :: String -> String
 toUTF8 []        = []
@@ -1458,26 +1397,6 @@ toUTF8 (c:cs)
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
   where w = ord c
-
--- | Variant of 'toUTF8' operating on 'Word8's directly
-toUTF8BSImpl :: String -> [Word8]
-toUTF8BSImpl []        = []
-toUTF8BSImpl (c:cs)
-  | c <= '\x07F' = w
-                 : toUTF8BSImpl cs
-  | c <= '\x7FF' = (0xC0 .|. (w `shiftR` 6))
-                 : (0x80 .|. (w .&. 0x3F))
-                 : toUTF8BSImpl cs
-  | c <= '\xFFFF'= (0xE0 .|.  (w `shiftR` 12))
-                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : (0x80 .|.  (w .&. 0x3F))
-                 : toUTF8BSImpl cs
-  | otherwise    = (0xf0 .|.  (w `shiftR` 18))
-                 : (0x80 .|. ((w `shiftR` 12)  .&. 0x3F))
-                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : (0x80 .|.  (w .&. 0x3F))
-                 : toUTF8BSImpl cs
-  where w = fromIntegral (ord c) :: Word8
 
 -- | Whether BOM is at the beginning of the input
 startsWithBOM :: String -> Bool
@@ -1519,7 +1438,7 @@ withUTF8FileContents name action =
 -- Uses 'writeFileAtomic', so provides the same guarantees.
 --
 writeUTF8File :: FilePath -> String -> NoCallStackIO ()
-writeUTF8File path = writeFileAtomic path . BS.Char8.pack . toUTF8
+writeUTF8File path = writeFileAtomic path . BS.pack . encodeStringUtf8
 
 -- | Fix different systems silly line ending conventions
 normaliseLineEndings :: String -> String
@@ -1664,78 +1583,3 @@ isAbsoluteOnAnyPlatform _ = False
 -- | @isRelativeOnAnyPlatform = not . 'isAbsoluteOnAnyPlatform'@
 isRelativeOnAnyPlatform :: FilePath -> Bool
 isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
-
--- ------------------------------------------------------------
--- * 'ShortText' type
--- ------------------------------------------------------------
-
--- TODO: if we start using this internally for more opaque types in
--- Cabal then we will likely need to promote it to it's own module in
--- Distribution.* to avoid cycles, or just to maintain the sanity of
--- the Distribution.* vs Distribution.Simple.* distinction.
-
--- | Construct 'ShortText' from 'String'
-toShortText :: String -> ShortText
-
--- | Convert 'ShortText' to 'String'
-fromShortText :: ShortText -> String
-
--- | Compact representation of short 'Strings'
---
--- The data is stored internally as UTF8 in an
--- 'BS.Short.ShortByteString' when compiled against @bytestring >=
--- 0.10.4@, and otherwise the fallback is to use plain old non-compat
--- '[Char]'.
---
--- Note: This type is for internal uses (such as e.g. 'PackageName')
--- and shall not be exposed in Cabal's API
---
--- @since 2.0.0
-#if HAVE_SHORTBYTESTRING
-newtype ShortText = ST { unST :: BS.Short.ShortByteString }
-                  deriving (Eq,Ord,Generic)
-
-# if MIN_VERSION_binary(0,8,1)
-instance Binary ShortText where
-    put = put . unST
-    get = fmap ST get
-# else
-instance Binary ShortText where
-    put = put . BS.Short.fromShort . unST
-    get = fmap (ST . BS.Short.toShort) get
-# endif
-
-toShortText = ST . BS.Short.pack . toUTF8BSImpl
-
-fromShortText = fromUTF8BSImpl . BS.Short.unpack . unST
-#else
-newtype ShortText = ST { unST :: String }
-                  deriving (Eq,Ord,Generic)
-
-instance Binary ShortText where
-    put = put . toUTF8BSImpl . unST
-    get = fmap (ST . fromUTF8BSImpl) get
-
-toShortText = ST
-
-fromShortText = unST
-#endif
-
-instance NFData ShortText where
-    rnf = rnf . unST
-
-instance Show ShortText where
-    show = show . fromShortText
-
-instance Read ShortText where
-    readsPrec p = map (first toShortText) . readsPrec p
-
-instance Semigroup ShortText where
-    ST a <> ST b = ST (mappend a b)
-
-instance Monoid ShortText where
-    mempty = ST mempty
-    mappend = (<>)
-
-instance IsString ShortText where
-    fromString = toShortText
