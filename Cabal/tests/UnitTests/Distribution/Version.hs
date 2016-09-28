@@ -580,7 +580,7 @@ equivalentVersionRange vr1 vr2 =
   let allVersionsUsed = nub (sort (versionsUsed vr1 ++ versionsUsed vr2))
       minPoint = mkVersion [0]
       maxPoint | null allVersionsUsed = minPoint
-               | otherwise = mkVersion . (++[1]) . versionNumbers . maximum $ allVersionsUsed
+               | otherwise = alterVersion (++[1]) (maximum allVersionsUsed)
       probeVersions = minPoint : maxPoint
                     : intermediateVersions allVersionsUsed
 
