@@ -181,11 +181,11 @@ data ExposedModule
 
 instance Text ExposedModule where
     disp (ExposedModule m reexport) =
-        Disp.sep [ disp m
-                 , case reexport of
-                    Just m' -> Disp.sep [Disp.text "from", disp m']
-                    Nothing -> Disp.empty
-                 ]
+        Disp.hsep [ disp m
+                  , case reexport of
+                     Just m' -> Disp.hsep [Disp.text "from", disp m']
+                     Nothing -> Disp.empty
+                  ]
     parse = do
         m <- parseModuleNameQ
         Parse.skipSpaces
