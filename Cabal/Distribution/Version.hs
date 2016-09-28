@@ -82,6 +82,8 @@ module Distribution.Version (
 import Prelude ()
 import Distribution.Compat.Prelude
 import qualified Data.Version as Base
+import Data.Bits (shiftL, shiftR, (.|.), (.&.))
+import Data.Word (Word64)
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
@@ -105,13 +107,28 @@ import Control.Exception (assert)
 -- 'Binary' instance using a different (and more compact) encoding.
 --
 -- @since 2.0
-data Version = Version [Int]
-             deriving (Data,Eq,Ord,Generic,Show,Read,Typeable)
+
+data Version = PV0 {-# UNPACK #-} !Word64
+             | PV1 !Int [Int]
+             -- NOTE: If a version fits into the packed Word64
+             -- representation (i.e. at most four version components
+             -- which all fall into the [0..0xfffe] range), then PV0
+             -- MUST be used. This is essential for the 'Eq' instance
+             -- to work.
+             deriving (Data,Eq,Generic,Show,Read,Typeable)
+
+instance Ord Version where
+    compare (PV0 x) (PV0 y) = compare x y
+    compare xv       yv     = compare (versionNumbers xv) (versionNumbers yv)
+
+    PV0 x <= PV0 y  = x <= y
+    xv    <= yv     = versionNumbers xv <= versionNumbers yv
 
 instance Binary Version
 
 instance NFData Version where
-    rnf = rnf . versionNumbers
+    rnf (PV0 _) = ()
+    rnf (PV1 _ ns) = rnf ns
 
 instance Text Version where
   disp ver
@@ -138,7 +155,24 @@ instance Text Version where
 mkVersion :: [Int] -> Version
 -- TODO: add validity check; disallow 'mkVersion []' (we have
 -- 'nullVersion' for that)
-mkVersion = Version
+mkVersion ns = case ns of
+    [] -> nullVersion
+    [v1]          | v1 <= 0xfffe
+      -> PV0 (mkW64 (v1+1) 0 0 0)
+    [v1,v2]       | v1 <= 0xfffe, v2 <= 0xfffe
+      -> PV0 (mkW64 (v1+1) (v2+1) 0 0)
+    [v1,v2,v3]    | v1 <= 0xfffe, v2 <= 0xfffe, v3 <= 0xfffe
+      -> PV0 (mkW64 (v1+1) (v2+1) (v3+1)  0)
+    [v1,v2,v3,v4] | v1 <= 0xfffe, v2 <= 0xfffe, v3 <= 0xfffe, v4 <= 0xfffe
+      -> PV0 (mkW64 (v1+1) (v2+1) (v3+1) (v4+1))
+    v1:vs -> PV1 v1 vs
+  where
+    {-# INLINABLE mkW64 #-}
+    mkW64 :: Int -> Int -> Int -> Int -> Word64
+    mkW64 v1 v2 v3 v4 =     (fromIntegral v1 `shiftL` 48)
+                        .|. (fromIntegral v2 `shiftL` 32)
+                        .|. (fromIntegral v3 `shiftL` 16)
+                        .|.  fromIntegral v4
 
 -- | Variant of 'Version' which converts a "Data.Version" 'Version'
 -- into Cabal's 'Version' type.
@@ -155,7 +189,19 @@ mkVersion' = mkVersion . Base.versionBranch
 --
 -- @since 2.0
 versionNumbers :: Version -> [Int]
-versionNumbers (Version vs) = vs
+versionNumbers (PV1 n ns) = n:ns
+versionNumbers (PV0 w)
+  | v1 < 0    = []
+  | v2 < 0    = [v1]
+  | v3 < 0    = [v1,v2]
+  | v4 < 0    = [v1,v2,v3]
+  | otherwise = [v1,v2,v3,v4]
+  where
+    v1 = fromIntegral ((w `shiftR` 48) .&. 0xffff) - 1
+    v2 = fromIntegral ((w `shiftR` 32) .&. 0xffff) - 1
+    v3 = fromIntegral ((w `shiftR` 16) .&. 0xffff) - 1
+    v4 = fromIntegral (w .&. 0xffff) - 1
+
 
 -- | Constant representing the special /null/ 'Version'
 --
@@ -166,7 +212,7 @@ versionNumbers (Version vs) = vs
 nullVersion :: Version
 -- TODO: at some point, 'mkVersion' may disallow creating /null/
 -- 'Version's
-nullVersion = Version []
+nullVersion = PV0 0
 
 -- | Apply function to list of version number components
 --
