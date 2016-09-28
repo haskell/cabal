@@ -374,8 +374,7 @@ snapshotPackage date pkg =
 -- to the given date.
 --
 snapshotVersion :: UTCTime -> Version -> Version
-snapshotVersion date ver
-  = mkVersion (unVersion ver ++ [dateToSnapshotNumber date])
+snapshotVersion date = alterVersion (++ [dateToSnapshotNumber date])
 
 -- | Given a date produce a corresponding integer representation.
 -- For example given a date @18/03/2008@ produce the number @20080318@.

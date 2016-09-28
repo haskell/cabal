@@ -109,7 +109,7 @@ configure verbosity hcPath hcPkgPath progdb0 = do
   let comp = Compiler {
         compilerId         = CompilerId GHCJS ghcjsVersion,
         compilerAbiTag     = AbiTag $
-          "ghc" ++ intercalate "_" (map show . unVersion $ ghcjsGhcVersion),
+          "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion),
         compilerCompat     = [CompilerId GHC ghcjsGhcVersion],
         compilerLanguages  = languages,
         compilerExtensions = extensions,

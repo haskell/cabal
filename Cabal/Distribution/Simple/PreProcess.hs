@@ -540,7 +540,7 @@ platformDefines lbi =
     -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
     -- the other compilers. Check if that's really what they want.
     versionInt :: Version -> String
-    versionInt v = case unVersion v of
+    versionInt v = case versionNumbers v of
       [] -> "1"
       [n] -> show n
       n1:n2:_ ->

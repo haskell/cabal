@@ -101,7 +101,7 @@ generate pkg_descr lbi clbi =
         "\n"++
         "version :: Version"++
         "\nversion = Version " ++ show branch ++ " []"
-          where branch = unVersion $ packageVersion pkg_descr
+          where branch = versionNumbers $ packageVersion pkg_descr
 
        body
         | reloc =

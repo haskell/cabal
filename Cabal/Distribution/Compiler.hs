@@ -48,7 +48,7 @@ import Distribution.Compat.Prelude
 
 import Language.Haskell.Extension
 
-import Distribution.Version (Version, mkVersion', nullVersion, mkNullVersion)
+import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
@@ -139,12 +139,12 @@ instance Binary CompilerId
 
 instance Text CompilerId where
   disp (CompilerId f v)
-    | nullVersion v = disp f
-    | otherwise     = disp f <<>> Disp.char '-' <<>> disp v
+    | v == nullVersion = disp f
+    | otherwise        = disp f <<>> Disp.char '-' <<>> disp v
 
   parse = do
     flavour <- parse
-    version <- (Parse.char '-' >> parse) Parse.<++ return mkNullVersion
+    version <- (Parse.char '-' >> parse) Parse.<++ return nullVersion
     return (CompilerId flavour version)
 
 lowercase :: String -> String

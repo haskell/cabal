@@ -48,7 +48,7 @@ import Control.Arrow
 import Text.PrettyPrint hiding (mode, cat)
 
 import Distribution.Version
-  ( Version, mkVersion, unVersion
+  ( Version, mkVersion, alterVersion
   , orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
 import Distribution.Verbosity
   ( Verbosity )
@@ -476,11 +476,11 @@ pvpize :: Version -> VersionRange
 pvpize v = orLaterVersion v'
            `intersectVersionRanges`
            earlierVersion (incVersion 1 v')
-  where v' = mkVersion . take 2 . unVersion $ v
+  where v' = alterVersion (take 2) v
 
 -- | Increment the nth version component (counting from 0).
 incVersion :: Int -> Version -> Version
-incVersion n = mkVersion . incVersion' n . unVersion
+incVersion n = alterVersion (incVersion' n)
   where
     incVersion' 0 []     = [1]
     incVersion' 0 (v:_)  = [v+1]

@@ -35,7 +35,7 @@ import Distribution.Simple.Setup (fromFlag)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Version
-         ( Version, mkVersion, unVersion, VersionRange, withinRange, anyVersion
+         ( Version, mkVersion, versionNumbers, VersionRange, withinRange, anyVersion
          , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text
@@ -576,7 +576,7 @@ interestingVersions pref =
     . reorderTree (\(Node (v,_) _) -> pref (mkVersion v))
     . reverseTree
     . mkTree
-    . map unVersion
+    . map versionNumbers
 
   where
     swizzleTree = unfoldTree (spine [])

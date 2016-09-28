@@ -46,7 +46,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Version
-         ( Version, mkVersion, unVersion
+         ( Version, alterVersion
          , LowerBound(..), UpperBound(..), VersionRange(..), asVersionIntervals
          , orLaterVersion, earlierVersion, intersectVersionRanges )
 import System.Directory
@@ -72,7 +72,7 @@ pvpize v = orLaterVersion (vn 3)
            `intersectVersionRanges`
            earlierVersion (incVersion 1 (vn 2))
   where
-    vn n = mkVersion . take n . unVersion $ v
+    vn n = alterVersion (take n) v
 
 -- | Show the PVP-mandated version range for this package. The @padTo@ parameter
 -- specifies the width of the package name column.

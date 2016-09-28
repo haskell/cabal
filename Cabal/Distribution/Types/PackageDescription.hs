@@ -172,7 +172,7 @@ emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
                       package      = PackageIdentifier (mkPackageName "")
-                                                       mkNullVersion,
+                                                       nullVersion,
                       license      = UnspecifiedLicense,
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,

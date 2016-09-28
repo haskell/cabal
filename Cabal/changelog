@@ -49,6 +49,9 @@
 	* Backwards incompatible change to 'PackageName' (#3896):
 	  'PackageName' is now opaque; conversion to/from 'String' now works
 	  via (old) 'unPackageName' and (new) 'mkPackageName' functions.
+	* Backwards incompatible change to 'Version' (#3905):
+	  Version is now opaque; conversion to/from '[Int]' now works
+	  via 'versionNumbers' and 'mkVersion' functions.
 	* Add support for `--allow-older` (dual to `--allow-newer`) (#3466)
 	* Improved an error message for process output decoding errors
 	(#3408).

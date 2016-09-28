@@ -67,7 +67,7 @@ ghcVersionImplInfo ver = GhcImplInfo
   , flagDebugInfo        = v >= [7,10]
   }
   where
-    v = unVersion ver
+    v = versionNumbers ver
 
 ghcjsVersionImplInfo :: Version -> Version -> GhcImplInfo
 ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo

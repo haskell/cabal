@@ -76,10 +76,10 @@ instance Arbitrary Version where
                           ,(3, return 1)
                           ,(2, return 2)
                           ,(1, return 3)]
-    return (mkVersion branch) -- deliberate []
+    return (mkVersion branch)
     where
 
-  shrink ver = [ mkVersion branch' | branch' <- shrink (unVersion ver)
+  shrink ver = [ mkVersion branch' | branch' <- shrink (versionNumbers ver)
                                    , not (null branch') ]
 
 instance Arbitrary VersionRange where

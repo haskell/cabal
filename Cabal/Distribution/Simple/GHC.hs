@@ -1200,7 +1200,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                    , HcPkg.recacheMultiInstance = v >= [6,12]
                                    }
   where
-    v               = unVersion ver
+    v               = versionNumbers ver
     Just ghcPkgProg = lookupProgram ghcPkgProgram progdb
     Just ver        = programVersion ghcPkgProg
 

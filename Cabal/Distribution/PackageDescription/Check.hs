@@ -169,7 +169,7 @@ checkSanity pkg =
     check (null . unPackageName . packageName $ pkg) $
       PackageBuildImpossible "No 'name' field."
 
-  , check (nullVersion . packageVersion $ pkg) $
+  , check (nullVersion == packageVersion pkg) $
       PackageBuildImpossible "No 'version' field."
 
   , check (all ($ pkg) [ null . executables
@@ -1375,7 +1375,7 @@ displayRawVersionRange =
   where
     dispWild v =
            Disp.hcat (Disp.punctuate (Disp.char '.')
-                                     (map Disp.int $ unVersion v))
+                                     (map Disp.int $ versionNumbers v))
         <<>> Disp.text ".*"
     punct p p' | p < p'    = Disp.parens
                | otherwise = id
@@ -1425,7 +1425,7 @@ checkPackageVersions pkg =
                               [] defaultComponentRequestedSpec (const True)
                               buildPlatform
                               (unknownCompilerInfo
-                                (CompilerId buildCompilerFlavor mkNullVersion)
+                                (CompilerId buildCompilerFlavor nullVersion)
                                 NoAbiTag)
                               [] pkg
     baseDependency = case finalised of

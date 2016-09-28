@@ -298,8 +298,8 @@ readUserTarget targetstr =
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
-          v | nullVersion v -> Dependency (packageName p) anyVersion
-            | otherwise     -> Dependency (packageName p) (thisVersion v)
+          v | v == nullVersion -> Dependency (packageName p) anyVersion
+            | otherwise        -> Dependency (packageName p) (thisVersion v)
 
 readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str

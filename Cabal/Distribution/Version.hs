@@ -20,9 +20,9 @@ module Distribution.Version (
   Version,
   mkVersion,
   mkVersion',
-  unVersion,
-  mkNullVersion,
+  versionNumbers,
   nullVersion,
+  alterVersion,
 
   -- * Version ranges
   VersionRange(..),
@@ -111,12 +111,12 @@ data Version = Version [Int]
 instance Binary Version
 
 instance NFData Version where
-    rnf = rnf . unVersion
+    rnf = rnf . versionNumbers
 
 instance Text Version where
   disp ver
     = Disp.hcat (Disp.punctuate (Disp.char '.')
-                                (map Disp.int $ unVersion ver))
+                                (map Disp.int $ versionNumbers ver))
 
   parse = do
       branch <- Parse.sepBy1 parseNat (Parse.char '.')
@@ -132,13 +132,12 @@ instance Text Version where
 -- representing the version @3.2.1@.
 --
 -- All version components must be non-negative. @mkVersion []@
--- represents the special /null/ version; see also 'mkNullVersion' and
--- 'nullVersion'.
+-- currently represents the special /null/ version; see also 'nullVersion'.
 --
 -- @since 2.0
 mkVersion :: [Int] -> Version
 -- TODO: add validity check; disallow 'mkVersion []' (we have
--- 'mkNullVersion' for that)
+-- 'nullVersion' for that)
 mkVersion = Version
 
 -- | Variant of 'Version' which converts a "Data.Version" 'Version'
@@ -152,33 +151,34 @@ mkVersion' = mkVersion . Base.versionBranch
 --
 -- This is the inverse to 'mkVersion', so the following holds:
 --
--- > (unVersion . mkVersion) vs == vs
+-- > (versionNumbers . mkVersion) vs == vs
 --
 -- @since 2.0
-unVersion :: Version -> [Int]
-unVersion (Version vs) = vs
+versionNumbers :: Version -> [Int]
+versionNumbers (Version vs) = vs
 
--- | Constant representing the /null/ 'Version'
+-- | Constant representing the special /null/ 'Version'
+--
+-- The 'nullVersion' compares (via 'Ord') as less than every proper
+-- 'Version' value.
 --
 -- @since 2.0
-mkNullVersion :: Version
+nullVersion :: Version
 -- TODO: at some point, 'mkVersion' may disallow creating /null/
 -- 'Version's
-mkNullVersion = Version []
+nullVersion = Version []
 
--- | Test whether 'Version' value is /null/ 'Version'
+-- | Apply function to list of version number components
+--
+-- > alterVersion f == mkVersion . f . versionNumbers
 --
 -- @since 2.0
-nullVersion :: Version -> Bool
-nullVersion = null . unVersion
-
--- functor-like helper
-withVersion :: ([Int] -> [Int]) -> Version -> Version
-withVersion f = mkVersion . f . unVersion
+alterVersion :: ([Int] -> [Int]) -> Version -> Version
+alterVersion f = mkVersion . f . versionNumbers
 
 -- internal helper
 validVersion :: Version -> Bool
-validVersion v = not (nullVersion v) && all (>=0) (unVersion v)
+validVersion v = v /= nullVersion && all (>=0) (versionNumbers v)
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -564,11 +564,11 @@ simplifyVersionRange vr
 --
 
 wildcardUpperBound :: Version -> Version
-wildcardUpperBound = withVersion $
+wildcardUpperBound = alterVersion $
     \lowerBound -> init lowerBound ++ [last lowerBound + 1]
 
 isWildcardRange :: Version -> Version -> Bool
-isWildcardRange ver1 ver2 = check (unVersion ver1) (unVersion ver2)
+isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
   where check (n:[]) (m:[]) | n+1 == m = True
         check (n:ns) (m:ms) | n   == m = check ns ms
         check _      _                 = False
@@ -578,7 +578,7 @@ isWildcardRange ver1 ver2 = check (unVersion ver1) (unVersion ver2)
 -- Example: @0.4.1@ produces the version @0.5@ which then can be used
 -- to construct a range @>= 0.4.1 && < 0.5@
 majorUpperBound :: Version -> Version
-majorUpperBound = withVersion $ \ver -> case ver of
+majorUpperBound = alterVersion $ \numbers -> case numbers of
     []        -> [0,1] -- should not happen
     [m1]      -> [m1,1] -- e.g. version '1'
     (m1:m2:_) -> [m1,m2+1]
@@ -888,7 +888,7 @@ instance Text VersionRange where
 
     where dispWild ver =
                Disp.hcat (Disp.punctuate (Disp.char '.')
-                                         (map Disp.int $ unVersion ver))
+                                         (map Disp.int $ versionNumbers ver))
             <<>> Disp.text ".*"
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
