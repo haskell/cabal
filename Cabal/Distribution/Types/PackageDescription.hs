@@ -153,7 +153,7 @@ specVersion :: PackageDescription -> Version
 specVersion pkg = case specVersionRaw pkg of
   Left  version      -> version
   Right versionRange -> case asVersionIntervals versionRange of
-                          []                            -> Version [0] []
+                          []                            -> mkVersion [0]
                           ((LowerBound version _, _):_) -> version
 
 -- | The range of versions of the Cabal tools that this package is intended to
@@ -172,7 +172,7 @@ emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
                       package      = PackageIdentifier (mkPackageName "")
-                                                       (Version [] []),
+                                                       nullVersion,
                       license      = UnspecifiedLicense,
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,

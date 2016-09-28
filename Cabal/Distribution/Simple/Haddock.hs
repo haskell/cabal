@@ -157,11 +157,11 @@ haddock pkg_descr lbi suffixes flags' = do
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (haddockProg, version, _) <-
       requireProgramVersion verbosity haddockProgram
-        (orLaterVersion (Version [2,0] [])) (withPrograms lbi)
+        (orLaterVersion (mkVersion [2,0])) (withPrograms lbi)
 
     -- various sanity checks
     when ( flag haddockHoogle
-           && version < Version [2,2] []) $
+           && version < mkVersion [2,2]) $
          die "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
     haddockGhcVersionStr <- getProgramOutput verbosity haddockProg
@@ -410,7 +410,7 @@ getGhcCppOpts haddockVersion bi =
     haddockVersionMacro  = "-D__HADDOCK_VERSION__="
                            ++ show (v1 * 1000 + v2 * 10 + v3)
       where
-        [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
+        [v1, v2, v3] = take 3 $ versionNumbers haddockVersion ++ [0,0]
 
 getGhcLibDir :: Verbosity -> LocalBuildInfo
              -> IO HaddockArgs
@@ -450,8 +450,8 @@ renderArgs :: Verbosity
               -> (([String], FilePath) -> IO a)
               -> IO a
 renderArgs verbosity tmpFileOpts version comp platform args k = do
-  let haddockSupportsUTF8          = version >= Version [2,14,4] []
-      haddockSupportsResponseFiles = version >  Version [2,16,2] []
+  let haddockSupportsUTF8          = version >= mkVersion [2,14,4]
+      haddockSupportsResponseFiles = version >  mkVersion [2,16,2]
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
     \prologueFileName h -> do
@@ -558,7 +558,7 @@ renderPureArgs version comp platform args = concat
         map (\(i,mh) -> "--read-interface=" ++
           maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
-      isVersion major minor  = version >= Version [major,minor]  []
+      isVersion major minor  = version >= mkVersion [major,minor]
       verbosityFlag
        | isVersion 2 5 = "--verbosity=1"
        | otherwise     = "--verbose"
@@ -658,7 +658,7 @@ hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
 hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
     either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg) =<<
       lookupProgramVersion verbosity hscolourProgram
-      (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
+      (orLaterVersion (mkVersion [1,8])) (withPrograms lbi)
   where
     go :: ConfiguredProgram -> IO ()
     go hscolourProg = do
@@ -696,7 +696,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
          createDirectoryIfMissingVerbose verbosity True outputDir
 
          case stylesheet of -- copy the CSS file
-           Nothing | programVersion prog >= Just (Version [1,9] []) ->
+           Nothing | programVersion prog >= Just (mkVersion [1,9]) ->
                        runProgram verbosity prog
                           ["-print-css", "-o" ++ outputDir </> "hscolour.css"]
                    | otherwise -> return ()

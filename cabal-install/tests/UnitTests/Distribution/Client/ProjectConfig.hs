@@ -76,7 +76,7 @@ tests =
   where
     usingGhc76orOlder =
       case buildCompilerId of
-        CompilerId GHC v -> v < Version [7,7] []
+        CompilerId GHC v -> v < mkVersion [7,7]
         _                -> False
 
 

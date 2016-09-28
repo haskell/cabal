@@ -327,7 +327,7 @@ ppCpp = ppCpp' []
 ppCpp' :: [String] -> BuildInfo -> LocalBuildInfo -> ComponentLocalBuildInfo -> PreProcessor
 ppCpp' extraArgs bi lbi clbi =
   case compilerFlavor (compiler lbi) of
-    GHC   -> ppGhcCpp ghcProgram   (>= Version [6,6] []) args bi lbi clbi
+    GHC   -> ppGhcCpp ghcProgram   (>= mkVersion [6,6])  args bi lbi clbi
     GHCJS -> ppGhcCpp ghcjsProgram (const True)          args bi lbi clbi
     _     -> ppCpphs  args bi lbi clbi
   where cppArgs = getCppOptions bi lbi
@@ -364,7 +364,7 @@ ppCpphs extraArgs _bi lbi clbi =
       runProgram verbosity cpphsProg $
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
-        : (if cpphsVersion >= Version [1,6] []
+        : (if cpphsVersion >= mkVersion [1,6]
              then ["--include="++ (autogenComponentModulesDir lbi clbi </> cppHeaderName)]
              else [])
         ++ extraArgs
@@ -466,7 +466,7 @@ ppC2hs bi lbi clbi =
     runPreProcessor = \(inBaseDir, inRelativeFile)
                        (outBaseDir, outRelativeFile) verbosity -> do
       (c2hsProg, _, _) <- requireProgramVersion verbosity
-                            c2hsProgram (orLaterVersion (Version [0,15] []))
+                            c2hsProgram (orLaterVersion (mkVersion [0,15]))
                             (withPrograms lbi)
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
       runProgram verbosity c2hsProg $
@@ -540,10 +540,11 @@ platformDefines lbi =
     -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
     -- the other compilers. Check if that's really what they want.
     versionInt :: Version -> String
-    versionInt (Version { versionBranch = [] }) = "1"
-    versionInt (Version { versionBranch = [n] }) = show n
-    versionInt (Version { versionBranch = n1:n2:_ })
-      = -- 6.8.x -> 608
+    versionInt v = case versionNumbers v of
+      [] -> "1"
+      [n] -> show n
+      n1:n2:_ ->
+        -- 6.8.x -> 608
         -- 6.10.x -> 610
         let s1 = show n1
             s2 = show n2
@@ -551,6 +552,7 @@ platformDefines lbi =
                      _ : _ : _ -> ""
                      _         -> "0"
         in s1 ++ middle ++ s2
+
     osStr = case hostOS of
       Linux     -> ["linux"]
       Windows   -> ["mingw32"]

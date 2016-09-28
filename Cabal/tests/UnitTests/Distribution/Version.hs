@@ -104,7 +104,9 @@ versionTests =
 --     -- , property prop_parse_disp5
 --   ]
 
-#if !MIN_VERSION_QuickCheck(2,9,0)
+adjustSize :: (Int -> Int) -> Gen a -> Gen a
+adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
+
 instance Arbitrary Version where
   arbitrary = do
     branch <- smallListOf1 $
@@ -112,15 +114,12 @@ instance Arbitrary Version where
                           ,(3, return 1)
                           ,(2, return 2)
                           ,(1, return 3)]
-    return (Version branch []) -- deliberate []
+    return (mkVersion branch)
     where
       smallListOf1 = adjustSize (\n -> min 5 (n `div` 3)) . listOf1
 
-  shrink (Version branch []) =
-    [ Version branch' [] | branch' <- shrink branch, not (null branch') ]
-  shrink (Version branch _tags) =
-    [ Version branch [] ]
-#endif
+  shrink ver = [ mkVersion branch' | branch' <- shrink (versionNumbers ver)
+                                   , not (null branch') ]
 
 instance Arbitrary VersionRange where
   arbitrary = sized verRangeExp
@@ -153,7 +152,7 @@ instance Arbitrary VersionRange where
 --
 
 prop_nonNull :: Version -> Bool
-prop_nonNull = not . null . versionBranch
+prop_nonNull = (/= nullVersion)
 
 prop_anyVersion :: Version -> Bool
 prop_anyVersion v' =
@@ -218,7 +217,7 @@ prop_withinVersion v v' =
      withinRange v' (withinVersion v)
   == (v' >= v && v' < upper v)
   where
-    upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
+    upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
 
 prop_foldVersionRange :: VersionRange -> Bool
 prop_foldVersionRange range =
@@ -230,9 +229,6 @@ prop_foldVersionRange range =
   where
     expandWildcard (WildcardVersion v) =
         intersectVersionRanges (orLaterVersion v) (earlierVersion (upper v))
-      where
-        upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
-
     expandWildcard (UnionVersionRanges     v1 v2) =
       UnionVersionRanges (expandWildcard v1) (expandWildcard v2)
     expandWildcard (IntersectVersionRanges v1 v2) =
@@ -240,6 +236,7 @@ prop_foldVersionRange range =
     expandWildcard (VersionRangeParens v) = expandWildcard v
     expandWildcard v = v
 
+    upper = alterVersion $ \numbers -> init numbers ++ [last numbers + 1]
 
 prop_foldVersionRange' :: VersionRange -> Bool
 prop_foldVersionRange' range =
@@ -581,10 +578,9 @@ prop_equivalentVersionRange range range' version =
 equivalentVersionRange :: VersionRange -> VersionRange -> Bool
 equivalentVersionRange vr1 vr2 =
   let allVersionsUsed = nub (sort (versionsUsed vr1 ++ versionsUsed vr2))
-      minPoint = Version [0] []
+      minPoint = mkVersion [0]
       maxPoint | null allVersionsUsed = minPoint
-               | otherwise = case maximum allVersionsUsed of
-                   Version vs _ -> Version (vs ++ [1]) []
+               | otherwise = alterVersion (++[1]) (maximum allVersionsUsed)
       probeVersions = minPoint : maxPoint
                     : intermediateVersions allVersionsUsed
 
@@ -598,8 +594,8 @@ equivalentVersionRange vr1 vr2 =
 
 intermediateVersion :: Version -> Version -> Version
 intermediateVersion v1 v2 | v1 >= v2 = error "intermediateVersion: v1 >= v2"
-intermediateVersion (Version v1 _) (Version v2 _) =
-  Version (intermediateList v1 v2) []
+intermediateVersion v1 v2 =
+  mkVersion (intermediateList (versionNumbers v1) (versionNumbers v2))
   where
     intermediateList :: [Int] -> [Int] -> [Int]
     intermediateList []     (_:_) = [0]
@@ -617,8 +613,10 @@ prop_intermediateVersion v1 v2 =
           in v1 > v && v > v2
 
 adjacentVersions :: Version -> Version -> Bool
-adjacentVersions (Version v1 _) (Version v2 _) = v1 ++ [0] == v2
-                                              || v2 ++ [0] == v1
+adjacentVersions ver1 ver2 = v1 ++ [0] == v2 || v2 ++ [0] == v1
+  where
+    v1 = versionNumbers ver1
+    v2 = versionNumbers ver2
 
 --------------------------------
 -- Parsing and pretty printing
@@ -721,6 +719,7 @@ displayRaw =
      (\r     -> Disp.parens r) -- parens
 
   where
-    dispWild (Version b _) =
-           Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+    dispWild v =
+           Disp.hcat (Disp.punctuate (Disp.char '.')
+                                     (map Disp.int (versionNumbers v)))
         <> Disp.text ".*"

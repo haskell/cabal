@@ -48,7 +48,7 @@ import Distribution.Compat.Prelude
 
 import Language.Haskell.Extension
 
-import Distribution.Version (Version(..))
+import Distribution.Version (Version, mkVersion', nullVersion)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
@@ -112,7 +112,7 @@ buildCompilerFlavor :: CompilerFlavor
 buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
 
 buildCompilerVersion :: Version
-buildCompilerVersion = System.Info.compilerVersion
+buildCompilerVersion = mkVersion' System.Info.compilerVersion
 
 buildCompilerId :: CompilerId
 buildCompilerId = CompilerId buildCompilerFlavor buildCompilerVersion
@@ -138,12 +138,13 @@ data CompilerId = CompilerId CompilerFlavor Version
 instance Binary CompilerId
 
 instance Text CompilerId where
-  disp (CompilerId f (Version [] _)) = disp f
-  disp (CompilerId f v) = disp f <<>> Disp.char '-' <<>> disp v
+  disp (CompilerId f v)
+    | v == nullVersion = disp f
+    | otherwise        = disp f <<>> Disp.char '-' <<>> disp v
 
   parse = do
     flavour <- parse
-    version <- (Parse.char '-' >> parse) Parse.<++ return (Version [] [])
+    version <- (Parse.char '-' >> parse) Parse.<++ return nullVersion
     return (CompilerId flavour version)
 
 lowercase :: String -> String

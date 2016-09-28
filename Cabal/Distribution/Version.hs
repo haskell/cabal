@@ -1,32 +1,5 @@
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-#if __GLASGOW_HASKELL__ < 707
-{-# LANGUAGE StandaloneDeriving #-}
-#endif
-
--- Hack approach to support bootstrapping.
--- When MIN_VERSION_binary macro is available, use it. But it's not available
--- during bootstrapping (or anyone else building Setup.hs directly). If the
--- builder specifies -DMIN_VERSION_binary_0_8_0=1 or =0 then we respect that.
--- Otherwise we pick a default based on GHC version: assume binary <0.8 when
--- GHC < 8.0, and binary >=0.8 when GHC >= 8.0.
-#ifdef MIN_VERSION_binary
-#define MIN_VERSION_binary_0_8_0 MIN_VERSION_binary(0,8,0)
-#else
-#ifndef MIN_VERSION_binary_0_8_0
-#if __GLASGOW_HASKELL__ >= 800
-#define MIN_VERSION_binary_0_8_0 1
-#else
-#define MIN_VERSION_binary_0_8_0 0
-#endif
-#endif
-#endif
-
-#if !MIN_VERSION_binary_0_8_0 || __GLASGOW_HASKELL__ < 707
--- instance Binary Version for !MIN_VERSION_binary_0_8_0
--- instance Data Version for __GLASGOW_HASKELL__ < 707
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -44,7 +17,12 @@
 
 module Distribution.Version (
   -- * Package versions
-  Version(..),
+  Version,
+  mkVersion,
+  mkVersion',
+  versionNumbers,
+  nullVersion,
+  alterVersion,
 
   -- * Version ranges
   VersionRange(..),
@@ -103,8 +81,7 @@ module Distribution.Version (
 
 import Prelude ()
 import Distribution.Compat.Prelude
-
-import Data.Version     ( Version(..) )
+import qualified Data.Version as Base
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
@@ -113,6 +90,95 @@ import Distribution.Compat.ReadP hiding (get)
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
 import Control.Exception (assert)
+
+-- -----------------------------------------------------------------------------
+-- Versions
+
+-- | A 'Version' represents the version of a software entity.
+--
+-- Instances of 'Eq' and 'Ord' are provided, which gives exact
+-- equality and lexicographic ordering of the version number
+-- components (i.e. 2.1 > 2.0, 1.2.3 > 1.2.2, etc.).
+--
+-- This type is opaque and distinct from the 'Base.Version' type in
+-- "Data.Version" since @Cabal-2.0@. The difference extends to the
+-- 'Binary' instance using a different (and more compact) encoding.
+--
+-- @since 2.0
+data Version = Version [Int]
+             deriving (Data,Eq,Ord,Generic,Show,Read,Typeable)
+
+instance Binary Version
+
+instance NFData Version where
+    rnf = rnf . versionNumbers
+
+instance Text Version where
+  disp ver
+    = Disp.hcat (Disp.punctuate (Disp.char '.')
+                                (map Disp.int $ versionNumbers ver))
+
+  parse = do
+      branch <- Parse.sepBy1 parseNat (Parse.char '.')
+                -- allow but ignore tags:
+      _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 isAlphaNum)
+      return (mkVersion branch)
+    where
+      parseNat = read `fmap` Parse.munch1 isDigit
+
+-- | Construct 'Version' from list of version number components.
+--
+-- For instance, @mkVersion [3,2,1]@ constructs a 'Version'
+-- representing the version @3.2.1@.
+--
+-- All version components must be non-negative. @mkVersion []@
+-- currently represents the special /null/ version; see also 'nullVersion'.
+--
+-- @since 2.0
+mkVersion :: [Int] -> Version
+-- TODO: add validity check; disallow 'mkVersion []' (we have
+-- 'nullVersion' for that)
+mkVersion = Version
+
+-- | Variant of 'Version' which converts a "Data.Version" 'Version'
+-- into Cabal's 'Version' type.
+--
+-- @since 2.0
+mkVersion' :: Base.Version -> Version
+mkVersion' = mkVersion . Base.versionBranch
+
+-- | Unpack 'Version' into list of version number components.
+--
+-- This is the inverse to 'mkVersion', so the following holds:
+--
+-- > (versionNumbers . mkVersion) vs == vs
+--
+-- @since 2.0
+versionNumbers :: Version -> [Int]
+versionNumbers (Version vs) = vs
+
+-- | Constant representing the special /null/ 'Version'
+--
+-- The 'nullVersion' compares (via 'Ord') as less than every proper
+-- 'Version' value.
+--
+-- @since 2.0
+nullVersion :: Version
+-- TODO: at some point, 'mkVersion' may disallow creating /null/
+-- 'Version's
+nullVersion = Version []
+
+-- | Apply function to list of version number components
+--
+-- > alterVersion f == mkVersion . f . versionNumbers
+--
+-- @since 2.0
+alterVersion :: ([Int] -> [Int]) -> Version -> Version
+alterVersion f = mkVersion . f . versionNumbers
+
+-- internal helper
+validVersion :: Version -> Bool
+validVersion v = v /= nullVersion && all (>=0) (versionNumbers v)
 
 -- -----------------------------------------------------------------------------
 -- Version ranges
@@ -135,24 +201,6 @@ data VersionRange
 instance Binary VersionRange
 
 instance NFData VersionRange where rnf = genericRnf
-
-#if __GLASGOW_HASKELL__ < 707
--- starting with ghc-7.7/base-4.7 this instance is provided in "Data.Data"
-deriving instance Data Version
-#endif
-
-#if !(MIN_VERSION_binary_0_8_0)
--- Deriving this instance from Generic gives trouble on GHC 7.2 because the
--- Generic instance has to be standalone-derived. So, we hand-roll our own.
--- We can't use a generic Binary instance on later versions because we must
--- maintain compatibility between compiler versions.
-instance Binary Version where
-    get = do
-        br <- get
-        tags <- get
-        return $ Version br tags
-    put (Version br tags) = put br >> put tags
-#endif
 
 {-# DeprecateD AnyVersion
     "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
@@ -186,7 +234,7 @@ anyVersion = AnyVersion
 --
 noVersion :: VersionRange
 noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
-  where v = Version [1] []
+  where v = mkVersion [1]
 
 -- | The version range @== v@
 --
@@ -417,9 +465,9 @@ foldVersionRange' anyv this later earlier orLater orEarlier
 withinRange :: Version -> VersionRange -> Bool
 withinRange v = foldVersionRange
                    True
-                   (\v'  -> versionBranch v == versionBranch v')
-                   (\v'  -> versionBranch v >  versionBranch v')
-                   (\v'  -> versionBranch v <  versionBranch v')
+                   (\v'  -> v == v')
+                   (\v'  -> v >  v')
+                   (\v'  -> v <  v')
                    (||)
                    (&&)
 
@@ -516,12 +564,11 @@ simplifyVersionRange vr
 --
 
 wildcardUpperBound :: Version -> Version
-wildcardUpperBound (Version lowerBound ts) = Version upperBound ts
-  where
-    upperBound = init lowerBound ++ [last lowerBound + 1]
+wildcardUpperBound = alterVersion $
+    \lowerBound -> init lowerBound ++ [last lowerBound + 1]
 
 isWildcardRange :: Version -> Version -> Bool
-isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
+isWildcardRange ver1 ver2 = check (versionNumbers ver1) (versionNumbers ver2)
   where check (n:[]) (m:[]) | n+1 == m = True
         check (n:ns) (m:ms) | n   == m = check ns ms
         check _      _                 = False
@@ -531,12 +578,10 @@ isWildcardRange (Version branch1 _) (Version branch2 _) = check branch1 branch2
 -- Example: @0.4.1@ produces the version @0.5@ which then can be used
 -- to construct a range @>= 0.4.1 && < 0.5@
 majorUpperBound :: Version -> Version
-majorUpperBound version = version { versionBranch = upperBound }
-  where
-    upperBound = case versionBranch version of
-      []        -> [0,1] -- should not happen
-      [m1]      -> [m1,1] -- e.g. version '1'
-      (m1:m2:_) -> [m1,m2+1]
+majorUpperBound = alterVersion $ \numbers -> case numbers of
+    []        -> [0,1] -- should not happen
+    [m1]      -> [m1,1] -- e.g. version '1'
+    (m1:m2:_) -> [m1,m2+1]
 
 ------------------
 -- Intervals view
@@ -568,11 +613,10 @@ data UpperBound = NoUpperBound | UpperBound Version !Bound deriving (Eq, Show)
 data Bound      = ExclusiveBound | InclusiveBound          deriving (Eq, Show)
 
 minLowerBound :: LowerBound
-minLowerBound = LowerBound (Version [0] []) InclusiveBound
+minLowerBound = LowerBound (mkVersion [0]) InclusiveBound
 
 isVersion0 :: Version -> Bool
-isVersion0 (Version [0] _) = True
-isVersion0 _               = False
+isVersion0 = (== mkVersion [0])
 
 instance Ord LowerBound where
   LowerBound ver bound <= LowerBound ver' bound' = case compare ver ver' of
@@ -613,10 +657,6 @@ mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals
 mkVersionIntervals intervals
   | invariant (VersionIntervals intervals) = Just (VersionIntervals intervals)
   | otherwise                              = Nothing
-
-validVersion :: Version -> Bool
-validVersion (Version [] _) = False
-validVersion (Version vs _) = all (>=0) vs
 
 validInterval :: (LowerBound, UpperBound) -> Bool
 validInterval i@(l, u) = validLower l && validUpper u && nonEmpty i
@@ -823,7 +863,7 @@ invertVersionIntervals (VersionIntervals xs) =
       invertBound InclusiveBound = ExclusiveBound
 
       noLowerBound :: LowerBound
-      noLowerBound = LowerBound (Version [0] []) InclusiveBound
+      noLowerBound = LowerBound (mkVersion [0]) InclusiveBound
 
 -------------------------------
 -- Parsing and pretty printing
@@ -846,8 +886,9 @@ instance Text VersionRange where
              (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
            (\(r, _)   -> (Disp.parens r, 0))
 
-    where dispWild (Version b _) =
-               Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+    where dispWild ver =
+               Disp.hcat (Disp.punctuate (Disp.char '.')
+                                         (map Disp.int $ versionNumbers ver))
             <<>> Disp.text ".*"
           punct p p' | p < p'    = Disp.parens
                      | otherwise = id
@@ -885,7 +926,7 @@ instance Text VersionRange where
           branch <- Parse.sepBy1 digits (Parse.char '.')
           _ <- Parse.char '.'
           _ <- Parse.char '*'
-          return (WildcardVersion (Version branch []))
+          return (WildcardVersion (mkVersion branch))
 
         parens p = Parse.between (Parse.char '(' >> Parse.skipSpaces)
                                  (Parse.char ')' >> Parse.skipSpaces)

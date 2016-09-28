@@ -100,8 +100,8 @@ generate pkg_descr lbi clbi =
         "catchIO = Exception.catch\n" ++
         "\n"++
         "version :: Version"++
-        "\nversion = Version " ++ show branch ++ " " ++ show tags
-          where Version branch tags = packageVersion pkg_descr
+        "\nversion = Version " ++ show branch ++ " []"
+          where branch = versionNumbers $ packageVersion pkg_descr
 
        body
         | reloc =
@@ -237,7 +237,7 @@ generate pkg_descr lbi clbi =
         supports_language_pragma =
           (compilerFlavor (compiler lbi) == GHC &&
             (compilerVersion (compiler lbi)
-              `withinRange` orLaterVersion (Version [6,6,1] []))) ||
+              `withinRange` orLaterVersion (mkVersion [6,6,1]))) ||
            compilerFlavor (compiler lbi) == GHCJS
 
 -- | Generates the name of the environment variable controlling the path

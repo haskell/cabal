@@ -115,7 +115,7 @@ testExceptionInConfigureStep config = do
     cleanProject testdir
   where
     testdir = "exception/configure"
-    pkgidA1 = PackageIdentifier (mkPackageName "a") (Version [1] [])
+    pkgidA1 = PackageIdentifier (mkPackageName "a") (mkVersion [1])
 
 
 testExceptionInBuildStep :: ProjectConfig -> Assertion
@@ -125,7 +125,7 @@ testExceptionInBuildStep config = do
     expectBuildFailed failure
   where
     testdir = "exception/build"
-    pkgidA1 = PackageIdentifier (mkPackageName "a") (Version [1] [])
+    pkgidA1 = PackageIdentifier (mkPackageName "a") (mkVersion [1])
 
 testSetupScriptStyles :: ProjectConfig -> (String -> IO ()) -> Assertion
 testSetupScriptStyles config reportSubCase = do
@@ -167,7 +167,7 @@ testSetupScriptStyles config reportSubCase = do
     testdir1 = "build/setup-custom1"
     testdir2 = "build/setup-custom2"
     testdir3 = "build/setup-simple"
-    pkgidA   = PackageIdentifier (mkPackageName "a") (Version [0,1] [])
+    pkgidA   = PackageIdentifier (mkPackageName "a") (mkVersion [0,1])
     -- The solver fills in default setup deps explicitly, but marks them as such
     hasDefaultSetupDeps = fmap defaultSetupDepends
                         . setupBuildInfo . elabPkgDescription
@@ -192,8 +192,8 @@ testBuildKeepGoing config = do
     return ()
   where
     testdir = "build/keep-going"
-    pkgidP  = PackageIdentifier (mkPackageName "p") (Version [0,1] [])
-    pkgidQ  = PackageIdentifier (mkPackageName "q") (Version [0,1] [])
+    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
+    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
     keepGoing kg =
       mempty {
         projectConfigBuildOnly = mempty {
@@ -220,8 +220,8 @@ testRegressionIssue3324 config = do
       return ()
   where
     testdir = "regression/3324"
-    pkgidP  = PackageIdentifier (mkPackageName "p") (Version [0,1] [])
-    pkgidQ  = PackageIdentifier (mkPackageName "q") (Version [0,1] [])
+    pkgidP  = PackageIdentifier (mkPackageName "p") (mkVersion [0,1])
+    pkgidQ  = PackageIdentifier (mkPackageName "q") (mkVersion [0,1])
 
 
 ---------------------------------

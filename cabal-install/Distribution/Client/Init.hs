@@ -47,10 +47,9 @@ import Control.Arrow
 
 import Text.PrettyPrint hiding (mode, cat)
 
-import Data.Version
-  ( Version(..) )
 import Distribution.Version
-  ( orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
+  ( Version, mkVersion, alterVersion
+  , orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
 import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
@@ -195,7 +194,7 @@ getPackageName sourcePkgDb flags = do
 --  if possible.
 getVersion :: InitFlags -> IO InitFlags
 getVersion flags = do
-  let v = Just $ Version [0,1,0,0] []
+  let v = Just $ mkVersion [0,1,0,0]
   v' <-     return (flagToMaybe $ version flags)
         ?>> maybePrompt flags (prompt "Package version" v)
         ?>> return v
@@ -477,11 +476,11 @@ pvpize :: Version -> VersionRange
 pvpize v = orLaterVersion v'
            `intersectVersionRanges`
            earlierVersion (incVersion 1 v')
-  where v' = (v { versionBranch = take 2 (versionBranch v) })
+  where v' = alterVersion (take 2) v
 
 -- | Increment the nth version component (counting from 0).
 incVersion :: Int -> Version -> Version
-incVersion n (Version vlist tags) = Version (incVersion' n vlist) tags
+incVersion n = alterVersion (incVersion' n)
   where
     incVersion' 0 []     = [1]
     incVersion' 0 (v:_)  = [v+1]
@@ -620,28 +619,28 @@ writeLicense flags = do
           Flag BSD3
             -> Just $ bsd3 authors year
 
-          Flag (GPL (Just (Version {versionBranch = [2]})))
+          Flag (GPL (Just v)) | v == mkVersion [2]
             -> Just gplv2
 
-          Flag (GPL (Just (Version {versionBranch = [3]})))
+          Flag (GPL (Just v)) | v == mkVersion [2]
             -> Just gplv3
 
-          Flag (LGPL (Just (Version {versionBranch = [2, 1]})))
+          Flag (LGPL (Just v)) | v == mkVersion [2,1]
             -> Just lgpl21
 
-          Flag (LGPL (Just (Version {versionBranch = [3]})))
+          Flag (LGPL (Just v)) | v == mkVersion [3]
             -> Just lgpl3
 
-          Flag (AGPL (Just (Version {versionBranch = [3]})))
+          Flag (AGPL (Just v)) | v == mkVersion [3]
             -> Just agplv3
 
-          Flag (Apache (Just (Version {versionBranch = [2, 0]})))
+          Flag (Apache (Just v)) | v == mkVersion [2,0]
             -> Just apache20
 
           Flag MIT
             -> Just $ mit authors year
 
-          Flag (MPL (Version {versionBranch = [2, 0]}))
+          Flag (MPL v) | v == mkVersion [2,0]
             -> Just mpl20
 
           Flag ISC
@@ -845,7 +844,7 @@ generateCabalFile fileName c =
                 (Just "Extra files to be distributed with the package, such as examples or a README.")
                 True
 
-       , field  "cabal-version" (Flag $ orLaterVersion (Version [1,10] []))
+       , field  "cabal-version" (Flag $ orLaterVersion (mkVersion [1,10]))
                 (Just "Constraint on the version of Cabal needed to build this package.")
                 False
 

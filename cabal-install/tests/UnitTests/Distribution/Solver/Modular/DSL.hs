@@ -33,7 +33,6 @@ import Data.Maybe (catMaybes, isNothing)
 import Data.List (elemIndex, nub)
 import Data.Monoid
 import Data.Ord (comparing)
-import Data.Version
 import qualified Data.Map as Map
 
 -- Cabal
@@ -357,7 +356,7 @@ exAvSrcPkg ex =
     mkDirect (dep, Nothing) = C.Dependency (C.mkPackageName dep) C.anyVersion
     mkDirect (dep, Just n)  = C.Dependency (C.mkPackageName dep) (C.thisVersion v)
       where
-        v = Version [n, 0, 0] []
+        v = C.mkVersion [n, 0, 0]
 
     mkFlagged :: Monoid a
               => (a -> a)
@@ -432,7 +431,7 @@ exAvSrcPkg ex =
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
       pkgName    = C.mkPackageName (exAvName ex)
-    , pkgVersion = Version [exAvVersion ex, 0, 0] []
+    , pkgVersion = C.mkVersion [exAvVersion ex, 0, 0]
     }
 
 exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
@@ -445,7 +444,7 @@ exInstInfo ex = C.emptyInstalledPackageInfo {
 exInstPkgId :: ExampleInstalled -> C.PackageIdentifier
 exInstPkgId ex = C.PackageIdentifier {
       pkgName    = C.mkPackageName (exInstName ex)
-    , pkgVersion = Version [exInstVersion ex, 0, 0] []
+    , pkgVersion = C.mkVersion [exInstVersion ex, 0, 0]
     }
 
 exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex UnresolvedSourcePackage
@@ -531,9 +530,8 @@ extractInstallPlan = catMaybes . map confPkg . CI.SolverInstallPlan.toList
 
     srcPkg :: SolverPackage UnresolvedPkgLoc -> (String, Int)
     srcPkg cpkg =
-      let C.PackageIdentifier pn (Version (n:_) _) =
-            packageInfoId (solverPkgSource cpkg)
-      in (C.unPackageName pn, n)
+      let C.PackageIdentifier pn ver = packageInfoId (solverPkgSource cpkg)
+      in (C.unPackageName pn, head (C.versionNumbers ver))
 
 {-------------------------------------------------------------------------------
   Auxiliary

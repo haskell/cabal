@@ -25,7 +25,7 @@ data BenchmarkType = BenchmarkTypeExe Version
 instance Binary BenchmarkType
 
 knownBenchmarkTypes :: [BenchmarkType]
-knownBenchmarkTypes = [ BenchmarkTypeExe (Version [1,0] []) ]
+knownBenchmarkTypes = [ BenchmarkTypeExe (mkVersion [1,0]) ]
 
 instance Text BenchmarkType where
   disp (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver

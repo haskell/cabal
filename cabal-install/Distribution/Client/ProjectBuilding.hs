@@ -1195,7 +1195,7 @@ buildInplaceUnpackedPackage verbosity
                         "back on recursive file scan."
                     filter (not . ("dist" `isPrefixOf`))
                         `fmap` getDirectoryContentsRecursive srcdir
-            in if elabSetupScriptCliVersion pkg >= Version [1,17] []
+            in if elabSetupScriptCliVersion pkg >= mkVersion [1,17]
                   then do r <- trySdist
                           if null r
                             then tryFallback

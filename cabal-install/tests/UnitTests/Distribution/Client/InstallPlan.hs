@@ -195,7 +195,7 @@ arbitraryTestInstallPlan = do
         deps   = map mkUnitIdV depvs
     mkUnitIdV = mkUnitId . show
     mkPkgId v = PackageIdentifier (mkPackageName ("pkg" ++ show v))
-                                  (Version [1] [])
+                                  (mkVersion [1])
 
 
 -- | Generate a random 'InstallPlan' following the structure of an existing

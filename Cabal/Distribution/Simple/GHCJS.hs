@@ -58,7 +58,7 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
 configure verbosity hcPath hcPkgPath progdb0 = do
   (ghcjsProg, ghcjsVersion, progdb1) <-
     requireProgramVersion verbosity ghcjsProgram
-      (orLaterVersion (Version [0,1] []))
+      (orLaterVersion (mkVersion [0,1]))
       (userMaybeSpecifyPath "ghcjs" hcPath progdb0)
   Just ghcjsGhcVersion <- findGhcjsGhcVersion verbosity (programPath ghcjsProg)
   let implInfo = ghcjsVersionImplInfo ghcjsVersion ghcjsGhcVersion
@@ -109,7 +109,7 @@ configure verbosity hcPath hcPkgPath progdb0 = do
   let comp = Compiler {
         compilerId         = CompilerId GHCJS ghcjsVersion,
         compilerAbiTag     = AbiTag $
-          "ghc" ++ intercalate "_" (map show . versionBranch $ ghcjsGhcVersion),
+          "ghc" ++ intercalate "_" (map show . versionNumbers $ ghcjsGhcVersion),
         compilerCompat     = [CompilerId GHC ghcjsGhcVersion],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
@@ -855,12 +855,12 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                    , HcPkg.noVerboseFlag   = False
                                    , HcPkg.flagPackageConf = False
                                    , HcPkg.supportsDirDbs  = True
-                                   , HcPkg.requiresDirDbs  = v >= [7,10]
-                                   , HcPkg.nativeMultiInstance  = v >= [7,10]
+                                   , HcPkg.requiresDirDbs  = ver >= v7_10
+                                   , HcPkg.nativeMultiInstance  = ver >= v7_10
                                    , HcPkg.recacheMultiInstance = True
                                    }
   where
-    v                 = versionBranch ver
+    v7_10 = mkVersion [7,10]
     Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram progdb
     Just ver          = programVersion ghcjsPkgProg
 

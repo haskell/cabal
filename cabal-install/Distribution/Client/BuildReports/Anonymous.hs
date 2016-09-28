@@ -37,8 +37,8 @@ import Distribution.Package
          ( PackageIdentifier(..), mkPackageName )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
---import Distribution.Version
---         ( Version )
+import Distribution.Version
+         ( mkVersion' )
 import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
@@ -159,7 +159,8 @@ new os' arch' comp pkgid flags deps result =
 
 cabalInstallID :: PackageIdentifier
 cabalInstallID =
-  PackageIdentifier (mkPackageName "cabal-install") Paths_cabal_install.version
+  PackageIdentifier (mkPackageName "cabal-install")
+                    (mkVersion' Paths_cabal_install.version)
 
 -- ------------------------------------------------------------
 -- * External format

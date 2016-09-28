@@ -249,7 +249,7 @@ currentCabalId = PackageIdentifier (mkPackageName "Cabal") cabalVersion
 -- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (mkPackageName System.Info.compilerName)
-                                      System.Info.compilerVersion
+                                      (mkVersion' System.Info.compilerVersion)
 
 -- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
@@ -650,7 +650,7 @@ configure (pkg_descr0', pbi) cfg = do
        if not (fromFlag $ configSplitObjs cfg)
             then return False
             else case compilerFlavor comp of
-                        GHC | compilerVersion comp >= Version [6,5] []
+                        GHC | compilerVersion comp >= mkVersion [6,5]
                           -> return True
                         GHCJS
                           -> return True
@@ -1346,7 +1346,7 @@ interpretPackageDbFlags userInstall specificDBs =
     extra dbs' (Just db:dbs) = extra (dbs' ++ [db]) dbs
 
 newPackageDepsBehaviourMinVersion :: Version
-newPackageDepsBehaviourMinVersion = Version [1,7,1] []
+newPackageDepsBehaviourMinVersion = mkVersion [1,7,1]
 
 -- In older cabal versions, there was only one set of package dependencies for
 -- the whole package. In this version, we can have separate dependencies per
@@ -1456,7 +1456,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
   | otherwise    = do
     (_, _, progdb') <- requireProgramVersion
                        (lessVerbose verbosity) pkgConfigProgram
-                       (orLaterVersion $ Version [0,9,0] []) progdb
+                       (orLaterVersion $ mkVersion [0,9,0]) progdb
     traverse_ requirePkg allpkgs
     mlib' <- traverse addPkgConfigBILib (library pkg_descr)
     libs' <- traverse addPkgConfigBILib (subLibraries pkg_descr)

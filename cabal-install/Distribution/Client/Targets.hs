@@ -83,7 +83,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
-         ( Version(Version), thisVersion, anyVersion, isAnyVersion
+         ( nullVersion, thisVersion, anyVersion, isAnyVersion
          , VersionRange )
 import Distribution.Text
          ( Text(..), display )
@@ -298,8 +298,8 @@ readUserTarget targetstr =
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
-          Version [] _ -> Dependency (packageName p) anyVersion
-          version      -> Dependency (packageName p) (thisVersion version)
+          v | v == nullVersion -> Dependency (packageName p) anyVersion
+            | otherwise        -> Dependency (packageName p) (thisVersion v)
 
 readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str

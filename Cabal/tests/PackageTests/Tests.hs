@@ -21,11 +21,11 @@ import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
 import Distribution.Simple.Compiler    ( compilerId )
 import Distribution.System (buildOS, OS(Windows))
+import Distribution.Version
 
 import Control.Monad
 
 import System.Directory
-import Data.Version
 import Test.Tasty (mkTimeout, localOption)
 
 tests :: SuiteConfig -> TestTreeM ()
@@ -206,7 +206,7 @@ tests config = do
   tc "OrderFlags" $ cabal_build []
 
   -- Test that reexported modules build correctly
-  tc "ReexportedModules" . whenGhcVersion (>= Version [7,9] []) $ do
+  tc "ReexportedModules" . whenGhcVersion (>= mkVersion [7,9]) $ do
       withPackageDb $ do
         withPackage "p" $ cabal_install []
         withPackage "q" $ do

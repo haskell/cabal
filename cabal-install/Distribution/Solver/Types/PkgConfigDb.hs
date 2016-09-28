@@ -33,7 +33,7 @@ import Distribution.Package
 import Distribution.Verbosity
     ( Verbosity )
 import Distribution.Version
-    ( Version, VersionRange, withinRange )
+    ( Version, mkVersion', VersionRange, withinRange )
 
 import Distribution.Compat.Environment
     ( lookupEnv )
@@ -86,7 +86,7 @@ pkgConfigDbFromList pairs = (PkgConfigDb . M.fromList . map convert) pairs
       convert :: (String, String) -> (PackageName, Maybe Version)
       convert (n,vs) = (mkPackageName n,
                         case (reverse . readP_to_S parseVersion) vs of
-                          (v, "") : _ -> Just v
+                          (v, "") : _ -> Just (mkVersion' v)
                           _           -> Nothing -- Version not (fully)
                                                  -- understood.
                        )

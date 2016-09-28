@@ -660,7 +660,7 @@ parseVersionRangeQ = parseQuoted parse <++ parse
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
   where ver :: ReadP r Version
-        ver = parse <++ return (Version [] [])
+        ver = parse <++ return nullVersion
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw

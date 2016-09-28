@@ -11,7 +11,7 @@ module Distribution.Solver.Modular.Solver
 import Data.Map as M
 import Data.List as L
 import Data.Set as S
-import Data.Version
+import Distribution.Version
 
 import Distribution.Compiler (CompilerInfo)
 
@@ -249,4 +249,4 @@ _removeGR = trav go
    dummy :: QGoalReason
    dummy = PDependency
          $ PI (Q (PackagePath DefaultNamespace Unqualified) (mkPackageName "$"))
-              (I (Version [1] []) InRepo)
+              (I (mkVersion [1]) InRepo)

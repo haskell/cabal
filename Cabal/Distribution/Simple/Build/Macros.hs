@@ -120,7 +120,7 @@ generateMacros macro_prefix name version =
     ]
   ,"\n"]
   where
-    (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
+    (major1:major2:minor:_) = map show (versionNumbers version ++ repeat 0)
 
 -- | Generate the @CURRENT_COMPONENT_ID@ definition for the component ID
 --   of the current package.

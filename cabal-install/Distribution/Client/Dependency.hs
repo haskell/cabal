@@ -84,7 +84,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, thisVersion, orLaterVersion
+         ( mkVersion, VersionRange, anyVersion, thisVersion, orLaterVersion
          , withinRange, simplifyVersionRange
          , removeLowerBound, removeUpperBound )
 import Distribution.Compiler
@@ -521,7 +521,7 @@ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
       mkDefaultSetupDeps :: UnresolvedSourcePackage -> Maybe [Dependency]
       mkDefaultSetupDeps srcpkg | affected        =
         Just [Dependency (mkPackageName "Cabal")
-              (orLaterVersion $ Version [1,24] [])]
+              (orLaterVersion $ mkVersion [1,24])]
                                 | otherwise       = Nothing
         where
           gpkgdesc = packageDescription srcpkg

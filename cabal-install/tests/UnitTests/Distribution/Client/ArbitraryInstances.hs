@@ -69,7 +69,6 @@ instance Arbitrary ShortToken where
 arbitraryShortToken :: Gen String
 arbitraryShortToken = getShortToken <$> arbitrary
 
-#if !MIN_VERSION_QuickCheck(2,9,0)
 instance Arbitrary Version where
   arbitrary = do
     branch <- shortListOf1 4 $
@@ -77,14 +76,11 @@ instance Arbitrary Version where
                           ,(3, return 1)
                           ,(2, return 2)
                           ,(1, return 3)]
-    return (Version branch []) -- deliberate []
+    return (mkVersion branch)
     where
 
-  shrink (Version branch []) =
-    [ Version branch' [] | branch' <- shrink branch, not (null branch') ]
-  shrink (Version branch _tags) =
-    [ Version branch [] ]
-#endif
+  shrink ver = [ mkVersion branch' | branch' <- shrink (versionNumbers ver)
+                                   , not (null branch') ]
 
 instance Arbitrary VersionRange where
   arbitrary = canonicaliseVersionRange <$> sized verRangeExp

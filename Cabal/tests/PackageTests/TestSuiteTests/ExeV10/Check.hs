@@ -16,7 +16,7 @@ import Distribution.Simple.Program.Db
     ( emptyProgramDb, configureProgram, requireProgramVersion )
 import Distribution.Text (display)
 import qualified Distribution.Verbosity as Verbosity
-import Distribution.Version (Version(..), orLaterVersion)
+import Distribution.Version (mkVersion, orLaterVersion)
 
 import PackageTests.PackageTester
 
@@ -96,7 +96,7 @@ hpcTestMatrix config = forM_ (choose4 [True, False]) $
             let way = guessWay lbi
                 CompilerId comp version = compilerId (compiler lbi)
                 subdir
-                  | comp == GHC && version >= Version [7, 10] [] =
+                  | comp == GHC && version >= mkVersion [7, 10] =
                       localCompatPackageKey lbi
                   | otherwise = display (localPackage lbi)
             mapM_ shouldExist
@@ -119,7 +119,7 @@ correctHpcVersion :: IO Bool
 correctHpcVersion = do
     let programDb' = emptyProgramDb
     let verbosity = Verbosity.normal
-    let verRange  = orLaterVersion (Version [0,7] [])
+    let verRange  = orLaterVersion (mkVersion [0,7])
     programDb <- configureProgram verbosity hpcProgram programDb'
     (requireProgramVersion verbosity hpcProgram verRange programDb
      >> return True) `catchIO` (\_ -> return False)

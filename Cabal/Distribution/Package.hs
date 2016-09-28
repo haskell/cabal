@@ -54,8 +54,9 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, thisVersion
-         , notThisVersion, simplifyVersionRange )
+         ( Version, VersionRange, anyVersion, thisVersion
+         , notThisVersion, simplifyVersionRange
+         , nullVersion )
 
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -122,13 +123,13 @@ data PackageIdentifier
 instance Binary PackageIdentifier
 
 instance Text PackageIdentifier where
-  disp (PackageIdentifier n v) = case v of
-    Version [] _ -> disp n -- if no version, don't show version.
-    _            -> disp n <<>> Disp.char '-' <<>> disp v
+  disp (PackageIdentifier n v)
+    | v == nullVersion = disp n -- if no version, don't show version.
+    | otherwise        = disp n <<>> Disp.char '-' <<>> disp v
 
   parse = do
     n <- parse
-    v <- (Parse.char '-' >> parse) <++ return (Version [] [])
+    v <- (Parse.char '-' >> parse) <++ return nullVersion
     return (PackageIdentifier n v)
 
 instance NFData PackageIdentifier where

@@ -75,12 +75,12 @@ import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity as Verbosity
+import Distribution.Version
 import Distribution.Compat.Graph (IsNode(nodeKey))
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
 
-import Data.Version
 import Data.List (partition)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -236,7 +236,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
              }
   abi_hash <-
     case compilerFlavor comp of
-     GHC | compilerVersion comp >= Version [6,11] [] -> do
+     GHC | compilerVersion comp >= mkVersion [6,11] -> do
             fmap AbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
      GHCJS -> do
             fmap AbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi

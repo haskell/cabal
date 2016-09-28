@@ -88,7 +88,6 @@ import Distribution.Utils.NubList
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
-import Data.Version             ( showVersion )
 import System.Directory
          ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing
          , canonicalizePath, removeFile )
@@ -107,7 +106,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, progdb1) <-
     requireProgramVersion verbosity ghcProgram
-      (orLaterVersion (Version [6,11] []))
+      (orLaterVersion (mkVersion [6,11]))
       (userMaybeSpecifyPath "ghc" hcPath conf0)
   let implInfo = ghcVersionImplInfo ghcVersion
 
@@ -149,7 +148,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
       -- `--supported-extensions` when it's not available.
       -- for older GHCs we can use the "Have interpreter" property to
       -- filter out `TemplateHaskell`
-      extensions | ghcVersion < Version [8] []
+      extensions | ghcVersion < mkVersion [8]
                  , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap
                    = filter ((/= EnableExtension TemplateHaskell) . fst)
                      extensions0
@@ -348,7 +347,7 @@ getUserPackageDB _verbosity ghcProg (Platform arch os) = do
                                          , Internal.showOsString os
                                          , display ghcVersion ]
     packageConfFileName
-      | ghcVersion >= Version [6,12] []  = "package.conf.d"
+      | ghcVersion >= mkVersion [6,12]   = "package.conf.d"
       | otherwise                        = "package.conf"
     Just ghcVersion = programVersion ghcProg
 
@@ -397,7 +396,7 @@ removeMingwIncludeDir pkg =
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramDb
                      -> IO [(PackageDB, [InstalledPackageInfo])]
 getInstalledPackages' verbosity packagedbs progdb
-  | ghcVersion >= Version [6,9] [] =
+  | ghcVersion >= mkVersion [6,9] =
   sequenceA
     [ do pkgs <- HcPkg.dump (hcPkgInfo progdb) verbosity packagedb
          return (packagedb, pkgs)
@@ -426,7 +425,7 @@ getInstalledPackages' verbosity packagedbs progdb = do
     -- instance to parse the package file and then convert.
     -- It's a bit yuck. But that's what we get for using Read/Show.
     readPackages
-      | ghcVersion >= Version [6,4,2] []
+      | ghcVersion >= mkVersion [6,4,2]
       = \file content -> case reads content of
           [(pkgs, _)] -> return (map IPI642.toCurrent pkgs)
           _           -> failToRead file
@@ -663,17 +662,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
     stubObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension [objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
-      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
     stubProfObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
-      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
     stubSharedObjs <- catMaybes <$> sequenceA
       [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
           (ModuleName.toFilePath x ++"_stub")
-      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
 
     hObjs     <- Internal.getHaskellObjects implInfo lib lbi
@@ -723,7 +722,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 -- at build time. This only applies to GHC < 7.8 - see the
                 -- discussion in #1660.
                 ghcOptDylibName          = if hostOS == OSX
-                                              && ghcVersion < Version [7,8] []
+                                              && ghcVersion < mkVersion [7,8]
                                             then toFlag sharedLibInstallPath
                                             else mempty,
                 ghcOptNoAutoLinkPackages = toFlag True,
@@ -957,7 +956,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
     -- Work around old GHCs not relinking in this
     -- situation, see #3294
     let target = targetDir </> exeNameReal
-    when (compilerVersion comp < Version [7,7] []) $ do
+    when (compilerVersion comp < mkVersion [7,7]) $ do
       e <- doesFileExist target
       when e (removeFile target)
     runGhcProg linkOpts { ghcOptOutputFile = toFlag target }
@@ -1031,7 +1030,7 @@ hackThreadedFlag verbosity comp prof bi
                   ++ "profiling in ghc-6.8 and older. It will be disabled."
     return bi { options = filterHcOptions (/= "-threaded") (options bi) }
   where
-    mustFilterThreaded = prof && compilerVersion comp < Version [6, 10] []
+    mustFilterThreaded = prof && compilerVersion comp < mkVersion [6, 10]
                       && "-threaded" `elem` hcOptions GHC bi
     filterHcOptions p hcoptss =
       [ (hc, if hc == GHC then filter p opts else opts)
@@ -1201,7 +1200,7 @@ hcPkgInfo progdb = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                    , HcPkg.recacheMultiInstance = v >= [6,12]
                                    }
   where
-    v               = versionBranch ver
+    v               = versionNumbers ver
     Just ghcPkgProg = lookupProgram ghcPkgProgram progdb
     Just ver        = programVersion ghcPkgProg
 
@@ -1231,7 +1230,7 @@ pkgRoot verbosity lbi = pkgRoot'
       appDir <- getAppUserDataDirectory "ghc"
       let ver      = compilerVersion (compiler lbi)
           subdir   = System.Info.arch ++ '-':System.Info.os
-                     ++ '-':showVersion ver
+                     ++ '-':display ver
           rootDir  = appDir </> subdir
       -- We must create the root directory for the user package database if it
       -- does not yet exists. Otherwise '${pkgroot}' will resolve to a

@@ -59,7 +59,7 @@
 
 module Distribution.Make (
         module Distribution.Package,
-        License(..), Version(..),
+        License(..), Version,
         defaultMain, defaultMainArgs, defaultMainNoRead
   ) where
 

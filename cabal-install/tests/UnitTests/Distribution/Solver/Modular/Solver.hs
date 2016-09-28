@@ -8,7 +8,6 @@ module UnitTests.Distribution.Solver.Modular.Solver (tests)
 -- base
 import Data.List (isInfixOf)
 
-import qualified Data.Version         as V
 import qualified Distribution.Version as V
 
 -- test-framework
@@ -183,7 +182,7 @@ tests = [
     soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
-    makeV v         = V.Version [v,0,0] []
+    makeV v         = V.mkVersion [v,0,0]
 
 -- | Combinator to turn on --independent-goals behavior, i.e. solve
 -- for the goals as if we were solving for each goal independently.

@@ -24,8 +24,8 @@ data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
 instance Binary TestType
 
 knownTestTypes :: [TestType]
-knownTestTypes = [ TestTypeExe (Version [1,0] [])
-                 , TestTypeLib (Version [0,9] []) ]
+knownTestTypes = [ TestTypeExe (mkVersion [1,0])
+                 , TestTypeLib (mkVersion [0,9]) ]
 
 instance Text TestType where
   disp (TestTypeExe ver)          = text "exitcode-stdio-" <<>> disp ver

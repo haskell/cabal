@@ -27,7 +27,7 @@ import Distribution.Client.Compat.Prelude
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion
+         ( Version, mkVersion, versionNumbers, VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
          , withinRange )
 import Distribution.Package
@@ -654,7 +654,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   buildTypeScript cabalLibVersion = case bt of
     Simple    -> "import Distribution.Simple; main = defaultMain\n"
     Configure -> "import Distribution.Simple; main = defaultMainWithHooks "
-              ++ if cabalLibVersion >= Version [1,3,10] []
+              ++ if cabalLibVersion >= mkVersion [1,3,10]
                    then "autoconfUserHooks\n"
                    else "defaultUserHooks\n"
     Make      -> "import Distribution.Make; main = defaultMain\n"
@@ -701,8 +701,8 @@ getExternalSetupMethod verbosity options pkg bt = do
         where
           sameVersion      = version == cabalVersion
           sameMajorVersion = majorVersion version == majorVersion cabalVersion
-          majorVersion     = take 2 . versionBranch
-          stableVersion    = case versionBranch version of
+          majorVersion     = take 2 . versionNumbers
+          stableVersion    = case versionNumbers version of
                                (_:x:_) -> even x
                                _       -> False
           latestVersion    = version

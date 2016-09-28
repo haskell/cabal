@@ -57,7 +57,7 @@ getImplInfo comp =
                     ", but found " ++ show x)
 
 ghcVersionImplInfo :: Version -> GhcImplInfo
-ghcVersionImplInfo (Version v _) = GhcImplInfo
+ghcVersionImplInfo ver = GhcImplInfo
   { supportsHaskell2010  = v >= [7]
   , reportsNoExt         = v >= [7]
   , alwaysNondecIndent   = v <  [7,1]
@@ -66,6 +66,8 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
   }
+  where
+    v = versionNumbers ver
 
 ghcjsVersionImplInfo :: Version -> Version -> GhcImplInfo
 ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo

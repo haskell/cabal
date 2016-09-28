@@ -14,8 +14,6 @@ module Distribution.Client.GenBounds (
     genBounds
   ) where
 
-import Data.Version
-         ( Version(..), showVersion )
 import Distribution.Client.Init
          ( incVersion )
 import Distribution.Client.Freeze
@@ -43,10 +41,13 @@ import Distribution.Simple.Utils
          ( tryFindPackageDesc )
 import Distribution.System
          ( Platform )
+import Distribution.Text
+         ( display )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Version
-         ( LowerBound(..), UpperBound(..), VersionRange(..), asVersionIntervals
+         ( Version, alterVersion
+         , LowerBound(..), UpperBound(..), VersionRange(..), asVersionIntervals
          , orLaterVersion, earlierVersion, intersectVersionRanges )
 import System.Directory
          ( getCurrentDirectory )
@@ -71,7 +72,7 @@ pvpize v = orLaterVersion (vn 3)
            `intersectVersionRanges`
            earlierVersion (incVersion 1 (vn 2))
   where
-    vn n = (v { versionBranch = take n (versionBranch v) })
+    vn n = alterVersion (take n) v
 
 -- | Show the PVP-mandated version range for this package. The @padTo@ parameter
 -- specifies the width of the package name column.
@@ -87,7 +88,7 @@ showBounds padTo p = unwords $
     showInterval (LowerBound _ _, NoUpperBound) =
       error "Error: expected upper bound...this should never happen!"
     showInterval (LowerBound l _, UpperBound u _) =
-      unwords [">=", showVersion l, "&& <", showVersion u]
+      unwords [">=", display l, "&& <", display u]
 
 -- | Entry point for the @gen-bounds@ command.
 genBounds

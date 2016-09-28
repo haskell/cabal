@@ -15,7 +15,7 @@ suite = do
     lbi <- liftIO $ getPersistBuildConfig dist_dir
     let anticipatedBenchmark = emptyBenchmark
             { benchmarkName = "dummy"
-            , benchmarkInterface = BenchmarkExeV10 (Version [1,0] [])
+            , benchmarkInterface = BenchmarkExeV10 (mkVersion [1,0])
                                                    "dummy.hs"
             , benchmarkBuildInfo = emptyBuildInfo
                     { targetBuildDepends =

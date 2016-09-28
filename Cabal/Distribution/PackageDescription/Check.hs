@@ -113,7 +113,7 @@ check True  pc = Just pc
 checkSpecVersion :: PackageDescription -> [Int] -> Bool -> PackageCheck
                  -> Maybe PackageCheck
 checkSpecVersion pkg specver cond pc
-  | specVersion pkg >= Version specver [] = Nothing
+  | specVersion pkg >= mkVersion specver  = Nothing
   | otherwise                             = check cond pc
 
 -- ------------------------------------------------------------
@@ -169,7 +169,7 @@ checkSanity pkg =
     check (null . unPackageName . packageName $ pkg) $
       PackageBuildImpossible "No 'name' field."
 
-  , check (null . versionBranch . packageVersion $ pkg) $
+  , check (nullVersion == packageVersion pkg) $
       PackageBuildImpossible "No 'version' field."
 
   , check (all ($ pkg) [ null . executables
@@ -258,7 +258,7 @@ checkLibrary pkg lib =
   where
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
-      | specVersion pkg >= Version ver []      = Nothing
+      | specVersion pkg >= mkVersion ver       = Nothing
       | otherwise                              = check cond pc
 
     moduleDuplicates = dups (libModules lib ++
@@ -937,7 +937,7 @@ checkCabalVersion pkg =
   catMaybes [
 
     -- check syntax of cabal-version field
-    check (specVersion pkg >= Version [1,10] []
+    check (specVersion pkg >= mkVersion [1,10]
            && not simpleSpecVersionRangeSyntax) $
       PackageBuildWarning $
            "Packages relying on Cabal 1.10 or later must only specify a "
@@ -945,7 +945,7 @@ checkCabalVersion pkg =
         ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
 
     -- check syntax of cabal-version field
-  , check (specVersion pkg < Version [1,9] []
+  , check (specVersion pkg < mkVersion [1,9]
            && not simpleSpecVersionRangeSyntax) $
       PackageDistSuspicious $
            "It is recommended that the 'cabal-version' field only specify a "
@@ -976,7 +976,7 @@ checkCabalVersion pkg =
            "To use the 'default-language' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.10'."
 
-  , check (specVersion pkg >= Version [1,10] []
+  , check (specVersion pkg >= mkVersion [1,10]
            && (any isNothing (buildInfoField defaultLanguage))) $
       PackageBuildWarning $
            "Packages using 'cabal-version: >= 1.10' must specify the "
@@ -1028,7 +1028,7 @@ checkCabalVersion pkg =
         ++ "at least 'cabal-version: >= 1.10'."
 
     -- check use of extensions field
-  , check (specVersion pkg >= Version [1,10] []
+  , check (specVersion pkg >= mkVersion [1,10]
            && (any (not . null) (buildInfoField oldExtensions))) $
       PackageBuildWarning $
            "For packages using 'cabal-version: >= 1.10' the 'extensions' "
@@ -1144,7 +1144,7 @@ checkCabalVersion pkg =
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
-  , check (specVersion pkg >= Version [1,23] []
+  , check (specVersion pkg >= mkVersion [1,23]
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
       PackageBuildWarning $
@@ -1154,7 +1154,7 @@ checkCabalVersion pkg =
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
 
-  , check (specVersion pkg < Version [1,23] []
+  , check (specVersion pkg < mkVersion [1,23]
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
       PackageDistSuspiciousWarn $
@@ -1165,7 +1165,7 @@ checkCabalVersion pkg =
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
 
-  , check (specVersion pkg >= Version [1,25] []
+  , check (specVersion pkg >= mkVersion [1,25]
            && elem (autogenPathsModuleName pkg) allModuleNames
            && not (elem (autogenPathsModuleName pkg) allModuleNamesAutogen) ) $
       PackageDistInexcusable $
@@ -1184,7 +1184,7 @@ checkCabalVersion pkg =
     -- version.
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
-      | specVersion pkg >= Version ver []      = Nothing
+      | specVersion pkg >= mkVersion ver       = Nothing
       | otherwise                              = check cond pc
 
     buildInfoField field         = map field (allBuildInfo pkg)
@@ -1373,8 +1373,9 @@ displayRawVersionRange =
      (\(r,  _ )          -> (Disp.parens r, 0)) -- parens
 
   where
-    dispWild (Version b _) =
-           Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+    dispWild v =
+           Disp.hcat (Disp.punctuate (Disp.char '.')
+                                     (map Disp.int $ versionNumbers v))
         <<>> Disp.text ".*"
     punct p p' | p < p'    = Disp.parens
                | otherwise = id
@@ -1424,7 +1425,7 @@ checkPackageVersions pkg =
                               [] defaultComponentRequestedSpec (const True)
                               buildPlatform
                               (unknownCompilerInfo
-                                (CompilerId buildCompilerFlavor (Version [] []))
+                                (CompilerId buildCompilerFlavor nullVersion)
                                 NoAbiTag)
                               [] pkg
     baseDependency = case finalised of

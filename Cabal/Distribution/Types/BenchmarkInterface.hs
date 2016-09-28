@@ -36,7 +36,7 @@ data BenchmarkInterface =
 instance Binary BenchmarkInterface
 
 instance Monoid BenchmarkInterface where
-    mempty  =  BenchmarkUnsupported (BenchmarkTypeUnknown mempty (Version [] []))
+    mempty  =  BenchmarkUnsupported (BenchmarkTypeUnknown mempty nullVersion)
     mappend = (<>)
 
 instance Semigroup BenchmarkInterface where

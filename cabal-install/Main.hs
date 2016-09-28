@@ -160,7 +160,7 @@ import Distribution.Text
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
+         ( Version, mkVersion, orLaterVersion )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -425,7 +425,7 @@ build verbosity config distPref buildFlags extraArgs =
 -- old versions of Cabal.
 filterBuildFlags :: Version -> SavedConfig -> BuildFlags -> BuildFlags
 filterBuildFlags version config buildFlags
-  | version >= Version [1,19,1] [] = buildFlags_latest
+  | version >= mkVersion [1,19,1] = buildFlags_latest
   -- Cabal < 1.19.1 doesn't support 'build -j'.
   | otherwise                      = buildFlags_pre_1_19_1
   where
@@ -467,7 +467,7 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
         mempty [] globalFlags config
       let progDb = defaultProgramDb
           setupOptions = defaultSetupScriptOptions
-            { useCabalVersion = orLaterVersion $ Version [1,18,0] []
+            { useCabalVersion = orLaterVersion $ mkVersion [1,18,0]
             , useDistPref     = distPref
             }
           replFlags'   = replFlags

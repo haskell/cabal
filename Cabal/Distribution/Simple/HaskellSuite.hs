@@ -6,7 +6,6 @@ module Distribution.Simple.HaskellSuite where
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Data.Version
 import qualified Data.Map as Map (empty)
 
 import Distribution.Simple.Program
@@ -14,6 +13,7 @@ import Distribution.Simple.Compiler as Compiler
 import Distribution.Simple.Utils
 import Distribution.Simple.BuildPaths
 import Distribution.Verbosity
+import Distribution.Version
 import Distribution.Text
 import Distribution.Package
 import Distribution.InstalledPackageInfo hiding (includeDirs)

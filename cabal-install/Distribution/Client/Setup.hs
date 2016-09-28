@@ -98,7 +98,7 @@ import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
 import Distribution.Version
-         ( Version(Version), anyVersion, thisVersion )
+         ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -363,22 +363,22 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= Version [1,23,0] [] = flags_latest
+  | cabalLibVersion >= mkVersion [1,23,0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
   -- these flags work for; version of introduction is a more
   -- natural metric.
-  | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
-  | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
-  | cabalLibVersion <  Version [1,12,0] [] = flags_1_12_0
-  | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
-  | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
-  | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_1
-  | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_2
-  | cabalLibVersion <  Version [1,21,1] [] = flags_1_21_1
-  | cabalLibVersion <  Version [1,22,0] [] = flags_1_22_0
-  | cabalLibVersion <  Version [1,23,0] [] = flags_1_23_0
+  | cabalLibVersion < mkVersion [1,3,10] = flags_1_3_10
+  | cabalLibVersion < mkVersion [1,10,0] = flags_1_10_0
+  | cabalLibVersion < mkVersion [1,12,0] = flags_1_12_0
+  | cabalLibVersion < mkVersion [1,14,0] = flags_1_14_0
+  | cabalLibVersion < mkVersion [1,18,0] = flags_1_18_0
+  | cabalLibVersion < mkVersion [1,19,1] = flags_1_19_1
+  | cabalLibVersion < mkVersion [1,19,2] = flags_1_19_2
+  | cabalLibVersion < mkVersion [1,21,1] = flags_1_21_1
+  | cabalLibVersion < mkVersion [1,22,0] = flags_1_22_0
+  | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -2233,8 +2233,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
-      Version [] _ -> Dependency (packageName p) anyVersion
-      version      -> Dependency (packageName p) (thisVersion version)
+      v | v == nullVersion -> Dependency (packageName p) anyVersion
+        | otherwise        -> Dependency (packageName p) (thisVersion v)
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"
