@@ -90,6 +90,8 @@
 	  call site/stack of a logging output respectively (these
 	  are only supported if Cabal is built with GHC 8.0/7.10.2
 	  or greater, respectively).
+	* New `Distribution.Simple.Utils.ShortText` type for representing
+	  short text strings compactly (#3898)
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

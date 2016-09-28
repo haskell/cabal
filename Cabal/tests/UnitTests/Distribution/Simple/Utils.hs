@@ -5,6 +5,7 @@ module UnitTests.Distribution.Simple.Utils
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 
+import Data.Monoid as Mon
 import Data.IORef
 import System.Directory ( doesDirectoryExist, doesFileExist
                         , getTemporaryDirectory
@@ -15,6 +16,9 @@ import qualified Control.Exception as Exception
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
+
+import Distribution.Compat.Binary (encode, decode)
 
 withTempFileTest :: Assertion
 withTempFileTest = do
@@ -83,6 +87,22 @@ rawSystemStdInOutTextDecodingTest
     Left err | isDoesNotExistError err -> Exception.throwIO err -- no ghc!
              | otherwise               -> return ()
 
+
+
+prop_ShortTextOrd :: String -> String -> Bool
+prop_ShortTextOrd a b = compare a b == compare (toShortText a) (toShortText b)
+
+prop_ShortTextMonoid :: String -> String -> Bool
+prop_ShortTextMonoid a b = Mon.mappend a b == fromShortText (mappend (toShortText a) (toShortText b))
+
+prop_ShortTextId :: String -> Bool
+prop_ShortTextId a = (fromShortText . toShortText) a == a
+
+prop_ShortTextBinaryId :: String -> Bool
+prop_ShortTextBinaryId a = (decode . encode) a' == a'
+  where
+    a' = toShortText a
+
 tests :: [TestTree]
 tests =
     [ testCase "withTempFile works as expected" $
@@ -95,4 +115,9 @@ tests =
       withTempDirRemovedTest
     , testCase "rawSystemStdInOut reports text decoding errors" $
       rawSystemStdInOutTextDecodingTest
+
+    , testProperty "ShortText Id" prop_ShortTextId
+    , testProperty "ShortText Ord" prop_ShortTextOrd
+    , testProperty "ShortText Monoid" prop_ShortTextMonoid
+    , testProperty "ShortText BinaryId" prop_ShortTextBinaryId
     ]

@@ -2,6 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -150,10 +152,16 @@ module Distribution.Simple.Utils (
         -- * FilePath stuff
         isAbsoluteOnAnyPlatform,
         isRelativeOnAnyPlatform,
+
+        -- * 'ShortText' type
+        ShortText,
+        toShortText,
+        fromShortText,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Data.String (IsString(..))
 
 import Distribution.Text
 import Distribution.Package
@@ -196,6 +204,16 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
 
 import qualified Data.ByteString as SBS
+
+#if defined(MIN_VERSION_bytestring)
+# if MIN_VERSION_bytestring(0,10,4)
+# define HAVE_SHORTBYTESTRING 1
+# endif
+#endif
+
+#if HAVE_SHORTBYTESTRING
+import qualified Data.ByteString.Short as BS.Short
+#endif
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -1441,6 +1459,26 @@ toUTF8 (c:cs)
                  : toUTF8 cs
   where w = ord c
 
+-- | Variant of 'toUTF8' operating on 'Word8's directly
+toUTF8BSImpl :: String -> [Word8]
+toUTF8BSImpl []        = []
+toUTF8BSImpl (c:cs)
+  | c <= '\x07F' = w
+                 : toUTF8BSImpl cs
+  | c <= '\x7FF' = (0xC0 .|. (w `shiftR` 6))
+                 : (0x80 .|. (w .&. 0x3F))
+                 : toUTF8BSImpl cs
+  | c <= '\xFFFF'= (0xE0 .|.  (w `shiftR` 12))
+                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
+                 : (0x80 .|.  (w .&. 0x3F))
+                 : toUTF8BSImpl cs
+  | otherwise    = (0xf0 .|.  (w `shiftR` 18))
+                 : (0x80 .|. ((w `shiftR` 12)  .&. 0x3F))
+                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
+                 : (0x80 .|.  (w .&. 0x3F))
+                 : toUTF8BSImpl cs
+  where w = fromIntegral (ord c) :: Word8
+
 -- | Whether BOM is at the beginning of the input
 startsWithBOM :: String -> Bool
 startsWithBOM ('\xFEFF':_) = True
@@ -1626,3 +1664,78 @@ isAbsoluteOnAnyPlatform _ = False
 -- | @isRelativeOnAnyPlatform = not . 'isAbsoluteOnAnyPlatform'@
 isRelativeOnAnyPlatform :: FilePath -> Bool
 isRelativeOnAnyPlatform = not . isAbsoluteOnAnyPlatform
+
+-- ------------------------------------------------------------
+-- * 'ShortText' type
+-- ------------------------------------------------------------
+
+-- TODO: if we start using this internally for more opaque types in
+-- Cabal then we will likely need to promote it to it's own module in
+-- Distribution.* to avoid cycles, or just to maintain the sanity of
+-- the Distribution.* vs Distribution.Simple.* distinction.
+
+-- | Construct 'ShortText' from 'String'
+toShortText :: String -> ShortText
+
+-- | Convert 'ShortText' to 'String'
+fromShortText :: ShortText -> String
+
+-- | Compact representation of short 'Strings'
+--
+-- The data is stored internally as UTF8 in an
+-- 'BS.Short.ShortByteString' when compiled against @bytestring >=
+-- 0.10.4@, and otherwise the fallback is to use plain old non-compat
+-- '[Char]'.
+--
+-- Note: This type is for internal uses (such as e.g. 'PackageName')
+-- and shall not be exposed in Cabal's API
+--
+-- @since 2.0.0
+#if HAVE_SHORTBYTESTRING
+newtype ShortText = ST { unST :: BS.Short.ShortByteString }
+                  deriving (Eq,Ord,Generic)
+
+# if MIN_VERSION_binary(0,8,1)
+instance Binary ShortText where
+    put = put . unST
+    get = fmap ST get
+# else
+instance Binary ShortText where
+    put = put . BS.Short.fromShort . unST
+    get = fmap (ST . BS.Short.toShort) get
+# endif
+
+toShortText = ST . BS.Short.pack . toUTF8BSImpl
+
+fromShortText = fromUTF8BSImpl . BS.Short.unpack . unST
+#else
+newtype ShortText = ST { unST :: String }
+                  deriving (Eq,Ord,Generic)
+
+instance Binary ShortText where
+    put = put . toUTF8BSImpl . unST
+    get = fmap (ST . fromUTF8BSImpl) get
+
+toShortText = ST
+
+fromShortText = unST
+#endif
+
+instance NFData ShortText where
+    rnf = rnf . unST
+
+instance Show ShortText where
+    show = show . fromShortText
+
+instance Read ShortText where
+    readsPrec p = map (first toShortText) . readsPrec p
+
+instance Semigroup ShortText where
+    ST a <> ST b = ST (mappend a b)
+
+instance Monoid ShortText where
+    mempty = ST mempty
+    mappend = (<>)
+
+instance IsString ShortText where
+    fromString = toShortText
