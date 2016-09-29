@@ -291,7 +291,7 @@ type PackageSpec = FilePath
 simpleSetupPath :: TestM FilePath
 simpleSetupPath = do
     (suite, _) <- ask
-    return (absoluteCWD suite </> "tests/Setup")
+    return (cabalDistPref suite </> "build" </> "cabal-setup" </> "cabal-setup")
 
 -- | The absolute path to the directory containing the files for
 -- this tests; usually @Check.hs@ and any test packages.
