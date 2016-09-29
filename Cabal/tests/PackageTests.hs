@@ -238,10 +238,6 @@ main = do
     putStrLn $ "CABAL_PACKAGETESTS_DB_STACK=" ++ showDBStack packageDBStack0
     putStrLn $ "CABAL_PACKAGETESTS_WITH_DB_STACK=" ++ showDBStack withGhcDBStack0
 
-    -- Create a shared Setup executable to speed up Simple tests
-    putStrLn $ "Building shared ./Setup executable"
-    rawCompileSetup verbosity suite [] "tests"
-
     defaultMainWithIngredients options $
         runTestTree "Package Tests" (tests suite)
 
