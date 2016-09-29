@@ -5,4 +5,5 @@ packages: Cabal/ cabal-install/
 
 program-options
   -- So us hackers get all the assertion failures early:
-  ghc-options: -fno-ignore-asserts
+  -- NOTE: currently commented out, see https://github.com/haskell/cabal/issues/3911
+  -- ghc-options: -fno-ignore-asserts
