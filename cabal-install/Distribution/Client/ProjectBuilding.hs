@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP, BangPatterns, RecordWildCards, NamedFieldPuns,
-             DeriveGeneric, DeriveDataTypeable, GeneralizedNewtypeDeriving,
              ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
@@ -9,21 +8,31 @@
 --
 module Distribution.Client.ProjectBuilding (
     -- * Dry run phase
-    BuildStatus(..),
-    buildStatusToString,
+    -- | What bits of the plan will we execute? The dry run does not change
+    -- anything but tells us what will need to be built.
+    rebuildTargetsDryRun,
+    improveInstallPlanWithUpToDatePackages,
+
+    -- ** Build status
+    -- | This is the detailed status information we get from the dry run.
     BuildStatusMap,
+    BuildStatus(..),
     BuildStatusRebuild(..),
     BuildReason(..),
     MonitorChangedReason(..),
-    rebuildTargetsDryRun,
+    buildStatusToString,
 
     -- * Build phase
-    BuildOutcome,
+    -- | Now we actually execute the plan.
+    rebuildTargets,
+    -- ** Build outcomes
+    -- | This is the outcome for each package of executing the plan.
+    -- For each package, did the build succeed or fail?
     BuildOutcomes,
+    BuildOutcome,
     BuildResult(..),
     BuildFailure(..),
     BuildFailureReason(..),
-    rebuildTargets
   ) where
 
 import           Distribution.Client.PackageHash (renderPackageHashInputs)
@@ -31,6 +40,7 @@ import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanning
 import           Distribution.Client.ProjectPlanning.Types
+import           Distribution.Client.ProjectBuilding.Types
 
 import           Distribution.Client.Types
                    hiding (BuildOutcomes, BuildOutcome,
@@ -77,7 +87,6 @@ import           Control.Monad
 import           Control.Exception
 import           Data.List
 import           Data.Maybe
-import           Data.Typeable
 
 import           System.FilePath
 import           System.IO
@@ -89,21 +98,25 @@ import           System.Directory
 ------------------------------------------------------------------------------
 --
 -- We start with an 'ElaboratedInstallPlan' that has already been improved by
--- reusing packages from the store. So the remaining packages in the
+-- reusing packages from the store, and pruned to include only the targets of
+-- interest and their dependencies. So the remaining packages in the
 -- 'InstallPlan.Configured' state are ones we either need to build or rebuild.
 --
 -- First, we do a preliminary dry run phase where we work out which packages
 -- we really need to (re)build, and for the ones we do need to build which
 -- build phase to start at.
-
-
-------------------------------------------------------------------------------
--- * Dry run: what bits of the 'ElaboratedInstallPlan' will we execute?
-------------------------------------------------------------------------------
-
--- We split things like this for a couple reasons. Firstly we need to be able
--- to do dry runs, and these need to be reasonably accurate in terms of
--- letting users know what (and why) things are going to be (re)built.
+--
+-- We use this to improve the 'ElaboratedInstallPlan' again by changing
+-- up-to-date 'InstallPlan.Configured' packages to 'InstallPlan.Installed'
+-- so that the build phase will skip them.
+--
+-- Then we execute the plan, that is actually build packages. The outcomes of
+-- trying to build all the packages are collected and returned.
+--
+-- We split things like this (dry run and execute) for a couple reasons.
+-- Firstly we need to be able to do dry runs anyway, and these need to be
+-- reasonably accurate in terms of letting users know what (and why) things
+-- are going to be (re)built.
 --
 -- Given that we need to be able to do dry runs, it would not be great if
 -- we had to repeat all the same work when we do it for real. Not only is
@@ -117,150 +130,42 @@ import           System.Directory
 -- An additional advantage is that it makes it easier to debug rebuild
 -- errors (ie rebuilding too much or too little), since all the rebuild
 -- decisions are made without making any state changes at the same time
--- (that would make it harder to reproduce the problem sitation).
-
-
--- | The 'BuildStatus' of every package in the 'ElaboratedInstallPlan'.
+-- (that would make it harder to reproduce the problem situation).
 --
--- This is used as the result of the dry-run of building an install plan.
---
-type BuildStatusMap = Map UnitId BuildStatus
+-- Finally, we can use the dry run build status and the build outcomes to
+-- give us some information on the overall status of packages in the project.
+-- This includes limited information about the status of things that were
+-- not actually in the subset of the plan that was used for the dry run or
+-- execution phases. In particular we may know that some packages are now
+-- definitely out of date. See "Distribution.Client.ProjectPlanOutput" for
+-- details.
 
--- | The build status for an individual package is the state that the
--- package is in /prior/ to initiating a (re)build.
---
--- This should not be confused with a 'BuildResult' which is the result
--- /after/ successfully building a package.
---
--- It serves two purposes:
---
---  * For dry-run output, it lets us explain to the user if and why a package
---    is going to be (re)built.
---
---  * It tell us what step to start or resume building from, and carries
---    enough information for us to be able to do so.
---
-data BuildStatus =
 
-     -- | The package is in the 'InstallPlan.PreExisting' state, so does not
-     --   need building.
-     BuildStatusPreExisting
+------------------------------------------------------------------------------
+-- * Dry run: what bits of the 'ElaboratedInstallPlan' will we execute?
+------------------------------------------------------------------------------
 
-     -- | The package is in the 'InstallPlan.Installed' state, so does not
-     --   need building.
-   | BuildStatusInstalled
+-- Refer to ProjectBuilding.Types for details of these important types:
 
-     -- | The package has not been downloaded yet, so it will have to be
-     --   downloaded, unpacked and built.
-   | BuildStatusDownload
-
-     -- | The package has not been unpacked yet, so it will have to be
-     --   unpacked and built.
-   | BuildStatusUnpack FilePath
-
-     -- | The package exists in a local dir already, and just needs building
-     --   or rebuilding. So this can only happen for 'BuildInplaceOnly' style
-     --   packages.
-   | BuildStatusRebuild FilePath BuildStatusRebuild
-
-     -- | The package exists in a local dir already, and is fully up to date.
-     --   So this package can be put into the 'InstallPlan.Installed' state
-     --   and it does not need to be built.
-   | BuildStatusUpToDate BuildResult
-
-buildStatusToString :: BuildStatus -> String
-buildStatusToString BuildStatusPreExisting      = "BuildStatusPreExisting"
-buildStatusToString BuildStatusInstalled        = "BuildStatusInstalled"
-buildStatusToString BuildStatusDownload         = "BuildStatusDownload"
-buildStatusToString (BuildStatusUnpack fp)      = "BuildStatusUnpack " ++ show fp
-buildStatusToString (BuildStatusRebuild fp _)   = "BuildStatusRebuild " ++ show fp
-buildStatusToString (BuildStatusUpToDate _)     = "BuildStatusUpToDate"
-
--- | For a package that is going to be built or rebuilt, the state it's in now.
---
--- So again, this tells us why a package needs to be rebuilt and what build
--- phases need to be run. The 'MonitorChangedReason' gives us details like
--- which file changed, which is mainly for high verbosity debug output.
---
-data BuildStatusRebuild =
-
-     -- | The package configuration changed, so the configure and build phases
-     --   needs to be (re)run.
-     BuildStatusConfigure (MonitorChangedReason ())
-
-     -- | The configuration has not changed but the build phase needs to be
-     -- rerun. We record the reason the (re)build is needed.
-     --
-     -- The optional registration info here tells us if we've registered the
-     -- package already, or if we stil need to do that after building.
-     -- @Just Nothing@ indicates that we know that no registration is
-     -- necessary (e.g., executable.)
-     --
-   | BuildStatusBuild (Maybe (Maybe InstalledPackageInfo)) BuildReason
-
-data BuildReason =
-     -- | The dependencies of this package have been (re)built so the build
-     -- phase needs to be rerun.
-     --
-     -- The optional registration info here tells us if we've registered the
-     -- package already, or if we stil need to do that after building.
-     --
-     BuildReasonDepsRebuilt
-
-     -- | Changes in files within the package (or first run or corrupt cache)
-   | BuildReasonFilesChanged (MonitorChangedReason ())
-
-     -- | An important special case is that no files have changed but the
-     -- set of components the /user asked to build/ has changed. We track the
-     -- set of components /we have built/, which of course only grows (until
-     -- some other change resets it).
-     --
-     -- The @Set 'ComponentName'@ is the set of components we have built
-     -- previously. When we update the monitor we take the union of the ones
-     -- we have built previously with the ones the user has asked for this
-     -- time and save those. See 'updatePackageBuildFileMonitor'.
-     --
-   | BuildReasonExtraTargets (Set ComponentName)
-
-     -- | Although we're not going to build any additional targets as a whole,
-     -- we're going to build some part of a component or run a repl or any
-     -- other action that does not result in additional persistent artifacts.
-     --
-   | BuildReasonEphemeralTargets
-
--- | Which 'BuildStatus' values indicate we'll have to do some build work of
--- some sort. In particular we use this as part of checking if any of a
--- package's deps have changed.
---
-buildStatusRequiresBuild :: BuildStatus -> Bool
-buildStatusRequiresBuild BuildStatusPreExisting = False
-buildStatusRequiresBuild BuildStatusInstalled   = False
-buildStatusRequiresBuild BuildStatusUpToDate {} = False
-buildStatusRequiresBuild _                      = True
+-- type BuildStatusMap     = ...
+-- data BuildStatus        = ...
+-- data BuildStatusRebuild = ...
+-- data BuildReason        = ...
 
 -- | Do the dry run pass. This is a prerequisite of 'rebuildTargets'.
 --
--- It gives us the 'BuildStatusMap' and also gives us an improved version of
+-- It gives us the 'BuildStatusMap'. This should be used with
+-- 'improveInstallPlanWithUpToDatePackages' to give an improved version of
 -- the 'ElaboratedInstallPlan' with packages switched to the
 -- 'InstallPlan.Installed' state when we find that they're already up to date.
 --
-rebuildTargetsDryRun :: Verbosity
-                     -> DistDirLayout
+rebuildTargetsDryRun :: DistDirLayout
                      -> ElaboratedSharedConfig
                      -> ElaboratedInstallPlan
-                     -> IO (ElaboratedInstallPlan, BuildStatusMap)
-rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \installPlan -> do
-
+                     -> IO BuildStatusMap
+rebuildTargetsDryRun distDirLayout@DistDirLayout{..} shared =
     -- Do the various checks to work out the 'BuildStatus' of each package
-    pkgsBuildStatus <- foldMInstallPlanDepOrder installPlan dryRunPkg
-
-    -- For 'BuildStatusUpToDate' packages, improve the plan by marking them as
-    -- 'InstallPlan.Installed'.
-    let installPlan' = improveInstallPlanWithUpToDatePackages
-                         pkgsBuildStatus installPlan
-    debugNoWrap verbosity $ InstallPlan.showInstallPlan installPlan'
-
-    return (installPlan', pkgsBuildStatus)
+    foldMInstallPlanDepOrder dryRunPkg
   where
     dryRunPkg :: ElaboratedPlanPackage
               -> [BuildStatus]
@@ -342,12 +247,12 @@ rebuildTargetsDryRun verbosity distDirLayout@DistDirLayout{..} shared = \install
 foldMInstallPlanDepOrder
   :: forall m ipkg srcpkg b.
      (Monad m, IsUnit ipkg, IsUnit srcpkg)
-  => GenericInstallPlan ipkg srcpkg
-  -> (GenericPlanPackage ipkg srcpkg ->
+  => (GenericPlanPackage ipkg srcpkg ->
       [b] -> m b)
+  -> GenericInstallPlan ipkg srcpkg
   -> m (Map UnitId b)
-foldMInstallPlanDepOrder plan0 visit =
-    go Map.empty (InstallPlan.reverseTopologicalOrder plan0)
+foldMInstallPlanDepOrder visit =
+    go Map.empty . InstallPlan.reverseTopologicalOrder
   where
     go :: Map UnitId b
        -> [GenericPlanPackage ipkg srcpkg]
@@ -591,56 +496,13 @@ invalidatePackageRegFileMonitor PackageFileMonitor{pkgFileMonitorReg} =
 -- * Doing it: executing an 'ElaboratedInstallPlan'
 ------------------------------------------------------------------------------
 
--- | A summary of the outcome for building a whole set of packages.
---
-type BuildOutcomes = Map UnitId BuildOutcome
+-- Refer to ProjectBuilding.Types for details of these important types:
 
--- | A summary of the outcome for building a single package: either success
--- or failure.
---
-type BuildOutcome  = Either BuildFailure BuildResult
-
--- | Information arising from successfully building a single package.
---
-data BuildResult = BuildResult {
-       buildResultDocs    :: DocsResult,
-       buildResultTests   :: TestsResult,
-       buildResultLogFile :: Maybe FilePath,
-       -- | If the build was for a library, this field will be @Just@;
-       -- otherwise, it will be @Nothing@.  What about internal
-       -- libraries?  This never occurs, because a build result is either
-       -- for a per-component build (in which case there won't
-       -- be multiple libraries), or a package with no internal
-       -- libraries (internal libraries with Custom setups are NOT
-       -- supported, and even if they were supported, we could
-       -- assume the Cabal library version was recent enough to
-       -- support per-component build.).
-       buildResultLibInfo :: Maybe InstalledPackageInfo
-     }
-  deriving Show
-
--- | Information arising from the failure to build a single package.
---
-data BuildFailure = BuildFailure {
-       buildFailureLogFile :: Maybe FilePath,
-       buildFailureReason  :: BuildFailureReason
-     }
-  deriving (Show, Typeable)
-
-instance Exception BuildFailure
-
--- | Detail on the reason that a package failed to build.
---
-data BuildFailureReason = DependentFailed PackageId
-                        | DownloadFailed  SomeException
-                        | UnpackFailed    SomeException
-                        | ConfigureFailed SomeException
-                        | BuildFailed     SomeException
-                        | ReplFailed      SomeException
-                        | HaddocksFailed  SomeException
-                        | TestsFailed     SomeException
-                        | InstallFailed   SomeException
-  deriving Show
+-- type BuildOutcomes = ...
+-- type BuildOutcome  = ...
+-- data BuildResult   = ...
+-- data BuildFailure  = ...
+-- data BuildFailureReason = ...
 
 -- | Build things for real.
 --
@@ -1325,34 +1187,6 @@ buildInplaceUnpackedPackage verbosity
                                 pkgConfDest
         setup Cabal.registerCommand registerFlags []
 
-
--- helper
-annotateFailureNoLog :: (SomeException -> BuildFailureReason)
-                     -> IO a -> IO a
-annotateFailureNoLog annotate action =
-  annotateFailure Nothing annotate action
-
-annotateFailure :: Maybe FilePath
-                -> (SomeException -> BuildFailureReason)
-                -> IO a -> IO a
-annotateFailure mlogFile annotate action =
-  action `catches`
-    -- It's not just IOException and ExitCode we have to deal with, there's
-    -- lots, including exceptions from the hackage-security and tar packages.
-    -- So we take the strategy of catching everything except async exceptions.
-    [
-#if MIN_VERSION_base(4,7,0)
-      Handler $ \async -> throwIO (async :: SomeAsyncException)
-#else
-      Handler $ \async -> throwIO (async :: AsyncException)
-#endif
-    , Handler $ \other -> handler (other :: SomeException)
-    ]
-  where
-    handler :: Exception e => e -> IO a
-    handler = throwIO . BuildFailure mlogFile . annotate . toException
-
-
 withTempInstalledPackageInfoFile :: Verbosity -> FilePath
                                   -> (FilePath -> IO ())
                                   -> IO InstalledPackageInfo
@@ -1381,3 +1215,34 @@ withTempInstalledPackageInfoFile verbosity tempdir action =
         warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
 
       return ipkg
+
+
+------------------------------------------------------------------------------
+-- * Utilities
+------------------------------------------------------------------------------
+
+annotateFailureNoLog :: (SomeException -> BuildFailureReason)
+                     -> IO a -> IO a
+annotateFailureNoLog annotate action =
+  annotateFailure Nothing annotate action
+
+annotateFailure :: Maybe FilePath
+                -> (SomeException -> BuildFailureReason)
+                -> IO a -> IO a
+annotateFailure mlogFile annotate action =
+  action `catches`
+    -- It's not just IOException and ExitCode we have to deal with, there's
+    -- lots, including exceptions from the hackage-security and tar packages.
+    -- So we take the strategy of catching everything except async exceptions.
+    [
+#if MIN_VERSION_base(4,7,0)
+      Handler $ \async -> throwIO (async :: SomeAsyncException)
+#else
+      Handler $ \async -> throwIO (async :: AsyncException)
+#endif
+    , Handler $ \other -> handler (other :: SomeException)
+    ]
+  where
+    handler :: Exception e => e -> IO a
+    handler = throwIO . BuildFailure mlogFile . annotate . toException
+

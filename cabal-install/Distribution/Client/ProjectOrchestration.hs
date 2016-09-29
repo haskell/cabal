@@ -53,7 +53,8 @@ module Distribution.Client.ProjectOrchestration (
     runProjectBuildPhase,
 
     -- * Post build actions
-    reportBuildFailures,
+    runProjectPostBuildPhase,
+    dieOnBuildFailures,
   ) where
 
 import           Distribution.Client.ProjectConfig
@@ -81,8 +82,9 @@ import           Distribution.Simple.Setup (HaddockFlags)
 import qualified Distribution.Simple.Setup as Setup
 import           Distribution.Simple.Command (commandShowOptions)
 
-import           Distribution.Simple.Utils (die, info, notice, noticeNoWrap
-                                           ,debug)
+import           Distribution.Simple.Utils
+                   ( die, dieMsg, dieMsgNoWrap, info
+                   , notice, noticeNoWrap, debug, debugNoWrap )
 import           Distribution.Verbosity
 import           Distribution.Text
 
@@ -90,7 +92,6 @@ import qualified Data.Monoid as Mon
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import           Data.Map (Map)
-import qualified Data.ByteString.Lazy.Char8 as BS
 import           Data.List
 import           Data.Maybe
 import           Data.Either
@@ -124,9 +125,10 @@ data PreBuildHooks = PreBuildHooks {
                             -> IO ElaboratedInstallPlan
      }
 
--- | This holds the context between the pre-build and build phases.
+-- | This holds the context between the pre-build, build and post-build phases.
 --
 data ProjectBuildContext = ProjectBuildContext {
+      projectRootDir   :: FilePath,
       distDirLayout    :: DistDirLayout,
       elaboratedPlan   :: ElaboratedInstallPlan,
       elaboratedShared :: ElaboratedSharedConfig,
@@ -186,14 +188,20 @@ runProjectPreBuildPhase
     --
     elaboratedPlan' <- hookSelectPlanSubset buildSettings elaboratedPlan
 
-    -- Check if any packages don't need rebuilding, and improve the plan.
+    -- Check which packages need rebuilding.
     -- This also gives us more accurate reasons for the --dry-run output.
     --
-    (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
-                           elaboratedPlan'
+    pkgsBuildStatus <- rebuildTargetsDryRun distDirLayout elaboratedShared
+                                            elaboratedPlan'
+
+    -- Improve the plan by marking up-to-date packages as installed.
+    --
+    let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
+                             pkgsBuildStatus elaboratedPlan'
+    debugNoWrap verbosity (InstallPlan.showInstallPlan elaboratedPlan'')
 
     return ProjectBuildContext {
+      projectRootDir,
       distDirLayout,
       elaboratedPlan = elaboratedPlan'',
       elaboratedShared,
@@ -210,6 +218,10 @@ runProjectPreBuildPhase
 runProjectBuildPhase :: Verbosity
                      -> ProjectBuildContext
                      -> IO BuildOutcomes
+runProjectBuildPhase _ ProjectBuildContext {buildSettings}
+  | buildSettingDryRun buildSettings
+  = return Map.empty
+
 runProjectBuildPhase verbosity ProjectBuildContext {..} =
     fmap (Map.union (previousBuildOutcomes pkgsBuildStatus)) $
     rebuildTargets verbosity
@@ -225,6 +237,31 @@ runProjectBuildPhase verbosity ProjectBuildContext {..} =
         BuildStatusUpToDate buildSuccess -> Just (Right buildSuccess)
         --TODO: [nice to have] record build failures persistently
         _                                  -> Nothing
+
+-- | Post-build phase: various administrative tasks
+--
+-- Update bits of state based on the build outcomes and report any failures.
+--
+runProjectPostBuildPhase :: Verbosity
+                         -> ProjectBuildContext
+                         -> BuildOutcomes
+                         -> IO ()
+runProjectPostBuildPhase _ ProjectBuildContext {buildSettings} _
+  | buildSettingDryRun buildSettings
+  = return ()
+
+runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
+    -- Update other build artefacts
+    -- TODO: currently none, but could include:
+    --        - .ghc.environment
+    --        - bin symlinks/wrappers
+    --        - haddock/hoogle/ctags indexes
+    --        - delete stale lib registrations
+    --        - delete stale package dirs
+
+    -- Finally if there were any build failures then report them and throw
+    -- an exception to terminate the program
+    dieOnBuildFailures verbosity elaboratedPlan buildOutcomes
 
     -- Note that it is a deliberate design choice that the 'buildTargets' is
     -- not passed to phase 1, and the various bits of input config is not
@@ -556,8 +593,11 @@ printPlan verbosity
     showMonitorChangedReason  MonitorCorruptCache = "cannot read state cache"
 
 
-reportBuildFailures :: Verbosity -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
-reportBuildFailures verbosity plan buildOutcomes
+-- | If there are build failures then report them and throw an exception.
+--
+dieOnBuildFailures :: Verbosity
+                   -> ElaboratedInstallPlan -> BuildOutcomes -> IO ()
+dieOnBuildFailures verbosity plan buildOutcomes
   | null failures = return ()
 
   | isSimpleCase  = exitFailure
@@ -565,10 +605,10 @@ reportBuildFailures verbosity plan buildOutcomes
   | otherwise = do
       -- For failures where we have a build log, print the log plus a header
        sequence_
-         [ do notice verbosity $
+         [ do dieMsg $
                 '\n' : renderFailureDetail False pkg reason
                     ++ "\nBuild log ( " ++ logfile ++ " ):"
-              BS.readFile logfile >>= BS.putStrLn
+              readFile logfile >>= dieMsgNoWrap
          | verbosity >= normal
          ,  (pkg, ShowBuildSummaryAndLog reason logfile)
              <- failuresClassification

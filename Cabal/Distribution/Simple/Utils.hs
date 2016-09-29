@@ -26,6 +26,7 @@ module Distribution.Simple.Utils (
         -- * logging and errors
         die,
         dieWithLocation,
+        dieMsg, dieMsgNoWrap,
         topHandler, topHandlerWith,
         warn, notice, noticeNoWrap, setupMessage, info, debug,
         debugNoWrap, chattyTry,
@@ -332,6 +333,28 @@ hPutCallStackPrefix h verbosity = withFrozenCallStack $ do
     hPutStr h parentSrcLocPrefix
   when (isVerboseCallStack verbosity) $
     hPutStr h ("----\n" ++ prettyCallStack callStack ++ "\n")
+
+-- | This can be used to help produce formatted messages as part of a fatal
+-- error condition, prior to using 'die' or 'exitFailure'.
+--
+-- For fatal conditions we normally simply use 'die' which throws an
+-- exception. Sometimes however 'die' is not sufficiently flexible to
+-- produce the desired output.
+--
+-- Like 'die', these messages are always displayed on @stderr@, irrespective
+-- of the 'Verbosity' level.
+--
+dieMsg :: String -> NoCallStackIO ()
+dieMsg msg = do
+    hFlush stdout
+    hPutStr stderr (wrapText msg)
+
+-- | As 'dieMsg' but with pre-formatted text.
+--
+dieMsgNoWrap :: String -> NoCallStackIO ()
+dieMsgNoWrap msg = do
+    hFlush stdout
+    hPutStr stderr msg
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --

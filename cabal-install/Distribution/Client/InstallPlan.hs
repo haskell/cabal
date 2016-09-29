@@ -717,6 +717,11 @@ lookupBuildOutcome = Map.lookup . installedUnitId
 -- (using the 'JobControl' to try to cancel in-progress tasks). This behaviour
 -- can be reversed to keep going and build as many packages as possible.
 --
+-- Note that the 'BuildOutcomes' is /not/ guaranteed to cover all the packages
+-- in the plan. In particular in the default mode where we stop as soon as
+-- possible after a failure then there may be packages which are skipped and
+-- these will have no 'BuildOutcome'.
+--
 execute :: forall m ipkg srcpkg result failure.
            (IsUnit ipkg, IsUnit srcpkg,
             Monad m)

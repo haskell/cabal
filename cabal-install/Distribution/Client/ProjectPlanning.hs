@@ -310,14 +310,13 @@ rebuildInstallPlan verbosity
                                                    solverPlan
                                                    localPackages
 
+          phaseMaintainPlanOutputs elaboratedPlan elaboratedShared
           return (elaboratedPlan, elaboratedShared, projectConfig)
 
       -- The improved plan changes each time we install something, whereas
       -- the underlying elaborated plan only changes when input config
       -- changes, so it's worth caching them separately.
       improvedPlan <- phaseImprovePlan elaboratedPlan elaboratedShared
-
-      phaseMaintainPlanOutputs improvedPlan elaboratedPlan elaboratedShared
 
       return (improvedPlan, elaboratedPlan, elaboratedShared, projectConfig)
 
@@ -568,21 +567,18 @@ rebuildInstallPlan verbosity
 
     -- Update the files we maintain that reflect our current build environment.
     -- In particular we maintain a JSON representation of the elaborated
-    -- install plan.
-    --
-    -- TODO: [required eventually] maintain the ghc environment file reflecting
-    -- the libs available. This will need to be after plan improvement phase.
+    -- install plan (but not the improved plan since that reflects the state
+    -- of the build rather than just the input environment).
     --
     phaseMaintainPlanOutputs :: ElaboratedInstallPlan
-                             -> ElaboratedInstallPlan
                              -> ElaboratedSharedConfig
                              -> Rebuild ()
-    phaseMaintainPlanOutputs _improvedPlan elaboratedPlan elaboratedShared = do
-        liftIO $ debug verbosity "Updating plan.json"
-        liftIO $ writePlanExternalRepresentation
-                   distDirLayout
-                   elaboratedPlan
-                   elaboratedShared
+    phaseMaintainPlanOutputs elaboratedPlan elaboratedShared = liftIO $ do
+        debug verbosity "Updating plan.json"
+        writePlanExternalRepresentation
+          distDirLayout
+          elaboratedPlan
+          elaboratedShared
 
 
     -- Improve the elaborated install plan. The elaborated plan consists

@@ -68,6 +68,10 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         InstallPlan.PreExisting ipi -> installedPackageInfoToJ ipi
         InstallPlan.Configured elab -> elaboratedPackageToJ False elab
         InstallPlan.Installed  elab -> elaboratedPackageToJ True  elab
+        -- Note that the plan.json currently only uses the elaborated plan,
+        -- not the improved plan. So we will not get the Installed state for
+        -- that case, but the code supports it in case we want to use this
+        -- later in some use case where we want the status of the build.
 
     installedPackageInfoToJ :: InstalledPackageInfo -> J.Value
     installedPackageInfoToJ ipi =

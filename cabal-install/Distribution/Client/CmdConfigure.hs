@@ -58,24 +58,24 @@ configureAction (configFlags, configExFlags, installFlags, haddockFlags)
         ( globalFlags, configFlags, configExFlags
         , installFlags, haddockFlags )
         PreBuildHooks {
-          hookPrePlanning = \projectRootDir _ cliConfig ->
+          hookPrePlanning = \rootDir _ cliConfig ->
             -- Write out the @cabal.project.local@ so it gets picked up by the
             -- planning phase.
-            writeProjectLocalExtraConfig projectRootDir cliConfig,
+            writeProjectLocalExtraConfig rootDir cliConfig,
 
           hookSelectPlanSubset = \_ -> return
         }
 
+    let buildCtx' = buildCtx {
+                      buildSettings = (buildSettings buildCtx) {
+                        buildSettingDryRun = True
+                      }
+                    }
+
     --TODO: Hmm, but we don't have any targets. Currently this prints what we
     -- would build if we were to build everything. Could pick implicit target like "."
     --TODO: should we say what's in the project (+deps) as a whole?
-    printPlan
-      verbosity
-      buildCtx {
-        buildSettings = (buildSettings buildCtx) {
-          buildSettingDryRun = True
-        }
-      }
+    printPlan verbosity buildCtx'
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 

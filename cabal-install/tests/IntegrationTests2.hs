@@ -256,9 +256,12 @@ planProject testdir cliConfig = do
             , elabBuildStyle elab == BuildInplaceOnly ]
         elaboratedPlan' = pruneInstallPlanToTargets targets elaboratedPlan
 
-    (elaboratedPlan'', pkgsBuildStatus) <-
-      rebuildTargetsDryRun verbosity distDirLayout elaboratedShared
+    pkgsBuildStatus <-
+      rebuildTargetsDryRun distDirLayout elaboratedShared
                            elaboratedPlan'
+
+    let elaboratedPlan'' = improveInstallPlanWithUpToDatePackages
+                             pkgsBuildStatus elaboratedPlan'
 
     let buildSettings = resolveBuildTimeSettings
                           verbosity cabalDirLayout
