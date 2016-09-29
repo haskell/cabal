@@ -401,7 +401,7 @@ runProcess' :: FilePath                 -- ^ Filename of the executable
             -> Maybe Handle             -- ^ Handle for @stderr@
             -> Bool                     -- ^ Delegate Ctrl+C ?
             -> IO ProcessHandle
-runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr delegate = do
+runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr _delegate = do
   (_,_,_,ph) <-
     createProcess
       (proc cmd args){ Process.cwd = mb_cwd
@@ -410,7 +410,7 @@ runProcess' cmd args mb_cwd mb_env mb_stdin mb_stdout mb_stderr delegate = do
                      , Process.std_out = mbToStd mb_stdout
                      , Process.std_err = mbToStd mb_stderr
 #if MIN_VERSION_process(1,2,0)
-                     , Process.delegate_ctlc = delegate
+                     , Process.delegate_ctlc = _delegate
 #endif
                      }
   return ph
