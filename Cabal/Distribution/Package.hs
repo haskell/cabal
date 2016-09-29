@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -29,7 +30,7 @@ module Distribution.Package (
         mkLegacyUnitId,
         unitIdComponentId,
         getHSLibraryName,
-        InstalledPackageId, -- backwards compat
+        InstalledPackageId(..), -- backwards compat
 
         -- * Modules
         Module(..),
@@ -196,6 +197,8 @@ newtype UnitId = SimpleUnitId ComponentId
 -- | Makes a simple-style UnitId from a string.
 mkUnitId :: String -> UnitId
 mkUnitId = SimpleUnitId . ComponentId
+
+pattern InstalledPackageId id = SimpleUnitId id
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
