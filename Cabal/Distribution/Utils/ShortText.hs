@@ -25,6 +25,23 @@ import Data.String (IsString(..))
 # endif
 #endif
 
+-- Hack for GHC bootstrapping
+--
+-- Currently (as of GHC 8.1), GHC bootstraps Cabal by building
+-- binary and Cabal in one giant ghc --make command.  This
+-- means no MIN_VERSION_binary macro is available.
+--
+-- We could try to cleverly figure something out in this case,
+-- but there is a better plan: just use the unoptimized version
+-- of the Binary instance.  We're not going to use it for anything
+-- real in any case.
+--
+-- WARNING: Don't use MIN_VERSION_binary to smooth over a BC-break!
+--
+#ifndef MIN_VERSION_binary
+#define MIN_VERSION_binary(x, y, z) 0
+#endif
+
 #if HAVE_SHORTBYTESTRING
 import qualified Data.ByteString.Short as BS.Short
 #endif
