@@ -175,7 +175,7 @@ instance NFData Module where
 -- @since 2.0
 
 data ComponentId
-    = ComponentId String
+    = ComponentId ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Construct a 'ComponentId' from a 'String'
@@ -187,11 +187,11 @@ data ComponentId
 --
 -- @since 2.0
 mkComponentId :: String -> ComponentId
-mkComponentId = ComponentId
+mkComponentId = ComponentId . toShortText
 
 -- | Convert 'ComponentId' to 'String'
 unComponentId :: ComponentId -> String
-unComponentId (ComponentId s) = s
+unComponentId (ComponentId s) = fromShortText s
 
 {-# DEPRECATED InstalledPackageId "Use UnitId instead" #-}
 type InstalledPackageId = UnitId
