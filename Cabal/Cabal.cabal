@@ -410,6 +410,7 @@ library
     Distribution.Types.ComponentRequestedSpec
     Distribution.Types.TargetInfo
     Distribution.Utils.NubList
+    Distribution.Utils.ShortText
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension
@@ -422,6 +423,7 @@ library
     Distribution.Compat.Prelude
     Distribution.GetOpt
     Distribution.Lex
+    Distribution.Utils.String
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.IPIConvert
@@ -479,6 +481,7 @@ test-suite unit-tests
     UnitTests.Distribution.Simple.Utils
     UnitTests.Distribution.System
     UnitTests.Distribution.Utils.NubList
+    UnitTests.Distribution.Utils.ShortText
     UnitTests.Distribution.Version
   main-is: UnitTests.hs
   build-depends:
