@@ -1672,7 +1672,7 @@ computeComponentId mb_ipid mb_cid pid cname dep_ipids flagAssignment =
                         NoFlag -> generated_base
     in case mb_cid of
           Flag cid -> cid
-          NoFlag -> ComponentId $ actual_base
+          NoFlag -> mkComponentId $ actual_base
                         ++ (case componentNameString cname of
                                 Nothing -> ""
                                 Just s -> "-" ++ s)
@@ -1781,7 +1781,7 @@ computeCompatPackageKey
     -> Version
     -> UnitId
     -> String
-computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId (ComponentId str))
+computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId cid)
     | not (packageKeySupported comp) =
         display pkg_name ++ "-" ++ display pkg_version
     | not (unifiedIPIDRequired comp) =
@@ -1800,6 +1800,8 @@ computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId (ComponentId str
             rehashed_key = hashToBase62 str
         in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
     | otherwise = str
+  where
+    str = unComponentId cid
 
 mkComponentsLocalBuildInfo :: ConfigFlags
                            -> UseExternalInternalDeps

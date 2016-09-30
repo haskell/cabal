@@ -674,7 +674,7 @@ getInstalledStorePackages :: FilePath -- ^ store directory
                           -> Rebuild (Set UnitId)
 getInstalledStorePackages storeDirectory = do
     paths <- getDirectoryContentsMonitored storeDirectory
-    return $ Set.fromList [ SimpleUnitId (ComponentId path)
+    return $ Set.fromList [ SimpleUnitId (mkComponentId path)
                           | path <- paths, valid path ]
   where
     valid ('.':_)      = False
@@ -1108,7 +1108,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
             cid :: ComponentId
             cid = case elabBuildStyle of
                     BuildInplaceOnly ->
-                      ComponentId $
+                      mkComponentId $
                         display elabPkgSourceId ++ "-inplace" ++
                           (case Cabal.componentNameString cname of
                               Nothing -> ""
@@ -1283,7 +1283,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
         requires_reg = PD.hasPublicLib elabPkgDescription
         pkgInstalledId
           | shouldBuildInplaceOnly pkg
-          = ComponentId (display pkgid ++ "-inplace")
+          = mkComponentId (display pkgid ++ "-inplace")
 
           | otherwise
           = assert (isJust elabPkgSourceHash) $

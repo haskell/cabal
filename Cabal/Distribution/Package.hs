@@ -23,7 +23,7 @@ module Distribution.Package (
         PackageId,
 
         -- * Package keys/installed package IDs (used for linker symbols)
-        ComponentId(..),
+        ComponentId, unComponentId, mkComponentId,
         UnitId(..),
         mkUnitId,
         mkLegacyUnitId,
@@ -167,9 +167,31 @@ instance NFData Module where
 -- code closure of a component.  For non-Backpack components, it also
 -- serves as the basis for install paths, symbols, etc.
 --
+-- Use 'mkComponentId' and 'unComponentId' to convert from/to a
+-- 'String'.
+--
+-- This type is opaque since @Cabal-2.0@
+--
+-- @since 2.0
+
 data ComponentId
     = ComponentId String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+-- | Construct a 'ComponentId' from a 'String'
+--
+-- 'mkComponentId' is the inverse to 'unComponentId'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'ComponentId' is valid
+--
+-- @since 2.0
+mkComponentId :: String -> ComponentId
+mkComponentId = ComponentId
+
+-- | Convert 'ComponentId' to 'String'
+unComponentId :: ComponentId -> String
+unComponentId (ComponentId s) = s
 
 {-# DEPRECATED InstalledPackageId "Use UnitId instead" #-}
 type InstalledPackageId = UnitId
@@ -177,17 +199,17 @@ type InstalledPackageId = UnitId
 instance Binary ComponentId
 
 instance Text ComponentId where
-  disp (ComponentId str) = text str
+  disp = text . unComponentId
 
-  parse = ComponentId `fmap` Parse.munch1 abi_char
+  parse = mkComponentId `fmap` Parse.munch1 abi_char
    where abi_char c = isAlphaNum c || c `elem` "-_."
 
 instance NFData ComponentId where
-    rnf (ComponentId pk) = rnf pk
+    rnf = rnf . unComponentId
 
 -- | Returns library name prefixed with HS, suitable for filenames
 getHSLibraryName :: UnitId -> String
-getHSLibraryName (SimpleUnitId (ComponentId s)) = "HS" ++ s
+getHSLibraryName (SimpleUnitId cid) = "HS" ++ unComponentId cid
 
 -- | For now, there is no distinction between component IDs
 -- and unit IDs in Cabal.
@@ -196,11 +218,11 @@ newtype UnitId = SimpleUnitId ComponentId
 
 -- | Makes a simple-style UnitId from a string.
 mkUnitId :: String -> UnitId
-mkUnitId = SimpleUnitId . ComponentId
+mkUnitId = SimpleUnitId . mkComponentId
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
-mkLegacyUnitId = SimpleUnitId . ComponentId . display
+mkLegacyUnitId = mkUnitId . display
 
 -- | Extract 'ComponentId' from 'UnitId'.
 unitIdComponentId :: UnitId -> ComponentId

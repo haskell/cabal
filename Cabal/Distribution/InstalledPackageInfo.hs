@@ -252,7 +252,7 @@ basicFieldDescrs =
                            installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
  -- NB: parse these as component IDs
  , simpleField "key"
-                           (disp . ComponentId)   (fmap (\(ComponentId s) -> s) parse)
+                           (disp . mkComponentId) (fmap unComponentId parse)
                            compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})
  , simpleField "license"
                            disp                   parseLicenseQ
