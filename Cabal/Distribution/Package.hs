@@ -173,9 +173,7 @@ instance NFData Module where
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0
-
-data ComponentId
-    = ComponentId ShortText
+newtype ComponentId = ComponentId ShortText
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 -- | Construct a 'ComponentId' from a 'String'
