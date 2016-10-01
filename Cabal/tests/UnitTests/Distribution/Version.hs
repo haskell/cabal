@@ -23,6 +23,7 @@ import Control.Monad (liftM, liftM2)
 import Data.Maybe (isJust, fromJust)
 import Data.List (sort, sortBy, nub)
 import Data.Ord  (comparing)
+import Data.Function (on)
 
 versionTests :: [TestTree]
 versionTests =
@@ -33,6 +34,14 @@ versionTests =
   , property prop_gen_intervals2
 --, property prop_equivalentVersionRange --FIXME: runs out of test cases
   , property prop_intermediateVersion
+
+    -- test 'Version' type
+  , property prop_VersionId
+  , property prop_VersionId2
+  , property prop_VersionEq
+  , property prop_VersionEq2
+  , property prop_VersionOrd
+  , property prop_VersionOrd2
 
     -- the basic syntactic version range functions
   , property prop_anyVersion
@@ -109,17 +118,42 @@ adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
 
 instance Arbitrary Version where
   arbitrary = do
-    branch <- smallListOf1 $
-                frequency [(3, return 0)
-                          ,(3, return 1)
-                          ,(2, return 2)
-                          ,(1, return 3)]
-    return (mkVersion branch)
+      branch <- smallListOf1 $
+                  frequency [(3, return 0)
+                            ,(3, return 1)
+                            ,(2, return 2)
+                            ,(2, return 3)
+                            ,(1, return 0xfffd)
+                            ,(1, return 0xfffe) -- max fitting into packed W64
+                            ,(1, return 0xffff)
+                            ,(1, return 0x10000)]
+      return (mkVersion branch)
     where
-      smallListOf1 = adjustSize (\n -> min 5 (n `div` 3)) . listOf1
+      smallListOf1 = adjustSize (\n -> min 6 (n `div` 3)) . listOf1
 
-  shrink ver = [ mkVersion branch' | branch' <- shrink (versionNumbers ver)
-                                   , not (null branch') ]
+  shrink ver = [ mkVersion ns | ns <- shrink (versionNumbers ver)
+                              , not (null ns) ]
+
+newtype VersionArb = VersionArb [Int]
+                   deriving (Eq,Ord,Show)
+
+-- | 'Version' instance as used by QC 2.9
+instance Arbitrary VersionArb where
+  arbitrary = sized $ \n ->
+    do k <- choose (0, log2 n)
+       xs <- vectorOf (k+1) arbitrarySizedNatural
+       return (VersionArb xs)
+    where
+      log2 :: Int -> Int
+      log2 n | n <= 1 = 0
+             | otherwise = 1 + log2 (n `div` 2)
+
+  shrink (VersionArb xs) =
+    [ VersionArb xs'
+    | xs' <- shrink xs
+    , length xs' > 0
+    , all (>=0) xs'
+    ]
 
 instance Arbitrary VersionRange where
   arbitrary = sized verRangeExp
@@ -146,6 +180,35 @@ instance Arbitrary VersionRange where
         unionVersionRanges (LaterVersion v)   (ThisVersion v)
       orEarlierVersion' v =
         unionVersionRanges (EarlierVersion v) (ThisVersion v)
+
+---------------------
+-- Version properties
+--
+
+prop_VersionId :: [NonNegative Int] -> Bool
+prop_VersionId lst0 =
+    (versionNumbers . mkVersion) lst == lst
+  where
+    lst = map getNonNegative lst0
+
+prop_VersionId2 :: VersionArb -> Bool
+prop_VersionId2 (VersionArb lst) =
+    (versionNumbers . mkVersion) lst == lst
+
+prop_VersionEq :: Version -> Version -> Bool
+prop_VersionEq v1 v2 = (==) v1 v2 == ((==) `on` versionNumbers) v1 v2
+
+prop_VersionEq2 :: VersionArb -> VersionArb -> Bool
+prop_VersionEq2 (VersionArb v1) (VersionArb v2) =
+    (==) v1 v2 == ((==) `on` mkVersion) v1 v2
+
+prop_VersionOrd :: Version -> Version -> Bool
+prop_VersionOrd v1 v2 =
+    compare v1 v2 == (compare `on` versionNumbers) v1 v2
+
+prop_VersionOrd2 :: VersionArb -> VersionArb -> Bool
+prop_VersionOrd2 (VersionArb v1) (VersionArb v2) =
+    (==) v1 v2 == ((==) `on` mkVersion) v1 v2
 
 ---------------------------
 -- VersionRange properties
