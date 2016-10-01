@@ -107,7 +107,6 @@ import Control.Exception (assert)
 -- 'Binary' instance using a different (and more compact) encoding.
 --
 -- @since 2.0
-
 data Version = PV0 {-# UNPACK #-} !Word64
              | PV1 !Int [Int]
              -- NOTE: If a version fits into the packed Word64
@@ -118,11 +117,26 @@ data Version = PV0 {-# UNPACK #-} !Word64
              deriving (Data,Eq,Generic,Show,Read,Typeable)
 
 instance Ord Version where
-    compare (PV0 x) (PV0 y) = compare x y
-    compare xv       yv     = compare (versionNumbers xv) (versionNumbers yv)
-
-    PV0 x <= PV0 y  = x <= y
-    xv    <= yv     = versionNumbers xv <= versionNumbers yv
+    compare (PV0 x)    (PV0 y)    = compare x y
+    compare (PV1 x xs) (PV1 y ys) = case compare x y of
+        EQ -> compare xs ys
+        c  -> c
+    compare (PV0 w)    (PV1 y ys) = case compare x y of
+        EQ -> compare [x2,x3,x4] ys
+        c  -> c
+      where
+        x  = fromIntegral ((w `shiftR` 48) .&. 0xffff) - 1
+        x2 = fromIntegral ((w `shiftR` 32) .&. 0xffff) - 1
+        x3 = fromIntegral ((w `shiftR` 16) .&. 0xffff) - 1
+        x4 = fromIntegral               (w .&. 0xffff) - 1
+    compare (PV1 x xs) (PV0 w)    = case compare x y of
+        EQ -> compare xs [y2,y3,y4]
+        c  -> c
+      where
+        y  = fromIntegral ((w `shiftR` 48) .&. 0xffff) - 1
+        y2 = fromIntegral ((w `shiftR` 32) .&. 0xffff) - 1
+        y3 = fromIntegral ((w `shiftR` 16) .&. 0xffff) - 1
+        y4 = fromIntegral               (w .&. 0xffff) - 1
 
 instance Binary Version
 
