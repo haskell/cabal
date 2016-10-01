@@ -85,7 +85,7 @@ data IndefUnitId
     -- been compiled and abbreviated as a hash.  The embedded 'UnitId'
     -- MUST NOT be for an indefinite component; an 'IndefUnitId'
     -- is guaranteed not to have any holes.
-    | IndefUnitId     UnitId
+    | DefiniteUnitId UnitId
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 -- TODO: cache holes?
 
@@ -93,7 +93,7 @@ instance Binary IndefUnitId
 
 instance NFData IndefUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
-    rnf (IndefUnitId uid) = rnf uid
+    rnf (DefiniteUnitId uid) = rnf uid
 
 instance Text IndefUnitId where
     disp (IndefFullUnitId cid insts)
@@ -101,8 +101,8 @@ instance Text IndefUnitId where
         -- better
         | Map.null insts = disp cid
         | otherwise      = disp cid <<>> Disp.brackets (dispIndefModuleSubst insts)
-    disp (IndefUnitId uid) = disp uid
-    parse = parseIndefUnitId <++ fmap IndefUnitId parse
+    disp (DefiniteUnitId uid) = disp uid
+    parse = parseIndefUnitId <++ fmap DefiniteUnitId parse
       where
         parseIndefUnitId = do
             cid <- parse
@@ -113,7 +113,7 @@ instance Text IndefUnitId where
 -- | Get the 'ComponentId' of an 'IndefUnitId'.
 indefUnitIdComponentId :: IndefUnitId -> ComponentId
 indefUnitIdComponentId (IndefFullUnitId cid _) = cid
-indefUnitIdComponentId (IndefUnitId uid) = unitIdComponentId uid
+indefUnitIdComponentId (DefiniteUnitId uid) = unitIdComponentId uid
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 indefUnitIdFreeHoles :: IndefUnitId -> Set ModuleName
@@ -208,7 +208,7 @@ indefModuleSubstFreeHoles insts = Set.unions (map indefModuleFreeHoles (Map.elem
 -- 'IndefFullUnitId' be compiled; instead, we just depend on the
 -- installed indefinite unit installed at the 'ComponentId'.
 abstractUnitId :: IndefUnitId -> UnitId
-abstractUnitId (IndefUnitId uid) = uid
+abstractUnitId (DefiniteUnitId uid) = uid
 abstractUnitId (IndefFullUnitId cid _) = newSimpleUnitId cid
 
 -- | Take a module substitution and hash it into a string suitable for

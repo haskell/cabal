@@ -819,7 +819,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                                      then []
                                      else cabalDep
           addRenaming (ipid, _) =
-            (Backpack.IndefUnitId (newSimpleUnitId ipid), defaultRenaming)
+            (Backpack.DefiniteUnitId (newSimpleUnitId ipid), defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               -- Respect -v0, but don't crank up verbosity on GHC if
