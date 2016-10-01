@@ -177,17 +177,7 @@ type BuildOutcome  = Either BuildFailure BuildResult
 data BuildResult = BuildResult {
        buildResultDocs    :: DocsResult,
        buildResultTests   :: TestsResult,
-       buildResultLogFile :: Maybe FilePath,
-       -- | If the build was for a library, this field will be @Just@;
-       -- otherwise, it will be @Nothing@.  What about internal
-       -- libraries?  This never occurs, because a build result is either
-       -- for a per-component build (in which case there won't
-       -- be multiple libraries), or a package with no internal
-       -- libraries (internal libraries with Custom setups are NOT
-       -- supported, and even if they were supported, we could
-       -- assume the Cabal library version was recent enough to
-       -- support per-component build.).
-       buildResultLibInfo :: Maybe InstalledPackageInfo
+       buildResultLogFile :: Maybe FilePath
      }
   deriving Show
 

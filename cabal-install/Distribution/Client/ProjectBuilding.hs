@@ -422,12 +422,11 @@ checkPackageFileMonitorChanged PackageFileMonitor{..}
                 where
                   buildReason = BuildReasonEphemeralTargets
 
-              (MonitorUnchanged buildResult _, MonitorUnchanged mipkg _) ->
+              (MonitorUnchanged buildResult _, MonitorUnchanged _ _) ->
                   return $ Right BuildResult {
                     buildResultDocs    = docsResult,
                     buildResultTests   = testsResult,
-                    buildResultLogFile = Nothing,
-                    buildResultLibInfo = mipkg
+                    buildResultLogFile = Nothing
                   }
                 where
                   (docsResult, testsResult) = buildResult
@@ -883,8 +882,7 @@ buildAndInstallUnpackedPackage verbosity
       setup buildCommand buildFlags
 
     -- Install phase
-    mipkg <-
-      annotateFailure mlogFile InstallFailed $ do
+    annotateFailure mlogFile InstallFailed $ do
       --TODO: [required eventually] need to lock installing this ipkig so other processes don't
       -- stomp on our files, since we don't have ABI compat, not safe to replace
 
@@ -919,8 +917,7 @@ buildAndInstallUnpackedPackage verbosity
               Cabal.registerPackage verbosity compiler progdb
                                     HcPkg.MultiInstance
                                     (elabRegisterPackageDBStack pkg) ipkg
-          return (Just ipkg)
-        else return Nothing
+        else return ()
 
     --TODO: [required feature] docs and test phases
     let docsResult  = DocsNotTried
@@ -929,8 +926,7 @@ buildAndInstallUnpackedPackage verbosity
     return BuildResult {
        buildResultDocs    = docsResult,
        buildResultTests   = testsResult,
-       buildResultLogFile = mlogFile,
-       buildResultLibInfo = mipkg
+       buildResultLogFile = mlogFile
     }
 
   where
@@ -1070,8 +1066,7 @@ buildInplaceUnpackedPackage verbosity
 
         -- PURPOSELY omitted: no copy!
 
-        mipkg <- whenReRegister $
-                 annotateFailureNoLog InstallFailed $ do
+        whenReRegister $ annotateFailureNoLog InstallFailed $ do
           -- Register locally
           mipkg <- if elabRequiresRegistration pkg
             then do
@@ -1089,7 +1084,6 @@ buildInplaceUnpackedPackage verbosity
            else return Nothing
 
           updatePackageRegFileMonitor packageFileMonitor srcdir mipkg
-          return mipkg
 
         -- Repl phase
         --
@@ -1105,8 +1099,7 @@ buildInplaceUnpackedPackage verbosity
         return BuildResult {
           buildResultDocs    = docsResult,
           buildResultTests   = testsResult,
-          buildResultLogFile = Nothing,
-          buildResultLibInfo = mipkg
+          buildResultLogFile = Nothing
         }
 
   where
@@ -1133,10 +1126,13 @@ buildInplaceUnpackedPackage verbosity
       | elabBuildHaddocks pkg = action
       | otherwise            = return ()
 
-    whenReRegister  action = case buildStatus of
-      BuildStatusConfigure          _ -> action
-      BuildStatusBuild Nothing      _ -> action
-      BuildStatusBuild (Just mipkg) _ -> return mipkg
+    whenReRegister  action
+      = case buildStatus of
+          -- We registered the package already
+          BuildStatusBuild (Just _) _     -> return ()
+          -- There is nothing to register
+          _ | null (elabBuildTargets pkg) -> return ()
+            | otherwise                   -> action
 
     configureCommand = Cabal.configureCommand defaultProgramDb
     configureFlags v = flip filterConfigureFlags v $
