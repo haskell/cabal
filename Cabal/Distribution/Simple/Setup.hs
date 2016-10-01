@@ -734,7 +734,7 @@ configureOptions showOrParseArgs =
 
       ,option "" ["cid"]
          "Installed component ID to compile this component as"
-         (fmap display . configCID) (\v flags -> flags {configCID = fmap ComponentId v})
+         (fmap display . configCID) (\v flags -> flags {configCID = fmap mkComponentId v})
          (reqArgFlag "CID")
 
       ,option "" ["extra-lib-dirs"]

@@ -22,7 +22,7 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), ComponentId(..), HasUnitId(..)
+         , UnitId(..), ComponentId, HasUnitId(..)
          , PackageInstalled(..), unitIdComponentId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
