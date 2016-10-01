@@ -237,7 +237,7 @@ convertUnitId' :: MuEnv s
                -> UnifyM s (UnitIdU s)
 -- TODO: this could be more lazy if we know there are no internal
 -- references
-convertUnitId' _ (IndefUnitId uid) =
+convertUnitId' _ (DefiniteUnitId uid) =
     liftST $ UnionFind.fresh (UnitIdThunkU uid)
 convertUnitId' stk (IndefFullUnitId cid insts) = do
     fs <- fmap unify_uniq getUnifEnv
@@ -314,7 +314,7 @@ convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s IndefUnitId
 convertUnitIdU' stk uid_u = do
     x <- liftST $ UnionFind.find uid_u
     case x of
-        UnitIdThunkU uid -> return (IndefUnitId uid)
+        UnitIdThunkU uid -> return (DefiniteUnitId uid)
         UnitIdU u cid insts_u ->
             case lookupMooEnv stk u of
                 Just _i -> error "convertUnitIdU': mutual recursion" -- return (UnitIdVar i)

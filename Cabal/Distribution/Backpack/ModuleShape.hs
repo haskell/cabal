@@ -74,10 +74,14 @@ emptyModuleShape = ModuleShape Map.empty Set.empty
 shapeInstalledPackage :: IPI.InstalledPackageInfo -> ModuleShape
 shapeInstalledPackage ipi = ModuleShape (Map.fromList provs) reqs
   where
-    uid = IPI.installedUnitId ipi
+    insts = Map.fromList (IPI.instantiatedWith ipi)
+    uid =
+        if Set.null (indefModuleSubstFreeHoles insts)
+            then DefiniteUnitId (IPI.installedUnitId ipi)
+            else IndefFullUnitId (IPI.installedComponentId ipi) insts
     provs = map shapeExposedModule (IPI.exposedModules ipi)
     reqs = indefModuleSubstFreeHoles (Map.fromList (IPI.instantiatedWith ipi))
     shapeExposedModule (IPI.ExposedModule mod_name Nothing)
-        = (mod_name, IndefModule (IndefUnitId uid) mod_name)
+        = (mod_name, IndefModule uid mod_name)
     shapeExposedModule (IPI.ExposedModule mod_name (Just mod))
         = (mod_name, mod)

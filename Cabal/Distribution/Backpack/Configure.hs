@@ -248,7 +248,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
               = Installed.ExposedModule modname' Nothing
               | otherwise
               = Installed.ExposedModule modname'
-                  (Just (IndefModule (IndefUnitId uid) modname))
+                  (Just (IndefModule (DefiniteUnitId uid) modname))
             convIndefModuleExport (modname', modu@(IndefModule uid modname))
               -- TODO: This isn't a good enough test if we have mutual
               -- recursion (but maybe we'll get saved by the module name
@@ -270,7 +270,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
             insts =
                 case rc_i rc of
                     Left indefc -> [ (m, IndefModuleVar m) | m <- indefc_requires indefc ]
-                    Right instc -> [ (m, IndefModule (IndefUnitId uid') m')
+                    Right instc -> [ (m, IndefModule (DefiniteUnitId uid') m')
                                    | (m, Module uid' m') <- instc_insts instc ]
         in LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
@@ -327,7 +327,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
             Left indefc ->
                 indefc_includes indefc
             Right instc ->
-                map (\(x,y) -> (IndefUnitId x,y)) (instc_includes instc)
+                map (\(x,y) -> (DefiniteUnitId x,y)) (instc_includes instc)
       internal_deps =
               filter isInternal (nodeNeighbors rc)
            ++ rc_internal_build_tools rc

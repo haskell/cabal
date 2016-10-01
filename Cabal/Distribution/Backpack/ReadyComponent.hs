@@ -222,7 +222,7 @@ toReadyComponents pid_map subst0 comps
       | otherwise = return Nothing
 
     substUnitId :: Map ModuleName Module -> IndefUnitId -> InstM UnitId
-    substUnitId _ (IndefUnitId uid) =
+    substUnitId _ (DefiniteUnitId uid) =
         return uid
     substUnitId subst (IndefFullUnitId cid insts) = do
         insts' <- substSubst subst insts

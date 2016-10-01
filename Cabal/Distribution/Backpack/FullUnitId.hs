@@ -19,7 +19,7 @@ type FullDb = UnitId -> FullUnitId
 expandIndefUnitId :: FullDb -> IndefUnitId -> FullUnitId
 expandIndefUnitId _db (IndefFullUnitId cid subst)
     = FullUnitId cid subst
-expandIndefUnitId db (IndefUnitId uid)
+expandIndefUnitId db (DefiniteUnitId uid)
     = expandUnitId db uid
 
 expandUnitId :: FullDb -> UnitId -> FullUnitId
