@@ -146,7 +146,7 @@ emptyInstalledPackageInfo
         synopsis          = "",
         description       = "",
         category          = "",
-        abiHash           = AbiHash "",
+        abiHash           = mkAbiHash "",
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
