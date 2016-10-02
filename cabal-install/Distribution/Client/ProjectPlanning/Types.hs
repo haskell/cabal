@@ -359,9 +359,9 @@ instance Binary ElaboratedComponent
 compOrderDependencies :: ElaboratedComponent -> [UnitId]
 compOrderDependencies comp =
        -- TODO: Change this with Backpack!
-       map (SimpleUnitId . confInstId) (compLibDependencies comp)
-    ++ map SimpleUnitId (compExeDependencies comp)
-    ++ map (SimpleUnitId . confInstId) (compSetupDependencies comp)
+       map (newSimpleUnitId . confInstId) (compLibDependencies comp)
+    ++ map newSimpleUnitId (compExeDependencies comp)
+    ++ map (newSimpleUnitId . confInstId) (compSetupDependencies comp)
 
 data ElaboratedPackage
    = ElaboratedPackage {
@@ -396,8 +396,8 @@ instance Binary ElaboratedPackage
 
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
-    fmap (map (SimpleUnitId . confInstId)) (pkgLibDependencies pkg) `Mon.mappend`
-    fmap (map (SimpleUnitId . confInstId)) (pkgExeDependencies pkg)
+    fmap (map (newSimpleUnitId . confInstId)) (pkgLibDependencies pkg) `Mon.mappend`
+    fmap (map (newSimpleUnitId . confInstId)) (pkgExeDependencies pkg)
 
 -- | This is used in the install plan to indicate how the package will be
 -- built.

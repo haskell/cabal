@@ -22,8 +22,8 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
-         , UnitId(..), ComponentId, HasUnitId(..)
-         , PackageInstalled(..), unitIdComponentId )
+         , UnitId, ComponentId, HasUnitId(..)
+         , PackageInstalled(..), unitIdComponentId, newSimpleUnitId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -113,11 +113,11 @@ instance HasConfiguredId (ConfiguredPackage loc) where
 -- 'ConfiguredPackage' is the legacy codepath, we are guaranteed
 -- to never have a nontrivial 'UnitId'
 instance PackageFixedDeps (ConfiguredPackage loc) where
-    depends = fmap (map (SimpleUnitId . confInstId)) . confPkgDeps
+    depends = fmap (map (newSimpleUnitId . confInstId)) . confPkgDeps
 
 instance IsNode (ConfiguredPackage loc) where
     type Key (ConfiguredPackage loc) = UnitId
-    nodeKey       = SimpleUnitId . confPkgId
+    nodeKey       = newSimpleUnitId . confPkgId
     -- TODO: if we update ConfiguredPackage to support order-only
     -- dependencies, need to include those here.
     -- NB: have to deduplicate, otherwise the planner gets confused
@@ -153,7 +153,7 @@ instance Package (ConfiguredPackage loc) where
 
 -- Never has nontrivial UnitId
 instance HasUnitId (ConfiguredPackage loc) where
-  installedUnitId = SimpleUnitId . confPkgId
+  installedUnitId = newSimpleUnitId . confPkgId
 
 instance PackageInstalled (ConfiguredPackage loc) where
   installedDepends = CD.flatDeps . depends

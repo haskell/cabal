@@ -1781,7 +1781,7 @@ computeCompatPackageKey
     -> Version
     -> UnitId
     -> String
-computeCompatPackageKey comp pkg_name pkg_version (SimpleUnitId cid)
+computeCompatPackageKey comp pkg_name pkg_version (UnitId cid _)
     | not (packageKeySupported comp) =
         display pkg_name ++ "-" ++ display pkg_version
     | not (unifiedIPIDRequired comp) =
@@ -1901,7 +1901,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
                 (componentName component)
                 (getDeps (componentName component))
                 flagAssignment
-        uid = SimpleUnitId cid
+        uid = newSimpleUnitId cid
         PackageIdentifier pkg_name pkg_ver = package pkg_descr
         compat_name = computeCompatPackageName pkg_name (componentName component)
         compat_key = computeCompatPackageKey comp compat_name pkg_ver uid

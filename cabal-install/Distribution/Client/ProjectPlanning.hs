@@ -674,7 +674,7 @@ getInstalledStorePackages :: FilePath -- ^ store directory
                           -> Rebuild (Set UnitId)
 getInstalledStorePackages storeDirectory = do
     paths <- getDirectoryContentsMonitored storeDirectory
-    return $ Set.fromList [ SimpleUnitId (mkComponentId path)
+    return $ Set.fromList [ newSimpleUnitId (mkComponentId path)
                           | path <- paths, valid path ]
   where
     valid ('.':_)      = False
@@ -1099,7 +1099,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
             ((internal_map', exe_map'), elab)
           where
             elab = elab0 {
-                    elabUnitId = SimpleUnitId cid, -- Backpack later!
+                    elabUnitId = newSimpleUnitId cid, -- Backpack later!
                     elabInstallDirs = install_dirs,
                     elabRequiresRegistration = requires_reg,
                     elabPkgOrComp = ElabComponent $ ElaboratedComponent {..}
@@ -1193,7 +1193,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
               -- use the ordinary default install dirs
               = (InstallDirs.absoluteInstallDirs
                    elabPkgSourceId
-                   (SimpleUnitId cid)
+                   (newSimpleUnitId cid)
                    (compilerInfo compiler)
                    InstallDirs.NoCopyDest
                    platform
@@ -1272,7 +1272,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
       where
         elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon mapDep pkg
         elab = elab0 {
-                elabUnitId = SimpleUnitId pkgInstalledId,
+                elabUnitId = newSimpleUnitId pkgInstalledId,
                 elabInstallDirs = install_dirs,
                 elabRequiresRegistration = requires_reg,
                 elabPkgOrComp = ElabPackage $ ElaboratedPackage {..}
@@ -1316,7 +1316,7 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
           -- use the ordinary default install dirs
           = (InstallDirs.absoluteInstallDirs
                pkgid
-               (SimpleUnitId pkgInstalledId)
+               (newSimpleUnitId pkgInstalledId)
                (compilerInfo compiler)
                InstallDirs.NoCopyDest
                platform
@@ -1967,13 +1967,13 @@ pruneInstallPlanPass2 pkgs =
 
     hasReverseLibDeps :: Set UnitId
     hasReverseLibDeps =
-      Set.fromList [ SimpleUnitId (confInstId depid)
+      Set.fromList [ newSimpleUnitId (confInstId depid)
                    | InstallPlan.Configured pkg <- pkgs
                    , depid <- elabLibDependencies pkg ]
 
     hasReverseExeDeps :: Set UnitId
     hasReverseExeDeps =
-      Set.fromList [ SimpleUnitId depid
+      Set.fromList [ newSimpleUnitId depid
                    | InstallPlan.Configured pkg <- pkgs
                    , depid <- elabExeDependencies pkg ]
 

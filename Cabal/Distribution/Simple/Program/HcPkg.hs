@@ -315,7 +315,7 @@ mungePackagePaths pkgroot pkginfo =
 -- field, so if it is missing then we fill it as the source package ID.
 setUnitId :: InstalledPackageInfo -> InstalledPackageInfo
 setUnitId pkginfo@InstalledPackageInfo {
-                        installedUnitId = SimpleUnitId cid,
+                        installedUnitId = UnitId cid _,
                         sourcePackageId = pkgid
                       } | cid == mkComponentId ""
                     = pkginfo {

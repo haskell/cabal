@@ -31,7 +31,7 @@ import Distribution.Version
          , intersectVersionRanges, orLaterVersion
          , withinRange )
 import Distribution.Package
-         ( UnitId(..), ComponentId, PackageId, mkPackageName
+         ( newSimpleUnitId, ComponentId, PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
@@ -817,7 +817,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                                      if any (isCabalPkgId . snd) (useDependencies options')
                                      then []
                                      else cabalDep
-          addRenaming (ipid, _) = (SimpleUnitId ipid, defaultRenaming)
+          addRenaming (ipid, _) = (newSimpleUnitId ipid, defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               -- Respect -v0, but don't crank up verbosity on GHC if

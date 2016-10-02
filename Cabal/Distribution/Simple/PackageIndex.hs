@@ -394,7 +394,8 @@ lookupUnitId index uid = Map.lookup uid (unitIdIndex index)
 --
 lookupComponentId :: PackageIndex a -> ComponentId
                   -> Maybe a
-lookupComponentId index uid = Map.lookup (SimpleUnitId uid) (unitIdIndex index)
+lookupComponentId index cid =
+    Map.lookup (newSimpleUnitId cid) (unitIdIndex index)
 
 -- | Backwards compatibility for Cabal pre-1.24.
 {-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}

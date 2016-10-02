@@ -127,8 +127,9 @@ defaultDistDirLayout projectRootDirectory =
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""
             MaximumOptimisation -> "opt") </>
-        (case distParamUnitId params of -- For Backpack
-            SimpleUnitId _ -> "")
+        (case distParamUnitId params of
+            UnitId _ (Just hash) -> hash
+            UnitId _ Nothing     -> "")
 
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory

@@ -26,8 +26,8 @@ module Distribution.Package (
         ComponentId, unComponentId, mkComponentId,
         UnitId(..),
         mkUnitId,
+        newSimpleUnitId,
         mkLegacyUnitId,
-        unitIdComponentId,
         getHSLibraryName,
         InstalledPackageId, -- backwards compat
 
@@ -163,8 +163,11 @@ instance NFData Module where
     rnf (Module uid mod_name) = rnf uid `seq` rnf mod_name
 
 -- | A 'ComponentId' uniquely identifies the transitive source
--- code closure of a component.  For non-Backpack components, it also
--- serves as the basis for install paths, symbols, etc.
+-- code closure of a component (i.e. libraries, executables).
+--
+-- For non-Backpack components, this corresponds one to one with
+-- the 'UnitId', which serves as the basis for install paths,
+-- linker symbols, etc.
 --
 -- Use 'mkComponentId' and 'unComponentId' to convert from/to a
 -- 'String'.
@@ -208,24 +211,79 @@ instance NFData ComponentId where
 
 -- | Returns library name prefixed with HS, suitable for filenames
 getHSLibraryName :: UnitId -> String
-getHSLibraryName (SimpleUnitId cid) = "HS" ++ unComponentId cid
+getHSLibraryName uid = "HS" ++ display uid
 
--- | For now, there is no distinction between component IDs
--- and unit IDs in Cabal.
-newtype UnitId = SimpleUnitId ComponentId
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, Text, NFData)
+-- | A unit identifier identifies a (possibly instantiated)
+-- package/component that can be installed the installed package
+-- database.  There are several types of components that can be
+-- installed:
+--
+--  * A traditional library with no holes, so that 'unitIdHash'
+--    is @Nothing@.  In the absence of Backpack, 'UnitId'
+--    is the same as a 'ComponentId'.
+--
+--  * An indefinite, Backpack library with holes.  In this case,
+--    'unitIdHash' is still @Nothing@, but in the install,
+--    there are only interfaces, no compiled objects.
+--
+--  * An instantiated Backpack library with all the holes
+--    filled in.  'unitIdHash' is a @Just@ a hash of the
+--    instantiating mapping.
+--
+-- A unit is a component plus the additional information on how the
+-- holes are filled in. Thus there is a one to many relationship: for a
+-- particular component there are many different ways of filling in the
+-- holes, and each different combination is a unit (and has a separate
+-- 'UnitId').
+--
+-- 'UnitId' is distinct from 'IndefUnitId', in that it is always
+-- installed, whereas 'IndefUnitId' are intermediate unit identities
+-- that arise during mixin linking, and don't necessarily correspond
+-- to any actually installed unit.  Since the mapping is not actually
+-- recorded in a 'UnitId', you can't actually substitute over them
+-- (but you can substitute over 'IndefUnitId').  See also
+-- "Distribution.Backpack.FullUnitId" for a mechanism for expanding an
+-- instantiated 'UnitId' to retrieve its mapping.
+--
+data UnitId
+    = UnitId {
+        unitIdComponentId :: ComponentId,
+        unitIdHash        :: Maybe String
+    }
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+instance Binary UnitId
+
+instance NFData UnitId where
+    rnf (UnitId cid str) = rnf cid `seq` rnf str
+
+instance Text UnitId where
+    disp (UnitId cid Nothing)     = disp cid
+    disp (UnitId cid (Just hash)) = disp cid <<>> text "+" <<>> text hash
+    parse = parseUnitId <++ parseSimpleUnitId
+      where
+        parseUnitId = do cid <- parse
+                         _ <- Parse.char '+'
+                         hash <- Parse.munch1 isAlphaNum
+                         return (UnitId cid (Just hash))
+        parseSimpleUnitId = fmap newSimpleUnitId parse
+
+-- | Create a unit identity with no associated hash directly
+-- from a 'ComponentId'.
+newSimpleUnitId :: ComponentId -> UnitId
+newSimpleUnitId cid =
+    UnitId {
+        unitIdComponentId = cid,
+        unitIdHash = Nothing
+    }
 
 -- | Makes a simple-style UnitId from a string.
 mkUnitId :: String -> UnitId
-mkUnitId = SimpleUnitId . mkComponentId
+mkUnitId = newSimpleUnitId . mkComponentId
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId
-mkLegacyUnitId = mkUnitId . display
-
--- | Extract 'ComponentId' from 'UnitId'.
-unitIdComponentId :: UnitId -> ComponentId
-unitIdComponentId (SimpleUnitId cid) = cid
+mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 
 -- ------------------------------------------------------------
 -- * Package source dependencies
