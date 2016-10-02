@@ -55,6 +55,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Graph
 
 import Text.PrettyPrint as Disp
+import qualified Data.Char as Char
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -233,6 +234,13 @@ showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
 
+dispCompatPackageKey :: String -> Doc
+dispCompatPackageKey = text
+
+parseCompatPackageKey :: Parse.ReadP r String
+parseCompatPackageKey = Parse.munch1 uid_char
+    where uid_char c = Char.isAlphaNum c || c `elem` "-_.=[],:<>+"
+
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
@@ -250,9 +258,8 @@ basicFieldDescrs =
  , simpleField "id"
                            disp                   parse
                            installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
- -- NB: parse these as component IDs
  , simpleField "key"
-                           (disp . mkComponentId) (fmap unComponentId parse)
+                           dispCompatPackageKey   parseCompatPackageKey
                            compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})
  , simpleField "license"
                            disp                   parseLicenseQ
