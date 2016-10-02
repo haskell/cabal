@@ -675,16 +675,16 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       | ghcVersion < mkVersion [7,2] -- ghc-7.2+ does not make _stub.o files
       , x <- allLibModules lib clbi ]
 
-    hObjs     <- Internal.getHaskellObjects implInfo lib lbi
+    hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir objExtension True
     hProfObjs <-
       if withProfLib lbi
-              then Internal.getHaskellObjects implInfo lib lbi
+              then Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir ("p_" ++ objExtension) True
               else return []
     hSharedObjs <-
       if withSharedLib lbi
-              then Internal.getHaskellObjects implInfo lib lbi
+              then Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
 
