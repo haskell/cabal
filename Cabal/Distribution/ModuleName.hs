@@ -24,6 +24,7 @@ module Distribution.ModuleName (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Utils.ShortText
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 
@@ -32,7 +33,7 @@ import System.FilePath ( pathSeparator )
 
 -- | A valid Haskell module name.
 --
-newtype ModuleName = ModuleName [String]
+newtype ModuleName = ModuleName ShortTextLst
   deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
 
 instance Binary ModuleName
@@ -42,11 +43,11 @@ instance NFData ModuleName where
 
 instance Text ModuleName where
   disp (ModuleName ms) =
-    Disp.hcat (intersperse (Disp.char '.') (map Disp.text ms))
+    Disp.hcat (intersperse (Disp.char '.') (map Disp.text $ stlToStrings ms))
 
   parse = do
     ms <- Parse.sepBy1 component (Parse.char '.')
-    return (ModuleName ms)
+    return (ModuleName $ stlFromStrings ms)
 
     where
       component = do
@@ -64,7 +65,7 @@ validModuleComponent (c:cs) = isUpper c
 
 {-# DEPRECATED simple "use ModuleName.fromString instead" #-}
 simple :: String -> ModuleName
-simple str = ModuleName [str]
+simple str = ModuleName (stlFromStrings [str])
 
 -- | Construct a 'ModuleName' from a valid module name 'String'.
 --
@@ -74,7 +75,7 @@ simple str = ModuleName [str]
 --
 fromString :: String -> ModuleName
 fromString string
-  | all validModuleComponent components' = ModuleName components'
+  | all validModuleComponent components' = ModuleName (stlFromStrings components')
   | otherwise                            = error badName
 
   where
@@ -88,14 +89,14 @@ fromString string
 -- | The module name @Main@.
 --
 main :: ModuleName
-main = ModuleName ["Main"]
+main = ModuleName (stlFromStrings ["Main"])
 
 -- | The individual components of a hierarchical module name. For example
 --
 -- > components (fromString "A.B.C") = ["A", "B", "C"]
 --
 components :: ModuleName -> [String]
-components (ModuleName ms) = ms
+components (ModuleName ms) = stlToStrings ms
 
 -- | Convert a module name to a file path, but without any file extension.
 -- For example:
@@ -104,3 +105,39 @@ components (ModuleName ms) = ms
 --
 toFilePath :: ModuleName -> FilePath
 toFilePath = intercalate [pathSeparator] . components
+
+----------------------------------------------------------------------------
+-- internal helper
+
+-- | Strict/unpacked representation of @[ShortText]@
+data ShortTextLst = STLNil
+                  | STLCons !ShortText !ShortTextLst
+                  deriving (Eq, Generic, Ord, Typeable, Data)
+
+instance NFData ShortTextLst where
+    rnf = flip seq ()
+
+instance Show ShortTextLst where
+    showsPrec p = showsPrec p . stlToList
+
+
+instance Read ShortTextLst where
+    readsPrec p = map (first stlFromList) . readsPrec p
+
+instance Binary ShortTextLst where
+    put = put . stlToList
+    get = stlFromList <$> get
+
+stlToList :: ShortTextLst -> [ShortText]
+stlToList STLNil = []
+stlToList (STLCons st next) = st : stlToList next
+
+stlToStrings :: ShortTextLst -> [String]
+stlToStrings = map fromShortText . stlToList
+
+stlFromList :: [ShortText] -> ShortTextLst
+stlFromList [] = STLNil
+stlFromList (x:xs) = STLCons x (stlFromList xs)
+
+stlFromStrings :: [String] -> ShortTextLst
+stlFromStrings = stlFromList . map toShortText
