@@ -11,7 +11,7 @@ import Distribution.Package
 import Distribution.Compat.Prelude
 
 -- Unlike OpenUnitId, which could direct to a UnitId.
-data FullUnitId = FullUnitId ComponentId IndefModuleSubst
+data FullUnitId = FullUnitId ComponentId OpenModuleSubst
     deriving (Show, Generic)
 
 type FullDb = UnitId -> FullUnitId

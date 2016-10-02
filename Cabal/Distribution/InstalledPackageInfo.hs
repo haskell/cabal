@@ -74,11 +74,11 @@ data InstalledPackageInfo
         -- these parts are exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
-        -- INVARIANT: if this package is definite, IndefModule's
+        -- INVARIANT: if this package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.  If it is
-        -- indefinite, IndefModule is always an IndefModuleVar
+        -- indefinite, OpenModule is always an OpenModuleVar
         -- with the same ModuleName as the key.
-        instantiatedWith  :: [(ModuleName, IndefModule)],
+        instantiatedWith  :: [(ModuleName, OpenModule)],
         compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
@@ -93,7 +93,7 @@ data InstalledPackageInfo
         -- these parts are required by an installed package only:
         abiHash           :: AbiHash,
         exposed           :: Bool,
-        -- INVARIANT: if the package is definite, IndefModule's
+        -- INVARIANT: if the package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.
         exposedModules    :: [ExposedModule],
         hiddenModules     :: [ModuleName],
@@ -124,13 +124,13 @@ data InstalledPackageInfo
 indefinite :: InstalledPackageInfo -> Bool
 indefinite ipi =
     -- TODO: optimize a little
-    Set.null (indefModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi)))
+    Set.null (openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi)))
 
 -- | Get the indefinite unit identity representing this package.
 -- This IS NOT guaranteed to give you a substitution; for
 -- instantiated packages you will get @DefiniteUnitId (installedUnitId ipi)@.
 -- For indefinite libraries, however, you will correctly get
--- an @OpenUnitId@ with the appropriate 'IndefModuleSubst'.
+-- an @OpenUnitId@ with the appropriate 'OpenModuleSubst'.
 installedOpenUnitId :: InstalledPackageInfo -> OpenUnitId
 installedOpenUnitId ipi =
     if indefinite ipi
@@ -141,7 +141,7 @@ installedOpenUnitId ipi =
 -- | Returns the set of module names which need to be filled for
 -- an indefinite package, or the empty set if the package is definite.
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
-requiredSignatures ipi = indefModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
+requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi = unitIdComponentId (installedUnitId ipi)
@@ -216,7 +216,7 @@ emptyInstalledPackageInfo
 data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
-       exposedReexport  :: Maybe IndefModule
+       exposedReexport  :: Maybe OpenModule
      }
   deriving (Eq, Generic, Read, Show)
 
@@ -298,7 +298,7 @@ basicFieldDescrs =
                            disp                   parse
                            installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
  , simpleField "instantiated-with"
-        (dispIndefModuleSubst . Map.fromList)    (fmap Map.toList parseIndefModuleSubst)
+        (dispOpenModuleSubst . Map.fromList)    (fmap Map.toList parseOpenModuleSubst)
         instantiatedWith   (\iw    pkg -> pkg{instantiatedWith=iw})
  , simpleField "key"
                            dispCompatPackageKey   parseCompatPackageKey

@@ -251,8 +251,8 @@ convertUnitId' stk (IndefFullUnitId cid insts) = do
 -- convertUnitId' stk (UnitIdVar i) = return (lookupMuEnv stk i)
 
 convertModule' :: MuEnv s
-               -> IndefModule -> UnifyM s (ModuleU s)
-convertModule' _stk (IndefModuleVar mod_name) = do
+               -> OpenModule -> UnifyM s (ModuleU s)
+convertModule' _stk (OpenModuleVar mod_name) = do
     hmap <- fmap unify_reqs getUnifEnv
     hm <- readUnifRef hmap
     case Map.lookup mod_name hm of
@@ -260,14 +260,14 @@ convertModule' _stk (IndefModuleVar mod_name) = do
                       writeUnifRef hmap (Map.insert mod_name mod hm)
                       return mod
         Just mod -> return mod
-convertModule' stk (IndefModule uid mod_name) = do
+convertModule' stk (OpenModule uid mod_name) = do
     uid_u <- convertUnitId' stk uid
     liftST $ UnionFind.fresh (ModuleU uid_u mod_name)
 
 convertUnitId :: OpenUnitId -> UnifyM s (UnitIdU s)
 convertUnitId = convertUnitId' emptyMuEnv
 
-convertModule :: IndefModule -> UnifyM s (ModuleU s)
+convertModule :: OpenModule -> UnifyM s (ModuleU s)
 convertModule = convertModule' emptyMuEnv
 
 
@@ -279,11 +279,11 @@ convertModule = convertModule' emptyMuEnv
 type ModuleSubstU s = Map ModuleName (ModuleU s)
 
 -- | Conversion of 'ModuleSubst' to 'ModuleSubstU'
-convertModuleSubst :: Map ModuleName IndefModule -> UnifyM s (Map ModuleName (ModuleU s))
+convertModuleSubst :: Map ModuleName OpenModule -> UnifyM s (Map ModuleName (ModuleU s))
 convertModuleSubst = T.mapM convertModule
 
 -- | Conversion of 'ModuleSubstU' to 'ModuleSubst'
-convertModuleSubstU :: ModuleSubstU s -> UnifyM s IndefModuleSubst
+convertModuleSubstU :: ModuleSubstU s -> UnifyM s OpenModuleSubst
 convertModuleSubstU = T.mapM convertModuleU
 
 -----------------------------------------------------------------------
@@ -322,21 +322,21 @@ convertUnitIdU' stk uid_u = do
                     insts <- T.forM insts_u $ convertModuleU' (extendMooEnv stk u)
                     return (IndefFullUnitId cid insts)
 
-convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s IndefModule
+convertModuleU' :: MooEnv -> ModuleU s -> UnifyM s OpenModule
 convertModuleU' stk mod_u = do
     mod <- liftST $ UnionFind.find mod_u
     case mod of
-        ModuleVarU mod_name -> return (IndefModuleVar mod_name)
+        ModuleVarU mod_name -> return (OpenModuleVar mod_name)
         ModuleU uid_u mod_name -> do
             uid <- convertUnitIdU' stk uid_u
-            return (IndefModule uid mod_name)
+            return (OpenModule uid mod_name)
 
 -- Helper functions
 
 convertUnitIdU :: UnitIdU s -> UnifyM s OpenUnitId
 convertUnitIdU = convertUnitIdU' emptyMooEnv
 
-convertModuleU :: ModuleU s -> UnifyM s IndefModule
+convertModuleU :: ModuleU s -> UnifyM s OpenModule
 convertModuleU = convertModuleU' emptyMooEnv
 
 -- | An empty 'ModuleScopeU'.
@@ -400,7 +400,7 @@ convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_r
     -- Requirement substitution.
     --
     --      A -> X      ==>     A -> <X>
-    let req_subst = fmap IndefModuleVar req_rename
+    let req_subst = fmap OpenModuleVar req_rename
 
     uid_u <- convertUnitId (modSubst req_subst uid)
 
@@ -411,7 +411,7 @@ convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_r
     --
     --      A -> X      ==>     X -> <X>, B -> <B>
     reqs_u <- convertModuleSubst . Map.fromList $
-                [ (k, IndefModuleVar k)
+                [ (k, OpenModuleVar k)
                 | k <- map req_rename_fn (Set.toList reqs)
                 ]
 

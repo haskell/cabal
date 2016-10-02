@@ -83,7 +83,7 @@ data GhcOptions = GhcOptions {
   -- (we need to handle backwards compatibility.)
   ghcOptThisUnitId   :: Flag String,
 
-  ghcOptInstantiatedWith :: [(ModuleName, IndefModule)],
+  ghcOptInstantiatedWith :: [(ModuleName, OpenModule)],
 
   -- | No code? (But we turn on interface writing
   ghcOptNoCode :: Flag Bool,

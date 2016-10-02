@@ -27,7 +27,7 @@ import qualified Data.Set as Set
 -- a library.  We can extract a 'ModuleShape' from an
 -- 'InstalledPackageInfo'.
 data ModuleShape = ModuleShape {
-    modShapeProvides :: IndefModuleSubst,
+    modShapeProvides :: OpenModuleSubst,
     modShapeRequires :: Set ModuleName
     }
     deriving (Eq, Show, Generic)
@@ -78,6 +78,6 @@ shapeInstalledPackage ipi = ModuleShape (Map.fromList provs) reqs
     provs = map shapeExposedModule (IPI.exposedModules ipi)
     reqs = requiredSignatures ipi
     shapeExposedModule (IPI.ExposedModule mod_name Nothing)
-        = (mod_name, IndefModule uid mod_name)
+        = (mod_name, OpenModule uid mod_name)
     shapeExposedModule (IPI.ExposedModule mod_name (Just mod))
         = (mod_name, mod)

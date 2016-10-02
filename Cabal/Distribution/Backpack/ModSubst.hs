@@ -27,11 +27,11 @@ class ModSubst a where
     -- putting it on the right hand side, but for partial
     -- application it's more convenient to have it on the left
     -- hand side.
-    modSubst :: IndefModuleSubst -> a -> a
+    modSubst :: OpenModuleSubst -> a -> a
 
-instance ModSubst IndefModule where
-    modSubst subst (IndefModule cid mod_name) = IndefModule (modSubst subst cid) mod_name
-    modSubst subst mod@(IndefModuleVar mod_name)
+instance ModSubst OpenModule where
+    modSubst subst (OpenModule cid mod_name) = OpenModule (modSubst subst cid) mod_name
+    modSubst subst mod@(OpenModuleVar mod_name)
         | Just mod' <- Map.lookup mod_name subst = mod'
         | otherwise = mod
 
@@ -42,7 +42,7 @@ instance ModSubst OpenUnitId where
 instance ModSubst (Set ModuleName) where
     modSubst subst reqs
         = Set.union (Set.difference reqs (Map.keysSet subst))
-                    (indefModuleSubstFreeHoles subst)
+                    (openModuleSubstFreeHoles subst)
 
 -- Substitutions are functorial.  NB: this means that
 -- there is an @instance 'ModSubst' 'ModuleSubst'@!
