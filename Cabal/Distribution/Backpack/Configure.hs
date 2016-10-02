@@ -93,11 +93,12 @@ configureComponentLocalBuildInfos
     let shape_pkg_map = Map.fromList
             [ (pc_cid pkg, (pc_open_uid pkg, pc_shape pkg))
             | pkg <- prePkgDeps]
-        uid_lookup uid
+        uid_lookup def_uid
             | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid
             = FullUnitId (Installed.installedComponentId pkg)
                  (Map.fromList (Installed.instantiatedWith pkg))
             | otherwise = error ("uid_lookup: " ++ display uid)
+          where uid = unDefUnitId def_uid
     graph2 <- toLinkedComponents verbosity uid_lookup
                     (package pkg_descr) shape_pkg_map graph1
 
@@ -111,7 +112,7 @@ configureComponentLocalBuildInfos
             [ (Installed.installedComponentId pkg, Installed.sourcePackageId pkg)
             | (_, Module uid _) <- instantiate_with
             , Just pkg <- [PackageIndex.lookupUnitId
-                                installedPackageSet uid] ] ++
+                                installedPackageSet (unDefUnitId uid)] ] ++
             [ (lc_cid lc, lc_pkgid lc)
             | lc <- graph2 ]
         subst = Map.fromList instantiate_with
@@ -243,7 +244,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       case rc_component rc of
       CLib _ ->
         let convModuleExport (modname', (Module uid modname))
-              | this_uid == uid
+              | this_uid == unDefUnitId uid
               , modname' == modname
               = Installed.ExposedModule modname' Nothing
               | otherwise
@@ -279,7 +280,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentIsIndefinite_ = is_indefinite,
           componentLocalName = cname,
           componentInternalDeps = internal_deps,
-          componentExeDeps = rc_internal_build_tools rc,
+          componentExeDeps = map unDefUnitId (rc_internal_build_tools rc),
           componentIncludes = includes,
           componentExposedModules = exports,
           componentIsPublic = rc_public rc,
@@ -291,7 +292,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentUnitId = this_uid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = rc_internal_build_tools rc,
+          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -300,7 +301,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentUnitId = this_uid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = rc_internal_build_tools rc,
+          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -309,7 +310,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentUnitId = this_uid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
-          componentExeDeps = rc_internal_build_tools rc,
+          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
           componentInternalDeps = internal_deps,
           componentIncludes = includes
         }
@@ -330,6 +331,6 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
                 map (\(x,y) -> (DefiniteUnitId x,y)) (instc_includes instc)
       internal_deps =
               filter isInternal (nodeNeighbors rc)
-           ++ rc_internal_build_tools rc
+           ++ map unDefUnitId (rc_internal_build_tools rc)
 
 

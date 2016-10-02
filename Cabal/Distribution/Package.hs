@@ -25,6 +25,7 @@ module Distribution.Package (
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId, unComponentId, mkComponentId,
         UnitId(..),
+        DefUnitId(..),
         mkUnitId,
         newSimpleUnitId,
         mkLegacyUnitId,
@@ -145,7 +146,7 @@ instance NFData PackageIdentifier where
 -- module identities, e.g., when writing out reexported modules in
 -- the 'InstalledPackageInfo'.
 data Module =
-      Module UnitId ModuleName
+      Module DefUnitId ModuleName
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary Module
@@ -267,6 +268,12 @@ instance Text UnitId where
                          hash <- Parse.munch1 isAlphaNum
                          return (UnitId cid (Just hash))
         parseSimpleUnitId = fmap newSimpleUnitId parse
+
+-- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
+-- that a 'UnitId' identified this way is definite; i.e., it has no
+-- unfilled holes.
+newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Text)
 
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.

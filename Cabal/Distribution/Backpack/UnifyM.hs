@@ -181,7 +181,7 @@ data ModuleU' s
 -- | Contents of a mutable 'UnitIdU' reference.
 data UnitIdU' s
     = UnitIdU UnitIdUnique ComponentId (Map ModuleName (ModuleU s))
-    | UnitIdThunkU UnitId
+    | UnitIdThunkU DefUnitId
 
 -- | A mutable version of 'Module' which can be imperatively unified.
 type ModuleU s = UnionFind.Point s (ModuleU' s)

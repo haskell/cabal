@@ -3,6 +3,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | This module defines the core data types for Backpack.  For more
 -- details, see:
@@ -14,6 +15,12 @@ module Distribution.Backpack (
     OpenUnitId(..),
     openUnitIdComponentId,
     openUnitIdFreeHoles,
+    mkOpenUnitId,
+
+    -- * DefUnitId
+    DefUnitId,
+    unDefUnitId,
+    mkDefUnitId,
 
     -- * OpenModule
     OpenModule(..),
@@ -85,7 +92,7 @@ data OpenUnitId
     -- been compiled and abbreviated as a hash.  The embedded 'UnitId'
     -- MUST NOT be for an indefinite component; an 'OpenUnitId'
     -- is guaranteed not to have any holes.
-    | DefiniteUnitId UnitId
+    | DefiniteUnitId DefUnitId
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 -- TODO: cache holes?
 
@@ -113,12 +120,28 @@ instance Text OpenUnitId where
 -- | Get the 'ComponentId' of an 'OpenUnitId'.
 openUnitIdComponentId :: OpenUnitId -> ComponentId
 openUnitIdComponentId (IndefFullUnitId cid _) = cid
-openUnitIdComponentId (DefiniteUnitId uid) = unitIdComponentId uid
+openUnitIdComponentId (DefiniteUnitId (DefUnitId uid)) = unitIdComponentId uid
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
 openUnitIdFreeHoles (IndefFullUnitId _ insts) = openModuleSubstFreeHoles insts
 openUnitIdFreeHoles _ = Set.empty
+
+-- | Safe constructor from a UnitId.  The only way to do this safely
+-- is if the instantiation is provided.
+mkOpenUnitId :: UnitId -> OpenModuleSubst -> OpenUnitId
+mkOpenUnitId uid insts =
+    if Set.null (openModuleSubstFreeHoles insts)
+        then DefiniteUnitId (DefUnitId uid) -- invariant holds!
+        else IndefFullUnitId (unitIdComponentId uid) insts
+
+-----------------------------------------------------------------------
+-- DefUnitId
+
+-- | Create a 'DefUnitId' from a 'ComponentId' and an instantiation
+-- with no holes.
+mkDefUnitId :: ComponentId -> Map ModuleName Module -> DefUnitId
+mkDefUnitId cid insts = DefUnitId (UnitId cid (hashModuleSubst insts)) -- impose invariant!
 
 -----------------------------------------------------------------------
 -- OpenModule
@@ -208,7 +231,7 @@ openModuleSubstFreeHoles insts = Set.unions (map openModuleFreeHoles (Map.elems 
 -- 'IndefFullUnitId' be compiled; instead, we just depend on the
 -- installed indefinite unit installed at the 'ComponentId'.
 abstractUnitId :: OpenUnitId -> UnitId
-abstractUnitId (DefiniteUnitId uid) = uid
+abstractUnitId (DefiniteUnitId (DefUnitId uid)) = uid
 abstractUnitId (IndefFullUnitId cid _) = newSimpleUnitId cid
 
 -- | Take a module substitution and hash it into a string suitable for

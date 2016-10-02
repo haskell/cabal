@@ -132,11 +132,8 @@ indefinite ipi =
 -- For indefinite libraries, however, you will correctly get
 -- an @OpenUnitId@ with the appropriate 'OpenModuleSubst'.
 installedOpenUnitId :: InstalledPackageInfo -> OpenUnitId
-installedOpenUnitId ipi =
-    if indefinite ipi
-        then IndefFullUnitId (installedComponentId ipi)
-                             (Map.fromList (instantiatedWith ipi))
-        else DefiniteUnitId (installedUnitId ipi)
+installedOpenUnitId ipi
+    = mkOpenUnitId (installedUnitId ipi) (Map.fromList (instantiatedWith ipi))
 
 -- | Returns the set of module names which need to be filled for
 -- an indefinite package, or the empty set if the package is definite.
