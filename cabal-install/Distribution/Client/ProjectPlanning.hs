@@ -1269,7 +1269,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 shape = planPkgShape dpkg
                 indef_uid =
                     IndefFullUnitId (unitIdComponentId (installedUnitId dpkg))
-                        (Map.fromList [ (req, IndefModuleVar req)
+                        (Map.fromList [ (req, OpenModuleVar req)
                                       | req <- Set.toList (modShapeRequires shape)])
 
             planPkgShape :: ElaboratedPlanPackage -> ModuleShape
@@ -1740,15 +1740,15 @@ instantiateInstallPlan plan =
 
     -- NB: NOT composition
     substSubst :: Map ModuleName Module
-               -> Map ModuleName IndefModule
+               -> Map ModuleName OpenModule
                -> InstM (Map ModuleName Module)
     substSubst subst insts = T.mapM (substModule subst) insts
 
-    substModule :: Map ModuleName Module -> IndefModule -> InstM Module
-    substModule subst (IndefModuleVar mod_name)
+    substModule :: Map ModuleName Module -> OpenModule -> InstM Module
+    substModule subst (OpenModuleVar mod_name)
         | Just m <- Map.lookup mod_name subst = return m
         | otherwise = error "substModule: non-closing substitution"
-    substModule subst (IndefModule uid mod_name) = do
+    substModule subst (OpenModule uid mod_name) = do
         uid' <- substUnitId subst uid
         return (Module uid' mod_name)
 

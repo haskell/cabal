@@ -71,7 +71,7 @@ data ModuleSource =
         -- with that as well
         msrc_pkgname :: PackageName,
         msrc_renaming :: IncludeRenaming,
-        msrc_module :: IndefModule
+        msrc_module :: OpenModule
     }
 
 instance ModSubst ModuleScope where

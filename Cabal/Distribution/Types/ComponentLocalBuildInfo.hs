@@ -35,7 +35,7 @@ data ComponentLocalBuildInfo
     -- | Is this an indefinite component (i.e. has unfilled holes)?
     componentIsIndefinite_ :: Bool,
     -- | How the component was instantiated
-    componentInstantiatedWith :: [(ModuleName, IndefModule)],
+    componentInstantiatedWith :: [(ModuleName, OpenModule)],
     -- | Resolved internal and external package dependencies for this component.
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies

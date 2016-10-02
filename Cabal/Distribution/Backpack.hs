@@ -15,17 +15,17 @@ module Distribution.Backpack (
     openUnitIdComponentId,
     openUnitIdFreeHoles,
 
-    -- * IndefModule
-    IndefModule(..),
-    indefModuleFreeHoles,
+    -- * OpenModule
+    OpenModule(..),
+    openModuleFreeHoles,
 
-    -- * IndefModuleSubst
-    IndefModuleSubst,
-    dispIndefModuleSubst,
-    dispIndefModuleSubstEntry,
-    parseIndefModuleSubst,
-    parseIndefModuleSubstEntry,
-    indefModuleSubstFreeHoles,
+    -- * OpenModuleSubst
+    OpenModuleSubst,
+    dispOpenModuleSubst,
+    dispOpenModuleSubstEntry,
+    parseOpenModuleSubst,
+    parseOpenModuleSubstEntry,
+    openModuleSubstFreeHoles,
 
     -- * Conversions to 'UnitId'
     abstractUnitId,
@@ -77,10 +77,10 @@ import qualified Data.Set as Set
 
 data OpenUnitId
     -- | Identifies a component which may have some unfilled holes;
-    -- specifying its 'ComponentId' and its 'IndefModuleSubst'.
-    -- TODO: Invariant that 'IndefModuleSubst' is non-empty?
+    -- specifying its 'ComponentId' and its 'OpenModuleSubst'.
+    -- TODO: Invariant that 'OpenModuleSubst' is non-empty?
     -- See also the Text instance.
-    = IndefFullUnitId ComponentId IndefModuleSubst
+    = IndefFullUnitId ComponentId OpenModuleSubst
     -- | Identifies a fully instantiated component, which has
     -- been compiled and abbreviated as a hash.  The embedded 'UnitId'
     -- MUST NOT be for an indefinite component; an 'OpenUnitId'
@@ -100,14 +100,14 @@ instance Text OpenUnitId where
         -- TODO: arguably a smart constructor to enforce invariant would be
         -- better
         | Map.null insts = disp cid
-        | otherwise      = disp cid <<>> Disp.brackets (dispIndefModuleSubst insts)
+        | otherwise      = disp cid <<>> Disp.brackets (dispOpenModuleSubst insts)
     disp (DefiniteUnitId uid) = disp uid
     parse = parseOpenUnitId <++ fmap DefiniteUnitId parse
       where
         parseOpenUnitId = do
             cid <- parse
             insts <- Parse.between (Parse.char '[') (Parse.char ']')
-                       parseIndefModuleSubst
+                       parseOpenModuleSubst
             return (IndefFullUnitId cid insts)
 
 -- | Get the 'ComponentId' of an 'OpenUnitId'.
@@ -117,89 +117,89 @@ openUnitIdComponentId (DefiniteUnitId uid) = unitIdComponentId uid
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
-openUnitIdFreeHoles (IndefFullUnitId _ insts) = indefModuleSubstFreeHoles insts
+openUnitIdFreeHoles (IndefFullUnitId _ insts) = openModuleSubstFreeHoles insts
 openUnitIdFreeHoles _ = Set.empty
 
 -----------------------------------------------------------------------
--- IndefModule
+-- OpenModule
 
--- | Unlike a 'Module', an 'IndefModule' is either an ordinary
--- module from some unit, OR an 'IndefModuleVar', representing a
+-- | Unlike a 'Module', an 'OpenModule' is either an ordinary
+-- module from some unit, OR an 'OpenModuleVar', representing a
 -- hole that needs to be filled in.  Substitutions are over
 -- module variables.
-data IndefModule
-    = IndefModule OpenUnitId ModuleName
-    | IndefModuleVar ModuleName
+data OpenModule
+    = OpenModule OpenUnitId ModuleName
+    | OpenModuleVar ModuleName
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
-instance Binary IndefModule
+instance Binary OpenModule
 
-instance NFData IndefModule where
-    rnf (IndefModule uid mod_name) = rnf uid `seq` rnf mod_name
-    rnf (IndefModuleVar mod_name) = rnf mod_name
+instance NFData OpenModule where
+    rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name
+    rnf (OpenModuleVar mod_name) = rnf mod_name
 
-instance Text IndefModule where
-    disp (IndefModule uid mod_name) =
+instance Text OpenModule where
+    disp (OpenModule uid mod_name) =
         hcat [disp uid, Disp.text ":", disp mod_name]
-    disp (IndefModuleVar mod_name) =
+    disp (OpenModuleVar mod_name) =
         hcat [Disp.char '<', disp mod_name, Disp.char '>']
-    parse = parseModuleVar <++ parseIndefModule
+    parse = parseModuleVar <++ parseOpenModule
       where
-        parseIndefModule = do
+        parseOpenModule = do
             uid <- parse
             _ <- Parse.char ':'
             mod_name <- parse
-            return (IndefModule uid mod_name)
+            return (OpenModule uid mod_name)
         parseModuleVar = do
             _ <- Parse.char '<'
             mod_name <- parse
             _ <- Parse.char '>'
-            return (IndefModuleVar mod_name)
+            return (OpenModuleVar mod_name)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'Module'.
-indefModuleFreeHoles :: IndefModule -> Set ModuleName
-indefModuleFreeHoles (IndefModuleVar mod_name) = Set.singleton mod_name
-indefModuleFreeHoles (IndefModule uid _n) = openUnitIdFreeHoles uid
+openModuleFreeHoles :: OpenModule -> Set ModuleName
+openModuleFreeHoles (OpenModuleVar mod_name) = Set.singleton mod_name
+openModuleFreeHoles (OpenModule uid _n) = openUnitIdFreeHoles uid
 
 -----------------------------------------------------------------------
--- IndefModuleSubst
+-- OpenModuleSubst
 
 -- | An explicit substitution on modules.
 --
 -- NB: These substitutions are NOT idempotent, for example, a
 -- valid substitution is (A -> B, B -> A).
-type IndefModuleSubst = Map ModuleName IndefModule
+type OpenModuleSubst = Map ModuleName OpenModule
 
 -- | Pretty-print the entries of a module substitution, suitable
 -- for embedding into a 'OpenUnitId' or passing to GHC via @--instantiate-with@.
-dispIndefModuleSubst :: IndefModuleSubst -> Disp.Doc
-dispIndefModuleSubst subst
+dispOpenModuleSubst :: OpenModuleSubst -> Disp.Doc
+dispOpenModuleSubst subst
     = Disp.hcat
     . Disp.punctuate Disp.comma
-    $ map dispIndefModuleSubstEntry (Map.toAscList subst)
+    $ map dispOpenModuleSubstEntry (Map.toAscList subst)
 
 -- | Pretty-print a single entry of a module substitution.
-dispIndefModuleSubstEntry :: (ModuleName, IndefModule) -> Disp.Doc
-dispIndefModuleSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
+dispOpenModuleSubstEntry :: (ModuleName, OpenModule) -> Disp.Doc
+dispOpenModuleSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
 
 -- | Inverse to 'dispModSubst'.
-parseIndefModuleSubst :: ReadP r IndefModuleSubst
-parseIndefModuleSubst = fmap Map.fromList
+parseOpenModuleSubst :: ReadP r OpenModuleSubst
+parseOpenModuleSubst = fmap Map.fromList
       . flip Parse.sepBy (Parse.char ',')
-      $ parseIndefModuleSubstEntry
+      $ parseOpenModuleSubstEntry
 
 -- | Inverse to 'dispModSubstEntry'.
-parseIndefModuleSubstEntry :: ReadP r (ModuleName, IndefModule)
-parseIndefModuleSubstEntry =
+parseOpenModuleSubstEntry :: ReadP r (ModuleName, OpenModule)
+parseOpenModuleSubstEntry =
     do k <- parse
        _ <- Parse.char '='
        v <- parse
        return (k, v)
 
--- | Get the set of holes ('ModuleVar') embedded in a 'IndefModuleSubst'.
+-- | Get the set of holes ('ModuleVar') embedded in a 'OpenModuleSubst'.
 -- This is NOT the domain of the substitution.
-indefModuleSubstFreeHoles :: IndefModuleSubst -> Set ModuleName
-indefModuleSubstFreeHoles insts = Set.unions (map indefModuleFreeHoles (Map.elems insts))
+openModuleSubstFreeHoles :: OpenModuleSubst -> Set ModuleName
+openModuleSubstFreeHoles insts = Set.unions (map openModuleFreeHoles (Map.elems insts))
 
 -----------------------------------------------------------------------
 -- Conversions to UnitId
@@ -212,8 +212,8 @@ abstractUnitId (DefiniteUnitId uid) = uid
 abstractUnitId (IndefFullUnitId cid _) = newSimpleUnitId cid
 
 -- | Take a module substitution and hash it into a string suitable for
--- 'UnitId'.  Note that since this takes 'Module', not 'IndefModule',
--- you are responsible for recursively converting 'IndefModule'
+-- 'UnitId'.  Note that since this takes 'Module', not 'OpenModule',
+-- you are responsible for recursively converting 'OpenModule'
 -- into 'Module'.  See also "Distribution.Backpack.ReadyComponent".
 hashModuleSubst :: Map ModuleName Module -> Maybe String
 hashModuleSubst subst

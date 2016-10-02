@@ -248,8 +248,8 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
               = Installed.ExposedModule modname' Nothing
               | otherwise
               = Installed.ExposedModule modname'
-                  (Just (IndefModule (DefiniteUnitId uid) modname))
-            convIndefModuleExport (modname', modu@(IndefModule uid modname))
+                  (Just (OpenModule (DefiniteUnitId uid) modname))
+            convOpenModuleExport (modname', modu@(OpenModule uid modname))
               -- TODO: This isn't a good enough test if we have mutual
               -- recursion (but maybe we'll get saved by the module name
               -- check regardless.)
@@ -258,19 +258,19 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
               = Installed.ExposedModule modname' Nothing
               | otherwise
               = Installed.ExposedModule modname' (Just modu)
-            convIndefModuleExport (_, IndefModuleVar _)
-                = error "convIndefModuleExport: top-level modvar"
+            convOpenModuleExport (_, OpenModuleVar _)
+                = error "convOpenModuleExport: top-level modvar"
             exports =
                 -- Loses invariants
                 case rc_i rc of
-                    Left indefc -> map convIndefModuleExport
+                    Left indefc -> map convOpenModuleExport
                                  $ Map.toList (indefc_provides indefc)
                     Right instc -> map convModuleExport
                                  $ Map.toList (instc_provides instc)
             insts =
                 case rc_i rc of
-                    Left indefc -> [ (m, IndefModuleVar m) | m <- indefc_requires indefc ]
-                    Right instc -> [ (m, IndefModule (DefiniteUnitId uid') m')
+                    Left indefc -> [ (m, OpenModuleVar m) | m <- indefc_requires indefc ]
+                    Right instc -> [ (m, OpenModule (DefiniteUnitId uid') m')
                                    | (m, Module uid' m') <- instc_insts instc ]
         in LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,

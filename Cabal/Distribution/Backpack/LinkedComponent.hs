@@ -48,7 +48,7 @@ data LinkedComponent
     = LinkedComponent {
         lc_uid :: OpenUnitId,
         lc_pkgid :: PackageId,
-        lc_insts :: [(ModuleName, IndefModule)],
+        lc_insts :: [(ModuleName, OpenModule)],
         lc_component :: Component,
         lc_shape :: ModuleShape,
         -- | Local buildTools dependencies
@@ -151,7 +151,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         --
         let convertReq :: ModuleName -> UnifyM s (ModuleScopeU s)
             convertReq req = do
-                req_u <- convertModule (IndefModuleVar req)
+                req_u <- convertModule (OpenModuleVar req)
                 return (Map.empty, Map.singleton req req_u)
             -- NB: We DON'T convert locally defined modules, as in the
             -- absence of mutual recursion across packages they
@@ -174,7 +174,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- the actual modules we export ourselves.  Add them!
     let reqs = modScopeRequires linked_shape0
         -- check that there aren't pre-filled requirements...
-        insts = [ (req, IndefModuleVar req)
+        insts = [ (req, OpenModuleVar req)
                 | req <- Set.toList reqs ]
         this_uid = IndefFullUnitId this_cid . Map.fromList $ insts
 
@@ -182,7 +182,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         local_exports = Map.fromListWith (++) $
           [ (mod_name, [ModuleSource (packageName this_pid)
                                      defaultIncludeRenaming
-                                     (IndefModule this_uid mod_name)])
+                                     (OpenModule this_uid mod_name)])
           | mod_name <- src_provs ]
           -- NB: do NOT include hidden modules here: GHC 7.10's ghc-pkg
           -- won't allow it (since someone could directly synthesize
@@ -231,7 +231,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     provs <- foldM build_reexports Map.empty $
                 -- TODO: doublecheck we have checked for
                 -- src_provs duplicates already!
-                [ (mod_name, IndefModule this_uid mod_name) | mod_name <- src_provs ] ++
+                [ (mod_name, OpenModule this_uid mod_name) | mod_name <- src_provs ] ++
                 reexports_list
 
     let final_linked_shape = ModuleShape provs (modScopeRequires linked_shape)

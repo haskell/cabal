@@ -123,7 +123,7 @@ data ElaboratedConfiguredPackage
        elabUnitId        :: UnitId,
 
        elabInstantiatedWith :: Map ModuleName Module,
-       elabLinkedInstantiatedWith :: Map ModuleName IndefModule,
+       elabLinkedInstantiatedWith :: Map ModuleName OpenModule,
 
        -- | The 'PackageId' of the originating package
        elabPkgSourceId    :: PackageId,
