@@ -46,22 +46,22 @@ import Text.PrettyPrint
 -- going to build it.
 data LinkedComponent
     = LinkedComponent {
-        lc_uid :: IndefUnitId,
+        lc_uid :: OpenUnitId,
         lc_pkgid :: PackageId,
         lc_insts :: [(ModuleName, IndefModule)],
         lc_component :: Component,
         lc_shape :: ModuleShape,
         -- | Local buildTools dependencies
-        lc_internal_build_tools :: [IndefUnitId],
+        lc_internal_build_tools :: [OpenUnitId],
         lc_public :: Bool,
-        lc_includes :: [(IndefUnitId, ModuleRenaming)],
+        lc_includes :: [(OpenUnitId, ModuleRenaming)],
         -- PackageId here is a bit dodgy, but its just for
         -- BC so it shouldn't matter.
-        lc_depends :: [(IndefUnitId, PackageId)]
+        lc_depends :: [(OpenUnitId, PackageId)]
       }
 
 lc_cid :: LinkedComponent -> ComponentId
-lc_cid = indefUnitIdComponentId . lc_uid
+lc_cid = openUnitIdComponentId . lc_uid
 
 dispLinkedComponent :: LinkedComponent -> Doc
 dispLinkedComponent lc =
@@ -88,7 +88,7 @@ instance IsNode LinkedComponent where
     type Key LinkedComponent = UnitId
     nodeKey = lc_uid
     nodeNeighbors n =
-        if Set.null (indefUnitIdFreeHoles (lc_uid n))
+        if Set.null (openUnitIdFreeHoles (lc_uid n))
             then map fst (lc_depends n)
             else ordNub (map (generalizeUnitId . fst) (lc_depends n))
 -}
@@ -128,11 +128,11 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
         -- Take each included ComponentId and resolve it into an
         -- *unlinked* unit identity.  We will use unification (relying
         -- on the ModuleShape) to resolve these into linked identities.
-        unlinked_includes :: [((IndefUnitId, ModuleShape), PackageId, IncludeRenaming)]
+        unlinked_includes :: [((OpenUnitId, ModuleShape), PackageId, IncludeRenaming)]
         unlinked_includes = [ (lookupUid cid, pid, rns)
                             | (cid, pid, rns) <- cid_includes ]
 
-        lookupUid :: ComponentId -> (IndefUnitId, ModuleShape)
+        lookupUid :: ComponentId -> (OpenUnitId, ModuleShape)
         lookupUid cid = fromMaybe (error "linkComponent: lookupUid")
                                     (Map.lookup cid pkg_map)
 
@@ -143,8 +143,8 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
     -- TODO: the unification monad might return errors, in which
     -- case we have to deal.  Use monadic bind for now.
     (linked_shape0   :: ModuleScope,
-     linked_deps     :: [(IndefUnitId, PackageId)],
-     linked_includes :: [(IndefUnitId, ModuleRenaming)]) <- orErr $ runUnifyM verbosity db $ do
+     linked_deps     :: [(OpenUnitId, PackageId)],
+     linked_includes :: [(OpenUnitId, ModuleRenaming)]) <- orErr $ runUnifyM verbosity db $ do
         -- The unification monad is implemented using mutable
         -- references.  Thus, we must convert our *pure* data
         -- structures into mutable ones to perform unification.
@@ -261,14 +261,14 @@ toLinkedComponents
 toLinkedComponents verbosity db this_pid lc_map0 comps
    = fmap snd (mapAccumM go lc_map0 comps)
  where
-  go :: Map ComponentId (IndefUnitId, ModuleShape)
+  go :: Map ComponentId (OpenUnitId, ModuleShape)
      -> ConfiguredComponent
-     -> LogProgress (Map ComponentId (IndefUnitId, ModuleShape), LinkedComponent)
+     -> LogProgress (Map ComponentId (OpenUnitId, ModuleShape), LinkedComponent)
   go lc_map cc = do
     lc <- toLinkedComponent verbosity db this_pid lc_map cc
     return (extendLinkedComponentMap lc lc_map, lc)
 
-type LinkedComponentMap = Map ComponentId (IndefUnitId, ModuleShape)
+type LinkedComponentMap = Map ComponentId (OpenUnitId, ModuleShape)
 
 extendLinkedComponentMap :: LinkedComponent
                          -> LinkedComponentMap

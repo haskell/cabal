@@ -27,7 +27,7 @@ data PreExistingComponent
         pc_pkgname :: PackageName,
         pc_pkgid :: PackageId,
         pc_uid   :: UnitId,
-        pc_indef_uid :: IndefUnitId,
+        pc_open_uid :: OpenUnitId,
         pc_shape :: ModuleShape
     }
 
@@ -44,7 +44,7 @@ ipiToPreExistingComponent (pn, ipi) =
         pc_pkgname = pn,
         pc_pkgid = Installed.sourcePackageId ipi,
         pc_uid   = Installed.installedUnitId ipi,
-        pc_indef_uid =
+        pc_open_uid =
             IndefFullUnitId (Installed.installedComponentId ipi)
                             (Map.fromList (Installed.instantiatedWith ipi)),
         pc_shape = shapeInstalledPackage ipi

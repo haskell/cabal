@@ -33,7 +33,7 @@ module Distribution.InstalledPackageInfo (
         installedPackageId,
         indefinite,
         requiredSignatures,
-        installedIndefUnitId,
+        installedOpenUnitId,
         ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -75,7 +75,7 @@ data InstalledPackageInfo
         sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
         -- INVARIANT: if this package is definite, IndefModule's
-        -- IndefUnitId directly records UnitId.  If it is
+        -- OpenUnitId directly records UnitId.  If it is
         -- indefinite, IndefModule is always an IndefModuleVar
         -- with the same ModuleName as the key.
         instantiatedWith  :: [(ModuleName, IndefModule)],
@@ -94,7 +94,7 @@ data InstalledPackageInfo
         abiHash           :: AbiHash,
         exposed           :: Bool,
         -- INVARIANT: if the package is definite, IndefModule's
-        -- IndefUnitId directly records UnitId.
+        -- OpenUnitId directly records UnitId.
         exposedModules    :: [ExposedModule],
         hiddenModules     :: [ModuleName],
         trusted           :: Bool,
@@ -130,9 +130,9 @@ indefinite ipi =
 -- This IS NOT guaranteed to give you a substitution; for
 -- instantiated packages you will get @DefiniteUnitId (installedUnitId ipi)@.
 -- For indefinite libraries, however, you will correctly get
--- an @IndefUnitId@ with the appropriate 'IndefModuleSubst'.
-installedIndefUnitId :: InstalledPackageInfo -> IndefUnitId
-installedIndefUnitId ipi =
+-- an @OpenUnitId@ with the appropriate 'IndefModuleSubst'.
+installedOpenUnitId :: InstalledPackageInfo -> OpenUnitId
+installedOpenUnitId ipi =
     if indefinite ipi
         then IndefFullUnitId (installedComponentId ipi)
                              (Map.fromList (instantiatedWith ipi))

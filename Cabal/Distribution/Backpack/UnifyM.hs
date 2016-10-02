@@ -233,7 +233,7 @@ emptyMuEnv = (IntMap.empty, -1)
 --   * @MuEnv@ - the environment for mu-binders.
 
 convertUnitId' :: MuEnv s
-               -> IndefUnitId
+               -> OpenUnitId
                -> UnifyM s (UnitIdU s)
 -- TODO: this could be more lazy if we know there are no internal
 -- references
@@ -264,7 +264,7 @@ convertModule' stk (IndefModule uid mod_name) = do
     uid_u <- convertUnitId' stk uid
     liftST $ UnionFind.fresh (ModuleU uid_u mod_name)
 
-convertUnitId :: IndefUnitId -> UnifyM s (UnitIdU s)
+convertUnitId :: OpenUnitId -> UnifyM s (UnitIdU s)
 convertUnitId = convertUnitId' emptyMuEnv
 
 convertModule :: IndefModule -> UnifyM s (ModuleU s)
@@ -310,7 +310,7 @@ lookupMooEnv (m, i) k =
 
 -- The workhorse functions
 
-convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s IndefUnitId
+convertUnitIdU' :: MooEnv -> UnitIdU s -> UnifyM s OpenUnitId
 convertUnitIdU' stk uid_u = do
     x <- liftST $ UnionFind.find uid_u
     case x of
@@ -333,7 +333,7 @@ convertModuleU' stk mod_u = do
 
 -- Helper functions
 
-convertUnitIdU :: UnitIdU s -> UnifyM s IndefUnitId
+convertUnitIdU :: UnitIdU s -> UnifyM s OpenUnitId
 convertUnitIdU = convertUnitIdU' emptyMooEnv
 
 convertModuleU :: ModuleU s -> UnifyM s IndefModule
@@ -361,7 +361,7 @@ data ModuleSourceU s =
 -- | Convert a 'ModuleShape' into a 'ModuleScopeU', so we can do
 -- unification on it.
 convertInclude
-    :: ((IndefUnitId, ModuleShape), PackageId, IncludeRenaming)
+    :: ((OpenUnitId, ModuleShape), PackageId, IncludeRenaming)
     -> UnifyM s (ModuleScopeU s, (UnitIdU s, PackageId, ModuleRenaming))
 convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_rns req_rns)) = do
     let pn = packageName pid

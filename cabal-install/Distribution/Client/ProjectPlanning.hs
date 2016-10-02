@@ -1262,7 +1262,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 (packageName dpkg, (componentId dpkg, packageId dpkg))
 
             mkShapeMapping :: ElaboratedPlanPackage
-                           -> (ComponentId, (IndefUnitId, ModuleShape))
+                           -> (ComponentId, (OpenUnitId, ModuleShape))
             mkShapeMapping dpkg =
                 (componentId dpkg, (indef_uid, shape))
               where
@@ -1731,7 +1731,7 @@ instantiateInstallPlan plan =
           _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ display cid)
 
-    substUnitId :: Map ModuleName Module -> IndefUnitId -> InstM UnitId
+    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM UnitId
     substUnitId _ (DefiniteUnitId uid) =
         return uid
     substUnitId subst (IndefFullUnitId cid insts) = do

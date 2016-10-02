@@ -94,7 +94,7 @@ data GhcOptions = GhcOptions {
   -- | The GHC packages to bring into scope when compiling,
   -- the @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (IndefUnitId, ModuleRenaming),
+    NubListR (OpenUnitId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,

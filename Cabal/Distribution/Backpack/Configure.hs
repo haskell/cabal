@@ -91,7 +91,7 @@ configureComponentLocalBuildInfos
                         (vcat (map dispConfiguredComponent graph1))
 
     let shape_pkg_map = Map.fromList
-            [ (pc_cid pkg, (pc_indef_uid pkg, pc_shape pkg))
+            [ (pc_cid pkg, (pc_open_uid pkg, pc_shape pkg))
             | pkg <- prePkgDeps]
         uid_lookup uid
             | Just pkg <- PackageIndex.lookupUnitId installedPackageSet uid
@@ -253,7 +253,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
               -- TODO: This isn't a good enough test if we have mutual
               -- recursion (but maybe we'll get saved by the module name
               -- check regardless.)
-              | indefUnitIdComponentId uid == this_cid
+              | openUnitIdComponentId uid == this_cid
               , modname' == modname
               = Installed.ExposedModule modname' Nothing
               | otherwise

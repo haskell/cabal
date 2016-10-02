@@ -74,7 +74,7 @@ emptyModuleShape = ModuleShape Map.empty Set.empty
 shapeInstalledPackage :: IPI.InstalledPackageInfo -> ModuleShape
 shapeInstalledPackage ipi = ModuleShape (Map.fromList provs) reqs
   where
-    uid = installedIndefUnitId ipi
+    uid = installedOpenUnitId ipi
     provs = map shapeExposedModule (IPI.exposedModules ipi)
     reqs = requiredSignatures ipi
     shapeExposedModule (IPI.ExposedModule mod_name Nothing)

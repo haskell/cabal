@@ -10,10 +10,10 @@
 --  <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 
 module Distribution.Backpack (
-    -- * IndefUnitId
-    IndefUnitId(..),
-    indefUnitIdComponentId,
-    indefUnitIdFreeHoles,
+    -- * OpenUnitId
+    OpenUnitId(..),
+    openUnitIdComponentId,
+    openUnitIdFreeHoles,
 
     -- * IndefModule
     IndefModule(..),
@@ -49,33 +49,33 @@ import Data.Set (Set)
 import qualified Data.Set as Set
 
 -----------------------------------------------------------------------
--- IndefUnitId
+-- OpenUnitId
 
--- | An 'IndefUnitId' describes a (possibly partially) instantiated
+-- | An 'OpenUnitId' describes a (possibly partially) instantiated
 -- Backpack component, with a description of how the holes are filled
--- in.  Unlike 'IndefUnitId', the 'ModuleSubst' is kept in a structured
+-- in.  Unlike 'OpenUnitId', the 'ModuleSubst' is kept in a structured
 -- form that allows for substitution (which fills in holes.) This form
 -- of unit cannot be installed. It must first be converted to a
 -- 'UnitId'.
 --
 -- In the absence of Backpack, there are no holes to fill, so any such
 -- component always has an empty module substitution; thus we can lossly
--- represent it as an 'IndefUnitId uid'.
+-- represent it as an 'OpenUnitId uid'.
 --
 -- For a source component using Backpack, however, there is more
 -- structure as components may be parametrized over some signatures, and
 -- these \"holes\" may be partially or wholly filled.
 --
--- IndefUnitId plays an important role when we are mix-in linking,
+-- OpenUnitId plays an important role when we are mix-in linking,
 -- and is recorded to the installed packaged database for indefinite
 -- packages; however, for compiled packages that are fully instantiated,
--- we instantiate 'IndefUnitId' into 'UnitId'.
+-- we instantiate 'OpenUnitId' into 'UnitId'.
 --
 -- For more details see the Backpack spec
 -- <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 --
 
-data IndefUnitId
+data OpenUnitId
     -- | Identifies a component which may have some unfilled holes;
     -- specifying its 'ComponentId' and its 'IndefModuleSubst'.
     -- TODO: Invariant that 'IndefModuleSubst' is non-empty?
@@ -83,42 +83,42 @@ data IndefUnitId
     = IndefFullUnitId ComponentId IndefModuleSubst
     -- | Identifies a fully instantiated component, which has
     -- been compiled and abbreviated as a hash.  The embedded 'UnitId'
-    -- MUST NOT be for an indefinite component; an 'IndefUnitId'
+    -- MUST NOT be for an indefinite component; an 'OpenUnitId'
     -- is guaranteed not to have any holes.
     | DefiniteUnitId UnitId
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 -- TODO: cache holes?
 
-instance Binary IndefUnitId
+instance Binary OpenUnitId
 
-instance NFData IndefUnitId where
+instance NFData OpenUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
     rnf (DefiniteUnitId uid) = rnf uid
 
-instance Text IndefUnitId where
+instance Text OpenUnitId where
     disp (IndefFullUnitId cid insts)
         -- TODO: arguably a smart constructor to enforce invariant would be
         -- better
         | Map.null insts = disp cid
         | otherwise      = disp cid <<>> Disp.brackets (dispIndefModuleSubst insts)
     disp (DefiniteUnitId uid) = disp uid
-    parse = parseIndefUnitId <++ fmap DefiniteUnitId parse
+    parse = parseOpenUnitId <++ fmap DefiniteUnitId parse
       where
-        parseIndefUnitId = do
+        parseOpenUnitId = do
             cid <- parse
             insts <- Parse.between (Parse.char '[') (Parse.char ']')
                        parseIndefModuleSubst
             return (IndefFullUnitId cid insts)
 
--- | Get the 'ComponentId' of an 'IndefUnitId'.
-indefUnitIdComponentId :: IndefUnitId -> ComponentId
-indefUnitIdComponentId (IndefFullUnitId cid _) = cid
-indefUnitIdComponentId (DefiniteUnitId uid) = unitIdComponentId uid
+-- | Get the 'ComponentId' of an 'OpenUnitId'.
+openUnitIdComponentId :: OpenUnitId -> ComponentId
+openUnitIdComponentId (IndefFullUnitId cid _) = cid
+openUnitIdComponentId (DefiniteUnitId uid) = unitIdComponentId uid
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
-indefUnitIdFreeHoles :: IndefUnitId -> Set ModuleName
-indefUnitIdFreeHoles (IndefFullUnitId _ insts) = indefModuleSubstFreeHoles insts
-indefUnitIdFreeHoles _ = Set.empty
+openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
+openUnitIdFreeHoles (IndefFullUnitId _ insts) = indefModuleSubstFreeHoles insts
+openUnitIdFreeHoles _ = Set.empty
 
 -----------------------------------------------------------------------
 -- IndefModule
@@ -128,7 +128,7 @@ indefUnitIdFreeHoles _ = Set.empty
 -- hole that needs to be filled in.  Substitutions are over
 -- module variables.
 data IndefModule
-    = IndefModule IndefUnitId ModuleName
+    = IndefModule OpenUnitId ModuleName
     | IndefModuleVar ModuleName
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
@@ -159,7 +159,7 @@ instance Text IndefModule where
 -- | Get the set of holes ('ModuleVar') embedded in a 'Module'.
 indefModuleFreeHoles :: IndefModule -> Set ModuleName
 indefModuleFreeHoles (IndefModuleVar mod_name) = Set.singleton mod_name
-indefModuleFreeHoles (IndefModule uid _n) = indefUnitIdFreeHoles uid
+indefModuleFreeHoles (IndefModule uid _n) = openUnitIdFreeHoles uid
 
 -----------------------------------------------------------------------
 -- IndefModuleSubst
@@ -171,7 +171,7 @@ indefModuleFreeHoles (IndefModule uid _n) = indefUnitIdFreeHoles uid
 type IndefModuleSubst = Map ModuleName IndefModule
 
 -- | Pretty-print the entries of a module substitution, suitable
--- for embedding into a 'IndefUnitId' or passing to GHC via @--instantiate-with@.
+-- for embedding into a 'OpenUnitId' or passing to GHC via @--instantiate-with@.
 dispIndefModuleSubst :: IndefModuleSubst -> Disp.Doc
 dispIndefModuleSubst subst
     = Disp.hcat
@@ -207,7 +207,7 @@ indefModuleSubstFreeHoles insts = Set.unions (map indefModuleFreeHoles (Map.elem
 -- | When typechecking, we don't demand that a freshly instantiated
 -- 'IndefFullUnitId' be compiled; instead, we just depend on the
 -- installed indefinite unit installed at the 'ComponentId'.
-abstractUnitId :: IndefUnitId -> UnitId
+abstractUnitId :: OpenUnitId -> UnitId
 abstractUnitId (DefiniteUnitId uid) = uid
 abstractUnitId (IndefFullUnitId cid _) = newSimpleUnitId cid
 

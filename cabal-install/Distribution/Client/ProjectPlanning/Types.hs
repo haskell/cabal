@@ -396,7 +396,7 @@ data ElaboratedComponent
     -- care about from the perspective of ORDERING builds.  It's more
     -- precise than 'compLibDependencies', and also stores information
     -- about internal dependencies.
-    compLinkedLibDependencies :: [IndefUnitId],
+    compLinkedLibDependencies :: [OpenUnitId],
     -- | The executable dependencies of this component (including
     -- internal executables).
     compExeDependencies :: [ComponentId],

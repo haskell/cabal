@@ -381,7 +381,7 @@ getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
                | x <- allLibModules lib clbi ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(IndefUnitId, ModuleRenaming)]
+                 -> [(OpenUnitId, ModuleRenaming)]
 mkGhcOptPackages = componentIncludes
 
 substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
