@@ -93,5 +93,4 @@ instance IsNode ComponentLocalBuildInfo where
     nodeNeighbors = componentInternalDeps
 
 componentComponentId :: ComponentLocalBuildInfo -> ComponentId
-componentComponentId clbi = case componentUnitId clbi of
-                                SimpleUnitId cid -> cid
+componentComponentId clbi = unitIdComponentId (componentUnitId clbi)

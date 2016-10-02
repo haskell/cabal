@@ -104,8 +104,7 @@ data InstalledPackageInfo
     deriving (Eq, Generic, Read, Show)
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
-installedComponentId ipi = case installedUnitId ipi of
-                            SimpleUnitId cid -> cid
+installedComponentId ipi = unitIdComponentId (installedUnitId ipi)
 
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
 -- | Backwards compatibility with Cabal pre-1.24.
