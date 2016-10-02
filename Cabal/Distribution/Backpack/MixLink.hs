@@ -6,6 +6,7 @@ module Distribution.Backpack.MixLink (
 import Prelude ()
 import Distribution.Compat.Prelude hiding (mod)
 
+import Distribution.Backpack
 import Distribution.Backpack.UnifyM
 import Distribution.Backpack.FullUnitId
 
@@ -95,7 +96,7 @@ unifyUnitId uid1_u uid2_u
 unifyThunkWith :: ComponentId
                -> Map ModuleName (ModuleU s)
                -> UnitIdU s
-               -> UnitId
+               -> DefUnitId
                -> UnitIdU s
                -> UnifyM s ()
 unifyThunkWith cid1 insts1 uid1_u uid2 uid2_u = do

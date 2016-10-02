@@ -474,7 +474,11 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 componentExeDeps = [],
                 componentLocalName = CExeName (stubName test),
                 componentPackageDeps = deps,
-                componentIncludes = zip (map (DefiniteUnitId . fst) deps) (repeat defaultRenaming)
+                -- Assert DefUnitId invariant!
+                -- Executable can't be indefinite, so dependencies must
+                -- be definite packages.
+                componentIncludes = zip (map (DefiniteUnitId . DefUnitId . fst) deps)
+                                        (repeat defaultRenaming)
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 

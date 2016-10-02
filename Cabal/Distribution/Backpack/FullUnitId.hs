@@ -14,7 +14,7 @@ import Distribution.Compat.Prelude
 data FullUnitId = FullUnitId ComponentId OpenModuleSubst
     deriving (Show, Generic)
 
-type FullDb = UnitId -> FullUnitId
+type FullDb = DefUnitId -> FullUnitId
 
 expandOpenUnitId :: FullDb -> OpenUnitId -> FullUnitId
 expandOpenUnitId _db (IndefFullUnitId cid subst)
@@ -22,5 +22,5 @@ expandOpenUnitId _db (IndefFullUnitId cid subst)
 expandOpenUnitId db (DefiniteUnitId uid)
     = expandUnitId db uid
 
-expandUnitId :: FullDb -> UnitId -> FullUnitId
+expandUnitId :: FullDb -> DefUnitId -> FullUnitId
 expandUnitId db uid = db uid

@@ -49,7 +49,7 @@ data InstantiatedComponent
     = InstantiatedComponent {
         instc_insts    :: [(ModuleName, Module)],
         instc_provides :: Map ModuleName Module,
-        instc_includes :: [(UnitId, ModuleRenaming)]
+        instc_includes :: [(DefUnitId, ModuleRenaming)]
     }
 
 data IndefiniteComponent
@@ -66,7 +66,7 @@ data ReadyComponent
         rc_component    :: Component,
         -- build-tools don't participate in mix-in linking.
         -- (but what if they cold?)
-        rc_internal_build_tools :: [UnitId],
+        rc_internal_build_tools :: [DefUnitId],
         rc_public       :: Bool,
         -- PackageId here is a bit dodgy, but its just for
         -- BC so it shouldn't matter.
@@ -168,21 +168,22 @@ toReadyComponents pid_map subst0 comps
     cmap = Map.fromList [ (lc_cid lc, lc) | lc <- comps ]
 
     instantiateUnitId :: ComponentId -> Map ModuleName Module
-                      -> InstM UnitId
+                      -> InstM DefUnitId
     instantiateUnitId cid insts = InstM $ \s ->
         case Map.lookup uid s of
             Nothing ->
                 -- Knot tied
                 let (r, s') = runInstM (instantiateComponent uid cid insts)
                                        (Map.insert uid r s)
-                in (uid, Map.insert uid r s')
-            Just _ -> (uid, s)
+                in (def_uid, Map.insert uid r s')
+            Just _ -> (def_uid, s)
       where
-        -- The hashModuleSubst here indicates that we assume
+        -- The mkDefUnitId here indicates that we assume
         -- that Cabal handles unit id hash allocation.
         -- Good thing about hashing here: map is only on string.
         -- Bad thing: have to repeatedly hash.
-        uid = UnitId cid (hashModuleSubst insts)
+        def_uid = mkDefUnitId cid insts
+        uid = unDefUnitId def_uid
 
     instantiateComponent
         :: UnitId -> ComponentId -> Map ModuleName Module
@@ -197,8 +198,10 @@ toReadyComponents pid_map subst0 comps
                 x' <- substUnitId insts x
                 return (x', y)
             build_tools <- mapM (substUnitId insts) (lc_internal_build_tools lc)
-            let getDep (Module dep_uid _)
-                    | Just pid <- Map.lookup (unitIdComponentId dep_uid) pid_map
+            let getDep (Module dep_def_uid _)
+                    | let dep_uid = unDefUnitId dep_def_uid
+                    , Just pid <- Map.lookup (unitIdComponentId dep_uid) pid_map
+                    -- Lose DefUnitId invariant for rc_depends
                     = [(dep_uid, pid)]
                 getDep _ = []
                 instc = InstantiatedComponent {
@@ -216,12 +219,13 @@ toReadyComponents pid_map subst0 comps
                                         -- NB: don't put the dep on the indef
                                         -- package here, since we DO NOT want
                                         -- to put it in 'depends' in the IPI
-                                        deps ++ concatMap getDep (Map.elems insts),
+                                        map (\(x,y) -> (unDefUnitId x, y)) deps ++
+                                        concatMap getDep (Map.elems insts),
                     rc_i            = Right instc
                    }
       | otherwise = return Nothing
 
-    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM UnitId
+    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM DefUnitId
     substUnitId _ (DefiniteUnitId uid) =
         return uid
     substUnitId subst (IndefFullUnitId cid insts) = do
@@ -279,5 +283,5 @@ toReadyComponents pid_map subst0 comps
         | otherwise
         = forM_ (Map.elems cmap) $ \lc ->
             if null (lc_insts lc)
-                then instantiateUnitId (lc_cid lc) Map.empty
-                else indefiniteUnitId (lc_cid lc)
+                then instantiateUnitId (lc_cid lc) Map.empty >> return ()
+                else indefiniteUnitId (lc_cid lc) >> return ()

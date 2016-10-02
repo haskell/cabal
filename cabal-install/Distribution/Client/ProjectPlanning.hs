@@ -1131,7 +1131,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                 ElaboratedConfiguredPackage)
         buildComponent (cc_map, lc_map, exe_map) comp = do
             infoProgress $ dispConfiguredComponent cc
-            let lookup_uid (UnitId sub_cid Nothing) = FullUnitId sub_cid Map.empty
+            let -- Use of invariant: DefUnitId indicates that if
+                -- there is no hash, it must have an empty
+                -- instnatiation.
+                lookup_uid (DefUnitId (UnitId sub_cid Nothing))
+                    = FullUnitId sub_cid Map.empty
                 -- TODO: This case CAN happen if we have pre-existing
                 -- instantiated things.  Fix eventually.
                 lookup_uid uid = error ("lookup_uid: " ++ display uid)
@@ -1692,21 +1696,18 @@ instantiateInstallPlan plan =
     cmap = Map.fromList [ (unitIdComponentId (nodeKey pkg), pkg) | pkg <- pkgs ]
 
     instantiateUnitId :: ComponentId -> Map ModuleName Module
-                      -> InstM UnitId
+                      -> InstM DefUnitId
     instantiateUnitId cid insts = state $ \s ->
         case Map.lookup uid s of
             Nothing ->
                 -- Knot tied
                 let (r, s') = runState (instantiateComponent uid cid insts)
                                        (Map.insert uid r s)
-                in (uid, Map.insert uid r s')
-            Just _ -> (uid, s)
+                in (def_uid, Map.insert uid r s')
+            Just _ -> (def_uid, s)
       where
-        -- The hashModuleSubst here indicates that we assume
-        -- that Cabal handles unit id hash allocation.
-        -- Good thing about hashing here: map is only on string.
-        -- Bad thing: have to repeatedly hash.
-        uid = UnitId cid (hashModuleSubst insts)
+        def_uid = mkDefUnitId cid insts
+        uid = unDefUnitId def_uid
 
     instantiateComponent
         :: UnitId -> ComponentId -> Map ModuleName Module
@@ -1725,13 +1726,14 @@ instantiateInstallPlan plan =
                     elabPkgOrComp = ElabComponent comp {
                         compNonSetupDependencies =
                             (if Map.null insts then [] else [newSimpleUnitId cid]) ++
-                            ordNub (deps ++ concatMap getDep (Map.elems insts))
+                            ordNub (map unDefUnitId
+                                (deps ++ concatMap getDep (Map.elems insts)))
                     }
                 }
           _ -> return planpkg
       | otherwise = error ("instantiateComponent: " ++ display cid)
 
-    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM UnitId
+    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM DefUnitId
     substUnitId _ (DefiniteUnitId uid) =
         return uid
     substUnitId subst (IndefFullUnitId cid insts) = do
@@ -1780,7 +1782,9 @@ instantiateInstallPlan plan =
                 InstallPlan.Configured elab
                     | not (Map.null (elabLinkedInstantiatedWith elab))
                     -> indefiniteUnitId (unitIdComponentId (nodeKey elab))
+                        >> return ()
                 _ -> instantiateUnitId (unitIdComponentId (nodeKey pkg)) Map.empty
+                        >> return ()
 
 ---------------------------
 -- Build targets
