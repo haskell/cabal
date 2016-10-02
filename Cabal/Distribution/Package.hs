@@ -35,7 +35,7 @@ module Distribution.Package (
         Module(..),
 
         -- * ABI hash
-        AbiHash(..),
+        AbiHash, unAbiHash, mkAbiHash,
 
         -- * Package source dependencies
         Dependency(..),
@@ -188,6 +188,8 @@ mkComponentId :: String -> ComponentId
 mkComponentId = ComponentId . toShortText
 
 -- | Convert 'ComponentId' to 'String'
+--
+-- @since 2.0
 unComponentId :: ComponentId -> String
 unComponentId (ComponentId s) = fromShortText s
 
@@ -307,10 +309,36 @@ class (HasUnitId pkg) => PackageInstalled pkg where
 -- -----------------------------------------------------------------------------
 -- ABI hash
 
-newtype AbiHash = AbiHash String
+-- | ABI Hashes
+--
+-- Use 'mkAbiHash' and 'unAbiHash' to convert from/to a
+-- 'String'.
+--
+-- This type is opaque since @Cabal-2.0@
+--
+-- @since 2.0
+newtype AbiHash = AbiHash ShortText
     deriving (Eq, Show, Read, Generic)
+
+-- | Construct a 'AbiHash' from a 'String'
+--
+-- 'mkAbiHash' is the inverse to 'unAbiHash'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'AbiHash' is valid
+--
+-- @since 2.0
+unAbiHash :: AbiHash -> String
+unAbiHash (AbiHash h) = fromShortText h
+
+-- | Convert 'AbiHash' to 'String'
+--
+-- @since 2.0
+mkAbiHash :: String -> AbiHash
+mkAbiHash = AbiHash . toShortText
+
 instance Binary AbiHash
 
 instance Text AbiHash where
-    disp (AbiHash abi) = Disp.text abi
-    parse = fmap AbiHash (Parse.munch isAlphaNum)
+    disp = Disp.text . unAbiHash
+    parse = fmap mkAbiHash (Parse.munch isAlphaNum)

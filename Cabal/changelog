@@ -52,6 +52,9 @@
 	* Backwards incompatible change to 'ComponentId' (#3917):
 	  'ComponentId' is now opaque; conversion to/from 'String' now works
 	  via 'unComponentId' and 'mkComponentId' functions.
+	* Backwards incompatible change to 'AbiHash' (#3921):
+	  'AbiHash' is now opaque; conversion to/from 'String' now works
+	  via 'unAbiHash' and 'mkAbiHash' functions.
 	* Backwards incompatible change to 'Version' (#3905):
 	  Version is now opaque; conversion to/from '[Int]' now works
 	  via 'versionNumbers' and 'mkVersion' functions.

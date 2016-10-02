@@ -237,10 +237,10 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   abi_hash <-
     case compilerFlavor comp of
      GHC | compilerVersion comp >= mkVersion [6,11] -> do
-            fmap AbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
+            fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
      GHCJS -> do
-            fmap AbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
-     _ -> return (AbiHash "")
+            fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+     _ -> return (mkAbiHash "")
 
   installedPkgInfo <-
     if inplace

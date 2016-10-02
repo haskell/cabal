@@ -222,7 +222,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     pwd <- getCurrentDirectory
     let -- The in place registration uses the "-inplace" suffix, not an ABI hash
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       (AbiHash "") lib' lbi clbi
+                                                       (mkAbiHash "") lib' lbi clbi
 
     registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
                     (withPackageDB lbi) installedPkgInfo
@@ -444,7 +444,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , subLibraries = [lib]
           }
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (AbiHash "") lib lbi libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (mkAbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
