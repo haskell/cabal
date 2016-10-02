@@ -107,6 +107,7 @@ import Distribution.Client.JobControl
 
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ConstraintSource
+import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.LabeledPackageConstraint
 import           Distribution.Solver.Types.OptionalStanza
 import qualified Distribution.Solver.Types.PackageIndex as SourcePackageIndex
@@ -422,6 +423,10 @@ planPackages comp platform mSandboxPkgInfo solver
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo
 
       . (if reinstall then reinstallTargets else id)
+
+        -- Don't solve for executables, the legacy install codepath
+        -- doesn't understand how to install them
+      . setSolveExecutables (SolveExecutables False)
 
       $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
