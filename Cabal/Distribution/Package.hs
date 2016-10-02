@@ -236,12 +236,12 @@ getHSLibraryName uid = "HS" ++ display uid
 -- holes, and each different combination is a unit (and has a separate
 -- 'UnitId').
 --
--- 'UnitId' is distinct from 'IndefUnitId', in that it is always
--- installed, whereas 'IndefUnitId' are intermediate unit identities
+-- 'UnitId' is distinct from 'OpenUnitId', in that it is always
+-- installed, whereas 'OpenUnitId' are intermediate unit identities
 -- that arise during mixin linking, and don't necessarily correspond
 -- to any actually installed unit.  Since the mapping is not actually
 -- recorded in a 'UnitId', you can't actually substitute over them
--- (but you can substitute over 'IndefUnitId').  See also
+-- (but you can substitute over 'OpenUnitId').  See also
 -- "Distribution.Backpack.FullUnitId" for a mechanism for expanding an
 -- instantiated 'UnitId' to retrieve its mapping.
 --

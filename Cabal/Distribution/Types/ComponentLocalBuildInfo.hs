@@ -46,7 +46,7 @@ data ComponentLocalBuildInfo
     -- to hide or rename modules.  This is what gets translated into
     -- @-package-id@ arguments.  This is a modernized version of
     -- 'componentPackageDeps', which is kept around for BC purposes.
-    componentIncludes :: [(IndefUnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     -- | The internal dependencies which induce a graph on the
     -- 'ComponentLocalBuildInfo' of this package.  This does NOT
@@ -69,7 +69,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(IndefUnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }
@@ -77,7 +77,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(IndefUnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
 
@@ -86,7 +86,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(IndefUnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }

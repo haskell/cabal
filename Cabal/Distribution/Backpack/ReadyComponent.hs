@@ -56,7 +56,7 @@ data IndefiniteComponent
     = IndefiniteComponent {
         indefc_requires :: [ModuleName],
         indefc_provides :: Map ModuleName IndefModule,
-        indefc_includes :: [(IndefUnitId, ModuleRenaming)]
+        indefc_includes :: [(OpenUnitId, ModuleRenaming)]
     }
 
 data ReadyComponent
@@ -221,7 +221,7 @@ toReadyComponents pid_map subst0 comps
                    }
       | otherwise = return Nothing
 
-    substUnitId :: Map ModuleName Module -> IndefUnitId -> InstM UnitId
+    substUnitId :: Map ModuleName Module -> OpenUnitId -> InstM UnitId
     substUnitId _ (DefiniteUnitId uid) =
         return uid
     substUnitId subst (IndefFullUnitId cid insts) = do

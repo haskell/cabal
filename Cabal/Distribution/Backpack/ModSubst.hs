@@ -35,7 +35,7 @@ instance ModSubst IndefModule where
         | Just mod' <- Map.lookup mod_name subst = mod'
         | otherwise = mod
 
-instance ModSubst IndefUnitId where
+instance ModSubst OpenUnitId where
     modSubst subst (IndefFullUnitId cid insts) = IndefFullUnitId cid (modSubst subst insts)
     modSubst _subst uid = uid
 
