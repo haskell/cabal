@@ -1073,24 +1073,24 @@ copyFilesWith doCopy verbosity targetDir srcFiles = withFrozenCallStack $ do
 -- anything goes wrong.
 --
 copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
-copyFiles = withFrozenCallStack . copyFilesWith copyFileVerbose
+copyFiles v fp fs = withFrozenCallStack (copyFilesWith copyFileVerbose v fp fs)
 
 -- | This is like 'copyFiles' but uses 'installOrdinaryFile'.
 --
 installOrdinaryFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
-installOrdinaryFiles = withFrozenCallStack . copyFilesWith installOrdinaryFile
+installOrdinaryFiles v fp fs = withFrozenCallStack (copyFilesWith installOrdinaryFile v fp fs)
 
 -- | This is like 'copyFiles' but uses 'installExecutableFile'.
 --
 installExecutableFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)]
                           -> IO ()
-installExecutableFiles = withFrozenCallStack . copyFilesWith installExecutableFile
+installExecutableFiles v fp fs = withFrozenCallStack (copyFilesWith installExecutableFile v fp fs)
 
 -- | This is like 'copyFiles' but uses 'installMaybeExecutableFile'.
 --
 installMaybeExecutableFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)]
                                -> IO ()
-installMaybeExecutableFiles = withFrozenCallStack . copyFilesWith installMaybeExecutableFile
+installMaybeExecutableFiles v fp fs = withFrozenCallStack (copyFilesWith installMaybeExecutableFile v fp fs)
 
 -- | This installs all the files in a directory to a target location,
 -- preserving the directory layout. All the files are assumed to be ordinary
