@@ -430,16 +430,16 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         sharedLibFilePath  = libTargetDir </> mkSharedLibName compiler_id uid
         ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName uid
 
-    hObjs     <- Internal.getHaskellObjects implInfo lib lbi
+    hObjs     <- Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir objExtension True
     hProfObjs <-
       if (withProfLib lbi)
-              then Internal.getHaskellObjects implInfo lib lbi
+              then Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir ("p_" ++ objExtension) True
               else return []
     hSharedObjs <-
       if (withSharedLib lbi)
-              then Internal.getHaskellObjects implInfo lib lbi
+              then Internal.getHaskellObjects implInfo lib lbi clbi
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
 

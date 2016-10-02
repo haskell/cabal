@@ -364,16 +364,16 @@ buildLib verbosity pkg_descr lbi lib clbi = do
         (ModuleName.toFilePath x ++"_stub")
     | x <- allLibModules lib clbi ]
 
-  hObjs     <- getHaskellObjects lib lbi
+  hObjs     <- getHaskellObjects lib lbi clbi
                     pref objExtension True
   hProfObjs <-
     if (withProfLib lbi)
-            then getHaskellObjects lib lbi
+            then getHaskellObjects lib lbi clbi
                     pref ("p_" ++ objExtension) True
             else return []
   hSharedObjs <-
     if (withSharedLib lbi)
-            then getHaskellObjects lib lbi
+            then getHaskellObjects lib lbi clbi
                     pref ("dyn_" ++ objExtension) False
             else return []
 
@@ -535,9 +535,9 @@ hackThreadedFlag verbosity comp prof bi
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
-getHaskellObjects :: Library -> LocalBuildInfo
+getHaskellObjects :: Library -> LocalBuildInfo -> ComponentLocalBuildInfo
                   -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
-getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
                    | x <- allLibModules lib clbi ]
@@ -550,8 +550,6 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- allLibModules lib clbi ]
- where
-  clbi = getComponentLocalBuildInfo lbi CLibName
 
 
 constructGHCCmdLine

@@ -356,8 +356,9 @@ ghcLookupProperty prop comp =
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
 getHaskellObjects :: GhcImplInfo -> Library -> LocalBuildInfo
+                  -> ComponentLocalBuildInfo
                   -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
-getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
@@ -371,8 +372,6 @@ getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- allLibModules lib clbi ]
- where
-  clbi = getComponentLocalBuildInfo lbi CLibName
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
                  -> [(UnitId, ModuleRenaming)]
