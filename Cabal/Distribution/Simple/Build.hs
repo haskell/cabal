@@ -477,7 +477,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 -- Assert DefUnitId invariant!
                 -- Executable can't be indefinite, so dependencies must
                 -- be definite packages.
-                componentIncludes = zip (map (DefiniteUnitId . DefUnitId . fst) deps)
+                componentIncludes = zip (map (DefiniteUnitId . unsafeMkDefUnitId . fst) deps)
                                         (repeat defaultRenaming)
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"

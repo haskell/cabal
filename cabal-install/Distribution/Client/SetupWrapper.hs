@@ -32,7 +32,7 @@ import Distribution.Version
          , withinRange )
 import qualified Distribution.Backpack as Backpack
 import Distribution.Package
-         ( newSimpleUnitId, DefUnitId(..), ComponentId, PackageId, mkPackageName
+         ( newSimpleUnitId, unsafeMkDefUnitId, ComponentId, PackageId, mkPackageName
          , PackageIdentifier(..), packageVersion, packageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
@@ -820,7 +820,7 @@ getExternalSetupMethod verbosity options pkg bt = do
                                      else cabalDep
           addRenaming (ipid, _) =
             -- Assert 'DefUnitId' invariant
-            (Backpack.DefiniteUnitId (DefUnitId (newSimpleUnitId ipid)), defaultRenaming)
+            (Backpack.DefiniteUnitId (unsafeMkDefUnitId (newSimpleUnitId ipid)), defaultRenaming)
           cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               -- Respect -v0, but don't crank up verbosity on GHC if

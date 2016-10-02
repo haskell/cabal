@@ -25,7 +25,9 @@ module Distribution.Package (
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId, unComponentId, mkComponentId,
         UnitId(..),
-        DefUnitId(..),
+        DefUnitId,
+        unsafeMkDefUnitId,
+        unDefUnitId,
         mkUnitId,
         newSimpleUnitId,
         mkLegacyUnitId,
@@ -274,6 +276,11 @@ instance Text UnitId where
 -- unfilled holes.
 newtype DefUnitId = DefUnitId { unDefUnitId :: UnitId }
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, Binary, NFData, Text)
+
+-- | Unsafely create a 'DefUnitId' from a 'UnitId'.  Your responsibility
+-- is to ensure that the 'DefUnitId' invariant holds.
+unsafeMkDefUnitId :: UnitId -> DefUnitId
+unsafeMkDefUnitId = DefUnitId
 
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.
