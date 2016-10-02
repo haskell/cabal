@@ -1134,11 +1134,12 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             let -- Use of invariant: DefUnitId indicates that if
                 -- there is no hash, it must have an empty
                 -- instnatiation.
-                lookup_uid (DefUnitId (UnitId sub_cid Nothing))
-                    = FullUnitId sub_cid Map.empty
-                -- TODO: This case CAN happen if we have pre-existing
-                -- instantiated things.  Fix eventually.
-                lookup_uid uid = error ("lookup_uid: " ++ display uid)
+                lookup_uid def_uid =
+                    case unDefUnitId def_uid of
+                        UnitId sub_cid Nothing -> FullUnitId sub_cid Map.empty
+                        -- TODO: This case CAN happen if we have pre-existing
+                        -- instantiated things.  Fix eventually.
+                        uid -> error ("lookup_uid: " ++ display uid)
             lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
             let lc_map' = extendLinkedComponentMap lc lc_map

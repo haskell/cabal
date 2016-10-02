@@ -120,7 +120,7 @@ instance Text OpenUnitId where
 -- | Get the 'ComponentId' of an 'OpenUnitId'.
 openUnitIdComponentId :: OpenUnitId -> ComponentId
 openUnitIdComponentId (IndefFullUnitId cid _) = cid
-openUnitIdComponentId (DefiniteUnitId (DefUnitId uid)) = unitIdComponentId uid
+openUnitIdComponentId (DefiniteUnitId def_uid) = unitIdComponentId (unDefUnitId def_uid)
 
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
@@ -132,7 +132,7 @@ openUnitIdFreeHoles _ = Set.empty
 mkOpenUnitId :: UnitId -> OpenModuleSubst -> OpenUnitId
 mkOpenUnitId uid insts =
     if Set.null (openModuleSubstFreeHoles insts)
-        then DefiniteUnitId (DefUnitId uid) -- invariant holds!
+        then DefiniteUnitId (unsafeMkDefUnitId uid) -- invariant holds!
         else IndefFullUnitId (unitIdComponentId uid) insts
 
 -----------------------------------------------------------------------
@@ -141,7 +141,8 @@ mkOpenUnitId uid insts =
 -- | Create a 'DefUnitId' from a 'ComponentId' and an instantiation
 -- with no holes.
 mkDefUnitId :: ComponentId -> Map ModuleName Module -> DefUnitId
-mkDefUnitId cid insts = DefUnitId (UnitId cid (hashModuleSubst insts)) -- impose invariant!
+mkDefUnitId cid insts =
+    unsafeMkDefUnitId (UnitId cid (hashModuleSubst insts)) -- impose invariant!
 
 -----------------------------------------------------------------------
 -- OpenModule
@@ -231,7 +232,7 @@ openModuleSubstFreeHoles insts = Set.unions (map openModuleFreeHoles (Map.elems 
 -- 'IndefFullUnitId' be compiled; instead, we just depend on the
 -- installed indefinite unit installed at the 'ComponentId'.
 abstractUnitId :: OpenUnitId -> UnitId
-abstractUnitId (DefiniteUnitId (DefUnitId uid)) = uid
+abstractUnitId (DefiniteUnitId def_uid) = unDefUnitId def_uid
 abstractUnitId (IndefFullUnitId cid _) = newSimpleUnitId cid
 
 -- | Take a module substitution and hash it into a string suitable for
