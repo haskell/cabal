@@ -145,8 +145,7 @@ instance NFData PackageIdentifier where
 -- module identities, e.g., when writing out reexported modules in
 -- the 'InstalledPackageInfo'.
 data Module =
-    Module { moduleUnitId :: UnitId,
-             moduleName :: ModuleName }
+      Module UnitId ModuleName
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary Module
