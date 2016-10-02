@@ -31,6 +31,9 @@ module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
         installedComponentId,
         installedPackageId,
+        indefinite,
+        requiredSignatures,
+        installedIndefUnitId,
         ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -58,6 +61,8 @@ import Distribution.Compat.Graph
 import Text.PrettyPrint as Disp
 import qualified Data.Char as Char
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Set (Set)
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -113,6 +118,30 @@ data InstalledPackageInfo
         pkgRoot           :: Maybe FilePath
     }
     deriving (Eq, Generic, Read, Show)
+
+-- | Returns 'True' if this is an interface-file only indefinite
+-- package which has not been instantiated.
+indefinite :: InstalledPackageInfo -> Bool
+indefinite ipi =
+    -- TODO: optimize a little
+    Set.null (indefModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi)))
+
+-- | Get the indefinite unit identity representing this package.
+-- This IS NOT guaranteed to give you a substitution; for
+-- instantiated packages you will get @DefiniteUnitId (installedUnitId ipi)@.
+-- For indefinite libraries, however, you will correctly get
+-- an @IndefUnitId@ with the appropriate 'IndefModuleSubst'.
+installedIndefUnitId :: InstalledPackageInfo -> IndefUnitId
+installedIndefUnitId ipi =
+    if indefinite ipi
+        then IndefFullUnitId (installedComponentId ipi)
+                             (Map.fromList (instantiatedWith ipi))
+        else DefiniteUnitId (installedUnitId ipi)
+
+-- | Returns the set of module names which need to be filled for
+-- an indefinite package, or the empty set if the package is definite.
+requiredSignatures :: InstalledPackageInfo -> Set ModuleName
+requiredSignatures ipi = indefModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
 
 installedComponentId :: InstalledPackageInfo -> ComponentId
 installedComponentId ipi = unitIdComponentId (installedUnitId ipi)
