@@ -14,6 +14,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleInstalled(..)
   , ExampleQualifier(..)
   , ExampleVar(..)
+  , EnableAllTests(..)
   , exAv
   , exInst
   , exFlag
@@ -170,6 +171,9 @@ data ExampleQualifier =
   | Indep Int
   | Setup ExamplePkgName
   | IndepSetup Int ExamplePkgName
+
+-- | Whether to enable tests in all packages in a test case.
+newtype EnableAllTests = EnableAllTests Bool
 
 -- | Constructs an 'ExampleAvailable' package for the 'ExampleDb',
 -- given:
@@ -467,9 +471,10 @@ exResolve :: ExampleDb
           -> EnableBackjumping
           -> Maybe [ExampleVar]
           -> [ExPreference]
+          -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          enableBj vars prefs
+          enableBj vars prefs (EnableAllTests enableAllTests)
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -482,9 +487,11 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                        packageIndex       = exAvIdx avai
                      , packagePreferences = Map.empty
                      }
-    enableTests  = fmap (\p -> PackageConstraintStanzas
-                              (C.mkPackageName p) [TestStanzas])
-                       (exDbPkgs db)
+    enableTests
+        | enableAllTests = fmap (\p -> PackageConstraintStanzas
+                                       (C.mkPackageName p) [TestStanzas])
+                           (exDbPkgs db)
+        | otherwise      = []
     targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
     params       =   addPreferences (fmap toPref prefs)
                    $ addConstraints (fmap toLpc enableTests)

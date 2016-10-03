@@ -55,15 +55,15 @@ tests = [
         , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
-          runTest $         mkTest db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
-        , runTest $         mkTest db5 "simpleTest2" ["D"]      anySolverFailure
-        , runTest $         mkTest db5 "simpleTest3" ["E"]      (solverSuccess [("A", 1), ("E", 1)])
-        , runTest $         mkTest db5 "simpleTest4" ["F"]      anySolverFailure -- TODO
-        , runTest $         mkTest db5 "simpleTest5" ["G"]      (solverSuccess [("A", 2), ("G", 1)])
-        , runTest $         mkTest db5 "simpleTest6" ["E", "G"] anySolverFailure
-        , runTest $ indep $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
-        , runTest $         mkTest db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+          runTest $         mkTestEnableAllTests db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
+        , runTest $         mkTestEnableAllTests db5 "simpleTest2" ["D"]      anySolverFailure
+        , runTest $         mkTestEnableAllTests db5 "simpleTest3" ["E"]      (solverSuccess [("A", 1), ("E", 1)])
+        , runTest $         mkTestEnableAllTests db5 "simpleTest4" ["F"]      anySolverFailure -- TODO
+        , runTest $         mkTestEnableAllTests db5 "simpleTest5" ["G"]      (solverSuccess [("A", 2), ("G", 1)])
+        , runTest $         mkTestEnableAllTests db5 "simpleTest6" ["E", "G"] anySolverFailure
+        , runTest $ indep $ mkTestEnableAllTests db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
+        , runTest $         mkTestEnableAllTests db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ indep $ mkTestEnableAllTests db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         ]
     , testGroup "Setup dependencies" [
           runTest $         mkTest db7  "setupDeps1" ["B"] (solverSuccess [("A", 2), ("B", 1)])
@@ -126,7 +126,7 @@ tests = [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
+        , runTest $ mkTestEnableAllTests dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
          ]
     , testGroup "Pkg-config dependencies" [
@@ -209,6 +209,7 @@ data SolverTest = SolverTest {
   , testSupportedExts  :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
   , testPkgConfigDb    :: PkgConfigDb
+  , testEnableAllTests :: EnableAllTests
   }
 
 -- | Expected result of a solver test.
@@ -251,7 +252,15 @@ mkTest :: ExampleDb
        -> [String]
        -> SolverResult
        -> SolverTest
-mkTest = mkTestExtLangPC Nothing Nothing []
+mkTest = mkTestAllOptions (EnableAllTests False) Nothing Nothing []
+
+-- | Makes a solver test case with all packages' tests enabled.
+mkTestEnableAllTests :: ExampleDb
+                     -> String
+                     -> [String]
+                     -> SolverResult
+                     -> SolverTest
+mkTestEnableAllTests = mkTestAllOptions (EnableAllTests True) Nothing Nothing []
 
 mkTestExts :: [Extension]
            -> ExampleDb
@@ -285,7 +294,19 @@ mkTestExtLangPC :: Maybe [Extension]
                 -> [String]
                 -> SolverResult
                 -> SolverTest
-mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
+mkTestExtLangPC = mkTestAllOptions (EnableAllTests False)
+
+mkTestAllOptions :: EnableAllTests
+                 -> Maybe [Extension]
+                 -> Maybe [Language]
+                 -> [(String, String)]
+                 -> ExampleDb
+                 -> String
+                 -> [String]
+                 -> SolverResult
+                 -> SolverTest
+mkTestAllOptions enableTests exts langs pkgConfigDb db label targets result =
+  SolverTest {
     testLabel          = label
   , testTargets        = targets
   , testResult         = result
@@ -296,6 +317,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testSupportedExts  = exts
   , testSupportedLangs = langs
   , testPkgConfigDb    = pkgConfigDbFromList pkgConfigDb
+  , testEnableAllTests = enableTests
   }
 
 runTest :: SolverTest -> TF.TestTree
@@ -305,6 +327,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
                      (EnableBackjumping True) testGoalOrder testSoftConstraints
+                     testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg
                          else return ()
@@ -667,7 +690,7 @@ db16 = [
 testIndepGoals2 :: String -> SolverTest
 testIndepGoals2 name =
     goalOrder goals $ indep $
-    mkTest db name ["A", "B"] $
+    mkTestEnableAllTests db name ["A", "B"] $
     solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
   where
     db :: ExampleDb
@@ -792,7 +815,7 @@ testIndepGoals3 name =
 testIndepGoals4 :: String -> SolverTest
 testIndepGoals4 name =
     goalOrder goals $ indep $
-    mkTest db name ["A", "B", "C"] $
+    mkTestEnableAllTests db name ["A", "B", "C"] $
     solverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
   where
     db :: ExampleDb
@@ -947,7 +970,9 @@ dbLangs1 = [
 -- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
-    runTest $ mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
+    runTest $
+    mkTestAllOptions (EnableAllTests True)
+                     (Just []) (Just []) [] db testName ["pkg"] expected
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
