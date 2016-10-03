@@ -4,70 +4,78 @@
 module Distribution.Types.ModuleRenaming (
     ModuleRenaming(..),
     defaultRenaming,
-    lookupRenaming,
+    isDefaultRenaming,
 ) where
 
 import Prelude ()
-import Distribution.Compat.Prelude
+import Distribution.Compat.Prelude hiding (empty)
 
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP   ((<++))
-import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Text
 
-import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<+>), text)
-import qualified Data.Map as Map
-
--- ---------------------------------------------------------------------------
--- Module renaming
+import Text.PrettyPrint
 
 -- | Renaming applied to the modules provided by a package.
 -- The boolean indicates whether or not to also include all of the
 -- original names of modules.  Thus, @ModuleRenaming False []@ is
 -- "don't expose any modules, and @ModuleRenaming True [("Data.Bool", "Bool")]@
 -- is, "expose all modules, but also expose @Data.Bool@ as @Bool@".
+-- If a renaming is omitted you get the 'DefaultRenaming'.
 --
-data ModuleRenaming = ModuleRenaming Bool [(ModuleName, ModuleName)]
+-- (NB: This is a list not a map so that we can preserve order.)
+--
+data ModuleRenaming
+        -- | A module renaming/thinning; e.g., @(A as B, C as C)@
+        -- brings @B@ and @C@ into scope.
+        = ModuleRenaming [(ModuleName, ModuleName)]
+        -- | The default renaming, bringing all exported modules
+        -- into scope.
+        | DefaultRenaming
+        -- | Hiding renaming, e.g., @hiding (A, B)@, bringing all
+        -- exported modules into scope except the hidden ones.
+        | HidingRenaming [ModuleName]
     deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
+-- | The default renaming, if something is specified in @build-depends@
+-- only.
 defaultRenaming :: ModuleRenaming
-defaultRenaming = ModuleRenaming True []
+defaultRenaming = DefaultRenaming
 
-lookupRenaming :: Package pkg => pkg -> Map PackageName ModuleRenaming -> ModuleRenaming
-lookupRenaming = Map.findWithDefault defaultRenaming . packageName
+-- | Tests if its the default renaming; we can use a more compact syntax
+-- in 'Distribution.Types.IncludeRenaming.IncludeRenaming' in this case.
+isDefaultRenaming :: ModuleRenaming -> Bool
+isDefaultRenaming DefaultRenaming = True
+isDefaultRenaming _ = False
 
 instance Binary ModuleRenaming where
-
-instance Monoid ModuleRenaming where
-    mempty = ModuleRenaming False []
-    mappend = (<>)
-
-instance Semigroup ModuleRenaming where
-    ModuleRenaming b rns <> ModuleRenaming b' rns'
-        = ModuleRenaming (b || b') (rns ++ rns') -- TODO: dedupe?
 
 -- NB: parentheses are mandatory, because later we may extend this syntax
 -- to allow "hiding (A, B)" or other modifier words.
 instance Text ModuleRenaming where
-  disp (ModuleRenaming True []) = Disp.empty
-  disp (ModuleRenaming b vs) = (if b then text "with" else Disp.empty) <+> dispRns
-    where dispRns = Disp.parens
-                         (Disp.hsep
-                            (Disp.punctuate Disp.comma (map dispEntry vs)))
-          dispEntry (orig, new)
+  disp DefaultRenaming = empty
+  disp (HidingRenaming hides)
+        = text "hiding" <+> parens (hsep (punctuate comma (map disp hides)))
+  disp (ModuleRenaming rns)
+        = parens . hsep $ punctuate comma (map dispEntry rns)
+    where dispEntry (orig, new)
             | orig == new = disp orig
             | otherwise = disp orig <+> text "as" <+> disp new
 
-  parse = do Parse.string "with" >> Parse.skipSpaces
-             fmap (ModuleRenaming True) parseRns
-         <++ fmap (ModuleRenaming False) parseRns
-         <++ return (ModuleRenaming True [])
+  parse = do fmap ModuleRenaming parseRns
+             <++ parseHidingRenaming
+             <++ return DefaultRenaming
     where parseRns = do
              rns <- Parse.between (Parse.char '(') (Parse.char ')') parseList
              Parse.skipSpaces
              return rns
+          parseHidingRenaming = do
+            _ <- Parse.string "hiding"
+            Parse.skipSpaces
+            hides <- Parse.between (Parse.char '(') (Parse.char ')')
+                        (Parse.sepBy parse (Parse.char ',' >> Parse.skipSpaces))
+            return (HidingRenaming hides)
           parseList =
             Parse.sepBy parseEntry (Parse.char ',' >> Parse.skipSpaces)
           parseEntry :: Parse.ReadP r (ModuleName, ModuleName)

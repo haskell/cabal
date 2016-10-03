@@ -67,7 +67,6 @@ import Distribution.Verbosity
 
 import Distribution.Compat.Graph (IsNode(..))
 
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.List ( intersect )
 import System.FilePath ( (</>), (<.>) )
@@ -454,8 +453,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
             buildInfo  = (testBuildInfo test) {
                            hsSourceDirs       = [ testDir ],
                            targetBuildDepends = testLibDep
-                             : (targetBuildDepends $ testBuildInfo test),
-                           targetBuildRenaming = Map.empty
+                             : (targetBuildDepends $ testBuildInfo test)
                          }
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
