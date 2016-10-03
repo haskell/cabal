@@ -19,8 +19,8 @@ module Distribution.Simple.Program.GHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Backpack
 import Distribution.Simple.GHC.ImplInfo
-import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
@@ -89,7 +89,7 @@ data GhcOptions = GhcOptions {
   -- | The GHC packages to bring into scope when compiling,
   -- the @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (UnitId, ModuleRenaming),
+    NubListR (IndefUnitId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
