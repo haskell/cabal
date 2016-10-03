@@ -47,6 +47,7 @@ import Distribution.Compat.Prelude
 import Distribution.ParseUtils
 import Distribution.License
 import Distribution.Package hiding (installedUnitId, installedPackageId)
+import Distribution.Backpack
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
 import Distribution.Version
@@ -56,6 +57,7 @@ import Distribution.Compat.Graph
 
 import Text.PrettyPrint as Disp
 import qualified Data.Char as Char
+import qualified Data.Map as Map
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -67,6 +69,11 @@ data InstalledPackageInfo
         -- these parts are exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
+        -- INVARIANT: if this package is definite, IndefModule's
+        -- IndefUnitId directly records UnitId.  If it is
+        -- indefinite, IndefModule is always an IndefModuleVar
+        -- with the same ModuleName as the key.
+        instantiatedWith  :: [(ModuleName, IndefModule)],
         compatPackageKey  :: String,
         license           :: License,
         copyright         :: String,
@@ -81,6 +88,8 @@ data InstalledPackageInfo
         -- these parts are required by an installed package only:
         abiHash           :: AbiHash,
         exposed           :: Bool,
+        -- INVARIANT: if the package is definite, IndefModule's
+        -- IndefUnitId directly records UnitId.
         exposedModules    :: [ExposedModule],
         hiddenModules     :: [ModuleName],
         trusted           :: Bool,
@@ -92,6 +101,8 @@ data InstalledPackageInfo
         extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
         includeDirs       :: [FilePath],
         includes          :: [String],
+        -- INVARIANT: if the package is definite, UnitId is NOT
+        -- a ComponentId of an indefinite package
         depends           :: [UnitId],
         ccOptions         :: [String],
         ldOptions         :: [String],
@@ -135,6 +146,7 @@ emptyInstalledPackageInfo
    = InstalledPackageInfo {
         sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
         installedUnitId   = mkUnitId "",
+        instantiatedWith  = [],
         compatPackageKey  = "",
         license           = UnspecifiedLicense,
         copyright         = "",
@@ -175,7 +187,7 @@ emptyInstalledPackageInfo
 data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
-       exposedReexport  :: Maybe Module
+       exposedReexport  :: Maybe IndefModule
      }
   deriving (Eq, Generic, Read, Show)
 
@@ -194,7 +206,6 @@ instance Text ExposedModule where
             Parse.skipSpaces
             fmap Just parse
         return (ExposedModule m reexport)
-
 
 instance Binary ExposedModule
 
@@ -257,6 +268,9 @@ basicFieldDescrs =
  , simpleField "id"
                            disp                   parse
                            installedUnitId             (\pk pkg -> pkg{installedUnitId=pk})
+ , simpleField "instantiated-with"
+        (dispIndefModuleSubst . Map.fromList)    (fmap Map.toList parseIndefModuleSubst)
+        instantiatedWith   (\iw    pkg -> pkg{instantiatedWith=iw})
  , simpleField "key"
                            dispCompatPackageKey   parseCompatPackageKey
                            compatPackageKey       (\pk pkg -> pkg{compatPackageKey=pk})

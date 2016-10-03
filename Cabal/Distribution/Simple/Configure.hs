@@ -66,6 +66,7 @@ import Distribution.Utils.NubList
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.PreProcess
 import Distribution.Package
+import Distribution.Backpack
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo
                                          ,emptyInstalledPackageInfo)
@@ -2004,8 +2005,8 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
         , let exportingPackageName = packageName srcpkgid
               definingModuleName   = visibleModuleName
               definingPackageId    = key
-              originalModule = Module definingPackageId
-                                      definingModuleName
+              originalModule = IndefModule (IndefUnitId definingPackageId)
+                                           definingModuleName
               exposedModule  = Installed.ExposedModule visibleModuleName
                                                        (Just originalModule)
         ]
@@ -2022,8 +2023,8 @@ resolveModuleReexports installedPackages srcpkgid key externalPkgDeps lib =
         -- In this case the reexport will point to this package.
             Nothing -> return exposedModule {
               Installed.exposedReexport =
-                 Just (Module
-                       (Installed.installedUnitId pkg)
+                 Just (IndefModule
+                       (IndefUnitId (Installed.installedUnitId pkg))
                        (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package

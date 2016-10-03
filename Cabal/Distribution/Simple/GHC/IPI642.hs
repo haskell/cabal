@@ -69,6 +69,7 @@ toCurrent ipi@InstalledPackageInfo{} =
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
     Current.installedUnitId    = Current.mkLegacyUnitId pid,
+    Current.instantiatedWith   = [],
     Current.compatPackageKey   = "",
     Current.abiHash            = Current.mkAbiHash "", -- bogus but old GHCs don't care.
     Current.license            = convertLicense (license ipi),
