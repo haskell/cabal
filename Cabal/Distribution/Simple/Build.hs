@@ -416,7 +416,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
             libName = Nothing,
             exposedModules = [ m ],
             reexportedModules = [],
-            requiredSignatures = [],
+            signatures = [],
             libExposed     = True,
             libBuildInfo   = bi
           }
