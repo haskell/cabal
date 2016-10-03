@@ -241,11 +241,11 @@ checkLibrary pkg lib =
                             Just n -> n
                             ) ++ "does not expose any modules"
 
-    -- check use of required-signatures/exposed-signatures sections
-  , checkVersion [1,21] (not (null (requiredSignatures lib))) $
+    -- check use of signatures sections
+  , checkVersion [1,25] (not (null (signatures lib))) $
       PackageDistInexcusable $
-           "To use the 'required-signatures' field the package needs to specify "
-        ++ "at least 'cabal-version: >= 1.21'."
+           "To use the 'signatures' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.25'."
 
     -- check that all autogen-modules appear on other-modules or exposed-modules
   , check

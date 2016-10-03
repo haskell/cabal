@@ -177,8 +177,8 @@ libFieldDescrs =
   , commaListFieldWithSep vcat "reexported-modules" disp parse
       reexportedModules (\mods lib -> lib{reexportedModules=mods})
 
-  , listFieldWithSep vcat "required-signatures" disp parseModuleNameQ
-      requiredSignatures (\mods lib -> lib{requiredSignatures=mods})
+  , listFieldWithSep vcat "signatures" disp parseModuleNameQ
+      signatures (\mods lib -> lib{signatures=mods})
 
   , boolField "exposed"
       libExposed     (\val lib -> lib{libExposed=val})

@@ -20,7 +20,7 @@ data Library = Library {
         libName :: Maybe String,
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
-        requiredSignatures:: [ModuleName], -- ^ What sigs need implementations?
+        signatures:: [ModuleName], -- ^ What sigs need implementations?
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
@@ -33,7 +33,7 @@ instance Monoid Library where
     libName = mempty,
     exposedModules = mempty,
     reexportedModules = mempty,
-    requiredSignatures = mempty,
+    signatures = mempty,
     libExposed     = True,
     libBuildInfo   = mempty
   }
@@ -44,7 +44,7 @@ instance Semigroup Library where
     libName = combine libName,
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
-    requiredSignatures = combine requiredSignatures,
+    signatures = combine signatures,
     libExposed     = libExposed a && libExposed b, -- so False propagates
     libBuildInfo   = combine libBuildInfo
   }
@@ -61,7 +61,7 @@ emptyLibrary = mempty
 explicitLibModules :: Library -> [ModuleName]
 explicitLibModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
-              ++ requiredSignatures lib
+              ++ signatures lib
 
 -- | Get all the auto generated module names from the library, exposed or not.
 -- This are a subset of 'libModules'.
