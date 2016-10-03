@@ -1861,6 +1861,8 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
           componentInternalDeps = dep_uids,
           componentExeDeps = dep_exes,
           componentUnitId = uid,
+          componentInstantiatedWith = [], --TODO in later patch
+          componentIsIndefinite_ = False, --TODO in later patch
           componentLocalName = componentName component,
           componentIsPublic = libName lib == Nothing,
           componentCompatPackageKey = compat_key,
@@ -1935,7 +1937,7 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
                     | pkg <- externalPkgDeps ]
         -- TODO: this is an intermediate stage in introducing backpack
         -- so this is a bit of a hack. It will be completely replaced.
-        includes = map (\(i,p) -> (i,lookupRenaming p)) cpds
+        includes = map (\(i,p) -> (IndefUnitId i,lookupRenaming p)) cpds
         lookupRenaming p = case Map.lookup (packageName p) cprns of
                              Nothing  -> defaultRenaming
                              Just rns -> includeProvidesRn rns

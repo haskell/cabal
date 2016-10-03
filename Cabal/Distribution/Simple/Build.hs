@@ -33,6 +33,7 @@ import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 
 import Distribution.Package
+import Distribution.Backpack
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.JHC   as JHC
@@ -427,11 +428,13 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentInternalDeps = componentInternalDeps clbi
+                , componentIsIndefinite_ = False
                 , componentExeDeps = componentExeDeps clbi
                 , componentLocalName = CSubLibName (testName test)
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi
+                , componentInstantiatedWith = []
                 , componentCompatPackageName = compat_name
                 , componentCompatPackageKey = compat_key
                 , componentExposedModules = [IPI.ExposedModule m Nothing]
@@ -470,7 +473,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 componentExeDeps = [],
                 componentLocalName = CExeName (stubName test),
                 componentPackageDeps = deps,
-                componentIncludes = zip (map fst deps) (repeat defaultRenaming)
+                componentIncludes = zip (map (IndefUnitId . fst) deps) (repeat defaultRenaming)
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
