@@ -83,6 +83,7 @@ import Distribution.ReadE
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
+import Distribution.ModuleName
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -412,6 +413,10 @@ data ConfigFlags = ConfigFlags {
                                        -- dependencies.
     configDependencies :: [(PackageName, ComponentId)],
       -- ^The packages depended on.
+    configInstantiateWith :: [(ModuleName, Module)],
+      -- ^ The requested Backpack instantiation.  If empty, either this
+      -- package does not use Backpack, or we just want to typecheck
+      -- the indefinite package.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
     configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
@@ -555,6 +560,18 @@ configureCommand progDb = CommandUI
       ++ programDbOptions progDb showOrParseArgs
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
   }
+
+-- | Inverse to 'dispModSubstEntry'.
+parseModSubstEntry :: Parse.ReadP r (ModuleName, Module)
+parseModSubstEntry =
+    do k <- parse
+       _ <- Parse.char '='
+       v <- parse
+       return (k, v)
+
+-- | Pretty-print a single entry of a module substitution.
+dispModSubstEntry :: (ModuleName, Module) -> Disp.Doc
+dispModSubstEntry (k, v) = disp k <<>> Disp.char '=' <<>> disp v
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
@@ -766,6 +783,13 @@ configureOptions showOrParseArgs =
          (reqArg "NAME=CID"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
                  (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
+
+      ,option "" ["instantiate-with"]
+        "A mapping of signature names to concrete module instantiations."
+        configInstantiateWith (\v flags -> flags { configInstantiateWith = v  })
+        (reqArg "NAME=MOD"
+            (readP_to_E ("Cannot parse module substitution: " ++) (fmap (:[]) parseModSubstEntry))
+            (map (Disp.renderStyle defaultStyle . dispModSubstEntry)))
 
       ,option "" ["tests"]
          "dependency checking and compilation for test suites listed in the package description file."

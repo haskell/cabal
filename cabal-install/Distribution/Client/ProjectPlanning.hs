@@ -109,6 +109,8 @@ import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 
+import           Distribution.Backpack.ComponentsGraph
+
 import           Distribution.Simple.Utils hiding (matchFileGlob)
 import           Distribution.Version
 import           Distribution.Verbosity
@@ -1084,10 +1086,9 @@ elaborateInstallPlan platform compiler compilerprogdb pkgConfigDB
       where
         elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon mapDep spkg
         comps_graph =
-            case Cabal.mkComponentsGraph
+            case toComponentsGraph
                     elabEnabledSpec
-                    elabPkgDescription
-                    elabInternalPackages of
+                    elabPkgDescription of
                 Left _ -> error ("component cycle in " ++ display elabPkgSourceId)
                 Right g -> g
 
@@ -2353,6 +2354,8 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
     configDistPref            = toFlag builddir
     configCabalFilePath       = mempty
     configVerbosity           = toFlag verbosity
+
+    configInstantiateWith     = [] --TODO in later patches
 
     configIPID                = case elabPkgOrComp of
                                   ElabPackage pkg -> toFlag (display (pkgInstalledId pkg))

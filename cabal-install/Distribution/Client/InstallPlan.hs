@@ -458,8 +458,8 @@ configureInstallPlan solverPlan =
                         Cabal.NoFlag
                         (packageId spkg)
                         PD.CLibName
-                        (map confInstId (CD.libraryDeps deps))
-                        (solverPkgFlags spkg),
+                        (Just (map confInstId (CD.libraryDeps deps),
+                               solverPkgFlags spkg)),
         confPkgSource = solverPkgSource spkg,
         confPkgFlags  = solverPkgFlags spkg,
         confPkgStanzas = solverPkgStanzas spkg,

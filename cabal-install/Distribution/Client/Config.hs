@@ -274,6 +274,7 @@ instance Semigroup SavedConfig where
         -- TODO: NubListify
         configProgramArgs         = lastNonEmpty configProgramArgs,
         configProgramPathExtra    = lastNonEmptyNL configProgramPathExtra,
+        configInstantiateWith     = lastNonEmpty configInstantiateWith,
         configHcFlavor            = combine configHcFlavor,
         configHcPath              = combine configHcPath,
         configHcPkg               = combine configHcPkg,
