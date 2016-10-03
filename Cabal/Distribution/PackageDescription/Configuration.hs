@@ -609,7 +609,8 @@ finalizePD userflags enabled satisfyDep
           Right (targetSet, fs) ->
               let (mb_lib, sub_libs, exes, tests, bms) = flattenTaggedTargets targetSet in
               Right ( (fmap (\l -> (libFillInDefaults l) { libName = Nothing }) mb_lib,
-                       map (\(n,l) -> (libFillInDefaults l) { libName = Just n }) sub_libs,
+                       map (\(n,l) -> (libFillInDefaults l) { libName = Just n
+                                                            , libExposed = False }) sub_libs,
                        map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes,
                        map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests,
                        map (\(n,b) -> (benchFillInDefaults b) { benchmarkName = n }) bms),
@@ -685,7 +686,7 @@ flattenPackageDescription (GenericPackageDescription pkg _ mlib0 sub_libs0 exes0
     (bms, bdeps) = foldr flattenBm ([],[]) bms0
     flattenLib (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
-        ( (libFillInDefaults $ e { libName = Just n }) : es, ds' ++ ds )
+        ( (libFillInDefaults $ e { libName = Just n, libExposed = False }) : es, ds' ++ ds )
     flattenExe (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
