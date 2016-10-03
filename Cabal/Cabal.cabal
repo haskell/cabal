@@ -316,6 +316,15 @@ library
 
   exposed-modules:
     Distribution.Backpack
+    Distribution.Backpack.Configure
+    Distribution.Backpack.ComponentsGraph
+    Distribution.Backpack.ConfiguredComponent
+    Distribution.Backpack.FullUnitId
+    Distribution.Backpack.LinkedComponent
+    Distribution.Backpack.ModSubst
+    Distribution.Backpack.ModuleShape
+    Distribution.Utils.LogProgress
+    Distribution.Utils.MapAccum
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
@@ -418,12 +427,20 @@ library
     Distribution.Types.TargetInfo
     Distribution.Utils.NubList
     Distribution.Utils.ShortText
+    Distribution.Utils.Progress
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension
     Distribution.Compat.Binary
 
   other-modules:
+    Distribution.Backpack.PreExistingComponent
+    Distribution.Backpack.ReadyComponent
+    Distribution.Backpack.MixLink
+    Distribution.Backpack.ModuleScope
+    Distribution.Backpack.UnifyM
+    Distribution.Backpack.Id
+    Distribution.Utils.UnionFind
     Distribution.Utils.Base62
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
