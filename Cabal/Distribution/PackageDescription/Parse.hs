@@ -48,6 +48,7 @@ module Distribution.PackageDescription.Parse (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.IncludeRenaming
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Utils
@@ -67,7 +68,7 @@ import Control.Monad    (mapM)
 
 import Text.PrettyPrint
        (vcat, ($$), (<+>), text, render,
-        comma, fsep, nest, ($+$), punctuate)
+        comma, fsep, nest, ($+$), punctuate, Doc)
 
 
 -- -----------------------------------------------------------------------------
@@ -371,6 +372,16 @@ validateBenchmark line stanza =
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
+showBackpackInclude :: (PackageName, IncludeRenaming) -> Doc
+showBackpackInclude (pkg_name, incl) = do
+    disp pkg_name <+> disp incl
+
+parseBackpackInclude :: ReadP r (PackageName, IncludeRenaming)
+parseBackpackInclude = do
+    pkg_name <- parse
+    skipSpaces
+    incl <- parse
+    return (pkg_name, incl)
 
 binfoFieldDescrs :: [FieldDescr BuildInfo]
 binfoFieldDescrs =
@@ -382,6 +393,9 @@ binfoFieldDescrs =
  , commaListFieldWithSep vcat "build-depends"
            disp                   parse
            targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
+ , commaListFieldWithSep vcat "backpack-includes"
+           showBackpackInclude    parseBackpackInclude
+           backpackIncludes   (\xs binfo -> binfo{backpackIncludes=xs})
  , spaceListField "cpp-options"
            showToken          parseTokenQ'
            cppOptions          (\val binfo -> binfo{cppOptions=val})

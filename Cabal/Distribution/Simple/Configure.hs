@@ -62,6 +62,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.Compiler
+import Distribution.Types.IncludeRenaming
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.PreProcess
@@ -1000,9 +1001,8 @@ configureFinalizedPackage verbosity cfg enabled
 checkCompilerProblems :: Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
 checkCompilerProblems comp pkg_descr enabled = do
     unless (renamingPackageFlagsSupported comp ||
-                and [ True
-                    | bi <- enabledBuildInfos pkg_descr enabled
-                    , _ <- Map.elems (targetBuildRenaming bi)]) $
+                all (all (isDefaultIncludeRenaming . snd) . backpackIncludes)
+                         (enabledBuildInfos pkg_descr enabled)) $
         die $ "Your compiler does not support thinning and renaming on "
            ++ "package flags.  To use this feature you probably must use "
            ++ "GHC 7.9 or later."
@@ -1933,9 +1933,14 @@ mkComponentsLocalBuildInfo cfg use_external_internal comp installedPackages
                     | pkgid <- selectSubset bi internalPkgDeps ]
                else [ (Installed.installedUnitId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
-        includes = map (\(i,p) -> (i,lookupRenaming p cprns)) cpds
+        -- TODO: this is an intermediate stage in introducing backpack
+        -- so this is a bit of a hack. It will be completely replaced.
+        includes = map (\(i,p) -> (i,lookupRenaming p)) cpds
+        lookupRenaming p = case Map.lookup (packageName p) cprns of
+                             Nothing  -> defaultRenaming
+                             Just rns -> includeProvidesRn rns
         cprns = if newPackageDepsBehaviour pkg_descr
-                then targetBuildRenaming bi
+                then Map.fromList (backpackIncludes bi)
                 else Map.empty
 
     dedup = Map.toList . Map.fromList
