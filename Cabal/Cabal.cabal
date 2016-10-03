@@ -315,6 +315,7 @@ library
                  -Wnoncanonical-monadfail-instances
 
   exposed-modules:
+    Distribution.Backpack
     Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
@@ -422,6 +423,7 @@ library
     Distribution.Compat.Binary
 
   other-modules:
+    Distribution.Utils.Base62
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
