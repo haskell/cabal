@@ -110,7 +110,7 @@ tests = [
         , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (solverSuccess [("A",1),("B",1),("C",1)])
         ]
 
-     , testGroup "Soft Constraints" [
+     , testGroup "Package Preferences" [
           runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
         , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
         , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2
@@ -121,6 +121,19 @@ tests = [
                                 , ExPkgPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
         , runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1
                                 , ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
+        ]
+     , testGroup "Stanza Preferences" [
+          runTest $
+          mkTest dbStanzaPreferences1 "disable tests by default" ["pkg"] $
+          solverSuccess [("pkg", 1)]
+
+        , runTest $ preferences [ExStanzaPref "pkg" [TestStanzas]] $
+          mkTest dbStanzaPreferences1 "enable tests with testing preference" ["pkg"] $
+          solverSuccess [("pkg", 1), ("test-dep", 1)]
+
+        , runTest $ preferences [ExStanzaPref "pkg" [TestStanzas]] $
+          mkTest dbStanzaPreferences2 "disable testing when it's not possible" ["pkg"] $
+          solverSuccess [("pkg", 1)]
         ]
      , testGroup "Buildable Field" [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
@@ -609,6 +622,17 @@ db13 = [
     Right $ exAv "A" 1 []
   , Right $ exAv "A" 2 []
   , Right $ exAv "A" 3 []
+  ]
+
+dbStanzaPreferences1 :: ExampleDb
+dbStanzaPreferences1 = [
+    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "test-dep"]
+  , Right $ exAv "test-dep" 1 []
+  ]
+
+dbStanzaPreferences2 :: ExampleDb
+dbStanzaPreferences2 = [
+    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "unknown"]
   ]
 
 -- | Database with some cycles
