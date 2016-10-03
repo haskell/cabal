@@ -111,16 +111,16 @@ tests = [
         ]
 
      , testGroup "Soft Constraints" [
-          runTest $ soft [ ExPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2
-                         , ExPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
-        , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
+          runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2
+                                , ExPkgPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 1
+                                , ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1
+                                , ExPkgPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1
+                                , ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
         ]
      , testGroup "Buildable Field" [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
@@ -179,7 +179,6 @@ tests = [
         ]
     ]
   where
-    soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
     makeV v         = V.mkVersion [v,0,0]
@@ -191,6 +190,9 @@ indep test = test { testIndepGoals = IndependentGoals True }
 
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
+
+preferences :: [ExPreference] -> SolverTest -> SolverTest
+preferences prefs test = test { testSoftConstraints = prefs }
 
 data GoalOrder = FixedGoalOrder | DefaultGoalOrder
 

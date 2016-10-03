@@ -153,7 +153,9 @@ exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
        -> ExampleDependency
 exFlag n t e = ExFlag n (Buildable t) (Buildable e)
 
-data ExPreference = ExPref String ExampleVersionRange
+data ExPreference =
+    ExPkgPref ExamplePkgName ExampleVersionRange
+  | ExStanzaPref ExamplePkgName [OptionalStanza]
 
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
@@ -502,7 +504,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
-    toPref (ExPref n v) = PackageVersionPreference (C.mkPackageName n) v
+
+    toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
+    toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
 
     goalOrder :: Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
     goalOrder = (orderFromList . map toVariable) `fmap` vars
