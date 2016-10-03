@@ -37,6 +37,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
+import Distribution.Types.ComponentLocalBuildInfo
 import Distribution.Backpack
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -376,8 +377,7 @@ getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
                  -> [(IndefUnitId, ModuleRenaming)]
-mkGhcOptPackages = map (\(uid, mr) -> (IndefUnitId uid, mr))
-                 . componentIncludes
+mkGhcOptPackages = componentIncludes
 
 substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
 substTopDir topDir ipo
