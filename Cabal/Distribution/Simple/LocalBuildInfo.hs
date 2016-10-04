@@ -104,12 +104,17 @@ componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 -- are only ever built once.  With Backpack, we need a special case for
 -- libraries so that we can handle building them multiple times.
 componentBuildDir lbi clbi
-    = buildDir lbi </> case componentLocalName clbi of
-                        CLibName     -> ""
-                        CSubLibName s -> s
-                        CExeName s   -> s
-                        CTestName s  -> s
-                        CBenchName s -> s
+    = buildDir lbi </>
+        case componentLocalName clbi of
+            CLibName      -> case unitIdHash (componentUnitId clbi) of
+                               Just hash -> hash
+                               Nothing   -> ""
+            CSubLibName s -> case unitIdHash (componentUnitId clbi) of
+                               Just hash -> s ++ "-" ++ hash
+                               Nothing   -> s
+            CExeName s   -> s
+            CTestName s  -> s
+            CBenchName s -> s
 
 {-# DEPRECATED getComponentLocalBuildInfo "This function is not well-defined, because a 'ComponentName' does not uniquely identify a 'ComponentLocalBuildInfo'.  If you have a 'TargetInfo', you should use 'targetCLBI' to get the 'ComponentLocalBuildInfo'.  Otherwise, use 'componentNameTargets' to get all possible 'ComponentLocalBuildInfo's.  This will be removed in Cabal 2.2." #-}
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo
