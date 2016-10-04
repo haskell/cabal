@@ -149,7 +149,8 @@ runTestM suite name subname m = do
                     testShouldFail = False,
                     testCurrentPackage = ".",
                     testPackageDb = False,
-                    testEnvironment = []
+                    -- Try to avoid Unicode output
+                    testEnvironment = [("LC_ALL", Just "C")]
                }
     void (runReaderT (cleanup >> m) (suite, test))
   where
