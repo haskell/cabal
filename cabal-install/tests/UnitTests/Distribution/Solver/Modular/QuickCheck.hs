@@ -106,7 +106,7 @@ solve enableBj reorder indep solver targets (TestDb db) =
                   -- The backjump limit prevents individual tests from using
                   -- too much time and memory.
                   (Just defaultMaxBackjumps)
-                  indep reorder enableBj Nothing []
+                  indep reorder enableBj Nothing [] (EnableAllTests True)
 
       failure :: String -> Failure
       failure msg

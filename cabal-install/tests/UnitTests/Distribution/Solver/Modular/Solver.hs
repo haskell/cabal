@@ -55,15 +55,15 @@ tests = [
         , runTest $ indep $ mkTest db18 "linkFlags3"  ["A", "B"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1), ("D", 2), ("F", 1)])
         ]
     , testGroup "Stanzas" [
-          runTest $         mkTest db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
-        , runTest $         mkTest db5 "simpleTest2" ["D"]      anySolverFailure
-        , runTest $         mkTest db5 "simpleTest3" ["E"]      (solverSuccess [("A", 1), ("E", 1)])
-        , runTest $         mkTest db5 "simpleTest4" ["F"]      anySolverFailure -- TODO
-        , runTest $         mkTest db5 "simpleTest5" ["G"]      (solverSuccess [("A", 2), ("G", 1)])
-        , runTest $         mkTest db5 "simpleTest6" ["E", "G"] anySolverFailure
-        , runTest $ indep $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
-        , runTest $         mkTest db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
-        , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+          runTest $         enableAllTests $ mkTest db5 "simpleTest1" ["C"]      (solverSuccess [("A", 2), ("C", 1)])
+        , runTest $         enableAllTests $ mkTest db5 "simpleTest2" ["D"]      anySolverFailure
+        , runTest $         enableAllTests $ mkTest db5 "simpleTest3" ["E"]      (solverSuccess [("A", 1), ("E", 1)])
+        , runTest $         enableAllTests $ mkTest db5 "simpleTest4" ["F"]      anySolverFailure -- TODO
+        , runTest $         enableAllTests $ mkTest db5 "simpleTest5" ["G"]      (solverSuccess [("A", 2), ("G", 1)])
+        , runTest $         enableAllTests $ mkTest db5 "simpleTest6" ["E", "G"] anySolverFailure
+        , runTest $ indep $ enableAllTests $ mkTest db5 "simpleTest7" ["E", "G"] (solverSuccess [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
+        , runTest $         enableAllTests $ mkTest db6 "depsWithTests1" ["C"]      (solverSuccess [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ indep $ enableAllTests $ mkTest db6 "depsWithTests2" ["C", "D"] (solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
         ]
     , testGroup "Setup dependencies" [
           runTest $         mkTest db7  "setupDeps1" ["B"] (solverSuccess [("A", 2), ("B", 1)])
@@ -110,23 +110,36 @@ tests = [
         , runTest $ mkTestLangs [Haskell98, Haskell2010, UnknownLanguage "Haskell3000"] dbLangs1 "supportedUnknown" ["C"] (solverSuccess [("A",1),("B",1),("C",1)])
         ]
 
-     , testGroup "Soft Constraints" [
-          runTest $ soft [ ExPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 2
-                         , ExPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrOrEarlier 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
-        , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
-        , runTest $ soft [ ExPref "A" $ mkvrThis 1
-                         , ExPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
+     , testGroup "Package Preferences" [
+          runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1]      $ mkTest db13 "selectPreferredVersionSimple" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionSimple2" ["A"] (solverSuccess [("A", 2)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 2
+                                , ExPkgPref "A" $ mkvrOrEarlier 1] $ mkTest db13 "selectPreferredVersionMultiple" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrOrEarlier 1
+                                , ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple2" ["A"] (solverSuccess [("A", 1)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1
+                                , ExPkgPref "A" $ mkvrThis 2] $ mkTest db13 "selectPreferredVersionMultiple3" ["A"] (solverSuccess [("A", 2)])
+        , runTest $ preferences [ ExPkgPref "A" $ mkvrThis 1
+                                , ExPkgPref "A" $ mkvrOrEarlier 2] $ mkTest db13 "selectPreferredVersionMultiple4" ["A"] (solverSuccess [("A", 1)])
+        ]
+     , testGroup "Stanza Preferences" [
+          runTest $
+          mkTest dbStanzaPreferences1 "disable tests by default" ["pkg"] $
+          solverSuccess [("pkg", 1)]
+
+        , runTest $ preferences [ExStanzaPref "pkg" [TestStanzas]] $
+          mkTest dbStanzaPreferences1 "enable tests with testing preference" ["pkg"] $
+          solverSuccess [("pkg", 1), ("test-dep", 1)]
+
+        , runTest $ preferences [ExStanzaPref "pkg" [TestStanzas]] $
+          mkTest dbStanzaPreferences2 "disable testing when it's not possible" ["pkg"] $
+          solverSuccess [("pkg", 1)]
         ]
      , testGroup "Buildable Field" [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
+        , runTest $ enableAllTests $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
          ]
     , testGroup "Pkg-config dependencies" [
@@ -179,7 +192,6 @@ tests = [
         ]
     ]
   where
-    soft prefs test = test { testSoftConstraints = prefs }
     mkvrThis        = V.thisVersion . makeV
     mkvrOrEarlier   = V.orEarlierVersion . makeV
     makeV v         = V.mkVersion [v,0,0]
@@ -191,6 +203,12 @@ indep test = test { testIndepGoals = IndependentGoals True }
 
 goalOrder :: [ExampleVar] -> SolverTest -> SolverTest
 goalOrder order test = test { testGoalOrder = Just order }
+
+preferences :: [ExPreference] -> SolverTest -> SolverTest
+preferences prefs test = test { testSoftConstraints = prefs }
+
+enableAllTests :: SolverTest -> SolverTest
+enableAllTests test = test { testEnableAllTests = EnableAllTests True }
 
 data GoalOrder = FixedGoalOrder | DefaultGoalOrder
 
@@ -209,6 +227,7 @@ data SolverTest = SolverTest {
   , testSupportedExts  :: Maybe [Extension]
   , testSupportedLangs :: Maybe [Language]
   , testPkgConfigDb    :: PkgConfigDb
+  , testEnableAllTests :: EnableAllTests
   }
 
 -- | Expected result of a solver test.
@@ -296,6 +315,7 @@ mkTestExtLangPC exts langs pkgConfigDb db label targets result = SolverTest {
   , testSupportedExts  = exts
   , testSupportedLangs = langs
   , testPkgConfigDb    = pkgConfigDbFromList pkgConfigDb
+  , testEnableAllTests = EnableAllTests False
   }
 
 runTest :: SolverTest -> TF.TestTree
@@ -305,6 +325,7 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
                      testSupportedLangs testPkgConfigDb testTargets
                      Modular Nothing testIndepGoals (ReorderGoals False)
                      (EnableBackjumping True) testGoalOrder testSoftConstraints
+                     testEnableAllTests
           printMsg msg = if showSolverLog
                          then putStrLn msg
                          else return ()
@@ -586,6 +607,17 @@ db13 = [
   , Right $ exAv "A" 3 []
   ]
 
+dbStanzaPreferences1 :: ExampleDb
+dbStanzaPreferences1 = [
+    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "test-dep"]
+  , Right $ exAv "test-dep" 1 []
+  ]
+
+dbStanzaPreferences2 :: ExampleDb
+dbStanzaPreferences2 = [
+    Right $ exAv "pkg" 1 [] `withTest` ExTest "test" [ExAny "unknown"]
+  ]
+
 -- | Database with some cycles
 --
 -- * Simplest non-trivial cycle: A -> B and B -> A
@@ -667,7 +699,7 @@ db16 = [
 testIndepGoals2 :: String -> SolverTest
 testIndepGoals2 name =
     goalOrder goals $ indep $
-    mkTest db name ["A", "B"] $
+    enableAllTests $ mkTest db name ["A", "B"] $
     solverSuccess [("A", 1), ("B", 1), ("C", 1), ("D", 1)]
   where
     db :: ExampleDb
@@ -792,7 +824,7 @@ testIndepGoals3 name =
 testIndepGoals4 :: String -> SolverTest
 testIndepGoals4 name =
     goalOrder goals $ indep $
-    mkTest db name ["A", "B", "C"] $
+    enableAllTests $ mkTest db name ["A", "B", "C"] $
     solverSuccess [("A",1), ("B",1), ("C",1), ("D",1), ("E",1), ("E",2)]
   where
     db :: ExampleDb
@@ -947,7 +979,8 @@ dbLangs1 = [
 -- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
-    runTest $ mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
+    runTest $ enableAllTests $
+    mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [

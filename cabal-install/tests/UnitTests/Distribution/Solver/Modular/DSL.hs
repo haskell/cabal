@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)
@@ -14,6 +15,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , ExampleInstalled(..)
   , ExampleQualifier(..)
   , ExampleVar(..)
+  , EnableAllTests(..)
   , exAv
   , exInst
   , exFlag
@@ -42,6 +44,7 @@ import qualified Distribution.Package              as C
   hiding (HasUnitId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
+import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System               as C
 import qualified Distribution.Version              as C
 import Language.Haskell.Extension (Extension(..), Language)
@@ -152,7 +155,9 @@ exFlag :: ExampleFlagName -> [ExampleDependency] -> [ExampleDependency]
        -> ExampleDependency
 exFlag n t e = ExFlag n (Buildable t) (Buildable e)
 
-data ExPreference = ExPref String ExampleVersionRange
+data ExPreference =
+    ExPkgPref ExamplePkgName ExampleVersionRange
+  | ExStanzaPref ExamplePkgName [OptionalStanza]
 
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
@@ -170,6 +175,10 @@ data ExampleQualifier =
   | Indep Int
   | Setup ExamplePkgName
   | IndepSetup Int ExamplePkgName
+
+-- | Whether to enable tests in all packages in a test case.
+newtype EnableAllTests = EnableAllTests Bool
+  deriving BooleanFlag
 
 -- | Constructs an 'ExampleAvailable' package for the 'ExampleDb',
 -- given:
@@ -467,9 +476,10 @@ exResolve :: ExampleDb
           -> EnableBackjumping
           -> Maybe [ExampleVar]
           -> [ExPreference]
+          -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          enableBj vars prefs
+          enableBj vars prefs enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -482,9 +492,11 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                        packageIndex       = exAvIdx avai
                      , packagePreferences = Map.empty
                      }
-    enableTests  = fmap (\p -> PackageConstraintStanzas
-                              (C.mkPackageName p) [TestStanzas])
-                       (exDbPkgs db)
+    enableTests
+        | asBool enableAllTests = fmap (\p -> PackageConstraintStanzas
+                                              (C.mkPackageName p) [TestStanzas])
+                                       (exDbPkgs db)
+        | otherwise             = []
     targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
     params       =   addPreferences (fmap toPref prefs)
                    $ addConstraints (fmap toLpc enableTests)
@@ -495,7 +507,9 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                    $ setGoalOrder goalOrder
                    $ standardInstallPolicy instIdx avaiIdx targets'
     toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
-    toPref (ExPref n v) = PackageVersionPreference (C.mkPackageName n) v
+
+    toPref (ExPkgPref n v)          = PackageVersionPreference (C.mkPackageName n) v
+    toPref (ExStanzaPref n stanzas) = PackageStanzasPreference (C.mkPackageName n) stanzas
 
     goalOrder :: Maybe (Variable P.QPN -> Variable P.QPN -> Ordering)
     goalOrder = (orderFromList . map toVariable) `fmap` vars
