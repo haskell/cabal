@@ -34,11 +34,10 @@ dispComponentsGraph graph =
                 (vcat [ text "dependency" <+> disp cdep | cdep <- cdeps ])
          | (c, cdeps) <- graph ]
 
--- | Given the package description and the set of package names which
--- are considered internal (the current package name and any internal
--- libraries are considered internal), create a graph of dependencies
--- between the components.  This is NOT necessarily the build order
--- (although it is in the absence of Backpack.)
+-- | Given the package description and a 'PackageDescription' (used
+-- to determine if a package name is internal or not), create a graph of
+-- dependencies between the components.  This is NOT necessarily the
+-- build order (although it is in the absence of Backpack.)
 toComponentsGraph :: ComponentRequestedSpec
                   -> PackageDescription
                   -> Either [ComponentName] ComponentsGraph
