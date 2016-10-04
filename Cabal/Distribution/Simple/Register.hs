@@ -389,7 +389,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                                 pkgName = componentCompatPackageName clbi
                              },
     IPI.installedUnitId    = componentUnitId clbi,
-    IPI.instantiatedWith   = [], --TODO fill in properly
+    IPI.instantiatedWith   = componentInstantiatedWith clbi,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
@@ -420,7 +420,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
-    IPI.depends            = map fst (componentPackageDeps clbi),
+                             --TODO: unclear what the root cause of the
+                             -- duplication is, but we nub it here for now:
+    IPI.depends            = ordNub $ map fst (componentPackageDeps clbi),
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
