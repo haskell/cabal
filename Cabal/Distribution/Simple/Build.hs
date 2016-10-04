@@ -70,7 +70,7 @@ import Distribution.Compat.Graph (IsNode(..))
 
 import qualified Data.Set as Set
 import Data.List ( intersect )
-import System.FilePath ( (</>), (<.>) )
+import System.FilePath ( (</>), (<.>), takeDirectory )
 import System.Directory ( getCurrentDirectory )
 
 -- -----------------------------------------------------------------------------
@@ -586,6 +586,17 @@ writeAutogenFiles verbosity pkg lbi clbi = do
   let pathsModulePath = autogenComponentModulesDir lbi clbi
                  </> ModuleName.toFilePath (autogenPathsModuleName pkg) <.> "hs"
   rewriteFile pathsModulePath (Build.PathsModule.generate pkg lbi clbi)
+
+  --TODO: document what we're doing here, and move it to its own function
+  case clbi of
+    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
+        -- Harmless enough to do things even when they exist
+        for_ (map fst insts) $ \mod_name -> do
+            let sigPath = autogenComponentModulesDir lbi clbi
+                      </> ModuleName.toFilePath mod_name <.> "hsig"
+            createDirectoryIfMissingVerbose verbosity True (takeDirectory sigPath)
+            rewriteFile sigPath $ "signature " ++ display mod_name ++ " where"
+    _ -> return ()
 
   let cppHeaderPath = autogenComponentModulesDir lbi clbi </> cppHeaderName
   rewriteFile cppHeaderPath (Build.Macros.generate pkg lbi clbi)
