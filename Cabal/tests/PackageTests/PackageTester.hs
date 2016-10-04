@@ -28,6 +28,7 @@ module PackageTests.PackageTester
     , cabal'
     , cabal_build
     , cabal_install
+    , cabal_install_with_docs
     , ghcPkg
     , ghcPkg'
     , compileSetup
@@ -417,6 +418,17 @@ cabal_install :: [String] -> TestM ()
 cabal_install args = do
     cabal "configure" args
     cabal "build" []
+    cabal "copy" []
+    cabal "register" []
+    return ()
+
+-- | This abstracts the common pattern of "installing" a package,
+-- with haddock documentation.
+cabal_install_with_docs :: [String] -> TestM ()
+cabal_install_with_docs args = do
+    cabal "configure" args
+    cabal "build" []
+    cabal "haddock" []
     cabal "copy" []
     cabal "register" []
     return ()
