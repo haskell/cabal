@@ -16,7 +16,9 @@ module Distribution.Client.ProjectPlanning.Types (
     elabDistDirParams,
     elabExeDependencyPaths,
     elabLibDependencies,
+    elabOrderLibDependencies,
     elabExeDependencies,
+    elabOrderExeDependencies,
     elabSetupDependencies,
     elabPkgConfigDependencies,
 
@@ -48,6 +50,9 @@ import           Distribution.Client.InstallPlan
 import           Distribution.Client.SolverInstallPlan
                    ( SolverInstallPlan )
 import           Distribution.Client.DistDirLayout
+
+import           Distribution.Backpack
+import           Distribution.Backpack.ModuleShape
 
 import           Distribution.Types.ComponentRequestedSpec
 import           Distribution.Package
@@ -117,12 +122,18 @@ data ElaboratedConfiguredPackage
        -- | The 'UnitId' which uniquely identifies this item in a build plan
        elabUnitId        :: UnitId,
 
+       elabInstantiatedWith :: Map ModuleName Module,
+       elabLinkedInstantiatedWith :: Map ModuleName IndefModule,
+
        -- | The 'PackageId' of the originating package
        elabPkgSourceId    :: PackageId,
 
        -- | Mapping from 'PackageName's to 'ComponentName', for every
        -- package that is overloaded with an internal component name
        elabInternalPackages :: Map PackageName ComponentName,
+
+       -- | Shape of the package/component, for Backpack.
+       elabModuleShape    :: ModuleShape,
 
        -- | A total flag assignment for the package.
        -- TODO: Actually this can be per-component if we drop
@@ -265,11 +276,7 @@ instance HasUnitId ElaboratedConfiguredPackage where
 instance IsNode ElaboratedConfiguredPackage where
     type Key ElaboratedConfiguredPackage = UnitId
     nodeKey = elabUnitId
-    nodeNeighbors elab = case elabPkgOrComp elab of
-        -- Important not to have duplicates: otherwise InstallPlan gets
-        -- confused.  NB: this DOES include setup deps.
-        ElabPackage pkg    -> ordNub (CD.flatDeps (pkgOrderDependencies pkg))
-        ElabComponent comp -> compOrderDependencies comp
+    nodeNeighbors = elabOrderDependencies
 
 instance Binary ElaboratedConfiguredPackage
 
@@ -292,38 +299,80 @@ elabDistDirParams shared elab = DistDirParams {
         distParamOptimization = elabOptimization elab
     }
 
+-- | The full set of dependencies which dictate what order we
+-- need to build things in the install plan: "order dependencies"
+-- balls everything together.  This is mostly only useful for
+-- ordering; if you are, for example, trying to compute what
+-- @--dependency@ flags to pass to a Setup script, you need to
+-- use 'elabLibDependencies'.  This method is the same as
+-- 'nodeNeighbors'.
+--
+-- NB: this method DOES include setup deps.
+elabOrderDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+elabOrderDependencies elab =
+    case elabPkgOrComp elab of
+        -- Important not to have duplicates: otherwise InstallPlan gets
+        -- confused.
+        ElabPackage pkg    -> ordNub (CD.flatDeps (pkgOrderDependencies pkg))
+        ElabComponent comp -> compOrderDependencies comp
+
+-- | Like 'elabOrderDependencies', but only returns dependencies on
+-- libraries.
+elabOrderLibDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+elabOrderLibDependencies elab =
+    case elabPkgOrComp elab of
+        ElabPackage _      -> map (newSimpleUnitId . confInstId) (elabLibDependencies elab)
+        ElabComponent comp -> compOrderLibDependencies comp
+
 -- | The library dependencies (i.e., the libraries we depend on, NOT
 -- the dependencies of the library), NOT including setup dependencies.
+-- These are passed to the @Setup@ script via @--dependency@.
 elabLibDependencies :: ElaboratedConfiguredPackage -> [ConfiguredId]
-elabLibDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
-elabLibDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = compLibDependencies comp
+elabLibDependencies elab =
+    case elabPkgOrComp elab of
+        ElabPackage pkg    -> ordNub (CD.nonSetupDeps (pkgLibDependencies pkg))
+        ElabComponent comp -> compLibDependencies comp
 
+-- | Like 'elabOrderDependencies', but only returns dependencies on
+-- executables.  (This coincides with 'elabExeDependencies'.)
+elabOrderExeDependencies :: ElaboratedConfiguredPackage -> [UnitId]
+elabOrderExeDependencies =
+    map newSimpleUnitId . elabExeDependencies
+
+-- | The executable dependencies (i.e., the executables we depend on);
+-- these are the executables we must add to the PATH before we invoke
+-- the setup script.
 elabExeDependencies :: ElaboratedConfiguredPackage -> [ComponentId]
-elabExeDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = map confInstId (CD.nonSetupDeps (pkgExeDependencies pkg))
-elabExeDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = compExeDependencies comp
+elabExeDependencies elab =
+    case elabPkgOrComp elab of
+        -- TODO: pkgExeDependencies being ConfiguredId is slightly awkward
+        ElabPackage pkg    -> map confInstId (CD.nonSetupDeps (pkgExeDependencies pkg))
+        ElabComponent comp -> compExeDependencies comp
 
+-- | This returns the paths of all the executables we depend on; we
+-- must add these paths to PATH before invoking the setup script.
+-- (This is usually what you want, not 'elabExeDependencies', if you
+-- actually want to build something.)
 elabExeDependencyPaths :: ElaboratedConfiguredPackage -> [FilePath]
-elabExeDependencyPaths ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = CD.nonSetupDeps (pkgExeDependencyPaths pkg)
-elabExeDependencyPaths ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = compExeDependencyPaths comp
+elabExeDependencyPaths elab =
+    case elabPkgOrComp elab of
+        ElabPackage pkg    -> CD.nonSetupDeps (pkgExeDependencyPaths pkg)
+        ElabComponent comp -> compExeDependencyPaths comp
 
+-- | The setup dependencies (the library dependencies of the setup executable;
+-- note that it is not legal for setup scripts to have executable
+-- dependencies at the moment.)
 elabSetupDependencies :: ElaboratedConfiguredPackage -> [ConfiguredId]
-elabSetupDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
-    = CD.setupDeps (pkgLibDependencies pkg)
-elabSetupDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
-    = compSetupDependencies comp
+elabSetupDependencies elab =
+    case elabPkgOrComp elab of
+        ElabPackage pkg    -> CD.setupDeps (pkgLibDependencies pkg)
+        ElabComponent comp -> compSetupDependencies comp
 
 elabPkgConfigDependencies :: ElaboratedConfiguredPackage -> [(PackageName, Maybe Version)]
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabPackage pkg }
     = pkgPkgConfigDependencies pkg
 elabPkgConfigDependencies ElaboratedConfiguredPackage { elabPkgOrComp = ElabComponent comp }
     = compPkgConfigDependencies comp
-
 
 -- | Some extra metadata associated with an
 -- 'ElaboratedConfiguredPackage' which indicates that the "package"
@@ -339,15 +388,24 @@ data ElaboratedComponent
     -- | The name of the component to be built.  Nothing if
     -- it's a setup dep.
     compComponentName :: Maybe ComponentName,
-    -- | The library dependencies of this component.
+    -- | The *external* library dependencies of this component.  We
+    -- pass this to the configure script.
     compLibDependencies :: [ConfiguredId],
-    -- | The executable dependencies of this component.
+    -- | The linked dependencies of the component which combined with the
+    -- substitution in 'elabComponentId' specify the dependencies we
+    -- care about from the perspective of ORDERING builds.  It's more
+    -- precise than 'compLibDependencies', and also stores information
+    -- about internal dependencies.
+    compLinkedLibDependencies :: [IndefUnitId],
+    -- | The executable dependencies of this component (including
+    -- internal executables).
     compExeDependencies :: [ComponentId],
     -- | The @pkg-config@ dependencies of the component
     compPkgConfigDependencies :: [(PackageName, Maybe Version)],
     -- | The paths all our executable dependencies will be installed
     -- to once they are installed.
     compExeDependencyPaths :: [FilePath],
+    compNonSetupDependencies :: [UnitId],
     -- | The setup dependencies.  TODO: Remove this when setups
     -- are components of their own.
     compSetupDependencies :: [ConfiguredId]
@@ -356,12 +414,21 @@ data ElaboratedComponent
 
 instance Binary ElaboratedComponent
 
+-- | See 'elabOrderDependencies'.
 compOrderDependencies :: ElaboratedComponent -> [UnitId]
 compOrderDependencies comp =
-       -- TODO: Change this with Backpack!
-       map (newSimpleUnitId . confInstId) (compLibDependencies comp)
-    ++ map newSimpleUnitId (compExeDependencies comp)
-    ++ map (newSimpleUnitId . confInstId) (compSetupDependencies comp)
+    compOrderLibDependencies comp
+ ++ compOrderExeDependencies comp
+
+-- | See 'elabOrderExeDependencies'.
+compOrderExeDependencies :: ElaboratedComponent -> [UnitId]
+compOrderExeDependencies = map newSimpleUnitId . compExeDependencies
+
+-- | See 'elabOrderLibDependencies'.
+compOrderLibDependencies :: ElaboratedComponent -> [UnitId]
+compOrderLibDependencies comp =
+    compNonSetupDependencies comp
+ ++ map (newSimpleUnitId . confInstId) (compSetupDependencies comp)
 
 data ElaboratedPackage
    = ElaboratedPackage {
@@ -394,6 +461,8 @@ data ElaboratedPackage
 
 instance Binary ElaboratedPackage
 
+-- | See 'elabOrderDependencies'.  This gives the unflattened version,
+-- which can be useful in some circumstances.
 pkgOrderDependencies :: ElaboratedPackage -> ComponentDeps [UnitId]
 pkgOrderDependencies pkg =
     fmap (map (newSimpleUnitId . confInstId)) (pkgLibDependencies pkg) `Mon.mappend`
