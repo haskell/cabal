@@ -40,7 +40,8 @@ import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
-import Distribution.Utils.NubList            ( toNubList )
+import Distribution.Client.Targets     ( userConstraintPackageName )
+import Distribution.Utils.NubList      ( toNubList )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                        , compilerFlavor, showCompilerIdWithAbi )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
@@ -60,8 +61,9 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
 import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, liftM2, when, unless )
-import Data.List                       ( partition )
+import Data.List                       ( partition, sortBy )
 import Data.Maybe                      ( isJust )
+import Data.Ord                        ( comparing )
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Compat.Semigroup
 import System.Directory                ( doesDirectoryExist, doesFileExist
@@ -399,7 +401,7 @@ pkgEnvFieldDescrs src = [
 
   , commaNewLineListField "constraints"
     (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
-    (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
+    (sortConstraints . configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configExConstraints = v }))
 
@@ -433,6 +435,8 @@ pkgEnvFieldDescrs src = [
                                  $ pkgEnv
          }
       }
+
+    sortConstraints = sortBy (comparing $ userConstraintPackageName . fst)
 
 -- | Read the package environment file.
 readPackageEnvironmentFile :: ConstraintSource -> PackageEnvironment -> FilePath
