@@ -2174,7 +2174,7 @@ defaultSetupDeps compiler platform pkg =
           -- constraints, we constrain them to use a compatible Cabal version.
           -- The exact version where we'll make this API break has not yet been
           -- decided, so for the meantime we guess at 2.x.
-          cabalCompatMaxVer = mkVersion [2]
+          cabalCompatMaxVer = mkVersion [1,25] -- TODO: Bump to [2] before 2.0 release
           -- In principle we can talk to any old Cabal version, and we need to
           -- be able to do that for custom Setup scripts that require older
           -- Cabal lib versions. However in practice we have currently have
