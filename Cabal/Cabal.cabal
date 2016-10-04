@@ -40,6 +40,15 @@ extra-source-files:
   tests/PackageTests/AllowOlder/benchmarks/Bench.hs
   tests/PackageTests/AllowOlder/src/Foo.hs
   tests/PackageTests/AllowOlder/tests/Test.hs
+  tests/PackageTests/Ambiguity/p/Dupe.hs
+  tests/PackageTests/Ambiguity/p/p.cabal
+  tests/PackageTests/Ambiguity/package-import/A.hs
+  tests/PackageTests/Ambiguity/package-import/package-import.cabal
+  tests/PackageTests/Ambiguity/q/Dupe.hs
+  tests/PackageTests/Ambiguity/q/q.cabal
+  tests/PackageTests/Ambiguity/reexport-test/Main.hs
+  tests/PackageTests/Ambiguity/reexport-test/reexport-test.cabal
+  tests/PackageTests/Ambiguity/reexport/reexport.cabal
   tests/PackageTests/AutogenModules/Package/Dummy.hs
   tests/PackageTests/AutogenModules/Package/MyBenchModule.hs
   tests/PackageTests/AutogenModules/Package/MyExeModule.hs
@@ -54,6 +63,44 @@ extra-source-files:
   tests/PackageTests/AutogenModules/SrcDist/MyLibrary.hs
   tests/PackageTests/AutogenModules/SrcDist/MyTestModule.hs
   tests/PackageTests/AutogenModules/SrcDist/my.cabal
+  tests/PackageTests/Backpack/Includes1/A.hs
+  tests/PackageTests/Backpack/Includes1/B.hs
+  tests/PackageTests/Backpack/Includes1/Includes1.cabal
+  tests/PackageTests/Backpack/Includes2/Includes2.cabal
+  tests/PackageTests/Backpack/Includes2/exe/Main.hs
+  tests/PackageTests/Backpack/Includes2/exe/exe.cabal
+  tests/PackageTests/Backpack/Includes2/fail.cabal
+  tests/PackageTests/Backpack/Includes2/mylib/Mine.hs
+  tests/PackageTests/Backpack/Includes2/mylib/mylib.cabal
+  tests/PackageTests/Backpack/Includes2/mysql/Database/MySQL.hs
+  tests/PackageTests/Backpack/Includes2/mysql/mysql.cabal
+  tests/PackageTests/Backpack/Includes2/postgresql/Database/PostgreSQL.hs
+  tests/PackageTests/Backpack/Includes2/postgresql/postgresql.cabal
+  tests/PackageTests/Backpack/Includes2/src/App.hs
+  tests/PackageTests/Backpack/Includes2/src/src.cabal
+  tests/PackageTests/Backpack/Includes3/Includes3.cabal
+  tests/PackageTests/Backpack/Includes3/exe/Main.hs
+  tests/PackageTests/Backpack/Includes3/exe/exe.cabal
+  tests/PackageTests/Backpack/Includes3/indef/Foo.hs
+  tests/PackageTests/Backpack/Includes3/indef/indef.cabal
+  tests/PackageTests/Backpack/Includes3/sigs/sigs.cabal
+  tests/PackageTests/Backpack/Includes4/Includes4.cabal
+  tests/PackageTests/Backpack/Includes4/Main.hs
+  tests/PackageTests/Backpack/Includes4/impl/A.hs
+  tests/PackageTests/Backpack/Includes4/impl/B.hs
+  tests/PackageTests/Backpack/Includes4/impl/Rec.hs
+  tests/PackageTests/Backpack/Includes4/indef/C.hs
+  tests/PackageTests/Backpack/Includes5/A.hs
+  tests/PackageTests/Backpack/Includes5/B.hs
+  tests/PackageTests/Backpack/Includes5/Includes5.cabal
+  tests/PackageTests/Backpack/Includes5/impl/Foobar.hs
+  tests/PackageTests/Backpack/Includes5/impl/Quxbaz.hs
+  tests/PackageTests/Backpack/Indef1/Indef1.cabal
+  tests/PackageTests/Backpack/Indef1/Provide.hs
+  tests/PackageTests/Backpack/Reexport1/p/P.hs
+  tests/PackageTests/Backpack/Reexport1/p/p.cabal
+  tests/PackageTests/Backpack/Reexport1/q/Q.hs
+  tests/PackageTests/Backpack/Reexport1/q/q.cabal
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
