@@ -31,10 +31,10 @@ decodeStringUtf8 = go
     twoBytes :: Word8 -> [Word8] -> String
     twoBytes c0 (c1:cs')
       | c1 .&. 0xC0 == 0x80
-      = let d = ((c0 .&. 0x1F) `shiftL` 6)
-             .|. (c1 .&. 0x3F)
+      = let d = (fromIntegral (c0 .&. 0x1F) `shiftL` 6)
+             .|. fromIntegral (c1 .&. 0x3F)
          in if d >= 0x80
-               then  chr (fromIntegral d) : go cs'
+               then  chr d                : go cs'
                else  replacementChar      : go cs'
     twoBytes _ cs' = replacementChar      : go cs'
 
