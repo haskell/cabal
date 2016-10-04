@@ -729,10 +729,10 @@ getLibSourceFiles :: LocalBuildInfo
 getLibSourceFiles lbi lib clbi = getSourceFiles searchpaths modules
   where
     bi               = libBuildInfo lib
-    modules          = PD.exposedModules lib ++ otherModules bi
-    searchpaths      = autogenComponentModulesDir lbi clbi
-                     : autogenPackageModulesDir lbi
-                     : buildDir lbi : hsSourceDirs bi
+    modules          = allLibModules lib clbi
+    searchpaths      = componentBuildDir lbi clbi : hsSourceDirs bi ++
+                     [ autogenComponentModulesDir lbi clbi
+                     , autogenPackageModulesDir lbi ]
 
 getExeSourceFiles :: LocalBuildInfo
                      -> Executable
@@ -753,10 +753,10 @@ getSourceFiles :: [FilePath]
                   -> [ModuleName.ModuleName]
                   -> IO [(ModuleName.ModuleName, FilePath)]
 getSourceFiles dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
-    findFileWithExtension ["hs", "lhs"] dirs (ModuleName.toFilePath m)
+    findFileWithExtension ["hs", "lhs", "hsig", "lhsig"] dirs (ModuleName.toFilePath m)
       >>= maybe (notFound m) (return . normalise)
   where
-    notFound module_ = die $ "can't find source for module " ++ display module_
+    notFound module_ = die $ "haddock: can't find source for module " ++ display module_
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
