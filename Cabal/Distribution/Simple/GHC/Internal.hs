@@ -289,6 +289,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> mempty,
+      ghcOptInstantiatedWith = case clbi of
+        LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
+          -> insts
+        _ -> [],
+      ghcOptNoCode          = toFlag $ componentIsIndefinite clbi,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
