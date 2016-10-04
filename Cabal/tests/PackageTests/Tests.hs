@@ -28,6 +28,8 @@ import Control.Monad
 import System.Directory
 import Test.Tasty (mkTimeout, localOption)
 
+import qualified Data.Char as Char
+
 tests :: SuiteConfig -> TestTreeM ()
 tests config = do
 
@@ -225,6 +227,28 @@ tests config = do
       withPackage "p" $ do
           r <- shouldFail $ cabal' "configure" ["--cabal-file", "fail-missing.cabal"]
           assertOutputContains "Missing" r
+
+  -- Test that module name ambiguity can be resolved using package
+  -- qualified imports.  (Paper Backpack doesn't natively support
+  -- this but we must!)
+  tcs "Ambiguity" "package-import" $ do
+    withPackageDb $ do
+        withPackage "p" $ cabal_install []
+        withPackage "q" $ cabal_install []
+        withPackage "package-import" $ do
+            cabal_build []
+            runExe' "package-import" [] >>= assertOutputContains "p q"
+
+  -- Test that we can resolve a module name ambiguity when reexporting
+  -- by explicitly specifying what package we want.
+  tcs "Ambiguity" "reexport" . whenGhcVersion (>= mkVersion [7,9]) $ do
+    withPackageDb $ do
+        withPackage "p" $ cabal_install []
+        withPackage "q" $ cabal_install []
+        withPackage "reexport" $ cabal_install []
+        withPackage "reexport-test" $ do
+            cabal_build []
+            runExe' "reexport-test" [] >>= assertOutputContains "p q"
 
   -- Test that Cabal computes different IPIDs when the source changes.
   tc "UniqueIPID" . withPackageDb $ do
@@ -603,6 +627,119 @@ tests config = do
     cabal "configure" []
     assertOutputContains "There is no component"
         =<< shouldFail (cabal' "build" ["not-buildable-exe"])
+
+  tc "Backpack/Includes1" . whenGhcVersion (>= mkVersion [8,1]) $ do
+      cabal "configure" []
+      r <- shouldFail $ cabal' "build" []
+      assertBool "error should be in B.hs" $
+          resultOutput r =~ "^B.hs:"
+      assertBool "error should be \"Could not find module Data.Set\"" $
+          resultOutput r =~ "(Could not find module|Failed to load interface).*Data.Set"
+
+  tcs "Backpack/Includes2" "internal" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      cabal_install ["--cabal-file", "Includes2.cabal"]
+      -- TODO: haddock for internal method doesn't work
+      runExe' "exe" [] >>= assertOutputContains "minemysql minepostgresql"
+
+  tcs "Backpack/Includes2" "internal-fail" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      r <- shouldFail $ cabal' "configure" ["--cabal-file", "fail.cabal"]
+      assertOutputContains "mysql" r
+
+  tcs "Backpack/Includes2" "external" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      withPackage "mylib" $ cabal_install_with_docs ["--ipid", "mylib-0.1.0.0"]
+      withPackage "mysql" $ cabal_install_with_docs ["--ipid", "mysql-0.1.0.0"]
+      withPackage "postgresql" $ cabal_install_with_docs ["--ipid", "postgresql-0.1.0.0"]
+      withPackage "mylib" $
+        cabal_install_with_docs ["--ipid", "mylib-0.1.0.0",
+                       "--instantiate-with", "Database=mysql-0.1.0.0:Database.MySQL"]
+      withPackage "mylib" $
+        cabal_install_with_docs ["--ipid", "mylib-0.1.0.0",
+                       "--instantiate-with", "Database=postgresql-0.1.0.0:Database.PostgreSQL"]
+      withPackage "src" $ cabal_install_with_docs []
+      withPackage "exe" $ do
+        cabal_install_with_docs []
+        runExe' "exe" [] >>= assertOutputContains "minemysql minepostgresql"
+
+  tcs "Backpack/Includes2" "per-component" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      let cabal_install' args = cabal_install_with_docs (["--cabal-file", "Includes2.cabal"] ++ args)
+      cabal_install' ["mylib", "--cid", "mylib-0.1.0.0"]
+      cabal_install' ["mysql", "--cid", "mysql-0.1.0.0"]
+      cabal_install' ["postgresql", "--cid", "postgresql-0.1.0.0"]
+      cabal_install' ["mylib", "--cid", "mylib-0.1.0.0",
+                     "--instantiate-with", "Database=mysql-0.1.0.0:Database.MySQL"]
+      cabal_install' ["mylib", "--cid", "mylib-0.1.0.0",
+                     "--instantiate-with", "Database=postgresql-0.1.0.0:Database.PostgreSQL"]
+      cabal_install' ["Includes2"]
+      cabal_install' ["exe"]
+      runExe' "exe" [] >>= assertOutputContains "minemysql minepostgresql"
+
+  tcs "Backpack/Includes3" "internal" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      cabal_install []
+      -- TODO: refactorize
+      pkg_dir <- packageDir
+      _ <- run (Just pkg_dir) "touch" ["indef/Foo.hs"]
+      cabal "build" []
+      runExe' "exe" [] >>= assertOutputContains "fromList [(0,2),(2,4)]"
+
+  tcs "Backpack/Includes3" "external-fail" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      withPackage "sigs" $ cabal_install []
+      withPackage "indef" $ cabal_install []
+      -- Forgot to build the instantiated versions!
+      withPackage "exe" $ do
+        r <- shouldFail $ cabal' "configure" []
+        assertOutputContains "indef-0.1.0.0" r
+        return ()
+
+  tcs "Backpack/Includes3" "external-ok" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      containers_result <- ghcPkg' "field" ["--global", "containers", "id"]
+      containers_id <- case stripPrefix "id: " (resultOutput containers_result) of
+        Just x -> return (takeWhile (not . Char.isSpace) x)
+        Nothing -> error "could not determine id of containers"
+      withPackage "sigs" $ cabal_install_with_docs ["--ipid", "sigs-0.1.0.0"]
+      withPackage "indef" $ cabal_install_with_docs ["--ipid", "indef-0.1.0.0"]
+      withPackage "sigs" $ do
+        -- NB: this REUSES the dist directory that we typechecked
+        -- indefinitely, but it's OK; the recompile checker should get it.
+        cabal_install_with_docs ["--ipid", "sigs-0.1.0.0",
+                       "--instantiate-with", "Data.Map=" ++ containers_id ++ ":Data.Map"]
+      withPackage "indef" $ do
+        -- Ditto.
+        cabal_install_with_docs ["--ipid", "indef-0.1.0.0",
+                       "--instantiate-with", "Data.Map=" ++ containers_id ++ ":Data.Map"]
+      withPackage "exe" $ do
+        cabal_install []
+        runExe' "exe" [] >>= assertOutputContains "fromList [(0,2),(2,4)]"
+
+  tcs "Backpack/Includes3" "external-explicit" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      withPackage "sigs" $ cabal_install_with_docs ["--cid", "sigs-0.1.0.0", "lib:sigs"]
+      withPackage "indef" $ cabal_install_with_docs ["--cid", "indef-0.1.0.0", "--dependency=sigs=sigs-0.1.0.0", "lib:indef"]
+
+  tc "Backpack/Includes4" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      cabal_install []
+      runExe' "exe" [] >>= assertOutputContains "A (B (A (B"
+
+  tc "Backpack/Includes5" . whenGhcVersion (>= mkVersion [8,1]) $ do
+      cabal "configure" []
+      r <- shouldFail $ cabal' "build" []
+      assertOutputContains "Foobar" r
+      assertOutputContains "Failed to load" r
+      return ()
+
+  tc "Backpack/Reexport1" . whenGhcVersion (>= mkVersion [8,1]) $ do
+    withPackageDb $ do
+      withPackage "p" $ cabal_install_with_docs []
+      withPackage "q" $ do
+        cabal_build []
+        cabal "haddock" []
 
   where
     ghc_pkg_guess bin_name = do
