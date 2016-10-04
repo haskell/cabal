@@ -10,6 +10,7 @@ module Distribution.Client.ProjectPlanOutput (
     -- | Several outputs rely on having a general overview of
     PostBuildProjectStatus(..),
     updatePostBuildProjectStatus,
+    writePlanGhcEnvironment,
   ) where
 
 import           Distribution.Client.ProjectPlanning.Types
@@ -26,6 +27,14 @@ import qualified Distribution.Solver.Types.ComponentDeps as ComponentDeps
 import           Distribution.Package
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.PackageDescription as PD
+import           Distribution.Compiler (CompilerFlavor(GHC))
+import           Distribution.Simple.Compiler
+                   ( PackageDBStack, PackageDB(..)
+                   , compilerVersion, compilerFlavor )
+import           Distribution.Simple.GHC
+                   ( getImplInfo, GhcImplInfo(supportsPkgEnvFiles)
+                   , GhcEnvironmentFileEntry(..), simpleGhcEnvironmentFile
+                   , writeGhcEnvironmentFile )
 import           Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph (Graph, Node)
@@ -34,7 +43,7 @@ import           Distribution.Simple.Utils
 import           Distribution.Verbosity
 import qualified Paths_cabal_install as Our (version)
 
-import           Data.Maybe (fromMaybe)
+import           Data.Maybe (maybeToList, fromMaybe)
 import           Data.Monoid
 import qualified Data.Map as Map
 import           Data.Set (Set)
@@ -631,4 +640,154 @@ writePackagesUpToDateCacheFile :: DistDirLayout -> PackagesUpToDate -> IO ()
 writePackagesUpToDateCacheFile DistDirLayout{distProjectCacheFile} upToDate =
     writeFileAtomic (distProjectCacheFile "up-to-date") $
       Binary.encode upToDate
+
+-- Writing .ghc.environment files
+--
+
+writePlanGhcEnvironment :: FilePath
+                        -> ElaboratedInstallPlan
+                        -> ElaboratedSharedConfig
+                        -> PostBuildProjectStatus
+                        -> IO ()
+writePlanGhcEnvironment projectRootDir
+                        elaboratedInstallPlan
+                        ElaboratedSharedConfig {
+                          pkgConfigCompiler = compiler,
+                          pkgConfigPlatform = platform
+                        }
+                        postBuildStatus
+  | compilerFlavor compiler == GHC
+  , supportsPkgEnvFiles (getImplInfo compiler)
+  --TODO: check ghcjs compat
+  = writeGhcEnvironmentFile
+      projectRootDir
+      platform (compilerVersion compiler)
+      (renderGhcEnviromentFile projectRootDir
+                               elaboratedInstallPlan
+                               postBuildStatus)
+    --TODO: [required eventually] support for writing user-wide package
+    -- environments, e.g. like a global project, but we would not put the
+    -- env file in the home dir, rather it lives under ~/.ghc/
+
+writePlanGhcEnvironment _ _ _ _ = return ()
+
+renderGhcEnviromentFile :: FilePath
+                        -> ElaboratedInstallPlan
+                        -> PostBuildProjectStatus
+                        -> [GhcEnvironmentFileEntry]
+renderGhcEnviromentFile projectRootDir elaboratedInstallPlan
+                        postBuildStatus =
+    headerComment
+  : simpleGhcEnvironmentFile packageDBs unitIds
+  where
+    headerComment =
+        GhcEnvFileComment
+      $ "This is a GHC environment file written by cabal. This means you can\n"
+     ++ "run ghc or ghci and get the environment of the project as a whole.\n"
+     ++ "But you still need to use cabal repl $target to get the environment\n"
+     ++ "of specific components (libs, exes, tests etc) because each one can\n"
+     ++ "have its own source dirs, cpp flags etc.\n\n"
+    unitIds    = selectGhcEnviromentFileLibraries postBuildStatus
+    packageDBs = relativePackageDBPaths projectRootDir $
+                 selectGhcEnviromentFilePackageDbs elaboratedInstallPlan
+
+
+-- We're producing an environment for users to use in ghci, so of course
+-- that means libraries only (can't put exes into the ghc package env!).
+-- The library environment should be /consistent/ with the environment
+-- that each of the packages in the project use (ie same lib versions).
+-- So that means all the normal library dependencies of all the things
+-- in the project (including deps of exes that are local to the project).
+-- We do not however want to include the dependencies of Setup.hs scripts,
+-- since these are generally uninteresting but also they need not in
+-- general be consistent with the library versions that packages local to
+-- the project use (recall that Setup.hs script's deps can be picked
+-- independently of other packages in the project).
+--
+-- So, our strategy is as follows:
+--
+-- produce a dependency graph of all the packages in the install plan,
+-- but only consider normal library deps as edges in the graph. Thus we
+-- exclude the dependencies on Setup.hs scripts (in the case of
+-- per-component granularity) or of Setup.hs scripts (in the case of
+-- per-package granularity). Then take a dependency closure, using as
+-- roots all the packages/components local to the project. This will
+-- exclude Setup scripts and their dependencies.
+--
+-- Note: this algorithm will have to be adapted if/when the install plan
+-- is extended to cover multiple compilers at once, and may also have to
+-- change if we start to treat unshared deps of test suites in a similar
+-- way to how we treat Setup.hs script deps (ie being able to pick them
+-- independently).
+--
+-- Since we had to use all the local packages, including exes, (as roots
+-- to find the libs) then those exes still end up in our list so we have
+-- to filter them out at the end.
+--
+selectGhcEnviromentFileLibraries :: PostBuildProjectStatus -> [UnitId]
+selectGhcEnviromentFileLibraries PostBuildProjectStatus{..} =
+    case Graph.closure packagesLibDepGraph (Set.toList packagesBuildLocal) of
+      Nothing    -> error "renderGhcEnviromentFile: broken dep closure"
+      Just nodes -> [ pkgid | Graph.N pkg pkgid _ <- nodes
+                            , hasUpToDateLib pkg ]
+  where
+    hasUpToDateLib planpkg = case planpkg of
+      -- A pre-existing global lib
+      InstallPlan.PreExisting  _ -> True
+
+      -- A package in the store. Check it's a lib.
+      InstallPlan.Installed  pkg -> elabRequiresRegistration pkg
+
+      -- A package we were installing this time, either destined for the store
+      -- or just locally. Check it's a lib and that it is probably up to date.
+      InstallPlan.Configured pkg ->
+          elabRequiresRegistration pkg
+       && installedUnitId pkg `Set.member` packagesProbablyUpToDate
+
+
+selectGhcEnviromentFilePackageDbs :: ElaboratedInstallPlan -> PackageDBStack
+selectGhcEnviromentFilePackageDbs elaboratedInstallPlan =
+    -- If we have any inplace packages then their package db stack is the
+    -- one we should use since it'll include the store + the local db but
+    -- it's certainly possible to have no local inplace packages
+    -- e.g. just "extra" packages coming from the store.
+    case (inplacePackages, sourcePackages) of
+      ([], pkgs) -> checkSamePackageDBs pkgs
+      (pkgs, _)  -> checkSamePackageDBs pkgs
+  where
+    checkSamePackageDBs pkgs =
+      case ordNub (map elabBuildPackageDBStack pkgs) of
+        [packageDbs] -> packageDbs
+        []           -> []
+        _            -> error $ "renderGhcEnviromentFile: packages with "
+                             ++ "different package db stacks"
+        -- This should not happen at the moment but will happen as soon
+        -- as we support projects where we build packages with different
+        -- compilers, at which point we have to consider how to adapt
+        -- this feature, e.g. write out multiple env files, one for each
+        -- compiler / project profile.
+
+    inplacePackages =
+      [ srcpkg
+      | srcpkg <- sourcePackages
+      , elabBuildStyle srcpkg == BuildInplaceOnly ]
+    sourcePackages =
+      [ srcpkg
+      | pkg <- InstallPlan.toList elaboratedInstallPlan
+      , srcpkg <- maybeToList $ case pkg of
+                    InstallPlan.Configured srcpkg -> Just srcpkg
+                    InstallPlan.Installed  srcpkg -> Just srcpkg
+                    InstallPlan.PreExisting _     -> Nothing
+      ]
+
+relativePackageDBPaths :: FilePath -> PackageDBStack -> PackageDBStack
+relativePackageDBPaths relroot = map (relativePackageDBPath relroot)
+
+relativePackageDBPath :: FilePath -> PackageDB -> PackageDB
+relativePackageDBPath relroot pkgdb =
+    case pkgdb of
+      GlobalPackageDB        -> GlobalPackageDB
+      UserPackageDB          -> UserPackageDB
+      SpecificPackageDB path -> SpecificPackageDB relpath
+        where relpath = makeRelative relroot path
 
