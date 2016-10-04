@@ -224,6 +224,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
                                                        (mkAbiHash "") lib' lbi clbi
 
+    debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
     registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
                     (withPackageDB lbi) installedPkgInfo
 

@@ -199,7 +199,6 @@ registerAll pkg lbi regFlags ipis
                   where ys = take m xs
               number i = lpad (length (show num_ipis)) (show i)
           for_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
-            -- TODO: This will need a hashUnitId when Backpack comes.
             writeUTF8File (regFile </> (number i ++ "-" ++ display (IPI.installedUnitId installedPkgInfo)))
                           (IPI.showInstalledPackageInfo installedPkgInfo)
 
