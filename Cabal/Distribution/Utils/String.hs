@@ -65,18 +65,21 @@ decodeStringUtf8 = go
 encodeStringUtf8 :: String -> [Word8]
 encodeStringUtf8 []        = []
 encodeStringUtf8 (c:cs)
-  | c <= '\x07F' = w
+  | c <= '\x07F' = w8
                  : encodeStringUtf8 cs
-  | c <= '\x7FF' = (0xC0 .|. (w `shiftR` 6))
-                 : (0x80 .|. (w .&. 0x3F))
+  | c <= '\x7FF' = (0xC0 .|.  w8ShiftR  6          )
+                 : (0x80 .|. (w8          .&. 0x3F))
                  : encodeStringUtf8 cs
-  | c <= '\xFFFF'= (0xE0 .|.  (w `shiftR` 12))
-                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : (0x80 .|.  (w .&. 0x3F))
+  | c <= '\xFFFF'= (0xE0 .|.  w8ShiftR 12          )
+                 : (0x80 .|. (w8ShiftR  6 .&. 0x3F))
+                 : (0x80 .|. (w8          .&. 0x3F))
                  : encodeStringUtf8 cs
-  | otherwise    = (0xf0 .|.  (w `shiftR` 18))
-                 : (0x80 .|. ((w `shiftR` 12)  .&. 0x3F))
-                 : (0x80 .|. ((w `shiftR` 6)  .&. 0x3F))
-                 : (0x80 .|.  (w .&. 0x3F))
+  | otherwise    = (0xf0 .|.  w8ShiftR 18          )
+                 : (0x80 .|. (w8ShiftR 12 .&. 0x3F))
+                 : (0x80 .|. (w8ShiftR  6 .&. 0x3F))
+                 : (0x80 .|. (w8          .&. 0x3F))
                  : encodeStringUtf8 cs
-  where w = fromIntegral (ord c) :: Word8
+  where
+    w8 = fromIntegral (ord c) :: Word8
+    w8ShiftR :: Int -> Word8
+    w8ShiftR = fromIntegral . shiftR (ord c)
