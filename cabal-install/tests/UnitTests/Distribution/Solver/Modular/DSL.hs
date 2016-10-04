@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | DSL for testing the modular solver
 module UnitTests.Distribution.Solver.Modular.DSL (
     ExampleDependency(..)
@@ -43,6 +44,7 @@ import qualified Distribution.Package              as C
   hiding (HasUnitId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
+import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System               as C
 import qualified Distribution.Version              as C
 import Language.Haskell.Extension (Extension(..), Language)
@@ -176,6 +178,7 @@ data ExampleQualifier =
 
 -- | Whether to enable tests in all packages in a test case.
 newtype EnableAllTests = EnableAllTests Bool
+  deriving BooleanFlag
 
 -- | Constructs an 'ExampleAvailable' package for the 'ExampleDb',
 -- given:
@@ -476,7 +479,7 @@ exResolve :: ExampleDb
           -> EnableAllTests
           -> Progress String String CI.SolverInstallPlan.SolverInstallPlan
 exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
-          enableBj vars prefs (EnableAllTests enableAllTests)
+          enableBj vars prefs enableAllTests
     = resolveDependencies C.buildPlatform compiler pkgConfigDb solver params
   where
     defaultCompiler = C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag
@@ -490,10 +493,10 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
                      , packagePreferences = Map.empty
                      }
     enableTests
-        | enableAllTests = fmap (\p -> PackageConstraintStanzas
-                                       (C.mkPackageName p) [TestStanzas])
-                           (exDbPkgs db)
-        | otherwise      = []
+        | asBool enableAllTests = fmap (\p -> PackageConstraintStanzas
+                                              (C.mkPackageName p) [TestStanzas])
+                                       (exDbPkgs db)
+        | otherwise             = []
     targets'     = fmap (\p -> NamedPackage (C.mkPackageName p) []) targets
     params       =   addPreferences (fmap toPref prefs)
                    $ addConstraints (fmap toLpc enableTests)
