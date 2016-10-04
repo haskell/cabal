@@ -1710,9 +1710,7 @@ defaultSetupDeps compiler platform pkg =
           -- breaking changes to the Cabal API that Setup.hs scripts use.
           -- So for old custom Setup scripts that do not specify explicit
           -- constraints, we constrain them to use a compatible Cabal version.
-          -- The exact version where we'll make this API break has not yet been
-          -- decided, so for the meantime we guess at 2.x.
-          cabalCompatMaxVer = Version [2] []
+          cabalCompatMaxVer = Version [1,25] []
           -- In principle we can talk to any old Cabal version, and we need to
           -- be able to do that for custom Setup scripts that require older
           -- Cabal lib versions. However in practice we have currently have
