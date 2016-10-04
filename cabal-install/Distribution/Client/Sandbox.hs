@@ -119,7 +119,6 @@ import Data.IORef                             ( newIORef, writeIORef, readIORef 
 import Data.List                              ( delete
                                               , groupBy )
 import Data.Maybe                             ( fromJust )
-import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
 import System.Directory                       ( canonicalizePath
                                               , createDirectory

@@ -83,7 +83,6 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import qualified Data.Version as Base
 import Data.Bits (shiftL, shiftR, (.|.), (.&.))
-import Data.Word (Word64)
 
 import Distribution.Text
 import qualified Distribution.Compat.ReadP as Parse

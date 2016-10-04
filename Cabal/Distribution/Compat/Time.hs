@@ -14,8 +14,6 @@ module Distribution.Compat.Time
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Data.Int         ( Int64 )
-import Data.Word        ( Word64 )
 import System.Directory ( getModificationTime )
 
 import Distribution.Simple.Utils ( withTempDirectory )
@@ -42,7 +40,6 @@ import Data.Bits          (finiteBitSize)
 import Data.Bits          (bitSize)
 #endif
 
-import Data.Int           ( Int32 )
 import Foreign            ( allocaBytes, peekByteOff )
 import System.IO.Error    ( mkIOError, doesNotExistErrorType )
 import System.Win32.Types ( BOOL, DWORD, LPCTSTR, LPVOID, withTString )

@@ -79,7 +79,6 @@ import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
 import           Distribution.Solver.Types.SourcePackage
 
-import Data.Word
 import qualified Data.Map as Map
 import Control.DeepSeq
 import Control.Monad

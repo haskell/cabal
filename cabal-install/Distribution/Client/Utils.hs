@@ -33,8 +33,6 @@ import Data.Bits
 import System.FilePath
 import Data.List
          ( groupBy )
-import Data.Word
-         ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
          ( finally, bracket )

@@ -82,6 +82,11 @@ module Distribution.Compat.Prelude (
     chr, ord,
     toLower, toUpper,
 
+    -- * Data.Word & Data.Int
+    Word,
+    Word8, Word16, Word32, Word64,
+    Int8, Int16, Int32, Int64,
+
     -- * Text.PrettyPrint
     (<<>>),
     ) where
@@ -90,6 +95,7 @@ module Distribution.Compat.Prelude (
 import Prelude                       as BasePrelude hiding
   ( IO, mapM, mapM_, sequence, null, length, foldr
 #if MINVER_base_48
+  , Word
   -- We hide them, as we import only some members
   , Traversable, traverse, sequenceA
   , Foldable, foldMap
@@ -125,6 +131,8 @@ import Data.List                     (intercalate, intersperse, isPrefixOf,
                                       isSuffixOf, nub, nubBy, sort, sortBy,
                                       unfoldr)
 import Data.Maybe
+import Data.Int
+import Data.Word
 
 import qualified Text.PrettyPrint as Disp
 
