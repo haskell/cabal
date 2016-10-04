@@ -273,18 +273,22 @@ runProjectPostBuildPhase _ ProjectBuildContext {buildSettings} _
 runProjectPostBuildPhase verbosity ProjectBuildContext {..} buildOutcomes = do
     -- Update other build artefacts
     -- TODO: currently none, but could include:
-    --        - .ghc.environment
     --        - bin symlinks/wrappers
     --        - haddock/hoogle/ctags indexes
     --        - delete stale lib registrations
     --        - delete stale package dirs
 
-    _postBuildStatus <- updatePostBuildProjectStatus
+    postBuildStatus <- updatePostBuildProjectStatus
                          verbosity
                          distDirLayout
                          elaboratedPlanOriginal
                          pkgsBuildStatus
                          buildOutcomes
+
+    writePlanGhcEnvironment projectRootDir
+                            elaboratedPlanOriginal
+                            elaboratedShared
+                            postBuildStatus
 
     -- Finally if there were any build failures then report them and throw
     -- an exception to terminate the program
