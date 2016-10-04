@@ -289,11 +289,16 @@ depLibraryPaths inplace relative lbi clbi = do
          then canonicalizePath p
          else return p
 
--- TODO: doc
+-- | Get all module names that needed to be built by GHC; i.e., all
+-- of these 'ModuleName's have interface files associated with them
+-- that need to be installed.
 allLibModules :: Library -> ComponentLocalBuildInfo -> [ModuleName]
 allLibModules lib clbi =
-    explicitLibModules lib
-    -- TODO: add more stuff
+    ordNub $
+    explicitLibModules lib ++
+    case clbi of
+        LibComponentLocalBuildInfo { componentInstantiatedWith = insts } -> map fst insts
+        _ -> []
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
