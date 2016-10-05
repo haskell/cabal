@@ -55,9 +55,8 @@ import GHC.IO.Encoding.Failure
 #endif
 
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
-import Prelude hiding (ioError)
-import System.Directory (doesDirectoryExist)
-import System.IO.Error (ioError, mkIOError, doesNotExistErrorType)
+import qualified System.Directory as Dir
+import qualified System.IO.Error as IOError
 #endif
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
@@ -244,9 +243,9 @@ tryCanonicalizePath :: FilePath -> IO FilePath
 tryCanonicalizePath path = do
   ret <- canonicalizePath path
 #if defined(mingw32_HOST_OS) || MIN_VERSION_directory(1,2,3)
-  exists <- liftM2 (||) (doesFileExist ret) (doesDirectoryExist ret)
+  exists <- liftM2 (||) (doesFileExist ret) (Dir.doesDirectoryExist ret)
   unless exists $
-    ioError $ mkIOError doesNotExistErrorType "canonicalizePath"
+    IOError.ioError $ IOError.mkIOError IOError.doesNotExistErrorType "canonicalizePath"
                         Nothing (Just ret)
 #endif
   return ret

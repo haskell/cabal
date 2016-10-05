@@ -43,7 +43,6 @@ Extra-Source-Files:
   tests/IntegrationTests/custom/custom_dep/custom/A.hs
   tests/IntegrationTests/custom/custom_dep/custom/Setup.hs
   tests/IntegrationTests/custom/custom_dep/custom/custom.cabal
-  tests/IntegrationTests/custom/plain.err
   tests/IntegrationTests/custom/plain.sh
   tests/IntegrationTests/custom/plain/A.hs
   tests/IntegrationTests/custom/plain/Setup.hs
