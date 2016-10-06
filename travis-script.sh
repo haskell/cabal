@@ -9,6 +9,8 @@
 
 . ./travis-common.sh
 
+CABAL_STORE_DB="${HOME}/.cabal/store/ghc-${GHCVER}/package.db"
+CABAL_LOCAL_DB="${PWD}/dist-newstyle/packagedb/ghc-${GHCVER}"
 CABAL_BDIR="${PWD}/dist-newstyle/build/Cabal-${CABAL_VERSION}"
 CABAL_INSTALL_BDIR="${PWD}/dist-newstyle/build/cabal-install-${CABAL_VERSION}"
 CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
@@ -53,7 +55,7 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 # http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
 
 # Run tests
-(cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
+(export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
 (cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
 
 # Run haddock (hack: use the Setup script from package-tests!)

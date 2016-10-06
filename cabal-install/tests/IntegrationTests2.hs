@@ -14,6 +14,8 @@ import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Setup (toFlag)
+import Distribution.Simple.Compiler
+import Distribution.System
 import Distribution.Version
 import Distribution.Verbosity
 import Distribution.Text
@@ -130,8 +132,17 @@ testExceptionInBuildStep config = do
 testSetupScriptStyles :: ProjectConfig -> (String -> IO ()) -> Assertion
 testSetupScriptStyles config reportSubCase = do
 
-    reportSubCase (show SetupCustomExplicitDeps)
-    (plan1, res1) <- executePlan =<< planProject testdir1 config
+  reportSubCase (show SetupCustomExplicitDeps)
+
+  plan0@(_,_,sharedConfig,_,_) <- planProject testdir1 config
+
+  let isOSX (Platform _ OSX) = True
+      isOSX _ = False
+  -- Skip the Custom tests when the shipped Cabal library is buggy
+  unless (isOSX (pkgConfigPlatform sharedConfig)
+       && compilerVersion (pkgConfigCompiler sharedConfig) < mkVersion [7,10]) $ do
+
+    (plan1, res1) <- executePlan plan0
     (pkg1,  _)    <- expectPackageInstalled plan1 res1 pkgidA
     elabSetupScriptStyle pkg1 @?= SetupCustomExplicitDeps
     hasDefaultSetupDeps pkg1 @?= Just False

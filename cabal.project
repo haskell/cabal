@@ -1,4 +1,5 @@
 packages: Cabal/ cabal-install/
+constraints: unix >= 2.7.1.0
 
 -- Uncomment to allow picking up extra local unpacked deps:
 --optional-packages: */
