@@ -668,14 +668,16 @@ writeConfigFile file comments vals = do
   where
     explanation = unlines
       ["-- This is the configuration file for the 'cabal' command line tool."
-      ,""
+      ,"--"
       ,"-- The available configuration options are listed below."
       ,"-- Some of them have default values listed."
-      ,""
+      ,"--"
       ,"-- Lines (like this one) beginning with '--' are comments."
       ,"-- Be careful with spaces and indentation because they are"
       ,"-- used to indicate layout for nested sections."
-      ,""
+      ,"--"
+      ,"-- This config file was generated using the following versions"
+      ,"-- of Cabal and cabal-install:"
       ,"-- Cabal library version: " ++ Text.display cabalVersion
       ,"-- cabal-install version: " ++ showVersion Paths_cabal_install.version
       ,"",""
