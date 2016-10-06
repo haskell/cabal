@@ -82,6 +82,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.synopsis           = "",
     Current.description        = description ipi,
     Current.category           = category ipi,
+    Current.indefinite         = False,
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),

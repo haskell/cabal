@@ -51,6 +51,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.ComponentLocalBuildInfo
 
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
@@ -401,6 +402,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.description        = description pkg,
     IPI.category           = category    pkg,
     IPI.abiHash            = abi_hash,
+    IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
     IPI.exposedModules     = componentExposedModules clbi,
     IPI.hiddenModules      = otherModules bi,

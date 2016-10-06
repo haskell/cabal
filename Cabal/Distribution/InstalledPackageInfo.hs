@@ -31,7 +31,6 @@ module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
         installedComponentId,
         installedPackageId,
-        indefinite,
         requiredSignatures,
         installedOpenUnitId,
         ExposedModule(..),
@@ -61,7 +60,6 @@ import Distribution.Compat.Graph
 import Text.PrettyPrint as Disp
 import qualified Data.Char as Char
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Data.Set (Set)
 
 -- -----------------------------------------------------------------------------
@@ -92,6 +90,7 @@ data InstalledPackageInfo
         category          :: String,
         -- these parts are required by an installed package only:
         abiHash           :: AbiHash,
+        indefinite        :: Bool,
         exposed           :: Bool,
         -- INVARIANT: if the package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.
@@ -118,13 +117,6 @@ data InstalledPackageInfo
         pkgRoot           :: Maybe FilePath
     }
     deriving (Eq, Generic, Read, Show)
-
--- | Returns 'True' if this is an interface-file only indefinite
--- package which has not been instantiated.
-indefinite :: InstalledPackageInfo -> Bool
-indefinite ipi =
-    -- TODO: optimize a little
-    Set.null (openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi)))
 
 -- | Get the indefinite unit identity representing this package.
 -- This IS NOT guaranteed to give you a substitution; for
@@ -185,6 +177,7 @@ emptyInstalledPackageInfo
         description       = "",
         category          = "",
         abiHash           = mkAbiHash "",
+        indefinite        = False,
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
@@ -336,6 +329,8 @@ installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
    boolField "exposed"
         exposed            (\val pkg -> pkg{exposed=val})
+ , boolField "indefinite"
+        indefinite         (\val pkg -> pkg{indefinite=val})
  , simpleField "exposed-modules"
         showExposedModules parseExposedModules
         exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
