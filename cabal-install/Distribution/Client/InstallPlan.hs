@@ -35,6 +35,7 @@ module Distribution.Client.InstallPlan (
   depends,
 
   fromSolverInstallPlan,
+  fromSolverInstallPlanWithProgress,
   configureInstallPlan,
   remove,
   installed,
@@ -84,6 +85,8 @@ import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.Settings
 import           Distribution.Solver.Types.SolverId
 import           Distribution.Solver.Types.InstSolverPackage
+
+import           Distribution.Utils.LogProgress
 
 -- TODO: Need this when we compute final UnitIds
 -- import qualified Distribution.Simple.Configure as Configure
@@ -435,6 +438,38 @@ fromSolverInstallPlan f plan =
     -- on neighbor SolverId, which must have all been done already
     -- by the reverse top-sort (we assume the graph is not broken).
 
+
+fromSolverInstallPlanWithProgress ::
+      (IsUnit ipkg, IsUnit srcpkg)
+    => (   (SolverId -> [GenericPlanPackage ipkg srcpkg])
+        -> SolverInstallPlan.SolverPlanPackage
+        -> LogProgress [GenericPlanPackage ipkg srcpkg]         )
+    -> SolverInstallPlan
+    -> LogProgress (GenericInstallPlan ipkg srcpkg)
+fromSolverInstallPlanWithProgress f plan = do
+    (_, _, pkgs'') <- foldM f' (Map.empty, Map.empty, [])
+                        (SolverInstallPlan.reverseTopologicalOrder plan)
+    return $ mkInstallPlan (Graph.fromList pkgs'')
+                  (SolverInstallPlan.planIndepGoals plan)
+  where
+    f' (pidMap, ipiMap, pkgs) pkg = do
+        pkgs' <- f (mapDep pidMap ipiMap) pkg
+        let (pidMap', ipiMap')
+                 = case nodeKey pkg of
+                    PreExistingId _ uid -> (pidMap, Map.insert uid pkgs' ipiMap)
+                    PlannedId     pid   -> (Map.insert pid pkgs' pidMap, ipiMap)
+        return (pidMap', ipiMap', pkgs' ++ pkgs)
+
+    mapDep _ ipiMap (PreExistingId _pid uid)
+        | Just pkgs <- Map.lookup uid ipiMap = pkgs
+        | otherwise = error ("fromSolverInstallPlan: PreExistingId " ++ display uid)
+    mapDep pidMap _ (PlannedId pid)
+        | Just pkgs <- Map.lookup pid pidMap = pkgs
+        | otherwise = error ("fromSolverInstallPlan: PlannedId " ++ display pid)
+    -- This shouldn't happen, since mapDep should only be called
+    -- on neighbor SolverId, which must have all been done already
+    -- by the reverse top-sort (we assume the graph is not broken).
+
 -- | Conversion of 'SolverInstallPlan' to 'InstallPlan'.
 -- Similar to 'elaboratedInstallPlan'
 configureInstallPlan :: SolverInstallPlan -> InstallPlan
@@ -458,8 +493,8 @@ configureInstallPlan solverPlan =
                         Cabal.NoFlag
                         (packageId spkg)
                         PD.CLibName
-                        (map confInstId (CD.libraryDeps deps))
-                        (solverPkgFlags spkg),
+                        (Just (map confInstId (CD.libraryDeps deps),
+                               solverPkgFlags spkg)),
         confPkgSource = solverPkgSource spkg,
         confPkgFlags  = solverPkgFlags spkg,
         confPkgStanzas = solverPkgStanzas spkg,

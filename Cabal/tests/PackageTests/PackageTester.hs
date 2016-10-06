@@ -28,6 +28,7 @@ module PackageTests.PackageTester
     , cabal'
     , cabal_build
     , cabal_install
+    , cabal_install_with_docs
     , ghcPkg
     , ghcPkg'
     , compileSetup
@@ -149,7 +150,8 @@ runTestM suite name subname m = do
                     testShouldFail = False,
                     testCurrentPackage = ".",
                     testPackageDb = False,
-                    testEnvironment = []
+                    -- Try to avoid Unicode output
+                    testEnvironment = [("LC_ALL", Just "C")]
                }
     void (runReaderT (cleanup >> m) (suite, test))
   where
@@ -420,6 +422,17 @@ cabal_install args = do
     cabal "register" []
     return ()
 
+-- | This abstracts the common pattern of "installing" a package,
+-- with haddock documentation.
+cabal_install_with_docs :: [String] -> TestM ()
+cabal_install_with_docs args = do
+    cabal "configure" args
+    cabal "build" []
+    cabal "haddock" []
+    cabal "copy" []
+    cabal "register" []
+    return ()
+
 -- | Determines what Setup executable to run and runs it
 doCabal :: [String]  -- ^ extra arguments
       -> TestM Result
@@ -669,14 +682,11 @@ whenGhcVersion p m = do
 withPackage :: FilePath -> TestM a -> TestM a
 withPackage f = withReaderT (\(suite, test) -> (suite, test { testCurrentPackage = f }))
 
--- TODO: Really should accumulate... but I think to do this
--- properly we can't just append
+-- We append to the environment list, as per 'getEffectiveEnvironment'
+-- which prefers the latest override.
 withEnv :: [(String, Maybe String)] -> TestM a -> TestM a
 withEnv e m = do
-    (_, test0) <- ask
-    when (not (null (testEnvironment test0)))
-        $ error "nested withEnv (not yet) supported"
-    withReaderT (\(suite, test) -> (suite, test { testEnvironment = e })) m
+    withReaderT (\(suite, test) -> (suite, test { testEnvironment = testEnvironment test ++ e })) m
 
 withPackageDb :: TestM a -> TestM a
 withPackageDb m = do

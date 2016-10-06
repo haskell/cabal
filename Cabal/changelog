@@ -126,6 +126,11 @@
 	as an argument to './Setup configure' (#3158).
 	* Macros 'VERSION_$pkgname' and 'MIN_VERSION_$pkgname' are now
 	also generated for the current package. (#3235).
+	* Backpack is supported!  Two new fields supported in Cabal
+	files: signatures and backpack-includes; and a new flag
+	to setup scripts, '--instantiate-with'.  See
+	https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst
+	for more details.
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.

@@ -3,12 +3,15 @@
 
 module Distribution.Types.ComponentLocalBuildInfo (
   ComponentLocalBuildInfo(..),
+  componentIsIndefinite,
   componentComponentId,
   ) where
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.ModuleName
 
+import Distribution.Backpack
 import Distribution.Compat.Graph
 import Distribution.Types.ComponentName
 
@@ -27,8 +30,12 @@ data ComponentLocalBuildInfo
     -- identify the ComponentLocalBuildInfo.
     componentLocalName :: ComponentName,
     -- | The computed 'UnitId' which uniquely identifies this
-    -- component.
+    -- component.  Might be hashed.
     componentUnitId :: UnitId,
+    -- | Is this an indefinite component (i.e. has unfilled holes)?
+    componentIsIndefinite_ :: Bool,
+    -- | How the component was instantiated
+    componentInstantiatedWith :: [(ModuleName, OpenModule)],
     -- | Resolved internal and external package dependencies for this component.
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
@@ -39,7 +46,7 @@ data ComponentLocalBuildInfo
     -- to hide or rename modules.  This is what gets translated into
     -- @-package-id@ arguments.  This is a modernized version of
     -- 'componentPackageDeps', which is kept around for BC purposes.
-    componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     -- | The internal dependencies which induce a graph on the
     -- 'ComponentLocalBuildInfo' of this package.  This does NOT
@@ -62,7 +69,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }
@@ -70,7 +77,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
 
@@ -79,7 +86,7 @@ data ComponentLocalBuildInfo
     componentLocalName :: ComponentName,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
-    componentIncludes :: [(UnitId, ModuleRenaming)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
     componentExeDeps :: [UnitId],
     componentInternalDeps :: [UnitId]
   }
@@ -93,5 +100,8 @@ instance IsNode ComponentLocalBuildInfo where
     nodeNeighbors = componentInternalDeps
 
 componentComponentId :: ComponentLocalBuildInfo -> ComponentId
-componentComponentId clbi = case componentUnitId clbi of
-                                SimpleUnitId cid -> cid
+componentComponentId clbi = unitIdComponentId (componentUnitId clbi)
+
+componentIsIndefinite :: ComponentLocalBuildInfo -> Bool
+componentIsIndefinite LibComponentLocalBuildInfo{ componentIsIndefinite_ = b } = b
+componentIsIndefinite _ = False

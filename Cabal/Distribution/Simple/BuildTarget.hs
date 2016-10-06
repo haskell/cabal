@@ -479,7 +479,14 @@ componentStringName _   (CTestName  name) = name
 componentStringName _   (CBenchName name) = name
 
 componentModules :: Component -> [ModuleName]
-componentModules (CLib   lib)   = libModules lib
+-- TODO: Use of 'explicitLibModules' here is a bit wrong:
+-- a user could very well ask to build a specific signature
+-- that was inherited from other packages.  To fix this
+-- we have to plumb 'LocalBuildInfo' through this code.
+-- Fortunately, this is only used by 'pkgComponentInfo' 
+-- Please don't export this function unless you plan on fixing
+-- this.
+componentModules (CLib   lib)   = explicitLibModules lib
 componentModules (CExe   exe)   = exeModules exe
 componentModules (CTest  test)  = testModules test
 componentModules (CBench bench) = benchmarkModules bench

@@ -1,6 +1,7 @@
 # trivial gitignore file
 .cabal-sandbox/
 cabal.sandbox.config
+cabal.project.local
 cabal-dev/
 .hpc/
 *.hi

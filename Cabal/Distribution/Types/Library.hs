@@ -4,8 +4,9 @@
 module Distribution.Types.Library (
     Library(..),
     emptyLibrary,
+    explicitLibModules,
+    libModulesAutogen,
     libModules,
-    libModulesAutogen
 ) where
 
 import Prelude ()
@@ -19,7 +20,7 @@ data Library = Library {
         libName :: Maybe String,
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
-        requiredSignatures:: [ModuleName], -- ^ What sigs need implementations?
+        signatures:: [ModuleName], -- ^ What sigs need implementations?
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
@@ -32,7 +33,7 @@ instance Monoid Library where
     libName = mempty,
     exposedModules = mempty,
     reexportedModules = mempty,
-    requiredSignatures = mempty,
+    signatures = mempty,
     libExposed     = True,
     libBuildInfo   = mempty
   }
@@ -43,7 +44,7 @@ instance Semigroup Library where
     libName = combine libName,
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
-    requiredSignatures = combine requiredSignatures,
+    signatures = combine signatures,
     libExposed     = libExposed a && libExposed b, -- so False propagates
     libBuildInfo   = combine libBuildInfo
   }
@@ -53,14 +54,26 @@ emptyLibrary :: Library
 emptyLibrary = mempty
 
 -- | Get all the module names from the library (exposed and internal modules)
--- which need to be compiled.  (This does not include reexports, which
--- do not need to be compiled.)
-libModules :: Library -> [ModuleName]
-libModules lib = exposedModules lib
+-- which are explicitly listed in the package description which would
+-- need to be compiled.  (This does not include reexports, which
+-- do not need to be compiled.)  This may not include all modules for which
+-- GHC generated interface files (i.e., implicit modules.)
+explicitLibModules :: Library -> [ModuleName]
+explicitLibModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
-              ++ requiredSignatures lib
+              ++ signatures lib
 
 -- | Get all the auto generated module names from the library, exposed or not.
 -- This are a subset of 'libModules'.
 libModulesAutogen :: Library -> [ModuleName]
 libModulesAutogen lib = autogenModules (libBuildInfo lib)
+
+-- | Backwards-compatibility shim for 'explicitLibModules'.  In most cases,
+-- you actually want 'allLibModules', which returns all modules that will
+-- actually be compiled, as opposed to those which are explicitly listed
+-- in the package description ('explicitLibModules'); unfortunately, the
+-- type signature for 'allLibModules' is incompatible since we need a
+-- 'ComponentLocalBuildInfo'.
+{-# DEPRECATED libModules "If you want all modules that are built with a library, use 'allLibModules'.  Otherwise, use 'explicitLibModules' for ONLY the modules explicitly mentioned in the package description." #-}
+libModules :: Library -> [ModuleName]
+libModules = explicitLibModules

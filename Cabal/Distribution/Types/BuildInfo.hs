@@ -17,14 +17,12 @@ module Distribution.Types.BuildInfo (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.ModuleRenaming
+import Distribution.Types.IncludeRenaming
 
 import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Compiler
 import Language.Haskell.Extension
-
-import qualified Data.Map as Map
 
 -- Consider refactoring into executable and library versions.
 data BuildInfo = BuildInfo {
@@ -61,7 +59,7 @@ data BuildInfo = BuildInfo {
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
         targetBuildDepends :: [Dependency], -- ^ Dependencies specific to a library or executable target
-        targetBuildRenaming :: Map PackageName ModuleRenaming
+        backpackIncludes :: [(PackageName, IncludeRenaming)]
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -98,7 +96,7 @@ instance Monoid BuildInfo where
     sharedOptions       = [],
     customFieldsBI      = [],
     targetBuildDepends  = [],
-    targetBuildRenaming = Map.empty
+    backpackIncludes    = []
   }
   mappend = (<>)
 
@@ -133,13 +131,12 @@ instance Semigroup BuildInfo where
     sharedOptions       = combine    sharedOptions,
     customFieldsBI      = combine    customFieldsBI,
     targetBuildDepends  = combineNub targetBuildDepends,
-    targetBuildRenaming = combineMap targetBuildRenaming
+    backpackIncludes    = combine backpackIncludes
   }
     where
       combine    field = field a `mappend` field b
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a
-      combineMap field = Map.unionWith mappend (field a) (field b)
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty

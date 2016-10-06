@@ -22,6 +22,30 @@ Extra-Source-Files:
   -- Generated with '../Cabal/misc/gen-extra-source-files.sh'
   -- Do NOT edit this section manually; instead, run the script.
   -- BEGIN gen-extra-source-files
+  tests/IntegrationTests/backpack/includes2-external.sh
+  tests/IntegrationTests/backpack/includes2-internal.sh
+  tests/IntegrationTests/backpack/includes2/Includes2.cabal
+  tests/IntegrationTests/backpack/includes2/exe/Main.hs
+  tests/IntegrationTests/backpack/includes2/exe/exe.cabal
+  tests/IntegrationTests/backpack/includes2/mylib/Mine.hs
+  tests/IntegrationTests/backpack/includes2/mylib/mylib.cabal
+  tests/IntegrationTests/backpack/includes2/mysql/Database/MySQL.hs
+  tests/IntegrationTests/backpack/includes2/mysql/mysql.cabal
+  tests/IntegrationTests/backpack/includes2/postgresql/Database/PostgreSQL.hs
+  tests/IntegrationTests/backpack/includes2/postgresql/postgresql.cabal
+  tests/IntegrationTests/backpack/includes2/src/App.hs
+  tests/IntegrationTests/backpack/includes2/src/src.cabal
+  tests/IntegrationTests/backpack/includes3-external.sh
+  tests/IntegrationTests/backpack/includes3-internal.sh
+  tests/IntegrationTests/backpack/includes3/Includes3.cabal
+  tests/IntegrationTests/backpack/includes3/exe/Main.hs
+  tests/IntegrationTests/backpack/includes3/exe/Setup.hs
+  tests/IntegrationTests/backpack/includes3/exe/exe.cabal
+  tests/IntegrationTests/backpack/includes3/indef/Foo.hs
+  tests/IntegrationTests/backpack/includes3/indef/Setup.hs
+  tests/IntegrationTests/backpack/includes3/indef/indef.cabal
+  tests/IntegrationTests/backpack/includes3/sigs/Setup.hs
+  tests/IntegrationTests/backpack/includes3/sigs/sigs.cabal
   tests/IntegrationTests/common.sh
   tests/IntegrationTests/custom-setup/Cabal-99998/Cabal.cabal
   tests/IntegrationTests/custom-setup/Cabal-99998/CabalMessage.hs

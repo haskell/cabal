@@ -179,7 +179,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
     ["-G", display language] ++
     concat [ ["-X", display ex] | ex <- usedExtensions bi ] ++
     cppOptions (libBuildInfo lib) ++
-    [ display modu | modu <- libModules lib ]
+    [ display modu | modu <- allLibModules lib clbi ]
 
 
 
@@ -193,7 +193,7 @@ installLib
   -> Library
   -> ComponentLocalBuildInfo
   -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
   let progdb = withPrograms lbi
   runDbProgram verbosity haskellSuitePkgProgram progdb $
     [ "install-library"
@@ -201,7 +201,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
     , "--target-dir", targetDir
     , "--dynlib-target-dir", dynlibTargetDir
     , "--package-id", display $ packageId pkg
-    ] ++ map display (libModules lib)
+    ] ++ map display (allLibModules lib clbi)
 
 registerPackage
   :: Verbosity

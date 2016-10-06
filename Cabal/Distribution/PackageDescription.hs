@@ -23,10 +23,9 @@ module Distribution.PackageDescription (
         knownBuildTypes,
         allLibraries,
 
-        -- ** Renaming
+        -- ** Renaming (syntactic)
         ModuleRenaming(..),
         defaultRenaming,
-        lookupRenaming,
 
         -- ** Libraries
         Library(..),
@@ -35,8 +34,9 @@ module Distribution.PackageDescription (
         withLib,
         hasPublicLib,
         hasLibs,
-        libModules,
+        explicitLibModules,
         libModulesAutogen,
+        libModules,
 
         -- ** Executables
         Executable(..),

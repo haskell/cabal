@@ -51,6 +51,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.ComponentLocalBuildInfo
 
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
@@ -199,7 +200,6 @@ registerAll pkg lbi regFlags ipis
                   where ys = take m xs
               number i = lpad (length (show num_ipis)) (show i)
           for_ (zip ([1..] :: [Int]) ipis) $ \(i, installedPkgInfo) ->
-            -- TODO: This will need a hashUnitId when Backpack comes.
             writeUTF8File (regFile </> (number i ++ "-" ++ display (IPI.installedUnitId installedPkgInfo)))
                           (IPI.showInstalledPackageInfo installedPkgInfo)
 
@@ -389,6 +389,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                                 pkgName = componentCompatPackageName clbi
                              },
     IPI.installedUnitId    = componentUnitId clbi,
+    IPI.instantiatedWith   = componentInstantiatedWith clbi,
     IPI.compatPackageKey   = componentCompatPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
@@ -401,6 +402,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.description        = description pkg,
     IPI.category           = category    pkg,
     IPI.abiHash            = abi_hash,
+    IPI.indefinite         = componentIsIndefinite clbi,
     IPI.exposed            = libExposed  lib,
     IPI.exposedModules     = componentExposedModules clbi,
     IPI.hiddenModules      = otherModules bi,
@@ -419,7 +421,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
-    IPI.depends            = map fst (componentPackageDeps clbi),
+                             --TODO: unclear what the root cause of the
+                             -- duplication is, but we nub it here for now:
+    IPI.depends            = ordNub $ map fst (componentPackageDeps clbi),
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
@@ -433,7 +437,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
   where
     bi = libBuildInfo lib
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
-    hasModules = not $ null (libModules lib)
+    hasModules = not $ null (allLibModules lib clbi)
     hasLibrary = hasModules || not (null (cSources bi))
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)

@@ -19,8 +19,8 @@ module Distribution.Simple.Program.GHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Backpack
 import Distribution.Simple.GHC.ImplInfo
-import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
@@ -83,13 +83,18 @@ data GhcOptions = GhcOptions {
   -- (we need to handle backwards compatibility.)
   ghcOptThisUnitId   :: Flag String,
 
+  ghcOptInstantiatedWith :: [(ModuleName, OpenModule)],
+
+  -- | No code? (But we turn on interface writing
+  ghcOptNoCode :: Flag Bool,
+
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
 
   -- | The GHC packages to bring into scope when compiling,
   -- the @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (UnitId, ModuleRenaming),
+    NubListR (OpenUnitId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -397,6 +402,16 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                   | otherwise                -> "-package-name"
              , this_arg ]
              | this_arg <- flag ghcOptThisUnitId ]
+
+  , if null (ghcOptInstantiatedWith opts)
+        then []
+        else "-instantiated-with"
+             : intercalate "," (map (\(n,m) -> display n ++ "="
+                                            ++ display m)
+                                    (ghcOptInstantiatedWith opts))
+             : []
+
+  , concat [ ["-fno-code", "-fwrite-interface"] | flagBool ghcOptNoCode ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]

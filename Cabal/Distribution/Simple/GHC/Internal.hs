@@ -37,6 +37,8 @@ import Distribution.Compat.Prelude
 
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.Package
+import Distribution.Types.ComponentLocalBuildInfo
+import Distribution.Backpack
 import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -287,6 +289,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> mempty,
+      ghcOptInstantiatedWith = case clbi of
+        LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
+          -> insts
+        _ -> [],
+      ghcOptNoCode          = toFlag $ componentIsIndefinite clbi,
       ghcOptPackageDBs      = withPackageDB lbi,
       ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
@@ -356,12 +363,13 @@ ghcLookupProperty prop comp =
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
 getHaskellObjects :: GhcImplInfo -> Library -> LocalBuildInfo
+                  -> ComponentLocalBuildInfo
                   -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
-getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects _implInfo lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let splitSuffix = "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
-                   | x <- libModules lib ]
+                   | x <- allLibModules lib clbi ]
         objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -370,10 +378,10 @@ getHaskellObjects _implInfo lib lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules lib ]
+               | x <- allLibModules lib clbi ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(UnitId, ModuleRenaming)]
+                 -> [(OpenUnitId, ModuleRenaming)]
 mkGhcOptPackages = componentIncludes
 
 substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo

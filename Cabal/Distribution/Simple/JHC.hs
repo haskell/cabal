@@ -125,7 +125,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   writeFileAtomic pfile . BS.Char8.pack $ jhcPkgConf pkg_descr
   runProgram verbosity jhcProg $
      ["--build-hl="++pfile, "-o", hlfile] ++
-     args ++ map display (libModules lib)
+     args ++ map display (allLibModules lib clbi)
 
 -- | Building an executable for JHC.
 -- Currently C source files are not supported.

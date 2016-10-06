@@ -312,7 +312,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let ghcArgs =
              ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
-          ++ map display (libModules lib)
+          ++ map display (allLibModules lib clbi)
       lhcWrap x = ["--build-library", "--ghc-opts=" ++ unwords x]
       ghcArgsProf = ghcArgs
           ++ ["-prof",
@@ -326,7 +326,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-osuf", "dyn_o", "-fPIC"
              ]
           ++ hcSharedOptions GHC libBi
-  unless (null (libModules lib)) $
+  unless (null (allLibModules lib clbi)) $
     do ifVanillaLib forceVanillaLib (runGhcProg $ lhcWrap ghcArgs)
        ifProfLib (runGhcProg $ lhcWrap ghcArgsProf)
        ifSharedLib (runGhcProg $ lhcWrap ghcArgsShared)
@@ -354,26 +354,26 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   stubObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension [objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | x <- allLibModules lib clbi ]
   stubProfObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | x <- allLibModules lib clbi ]
   stubSharedObjs <- fmap catMaybes $ sequenceA
     [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | x <- allLibModules lib clbi ]
 
-  hObjs     <- getHaskellObjects lib lbi
+  hObjs     <- getHaskellObjects lib lbi clbi
                     pref objExtension True
   hProfObjs <-
     if (withProfLib lbi)
-            then getHaskellObjects lib lbi
+            then getHaskellObjects lib lbi clbi
                     pref ("p_" ++ objExtension) True
             else return []
   hSharedObjs <-
     if (withSharedLib lbi)
-            then getHaskellObjects lib lbi
+            then getHaskellObjects lib lbi clbi
                     pref ("dyn_" ++ objExtension) False
             else return []
 
@@ -535,12 +535,12 @@ hackThreadedFlag verbosity comp prof bi
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
-getHaskellObjects :: Library -> LocalBuildInfo
+getHaskellObjects :: Library -> LocalBuildInfo -> ComponentLocalBuildInfo
                   -> FilePath -> String -> Bool -> NoCallStackIO [FilePath]
-getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects lib lbi clbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
-                   | x <- libModules lib ]
+                   | x <- allLibModules lib clbi ]
         objss <- traverse getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -549,7 +549,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules lib ]
+               | x <- allLibModules lib clbi ]
 
 
 constructGHCCmdLine
@@ -717,11 +717,11 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
         createDirectoryIfMissingVerbose verbosity True dst
         installOrdinaryFile verbosity (src </> n) (dst </> n)
       copyModuleFiles ext =
-        findModuleFiles [builtDir] [ext] (libModules lib)
+        findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
           >>= installOrdinaryFiles verbosity targetDir
   ifVanilla $ copyModuleFiles "hi"
   ifProf    $ copyModuleFiles "p_hi"
-  hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
+  hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (allLibModules lib clbi)
   flip traverse_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
 
   -- copy the built library files over:
@@ -738,7 +738,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     ghciLibName    = mkGHCiLibName       lib_name
     sharedLibName  = mkSharedLibName cid lib_name
 
-    hasLib    = not $ null (libModules lib)
+    hasLib    = not $ null (allLibModules lib clbi)
                    && null (cSources (libBuildInfo lib))
     ifVanilla = when (hasLib && withVanillaLib lbi)
     ifProf    = when (hasLib && withProfLib    lbi)

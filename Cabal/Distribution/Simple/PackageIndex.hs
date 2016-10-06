@@ -113,6 +113,7 @@ import Prelude ()
 import Distribution.Compat.Prelude hiding (lookup)
 
 import Distribution.Package
+import Distribution.Backpack
 import Distribution.ModuleName
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
@@ -394,7 +395,8 @@ lookupUnitId index uid = Map.lookup uid (unitIdIndex index)
 --
 lookupComponentId :: PackageIndex a -> ComponentId
                   -> Maybe a
-lookupComponentId index uid = Map.lookup (SimpleUnitId uid) (unitIdIndex index)
+lookupComponentId index cid =
+    Map.lookup (newSimpleUnitId cid) (unitIdIndex index)
 
 -- | Backwards compatibility for Cabal pre-1.24.
 {-# DEPRECATED lookupInstalledPackageId "Use lookupUnitId instead" #-}
@@ -665,8 +667,9 @@ moduleNameIndex index =
     IPI.ExposedModule m reexport <- IPI.exposedModules pkg
     case reexport of
         Nothing -> return (m, [pkg])
-        Just (Module _ m') | m == m'   -> []
-                           | otherwise -> return (m', [pkg])
+        Just (OpenModuleVar _) -> []
+        Just (OpenModule _ m') | m == m'   -> []
+                                | otherwise -> return (m', [pkg])
         -- The heuristic is this: we want to prefer the original package
         -- which originally exported a module.  However, if a reexport
         -- also *renamed* the module (m /= m'), then we have to use the
