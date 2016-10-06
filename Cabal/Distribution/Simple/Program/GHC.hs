@@ -19,6 +19,7 @@ module Distribution.Simple.Program.GHC (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Package
 import Distribution.Backpack
 import Distribution.Simple.GHC.ImplInfo
 import Distribution.PackageDescription hiding (Flag)
@@ -82,6 +83,12 @@ data GhcOptions = GhcOptions {
   -- already figured out what the correct format for this string is
   -- (we need to handle backwards compatibility.)
   ghcOptThisUnitId   :: Flag String,
+
+  -- | GHC doesn't make any assumptions about the format of
+  -- definite unit ids, so when we are instantiating a package it
+  -- needs to be told explicitly what the component being instantiated
+  -- is.  This only gets set when 'ghcOptInstantiatedWith' is non-empty
+  ghcOptThisComponentId :: Flag ComponentId,
 
   ghcOptInstantiatedWith :: [(ModuleName, OpenModule)],
 
@@ -402,6 +409,9 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
                   | otherwise                -> "-package-name"
              , this_arg ]
              | this_arg <- flag ghcOptThisUnitId ]
+
+  , concat [ ["-this-component-id", display this_cid ]
+           | this_cid <- flag ghcOptThisComponentId ]
 
   , if null (ghcOptInstantiatedWith opts)
         then []
