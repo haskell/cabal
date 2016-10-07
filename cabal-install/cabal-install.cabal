@@ -318,6 +318,7 @@ executable cabal
         Distribution.Client.Sandbox.Timestamp
         Distribution.Client.Sandbox.Types
         Distribution.Client.SavedFlags
+        Distribution.Client.Security.DNS
         Distribution.Client.Security.HTTP
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
