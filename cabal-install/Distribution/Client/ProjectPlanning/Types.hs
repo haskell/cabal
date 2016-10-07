@@ -122,6 +122,7 @@ data ElaboratedConfiguredPackage
        -- | The 'UnitId' which uniquely identifies this item in a build plan
        elabUnitId        :: UnitId,
 
+       elabComponentId :: ComponentId,
        elabInstantiatedWith :: Map ModuleName Module,
        elabLinkedInstantiatedWith :: Map ModuleName OpenModule,
 
@@ -268,7 +269,7 @@ instance Package ElaboratedConfiguredPackage where
   packageId = elabPkgSourceId
 
 instance HasConfiguredId ElaboratedConfiguredPackage where
-  configuredId elab = ConfiguredId (packageId elab) (unitIdComponentId (elabUnitId elab))
+  configuredId elab = ConfiguredId (packageId elab) (elabComponentId elab)
 
 instance HasUnitId ElaboratedConfiguredPackage where
   installedUnitId = elabUnitId
@@ -290,6 +291,7 @@ instance Binary ElaboratedPackageOrComponent
 elabDistDirParams :: ElaboratedSharedConfig -> ElaboratedConfiguredPackage -> DistDirParams
 elabDistDirParams shared elab = DistDirParams {
         distParamUnitId = installedUnitId elab,
+        distParamComponentId = elabComponentId elab,
         distParamPackageId = elabPkgSourceId elab,
         distParamComponentName = case elabPkgOrComp elab of
             ElabComponent comp -> compComponentName comp

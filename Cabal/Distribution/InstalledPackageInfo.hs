@@ -29,8 +29,8 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo(..),
-        installedComponentId,
         installedPackageId,
+        installedComponentId,
         requiredSignatures,
         installedOpenUnitId,
         ExposedModule(..),
@@ -72,6 +72,7 @@ data InstalledPackageInfo
         -- these parts are exactly the same as PackageDescription
         sourcePackageId   :: PackageId,
         installedUnitId   :: UnitId,
+        installedComponentId_ :: ComponentId,
         -- INVARIANT: if this package is definite, OpenModule's
         -- OpenUnitId directly records UnitId.  If it is
         -- indefinite, OpenModule is always an OpenModuleVar
@@ -118,6 +119,12 @@ data InstalledPackageInfo
     }
     deriving (Eq, Generic, Read, Show)
 
+installedComponentId :: InstalledPackageInfo -> ComponentId
+installedComponentId ipi =
+    case unComponentId (installedComponentId_ ipi) of
+        "" -> mkComponentId (unUnitId (installedUnitId ipi))
+        _  -> installedComponentId_ ipi
+
 -- | Get the indefinite unit identity representing this package.
 -- This IS NOT guaranteed to give you a substitution; for
 -- instantiated packages you will get @DefiniteUnitId (installedUnitId ipi)@.
@@ -125,15 +132,12 @@ data InstalledPackageInfo
 -- an @OpenUnitId@ with the appropriate 'OpenModuleSubst'.
 installedOpenUnitId :: InstalledPackageInfo -> OpenUnitId
 installedOpenUnitId ipi
-    = mkOpenUnitId (installedUnitId ipi) (Map.fromList (instantiatedWith ipi))
+    = mkOpenUnitId (installedUnitId ipi) (installedComponentId ipi) (Map.fromList (instantiatedWith ipi))
 
 -- | Returns the set of module names which need to be filled for
 -- an indefinite package, or the empty set if the package is definite.
 requiredSignatures :: InstalledPackageInfo -> Set ModuleName
 requiredSignatures ipi = openModuleSubstFreeHoles (Map.fromList (instantiatedWith ipi))
-
-installedComponentId :: InstalledPackageInfo -> ComponentId
-installedComponentId ipi = unitIdComponentId (installedUnitId ipi)
 
 {-# DEPRECATED installedPackageId "Use installedUnitId instead" #-}
 -- | Backwards compatibility with Cabal pre-1.24.
@@ -164,6 +168,7 @@ emptyInstalledPackageInfo
    = InstalledPackageInfo {
         sourcePackageId   = PackageIdentifier (mkPackageName "") nullVersion,
         installedUnitId   = mkUnitId "",
+        installedComponentId_ = mkComponentId "",
         instantiatedWith  = [],
         compatPackageKey  = "",
         license           = UnspecifiedLicense,

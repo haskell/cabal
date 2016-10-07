@@ -13,7 +13,6 @@
 module Distribution.Backpack (
     -- * OpenUnitId
     OpenUnitId(..),
-    openUnitIdComponentId,
     openUnitIdFreeHoles,
     mkOpenUnitId,
 
@@ -117,11 +116,6 @@ instance Text OpenUnitId where
                        parseOpenModuleSubst
             return (IndefFullUnitId cid insts)
 
--- | Get the 'ComponentId' of an 'OpenUnitId'.
-openUnitIdComponentId :: OpenUnitId -> ComponentId
-openUnitIdComponentId (IndefFullUnitId cid _) = cid
-openUnitIdComponentId (DefiniteUnitId def_uid) = unitIdComponentId (unDefUnitId def_uid)
-
 -- | Get the set of holes ('ModuleVar') embedded in a 'UnitId'.
 openUnitIdFreeHoles :: OpenUnitId -> Set ModuleName
 openUnitIdFreeHoles (IndefFullUnitId _ insts) = openModuleSubstFreeHoles insts
@@ -129,11 +123,11 @@ openUnitIdFreeHoles _ = Set.empty
 
 -- | Safe constructor from a UnitId.  The only way to do this safely
 -- is if the instantiation is provided.
-mkOpenUnitId :: UnitId -> OpenModuleSubst -> OpenUnitId
-mkOpenUnitId uid insts =
+mkOpenUnitId :: UnitId -> ComponentId -> OpenModuleSubst -> OpenUnitId
+mkOpenUnitId uid cid insts =
     if Set.null (openModuleSubstFreeHoles insts)
         then DefiniteUnitId (unsafeMkDefUnitId uid) -- invariant holds!
-        else IndefFullUnitId (unitIdComponentId uid) insts
+        else IndefFullUnitId cid insts
 
 -----------------------------------------------------------------------
 -- DefUnitId
@@ -142,7 +136,9 @@ mkOpenUnitId uid insts =
 -- with no holes.
 mkDefUnitId :: ComponentId -> Map ModuleName Module -> DefUnitId
 mkDefUnitId cid insts =
-    unsafeMkDefUnitId (UnitId cid (hashModuleSubst insts)) -- impose invariant!
+    unsafeMkDefUnitId (mkUnitId
+        (unComponentId cid ++ maybe "" ("+"++) (hashModuleSubst insts)))
+        -- impose invariant!
 
 -----------------------------------------------------------------------
 -- OpenModule

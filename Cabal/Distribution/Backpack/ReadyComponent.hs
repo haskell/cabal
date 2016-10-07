@@ -35,6 +35,7 @@ import Control.Monad
 import Text.PrettyPrint
 import qualified Data.Map as Map
 
+import Distribution.Version
 import Distribution.Text
 
 -- | An instantiated component is simply a linked component which
@@ -62,6 +63,8 @@ data IndefiniteComponent
 data ReadyComponent
     = ReadyComponent {
         rc_uid          :: UnitId,
+        rc_open_uid     :: OpenUnitId,
+        rc_cid          :: ComponentId,
         rc_pkgid        :: PackageId,
         rc_component    :: Component,
         -- build-tools don't participate in mix-in linking.
@@ -85,18 +88,19 @@ instance IsNode ReadyComponent where
     nodeKey = rc_uid
     nodeNeighbors rc =
       (case rc_i rc of
-        Right _ | UnitId cid (Just _)
-                    <- rc_uid rc -> [newSimpleUnitId cid]
+        Right inst | [] <- instc_insts inst
+                   -> []
+                   | otherwise
+                   -> [newSimpleUnitId (rc_cid rc)]
         _ -> []) ++
       ordNub (map fst (rc_depends rc))
 
 rc_compat_name :: ReadyComponent -> PackageName
 rc_compat_name ReadyComponent{
         rc_pkgid = PackageIdentifier pkg_name _,
-        rc_component = component,
-        rc_uid = uid
+        rc_component = component
     }
-    = computeCompatPackageName pkg_name (componentName component) (Just uid)
+    = computeCompatPackageName pkg_name (componentName component)
 
 rc_compat_key :: ReadyComponent -> Compiler -> String
 rc_compat_key rc@ReadyComponent {
@@ -158,7 +162,7 @@ instance Monad InstM where
 -- instantiated components are given 'HashedUnitId'.
 --
 toReadyComponents
-    :: Map ComponentId PackageId
+    :: Map UnitId PackageId
     -> Map ModuleName Module -- subst for the public component
     -> [LinkedComponent]
     -> [ReadyComponent]
@@ -198,12 +202,19 @@ toReadyComponents pid_map subst0 comps
                 x' <- substUnitId insts x
                 return (x', y)
             build_tools <- mapM (substUnitId insts) (lc_internal_build_tools lc)
+            s <- InstM $ \s -> (s, s)
             let getDep (Module dep_def_uid _)
                     | let dep_uid = unDefUnitId dep_def_uid
-                    , Just pid <- Map.lookup (unitIdComponentId dep_uid) pid_map
                     -- Lose DefUnitId invariant for rc_depends
-                    = [(dep_uid, pid)]
-                getDep _ = []
+                    = [(dep_uid,
+                          fromMaybe err_pid $
+                            Map.lookup dep_uid pid_map A.<|>
+                            fmap rc_pkgid (join (Map.lookup dep_uid s)))]
+                  where
+                    err_pid =
+                      PackageIdentifier
+                        (mkPackageName "nonexistent-package-this-is-a-cabal-bug")
+                        (mkVersion [0])
                 instc = InstantiatedComponent {
                             instc_insts = Map.toList insts,
                             instc_provides = provides,
@@ -211,6 +222,8 @@ toReadyComponents pid_map subst0 comps
                         }
             return $ Just ReadyComponent {
                     rc_uid          = uid,
+                    rc_open_uid     = DefiniteUnitId (unsafeMkDefUnitId uid),
+                    rc_cid          = lc_cid lc,
                     rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
                     rc_internal_build_tools = build_tools,
@@ -263,7 +276,9 @@ toReadyComponents pid_map subst0 comps
                         indefc_includes = lc_includes lc
                     }
             return $ Just ReadyComponent {
-                    rc_uid = uid,
+                    rc_uid          = uid,
+                    rc_open_uid     = lc_uid lc,
+                    rc_cid = lc_cid lc,
                     rc_pkgid        = lc_pkgid lc,
                     rc_component    = lc_component lc,
                     rc_internal_build_tools = build_tools,

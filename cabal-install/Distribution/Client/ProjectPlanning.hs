@@ -113,6 +113,7 @@ import qualified Distribution.Simple.LocalBuildInfo as Cabal
 import           Distribution.Simple.LocalBuildInfo (ComponentName(..))
 import qualified Distribution.Simple.Register as Cabal
 import qualified Distribution.Simple.InstallDirs as InstallDirs
+import qualified Distribution.InstalledPackageInfo as IPI
 
 import           Distribution.Backpack.ConfiguredComponent
 import           Distribution.Backpack.LinkedComponent
@@ -210,7 +211,7 @@ sanityCheckElaboratedConfiguredPackage sharedConfig
     -- the 'hashedInstalledPackageId' we would compute from
     -- the elaborated configured package
   . assert (elabBuildStyle == BuildInplaceOnly ||
-     unitIdComponentId elabUnitId == hashedInstalledPackageId
+     elabComponentId == hashedInstalledPackageId
                             (packageHashInputs sharedConfig elab))
 
     -- the stanzas explicitly disabled should not be available
@@ -1067,6 +1068,17 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         pkgConfigCompilerProgs = compilerprogdb
       }
 
+    preexistingInstantiatedPkgs =
+        Map.fromList (mapMaybe f (SolverInstallPlan.toList solverPlan))
+      where
+        f (SolverInstallPlan.PreExisting inst)
+            | not (IPI.indefinite ipkg)
+            = Just (IPI.installedUnitId ipkg,
+                     (FullUnitId (IPI.installedComponentId ipkg)
+                                 (Map.fromList (IPI.instantiatedWith ipkg))))
+         where ipkg = instSolverPkgIPI inst
+        f _ = Nothing
+
     elaboratedInstallPlan =
       flip InstallPlan.fromSolverInstallPlanWithProgress solverPlan $ \mapDep planpkg ->
         case planpkg of
@@ -1133,13 +1145,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             infoProgress $ dispConfiguredComponent cc
             let -- Use of invariant: DefUnitId indicates that if
                 -- there is no hash, it must have an empty
-                -- instnatiation.
+                -- instantiation.
                 lookup_uid def_uid =
-                    case unDefUnitId def_uid of
-                        UnitId sub_cid Nothing -> FullUnitId sub_cid Map.empty
-                        -- TODO: This case CAN happen if we have pre-existing
-                        -- instantiated things.  Fix eventually.
-                        uid -> error ("lookup_uid: " ++ display uid)
+                    case Map.lookup (unDefUnitId def_uid) preexistingInstantiatedPkgs of
+                        Just full -> full
+                        Nothing -> error ("lookup_uid: " ++ display def_uid)
             lc <- toLinkedComponent verbosity lookup_uid (elabPkgSourceId elab0)
                         (Map.union external_lc_map lc_map) cc
             let lc_map' = extendLinkedComponentMap lc lc_map
@@ -1153,6 +1163,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             let elab = elab1 {
                     elabModuleShape = lc_shape lc,
                     elabUnitId      = abstractUnitId (lc_uid lc),
+                    elabComponentId = lc_cid lc,
                     elabLinkedInstantiatedWith = Map.fromList (lc_insts lc),
                     elabPkgOrComp = ElabComponent $ elab_comp {
                         compLinkedLibDependencies = map fst (lc_depends lc),
@@ -1259,30 +1270,27 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             external_cc_map = Map.fromList (map mkPkgNameMapping external_lib_dep_pkgs)
             external_lc_map = Map.fromList (map mkShapeMapping external_lib_dep_pkgs)
 
-            componentId = unitIdComponentId . installedUnitId
-
             mkPkgNameMapping :: ElaboratedPlanPackage
                              -> (PackageName, (ComponentId, PackageId))
             mkPkgNameMapping dpkg =
-                (packageName dpkg, (componentId dpkg, packageId dpkg))
+                (packageName dpkg, (getComponentId dpkg, packageId dpkg))
 
             mkShapeMapping :: ElaboratedPlanPackage
                            -> (ComponentId, (OpenUnitId, ModuleShape))
             mkShapeMapping dpkg =
-                (componentId dpkg, (indef_uid, shape))
+                (getComponentId dpkg, (indef_uid, shape))
               where
-                shape = planPkgShape dpkg
+                (dcid, shape) = case dpkg of
+                    InstallPlan.PreExisting dipkg ->
+                        (IPI.installedComponentId dipkg, shapeInstalledPackage dipkg)
+                    InstallPlan.Configured elab' ->
+                        (elabComponentId elab', elabModuleShape elab')
+                    InstallPlan.Installed elab' ->
+                        (elabComponentId elab', elabModuleShape elab')
                 indef_uid =
-                    IndefFullUnitId (unitIdComponentId (installedUnitId dpkg))
+                    IndefFullUnitId dcid
                         (Map.fromList [ (req, OpenModuleVar req)
                                       | req <- Set.toList (modShapeRequires shape)])
-
-            planPkgShape :: ElaboratedPlanPackage -> ModuleShape
-            planPkgShape (InstallPlan.PreExisting dipkg) = shapeInstalledPackage dipkg
-            planPkgShape (InstallPlan.Configured elab')
-                = elabModuleShape elab'
-            planPkgShape (InstallPlan.Installed elab')
-                = elabModuleShape elab'
 
     elaborateLibSolverId' :: (SolverId -> [ElaboratedPlanPackage])
                       -> SolverId -> [ElaboratedPlanPackage]
@@ -1351,6 +1359,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elab0@ElaboratedConfiguredPackage{..} = elaborateSolverToCommon mapDep pkg
         elab = elab0 {
                 elabUnitId = newSimpleUnitId pkgInstalledId,
+                elabComponentId = pkgInstalledId,
                 elabLinkedInstantiatedWith = Map.empty,
                 elabInstallDirs = install_dirs,
                 elabRequiresRegistration = requires_reg,
@@ -1424,6 +1433,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
 
         -- These get filled in later
         elabUnitId          = error "elaborateSolverToCommon: elabUnitId"
+        elabComponentId     = error "elaborateSolverToCommon: elabComponentId"
         elabInstantiatedWith = Map.empty
         elabLinkedInstantiatedWith = error "elaborateSolverToCommon: elabLinkedInstantiatedWith"
         elabPkgOrComp       = error "elaborateSolverToCommon: elabPkgOrComp"
@@ -1688,13 +1698,19 @@ instance IsNode NonSetupLibDepSolverPlanPackage where
 type InstS = Map UnitId ElaboratedPlanPackage
 type InstM a = State InstS a
 
+getComponentId :: ElaboratedPlanPackage
+               -> ComponentId
+getComponentId (InstallPlan.PreExisting dipkg) = IPI.installedComponentId dipkg
+getComponentId (InstallPlan.Configured elab) = elabComponentId elab
+getComponentId (InstallPlan.Installed elab) = elabComponentId elab
+
 instantiateInstallPlan :: ElaboratedInstallPlan -> ElaboratedInstallPlan
 instantiateInstallPlan plan =
     InstallPlan.new (IndependentGoals False) (Graph.fromList (Map.elems ready_map))
   where
     pkgs = InstallPlan.toList plan
 
-    cmap = Map.fromList [ (unitIdComponentId (nodeKey pkg), pkg) | pkg <- pkgs ]
+    cmap = Map.fromList [ (getComponentId pkg, pkg) | pkg <- pkgs ]
 
     instantiateUnitId :: ComponentId -> Map ModuleName Module
                       -> InstM DefUnitId
@@ -1723,6 +1739,7 @@ instantiateInstallPlan plan =
             let getDep (Module dep_uid _) = [dep_uid]
             return $ InstallPlan.Configured elab {
                     elabUnitId = uid,
+                    elabComponentId = cid,
                     elabInstantiatedWith = insts,
                     elabPkgOrComp = ElabComponent comp {
                         compNonSetupDependencies =
@@ -1782,9 +1799,9 @@ instantiateInstallPlan plan =
             case pkg of
                 InstallPlan.Configured elab
                     | not (Map.null (elabLinkedInstantiatedWith elab))
-                    -> indefiniteUnitId (unitIdComponentId (nodeKey elab))
+                    -> indefiniteUnitId (elabComponentId elab)
                         >> return ()
-                _ -> instantiateUnitId (unitIdComponentId (nodeKey pkg)) Map.empty
+                _ -> instantiateUnitId (getComponentId pkg) Map.empty
                         >> return ()
 
 ---------------------------
@@ -2544,7 +2561,7 @@ setupHsConfigureFlags (ReadyPackage elab@ElaboratedConfiguredPackage{..})
                                   ElabComponent _ -> mempty
     configCID                 = case elabPkgOrComp of
                                   ElabPackage _ -> mempty
-                                  ElabComponent _ -> toFlag (unitIdComponentId elabUnitId)
+                                  ElabComponent _ -> toFlag elabComponentId
 
     configProgramPaths        = Map.toList elabProgramPaths
     configProgramArgs         = Map.toList elabProgramArgs

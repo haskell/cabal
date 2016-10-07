@@ -1182,15 +1182,14 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         []   -> Left  $
                   case is_internal of
                     Just cname -> DependencyMissingInternal dep_pkgname
-                                    (computeCompatPackageName
-                                     (packageName pkgid) cname Nothing)
+                                    (computeCompatPackageName (packageName pkgid) cname)
                     Nothing -> DependencyNotExists dep_pkgname
         pkgs -> Right $ ExternalDependency dep $
                 case last pkgs of
                   (_ver, pkginstances) -> head pkginstances
      where
       dep' | Just cname <- is_internal
-           = Dependency (computeCompatPackageName (packageName pkgid) cname Nothing) vr
+           = Dependency (computeCompatPackageName (packageName pkgid) cname) vr
            | otherwise = dep
     -- NB: here computeCompatPackageName we want to pick up the INDEFINITE ones
     -- which is why we pass 'Nothing' as 'UnitId'

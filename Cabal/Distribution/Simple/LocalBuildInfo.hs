@@ -33,7 +33,6 @@ module Distribution.Simple.LocalBuildInfo (
         showComponentName,
         componentNameString,
         ComponentLocalBuildInfo(..),
-        componentComponentId,
         componentBuildDir,
         foldComponent,
         componentName,
@@ -106,12 +105,14 @@ componentBuildDir :: LocalBuildInfo -> ComponentLocalBuildInfo -> FilePath
 componentBuildDir lbi clbi
     = buildDir lbi </>
         case componentLocalName clbi of
-            CLibName      -> case unitIdHash (componentUnitId clbi) of
-                               Just hash -> hash
-                               Nothing   -> ""
-            CSubLibName s -> case unitIdHash (componentUnitId clbi) of
-                               Just hash -> s ++ "-" ++ hash
-                               Nothing   -> s
+            CLibName      ->
+                if display (componentUnitId clbi) == display (componentComponentId clbi)
+                    then ""
+                    else display (componentUnitId clbi)
+            CSubLibName s ->
+                if display (componentUnitId clbi) == display (componentComponentId clbi)
+                    then s
+                    else display (componentUnitId clbi)
             CExeName s   -> s
             CTestName s  -> s
             CBenchName s -> s

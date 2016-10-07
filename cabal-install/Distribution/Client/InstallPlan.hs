@@ -73,7 +73,7 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Package
          ( Package(..)
-         , HasUnitId(..), UnitId(..) )
+         , HasUnitId(..), UnitId )
 import Distribution.Solver.Types.SolverPackage
 import Distribution.Client.JobControl
 import Distribution.Text

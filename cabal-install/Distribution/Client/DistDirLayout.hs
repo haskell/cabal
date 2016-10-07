@@ -18,7 +18,7 @@ module Distribution.Client.DistDirLayout (
 
 import System.FilePath
 import Distribution.Package
-         ( PackageId, UnitId(..) )
+         ( PackageId, ComponentId, UnitId )
 import Distribution.Compiler
 import Distribution.Simple.Compiler (PackageDB(..), OptimisationLevel(..))
 import Distribution.Text
@@ -35,6 +35,7 @@ import Distribution.Client.Types
 data DistDirParams = DistDirParams {
     distParamUnitId         :: UnitId,
     distParamPackageId      :: PackageId,
+    distParamComponentId    :: ComponentId,
     distParamComponentName  :: Maybe ComponentName,
     distParamCompilerId     :: CompilerId,
     distParamPlatform       :: Platform,
@@ -127,9 +128,10 @@ defaultDistDirLayout projectRootDirectory =
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""
             MaximumOptimisation -> "opt") </>
-        (case distParamUnitId params of
-            UnitId _ (Just hash) -> hash
-            UnitId _ Nothing     -> "")
+        (let uid_str = display (distParamUnitId params)
+         in if uid_str == display (distParamComponentId params)
+                then ""
+                else uid_str)
 
     distUnpackedSrcRootDirectory   = distDirectory </> "src"
     distUnpackedSrcDirectory pkgid = distUnpackedSrcRootDirectory

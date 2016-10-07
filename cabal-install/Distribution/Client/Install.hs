@@ -146,7 +146,7 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), HasUnitId(..)
          , Dependency(..), thisPackageVersion
-         , UnitId(..) )
+         , UnitId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)

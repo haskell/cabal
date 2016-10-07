@@ -24,11 +24,10 @@ module Distribution.Package (
 
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId, unComponentId, mkComponentId,
-        UnitId(..),
+        UnitId, unUnitId, mkUnitId,
         DefUnitId,
         unsafeMkDefUnitId,
         unDefUnitId,
-        mkUnitId,
         newSimpleUnitId,
         mkLegacyUnitId,
         getHSLibraryName,
@@ -248,28 +247,20 @@ getHSLibraryName uid = "HS" ++ display uid
 -- "Distribution.Backpack.FullUnitId" for a mechanism for expanding an
 -- instantiated 'UnitId' to retrieve its mapping.
 --
-data UnitId
-    = UnitId {
-        unitIdComponentId :: ComponentId,
-        unitIdHash        :: Maybe String
-    }
-  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+newtype UnitId = UnitId String
+  deriving (Generic, Read, Show, Eq, Ord, Typeable, Data, NFData)
 
 instance Binary UnitId
 
-instance NFData UnitId where
-    rnf (UnitId cid str) = rnf cid `seq` rnf str
-
 instance Text UnitId where
-    disp (UnitId cid Nothing)     = disp cid
-    disp (UnitId cid (Just hash)) = disp cid <<>> text "+" <<>> text hash
-    parse = parseUnitId <++ parseSimpleUnitId
-      where
-        parseUnitId = do cid <- parse
-                         _ <- Parse.char '+'
-                         hash <- Parse.munch1 isAlphaNum
-                         return (UnitId cid (Just hash))
-        parseSimpleUnitId = fmap newSimpleUnitId parse
+    disp (UnitId str)     = text str
+    parse = UnitId `fmap` Parse.munch1 (\c -> isAlphaNum c || c `elem` "-_.+")
+
+unUnitId :: UnitId -> String
+unUnitId (UnitId str) = str
+
+mkUnitId :: String -> UnitId
+mkUnitId str = UnitId str
 
 -- | A 'UnitId' for a definite package.  The 'DefUnitId' invariant says
 -- that a 'UnitId' identified this way is definite; i.e., it has no
@@ -285,15 +276,7 @@ unsafeMkDefUnitId = DefUnitId
 -- | Create a unit identity with no associated hash directly
 -- from a 'ComponentId'.
 newSimpleUnitId :: ComponentId -> UnitId
-newSimpleUnitId cid =
-    UnitId {
-        unitIdComponentId = cid,
-        unitIdHash = Nothing
-    }
-
--- | Makes a simple-style UnitId from a string.
-mkUnitId :: String -> UnitId
-mkUnitId = newSimpleUnitId . mkComponentId
+newSimpleUnitId cid = UnitId (unComponentId cid)
 
 -- | Make an old-style UnitId from a package identifier
 mkLegacyUnitId :: PackageId -> UnitId

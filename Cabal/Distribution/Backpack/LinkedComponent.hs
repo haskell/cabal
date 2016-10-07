@@ -3,7 +3,6 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.LinkedComponent (
     LinkedComponent(..),
-    lc_cid,
     toLinkedComponent,
     toLinkedComponents,
     dispLinkedComponent,
@@ -47,6 +46,7 @@ import Text.PrettyPrint
 data LinkedComponent
     = LinkedComponent {
         lc_uid :: OpenUnitId,
+        lc_cid :: ComponentId,
         lc_pkgid :: PackageId,
         lc_insts :: [(ModuleName, OpenModule)],
         lc_component :: Component,
@@ -59,9 +59,6 @@ data LinkedComponent
         -- BC so it shouldn't matter.
         lc_depends :: [(OpenUnitId, PackageId)]
       }
-
-lc_cid :: LinkedComponent -> ComponentId
-lc_cid = openUnitIdComponentId . lc_uid
 
 dispLinkedComponent :: LinkedComponent -> Doc
 dispLinkedComponent lc =
@@ -238,6 +235,7 @@ toLinkedComponent verbosity db this_pid pkg_map ConfiguredComponent {
 
     return $ LinkedComponent {
                 lc_uid = this_uid,
+                lc_cid = this_cid,
                 lc_insts = insts,
                 lc_pkgid = pkgid,
                 lc_component = component,

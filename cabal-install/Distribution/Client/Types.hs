@@ -23,9 +23,9 @@ module Distribution.Client.Types where
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
          , UnitId, ComponentId, HasUnitId(..)
-         , PackageInstalled(..), unitIdComponentId, newSimpleUnitId )
+         , PackageInstalled(..), newSimpleUnitId )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( InstalledPackageInfo, installedComponentId )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Version
@@ -164,7 +164,7 @@ class HasConfiguredId a where
 -- NB: This instance is slightly dangerous, in that you'll lose
 -- information about the specific UnitId you depended on.
 instance HasConfiguredId InstalledPackageInfo where
-    configuredId ipkg = ConfiguredId (packageId ipkg) (unitIdComponentId (installedUnitId ipkg))
+    configuredId ipkg = ConfiguredId (packageId ipkg) (installedComponentId ipkg)
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.

@@ -424,7 +424,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- This is, like, the one place where we use a CTestName for a library.
     -- Should NOT use library name, since that could conflict!
     PackageIdentifier pkg_name pkg_ver = package pkg_descr
-    compat_name = computeCompatPackageName pkg_name (CTestName (testName test)) (Just (componentUnitId clbi))
+    compat_name = computeCompatPackageName pkg_name (CTestName (testName test))
     compat_key = computeCompatPackageKey (compiler lbi) compat_name pkg_ver (componentUnitId clbi)
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
@@ -435,6 +435,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 , componentIsPublic = False
                 , componentIncludes = componentIncludes clbi
                 , componentUnitId = componentUnitId clbi
+                , componentComponentId = componentComponentId clbi
                 , componentInstantiatedWith = []
                 , componentCompatPackageName = compat_name
                 , componentCompatPackageKey = compat_key
@@ -470,6 +471,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 -- TODO: this is a hack, but as long as this is unique
                 -- (doesn't clobber something) we won't run into trouble
                 componentUnitId = mkUnitId (stubName test),
+                componentComponentId = mkComponentId (stubName test),
                 componentInternalDeps = [componentUnitId clbi],
                 componentExeDeps = [],
                 componentLocalName = CExeName (stubName test),
@@ -497,6 +499,7 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
           }
     exeClbi = ExeComponentLocalBuildInfo {
                 componentUnitId = componentUnitId clbi,
+                componentComponentId = componentComponentId clbi,
                 componentLocalName = CExeName (benchmarkName bm),
                 componentInternalDeps = componentInternalDeps clbi,
                 componentExeDeps = componentExeDeps clbi,

@@ -19,6 +19,7 @@ import Distribution.Compat.Prelude
 import qualified Distribution.InstalledPackageInfo as Current
 import qualified Distribution.Package as Current hiding (installedUnitId)
 import Distribution.Simple.GHC.IPIConvert
+import Distribution.Text
 
 -- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
 --
@@ -69,6 +70,7 @@ toCurrent ipi@InstalledPackageInfo{} =
   in Current.InstalledPackageInfo {
     Current.sourcePackageId    = pid,
     Current.installedUnitId    = Current.mkLegacyUnitId pid,
+    Current.installedComponentId_ = Current.mkComponentId (display pid),
     Current.instantiatedWith   = [],
     Current.compatPackageKey   = "",
     Current.abiHash            = Current.mkAbiHash "", -- bogus but old GHCs don't care.

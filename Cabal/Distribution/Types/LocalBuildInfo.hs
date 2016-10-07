@@ -162,7 +162,11 @@ instance Binary LocalBuildInfo
 -- 'LocalBuildInfo' if it exists, or make a fake component ID based
 -- on the package ID.
 localComponentId :: LocalBuildInfo -> ComponentId
-localComponentId lbi = unitIdComponentId (localUnitId lbi)
+localComponentId lbi =
+    case componentNameCLBIs lbi CLibName of
+        [LibComponentLocalBuildInfo { componentComponentId = cid }]
+          -> cid
+        _ -> mkComponentId (display (localPackage lbi))
 
 -- | Extract the 'PackageIdentifier' of a 'LocalBuildInfo'.
 -- This is a "safe" use of 'localPkgDescr'
