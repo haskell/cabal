@@ -442,14 +442,26 @@ lookupPackageName index name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
-lookupDependency :: PackageIndex a -> Dependency
-                 -> [(Version, [a])]
+-- INVARIANT: List of eligible 'IPI.InstalledPackageInfo' is non-empty.
+--
+lookupDependency :: InstalledPackageIndex -> Dependency
+                 -> [(Version, [IPI.InstalledPackageInfo])]
 lookupDependency index (Dependency name versionRange) =
   case Map.lookup name (packageIdIndex index) of
     Nothing    -> []
-    Just pvers -> [ entry
-                  | entry@(ver, _) <- Map.toList pvers
-                  , ver `withinRange` versionRange ]
+    Just pvers -> [ (ver, pkgs')
+                  | (ver, pkgs) <- Map.toList pvers
+                  , ver `withinRange` versionRange
+                  , let pkgs' = filter eligible pkgs
+                  -- Enforce the invariant
+                  , not (null pkgs')
+                  ]
+ where
+  -- When we select for dependencies, we ONLY want to pick up indefinite
+  -- packages, or packages with no instantiations.  We'll do mix-in
+  -- linking to improve any such package into an instantiated one
+  -- later.
+  eligible pkg = IPI.indefinite pkg || null (IPI.instantiatedWith pkg)
 
 --
 -- * Case insensitive name lookups
