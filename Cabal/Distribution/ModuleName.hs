@@ -15,6 +15,7 @@
 module Distribution.ModuleName (
         ModuleName,
         fromString,
+        fromComponents,
         components,
         toFilePath,
         main,
@@ -74,17 +75,20 @@ simple str = ModuleName (stlFromStrings [str])
 -- are parsing user input then use 'Distribution.Text.simpleParse' instead.
 --
 fromString :: String -> ModuleName
-fromString string
-  | all validModuleComponent components' = ModuleName (stlFromStrings components')
-  | otherwise                            = error badName
-
+fromString string = fromComponents (split string)
   where
-    components' = split string
-    badName     = "ModuleName.fromString: invalid module name " ++ show string
-
     split cs = case break (=='.') cs of
       (chunk,[])     -> chunk : []
       (chunk,_:rest) -> chunk : split rest
+
+-- | Construct a 'ModuleName' from valid module components, i.e. parts
+-- separated by dots.
+fromComponents :: [String] -> ModuleName
+fromComponents components'
+    | all validModuleComponent components' = ModuleName (stlFromStrings components')
+    | otherwise                            = error badName
+  where
+    badName     = "ModuleName.fromComponents: invalid components " ++ show components'
 
 -- | The module name @Main@.
 --
