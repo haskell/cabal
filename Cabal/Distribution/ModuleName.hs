@@ -20,6 +20,8 @@ module Distribution.ModuleName (
         toFilePath,
         main,
         simple,
+        -- * Internal
+        validModuleComponent,
   ) where
 
 import Prelude ()
