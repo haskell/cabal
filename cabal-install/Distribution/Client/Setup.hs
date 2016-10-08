@@ -73,6 +73,7 @@ import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
+import Distribution.Simple.Configure ( computeEffectiveProfiling )
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), ReplFlags
@@ -363,6 +364,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,23,0] [] = flags_1_22_0
   | otherwise = flags_latest
   where
+    (profEnabledLib, profEnabledExe) = computeEffectiveProfiling flags
     flags_latest = flags        {
       -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
       configConstraints = [],
@@ -372,21 +374,24 @@ filterConfigureFlags flags cabalLibVersion
       }
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
+    -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
+    -- which we shouldn't use.
     flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
-                                , configIPID          = NoFlag }
+                                , configIPID          = NoFlag
+                                , configProf          = NoFlag
+                                , configProfExe       = Flag profEnabledExe
+                                , configProfLib       = Flag profEnabledLib
+                                }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
     flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
 
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
+    -- (but we already dealt with it in flags_1_22_0)
     flags_1_20_0 =
       flags_1_21_0 { configRelocatable = NoFlag
-                   , configProf = NoFlag
-                   , configProfExe = configProf flags
-                   , configProfLib =
-                     mappend (configProf flags) (configProfLib flags)
                    , configCoverage = NoFlag
                    , configLibCoverage = configCoverage flags
                    }
