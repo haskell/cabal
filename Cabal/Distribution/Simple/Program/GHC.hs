@@ -90,6 +90,10 @@ data GhcOptions = GhcOptions {
   -- is.  This only gets set when 'ghcOptInstantiatedWith' is non-empty
   ghcOptThisComponentId :: Flag ComponentId,
 
+  -- | How the requirements of the package being compiled are to
+  -- be filled.  When typechecking an indefinite package, the 'OpenModule'
+  -- is always a 'OpenModuleVar'; otherwise, it specifies the installed module
+  -- that instantiates a package.
   ghcOptInstantiatedWith :: [(ModuleName, OpenModule)],
 
   -- | No code? (But we turn on interface writing
