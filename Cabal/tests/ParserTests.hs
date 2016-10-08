@@ -30,8 +30,10 @@ import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.Parsec.Types.ParseResult  as Parsec
 import qualified Distribution.ParseUtils                as ReadP
 
+#ifdef HAS_STRUCT_DIFF
 import           DiffInstances ()
 import           StructDiff
+#endif
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
 parseIndex action = do
@@ -100,14 +102,15 @@ compareTest pfx fpath bsl
     if readp0 == parsec0
         then return ()
         else do
-            {-
-            putStrLn "<<<<<<"
-            print readp
-            putStrLn "======"
-            print parsec
-            putStrLn ">>>>>>"
-            -}
+#if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
+#else
+            putStrLn "<<<<<<"
+            print readp0
+            putStrLn "======"
+            print parsec0
+            putStrLn ">>>>>>"
+#endif
             exitFailure
 
     let readpWarnCount  = Sum (length readpWarnings)

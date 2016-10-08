@@ -327,6 +327,11 @@ flag parsec
   default:      False
   manual:       True
 
+flag parsec-struct-diff
+  description:  Use StructDiff in parsec tests. Affects only parsec tests.
+  default:      False
+  manual:       True
+
 library
   build-depends:
     array      >= 0.1 && < 0.6,
@@ -648,9 +653,7 @@ test-suite parser-tests
 
   type: exitcode-stdio-1.0
   main-is: ParserTests.hs
-  other-modules:
-    DiffInstances
-    StructDiff
+
   hs-source-dirs: tests
   build-depends:
     base,
@@ -659,11 +662,19 @@ test-suite parser-tests
     bytestring,
     directory,
     filepath,
-    generics-sop ==0.2.*,
-    these >=0.7.1 && <0.8,
-    singleton-bool >=0.1.1.0 && <0.2,
-    keys,
     Cabal
+
+  if flag(parsec-struct-diff)
+    build-depends:
+      generics-sop ==0.2.*,
+      these >=0.7.1 && <0.8,
+      singleton-bool >=0.1.1.0 && <0.2,
+      keys
+    other-modules:
+      DiffInstances
+      StructDiff
+    cpp-options: -DHAS_STRUCT_DIFF
+
   ghc-options: -Wall -rtsopts
   default-extensions: CPP
   default-language: Haskell2010
