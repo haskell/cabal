@@ -21,10 +21,8 @@ module Distribution.Parsec.Parser (
     -- $grammar
     readFields,
     readFields',
-    -- * Transformations
-    elaborate,
-    fromOldSyntax,
 #ifdef CABAL_PARSEC_DEBUG
+    -- * Internal
     parseFile,
     parseStr,
     parseBS,
@@ -315,12 +313,12 @@ fieldInlineOrBraces name =
 
 
 readFields :: B.ByteString -> Either ParseError [Field Position]
-readFields s = fmap elaborate $ parse cabalStyleFile "the input" lexSt
+readFields s = parse cabalStyleFile "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 
 readFields' :: B.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' s = fmap (first elaborate) $ parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
+readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 
@@ -377,40 +375,3 @@ eof = notFollowedBy anyToken <?> "end of file"
                            <|> return ())
 --showErrorMessages "or" "unknown parse error"
 --                            "expecting" "unexpected" "end of input"
-
--- | Elaborate a 'Section's with @if@ name into the 'IfElseBlock's.
---
--- TOOD: rename
-elaborate :: Show a => [Field a] -> [Field a]
-elaborate [] = []
-elaborate (field@Field{} : rest) = field : elaborate rest
-elaborate (IfElseBlock ann args t e : rest) =
-  IfElseBlock ann args (elaborate t) (elaborate e) : elaborate rest
-elaborate (Section name@(Name ann _) args fields : Section ename [] efields : rest)
-  | getName name == "if" && getName ename == "else" =
-    IfElseBlock ann args (elaborate fields) (elaborate efields) : elaborate rest
-elaborate (Section name@(Name ann _) args fields : rest)
-  | getName name == "if" =
-    IfElseBlock ann args (elaborate fields) [] : elaborate rest
-  | otherwise            =
-    Section name args (elaborate fields) : elaborate rest
-
--- | TODO
-data OldSyntax = OldSyntax | NewSyntax
-    deriving (Show)
-
--- | "Sectionize" an old-style Cabal file.  A sectionized file has:
---
---  * all global fields at the beginning, followed by
---
---  * all flag declarations, followed by
---
---  * an optional library section, and an arbitrary number of executable
---    sections (in any order).
---
--- The current implementation just gathers all library-specific fields
--- in a library section and wraps all executable stanzas in an executable
--- section.
-fromOldSyntax :: [Field a] -> (OldSyntax, [Field a])
--- TODO: implement me
-fromOldSyntax fs = (NewSyntax, fs)

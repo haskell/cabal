@@ -125,7 +125,7 @@ runFieldParser' :: Position -> FieldParser a -> String -> ParseResult a
 runFieldParser' (Position row col) p str = case P.runParser p' [] "<field>" str of
     Right (pok, ws) -> do
         -- | TODO: map pos
-        traverse_ (\(PWarning t pos w) -> parseWarning pos t w) ws 
+        traverse_ (\(PWarning t pos w) -> parseWarning pos t w) ws
         pure pok
     Left err        -> do
         let ppos = P.errorPos err
@@ -148,10 +148,10 @@ parseGenericPackageDescription'
     -> ParseResult GenericPackageDescription
 parseGenericPackageDescription' lexWarnings fs = do
     parseWarnings' (fmap toPWarning lexWarnings)
-    let (newSyntax, fs') = sectionizeFields fs
+    let (syntax, fs') = sectionizeFields fs
     (_, gpd) <- foldM go (Fields, emptyGpd) fs'
     -- Various post checks
-    maybeWarnCabalVersion newSyntax (packageDescription gpd)
+    maybeWarnCabalVersion syntax (packageDescription gpd)
     checkForUndefinedFlags gpd
     -- TODO: do other validations
     return gpd
@@ -159,9 +159,6 @@ parseGenericPackageDescription' lexWarnings fs = do
     go :: (GPDS, GenericPackageDescription)
        -> Field Position
        -> ParseResult (GPDS, GenericPackageDescription)
-    go s                (IfElseBlock pos _ _ _)  = do
-        parseFailure pos "if else block on the top level"
-        return s
     go (Fields, gpd)   (Field (Name pos name) fieldLines) =
         case Map.lookup name pdFieldParsers of
             -- | TODO: can be more accurate
@@ -262,15 +259,15 @@ parseGenericPackageDescription' lexWarnings fs = do
     newSyntaxVersion :: Version
     newSyntaxVersion = mkVersion [1, 2]
 
-    maybeWarnCabalVersion :: Bool -> PackageDescription -> ParseResult ()
-    maybeWarnCabalVersion newsyntax pkg
-      | newsyntax && specVersion pkg < newSyntaxVersion 
+    maybeWarnCabalVersion :: Syntax -> PackageDescription -> ParseResult ()
+    maybeWarnCabalVersion syntax pkg
+      | syntax == NewSyntax && specVersion pkg < newSyntaxVersion
       = parseWarning (Position 0 0) PWTNewSyntax $
              "A package using section syntax must specify at least\n"
           ++ "'cabal-version: >= 1.2'."
 
-    maybeWarnCabalVersion newsyntax pkg
-      | not newsyntax && specVersion pkg >= newSyntaxVersion 
+    maybeWarnCabalVersion syntax pkg
+      | syntax == OldSyntax && specVersion pkg >= newSyntaxVersion
       = parseWarning (Position 0 0) PWTOldSyntax $
              "A package using 'cabal-version: "
           ++ displaySpecVersion (specVersionRaw pkg)
@@ -334,7 +331,7 @@ parseName pos args = case args of
          parseFailure pos $ "Invalid name " ++ show args
          pure ""
 
--- | Parse a list of fields, given a list of field descriptions,
+-- | Parse a non-recursive list of fields, given a list of field descriptions,
 --   a structure to accumulate the parsed fields, and a function
 --   that can decide what to do with fields which don't match any
 --   of the field descriptions.
@@ -351,9 +348,6 @@ parseFields descrs _unknown = foldM go
     go x (Section (Name pos name) _ _) = do
         -- Even we occur a subsection, we can continue parsing
         parseFailure pos $ "invalid subsection " ++ show name
-        return x
-    go x (IfElseBlock pos _ _ _) = do
-        parseFailure pos $ "invalid if-else-block"
         return x
     go x (Field (Name pos name) fieldLines) =
         case Map.lookup name fieldParsers of
@@ -378,38 +372,58 @@ parseCondTree
     -> a                     -- ^ Initial value
     -> [Field Position]      -- ^ Fields to parse
     -> ParseResult (CondTree ConfVar c a)
-parseCondTree descs unknown cond ini = go0
+parseCondTree descs unknown cond ini = impl
   where
-    go0 fields = do
-        (x, xs) <- foldM go (ini, []) fields
+    impl :: [Field Position] -> ParseResult (CondTree ConfVar c a)
+    impl fields = do
+        (x, xs) <- go (ini, []) fields
         return $ CondNode x (cond x) xs
 
-    -- | TODO: change to take and return condnode
-    go :: (a, [C c a])  -> Field Position -> ParseResult (a, [C c a])
-    go x (Section (Name pos name) _ _) = do
+    --TODO: change to take and return condnode ?
+    --TODO: use dlist to accumulate results?
+    go :: (a, [C c a]) -> [Field Position] -> ParseResult (a, [C c a])
+    go xss [] = return xss
+
+    go xxs (Section (Name _pos name) tes con : fields) | name == "if" = do
+        tes'  <- parseConditionConfVar tes
+        con' <- impl con
+        -- Jump to 'else' state
+        goElse tes' con' xxs fields
+
+    go xxs (Section (Name pos name) _ _ : fields) = do
         -- Even we occur a subsection, we can continue parsing
         -- http://hackage.haskell.org/package/constraints-0.1/constraints.cabal
         parseWarning pos PWTInvalidSubsection $ "invalid subsection " ++ show name
-        return x
+        go xxs fields
 
-    go (x, xs) (IfElseBlock _pos tes con alt) = do
-        tes'  <- parseConditionConfVar tes
-        con' <- go0 con
-        alt' <- case alt of
-            [] -> pure Nothing
-            _  -> Just <$> go0 alt
-        let ieb = (tes', con', alt')
-        return (x, xs ++ [ieb])
-
-    go (x, xs) (Field (Name pos name) fieldLines) =
+    go (x, xs) (Field (Name pos name) fieldLines : fields) =
         case Map.lookup name fieldParsers of
             Nothing -> fieldlinesToString pos fieldLines >>= \value -> case unknown name value x of
                 Nothing -> do
                     parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                    return (x, xs)
-                Just x' -> return (x', xs)
-            Just parser ->
-                (,xs) <$> runFieldParser (parser x) fieldLines
+                    go (x, xs) fields
+                Just x' -> do
+                    go (x', xs) fields
+            Just parser -> do
+                x' <- runFieldParser (parser x) fieldLines
+                go (x', xs) fields
+
+    -- Try to parse else branch
+    goElse
+      :: Condition ConfVar
+      -> CondTree ConfVar c a
+      -> (a, [C c a]) -> [Field Position] -> ParseResult (a, [C c a])
+    goElse tes con (x, xs) (Section (Name pos name) secArgs alt : fields) | name == "else" = do
+        when (not . null $ secArgs) $ do
+            parseFailure pos $ "`else` section has section arguments " ++ show secArgs
+        alt' <- case alt of
+            [] -> pure Nothing
+            _  -> Just <$> impl alt
+        let ieb = (tes, con, alt')
+        go (x, xs ++ [ieb]) fields
+    goElse tes con (x, xs) fields = do
+        let ieb = (tes, con, Nothing)
+        go (x, xs ++ [ieb]) fields
 
     fieldParsers :: Map FieldName (a -> FieldParser a)
     fieldParsers = Map.fromList $
@@ -493,12 +507,10 @@ with new AST, this all need to be rewritten.
 -- The current implementation just gathers all library-specific fields
 -- in a library section and wraps all executable stanzas in an executable
 -- section.
---
--- Boolean in the return pair is 'False', if the file was using old syntax.
-sectionizeFields :: [Field ann] -> (Bool, [Field ann])
+sectionizeFields :: [Field ann] -> (Syntax, [Field ann])
 sectionizeFields fs = case classifyFields fs of
-    Just fields -> (False, convert fields)
-    Nothing     -> (True, fs)
+    Just fields -> (OldSyntax, convert fields)
+    Nothing     -> (NewSyntax, fs)
   where
     -- return 'Just' if all fields are simple fields
     classifyFields :: [Field ann] -> Maybe [(Name ann, [FieldLine ann])]
@@ -538,6 +550,10 @@ sectionizeFields fs = case classifyFields fs of
                 [Section (Name pos "library") [] (map toField $ deps ++ libfs)]
 
       in map toField hdr ++ lib ++ exes
+
+-- | See 'sectionizeFields'.
+data Syntax = OldSyntax | NewSyntax
+    deriving (Eq, Show)
 
 libFieldNames :: [FieldName]
 libFieldNames = map fieldName libFieldDescrs

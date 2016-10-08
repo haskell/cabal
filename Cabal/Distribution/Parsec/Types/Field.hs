@@ -28,14 +28,11 @@ import qualified Data.ByteString.Char8 as B
 data Field ann
     = Field   !(Name ann) [FieldLine ann]
     | Section !(Name ann) [SectionArg ann] [Field ann]
-    -- TODO: reconsider whether we actually need `IfElseBlock`
-    | IfElseBlock ann [SectionArg ann] [Field ann] [Field ann]
   deriving (Eq, Show, Functor)
 
 fieldAnn :: Field ann -> ann
 fieldAnn (Field (Name ann _) _)     = ann
 fieldAnn (Section (Name ann _) _ _) = ann
-fieldAnn (IfElseBlock ann _ _ _)    = ann
 
 data FieldLine ann  = FieldLine  !ann !ByteString
   deriving (Eq, Show, Functor)
