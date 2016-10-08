@@ -59,6 +59,7 @@ import           Distribution.Client.PackageHash
 import           Distribution.Client.RebuildMonad
 import           Distribution.Client.ProjectConfig
 import           Distribution.Client.ProjectPlanOutput
+import           Distribution.Client.PackageCollection
 
 import           Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan

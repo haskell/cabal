@@ -147,6 +147,7 @@ import Control.Exception
 data DepResolverParams = DepResolverParams {
        depResolverTargets           :: Set PackageName,
        depResolverConstraints       :: [LabeledPackageConstraint],
+       depResolverSubsetConstraint  :: PackagesSubsetConstraint,
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
@@ -229,6 +230,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
        depResolverTargets           = Set.empty,
        depResolverConstraints       = [],
+       depResolverSubsetConstraint  = NoPackagesSubsetSelected,
        depResolverPreferences       = [],
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
@@ -624,11 +626,12 @@ resolveDependencies platform comp pkgConfigDB solver params =
                       indGoals noReinstalls
                       shadowing strFlags maxBkjumps enableBj solveExes order)
                      platform comp installedPkgIndex sourcePkgIndex
-                     pkgConfigDB preferences constraints targets
+                     pkgConfigDB preferences constraints subsetConstraint targets
   where
 
     finalparams @ (DepResolverParams
-      targets constraints
+      targets
+      constraints subsetConstraint
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
@@ -863,7 +866,7 @@ configuredPackageProblems platform cinfo
 --
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [UnresolvedSourcePackage]
-resolveWithoutDependencies (DepResolverParams targets constraints
+resolveWithoutDependencies (DepResolverParams targets constraints _subsetConstraint
                               prefs defpref installedPkgIndex sourcePkgIndex
                               _reorderGoals _countConflicts _indGoals _avoidReinstalls
                               _shadowing _strFlags _maxBjumps _enableBj _solveExes _order) =
@@ -876,7 +879,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
 
       where
         -- Constraints
-        requiredVersions = packageConstraints pkgname
+        requiredVersions = packageConstraints pkgname --TODO: use subsetConstraint
         pkgDependency    = Dependency pkgname requiredVersions
         choices          = PackageIndex.lookupDependency sourcePkgIndex
                                                          pkgDependency

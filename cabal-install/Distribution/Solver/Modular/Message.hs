@@ -139,6 +139,10 @@ showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " re
 showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
 showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
 showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
+showFR _ (PackagesSubsetNotMember
+                      ssname (Just vr))   = " (package collection " ++ ssname ++ " requires version " ++ display vr ++ ")"
+showFR _ (PackagesSubsetNotMember
+                      ssname  Nothing)    = " (package collection " ++ ssname ++ " does not include this package)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
 showFR c Backjump                         = " (backjumping, conflict set: " ++ showCS c ++ ")"
 showFR _ MultipleInstances                = " (multiple instances)"

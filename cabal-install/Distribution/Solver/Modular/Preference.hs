@@ -170,6 +170,18 @@ processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
         | otherwise     = Fail c (GlobalConstraintSource src)
     go _       _ = r
 
+processSubsetConstraintP :: ConflictSet QPN
+                         -> I
+                         -> PackagesSubsetConstraint
+                         -> PN
+                         -> Tree d c
+                         -> Tree d c
+processSubsetConstraintP _  _      NoPackagesSubsetSelected           _  r = r
+processSubsetConstraintP c (I v _) (PackagesSubsetSelected ss ssname) pn r =
+  case S.member pn ss of
+    True  -> r
+    False -> Fail c (PackagesSubsetNotMember ssname)
+
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
@@ -210,14 +222,16 @@ processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
+                          -> PackagesSubsetConstraint
                           -> Tree d c
                           -> Tree d c
-enforcePackageConstraints pcs = trav go
+enforcePackageConstraints pcs psc = trav go
   where
     go (PChoiceF qpn@(Q pp pn)              gr      ts) =
       let c = varToConflictSet (P qpn)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
+          g = \ (POption i _) -> processSubsetConstraintP c i psc pn
+                              . foldl (\ h pc -> h . processPackageConstraintP pp c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (W.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =

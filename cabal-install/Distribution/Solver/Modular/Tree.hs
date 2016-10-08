@@ -30,6 +30,7 @@ import Distribution.Solver.Modular.WeightedPSQ (WeightedPSQ)
 import qualified Distribution.Solver.Modular.WeightedPSQ as W
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.PackagePath
+import Distribution.Solver.Types.PackageConstraint
 
 type Weight = Double
 
@@ -104,6 +105,7 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintInstalled ConstraintSource
                 | GlobalConstraintSource ConstraintSource
                 | GlobalConstraintFlag ConstraintSource
+                | PackagesSubsetNotMember SubsetName
                 | ManualFlag
                 | MalformedFlagChoice QFN
                 | MalformedStanzaChoice QSN

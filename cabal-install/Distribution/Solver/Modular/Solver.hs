@@ -19,6 +19,7 @@ import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb)
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.Settings
 import Distribution.Solver.Types.Variable
 
@@ -96,9 +97,10 @@ solve :: SolverConfig                         -- ^ solver parameters
       -> PkgConfigDb                          -- ^ available pkg-config pkgs
       -> (PN -> PackagePreferences)           -- ^ preferences
       -> Map PN [LabeledPackageConstraint]    -- ^ global constraints
+      -> PackagesSubsetConstraint             -- ^ more constraints
       -> Set PN                               -- ^ global goals
       -> Log Message (Assignment, RevDepMap)
-solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
+solve sc cinfo idx pkgConfigDB userPrefs userConstraints userSubset userGoals =
   explorePhase     $
   detectCycles     $
   heuristicsPhase  $
@@ -124,7 +126,7 @@ solve sc cinfo idx pkgConfigDB userPrefs userConstraints userGoals =
                        P.preferPackagePreferences userPrefs
     validationPhase  = traceTree "validated.json" id .
                        P.enforceManualFlags . -- can only be done after user constraints
-                       P.enforcePackageConstraints userConstraints .
+                       P.enforcePackageConstraints userConstraints userSubset .
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
                        validateTree cinfo idx pkgConfigDB

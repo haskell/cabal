@@ -32,10 +32,10 @@ import Distribution.System
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
 modularResolver :: SolverConfig -> DependencyResolver loc
-modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns =
+modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pss pns =
   fmap (uncurry postprocess)      $ -- convert install plan
   logToProgress (maxBackjumps sc) $ -- convert log format into progress format
-  solve sc cinfo idx pkgConfigDB pprefs gcs pns
+  solve sc cinfo idx pkgConfigDB pprefs gcs pss pns
     where
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cinfo (shadowPkgs sc) (strongFlags sc) (solveExecutables sc) iidx sidx

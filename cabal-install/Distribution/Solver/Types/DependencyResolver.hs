@@ -5,6 +5,7 @@ module Distribution.Solver.Types.DependencyResolver
 import Data.Set (Set)
 
 import Distribution.Solver.Types.LabeledPackageConstraint
+import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.PkgConfigDb ( PkgConfigDb )
 import Distribution.Solver.Types.PackagePreferences
 import Distribution.Solver.Types.PackageIndex ( PackageIndex )
@@ -32,5 +33,6 @@ type DependencyResolver loc = Platform
                            -> PkgConfigDb
                            -> (PackageName -> PackagePreferences)
                            -> [LabeledPackageConstraint]
+                           -> PackagesSubsetConstraint
                            -> Set PackageName
                            -> Progress String String [ResolverPackage loc]
