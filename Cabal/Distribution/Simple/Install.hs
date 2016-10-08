@@ -26,7 +26,8 @@ import Distribution.Simple.Utils
          , die, info, notice, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
-import Distribution.Simple.Setup (CopyFlags(..), fromFlag)
+import Distribution.Simple.Setup (CopyFlags(..), fromFlag
+                                 ,HaddockTarget(ForDevelopment))
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -79,8 +80,8 @@ install pkg_descr lbi flags = do
 
   unless (hasLibs pkg_descr || hasExes pkg_descr) $
       die "No executables and no library found. Nothing to do."
-  docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
-  info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
+  docExists <- doesDirectoryExist $ haddockPref ForDevelopment distPref pkg_descr
+  info verbosity ("directory " ++ haddockPref ForDevelopment distPref pkg_descr ++
                   " does exist: " ++ show docExists)
 
   installDataFiles verbosity pkg_descr dataPref
@@ -88,13 +89,13 @@ install pkg_descr lbi flags = do
   when docExists $ do
       createDirectoryIfMissingVerbose verbosity True htmlPref
       installDirectoryContents verbosity
-          (haddockPref distPref pkg_descr) htmlPref
+          (haddockPref ForDevelopment distPref pkg_descr) htmlPref
       -- setPermissionsRecursive [Read] htmlPref
       -- The haddock interface file actually already got installed
       -- in the recursive copy, but now we install it where we actually
       -- want it to be (normally the same place). We could remove the
       -- copy in htmlPref first.
-      let haddockInterfaceFileSrc  = haddockPref distPref pkg_descr
+      let haddockInterfaceFileSrc  = haddockPref ForDevelopment distPref pkg_descr
                                                    </> haddockName pkg_descr
           haddockInterfaceFileDest = interfacePref </> haddockName pkg_descr
       -- We only generate the haddock interface file for libs, So if the
