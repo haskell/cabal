@@ -397,9 +397,9 @@ filterConfigureFlags flags cabalLibVersion
     flags_1_23_0 = flags_latest { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
                                 , configIPID          = NoFlag
-                                , configProf = mempty
-                                , configProfExe = Flag tryExeProfiling
-                                , configProfLib = Flag tryLibProfiling
+                                , configProf          = NoFlag
+                                , configProfExe       = Flag tryExeProfiling
+                                , configProfLib       = Flag tryLibProfiling
                                 }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
