@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
+
 module Distribution.Client.GlobalFlags (
     GlobalFlags(..)
   , defaultGlobalFlags
@@ -12,9 +13,11 @@ module Distribution.Client.GlobalFlags (
   , withRepoContext'
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..) )
-import Distribution.Compat.Semigroup
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -26,22 +29,15 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( info )
 
-import Data.Maybe
-         ( fromMaybe )
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
 import Control.Exception
          ( throwIO )
-import Control.Monad
-         ( when )
 import System.FilePath
          ( (</>) )
 import Network.URI
          ( uriScheme, uriPath )
-import Data.Map
-         ( Map )
 import qualified Data.Map as Map
-import GHC.Generics ( Generic )
 
 import qualified Hackage.Security.Client                    as Sec
 import qualified Hackage.Security.Util.Path                 as Sec
