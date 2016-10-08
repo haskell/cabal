@@ -790,8 +790,9 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
            else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcjsProg, _) <- requireProgram verbosity ghcjsProgram (withPrograms lbi)
-  getProgramInvocationOutput verbosity
-    (ghcInvocation ghcjsProg comp platform ghcArgs)
+  hash <- getProgramInvocationOutput verbosity
+          (ghcInvocation ghcjsProg comp platform ghcArgs)
+  return (takeWhile (not . isSpace) hash)
 
 adjustExts :: String -> String -> GhcOptions -> GhcOptions
 adjustExts hiSuf objSuf opts =
