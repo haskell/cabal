@@ -329,10 +329,9 @@ computeEffectiveProfiling cfg =
     --
     -- The --profiling-detail and --library-profiling-detail flags behave
     -- similarly
-    let profEnabledLibOnly = configProfLib cfg
-        profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
-        profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
-        profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+    let profEnabledBoth = fromFlagOrDefault False (configProf cfg)
+        profEnabledLib  = fromFlagOrDefault profEnabledBoth (configProfLib cfg)
+        profEnabledExe  = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
     in (profEnabledLib, profEnabledExe)
 
 -- |Perform the \"@.\/setup configure@\" action.
