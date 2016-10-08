@@ -42,6 +42,7 @@ module Distribution.Simple.Configure (configure,
                                       getPackageDBContents,
                                       configCompiler, configCompilerAux,
                                       configCompilerEx, configCompilerAuxEx,
+                                      computeEffectiveProfiling,
                                       ccLdOptionsBuildInfo,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
@@ -309,6 +310,30 @@ findDistPref defDistPref overrideDistPref = do
 findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
                       -> IO FilePath
 findDistPrefOrDefault = findDistPref defaultDistPref
+
+-- | Compute the effective value of the profiling flags
+-- @--enable-library-profiling@ and @--enable-executable-profiling@
+-- from the specified 'ConfigFlags'.  This may be useful for
+-- external Cabal tools which need to interact with Setup in
+-- a backwards-compatible way: the most predictable mechanism
+-- for enabling profiling across many legacy versions is to
+-- NOT use @--enable-profiling@ and use those two flags instead.
+--
+-- Note that @--enable-executable-profiling@ also affects profiling
+-- of benchmarks and (non-detailed) test suites.
+computeEffectiveProfiling :: ConfigFlags -> (Bool {- lib -}, Bool {- exe -})
+computeEffectiveProfiling cfg =
+    -- The --profiling flag sets the default for both libs and exes,
+    -- but can be overidden by --library-profiling, or the old deprecated
+    -- --executable-profiling flag.
+    --
+    -- The --profiling-detail and --library-profiling-detail flags behave
+    -- similarly
+    let profEnabledLibOnly = configProfLib cfg
+        profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
+        profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
+        profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+    in (profEnabledLib, profEnabledExe)
 
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
@@ -578,16 +603,8 @@ configure (pkg_descr0', pbi) cfg = do
         ++ "is not being built. Linking will fail if any executables "
         ++ "depend on the library."
 
-    -- The --profiling flag sets the default for both libs and exes,
-    -- but can be overidden by --library-profiling, or the old deprecated
-    -- --executable-profiling flag.
-    let profEnabledLibOnly = configProfLib cfg
-        profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
-        profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
-        profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+    let (profEnabledLib, profEnabledExe) = computeEffectiveProfiling cfg
 
-    -- The --profiling-detail and --library-profiling-detail flags behave
-    -- similarly
     profDetailLibOnly <- checkProfDetail (configProfLibDetail cfg)
     profDetailBoth    <- liftM (fromFlagOrDefault ProfDetailDefault)
                                (checkProfDetail (configProfDetail cfg))
