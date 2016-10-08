@@ -19,7 +19,7 @@ branches:
 # lines listings versions you don't need/want testing for.
 matrix:
   include:
-   - env: GHCVER=none SCRIPT=meta
+   - env: GHCVER=none SCRIPT=meta BUILDER=none
      os: linux
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
@@ -61,6 +61,12 @@ matrix:
   allow_failures:
    - env: GHCVER=head
      sudo: required
+   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
+     os: linux
+     addons:
+        apt:
+            packages:
+                - libgmp-dev
 
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
@@ -72,6 +78,7 @@ before_install:
  - export PATH=$HOME/.ghc-install/$GHCVER/bin:$PATH
  - export PATH=$HOME/bin:$PATH
  - export PATH=$HOME/.cabal/bin:$PATH
+ - export PATH=$HOME/.local/bin:$PATH
  - export PATH=/opt/cabal/1.24/bin:$PATH
  - export PATH=/opt/happy/1.19.5/bin:$PATH
  - ./travis-install.sh
@@ -98,6 +105,12 @@ cache:
  - $HOME/.cabal/packages
  - $HOME/.cabal/store
  - $HOME/.cabal/bin
+
+ - $HOME/.stack/bin
+ - $HOME/.stack/precompiled
+ - $HOME/.stack/programs
+ - $HOME/.stack/setup-exe-cache
+ - $HOME/.stack/snapshots
 
 # We remove the index because it churns quite a bit and we don't want
 # to pay the cost of repeatedly caching it even though we don't care
