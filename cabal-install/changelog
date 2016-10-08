@@ -1,5 +1,7 @@
 -*-change-log-*-
-1.24.0.1 Ryan Thomas <ryan@ryant.org> June 2016
+1.24.0.1 Ryan Thomas <ryan@ryant.org> October 2016
+	* Fixed issue with passing '--enable-profiling' when invoking
+	Setup scripts built with older versions of Cabal (#3873).
 	* Fixed various behaviour differences between network transports
 	(#3429).
 	* Updated to depend on the latest hackage-security that fixes
