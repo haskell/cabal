@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans
                 -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
@@ -15,9 +14,7 @@ import Test.Tasty
 import Test.Tasty.QuickCheck
 import qualified Test.Laws as Laws
 
-#if !MIN_VERSION_QuickCheck(2,9,0)
 import Test.QuickCheck.Utils
-#endif
 
 import Control.Monad (liftM, liftM2)
 import Data.Maybe (isJust, fromJust)
@@ -112,9 +109,6 @@ versionTests =
 --     -- , property prop_parse_disp4
 --     -- , property prop_parse_disp5
 --   ]
-
-adjustSize :: (Int -> Int) -> Gen a -> Gen a
-adjustSize adjust gen = sized (\n -> resize (adjust n) gen)
 
 instance Arbitrary Version where
   arbitrary = do
