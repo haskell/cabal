@@ -320,7 +320,7 @@ readFields s = fmap elaborate $ parse cabalStyleFile "the input" lexSt
     lexSt = mkLexState' (mkLexState s)
 
 readFields' :: B.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
+readFields' s = fmap (first elaborate) $ parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
     lexSt = mkLexState' (mkLexState s)
 

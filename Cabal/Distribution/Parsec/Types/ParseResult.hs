@@ -7,6 +7,7 @@ module Distribution.Parsec.Types.ParseResult (
     parseFailure,
     parseFatalFailure,
     parseFatalFailure',
+    parseWarnings',
     ) where
 
 import           Distribution.Compat.Prelude
@@ -60,6 +61,10 @@ recoverWith (PR f) x = PR $ \s -> case f s of
 parseWarning :: Position -> PWarnType -> String -> ParseResult ()
 parseWarning pos t msg = PR $ \(PRState warns errs) ->
     (Just (), PRState (PWarning t pos msg : warns) errs)
+
+parseWarnings' :: [PWarning] -> ParseResult ()
+parseWarnings' newWarns = PR $ \(PRState warns errs) ->
+    (Just (), PRState (warns ++ newWarns) errs) 
 
 -- | Add an error, but not fail the parser yet.
 parseFailure :: Position -> String -> ParseResult ()

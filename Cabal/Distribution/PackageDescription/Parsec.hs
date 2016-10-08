@@ -52,6 +52,8 @@ import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field                   (getName)
 import           Distribution.Parsec.Types.FieldDescr
 import           Distribution.Parsec.Types.ParseResult
+import           Distribution.Parsec.LexerMonad
+                 (LexWarning, toPWarning)
 
 import Distribution.Text (display)
 import Distribution.Version (mkVersion, Version, asVersionIntervals, orLaterVersion, LowerBound (..))
@@ -96,8 +98,8 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 --
 -- TODO: add lex warnings
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
-parseGenericPackageDescription bs = case readFields bs of
-    Right fs  -> parseGenericPackageDescription' fs
+parseGenericPackageDescription bs = case readFields' bs of
+    Right (fs, lexWarnings) -> parseGenericPackageDescription' lexWarnings fs
     -- | TODO: better marshalling of errors
     Left perr -> parseFatalFailure (Position 0 0) (show perr)
 
@@ -143,9 +145,11 @@ data GPDS = Fields | Sections
 
 -- Note [Accumulating parser]
 parseGenericPackageDescription'
-    :: [Field Position]
+    :: [LexWarning]
+    -> [Field Position]
     -> ParseResult GenericPackageDescription
-parseGenericPackageDescription' fs = do
+parseGenericPackageDescription' lexWarnings fs = do
+    parseWarnings' (fmap toPWarning lexWarnings)
     let (newSyntax, fs') = sectionizeFields fs
     (_, gpd) <- foldM go (Fields, emptyGpd) fs'
     -- Various post checks
