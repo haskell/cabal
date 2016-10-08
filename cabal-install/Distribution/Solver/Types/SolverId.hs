@@ -6,7 +6,7 @@ module Distribution.Solver.Types.SolverId
 where
 
 import Distribution.Compat.Binary (Binary(..))
-import Distribution.Package (PackageId, Package(..), UnitId(..))
+import Distribution.Package (PackageId, Package(..), UnitId)
 import GHC.Generics (Generic)
 
 -- | The solver can produce references to existing packages or

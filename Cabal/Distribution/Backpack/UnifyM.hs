@@ -443,7 +443,7 @@ convertInclude ((uid, ModuleShape provs reqs), pid, incl@(IncludeRenaming prov_r
                 let hides_set = Set.fromList hides
                 in let r = [ (k,v)
                            | (k,v) <- Map.toList provs
-                           , k `Set.member` hides_set ]
+                           , not (k `Set.member` hides_set) ]
                    -- GHC doesn't understand hiding, so expand it out!
                    in return (r, ModuleRenaming (map ((\x -> (x,x)).fst) r))
             ModuleRenaming rns -> do

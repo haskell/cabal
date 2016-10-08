@@ -736,6 +736,12 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                     LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
                       -> toFlag pk
                     _ -> mempty,
+                ghcOptThisComponentId = case clbi of
+                    LibComponentLocalBuildInfo { componentInstantiatedWith = insts } ->
+                        if null insts
+                            then mempty
+                            else toFlag (componentComponentId clbi)
+                    _ -> mempty,
                 ghcOptInstantiatedWith = case clbi of
                     LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
                       -> insts

@@ -1,7 +1,6 @@
 -- | See <https://github.com/ezyang/ghc-proposals/blob/backpack/proposals/0000-backpack.rst>
 module Distribution.Backpack.PreExistingComponent (
     PreExistingComponent(..),
-    pc_cid,
     ipiToPreExistingComponent,
 ) where
 
@@ -27,13 +26,10 @@ data PreExistingComponent
         pc_pkgname :: PackageName,
         pc_pkgid :: PackageId,
         pc_uid   :: UnitId,
+        pc_cid   :: ComponentId,
         pc_open_uid :: OpenUnitId,
         pc_shape :: ModuleShape
     }
-
--- | The 'ComponentId' of a 'PreExistingComponent'.
-pc_cid :: PreExistingComponent -> ComponentId
-pc_cid pc = unitIdComponentId (pc_uid pc)
 
 -- | Convert an 'InstalledPackageInfo' into a 'PreExistingComponent',
 -- which was brought into scope under the 'PackageName' (important for
@@ -44,6 +40,7 @@ ipiToPreExistingComponent (pn, ipi) =
         pc_pkgname = pn,
         pc_pkgid = Installed.sourcePackageId ipi,
         pc_uid   = Installed.installedUnitId ipi,
+        pc_cid   = Installed.installedComponentId ipi,
         pc_open_uid =
             IndefFullUnitId (Installed.installedComponentId ipi)
                             (Map.fromList (Installed.instantiatedWith ipi)),

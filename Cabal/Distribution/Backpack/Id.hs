@@ -94,23 +94,16 @@ computeComponentId mb_ipid mb_cid pid cname mb_details =
 -- When we have the public library, the compat-pkg-name is just the
 -- package-name, no surprises there!
 --
-computeCompatPackageName :: PackageName -> ComponentName -> Maybe UnitId -> PackageName
+computeCompatPackageName :: PackageName -> ComponentName -> PackageName
 -- First handle the cases where we can just use the original 'PackageName'.
 -- This is for the PRIMARY library, and it is non-Backpack, or the
 -- indefinite package for us.
-computeCompatPackageName pkg_name CLibName Nothing = pkg_name
-computeCompatPackageName pkg_name CLibName (Just (UnitId _ Nothing))
-    = pkg_name
--- OK, we have to z-encode
-computeCompatPackageName pkg_name cname mb_uid
+computeCompatPackageName pkg_name CLibName = pkg_name
+computeCompatPackageName pkg_name cname
     = mkPackageName $ "z-" ++ zdashcode (display pkg_name)
                  ++ (case componentNameString cname of
                         Just cname_str -> "-z-" ++ zdashcode cname_str
                         Nothing -> "")
-                 ++ (case mb_uid of
-                        Just (UnitId _ (Just hash))
-                            -> "-z-" ++ hash
-                        _ -> "")
 
 zdashcode :: String -> String
 zdashcode s = go s (Nothing :: Maybe Int) []
@@ -173,11 +166,11 @@ computeCompatPackageKey
     -> Version
     -> UnitId
     -> String
-computeCompatPackageKey comp pkg_name pkg_version (UnitId cid Nothing)
+computeCompatPackageKey comp pkg_name pkg_version uid
     | not (packageKeySupported comp) =
         display pkg_name ++ "-" ++ display pkg_version
     | not (unifiedIPIDRequired comp) =
-        let str = unComponentId cid
+        let str = unUnitId uid -- assume no Backpack support
             mb_verbatim_key
                 = case simpleParse str :: Maybe PackageId of
                     -- Something like 'foo-0.1', use it verbatim.
@@ -192,6 +185,4 @@ computeCompatPackageKey comp pkg_name pkg_version (UnitId cid Nothing)
                         else Nothing
             rehashed_key = hashToBase62 str
         in fromMaybe rehashed_key (mb_verbatim_key `mplus` mb_truncated_key)
-    | otherwise = unComponentId cid
-computeCompatPackageKey _comp _pkg_name _pkg_version uid@UnitId{}
-    = display uid
+    | otherwise = display uid

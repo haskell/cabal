@@ -4,7 +4,7 @@ module Distribution.Solver.Types.PackageFixedDeps
 
 import           Distribution.InstalledPackageInfo ( InstalledPackageInfo )
 import           Distribution.Package
-                   ( Package(..), UnitId(..), installedDepends)
+                   ( Package(..), UnitId, installedDepends)
 import           Distribution.Solver.Types.ComponentDeps ( ComponentDeps )
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 

@@ -59,6 +59,7 @@ module Distribution.Simple.Compiler (
         unitIdSupported,
         coverageSupported,
         profilingSupported,
+        backpackSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -315,6 +316,10 @@ packageKeySupported = ghcSupported "Uses package keys"
 -- | Does this compiler support unit IDs?
 unitIdSupported :: Compiler -> Bool
 unitIdSupported = ghcSupported "Uses unit IDs"
+
+-- | Does this compiler support Backpack?
+backpackSupported :: Compiler -> Bool
+backpackSupported = ghcSupported "Support Backpack"
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool

@@ -954,13 +954,18 @@ checkCompilerProblems comp pkg_descr enabled = do
                 all (all (isDefaultIncludeRenaming . snd) . backpackIncludes)
                          (enabledBuildInfos pkg_descr enabled)) $
         die $ "Your compiler does not support thinning and renaming on "
-           ++ "package flags.  To use this feature you probably must use "
+           ++ "package flags.  To use this feature you must use "
            ++ "GHC 7.9 or later."
 
     when (any (not.null.PD.reexportedModules) (PD.allLibraries pkg_descr)
           && not (reexportedModulesSupported comp)) $ do
         die $ "Your compiler does not support module re-exports. To use "
-           ++ "this feature you probably must use GHC 7.9 or later."
+           ++ "this feature you must use GHC 7.9 or later."
+
+    when (any (not.null.PD.signatures) (PD.allLibraries pkg_descr)
+          && not (backpackSupported comp)) $ do
+        die $ "Your compiler does not support Backpack. To use "
+           ++ "this feature you must use GHC 8.1 or later."
 
 -- | Select dependencies for the package.
 configureDependencies
@@ -1182,15 +1187,14 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
         []   -> Left  $
                   case is_internal of
                     Just cname -> DependencyMissingInternal dep_pkgname
-                                    (computeCompatPackageName
-                                     (packageName pkgid) cname Nothing)
+                                    (computeCompatPackageName (packageName pkgid) cname)
                     Nothing -> DependencyNotExists dep_pkgname
         pkgs -> Right $ ExternalDependency dep $
                 case last pkgs of
                   (_ver, pkginstances) -> head pkginstances
      where
       dep' | Just cname <- is_internal
-           = Dependency (computeCompatPackageName (packageName pkgid) cname Nothing) vr
+           = Dependency (computeCompatPackageName (packageName pkgid) cname) vr
            | otherwise = dep
     -- NB: here computeCompatPackageName we want to pick up the INDEFINITE ones
     -- which is why we pass 'Nothing' as 'UnitId'

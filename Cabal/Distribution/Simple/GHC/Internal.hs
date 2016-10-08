@@ -289,6 +289,13 @@ componentGhcOptions verbosity lbi bi clbi odir =
         LibComponentLocalBuildInfo { componentCompatPackageKey = pk }
           -> toFlag pk
         _ -> mempty,
+      ghcOptThisComponentId = case clbi of
+          LibComponentLocalBuildInfo { componentComponentId = cid
+                                     , componentInstantiatedWith = insts } ->
+              if null insts
+                  then mempty
+                  else toFlag cid
+          _ -> mempty,
       ghcOptInstantiatedWith = case clbi of
         LibComponentLocalBuildInfo { componentInstantiatedWith = insts }
           -> insts

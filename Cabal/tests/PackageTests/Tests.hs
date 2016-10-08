@@ -731,7 +731,7 @@ tests config = do
       cabal "configure" []
       r <- shouldFail $ cabal' "build" []
       assertOutputContains "Foobar" r
-      assertOutputContains "Failed to load" r
+      assertOutputContains "Could not find" r
       return ()
 
   tc "Backpack/Reexport1" . whenGhcVersion (>= mkVersion [8,1]) $ do

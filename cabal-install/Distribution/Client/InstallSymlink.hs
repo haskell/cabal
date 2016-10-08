@@ -50,7 +50,7 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), UnitId(..), installedUnitId )
+         ( PackageIdentifier, Package(packageId), UnitId, installedUnitId )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription

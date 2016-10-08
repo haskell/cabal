@@ -107,14 +107,12 @@ configureComponentLocalBuildInfos
              (vcat (map dispLinkedComponent graph2))
 
     let pid_map = Map.fromList $
-            [ (pc_cid pkg, pc_pkgid pkg)
+            [ (pc_uid pkg, pc_pkgid pkg)
             | pkg <- prePkgDeps] ++
-            [ (Installed.installedComponentId pkg, Installed.sourcePackageId pkg)
+            [ (Installed.installedUnitId pkg, Installed.sourcePackageId pkg)
             | (_, Module uid _) <- instantiate_with
             , Just pkg <- [PackageIndex.lookupUnitId
-                                installedPackageSet (unDefUnitId uid)] ] ++
-            [ (lc_cid lc, lc_pkgid lc)
-            | lc <- graph2 ]
+                                installedPackageSet (unDefUnitId uid)] ]
         subst = Map.fromList instantiate_with
         graph3 = toReadyComponents pid_map subst graph2
         graph4 = Graph.revTopSort (Graph.fromList graph3)
@@ -251,10 +249,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
               = Installed.ExposedModule modname'
                   (Just (OpenModule (DefiniteUnitId uid) modname))
             convOpenModuleExport (modname', modu@(OpenModule uid modname))
-              -- TODO: This isn't a good enough test if we have mutual
-              -- recursion (but maybe we'll get saved by the module name
-              -- check regardless.)
-              | openUnitIdComponentId uid == this_cid
+              | uid == this_open_uid
               , modname' == modname
               = Installed.ExposedModule modname' Nothing
               | otherwise
@@ -276,6 +271,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
         in LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentUnitId = this_uid,
+          componentComponentId = this_cid,
           componentInstantiatedWith = insts,
           componentIsIndefinite_ = is_indefinite,
           componentLocalName = cname,
@@ -290,6 +286,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       CExe _ ->
         ExeComponentLocalBuildInfo {
           componentUnitId = this_uid,
+          componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
           componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
@@ -299,6 +296,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       CTest _ ->
         TestComponentLocalBuildInfo {
           componentUnitId = this_uid,
+          componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
           componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
@@ -308,6 +306,7 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
       CBench _ ->
         BenchComponentLocalBuildInfo {
           componentUnitId = this_uid,
+          componentComponentId = this_cid,
           componentLocalName = cname,
           componentPackageDeps = cpds,
           componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
@@ -315,8 +314,9 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentIncludes = includes
         }
      where
-      this_uid = rc_uid rc
-      this_cid = unitIdComponentId this_uid
+      this_uid      = rc_uid rc
+      this_open_uid = rc_open_uid rc
+      this_cid      = rc_cid rc
       cname = componentName (rc_component rc)
       cpds = rc_depends rc
       is_indefinite =

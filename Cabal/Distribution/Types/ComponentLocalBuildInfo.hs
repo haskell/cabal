@@ -4,7 +4,6 @@
 module Distribution.Types.ComponentLocalBuildInfo (
   ComponentLocalBuildInfo(..),
   componentIsIndefinite,
-  componentComponentId,
   ) where
 
 import Prelude ()
@@ -29,6 +28,8 @@ data ComponentLocalBuildInfo
     -- PackageDescription.  NB: eventually, this will NOT uniquely
     -- identify the ComponentLocalBuildInfo.
     componentLocalName :: ComponentName,
+    -- | The computed 'ComponentId' of this component.
+    componentComponentId :: ComponentId,
     -- | The computed 'UnitId' which uniquely identifies this
     -- component.  Might be hashed.
     componentUnitId :: UnitId,
@@ -67,6 +68,7 @@ data ComponentLocalBuildInfo
   }
   | ExeComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
+    componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
@@ -75,6 +77,7 @@ data ComponentLocalBuildInfo
   }
   | TestComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
+    componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
@@ -84,6 +87,7 @@ data ComponentLocalBuildInfo
   }
   | BenchComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
+    componentComponentId :: ComponentId,
     componentUnitId :: UnitId,
     componentPackageDeps :: [(UnitId, PackageId)],
     componentIncludes :: [(OpenUnitId, ModuleRenaming)],
@@ -98,9 +102,6 @@ instance IsNode ComponentLocalBuildInfo where
     type Key ComponentLocalBuildInfo = UnitId
     nodeKey = componentUnitId
     nodeNeighbors = componentInternalDeps
-
-componentComponentId :: ComponentLocalBuildInfo -> ComponentId
-componentComponentId clbi = unitIdComponentId (componentUnitId clbi)
 
 componentIsIndefinite :: ComponentLocalBuildInfo -> Bool
 componentIsIndefinite LibComponentLocalBuildInfo{ componentIsIndefinite_ = b } = b
