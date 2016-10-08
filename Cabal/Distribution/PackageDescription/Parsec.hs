@@ -98,7 +98,7 @@ readGenericPackageDescription = readAndParseFile parseGenericPackageDescription
 parseGenericPackageDescription :: BS.ByteString -> ParseResult GenericPackageDescription
 parseGenericPackageDescription bs = case readFields' bs of
     Right (fs, lexWarnings) -> parseGenericPackageDescription' lexWarnings fs
-    -- | TODO: better marshalling of errors
+    -- TODO: better marshalling of errors
     Left perr -> parseFatalFailure (Position 0 0) (show perr)
 
 runFieldParser :: FieldParser a -> [FieldLine Position] -> ParseResult a
@@ -124,7 +124,7 @@ fieldlinesToString pos fls =
 runFieldParser' :: Position -> FieldParser a -> String -> ParseResult a
 runFieldParser' (Position row col) p str = case P.runParser p' [] "<field>" str of
     Right (pok, ws) -> do
-        -- | TODO: map pos
+        -- TODO: map pos
         traverse_ (\(PWarning t pos w) -> parseWarning pos t w) ws
         pure pok
     Left err        -> do
@@ -161,7 +161,7 @@ parseGenericPackageDescription' lexWarnings fs = do
        -> ParseResult (GPDS, GenericPackageDescription)
     go (Fields, gpd)   (Field (Name pos name) fieldLines) =
         case Map.lookup name pdFieldParsers of
-            -- | TODO: can be more accurate
+            -- TODO: can be more accurate
             Nothing -> fieldlinesToString pos fieldLines >>= \value -> case storeXFieldsPD name value (packageDescription gpd) of
                 Nothing -> do
                     parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name

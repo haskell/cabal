@@ -174,7 +174,7 @@ instance Parsec VersionRange where
                 P.spaces
                 return (VersionRangeParens a))
 
-        -- | TODO: make those non back-tracking
+        -- TODO: make those non back-tracking
         parseRangeOp (s,f) = P.try (P.string s *> P.spaces *> fmap f parsec)
         rangeOps = [ ("<",  earlierVersion),
                      ("<=", orEarlierVersion),

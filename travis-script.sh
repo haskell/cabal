@@ -48,7 +48,11 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # NB: Best to do everything for a single package together as it's
 # more efficient (since new-build will uselessly try to rebuild
 # Cabal otherwise).
-timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
+if [ "x$PARSEC" = "xYES" ]; then
+  timed cabal new-build -fparsec Cabal Cabal:package-tests Cabal:unit-tests Cabal:parser-tests
+else
+  timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
+fi
 
 # NB: the '|| exit $?' workaround is required on old broken versions of bash
 # that ship with OS X. See https://github.com/haskell/cabal/pull/3624 and
@@ -57,6 +61,10 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 # Run tests
 (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
 (cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
+
+if [ "x$PARSEC" = "xYES" ]; then
+    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-tests $TEST_OPTIONS) || exit $?
+fi
 
 # Run haddock (hack: use the Setup script from package-tests!)
 (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?

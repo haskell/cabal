@@ -134,5 +134,5 @@ parser = condOr
         i <- ident
         case P.runParser (p <* P.eof) [] "<ident>" i of
             Right x  -> pure x
-            -- | TODO: better lifting or errors / warnings
+            -- TODO: better lifting or errors / warnings
             Left err -> fail $ show err
