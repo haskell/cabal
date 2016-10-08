@@ -2304,7 +2304,7 @@ The actual location of all these directories can be individually
 overridden at runtime using environment variables of the form
 ``pkg_name_var``, where ``pkg_name`` is the name of the package with all
 hyphens converted into underscores, and ``var`` is either ``bindir``,
-``libdir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
+``libdir``, ``hidir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
 the configured data directory for ``pretty-show`` is controlled with the
 ``pretty_show_datadir`` environment variable.
 
@@ -2550,7 +2550,7 @@ a few options:
    ``unregister``, ``clean``, ``dist`` and ``docs``. Some options to
    commands are passed through as follows:
 
-   -  The ``--with-hc-pkg``, ``--prefix``, ``--bindir``, ``--libdir``,
+   -  The ``--with-hc-pkg``, ``--prefix``, ``--bindir``, ``--libdir``, ``--hidir``,
       ``--datadir``, ``--libexecdir`` and ``--sysconfdir`` options to
       the ``configure`` command are passed on to the ``configure``
       script. In addition the value of the ``--with-compiler`` option is
@@ -2568,6 +2568,7 @@ a few options:
                   $(MAKE) install prefix=$(destdir)/$(prefix) \
                                   bindir=$(destdir)/$(bindir) \
                                   libdir=$(destdir)/$(libdir) \
+                                  hidir=$(destdir)/$(hidir) \
                                   datadir=$(destdir)/$(datadir) \
                                   libexecdir=$(destdir)/$(libexecdir) \
                                   sysconfdir=$(destdir)/$(sysconfdir) \

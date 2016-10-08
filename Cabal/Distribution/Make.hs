@@ -31,7 +31,8 @@
 --              @--bindir@,
 --              @--libdir@,
 --              @--libexecdir@,
---              @--datadir@.
+--              @--datadir@,
+--              @--hidir@.
 --
 -- [BuildCmd] We assume that the default Makefile target will build everything.
 --
