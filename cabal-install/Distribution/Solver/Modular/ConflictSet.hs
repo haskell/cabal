@@ -10,6 +10,7 @@
 -- > import qualified Distribution.Solver.Modular.ConflictSet as CS
 module Distribution.Solver.Modular.ConflictSet (
     ConflictSet -- opaque
+  , ConflictMap
 #ifdef DEBUG_CONFLICT_SETS
   , conflictSetOrigin
 #endif
@@ -28,6 +29,7 @@ module Distribution.Solver.Modular.ConflictSet (
 
 import Prelude hiding (filter)
 import Data.List (intercalate)
+import Data.Map (Map)
 import Data.Set (Set)
 import Data.Function (on)
 import qualified Data.Set as S
@@ -169,3 +171,6 @@ fromList vars = CS {
     , conflictSetOrigin = Node ?loc []
 #endif
     }
+
+type ConflictMap = Map (Var QPN) Int
+

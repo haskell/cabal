@@ -68,8 +68,6 @@ backjump (EnableBackjumping enableBj) var initial xs =
 
 type ConflictSetLog = RetryLog Message (ConflictSet QPN, ConflictMap)
 
-type ConflictMap = Map (Var QPN) Int
-
 getBestGoal :: ConflictMap -> P.PSQ (Goal QPN) a -> (Goal QPN, a)
 getBestGoal cm =
   P.maximumBy
@@ -174,7 +172,4 @@ backjumpAndExplore :: EnableBackjumping
                    -> CountConflicts
                    -> Tree d QGoalReason -> Log Message (Assignment, RevDepMap)
 backjumpAndExplore enableBj countConflicts =
-    toLog . exploreLog enableBj countConflicts . assign
-  where
-    toLog :: RetryLog step fail done -> Log step done
-    toLog = toProgress . mapFailure (const ())
+    toProgress . exploreLog enableBj countConflicts . assign

@@ -3,9 +3,8 @@ module Distribution.Solver.Modular.Log
     , logToProgress
     ) where
 
-import Control.Applicative
 import Data.List as L
-import Data.Maybe (isNothing)
+import Data.Maybe (fromMaybe)
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
@@ -20,7 +19,7 @@ import qualified Distribution.Solver.Modular.ConflictSet as CS
 -- Represents the progress of a computation lazily.
 --
 -- Parameterized over the type of actual messages and the final result.
-type Log m a = Progress m () a
+type Log m a = Progress m (ConflictSet QPN, ConflictMap) a
 
 messages :: Progress step fail done -> [step]
 messages = foldProgress (:) (const []) (const [])
@@ -40,25 +39,25 @@ logToProgress mbj l = let
     -- and ignores repeated backjumps. If proc reaches the backjump limit, it truncates
     -- the 'Progress' and ends it with the last conflict set. Otherwise, it leaves the
     -- original success result or replaces the original failure with 'Nothing'.
-    proc :: Maybe Int -> Progress Message a b -> Progress Message (Maybe (ConflictSet QPN)) b
+    proc :: Maybe Int -> Log Message b -> Progress Message (Bool, ConflictSet QPN) b
     proc _        (Done x)                          = Done x
-    proc _        (Fail _)                          = Fail Nothing
+    proc _        (Fail (cs, _cm))                  = Fail (True, cs)
     proc mbj'     (Step x@(Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
       | cs == cs'                                   = Step x (proc mbj'           xs) -- repeated backjumps count as one
-    proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (Just cs)
+    proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (False, cs)
     proc (Just n) (Step x@(Failure _  Backjump) xs) = Step x (proc (Just (n - 1)) xs)
     proc mbj'     (Step x                       xs) = Step x (proc mbj'           xs)
 
     -- Sets the conflict set from the first backjump as the final error, and records
     -- whether the search was exhaustive.
-    useFirstError :: Progress Message (Maybe (ConflictSet QPN)) b
-                  -> Progress Message (Bool, Maybe (ConflictSet QPN)) b
+    useFirstError :: Progress Message (Bool, ConflictSet QPN) b
+                  -> Progress Message (Bool, ConflictSet QPN) b
     useFirstError = replace Nothing
       where
         replace _       (Done x)                          = Done x
-        replace cs'     (Fail cs)                         = -- 'Nothing' means backjump limit not reached.
+        replace cs'     (Fail (exh, cs))                  = -- 'Nothing' means backjump limit not reached.
                                                             -- Prefer first error over later error.
-                                                            Fail (isNothing cs, cs' <|> cs)
+                                                            Fail (exh, if exh then cs else fromMaybe cs cs')
         replace Nothing (Step x@(Failure cs Backjump) xs) = Step x $ replace (Just cs) xs
         replace cs'     (Step x                       xs) = Step x $ replace cs' xs
 
@@ -72,17 +71,16 @@ logToProgress mbj l = let
     -- exhaustiveness and first conflict set.
     go :: Progress Message a b
        -> Progress Message a b
-       -> Progress String (Bool, Maybe (ConflictSet QPN)) b
+       -> Progress String (Bool, ConflictSet QPN) b
        -> Progress String String b
     go ms (Step _ ns) (Step x xs)           = Step x (go ms ns xs)
     go ms r           (Step x xs)           = Step x (go ms r  xs)
-    go ms _           (Fail (exh, Just cs)) = Fail $
-                                              "Could not resolve dependencies:\n" ++
-                                              unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
-                                              (if exh then "Dependency tree exhaustively searched.\n"
-                                                      else "Backjump limit reached (" ++ currlimit mbj ++
-                                                               "change with --max-backjumps or try to run with --reorder-goals).\n")
-                                                  where currlimit (Just n) = "currently " ++ show n ++ ", "
-                                                        currlimit Nothing  = ""
+    go ms _           (Fail (exh, cs))      = Fail $ "Could not resolve dependencies:\n" ++ if exh
+                                                then "Dependency tree exhaustively searched.\n" ++
+                                                         "Final conflict set is: " ++ CS.showCS cs
+                                                else unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
+                                                     "Backjump limit reached (" ++ currlimit mbj ++
+                                                     "change with --max-backjumps or try to run with --reorder-goals).\n"
+                                                where currlimit (Just n) = "currently " ++ show n ++ ", "
+                                                      currlimit Nothing  = ""
     go _  _           (Done s)              = Done s
-    go _  _           (Fail (_, Nothing))   = Fail ("Could not resolve dependencies; something strange happened.") -- should not happen
