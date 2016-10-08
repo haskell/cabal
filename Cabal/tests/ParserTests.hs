@@ -154,35 +154,6 @@ problematicFiles =
     , eq "DSTM/0.1/DSTM.cabal"
     , eq "DSTM/0.1.1/DSTM.cabal"
     , eq "DSTM/0.1.2/DSTM.cabal"
-    -- executable
-    {-
-    , eq "DefendTheKing/0.1/DefendTheKing.cabal"
-    , eq "DefendTheKing/0.2/DefendTheKing.cabal"
-    , eq "DefendTheKing/0.2.1/DefendTheKing.cabal"
-    , isPrefixOf "HaLeX/"
-    , isPrefixOf "PerfectHash/"
-    , isPrefixOf "hburg/"
-    , isPrefixOf "hemkay/"
-    , isPrefixOf "historian/"
-    , isPrefixOf "hp2any-graph/"
-    , isPrefixOf "hp2any-manager/"
-    -}
-    -- hs-source-dirs:
-    --   .
-    , isPrefixOf "writer-cps-mtl/"
-    , isPrefixOf "writer-cps-monads-tf/"
-    , isPrefixOf "writer-cps-transformers/"
-    -- unexpected character in input '\194' - nbsp
-    , eq "Octree/0.5/Octree.cabal"
-    , eq "hermit/0.1.8.0/hermit.cabal"
-    , eq "oeis/0.3.0/oeis.cabal"
-    , eq "oeis/0.3.1/oeis.cabal"
-    , eq "oeis/0.3.2/oeis.cabal"
-    , eq "oeis/0.3.3/oeis.cabal"
-    , eq "oeis/0.3.4/oeis.cabal"
-    , eq "oeis/0.3.5/oeis.cabal"
-    , eq "oeis/0.3.6/oeis.cabal"
-    , eq "oeis/0.3.7/oeis.cabal"
     -- colon : after section header
     , eq "ds-kanren/0.2.0.0/ds-kanren.cabal"
     , eq "ds-kanren/0.2.0.1/ds-kanren.cabal"
@@ -207,6 +178,9 @@ problematicFiles =
     -- hs-source-dirs ".", old parser broken
     , isPrefixOf "hledger-ui/"
     , eq "hspec-expectations-pretty/0.1/hspec-expectations-pretty.cabal"
+    , isPrefixOf "writer-cps-mtl/"
+    , isPrefixOf "writer-cps-monads-tf/"
+    , isPrefixOf "writer-cps-transformers/"
     -- {- comment -}
     , eq "ixset/1.0.4/ixset.cabal"
     ]

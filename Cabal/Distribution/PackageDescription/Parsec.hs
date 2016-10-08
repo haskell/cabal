@@ -58,8 +58,6 @@ import           Distribution.Parsec.LexerMonad
 import Distribution.Text (display)
 import Distribution.Version (mkVersion, Version, asVersionIntervals, orLaterVersion, LowerBound (..))
 
---import Debug.Trace
-
 -- ---------------------------------------------------------------
 -- Parsing
 

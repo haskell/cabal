@@ -46,9 +46,9 @@ $alpha           = [a-z A-Z]  -- alphabetic characters
 $symbol          = [\= \< \> \+ \* \- \& \| \! \$ \% \^ \@ \# \? \/ \\ \~]
 $ctlchar         = [\x0-\x1f \x7f]
 $printable       = \x0-\x10ffff # $ctlchar   -- so no \n \r
+$nbsp            = \xa0
 $spacetab        = [$space \t]
 $bom             = \xfeff
-$nbsp            = \xa0
 $nbspspacetab    = [$nbsp $space \t]
 
 $paren           = [ \( \) \[ \] ]
@@ -76,16 +76,16 @@ tokens :-
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
-  $spacetab* @nl                        { \_ _ _ -> adjustPos retPos >> lexToken }
-  $nbspspacetab+ @nl                    { \_ _ _ -> adjustPos retPos >> addWarning LexWarningNBSP "Non-breaking space occured" >> lexToken }
+  $nbspspacetab* @nl         { \_ _ inp -> checkWhitespace inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
-  $spacetab* "--" $comment*             ;  -- TODO: check the lack of @nl works here
-                                        -- including counting line numbers
+  $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
+                                -- including counting line numbers
 }
 
 <bol_section> {
-  $spacetab*  --TODO prevent or record leading tabs
-                   { \pos len inp -> if B.length inp == len
+  $nbspspacetab*  --TODO prevent or record leading tabs
+                   { \pos len inp -> checkWhitespace inp >>
+                                     if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
                                          >> return (L pos (Indent len)) }
@@ -161,6 +161,14 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 
 tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
 tok  t pos _len _input = return $! L pos t
+
+checkWhitespace :: ByteString -> Lex ()
+checkWhitespace bs
+    | B.any (== 194) bs = addWarning LexWarningNBSP "Non-breaking space found"
+    | otherwise         = return ()
+
+whitespace :: Position -> Int -> ByteString -> Lex ()
+whitespace _ _ = checkWhitespace
 
 -- -----------------------------------------------------------------------------
 -- The input type
