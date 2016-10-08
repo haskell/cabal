@@ -405,7 +405,7 @@ If a user-supplied `configure` script is run (see the section on
 [system-dependent
 parameters](developing-packages.html#system-dependent-parameters) or on
 [complex packages](developing-packages.html#more-complex-packages)), it
-is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
+is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--hidir`,
 `--datadir`, `--libexecdir` and `--sysconfdir` options. In addition the
 value of the `--with-compiler` option is passed in a `--with-hc` option
 and all options specified with `--configure-option=` are passed on.
@@ -497,6 +497,13 @@ package:
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$pkgid`, `$pkg`, `$version`,
     `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
+
+`--hidir=`_dir_
+:   Interfaces of libraries are installed here.
+
+    _dir_ may contain the following path variables: `$prefix`, `$bindir`,
+    `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
+    `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--libexecdir=`_dir_
 :   Executables that are not expected to be invoked directly by the user
@@ -599,6 +606,9 @@ independence](#prefix-independence)).
 `$datasubdir`
 :   As above but for `--datasubdir`
 
+`$hidir`
+:   As above but for `--hidir`
+
 `$docdir`
 :   As above but for `--docdir`
 
@@ -647,6 +657,7 @@ Option                     Windows Default                                      
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
 `--datadir` (library)      `C:\Program Files\Haskell`                                `$prefix/share`
 `--datasubdir`             `$pkgid`                                                  `$pkgid`
+`--hidir`                  `$prefix\$abi\$libname`                                   `$prefix/lib/$abi/$libname`
 `--docdir`                 `$prefix\doc\$pkgid`                                      `$datadir/doc/$pkgid`
 `--sysconfdir`             `$prefix\etc`                                             `$prefix/etc`
 `--htmldir`                `$docdir\html`                                            `$docdir/html`
@@ -666,7 +677,7 @@ install-time, rather than having to bake the path into the binary when it is
 built.
 
 In order to achieve this, we require that for an executable on Windows,
-all of `$bindir`, `$libdir`, `$datadir` and `$libexecdir` begin with
+all of `$bindir`, `$libdir`, `$hidir`, `$datadir` and `$libexecdir` begin with
 `$prefix`. If this is not the case then the compiled executable will
 have baked-in all absolute paths.
 

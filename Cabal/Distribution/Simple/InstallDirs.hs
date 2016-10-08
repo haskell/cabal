@@ -86,6 +86,7 @@ data InstallDirs dir = InstallDirs {
         includedir   :: dir,
         datadir      :: dir,
         datasubdir   :: dir,
+        hidir        :: dir,
         docdir       :: dir,
         mandir       :: dir,
         htmldir      :: dir,
@@ -116,6 +117,7 @@ combineInstallDirs combine a b = InstallDirs {
     includedir   = includedir a `combine` includedir b,
     datadir      = datadir a    `combine` datadir b,
     datasubdir   = datasubdir a `combine` datasubdir b,
+    hidir        = hidir a      `combine` hidir b,
     docdir       = docdir a     `combine` docdir b,
     mandir       = mandir a     `combine` mandir b,
     htmldir      = htmldir a    `combine` htmldir b,
@@ -191,6 +193,11 @@ defaultInstallDirs comp userInstall _hasLibs = do
         Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
       datasubdir   = "$abi" </> "$pkgid",
+      hidir        = installLibDir </> case comp of
+           JHC    -> "$compiler"
+           LHC    -> "$compiler"
+           UHC    -> "$pkgid"
+           _other -> "$abi" </> "$libname",
       docdir       = "$datadir" </> "doc" </> "$abi" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
@@ -228,6 +235,7 @@ substituteInstallDirTemplates env dirs = dirs'
       includedir = subst includedir prefixBinLibVars,
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],
+      hidir      = subst hidir      prefixBinLibVars,
       docdir     = subst docdir     prefixBinLibDataVars,
       mandir     = subst mandir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
@@ -333,6 +341,7 @@ data PathTemplateVariable =
      | LibsubdirVar  -- ^ The @$libsubdir@ path variable
      | DatadirVar    -- ^ The @$datadir@ path variable
      | DatasubdirVar -- ^ The @$datasubdir@ path variable
+     | HidirVar      -- ^ The @$hidir@ path variable
      | DocdirVar     -- ^ The @$docdir@ path variable
      | HtmldirVar    -- ^ The @$htmldir@ path variable
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
@@ -428,6 +437,7 @@ installDirsTemplateEnv dirs =
   ,(LibsubdirVar,  libsubdir  dirs)
   ,(DatadirVar,    datadir    dirs)
   ,(DatasubdirVar, datasubdir dirs)
+  ,(HidirVar,      hidir      dirs)
   ,(DocdirVar,     docdir     dirs)
   ,(HtmldirVar,    htmldir    dirs)
   ]
@@ -450,6 +460,7 @@ instance Show PathTemplateVariable where
   show LibsubdirVar  = "libsubdir"
   show DatadirVar    = "datadir"
   show DatasubdirVar = "datasubdir"
+  show HidirVar      = "hidir"
   show DocdirVar     = "docdir"
   show HtmldirVar    = "htmldir"
   show PkgNameVar    = "pkg"
@@ -478,6 +489,7 @@ instance Read PathTemplateVariable where
                  ,("libsubdir",  LibsubdirVar)
                  ,("datadir",    DatadirVar)
                  ,("datasubdir", DatasubdirVar)
+                 ,("hidir",      HidirVar)
                  ,("docdir",     DocdirVar)
                  ,("htmldir",    HtmldirVar)
                  ,("pkgid",      PkgIdVar)

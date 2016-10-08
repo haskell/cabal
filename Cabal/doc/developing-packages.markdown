@@ -1952,6 +1952,7 @@ version :: Version
 
 getBinDir :: IO FilePath
 getLibDir :: IO FilePath
+getHiDir :: IO FilePath
 getDataDir :: IO FilePath
 getLibexecDir :: IO FilePath
 getSysconfDir :: IO FilePath
@@ -2185,7 +2186,7 @@ a few options:
     `unregister`, `clean`, `dist` and `docs`. Some options to commands
     are passed through as follows:
 
-      * The `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir`,
+      * The `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--hidir`, `--datadir`,
         `--libexecdir` and `--sysconfdir` options to the `configure` command are
         passed on to the `configure` script. In addition the value of the
         `--with-compiler` option is passed in a `--with-hc` option and all
@@ -2201,6 +2202,7 @@ a few options:
                 $(MAKE) install prefix=$(destdir)/$(prefix) \
                                 bindir=$(destdir)/$(bindir) \
                                 libdir=$(destdir)/$(libdir) \
+                                hidir=$(destdir)/$(hidir) \
                                 datadir=$(destdir)/$(datadir) \
                                 libexecdir=$(destdir)/$(libexecdir) \
                                 sysconfdir=$(destdir)/$(sysconfdir) \
