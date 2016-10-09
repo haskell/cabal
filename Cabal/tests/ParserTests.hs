@@ -144,14 +144,9 @@ parseParsecTest fpath bsl = when (not $ any ($ fpath) problematicFiles) $ do
 
 problematicFiles :: [FilePath -> Bool]
 problematicFiles =
-    -- used tag in version
     [
     -- Indent failure
       eq "control-monad-exception-mtl/0.10.3/control-monad-exception-mtl.cabal"
-    -- readp parser fails (description: {} )
-    , eq "Cardinality/0.1/Cardinality.cabal"
-    , eq "Cardinality/0.2/Cardinality.cabal"
-    , eq "ConfigFileTH/0.1/ConfigFileTH.cabal"
     -- Other modules <- no dash
     , eq "DSTM/0.1/DSTM.cabal"
     , eq "DSTM/0.1.1/DSTM.cabal"
