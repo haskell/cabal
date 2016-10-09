@@ -65,14 +65,16 @@ import Distribution.Simple.Utils
 import Distribution.Client.Utils
          ( makeRelativeToCwd )
 
-import Data.List
-         ( nubBy, stripPrefix, partition, intercalate, sortBy, sortOn, groupBy )
-import Data.Maybe
-         ( listToMaybe, maybeToList )
 import Data.Either
          ( partitionEithers )
 import Data.Function
          ( on )
+import Data.List
+         ( nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
+import Data.Maybe
+         ( listToMaybe, maybeToList )
+import Data.Ord
+         ( comparing )
 import GHC.Generics (Generic)
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.Map.Lazy   as Map.Lazy
@@ -513,7 +515,7 @@ resolveBuildTarget ppinfo opinfo userTarget =
           , take maxResults
             $ map fst
             $ takeWhile distanceLow
-            $ sortOn snd
+            $ sortBy (comparing snd)
             $ map addLevDist
             $ Set.toList alts
           ) : acc
