@@ -63,7 +63,7 @@ fi
 (cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
 
 if [ "x$PARSEC" = "xYES" ]; then
-    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-tests $TEST_OPTIONS) || exit $?
+    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-tests $TEST_OPTIONS) | tail || exit $?
 fi
 
 # Run haddock (hack: use the Setup script from package-tests!)

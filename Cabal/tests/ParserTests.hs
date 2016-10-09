@@ -3,11 +3,10 @@ module Main where
 import           Control.Applicative
                  (Applicative (..), (<$>))
 import           Control.Monad                          (when)
-import           Data.Char                              (isSpace)
 import           Data.Foldable
                  (foldMap, for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
-import           Data.Maybe                             (catMaybes)
+import           Data.Maybe                             (mapMaybe)
 import           Data.Monoid                            (Monoid (..), Sum (..))
 import           Data.Traversable                       (traverse)
 import           Distribution.Simple.Utils              (fromUTF8LBS)
@@ -17,10 +16,11 @@ import           System.Environment                     (getArgs)
 import           System.Exit                            (exitFailure)
 import           System.FilePath                        ((</>))
 
-
 import           Distribution.PackageDescription
 
 import qualified Codec.Archive.Tar                      as Tar
+import qualified Data.ByteString                        as B
+import qualified Data.ByteString.Char8                  as B8
 import qualified Data.ByteString.Lazy                   as BSL
 import qualified Data.Map                               as Map
 import qualified Distribution.PackageDescription.Parse  as ReadP
@@ -37,18 +37,20 @@ import           StructDiff
 
 parseIndex :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> IO a
 parseIndex action = do
-    c <- getAppUserDataDirectory "cabal"
-    cfg <- readFile (c </> "config")
-    let repos        = reposFromConfig cfg
-        repoCache    = case lookupInConfig "remote-repo-cache" cfg of
-            []        -> c </> "packages"  -- Default
-            (rrc : _) -> rrc               -- User-specified
+    cabalDir  <- getAppUserDataDirectory "cabal"
+    cfg       <- B.readFile (cabalDir </> "config")
+    cfgFields <- either (fail . show) pure $ Parsec.readFields cfg
+    let repos        = reposFromConfig cfgFields
+        repoCache    = case lookupInConfig "remote-repo-cache" cfgFields of
+            []        -> cabalDir </> "packages"  -- Default
+            (rrc : _) -> rrc                      -- User-specified
         tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' action . tarName) repos
 
 
 parseIndex' :: Monoid a => (FilePath -> BSL.ByteString -> IO a) -> FilePath -> IO a
 parseIndex' action path = do
+    putStrLn $ "Reading index from: " ++ path
     contents <- BSL.readFile path
     let entries = Tar.read contents
     Tar.foldEntries (\e m -> mappend <$> f e <*> m) (return mempty) (fail . show) entries
@@ -215,21 +217,28 @@ main = do
 -------------------------------------------------------------------------------
 
 -- TODO: Use 'Cabal' for this?
-reposFromConfig :: String -> [String]
-reposFromConfig = map (takeWhile (/= ':')) . lookupInConfig "remote-repo"
+reposFromConfig :: [Parsec.Field ann] -> [String]
+reposFromConfig fields = takeWhile (/= ':') <$> mapMaybe f fields
+  where
+    f (Parsec.Field (Parsec.Name _ name) fieldLines)
+        | B8.unpack name == "remote-repo" =
+            Just $ fieldLinesToString fieldLines
+    f (Parsec.Section (Parsec.Name _ name) [Parsec.SecArgName _ secName] _fieldLines)
+        | B8.unpack name == "repository" =
+            Just $ B8.unpack secName
+    f _ = Nothing
 
 -- | Looks up the given key in the cabal configuration file
-lookupInConfig :: String -> String -> [String]
-lookupInConfig key = map trim . catMaybes . map (dropPrefix prefix) . lines
+lookupInConfig :: String -> [Parsec.Field ann] -> [String]
+lookupInConfig key = mapMaybe f
   where
-    prefix = key ++ ":"
+    f (Parsec.Field (Parsec.Name _ name) fieldLines)
+        | B8.unpack name == key =
+            Just $ fieldLinesToString fieldLines
+    f _ = Nothing
 
--- | Utility: drop leading and trailing spaces from a string
-trim :: String -> String
-trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
-
-dropPrefix :: (Eq a) => [a] -> [a] -> Maybe [a]
-dropPrefix prefix s =
-  if prefix `isPrefixOf` s
-  then Just . drop (length prefix) $ s
-  else Nothing
+fieldLinesToString :: [Parsec.FieldLine ann] -> String
+fieldLinesToString fieldLines =
+    B8.unpack $ B.concat $ bsFromFieldLine <$> fieldLines
+  where
+    bsFromFieldLine (Parsec.FieldLine _ bs) = bs
