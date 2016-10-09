@@ -503,6 +503,8 @@ resolveBuildTarget ppinfo opinfo userTarget =
         expected = [ (thing, got)
                    | (_, MatchErrorExpected thing got)
                            <- map (innerErr Nothing) errs ]
+        -- Trim the list of alternatives by dropping duplicates and
+        -- retaining only at most three most similar (by edit distance) ones.
         nosuch   = Map.foldrWithKey genResults [] $ Map.fromListWith Set.union $
           [ ((inside, thing, got), Set.fromList alts)
           | (inside, MatchErrorNoSuch thing got alts) <- map (innerErr Nothing) errs
