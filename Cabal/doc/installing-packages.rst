@@ -604,6 +604,9 @@ package:
 
     Interfaces of libraries are installed here.
 
+    By default, this is the same as `$libdir/$libsubdir`; except on OS X, where
+    `$libsubdir` is set to `$abi`, but this setting is `$libdir/$abi/$libname`.
+
     In the simple build system, *dir* may contain the following path
     variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
@@ -780,8 +783,8 @@ For the simple build system, the following defaults apply:
       - ``$pkgid/$compiler``
       - ``$pkgid\$compiler``
     * - :option:`--hidir`
-      - ``$prefix/lib/$pkgid/$compiler``
-      - ``$prefix\$pkgid\$compiler``
+      - ``$libdir/$pkgid/$compiler``
+      - ``$libdir\$pkgid\$compiler``
     * - :option:`--libexecdir`
       - ``$prefix/libexec``
       - ``$prefix\$pkgid``
