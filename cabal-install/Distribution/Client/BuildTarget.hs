@@ -741,7 +741,7 @@ reportBuildTargetProblems problems = do
                  | (thing, alts) <- alternatives ]
             | (inside, nosuch') <- groupByContainer nosuch
             , let alternatives =
-                    [ (thing, take 10 alts) --TODO: select best ones
+                    [ (thing, alts)
                     | (thing,_got,alts@(_:_)) <- nosuch' ]
             ]
           | (target, nosuch) <- targets
