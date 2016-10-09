@@ -498,7 +498,7 @@ library
       transformers,
       parsec >= 3.1.9 && <3.2
     build-tools:
-      alex >= 3.1.4
+      alex >=3.1.4 && <3.3
     exposed-modules:
       Distribution.Compat.Parsec
       Distribution.PackageDescription.Parsec
