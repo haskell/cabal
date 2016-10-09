@@ -501,8 +501,11 @@ package:
 `--hidir=`_dir_
 :   Interfaces of libraries are installed here.
 
-    _dir_ may contain the following path variables: `$prefix`, `$bindir`,
-    `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
+    By default, this is the same as `$libdir/$libsubdir`; except on OS X, where
+    `$libsubdir` is set to `$abi`, but this setting is `$libdir/$abi/$libname`.
+
+    In the simple build system, _dir_ may contain the following path
+    variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`,
     `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--libexecdir=`_dir_
@@ -657,7 +660,7 @@ Option                     Windows Default                                      
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
 `--datadir` (library)      `C:\Program Files\Haskell`                                `$prefix/share`
 `--datasubdir`             `$pkgid`                                                  `$pkgid`
-`--hidir`                  `$prefix\$abi\$libname`                                   `$prefix/lib/$abi/$libname`
+`--hidir`                  `$libdir\$abi\$libname`                                   `$libdir/lib/$abi/$libname`
 `--docdir`                 `$prefix\doc\$pkgid`                                      `$datadir/doc/$pkgid`
 `--sysconfdir`             `$prefix\etc`                                             `$prefix/etc`
 `--htmldir`                `$docdir\html`                                            `$docdir/html`
