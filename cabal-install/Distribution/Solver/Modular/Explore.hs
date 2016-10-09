@@ -60,7 +60,10 @@ backjump (EnableBackjumping enableBj) var initial xs =
           | otherwise                            = f (csAcc `CS.union` cs) cm'
 
     logBackjump :: ConflictSet QPN -> ConflictMap -> ConflictSetLog a
-    logBackjump cs cm = failWith (Failure cs Backjump) (cs, cm)
+    logBackjump cs cm = failWith (Failure cs Backjump) (cs, updateCM initial cm)
+                                   -- 'intial' instead of 'cs' here ---^
+                                   -- since we do not want to double-count the
+                                   -- additionally accumulated conflicts.
 
 type ConflictSetLog = RetryLog Message (ConflictSet QPN, ConflictMap)
 
