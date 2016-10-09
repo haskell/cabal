@@ -195,6 +195,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
            UHC    -> "$pkgid"
            _other -> case buildOS of
                         OSX      -> "$abi" -- OSX libs go into a single directory
+                                           -- See: https://ghc.haskell.org/trac/ghc/ticket/12479
                         _otherOS -> "$abi" </> "$libname",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
