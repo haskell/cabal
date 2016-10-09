@@ -1,6 +1,11 @@
 -*-change-log-*-
-1.24.1.0 Ryan Thomas <ryan@ryant.org> ??? 2016
+1.24.1.0 Ryan Thomas <ryan@ryant.org> October 2016
 	* API addition: 'differenceVersionRanges' (#3519).
+	* Fixed reexported-modules display mangling (#3928).
+	* Check that the correct cabal-version is specified when the
+	extra-doc-files field is present (#3825).
+	* Fixed an incorrect invocation of GetShortPathName that was
+	causing build failures on Windows (#3649).
 
 1.24.0.1 Ryan Thomas <ryan@ryant.org> May 2016
 	* Linker flags are now set correctly on GHC >= 7.8 (#3443).

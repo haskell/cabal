@@ -8,6 +8,14 @@
 	various issues on Windows.
 	* Fixed 'new-build' to exit with a non-zero exit code on failure
 	(#3506).
+	* Store secure repo index data as 01-index.* (#3862).
+	* Added new hackage-security root keys for distribution with
+	cabal-install.
+	* Fix an issue where 'cabal install' sometimes had to be run twice
+	for packages with build-type: Custom and a custom-setup stanza
+	(#3723).
+	* 'cabal sdist' no longer ignores '--builddir' when the package's
+	build-type is Custom (#3794).
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> May 2016
 	* If there are multiple remote repos, 'cabal update' now updates
