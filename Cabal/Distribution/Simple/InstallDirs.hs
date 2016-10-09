@@ -193,7 +193,9 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
-           _other -> "$abi" </> "$libname",
+           _other -> case buildOS of
+                        OSX      -> "$abi" -- OSX libs go into a single directory
+                        _otherOS -> "$abi" </> "$libname",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
