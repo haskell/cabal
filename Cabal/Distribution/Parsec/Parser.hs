@@ -39,10 +39,12 @@ import           Distribution.Parsec.LexerMonad
                  (LexResult (..), LexState (..), LexWarning, unLex)
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field
+import           Distribution.Utils.String
 
 import           Control.Monad
                  (guard)
-import qualified Data.ByteString.Char8            as B
+import qualified Data.ByteString                  as B
+import qualified Data.ByteString.Char8            as B8
 import           Data.Functor.Identity
 import           Text.Parsec.Combinator           hiding
                  (eof, notFollowedBy)
@@ -104,7 +106,7 @@ describeToken t = case t of
   CloseBrace      -> "\"}\""
 --  SemiColon       -> "\";\""
   EOF             -> "end of file"
-  LexicalError is -> "character in input " ++ show (B.head is)
+  LexicalError is -> "character in input " ++ show (B8.head is)
 
 tokName :: Parser (Name Position)
 tokName', tokStr, tokNum, tokOther :: Parser (SectionArg Position)
@@ -280,7 +282,7 @@ fieldLayoutOrBraces ilevel name =
           closeBrace
           return (Field name ls))
   <|> (inLexerMode (LexerMode in_field_layout)
-        (do l  <- option (FieldLine (Position 0 0) B.empty) fieldContent
+        (do l  <- option (FieldLine (Position 0 0) B8.empty) fieldContent
                   --FIXME ^^ having to add an extra empty here is silly!
             ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
             return (Field name (l:ls))))
@@ -312,18 +314,17 @@ fieldInlineOrBraces name =
           return (Field name ls))
 
 
-readFields :: B.ByteString -> Either ParseError [Field Position]
-readFields s = parse cabalStyleFile "the input" lexSt
-  where
-    lexSt = mkLexState' (mkLexState s)
+readFields :: B8.ByteString -> Either ParseError [Field Position]
+readFields s = fmap fst (readFields' s)
 
-readFields' :: B.ByteString -> Either ParseError ([Field Position], [LexWarning])
+readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
-    lexSt = mkLexState' (mkLexState s)
+    s' = B.pack .encodeStringUtf8 . decodeStringUtf8 . B.unpack $ s
+    lexSt = mkLexState' (mkLexState s')
 
 #ifdef CABAL_PARSEC_DEBUG
-parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B.ByteString -> IO ()
+parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()
 parseTest' p fname s =
     case parse p fname (lexSt s) of
       Left err -> putStrLn (formatError s err)
@@ -333,15 +334,15 @@ parseTest' p fname s =
     lexSt = mkLexState' . mkLexState
 
 parseFile :: Show a => Parser a -> FilePath -> IO ()
-parseFile p f = B.readFile f >>= \s -> parseTest' p f s
+parseFile p f = B8.readFile f >>= \s -> parseTest' p f s
 
 parseStr  :: Show a => Parser a -> String -> IO ()
-parseStr p = parseBS p . B.pack
+parseStr p = parseBS p . B8.pack
 
-parseBS  :: Show a => Parser a -> B.ByteString -> IO ()
+parseBS  :: Show a => Parser a -> B8.ByteString -> IO ()
 parseBS p = parseTest' p "<input string>"
 
-formatError :: B.ByteString -> ParseError -> String
+formatError :: B8.ByteString -> ParseError -> String
 formatError input perr =
     unlines
       [ "Parse error "++ show (errorPos perr) ++ ":"

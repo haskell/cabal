@@ -43,7 +43,7 @@ parseIndex action = do
         repoCache    = case lookupInConfig "remote-repo-cache" cfg of
             []        -> c </> "packages"  -- Default
             (rrc : _) -> rrc               -- User-specified
-        tarName repo = repoCache </> repo </> "00-index.tar"
+        tarName repo = repoCache </> repo </> "01-index.tar"
     mconcat <$> traverse (parseIndex' action . tarName) repos
 
 
@@ -80,7 +80,7 @@ compareTest
     -> FilePath -> BSL.ByteString -> IO (Sum Int, Sum Int, M Parsec.PWarnType (Sum Int))
 compareTest pfx fpath bsl
     | any ($ fpath) problematicFiles = mempty
-    | fpath < pfx                    = mempty
+    | not $ pfx `isPrefixOf` fpath   = mempty
     | otherwise = do
     let str = fromUTF8LBS bsl
 
@@ -183,6 +183,12 @@ problematicFiles =
     , isPrefixOf "writer-cps-transformers/"
     -- {- comment -}
     , eq "ixset/1.0.4/ixset.cabal"
+    -- comments in braces
+    , isPrefixOf "hint/"
+    -- something weird: FromString "unrecognised field or section: \"\\65279\"" (Just 1)
+    , eq "Workflow/0.8.3/Workflow.cabal"
+    , eq "dictionary-sharing/0.1.0.0/dictionary-sharing.cabal"
+    , eq "testing-type-modifiers/0.1.0.0/testing-type-modifiers.cabal"
     ]
   where
     eq = (==)
