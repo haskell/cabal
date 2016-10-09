@@ -79,12 +79,14 @@ logToProgress mbj l = let
     go ms (Step _ ns) (Step x xs)           = Step x (go ms ns xs)
     go ms r           (Step x xs)           = Step x (go ms r  xs)
     go ms _           (Fail (exh, cs, cm))  = Fail $
-        "Could not resolve dependencies:\n" ++ case exh of
+        "Could not resolve dependencies:\n" ++
+        unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
+        case exh of
             Exhaustive ->
                 "Dependency tree exhaustively searched.\n" ++
-                "Final conflict set is: " ++ CS.showCSWithFrequency cm cs
+                "I've had most trouble fulfilling the following goals: "
+                ++ CS.showCSWithFrequency cm cs
             NotExhaustive ->
-                unlines (messages $ showMessages (L.foldr (\ v _ -> v `CS.member` cs) True) False ms) ++
                 "Backjump limit reached (" ++ currlimit mbj ++
                 "change with --max-backjumps or try to run with --reorder-goals).\n"
               where currlimit (Just n) = "currently " ++ show n ++ ", "
