@@ -58,15 +58,18 @@ matrix:
      os: osx
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
      os: osx
-  allow_failures:
-   - env: GHCVER=head
-     sudo: required
+
    - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
      os: linux
      addons:
         apt:
             packages:
                 - libgmp-dev
+
+  allow_failures:
+   - env: GHCVER=head
+     sudo: required
+   - env: GHCVER=via-stack SCRIPT=stack STACKAGE_RESOLVER=lts
 
  # TODO add PARSEC_BUNDLED=YES when it's so
  # It seems pointless to run head if we're going to ignore the results.
