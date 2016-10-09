@@ -14,6 +14,7 @@ import Data.Set as S
 import Distribution.Version
 
 import Distribution.Compiler (CompilerInfo)
+import Distribution.Text (display)
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.PackagePreferences
@@ -201,7 +202,7 @@ instance GSimpleTree (Tree d QGoalReason) where
 
       -- Show package choice
       goP :: QPN -> POption -> Tree d QGoalReason -> (String, SimpleTree)
-      goP _        (POption (I ver _loc) Nothing)  subtree = (showVersion ver, go subtree)
+      goP _        (POption (I ver _loc) Nothing)  subtree = (display ver, go subtree)
       goP (Q _ pn) (POption _           (Just pp)) subtree = (showQPN (Q pp pn), go subtree)
 
       -- Show flag or stanza choice
