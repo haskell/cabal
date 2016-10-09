@@ -196,7 +196,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
         Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
       datasubdir   = "$abi" </> "$pkgid",
-      hidir        = installLibDir </> case comp of
+      hidir        = "$libdir" </> case comp of
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
