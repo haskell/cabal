@@ -507,7 +507,8 @@ resolveBuildTarget ppinfo opinfo userTarget =
         -- retaining only at most three most similar (by edit distance) ones.
         nosuch   = Map.foldrWithKey genResults [] $ Map.fromListWith Set.union $
           [ ((inside, thing, got), Set.fromList alts)
-          | (inside, MatchErrorNoSuch thing got alts) <- map (innerErr Nothing) errs
+          | (inside, MatchErrorNoSuch thing got alts)
+            <- map (innerErr Nothing) errs
           ]
 
         genResults (inside, thing, got) alts acc = (
@@ -522,7 +523,8 @@ resolveBuildTarget ppinfo opinfo userTarget =
             $ Set.toList alts
           ) : acc
           where
-            addLevDist = id &&& restrictedDamerauLevenshteinDistance defaultEditCosts got
+            addLevDist = id &&& restrictedDamerauLevenshteinDistance
+                                defaultEditCosts got
 
             distanceLow (_, dist) = dist < length got `div` 2
 
@@ -563,7 +565,8 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- So, here's the strategy. We take the original match results, and make a
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
-    matchResultsRenderings :: [(BuildTarget PackageInfo, [UserBuildTargetFileStatus])]
+    matchResultsRenderings :: [(BuildTarget PackageInfo,
+                                [UserBuildTargetFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
