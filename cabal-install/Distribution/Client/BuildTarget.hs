@@ -206,7 +206,7 @@ data UserBuildTarget =
 --
 data BuildTarget pkg =
 
-     -- | A package as a whole 
+     -- | A package as a whole
      --
      BuildTargetPackage pkg
 
@@ -500,7 +500,7 @@ resolveBuildTarget ppinfo opinfo userTarget =
       | otherwise
       = internalError $ "classifyMatchErrors: " ++ show errs
       where
-        expected = [ (thing, got) 
+        expected = [ (thing, got)
                    | (_, MatchErrorExpected thing got)
                            <- map (innerErr Nothing) errs ]
         nosuch   = Map.foldrWithKey genResults [] $ Map.fromListWith Set.union $
@@ -605,7 +605,7 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
                   , [ (forgetFileStatus rendering, matches)
                     | rendering <- matchRenderings
                     , let (ExactMatch _ matches) =
-                            memoisedMatches Map.! rendering 
+                            memoisedMatches Map.! rendering
                     ] )
 
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
@@ -827,7 +827,7 @@ matchBuildTarget2 pinfo str1 fstatus1 str2 =
 matchBuildTarget3 :: [PackageInfo] -> String -> FileStatus -> String -> String
                   -> Match (BuildTarget PackageInfo)
 matchBuildTarget3 pinfo str1 fstatus1 str2 str3 =
-        match3PkgKndCmp pinfo str1 fstatus1 str2 str3 
+        match3PkgKndCmp pinfo str1 fstatus1 str2 str3
    <//> match3PkgCmpMod pinfo str1 fstatus1 str2 str3
    <//> match3PkgCmpFil pinfo str1 fstatus1 str2 str3
    <//> match3KndCmpMod cinfo str1          str2 str3
@@ -1074,7 +1074,7 @@ selectPackageInfo pkg loc = do
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
-        LocalUnpackedPackage dir -> do 
+        LocalUnpackedPackage dir -> do
           dirabs <- canonicalizePath dir
           dirrel <- makeRelativeToCwd dirabs
           --TODO: ought to get this earlier in project reading
@@ -1239,7 +1239,7 @@ matchPackageDir :: [PackageInfo]
                 -> String -> FileStatus -> Match PackageInfo
 matchPackageDir ps = \str fstatus ->
     case fstatus of
-      FileStatusExistsDir canondir -> 
+      FileStatusExistsDir canondir ->
         orNoSuchThing "package directory" str (map (snd . fst) dirs) $
           increaseConfidenceFor $
             fmap snd $ matchExactly (fst . fst) dirs canondir
@@ -1252,7 +1252,7 @@ matchPackageDir ps = \str fstatus ->
 matchPackageFile :: [PackageInfo] -> String -> FileStatus -> Match PackageInfo
 matchPackageFile ps = \str fstatus -> do
     case fstatus of
-      FileStatusExistsFile canonfile -> 
+      FileStatusExistsFile canonfile ->
         orNoSuchThing "package .cabal file" str (map (snd . fst) files) $
           increaseConfidenceFor $
             fmap snd $ matchExactly (fst . fst) files canonfile
@@ -1656,4 +1656,3 @@ ex_cs =
     pkgid :: PackageIdentifier
     Just pkgid = simpleParse "thelib"
 -}
-
