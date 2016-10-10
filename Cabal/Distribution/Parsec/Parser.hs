@@ -320,8 +320,13 @@ readFields s = fmap fst (readFields' s)
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
   where
-    s' = B.pack .encodeStringUtf8 . decodeStringUtf8 . B.unpack $ s
+    s' = B.pack . recodeStringUtf8 . B.unpack $ s
     lexSt = mkLexState' (mkLexState s')
+
+-- TODO: For some reason alex parser cannot handle BOM, is it a bug?
+recodeStringUtf8 :: [Word8] -> [Word8]
+recodeStringUtf8 (0xef : 0xbb : 0xbf : bytes) = encodeStringUtf8 (decodeStringUtf8 bytes)
+recodeStringUtf8 bytes                        = encodeStringUtf8 (decodeStringUtf8 bytes)
 
 #ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()

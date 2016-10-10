@@ -10,7 +10,7 @@ import           Data.List                              (isPrefixOf, isSuffixOf)
 import           Data.Maybe                             (mapMaybe, listToMaybe)
 import           Data.Monoid                            (Monoid (..), Sum (..))
 import           Data.Traversable                       (traverse)
-import           Distribution.Simple.Utils              (fromUTF8LBS)
+import           Distribution.Simple.Utils              (fromUTF8LBS, ignoreBOM)
 import           System.Directory
                  (getAppUserDataDirectory)
 import           System.Environment                     (getArgs)
@@ -93,7 +93,7 @@ compareTest pfx fpath bsl
     | any ($ fpath) problematicFiles = mempty
     | not $ pfx `isPrefixOf` fpath   = mempty
     | otherwise = do
-    let str = fromUTF8LBS bsl
+    let str = ignoreBOM $ fromUTF8LBS bsl
 
     putStrLn $ "::: " ++ fpath
     (readp, readpWarnings)  <- case ReadP.parsePackageDescription str of
@@ -194,10 +194,6 @@ problematicFiles =
     , eq "ixset/1.0.4/ixset.cabal"
     -- comments in braces
     , isPrefixOf "hint/"
-    -- something weird: FromString "unrecognised field or section: \"\\65279\"" (Just 1)
-    , eq "Workflow/0.8.3/Workflow.cabal"
-    , eq "dictionary-sharing/0.1.0.0/dictionary-sharing.cabal"
-    , eq "testing-type-modifiers/0.1.0.0/testing-type-modifiers.cabal"
     ]
   where
     eq = (==)
