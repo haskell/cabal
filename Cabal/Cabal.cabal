@@ -528,7 +528,6 @@ library
     Distribution.Compat.CopyFile
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
-    Distribution.Compat.DList
     Distribution.Compat.Prelude
     Distribution.GetOpt
     Distribution.Lex

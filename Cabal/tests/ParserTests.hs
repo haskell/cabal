@@ -2,12 +2,12 @@
 module Main where
 
 import           Control.Applicative
-                 (Applicative (..), (<$>))
+                 (Applicative (..), (<$>), Const (..))
 import           Control.Monad                          (when)
 import           Data.Foldable
                  (foldMap, for_, traverse_)
 import           Data.List                              (isPrefixOf, isSuffixOf)
-import           Data.Maybe                             (mapMaybe)
+import           Data.Maybe                             (mapMaybe, listToMaybe)
 import           Data.Monoid                            (Monoid (..), Sum (..))
 import           Data.Traversable                       (traverse)
 import           Distribution.Simple.Utils              (fromUTF8LBS)
@@ -17,6 +17,7 @@ import           System.Environment                     (getArgs)
 import           System.Exit                            (exitFailure)
 import           System.FilePath                        ((</>))
 
+import           Distribution.Package (Dependency)
 import           Distribution.PackageDescription
 
 import qualified Codec.Archive.Tar                      as Tar
@@ -30,6 +31,7 @@ import qualified Distribution.Parsec.Parser             as Parsec
 import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.Parsec.Types.ParseResult  as Parsec
 import qualified Distribution.ParseUtils                as ReadP
+import qualified Distribution.Compat.DList              as DList
 
 #if __GLASGOW_HASKELL__ >= 708
 import Data.Coerce
@@ -106,24 +108,35 @@ compareTest pfx fpath bsl
 
     -- Old parser is broken for many descriptions, and other free text fields
     let readp0  = readp
-            & set (lensPackageDescription .  lensDescription) ""
-            & set (lensPackageDescription .  lensSynopsis)    ""
-            & set (lensPackageDescription .  lensMaintainer)  ""
+            & set (packageDescription_ .  description_) ""
+            & set (packageDescription_ .  synopsis_)    ""
+            & set (packageDescription_ .  maintainer_)  ""
     let parsec0  = parsec
-            & set (lensPackageDescription .  lensDescription) ""
-            & set (lensPackageDescription .  lensSynopsis)    ""
-            & set (lensPackageDescription .  lensMaintainer)  ""
+            & set (packageDescription_ .  description_) ""
+            & set (packageDescription_ .  synopsis_)    ""
+            & set (packageDescription_ .  maintainer_)  ""
 
-    if readp0 == parsec0
+    -- hs-source-dirs ".", old parser broken
+    -- See e.g. http://hackage.haskell.org/package/hledger-ui-0.27/hledger-ui.cabal executable
+    let parsecHsSrcDirs = parsec0 & toListOf (buildInfos_ . hsSourceDirs_)
+    let readpHsSrcDirs  = readp0  & toListOf (buildInfos_ . hsSourceDirs_)
+    let filterDotDirs   = filter (/= ".")
+
+    let parsec1 = if parsecHsSrcDirs /= readpHsSrcDirs && fmap filterDotDirs parsecHsSrcDirs == readpHsSrcDirs
+        then parsec0 & over (buildInfos_ . hsSourceDirs_) filterDotDirs
+        else parsec0
+
+    -- Compare two parse results
+    if readp0 == parsec1
         then return ()
         else do
 #if HAS_STRUCT_DIFF
             prettyResultIO $ diff readp parsec
 #else
             putStrLn "<<<<<<"
-            print readp0
+            print readp
             putStrLn "======"
-            print parsec0
+            print parsec
             putStrLn ">>>>>>"
 #endif
             exitFailure
@@ -177,20 +190,6 @@ problematicFiles =
     , eq "vacuum-opengl/0.0.1/vacuum-opengl.cabal"
     -- dashes in version, not even tag
     , isPrefixOf "free-theorems-webui/"
-    -- whitespace difference in x-fields
-    {-
-    , isPrefixOf "gtk/"
-    , isPrefixOf "hsqml/"
-    , isPrefixOf "hsqml-datamodel/"
-    , isPrefixOf "lhae/"
-    , isPrefixOf "vte/"
-    -}
-    -- hs-source-dirs ".", old parser broken
-    , isPrefixOf "hledger-ui/"
-    , eq "hspec-expectations-pretty/0.1/hspec-expectations-pretty.cabal"
-    , isPrefixOf "writer-cps-mtl/"
-    , isPrefixOf "writer-cps-monads-tf/"
-    , isPrefixOf "writer-cps-transformers/"
     -- {- comment -}
     , eq "ixset/1.0.4/ixset.cabal"
     -- comments in braces
@@ -257,7 +256,17 @@ fieldLinesToString fieldLines =
 
 type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
 type Traversal' s a = forall f. Applicative f => (a -> f a) -> s -> f s
+
+type Getting r s a = (a -> Const r a) -> s -> Const r s
 type ASetter' s a = (a -> I a) -> s -> I s
+
+
+
+-- | View the value pointed to by a 'Getting' or 'Lens' or the
+-- result of folding over all the results of a 'Control.Lens.Fold.Fold' or
+-- 'Control.Lens.Traversal.Traversal' that points at a monoidal values.
+view :: s -> Getting a s a -> a
+view s l = getConst (l Const s)
 
 -- | Replace the target of a 'Lens'' or 'Traversal'' with a constant value.
 set :: ASetter' s a -> a -> s -> s
@@ -272,21 +281,28 @@ over l f = coerce . l (coerce . f)
 over l f = unsafeCoerce . l (unsafeCoerce . f)
 #endif
 
+-- | Build a 'Lens'' from a getter and a setter.
+lens :: (s -> a) -> (s -> a -> s) -> Lens' s a
+lens sa sbt afb s = sbt s <$> afb (sa s)
+
+-- | Build an 'Getting' from an arbitrary Haskell function.
+to :: (s -> a) -> Getting r s a
+to f g a = Const $ getConst $ g (f a)
+
+-- | Extract a list of the targets of a 'Lens'' or 'Traversal''.
+toListOf :: Getting (DList.DList a) s a -> s -> [a]
+toListOf l = DList.runDList . getConst . l (Const . DList.singleton)
+
+-- | Retrieve the first entry of a 'Traversal'' or retrieve 'Just' the result
+-- from a 'Getting' or 'Lens''.
+firstOf :: Getting (DList.DList a) s a -> s -> Maybe a
+firstOf l = listToMaybe . toListOf l
+
 -- | '&' is a reverse application operator
 (&) :: a -> (a -> b) -> b
 (&) = flip ($)
 {-# INLINE (&) #-}
 infixl 1 &
-
--- | Infix flipped 'fmap'.
---
--- @
--- ('<&>') = 'flip' 'fmap'
--- @
-(<&>) :: Functor f => f a -> (a -> b) -> f b
-as <&> f = f <$> as
-{-# INLINE (<&>) #-}
-infixl 1 <&>
 
 -------------------------------------------------------------------------------
 -- Distribution.Compat.BasicFunctors
@@ -300,18 +316,54 @@ unI (I x) = x
 instance Functor I where
     fmap f (I x) = I (f x)
 
+instance Applicative I where
+    pure        = I
+    I f <*> I x = I (f x)
+    _ *> x      = x
+
+_2 :: Lens' (a, b) b
+_2 = lens snd $ \(a, _) b -> (a, b)
+
 -------------------------------------------------------------------------------
 -- Distribution.PackageDescription.Lens
 -------------------------------------------------------------------------------
 
-lensPackageDescription :: Lens' GenericPackageDescription PackageDescription
-lensPackageDescription f s =
-    f (packageDescription s) <&> \a -> s { packageDescription = a }
+packageDescription_ :: Lens' GenericPackageDescription PackageDescription
+packageDescription_ = lens packageDescription $ \s a -> s { packageDescription = a }
 
-lensDescription, lensSynopsis, lensMaintainer :: Lens' PackageDescription String
-lensDescription f s =
-    f (description s) <&> \a -> s { description = a }
-lensSynopsis f s =
-    f (synopsis s) <&> \a -> s { synopsis = a }
-lensMaintainer f s =
-    f (maintainer s) <&> \a -> s { maintainer = a }
+condLibrary_ :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
+condLibrary_ = lens condLibrary $ \s a -> s { condLibrary = a}
+
+condExecutables_ :: Lens' GenericPackageDescription [(String, CondTree ConfVar [Dependency] Executable)]
+condExecutables_ = lens condExecutables $ \s a -> s { condExecutables = a }
+
+condTreeData_ :: Lens' (CondTree v c a) a
+condTreeData_ = lens condTreeData $ \s a -> s { condTreeData = a }
+
+description_, synopsis_, maintainer_ :: Lens' PackageDescription String
+description_ = lens description $ \s a -> s { description = a }
+synopsis_    = lens synopsis    $ \s a -> s { synopsis    = a }
+maintainer_  = lens maintainer  $ \s a -> s { maintainer  = a }
+
+class HasBuildInfo a where
+    buildInfo_ :: Lens' a BuildInfo
+
+instance HasBuildInfo Library where
+    buildInfo_ = lens libBuildInfo $ \s a -> s { libBuildInfo = a }
+
+instance HasBuildInfo Executable where
+    buildInfo_ = lens buildInfo $ \s a -> s { buildInfo = a }
+
+-- | This forgets a lot of structure, but might be nice for some stuff
+buildInfos_ :: Traversal' GenericPackageDescription BuildInfo
+buildInfos_ f gpd = mkGpd
+    <$> (traverse . traverse . buildInfo_) f (condLibrary gpd)
+    <*> (traverse . _2 . traverse . buildInfo_) f (condExecutables gpd)
+  where
+      mkGpd lib exe = gpd
+          { condLibrary     = lib
+          , condExecutables = exe
+          }
+
+hsSourceDirs_ :: Lens' BuildInfo [FilePath]
+hsSourceDirs_ = lens hsSourceDirs $ \s a -> s { hsSourceDirs = a }
