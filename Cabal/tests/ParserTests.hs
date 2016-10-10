@@ -1,3 +1,4 @@
+{-# LANGUAGE Rank2Types #-}
 module Main where
 
 import           Control.Applicative
@@ -29,6 +30,12 @@ import qualified Distribution.Parsec.Parser             as Parsec
 import qualified Distribution.Parsec.Types.Common       as Parsec
 import qualified Distribution.Parsec.Types.ParseResult  as Parsec
 import qualified Distribution.ParseUtils                as ReadP
+
+#if __GLASGOW_HASKELL__ >= 708
+import Data.Coerce
+#else
+import Unsafe.Coerce
+#endif
 
 #ifdef HAS_STRUCT_DIFF
 import           DiffInstances ()
@@ -98,8 +105,14 @@ compareTest pfx fpath bsl
     parsec <- maybe (print readp >> exitFailure) return parsec'
 
     -- Old parser is broken for many descriptions, and other free text fields
-    let readp0  = readp  { packageDescription = (packageDescription readp)  { description = "", synopsis = "", maintainer = "" }}
-    let parsec0 = parsec { packageDescription = (packageDescription parsec) { description = "", synopsis = "", maintainer = "" }}
+    let readp0  = readp
+            & set (lensPackageDescription .  lensDescription) ""
+            & set (lensPackageDescription .  lensSynopsis)    ""
+            & set (lensPackageDescription .  lensMaintainer)  ""
+    let parsec0  = parsec
+            & set (lensPackageDescription .  lensDescription) ""
+            & set (lensPackageDescription .  lensSynopsis)    ""
+            & set (lensPackageDescription .  lensMaintainer)  ""
 
     if readp0 == parsec0
         then return ()
@@ -237,3 +250,68 @@ fieldLinesToString fieldLines =
     B8.unpack $ B.concat $ bsFromFieldLine <$> fieldLines
   where
     bsFromFieldLine (Parsec.FieldLine _ bs) = bs
+
+-------------------------------------------------------------------------------
+-- Distribution.Compat.Lens
+-------------------------------------------------------------------------------
+
+type Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
+type Traversal' s a = forall f. Applicative f => (a -> f a) -> s -> f s
+type ASetter' s a = (a -> I a) -> s -> I s
+
+-- | Replace the target of a 'Lens'' or 'Traversal'' with a constant value.
+set :: ASetter' s a -> a -> s -> s
+set l x = over l (const x)
+
+-- | Modify the target of a 'Lens'' or all the targets of a 'Traversal''
+-- with a function.
+over :: ASetter' s a -> (a -> a) -> s -> s
+#if __GLASGOW_HASKELL__ >= 708
+over l f = coerce . l (coerce . f)
+#else
+over l f = unsafeCoerce . l (unsafeCoerce . f)
+#endif
+
+-- | '&' is a reverse application operator
+(&) :: a -> (a -> b) -> b
+(&) = flip ($)
+{-# INLINE (&) #-}
+infixl 1 &
+
+-- | Infix flipped 'fmap'.
+--
+-- @
+-- ('<&>') = 'flip' 'fmap'
+-- @
+(<&>) :: Functor f => f a -> (a -> b) -> f b
+as <&> f = f <$> as
+{-# INLINE (<&>) #-}
+infixl 1 <&>
+
+-------------------------------------------------------------------------------
+-- Distribution.Compat.BasicFunctors
+-------------------------------------------------------------------------------
+
+newtype I a = I a
+
+unI :: I a -> a
+unI (I x) = x
+
+instance Functor I where
+    fmap f (I x) = I (f x)
+
+-------------------------------------------------------------------------------
+-- Distribution.PackageDescription.Lens
+-------------------------------------------------------------------------------
+
+lensPackageDescription :: Lens' GenericPackageDescription PackageDescription
+lensPackageDescription f s =
+    f (packageDescription s) <&> \a -> s { packageDescription = a }
+
+lensDescription, lensSynopsis, lensMaintainer :: Lens' PackageDescription String
+lensDescription f s =
+    f (description s) <&> \a -> s { description = a }
+lensSynopsis f s =
+    f (synopsis s) <&> \a -> s { synopsis = a }
+lensMaintainer f s =
+    f (maintainer s) <&> \a -> s { maintainer = a }
