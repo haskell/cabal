@@ -71,7 +71,7 @@ generate pkg_descr lbi =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
         "    version,\n"++
-        "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
+        "    getBinDir, getLibDir, getDataDir, getHiDir, getLibexecDir,\n"++
         "    getDataFileName, getSysconfDir\n"++
         "  ) where\n"++
         "\n"++
@@ -111,6 +111,7 @@ generate pkg_descr lbi =
           "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOrReloc "bindir" flat_bindirreloc++"\n"++
           "getLibDir = "++mkGetEnvOrReloc "libdir" flat_libdirreloc++"\n"++
+          "getHiDir = "++mkGetEnvOrReloc "hidir" flat_hidirreloc++"\n"++
           "getDataDir = "++mkGetEnvOrReloc "datadir" flat_datadirreloc++"\n"++
           "getLibexecDir = "++mkGetEnvOrReloc "libexecdir" flat_libexecdirreloc++"\n"++
           "getSysconfDir = "++mkGetEnvOrReloc "sysconfdir" flat_sysconfdirreloc++"\n"++
@@ -124,17 +125,19 @@ generate pkg_descr lbi =
           "\n"++
           filename_stuff
         | absolute =
-          "\nbindir, libdir, datadir, libexecdir, sysconfdir :: FilePath\n"++
+          "\nbindir, libdir, datadir, hidir, libexecdir, sysconfdir :: FilePath\n"++
           "\nbindir     = " ++ show flat_bindir ++
           "\nlibdir     = " ++ show flat_libdir ++
           "\ndatadir    = " ++ show flat_datadir ++
+          "\nhidir      = " ++ show flat_hidir ++
           "\nlibexecdir = " ++ show flat_libexecdir ++
           "\nsysconfdir = " ++ show flat_sysconfdir ++
           "\n"++
-          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
+          "\ngetBinDir, getLibDir, getDataDir, getHiDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
           "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
           "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
+          "getHiDir = "++mkGetEnvOr "hidir" "return hidir"++"\n"++
           "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
           "getSysconfDir = "++mkGetEnvOr "sysconfdir" "return sysconfdir"++"\n"++
           "\n"++
@@ -154,6 +157,8 @@ generate pkg_descr lbi =
           "getDataDir :: IO FilePath\n"++
           "getDataDir =  "++ mkGetEnvOr "datadir"
                               (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
+          "getHiDir :: IO FilePath\n"++
+          "getHiDir = "++mkGetDir flat_libdir flat_hidirrel++"\n\n"++
           "getLibexecDir :: IO FilePath\n"++
           "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
           "getSysconfDir :: IO FilePath\n"++
@@ -174,6 +179,7 @@ generate pkg_descr lbi =
           bindir     = flat_bindir,
           libdir     = flat_libdir,
           datadir    = flat_datadir,
+          hidir      = flat_hidir,
           libexecdir = flat_libexecdir,
           sysconfdir = flat_sysconfdir
         } = absoluteInstallDirs pkg_descr lbi NoCopyDest
@@ -181,6 +187,7 @@ generate pkg_descr lbi =
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
           datadir    = flat_datadirrel,
+          hidir      = flat_hidirrel,
           libexecdir = flat_libexecdirrel,
           sysconfdir = flat_sysconfdirrel
         } = prefixRelativeInstallDirs (packageId pkg_descr) lbi
@@ -188,6 +195,7 @@ generate pkg_descr lbi =
         flat_bindirreloc = shortRelativePath flat_prefix flat_bindir
         flat_libdirreloc = shortRelativePath flat_prefix flat_libdir
         flat_datadirreloc = shortRelativePath flat_prefix flat_datadir
+        flat_hidirreloc = shortRelativePath flat_prefix flat_hidir
         flat_libexecdirreloc = shortRelativePath flat_prefix flat_libexecdir
         flat_sysconfdirreloc = shortRelativePath flat_prefix flat_sysconfdir
 

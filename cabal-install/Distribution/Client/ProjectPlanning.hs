@@ -1920,6 +1920,7 @@ storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
     includedir   = libdir </> "include"
     datadir      = prefix </> "share"
     datasubdir   = ""
+    hidir        = prefix </> "lib"
     docdir       = datadir </> "doc"
     mandir       = datadir </> "man"
     htmldir      = docdir  </> "html"

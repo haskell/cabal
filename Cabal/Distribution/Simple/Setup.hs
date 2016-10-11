@@ -782,6 +782,11 @@ installDirsOptions =
       datasubdir (\v flags -> flags { datasubdir = v })
       installDirArg
 
+  , option "" ["hidir"]
+      "installation directory for library interface files"
+      hidir (\v flags -> flags { hidir = v })
+      installDirArg
+
   , option "" ["docdir"]
       "installation directory for documentation"
       docdir (\v flags -> flags { docdir = v })
