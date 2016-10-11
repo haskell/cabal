@@ -28,79 +28,83 @@ import Text.Read (readMaybe)
 
 versionTests :: [TestTree]
 versionTests =
-  zipWith (\n p -> testProperty ("Range Property " ++ show n) p) [1::Int ..]
-    -- properties to validate the test framework
-  [ property prop_nonNull
-  , property prop_gen_intervals1
-  , property prop_gen_intervals2
---, property prop_equivalentVersionRange --FIXME: runs out of test cases
-  , property prop_intermediateVersion
-
     -- test 'Version' type
-  , property prop_VersionId
-  , property prop_VersionId2
-  , property prop_VersionEq
-  , property prop_VersionEq2
-  , property prop_VersionOrd
-  , property prop_VersionOrd2
+    [ tp "versionNumbers . mkVersion = id @[NonNegative Int]"  prop_VersionId
+    , tp "versionNumbers . mkVersion = id @Base.Version"       prop_VersionId2
+    , tp "(==) = (==) `on` versionNumbers"                     prop_VersionEq
+    , tp "(==) = (==) `on` mkVersion"                          prop_VersionEq2
+    , tp "compare = compare `on` versionNumbers"               prop_VersionOrd
+    , tp "compare = compare `on` mkVersion"                    prop_VersionOrd2
 
-  , property prop_ShowRead
-  , property prop_ShowRead_example
+    , tp "readMaybe . show = Just"                             prop_ShowRead
+    , tp "read example"                                        prop_ShowRead_example
+    ]
 
-    -- the basic syntactic version range functions
-  , property prop_anyVersion
-  , property prop_noVersion
-  , property prop_thisVersion
-  , property prop_notThisVersion
-  , property prop_laterVersion
-  , property prop_orLaterVersion
-  , property prop_earlierVersion
-  , property prop_orEarlierVersion
-  , property prop_unionVersionRanges
-  , property prop_intersectVersionRanges
-  , property prop_differenceVersionRanges
-  , property prop_invertVersionRange
-  , property prop_withinVersion
-  , property prop_foldVersionRange
-  , property prop_foldVersionRange'
+    ++ 
+    zipWith (\n p -> testProperty ("Range Property " ++ show n) p) [1::Int ..]
+      -- properties to validate the test framework
+    [ property prop_nonNull
+    , property prop_gen_intervals1
+    , property prop_gen_intervals2
+  --, property prop_equivalentVersionRange --FIXME: runs out of test cases
+    , property prop_intermediateVersion
 
-    -- the semantic query functions
---, property prop_isAnyVersion1       --FIXME: runs out of test cases
---, property prop_isAnyVersion2       --FIXME: runs out of test cases
---, property prop_isNoVersion         --FIXME: runs out of test cases
---, property prop_isSpecificVersion1  --FIXME: runs out of test cases
---, property prop_isSpecificVersion2  --FIXME: runs out of test cases
-  , property prop_simplifyVersionRange1
-  , property prop_simplifyVersionRange1'
---, property prop_simplifyVersionRange2   --FIXME: runs out of test cases
---, property prop_simplifyVersionRange2'  --FIXME: runs out of test cases
---, property prop_simplifyVersionRange2'' --FIXME: actually wrong
+    , property prop_anyVersion
+    , property prop_noVersion
+    , property prop_thisVersion
+    , property prop_notThisVersion
+    , property prop_laterVersion
+    , property prop_orLaterVersion
+    , property prop_earlierVersion
+    , property prop_orEarlierVersion
+    , property prop_unionVersionRanges
+    , property prop_intersectVersionRanges
+    , property prop_differenceVersionRanges
+    , property prop_invertVersionRange
+    , property prop_withinVersion
+    , property prop_foldVersionRange
+    , property prop_foldVersionRange'
 
-    -- converting between version ranges and version intervals
-  , property prop_to_intervals
---, property prop_to_intervals_canonical  --FIXME: runs out of test cases
---, property prop_to_intervals_canonical' --FIXME: runs out of test cases
-  , property prop_from_intervals
-  , property prop_to_from_intervals
-  , property prop_from_to_intervals
-  , property prop_from_to_intervals'
+      -- the semantic query functions
+  --, property prop_isAnyVersion1       --FIXME: runs out of test cases
+  --, property prop_isAnyVersion2       --FIXME: runs out of test cases
+  --, property prop_isNoVersion         --FIXME: runs out of test cases
+  --, property prop_isSpecificVersion1  --FIXME: runs out of test cases
+  --, property prop_isSpecificVersion2  --FIXME: runs out of test cases
+    , property prop_simplifyVersionRange1
+    , property prop_simplifyVersionRange1'
+  --, property prop_simplifyVersionRange2   --FIXME: runs out of test cases
+  --, property prop_simplifyVersionRange2'  --FIXME: runs out of test cases
+  --, property prop_simplifyVersionRange2'' --FIXME: actually wrong
 
-    -- union and intersection of version intervals
-  , property prop_unionVersionIntervals
-  , property prop_unionVersionIntervals_idempotent
-  , property prop_unionVersionIntervals_commutative
-  , property prop_unionVersionIntervals_associative
-  , property prop_intersectVersionIntervals
-  , property prop_intersectVersionIntervals_idempotent
-  , property prop_intersectVersionIntervals_commutative
-  , property prop_intersectVersionIntervals_associative
-  , property prop_union_intersect_distributive
-  , property prop_intersect_union_distributive
+      -- converting between version ranges and version intervals
+    , property prop_to_intervals
+  --, property prop_to_intervals_canonical  --FIXME: runs out of test cases
+  --, property prop_to_intervals_canonical' --FIXME: runs out of test cases
+    , property prop_from_intervals
+    , property prop_to_from_intervals
+    , property prop_from_to_intervals
+    , property prop_from_to_intervals'
 
-    -- inversion of version intervals
-  , property prop_invertVersionIntervals
-  , property prop_invertVersionIntervalsTwice
-  ]
+      -- union and intersection of version intervals
+    , property prop_unionVersionIntervals
+    , property prop_unionVersionIntervals_idempotent
+    , property prop_unionVersionIntervals_commutative
+    , property prop_unionVersionIntervals_associative
+    , property prop_intersectVersionIntervals
+    , property prop_intersectVersionIntervals_idempotent
+    , property prop_intersectVersionIntervals_commutative
+    , property prop_intersectVersionIntervals_associative
+    , property prop_union_intersect_distributive
+    , property prop_intersect_union_distributive
+
+      -- inversion of version intervals
+    , property prop_invertVersionIntervals
+    , property prop_invertVersionIntervalsTwice
+    ]
+  where
+    tp :: Testable p => String -> p -> TestTree
+    tp = testProperty
 
 -- parseTests :: [TestTree]
 -- parseTests =
