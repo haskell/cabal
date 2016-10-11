@@ -3,8 +3,10 @@ module Distribution.Solver.Modular.Log
     , logToProgress
     ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Data.List as L
-import Data.Maybe (fromMaybe)
 
 import Distribution.Solver.Types.PackagePath
 import Distribution.Solver.Types.Progress
