@@ -92,6 +92,8 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<+>))
 import Control.Exception (assert)
 
+import qualified Text.Read as Read
+
 -- -----------------------------------------------------------------------------
 -- Versions
 
@@ -113,7 +115,7 @@ data Version = PV0 {-# UNPACK #-} !Word64
              -- which all fall into the [0..0xfffe] range), then PV0
              -- MUST be used. This is essential for the 'Eq' instance
              -- to work.
-             deriving (Data,Eq,Generic,Show,Read,Typeable)
+             deriving (Data,Eq,Generic,Typeable)
 
 instance Ord Version where
     compare (PV0 x)    (PV0 y)    = compare x y
@@ -136,6 +138,17 @@ instance Ord Version where
         y2 = fromIntegral ((w `shiftR` 32) .&. 0xffff) - 1
         y3 = fromIntegral ((w `shiftR` 16) .&. 0xffff) - 1
         y4 = fromIntegral               (w .&. 0xffff) - 1
+
+instance Show Version where
+    showsPrec d v = showParen (d > 10)
+        $ showString "mkVersion "
+        . showsPrec 11 (versionNumbers v)
+
+instance Read Version where
+    readPrec = Read.parens $ do
+        Read.Ident "mkVersion" <- Read.lexP
+        v <- Read.step Read.readPrec
+        return (mkVersion v)
 
 instance Binary Version
 

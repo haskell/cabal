@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans
                 -fno-warn-incomplete-patterns
                 -fno-warn-deprecations
@@ -21,6 +22,9 @@ import Data.Maybe (isJust, fromJust)
 import Data.List (sort, sortBy, nub)
 import Data.Ord  (comparing)
 import Data.Function (on)
+#if MIN_VERSION_base(4,6,0)
+import Text.Read (readMaybe)
+#endif
 
 versionTests :: [TestTree]
 versionTests =
@@ -39,6 +43,9 @@ versionTests =
   , property prop_VersionEq2
   , property prop_VersionOrd
   , property prop_VersionOrd2
+
+  , property prop_ShowRead
+  , property prop_ShowRead_example
 
     -- the basic syntactic version range functions
   , property prop_anyVersion
@@ -203,6 +210,17 @@ prop_VersionOrd v1 v2 =
 prop_VersionOrd2 :: VersionArb -> VersionArb -> Bool
 prop_VersionOrd2 (VersionArb v1) (VersionArb v2) =
     (==) v1 v2 == ((==) `on` mkVersion) v1 v2
+
+prop_ShowRead :: Version -> Property
+#if MIN_VERSION_base(4,6,0)
+prop_ShowRead v = Just v === readMaybe (show v)
+#else
+-- readMaybe is since base-4.6
+prop_ShowRead v = v === read (show v)
+#endif
+
+prop_ShowRead_example :: Bool
+prop_ShowRead_example = show (mkVersion [1,2,3]) == "mkVersion [1,2,3]"
 
 ---------------------------
 -- VersionRange properties
