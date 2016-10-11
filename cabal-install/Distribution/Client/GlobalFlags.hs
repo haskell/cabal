@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
+
 module Distribution.Client.GlobalFlags (
     GlobalFlags(..)
   , defaultGlobalFlags
@@ -12,9 +13,11 @@ module Distribution.Client.GlobalFlags (
   , withRepoContext'
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..) )
-import Distribution.Compat.Semigroup
 import Distribution.Simple.Setup
          ( Flag(..), fromFlag, flagToMaybe )
 import Distribution.Utils.NubList
@@ -26,22 +29,15 @@ import Distribution.Verbosity
 import Distribution.Simple.Utils
          ( info )
 
-import Data.Maybe
-         ( fromMaybe )
 import Control.Concurrent
          ( MVar, newMVar, modifyMVar )
 import Control.Exception
          ( throwIO )
-import Control.Monad
-         ( when )
 import System.FilePath
          ( (</>) )
 import Network.URI
-         ( uriScheme, uriPath )
-import Data.Map
-         ( Map )
+         ( URI, uriScheme, uriPath )
 import qualified Data.Map as Map
-import GHC.Generics ( Generic )
 
 import qualified Hackage.Security.Client                    as Sec
 import qualified Hackage.Security.Util.Path                 as Sec
@@ -50,6 +46,7 @@ import qualified Hackage.Security.Client.Repository.Cache   as Sec
 import qualified Hackage.Security.Client.Repository.Local   as Sec.Local
 import qualified Hackage.Security.Client.Repository.Remote  as Sec.Remote
 import qualified Distribution.Client.Security.HTTP          as Sec.HTTP
+import qualified Distribution.Client.Security.DNS           as Sec.DNS
 
 -- ------------------------------------------------------------
 -- * Global flags
@@ -219,8 +216,19 @@ initSecureRepo :: Verbosity
                -> (SecureRepo -> IO a)  -- ^ Callback
                -> IO a
 initSecureRepo verbosity httpLib RemoteRepo{..} cachePath = \callback -> do
-    withRepo $ \r -> do
-      requiresBootstrap <- Sec.requiresBootstrap r
+    requiresBootstrap <- withRepo [] Sec.requiresBootstrap
+
+    mirrors <- if requiresBootstrap
+               then do
+                   info verbosity $ "Trying to locate mirrors via DNS for " ++
+                                    "initial bootstrap of secure " ++
+                                    "repository '" ++ show remoteRepoURI ++
+                                    "' ..."
+
+                   Sec.DNS.queryBootstrapMirrors verbosity remoteRepoURI
+               else pure []
+
+    withRepo mirrors $ \r -> do
       when requiresBootstrap $ Sec.uncheckClientErrors $
         Sec.bootstrap r
           (map Sec.KeyId    remoteRepoRootKeys)
@@ -228,8 +236,8 @@ initSecureRepo verbosity httpLib RemoteRepo{..} cachePath = \callback -> do
       callback $ SecureRepo r
   where
     -- Initialize local or remote repo depending on the URI
-    withRepo :: (forall down. Sec.Repository down -> IO a) -> IO a
-    withRepo callback | uriScheme remoteRepoURI == "file:" = do
+    withRepo :: [URI] -> (forall down. Sec.Repository down -> IO a) -> IO a
+    withRepo _ callback | uriScheme remoteRepoURI == "file:" = do
       dir <- Sec.makeAbsolute $ Sec.fromFilePath (uriPath remoteRepoURI)
       Sec.Local.withRepository dir
                                cache
@@ -237,9 +245,9 @@ initSecureRepo verbosity httpLib RemoteRepo{..} cachePath = \callback -> do
                                Sec.hackageIndexLayout
                                logTUF
                                callback
-    withRepo callback =
+    withRepo mirrors callback =
       Sec.Remote.withRepository httpLib
-                                [remoteRepoURI]
+                                (remoteRepoURI:mirrors)
                                 Sec.Remote.defaultRepoOpts
                                 cache
                                 Sec.hackageRepoLayout
