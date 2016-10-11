@@ -27,6 +27,8 @@ module Distribution.Simple.InstallDirs (
         InstallDirTemplates,
         defaultInstallDirs,
         defaultInstallDirs',
+        defaultLibSubDir,
+        defaultLibSubDir',
         combineInstallDirs,
         absoluteInstallDirs,
         CopyDest(..),
@@ -189,14 +191,7 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
       prefix       = installPrefix,
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
-      libsubdir    = case comp of
-           JHC    -> "$compiler"
-           LHC    -> "$compiler"
-           UHC    -> "$pkgid"
-           _other -> case buildOS of
-                        OSX      -> "$abi" -- OSX libs go into a single directory
-                                           -- See: https://ghc.haskell.org/trac/ghc/ticket/12479
-                        _otherOS -> "$abi" </> "$libname",
+      libsubdir    = defaultLibSubDir comp,
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
@@ -217,6 +212,25 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
       haddockdir   = "$htmldir",
       sysconfdir   = "$prefix" </> "etc"
   }
+
+-- | Default $libsubdir
+defaultLibSubDir :: CompilerFlavor -> FilePath
+defaultLibSubDir comp = case comp of
+  JHC    -> "$compiler"
+  LHC    -> "$compiler"
+  UHC    -> "$pkgid"
+  _other -> case buildOS of
+               OSX      -> "$abi" -- OSX libs go into a single directory
+                                  -- See: https://ghc.haskell.org/trac/ghc/ticket/12479
+               _otherOS -> "$abi" </> "$libname"
+
+-- | Default $libsubdir for Cabal < 1.25
+defaultLibSubDir' :: CompilerFlavor -> FilePath
+defaultLibSubDir' comp = case comp of
+  JHC    -> "$compiler"
+  LHC    -> "$compiler"
+  UHC    -> "$pkgid"
+  _other -> "$abi" </> "$libname"
 
 -- ---------------------------------------------------------------------------
 -- Converting directories, absolute or prefix-relative

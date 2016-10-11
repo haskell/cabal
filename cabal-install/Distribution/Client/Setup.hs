@@ -78,7 +78,8 @@ import Distribution.Utils.NubList
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
 
-import Distribution.Simple.Compiler ( Compiler, PackageDB, PackageDBStack )
+import Distribution.Simple.Compiler
+         ( Compiler, PackageDB, PackageDBStack, CompilerFlavor(..) )
 import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
@@ -93,10 +94,12 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, flagToList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
-         , readPToMaybe, optionNumJobs )
+         , readPToMaybe, optionNumJobs
+         , fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate, InstallDirs(hidir, sysconfdir)
-         , toPathTemplate, fromPathTemplate )
+         ( PathTemplate, InstallDirs(hidir, libsubdir, sysconfdir)
+         , toPathTemplate, fromPathTemplate
+         , defaultLibSubDir, defaultLibSubDir' )
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
@@ -393,7 +396,28 @@ filterConfigureFlags flags cabalLibVersion
 
     -- Cabal < 1.25 doesn't know about '--hidir'
     flags_1_25_0 = flags_latest { configInstallDirs = configInstallDirs_1_25_0 }
-    configInstallDirs_1_25_0 = (configInstallDirs flags) { hidir = NoFlag }
+    configInstallDirs_1_25_0 = (configInstallDirs flags) { hidir     = NoFlag
+                                                         , libsubdir = libsubdir_1_25_0
+                                                         }
+    -- When:
+    -- * a cabal-install build against >=Cabal-1.25
+    -- * calls a Setup build against <Cabal-1.25
+    -- * We check whether the current $libsubdir is equal to the default $libsubdir of >=Cabal-1.25
+    -- * And if so, change the $libsubdir to the default $libsubdir of <Cabal-1.25
+    --
+    -- We do this, because otherwise the .hi files of all libraries would end up
+    -- in a single directory on OS X, because that is the default $libsubdir
+    -- behaviour for Cabal >=1.25.
+    --
+    -- This does result in strange/unwanted behaviour that when a user explicitly
+    -- tells cabal-install to $libsubdir equal to the >=Cabal-1.25 $libsubdir
+    -- default, that this flag will be completely ignored when calling a Setup
+    -- build against a <Cabal-1.25
+    comp = fromFlagOrDefault GHC (configHcFlavor flags)
+    libsubdir_1_25_0 = if libsubdir (configInstallDirs flags) ==
+                          Flag (toPathTemplate (defaultLibSubDir comp))
+                          then Flag (toPathTemplate (defaultLibSubDir' comp))
+                          else libsubdir (configInstallDirs flags)
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
