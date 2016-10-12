@@ -461,6 +461,9 @@ binfoFieldDescrs =
    , listFieldWithSep vcat "other-modules"
        disp               (parsecMaybeQuoted parsec)
        otherModules       (\val binfo -> binfo{otherModules=val})
+   , listFieldWithSep vcat "autogen-modules"
+       disp               (parsecMaybeQuoted parsec)
+       autogenModules     (\val binfo -> binfo{autogenModules=val})
  , optsField   "ghc-prof-options" GHC
            profOptions        (\val binfo -> binfo{profOptions=val})
  , optsField   "ghcjs-prof-options" GHCJS

@@ -195,8 +195,15 @@ parseGenericPackageDescription' lexWarnings fs = do
             let gpd' = gpd { condLibrary = Just l }
             pure gpd'
 
+        -- Sublibraries
+        | name == "library" = do
+            name' <- parseName pos args
+            lib <- parseCondTree libFieldDescrs storeXFieldsLib (targetBuildDepends . libBuildInfo) emptyLibrary fields
+            -- TODO check duplicate name here?
+            let gpd' = gpd { condSubLibraries = condSubLibraries gpd ++ [(name', lib)] }
+            pure gpd'
+
         | name == "executable" = do
-            -- TODO: make a combinator for this, repeated in tests and bench
             name' <- parseName pos args
             -- Note: we don't parse the "executable" field here, hence the tail hack. Duncan 2010
             exe <- parseCondTree (tail executableFieldDescrs) storeXFieldsExe (targetBuildDepends . buildInfo) emptyExecutable fields

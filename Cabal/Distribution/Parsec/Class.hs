@@ -51,7 +51,7 @@ import           Distribution.Types.SourceRepo
 import           Distribution.Types.TestType                  (TestType (..))
 import           Distribution.Version
                  (Version, mkVersion, VersionRange (..), anyVersion, earlierVersion,
-                 intersectVersionRanges, laterVersion, noVersion,
+                 intersectVersionRanges, laterVersion, majorBoundVersion, noVersion,
                  orEarlierVersion, orLaterVersion, thisVersion,
                  unionVersionRanges, withinVersion)
 import           Language.Haskell.Extension
@@ -180,6 +180,7 @@ instance Parsec VersionRange where
                      ("<=", orEarlierVersion),
                      (">",  laterVersion),
                      (">=", orLaterVersion),
+                     ("^>=", majorBoundVersion),
                      ("==", thisVersion) ]
 
 instance Parsec Language where

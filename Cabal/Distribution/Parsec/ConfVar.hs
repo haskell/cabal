@@ -19,7 +19,7 @@ import           Distribution.Types.GenericPackageDescription
                  (Condition (..), ConfVar (..))
 import           Distribution.Version
                  (mkVersion, anyVersion, earlierVersion,
-                 intersectVersionRanges, laterVersion, noVersion,
+                 intersectVersionRanges, laterVersion, noVersion, majorBoundVersion,
                  orEarlierVersion, orLaterVersion, thisVersion,
                  unionVersionRanges, withinVersion)
 
@@ -97,6 +97,7 @@ parser = condOr
                      ("<=", orEarlierVersion),
                      (">",  laterVersion),
                      (">=", orLaterVersion),
+                     ("^>=", majorBoundVersion),
                      ("==", thisVersion) ]
 
     -- numbers are weird: SecArgNum (Position 65 15) "7.6.1"
