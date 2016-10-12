@@ -743,15 +743,16 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
                           tarball pkgid dparams buildstyle pkgTextOverride
                           buildPkg  =
       case buildstyle of
-        -- In this case we make a temp dir, unpack the tarball to there and
-        -- build and install it from that temp dir.
+        -- In this case we make a couple temp dirs, unpack the tarball to one
+        -- and build and install it from the other. We avoid nesting the
+        -- builddir under the tarball src dir to keep path name lengths down.
         BuildAndInstall ->
-          withTempDirectory verbosity distTempDirectory
-                            (display (packageName pkgid)) $ \tmpdir -> do
-            unpackPackageTarball verbosity tarball tmpdir
+          let tmpdir = distTempDirectory in
+          withTempDirectory verbosity tmpdir "src"   $ \unpackdir ->
+          withTempDirectory verbosity tmpdir "build" $ \builddir -> do
+            unpackPackageTarball verbosity tarball unpackdir
                                  pkgid pkgTextOverride
-            let srcdir   = tmpdir </> display pkgid
-                builddir = srcdir </> "dist"
+            let srcdir   = unpackdir </> display pkgid
             buildPkg srcdir builddir
 
         -- In this case we make sure the tarball has been unpacked to the
