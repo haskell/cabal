@@ -27,7 +27,7 @@ library postgresql
 
 library
   build-depends:       base, mysql, postgresql, mylib
-  backpack-includes:
+  mixins:
     mysql (Database.MySQL as Database),
     postgresql (Database.PostgreSQL as Database)
   exposed-modules:     App
