@@ -87,10 +87,12 @@ fromString string = fromComponents (split string)
 -- separated by dots.
 fromComponents :: [String] -> ModuleName
 fromComponents components'
+    | null components'                     = error zeroComponents
     | all validModuleComponent components' = ModuleName (stlFromStrings components')
     | otherwise                            = error badName
   where
-    badName     = "ModuleName.fromComponents: invalid components " ++ show components'
+    zeroComponents = "ModuleName.fromComponents: zero components"
+    badName        = "ModuleName.fromComponents: invalid components " ++ show components'
 
 -- | The module name @Main@.
 --
