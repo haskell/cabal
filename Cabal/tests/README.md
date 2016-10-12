@@ -31,9 +31,9 @@ the following environment variables:
   Cabal's dependencies were installed in a sandbox or other non-standard
   location, you will need to add it.  Most commonly, if you are are
   using 'new-build' you'll need to add
-  dist-newstyle/packagedb/ghc-VERSION to your database stack.  (In
-  most situations, the actual inplace database Cabal was registered
-  into is automatically detected.)
+  dist-newstyle/packagedb/ghc-VERSION and $HOME/.cabal/store/ghc-VERSION/package.db
+  to your database stack.  (In most situations, the actual inplace
+  database Cabal was registered into is automatically detected.)
 
 There are a few extra options to toggle (e.g. `CABAL_PACKAGETESTS_GHC_PKG`
 lets you explicitly set ghc-pkg in case Cabal can't autodetect it) but
