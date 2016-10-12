@@ -1603,8 +1603,12 @@ checkForeignDeps pkg lbi verbosity = do
                      ++ collectField PD.cppOptions
                      ++ collectField PD.ccOptions
                      ++ [ "-I" ++ dir
-                        | dep <- deps
-                        , dir <- Installed.includeDirs dep ]
+                        | dir <- ordNub [ dir
+                                        | dep <- deps
+                                        , dir <- Installed.includeDirs dep ]
+                                 -- dedupe include dirs of dependencies
+                                 -- to prevent quadratic blow-up
+                        ]
                      ++ [ opt
                         | dep <- deps
                         , opt <- Installed.ccOptions dep ]
