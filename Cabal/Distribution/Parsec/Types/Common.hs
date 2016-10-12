@@ -22,15 +22,16 @@ import System.FilePath (normalise)
 
 import qualified Text.Parsec as Parsec
 
+-- | Parser error.
 data PError = PError Position String
     deriving (Show)
 
--- | We do classify warnings.
+-- | Type of parser warning. We do classify warnings.
 --
 -- Different application may decide not to show some, or have fatal behaviour on others
 data PWarnType
     = PWTOther                 -- ^ Unclassified warning
-    | PWTUTF
+    | PWTUTF                   -- ^ Invalid UTF encoding
     | PWTBoolCase              -- ^ @true@ or @false@, not @True@ or @False@
     | PWTGluedOperators        -- ^ @&&!@
     | PWTVersionTag            -- ^ there are version with tags
@@ -48,7 +49,7 @@ data PWarnType
     | PWTLexBOM
     deriving (Eq, Ord, Show, Enum, Bounded)
 
-
+-- | Parser warning.
 data PWarning = PWarning !PWarnType !Position String
     deriving (Show)
 
@@ -64,20 +65,25 @@ showPError fpath (PError pos msg) =
 -- Field parser
 -------------------------------------------------------------------------------
 
-type FieldParser = Parsec.Parsec String [PWarning]
+-- | Field value parsers.
+type FieldParser = Parsec.Parsec String [PWarning] -- :: * -> *
+
 
 -------------------------------------------------------------------------------
 -- Position
 -------------------------------------------------------------------------------
 
+-- | 1-indexed row and column positions in a file.
 data Position = Position
     {-# UNPACK #-}  !Int           -- row
     {-# UNPACK #-}  !Int           -- column
   deriving (Eq, Show)
 
+-- | Shift position by n columns to the right.
 incPos :: Int -> Position -> Position
 incPos n (Position row col) = Position row (col + n)
 
+-- | Shift position to beginning of next row.
 retPos :: Position -> Position
 retPos (Position row _col) = Position (row + 1) 1
 

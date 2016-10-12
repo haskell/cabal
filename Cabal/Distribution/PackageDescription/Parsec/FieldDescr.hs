@@ -63,6 +63,7 @@ import           Distribution.Text                     (disp, display)
 freeTextFieldParser :: FieldParser String
 freeTextFieldParser = dropDotLines <$ Parsec.spaces <*> many Parsec.anyChar
   where
+    -- Example package with dot lines
     -- http://hackage.haskell.org/package/copilot-cbmc-0.1/copilot-cbmc.cabal
     dropDotLines "." = "."
     dropDotLines x = intercalate "\n" . map dotToEmpty . lines $ x
@@ -75,7 +76,7 @@ freeTextFieldParser = dropDotLines <$ Parsec.spaces <*> many Parsec.anyChar
 -- PackageDescription
 -------------------------------------------------------------------------------
 
--- TODO: other-files isn't used in any cabla file on Hackage.
+-- TODO: other-files isn't used in any cabal file on Hackage.
 pkgDescrFieldDescrs :: [FieldDescr PackageDescription]
 pkgDescrFieldDescrs =
     [ simpleField "name"
