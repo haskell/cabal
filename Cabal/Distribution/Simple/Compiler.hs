@@ -56,6 +56,7 @@ module Distribution.Simple.Compiler (
         unifiedIPIDRequired,
         packageKeySupported,
         unitIdSupported,
+        libraryDynDirSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -290,6 +291,13 @@ packageKeySupported = ghcSupported "Uses package keys"
 -- | Does this compiler support unit IDs?
 unitIdSupported :: Compiler -> Bool
 unitIdSupported = ghcSupported "Uses unit IDs"
+
+-- | Does this compiler support a package database entry with:
+-- "dynamic-library-dirs"?
+libraryDynDirSupported :: Compiler -> Bool
+libraryDynDirSupported comp = case compilerFlavor comp of
+  GHC -> compilerVersion comp >= Version [8,0,1,20161021] []
+  _   -> False
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool

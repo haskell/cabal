@@ -323,9 +323,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.importDirs         = [ libdir installDirs | hasModules ],
     -- Note. the libsubdir and datasubdir templates have already been expanded
     -- into libdir and datadir.
-    IPI.libraryDirs        = if hasLibrary
-                               then libdir installDirs : extraLibDirs bi
-                               else                      extraLibDirs bi,
+    IPI.libraryDirs        = libdirs,
+    IPI.libraryDynDirs     = dynlibdirs,
     IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = if hasLibrary
                                then [getHSLibraryName (componentUnitId clbi)]
@@ -349,9 +348,24 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     bi = libBuildInfo lib
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
     hasModules = not $ null (libModules lib)
+    comp = compiler lbi
     hasLibrary = hasModules || not (null (cSources bi))
                             || (not (null (jsSources bi)) &&
-                                compilerFlavor (compiler lbi) == GHCJS)
+                                compilerFlavor comp == GHCJS)
+    (libdirs, dynlibdirs)
+      | not hasLibrary
+      = (extraLibDirs bi, [])
+      -- the dynamic-library-dirs defaults to the library-dirs if not specified,
+      -- so this works whether the dynamic-library-dirs field is supported or not
+
+      | libraryDynDirSupported comp
+      = (libdir    installDirs : extraLibDirs bi,
+         dynlibdir installDirs : extraLibDirs bi)
+
+      | otherwise
+      = (libdir installDirs : dynlibdir installDirs : extraLibDirs bi, [])
+      -- the compiler doesn't understand the dynamic-library-dirs field so we
+      -- add the dyn directory to the "normal" list in the library-dirs field
 
 -- | Construct 'InstalledPackageInfo' for a library that is in place in the
 -- build tree.
@@ -377,6 +391,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> libTargetDir,
+        dynlibdir  = inplaceDir </> libTargetDir,
         datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
         htmldir    = inplaceHtmldir,
