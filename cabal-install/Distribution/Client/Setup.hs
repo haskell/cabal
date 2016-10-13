@@ -78,7 +78,8 @@ import Distribution.Utils.NubList
 import Distribution.Solver.Types.ConstraintSource
 import Distribution.Solver.Types.Settings
 
-import Distribution.Simple.Compiler ( Compiler, PackageDB, PackageDBStack )
+import Distribution.Simple.Compiler
+         ( Compiler, PackageDB, PackageDBStack, CompilerFlavor(..) )
 import Distribution.Simple.Program (ProgramDb, defaultProgramDb)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
@@ -93,10 +94,12 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, flagToMaybe, flagToList
          , BooleanFlag(..), optionVerbosity
          , boolOpt, boolOpt', trueArg, falseArg
-         , readPToMaybe, optionNumJobs )
+         , readPToMaybe, optionNumJobs
+         , fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate, InstallDirs(sysconfdir)
-         , toPathTemplate, fromPathTemplate )
+         ( PathTemplate, InstallDirs(hidir, libsubdir, sysconfdir)
+         , toPathTemplate, fromPathTemplate
+         , defaultLibSubDir, defaultLibSubDir' )
 import Distribution.Version
          ( Version, mkVersion, nullVersion, anyVersion, thisVersion )
 import Distribution.Package
@@ -363,7 +366,7 @@ filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
   -- NB: we expect the latest version to be the most common case,
   -- so test it first.
-  | cabalLibVersion >= mkVersion [1,23,0] = flags_latest
+  | cabalLibVersion >= mkVersion [1,25,0] = flags_latest
   -- The naming convention is that flags_version gives flags with
   -- all flags *introduced* in version eliminated.
   -- It is NOT the latest version of Cabal library that
@@ -379,6 +382,7 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion < mkVersion [1,21,1] = flags_1_21_1
   | cabalLibVersion < mkVersion [1,22,0] = flags_1_22_0
   | cabalLibVersion < mkVersion [1,23,0] = flags_1_23_0
+  | cabalLibVersion < mkVersion [1,25,0] = flags_1_25_0
   | otherwise = flags_latest
   where
     flags_latest = flags        {
@@ -390,11 +394,36 @@ filterConfigureFlags flags cabalLibVersion
       configAllowNewer  = Just (Cabal.AllowNewer Cabal.RelaxDepsNone)
       }
 
+    -- Cabal < 1.25 doesn't know about '--hidir'
+    flags_1_25_0 = flags_latest { configInstallDirs = configInstallDirs_1_25_0 }
+    configInstallDirs_1_25_0 = (configInstallDirs flags) { hidir     = NoFlag
+                                                         , libsubdir = libsubdir_1_25_0
+                                                         }
+    -- When:
+    -- * a cabal-install build against >=Cabal-1.25
+    -- * calls a Setup build against <Cabal-1.25
+    -- * We check whether the current $libsubdir is equal to the default $libsubdir of >=Cabal-1.25
+    -- * And if so, change the $libsubdir to the default $libsubdir of <Cabal-1.25
+    --
+    -- We do this, because otherwise the .hi files of all libraries would end up
+    -- in a single directory on OS X, because that is the default $libsubdir
+    -- behaviour for Cabal >=1.25.
+    --
+    -- This does result in strange/unwanted behaviour that when a user explicitly
+    -- tells cabal-install to $libsubdir equal to the >=Cabal-1.25 $libsubdir
+    -- default, that this flag will be completely ignored when calling a Setup
+    -- build against a <Cabal-1.25
+    comp = fromFlagOrDefault GHC (configHcFlavor flags)
+    libsubdir_1_25_0 = if libsubdir (configInstallDirs flags) ==
+                          Flag (toPathTemplate (defaultLibSubDir comp))
+                          then Flag (toPathTemplate (defaultLibSubDir' comp))
+                          else libsubdir (configInstallDirs flags)
+
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     -- Cabal < 1.23 has a hacked up version of 'enable-profiling'
     -- which we shouldn't use.
     (tryLibProfiling, tryExeProfiling) = computeEffectiveProfiling flags
-    flags_1_23_0 = flags_latest { configProfDetail    = NoFlag
+    flags_1_23_0 = flags_1_25_0 { configProfDetail    = NoFlag
                                 , configProfLibDetail = NoFlag
                                 , configIPID          = NoFlag
                                 , configProf          = NoFlag
@@ -423,7 +452,7 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
     flags_1_18_0 = flags_1_19_1 { configProgramPathExtra = toNubList []
                                 , configInstallDirs = configInstallDirs_1_18_0}
-    configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
+    configInstallDirs_1_18_0 = (configInstallDirs flags_1_19_1) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
     flags_1_14_0 = flags_1_18_0 { configBenchmarks  = NoFlag }
     -- Cabal < 1.12.0 doesn't know about '--enable/disable-executable-dynamic'

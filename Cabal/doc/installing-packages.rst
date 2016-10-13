@@ -465,7 +465,7 @@ parameters <developing-packages.html#system-dependent-parameters>`__ or
 on `complex
 packages <developing-packages.html#more-complex-packages>`__), it is
 passed the :option:`--with-hc-pkg`, :option:`--prefix`, :option:`--bindir`,
-:option:`--libdir`, :option:`--datadir`, :option:`--libexecdir` and
+:option:`--libdir`, :option:`--hidir`, :option:`--datadir`, :option:`--libexecdir` and
 :option:`--sysconfdir` options. In addition the value of the
 :option:`--with-compiler` option is passed in a :option:`--with-hc-pkg` option
 and all options specified with :option:`--configure-option` are passed on.
@@ -600,6 +600,18 @@ package:
     ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
+.. option:: --hidir=dir
+
+    Interfaces of libraries are installed here.
+
+    By default, this is the same as `$libdir/$libsubdir`; except on OS X, where
+    `$libsubdir` is set to `$abi`, but this setting is `$libdir/$abi/$libname`.
+
+    In the simple build system, *dir* may contain the following path
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
+    ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
+    ``$arch``, ``$abi``, ``$abitag``
+
 .. option:: --libexecdir=dir
 
     Executables that are not expected to be invoked directly by the user
@@ -712,6 +724,8 @@ $libdir
     As above but for :option:`--libdir`
 $libsubdir
     As above but for :option:`--libsubdir`
+$hidir
+    As above but for :option:`--hidir`
 $datadir
     As above but for :option:`--datadir`
 $datasubdir
@@ -768,6 +782,9 @@ For the simple build system, the following defaults apply:
     * - :option:`--libsubdir` (others)
       - ``$pkgid/$compiler``
       - ``$pkgid\$compiler``
+    * - :option:`--hidir`
+      - ``$libdir/$pkgid/$compiler``
+      - ``$libdir\$pkgid\$compiler``
     * - :option:`--libexecdir`
       - ``$prefix/libexec``
       - ``$prefix\$pkgid``
@@ -809,7 +826,7 @@ particularly useful: it means the user can choose the install location
 bake the path into the binary when it is built.
 
 In order to achieve this, we require that for an executable on Windows,
-all of ``$bindir``, ``$libdir``, ``$datadir`` and ``$libexecdir`` begin
+all of ``$bindir``, ``$libdir``, ``$hidir``, ``$datadir`` and ``$libexecdir`` begin
 with ``$prefix``. If this is not the case then the compiled executable
 will have baked-in all absolute paths.
 
