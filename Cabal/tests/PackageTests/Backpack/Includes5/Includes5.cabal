@@ -14,12 +14,12 @@ library impl
 
 library good
   build-depends: base, impl
-  backpack-includes: impl hiding (Foobar)
+  mixins: impl hiding (Foobar)
   exposed-modules: A
   default-language:    Haskell2010
 
 library bad
   build-depends: base, impl, good
-  backpack-includes: impl hiding (Foobar)
+  mixins: impl hiding (Foobar)
   exposed-modules: B
   default-language:    Haskell2010

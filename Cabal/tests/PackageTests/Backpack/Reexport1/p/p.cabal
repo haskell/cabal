@@ -7,7 +7,7 @@ build-type:          Simple
 cabal-version:       >=1.25
 
 library
-  backpack-includes: containers (Data.Map as Map)
+  mixins: containers (Data.Map as Map)
   exposed-modules: P
   reexported-modules: Map
   build-depends:       base, containers

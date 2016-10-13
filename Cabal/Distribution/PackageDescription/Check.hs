@@ -1009,7 +1009,7 @@ checkCabalVersion pkg =
     -- check use of thinning and renaming
   , checkVersion [1,25] usesBackpackIncludes $
       PackageDistInexcusable $
-           "To use the 'backpack-includes' field the package needs to specify "
+           "To use the 'mixins' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.25'."
 
     -- check use of 'extra-framework-dirs' field

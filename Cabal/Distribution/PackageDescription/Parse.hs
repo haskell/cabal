@@ -393,7 +393,7 @@ binfoFieldDescrs =
  , commaListFieldWithSep vcat "build-depends"
            disp                   parse
            targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
- , commaListFieldWithSep vcat "backpack-includes"
+ , commaListFieldWithSep vcat "mixins"
            showBackpackInclude    parseBackpackInclude
            backpackIncludes   (\xs binfo -> binfo{backpackIncludes=xs})
  , spaceListField "cpp-options"
