@@ -60,6 +60,7 @@ module Distribution.Simple.Compiler (
         coverageSupported,
         profilingSupported,
         backpackSupported,
+        libraryDynDirSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -323,6 +324,13 @@ unitIdSupported = ghcSupported "Uses unit IDs"
 -- | Does this compiler support Backpack?
 backpackSupported :: Compiler -> Bool
 backpackSupported = ghcSupported "Support Backpack"
+
+-- | Does this compiler support a package database entry with:
+-- "dynamic-library-dirs"?
+libraryDynDirSupported :: Compiler -> Bool
+libraryDynDirSupported comp = case compilerFlavor comp of
+  GHC -> compilerVersion comp >= mkVersion [8,0,1,20161021]
+  _   -> False
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool

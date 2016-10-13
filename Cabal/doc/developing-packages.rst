@@ -2296,6 +2296,7 @@ into (e.g. data files live in ``getDataDir``):
 
     getBinDir :: IO FilePath
     getLibDir :: IO FilePath
+    getDynLibDir :: IO FilePath
     getDataDir :: IO FilePath
     getLibexecDir :: IO FilePath
     getSysconfDir :: IO FilePath
@@ -2304,7 +2305,7 @@ The actual location of all these directories can be individually
 overridden at runtime using environment variables of the form
 ``pkg_name_var``, where ``pkg_name`` is the name of the package with all
 hyphens converted into underscores, and ``var`` is either ``bindir``,
-``libdir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
+``libdir``, ``dynlibdir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
 the configured data directory for ``pretty-show`` is controlled with the
 ``pretty_show_datadir`` environment variable.
 
@@ -2551,7 +2552,7 @@ a few options:
    commands are passed through as follows:
 
    -  The ``--with-hc-pkg``, ``--prefix``, ``--bindir``, ``--libdir``,
-      ``--datadir``, ``--libexecdir`` and ``--sysconfdir`` options to
+      ``--dynlibdir``, ``--datadir``, ``--libexecdir`` and ``--sysconfdir`` options to
       the ``configure`` command are passed on to the ``configure``
       script. In addition the value of the ``--with-compiler`` option is
       passed in a ``--with-hc`` option and all options specified with
@@ -2568,6 +2569,7 @@ a few options:
                   $(MAKE) install prefix=$(destdir)/$(prefix) \
                                   bindir=$(destdir)/$(bindir) \
                                   libdir=$(destdir)/$(libdir) \
+                                  dynlibdir=$(destdir)/$(dynlibdir) \
                                   datadir=$(destdir)/$(datadir) \
                                   libexecdir=$(destdir)/$(libexecdir) \
                                   sysconfdir=$(destdir)/$(sysconfdir) \

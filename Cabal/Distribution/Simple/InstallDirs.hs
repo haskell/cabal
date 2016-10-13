@@ -192,7 +192,11 @@ defaultInstallDirs' False comp userInstall _hasLibs = do
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
            _other -> "$abi" </> "$libname",
-      dynlibdir    = "$libdir",
+      dynlibdir    = "$libdir" </> case comp of
+           JHC    -> "$compiler"
+           LHC    -> "$compiler"
+           UHC    -> "$pkgid"
+           _other -> "$abi",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
         _other    -> "$prefix" </> "libexec",
@@ -341,6 +345,7 @@ data PathTemplateVariable =
      | BindirVar     -- ^ The @$bindir@ path variable
      | LibdirVar     -- ^ The @$libdir@ path variable
      | LibsubdirVar  -- ^ The @$libsubdir@ path variable
+     | DynlibdirVar  -- ^ The @$dynlibdir@ path variable
      | DatadirVar    -- ^ The @$datadir@ path variable
      | DatasubdirVar -- ^ The @$datasubdir@ path variable
      | DocdirVar     -- ^ The @$docdir@ path variable
@@ -438,6 +443,7 @@ installDirsTemplateEnv dirs =
   ,(BindirVar,     bindir     dirs)
   ,(LibdirVar,     libdir     dirs)
   ,(LibsubdirVar,  libsubdir  dirs)
+  ,(DynlibdirVar,  dynlibdir  dirs)
   ,(DatadirVar,    datadir    dirs)
   ,(DatasubdirVar, datasubdir dirs)
   ,(DocdirVar,     docdir     dirs)
@@ -460,6 +466,7 @@ instance Show PathTemplateVariable where
   show BindirVar     = "bindir"
   show LibdirVar     = "libdir"
   show LibsubdirVar  = "libsubdir"
+  show DynlibdirVar  = "dynlibdir"
   show DatadirVar    = "datadir"
   show DatasubdirVar = "datasubdir"
   show DocdirVar     = "docdir"
@@ -488,6 +495,7 @@ instance Read PathTemplateVariable where
                  ,("bindir",     BindirVar)
                  ,("libdir",     LibdirVar)
                  ,("libsubdir",  LibsubdirVar)
+                 ,("dynlibdir",  DynlibdirVar)
                  ,("datadir",    DatadirVar)
                  ,("datasubdir", DatasubdirVar)
                  ,("docdir",     DocdirVar)
