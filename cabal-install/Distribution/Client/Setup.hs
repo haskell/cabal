@@ -158,6 +158,7 @@ globalCommand commands = CommandUI {
           , "get"
           , "init"
           , "configure"
+          , "reconfigure"
           , "build"
           , "clean"
           , "run"
@@ -227,6 +228,7 @@ globalCommand commands = CommandUI {
         , addCmd "hscolour"
         , addCmd "copy"
         , addCmd "register"
+        , addCmd "reconfigure"
         , par
         , startGroup "sandbox"
         , addCmd "sandbox"
