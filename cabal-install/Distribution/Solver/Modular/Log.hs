@@ -26,7 +26,7 @@ type Log m a = Progress m (ConflictSet QPN, ConflictMap) a
 messages :: Progress step fail done -> [step]
 messages = foldProgress (:) (const []) (const [])
 
-data Exhaustive = Exhaustive | NotExhaustive
+data Exhaustiveness = Exhaustive | BackjumpLimitReached
 
 -- | Postprocesses a log file. Takes as an argument a limit on allowed backjumps.
 -- If the limit is 'Nothing', then infinitely many backjumps are allowed. If the
@@ -43,28 +43,27 @@ logToProgress mbj l = let
     -- and ignores repeated backjumps. If proc reaches the backjump limit, it truncates
     -- the 'Progress' and ends it with the last conflict set. Otherwise, it leaves the
     -- original result.
-    proc :: Maybe Int -> Log Message b -> Progress Message (Exhaustive, ConflictSet QPN, ConflictMap) b
+    proc :: Maybe Int -> Log Message b -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
     proc _        (Done x)                          = Done x
     proc _        (Fail (cs, cm))                   = Fail (Exhaustive, cs, cm)
     proc mbj'     (Step x@(Failure cs Backjump) xs@(Step Leave (Step (Failure cs' Backjump) _)))
       | cs == cs'                                   = Step x (proc mbj'           xs) -- repeated backjumps count as one
-    proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (NotExhaustive, cs, mempty) -- No final conflict map available
+    proc (Just 0) (Step   (Failure cs Backjump)  _) = Fail (BackjumpLimitReached, cs, mempty) -- No final conflict map available
     proc (Just n) (Step x@(Failure _  Backjump) xs) = Step x (proc (Just (n - 1)) xs)
     proc mbj'     (Step x                       xs) = Step x (proc mbj'           xs)
 
     -- Sets the conflict set from the first backjump as the final error in case of a
     -- non-exhaustive search.
-    useFirstError :: Progress Message (Exhaustive, ConflictSet QPN, ConflictMap) b
-                  -> Progress Message (Exhaustive, ConflictSet QPN, ConflictMap) b
+    useFirstError :: Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
+                  -> Progress Message (Exhaustiveness, ConflictSet QPN, ConflictMap) b
     useFirstError = replace Nothing
       where
-        replace _       (Done x)                          = Done x
-        replace _       (Fail (Exhaustive,    cs, cm))    = Fail (Exhaustive, cs, cm)
-        replace cs'     (Fail (NotExhaustive, cs, cm))    = -- Backjump limit not reached.
-                                                            -- Prefer first error over later error.
-                                                            Fail (NotExhaustive, fromMaybe cs cs', cm)
-        replace Nothing (Step x@(Failure cs Backjump) xs) = Step x $ replace (Just cs) xs
-        replace cs'     (Step x                       xs) = Step x $ replace cs' xs
+        replace _       (Done x)                              = Done x
+        replace _       (Fail (Exhaustive,           cs, cm)) = Fail (Exhaustive, cs, cm)
+        replace cs'     (Fail (BackjumpLimitReached, cs, cm)) = -- Prefer first error over later error.
+                                                                Fail (BackjumpLimitReached, fromMaybe cs cs', cm)
+        replace Nothing (Step x@(Failure cs Backjump) xs)     = Step x $ replace (Just cs) xs
+        replace cs'     (Step x                       xs)     = Step x $ replace cs' xs
 
     -- The first two arguments are both supposed to be the log up to the first error.
     -- That's the error that will always be printed in case we do not find a solution.
@@ -76,7 +75,7 @@ logToProgress mbj l = let
     -- exhaustiveness and first conflict set.
     go :: Progress Message a b
        -> Progress Message a b
-       -> Progress String (Exhaustive, ConflictSet QPN, ConflictMap) b
+       -> Progress String (Exhaustiveness, ConflictSet QPN, ConflictMap) b
        -> Progress String String b
     go ms (Step _ ns) (Step x xs)           = Step x (go ms ns xs)
     go ms r           (Step x xs)           = Step x (go ms r  xs)
@@ -88,7 +87,7 @@ logToProgress mbj l = let
                 "Dependency tree exhaustively searched.\n" ++
                 "I've had most trouble fulfilling the following goals: "
                 ++ CS.showCSWithFrequency cm cs
-            NotExhaustive ->
+            BackjumpLimitReached ->
                 "Backjump limit reached (" ++ currlimit mbj ++
                 "change with --max-backjumps or try to run with --reorder-goals).\n"
               where currlimit (Just n) = "currently " ++ show n ++ ", "
