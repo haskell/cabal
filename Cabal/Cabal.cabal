@@ -304,7 +304,19 @@ extra-source-files:
   tests/PackageTests/UniqueIPID/P2/my.cabal
   tests/PackageTests/multInst/my.cabal
   tests/ParserTests/warnings/bom.cabal
+  tests/ParserTests/warnings/bool.cabal
+  tests/ParserTests/warnings/deprecatedfield.cabal
+  tests/ParserTests/warnings/extratestmodule.cabal
+  tests/ParserTests/warnings/gluedop.cabal
   tests/ParserTests/warnings/nbsp.cabal
+  tests/ParserTests/warnings/newsyntax.cabal
+  tests/ParserTests/warnings/oldsyntax.cabal
+  tests/ParserTests/warnings/subsection.cabal
+  tests/ParserTests/warnings/trailingfield.cabal
+  tests/ParserTests/warnings/unknownfield.cabal
+  tests/ParserTests/warnings/unknownsection.cabal
+  tests/ParserTests/warnings/utf8.cabal
+  tests/ParserTests/warnings/versiontag.cabal
   tests/Setup.hs
   tests/hackage/check.sh
   tests/hackage/download.sh

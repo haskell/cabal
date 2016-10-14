@@ -172,8 +172,8 @@ parseGenericPackageDescription' lexWarnings fs = do
     go (Sections, gpd) (Field (Name pos _) _) = do
         parseWarning pos PWTTrailingFields "Ignoring trailing fields after sections"
         return (Sections, gpd)
-    go (s, gpd)        (Section name args fields) =
-        (,) s <$> parseSection gpd name args fields
+    go (_, gpd)        (Section name args fields) =
+        (,) Sections <$> parseSection gpd name args fields
 
     pdFieldParsers :: Map FieldName (PackageDescription -> FieldParser PackageDescription)
     pdFieldParsers = Map.fromList $

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 module Main
     ( main
     ) where
@@ -22,8 +21,21 @@ tests = testGroup "parsec tests"
 -- Verify that we trigger warnings
 warningTests :: TestTree
 warningTests = testGroup "warnings triggered"
-    [ warningTest PWTLexBOM "bom.cabal"
-    , warningTest PWTLexNBSP "nbsp.cabal"
+    [ warningTest PWTLexBOM            "bom.cabal"
+    , warningTest PWTLexNBSP           "nbsp.cabal"
+    , warningTest PWTUTF               "utf8.cabal"
+    , warningTest PWTBoolCase          "bool.cabal"
+    , warningTest PWTGluedOperators    "gluedop.cabal"
+    , warningTest PWTVersionTag        "versiontag.cabal"
+    , warningTest PWTNewSyntax         "newsyntax.cabal"
+    , warningTest PWTOldSyntax         "oldsyntax.cabal"
+    , warningTest PWTDeprecatedField   "deprecatedfield.cabal"
+    , warningTest PWTInvalidSubsection "subsection.cabal"
+    , warningTest PWTUnknownField      "unknownfield.cabal"
+    , warningTest PWTUnknownSection    "unknownsection.cabal"
+    , warningTest PWTTrailingFields    "trailingfield.cabal"
+    -- TODO: not implemented yet
+    -- , warningTest PWTExtraTestModule   "extratestmodule.cabal"
     ]
 
 warningTest :: PWarnType -> FilePath -> TestTree
