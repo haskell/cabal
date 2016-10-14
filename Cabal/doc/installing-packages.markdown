@@ -498,36 +498,44 @@ package:
     variables: `$prefix`, `$bindir`, `$pkgid`, `$pkg`, `$version`,
     `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
+`--hidir=`_dir_
+:  Interface files (.hi) of libraries are installed here.
+
+   In the simple build system, *dir* may contain the following path
+   variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`,
+   `$pkgid`, `$pkg`, `$version`, `$compiler`, `$os`,
+   `$arch`, `$abi`, `$abitag`
+
 `--libexecdir=`_dir_
 :   Executables that are not expected to be invoked directly by the user
     are installed here.
 
     In the simple build system, _dir_ may contain the following path
-    variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`,
+    variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`,
     `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--datadir`=_dir_
 :   Architecture-independent data files are installed here.
 
     In the simple build system, _dir_ may contain the following path
-    variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`,
+    variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--sysconfdir=`_dir_
 :   Installation directory for the configuration files.
 
     In the simple build system, _dir_ may contain the following path variables:
-    `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`, `$version`,
+    `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`, `$pkg`, `$version`,
     `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 In addition the simple build system supports the following installation path options:
 
-`--libsubdir=`_dir_
+`--commonlibdir=`_dir_
 :   A subdirectory of _libdir_ in which libraries are actually
     installed. For example, in the simple build system on Unix, the
-    default _libdir_ is `/usr/local/lib`, and _libsubdir_ contains the
-    package identifier and compiler, e.g. `mypkg-0.2/ghc-6.4`, so
-    libraries would be installed in `/usr/local/lib/mypkg-0.2/ghc-6.4`.
+    default _libdir_ is `/usr/local/lib`, and _commonlibdir_ contains the
+    ABI, e.g. `x86_64-linux-ghc-8.0.1`, so
+    libraries would be installed in `/usr/local/lib/x86_64-linux-ghc-8.0.1`.
 
     _dir_ may contain the following path variables: `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
@@ -543,14 +551,14 @@ In addition the simple build system supports the following installation path opt
 :   Documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
-    `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$pkgid`, `$pkg`,
+    `$libdir`, `$commonlibdir`, `$datadir`, `$datasubdir`, `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--htmldir=`_dir_
 :   HTML documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
-    `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
+    `$libdir`, `$commonlibdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
     `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--program-prefix=`_prefix_
@@ -566,6 +574,20 @@ In addition the simple build system supports the following installation path opt
     `--program-suffix='$version'`.
 
     _suffix_ may contain the following path variables: `$pkgid`, `$pkg`,
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
+
+`--commonlibdir=`_dir_
+:   For use with Setup.hs files build against a version of Cabal prior to 1.24.1.
+    For later versions of Cabal, this flag is basically deprecated, and you
+    should use `--commonlibdir=`_dir_.
+
+    A subdirectory of _libdir_ in which libraries are actually
+    installed. For example, in the simple build system on Unix, the
+    default _libdir_ is `/usr/local/lib`, and _commonlibdir_ contains the
+    ABI, e.g. `x86_64-linux-ghc-8.0.1`, so
+    libraries would be installed in `/usr/local/lib/x86_64-linux-ghc-8.0.1`.
+
+    _dir_ may contain the following path variables: `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 #### Path variables in the simple build system ####
@@ -590,8 +612,11 @@ independence](#prefix-independence)).
 `$libdir`
 :   As above but for `--libdir`
 
-`$libsubdir`
-:   As above but for `--libsubdir`
+`$commonlibdir`
+:   As above but for `--commonlibdir`
+
+`$hidir`
+:   As above but for `--hidir`
 
 `$datadir`
 :   As above but for `--datadir`
@@ -601,6 +626,9 @@ independence](#prefix-independence)).
 
 `$docdir`
 :   As above but for `--docdir`
+
+`$libsubdir`
+:   As above but for `--libsubdir`
 
 `$pkgid`
 :   The name and version of the package, e.g. `mypkg-0.2`
@@ -642,7 +670,8 @@ Option                     Windows Default                                      
 `--prefix` (per-user)      `C:\Documents And Settings\user\Application Data\cabal`   `$HOME/.cabal`
 `--bindir`                 `$prefix\bin`                                             `$prefix/bin`
 `--libdir`                 `$prefix`                                                 `$prefix/lib`
-`--libsubdir` (others)     `$pkgid\$compiler`                                        `$pkgid/$compiler`
+`--commonlibdir` (others)  `$abi`                                                    `$abi`
+`--hidir`                  `$libdir\$abi\$libname`                                   `$libdir/$abi/$libname`
 `--libexecdir`             `$prefix\$pkgid`                                          `$prefix/libexec`
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
 `--datadir` (library)      `C:\Program Files\Haskell`                                `$prefix/share`
@@ -652,6 +681,7 @@ Option                     Windows Default                                      
 `--htmldir`                `$docdir\html`                                            `$docdir/html`
 `--program-prefix`         (empty)                                                   (empty)
 `--program-suffix`         (empty)                                                   (empty)
+`--libsubdir`              `$abi\$libname`                                           `$abi/$libname`
 
 
 #### Prefix-independence ####

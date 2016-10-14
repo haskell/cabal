@@ -80,7 +80,17 @@ data InstallDirs dir = InstallDirs {
         prefix       :: dir,
         bindir       :: dir,
         libdir       :: dir,
-        libsubdir    :: dir,
+        commonlibdir :: dir,
+        hidir        :: dir,
+        libsubdir    :: dir, -- This field is basically deprecated by the
+                             -- introduction of commonlibdir and hidir. However,
+                             -- We must keep it so that we can still work with
+                             -- Setup executables build against an older version
+                             -- of Cabal. For the same reason, we cannot
+                             -- simply use libsubdir as the commonlibdir,
+                             -- because then Setup's build against an older
+                             -- Cabal would put .hi files in the same directory
+                             -- as the library object files
         dynlibdir    :: dir,
         libexecdir   :: dir,
         includedir   :: dir,
@@ -110,6 +120,8 @@ combineInstallDirs combine a b = InstallDirs {
     prefix       = prefix a     `combine` prefix b,
     bindir       = bindir a     `combine` bindir b,
     libdir       = libdir a     `combine` libdir b,
+    commonlibdir = commonlibdir a `combine` commonlibdir b,
+    hidir        = hidir a      `combine` hidir b,
     libsubdir    = libsubdir a  `combine` libsubdir b,
     dynlibdir    = dynlibdir a  `combine` dynlibdir b,
     libexecdir   = libexecdir a `combine` libexecdir b,
@@ -125,9 +137,9 @@ combineInstallDirs combine a b = InstallDirs {
 
 appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
 appendSubdirs append dirs = dirs {
-    libdir     = libdir dirs `append` libsubdir dirs,
+    libdir     = libdir dirs `append` commonlibdir dirs,
     datadir    = datadir dirs `append` datasubdir dirs,
-    libsubdir  = error "internal error InstallDirs.libsubdir",
+    commonlibdir = error "internal error InstallDirs.commonlibdir",
     datasubdir = error "internal error InstallDirs.datasubdir"
   }
 
@@ -148,7 +160,7 @@ appendSubdirs append dirs = dirs {
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
 -- because by default we want to support installing multiple versions of
 -- packages and building the same package for multiple compilers we append the
--- libsubdir to get: @\/usr\/lib64\/$libname\/$compiler@.
+-- commonlibdir to get: @\/usr\/lib64\/$libname\/$compiler@.
 --
 -- An additional complication is the need to support relocatable packages on
 -- systems which support such things, like Windows.
@@ -177,6 +189,16 @@ defaultInstallDirs comp userInstall _hasLibs = do
       prefix       = installPrefix,
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
+      commonlibdir = case comp of
+           JHC    -> "$compiler"
+           LHC    -> "$compiler"
+           UHC    -> "$pkgid"
+           _other -> "$abi",
+      hidir        = "$libdir" </> case comp of
+           JHC    -> "$compiler"
+           LHC    -> "$compiler"
+           UHC    -> "$pkgid"
+           _other -> "$abi" </> "$libname",
       libsubdir    = case comp of
            JHC    -> "$compiler"
            LHC    -> "$compiler"
@@ -186,7 +208,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
         _other    -> "$prefix" </> "libexec",
-      includedir   = "$libdir" </> "$libsubdir" </> "include",
+      includedir   = "$hidir" </> "include",
       datadir      = case buildOS of
         Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
@@ -222,10 +244,12 @@ substituteInstallDirTemplates env dirs = dirs'
       prefix     = subst prefix     [],
       bindir     = subst bindir     [prefixVar],
       libdir     = subst libdir     [prefixVar, bindirVar],
+      commonlibdir = subst commonlibdir [],
+      hidir      = subst hidir      prefixBinLibVars,
       libsubdir  = subst libsubdir  [],
       dynlibdir  = subst dynlibdir  [prefixVar, bindirVar, libdirVar],
       libexecdir = subst libexecdir prefixBinLibVars,
-      includedir = subst includedir prefixBinLibVars,
+      includedir = subst includedir (prefixBinLibVars ++ [hidirVar]),
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],
       docdir     = subst docdir     prefixBinLibDataVars,
@@ -240,12 +264,13 @@ substituteInstallDirTemplates env dirs = dirs'
     prefixVar        = (PrefixVar,     prefix     dirs')
     bindirVar        = (BindirVar,     bindir     dirs')
     libdirVar        = (LibdirVar,     libdir     dirs')
-    libsubdirVar     = (LibsubdirVar,  libsubdir  dirs')
+    commonlibdirVar  = (CommonlibdirVar, commonlibdir dirs')
+    hidirVar         = (HidirVar,      hidir      dirs')
     datadirVar       = (DatadirVar,    datadir    dirs')
     datasubdirVar    = (DatasubdirVar, datasubdir dirs')
     docdirVar        = (DocdirVar,     docdir     dirs')
     htmldirVar       = (HtmldirVar,    htmldir    dirs')
-    prefixBinLibVars = [prefixVar, bindirVar, libdirVar, libsubdirVar]
+    prefixBinLibVars = [prefixVar, bindirVar, libdirVar, commonlibdirVar]
     prefixBinLibDataVars = prefixBinLibVars ++ [datadirVar, datasubdirVar]
 
 -- | Convert from abstract install directories to actual absolute ones by
@@ -330,6 +355,8 @@ data PathTemplateVariable =
        PrefixVar     -- ^ The @$prefix@ path variable
      | BindirVar     -- ^ The @$bindir@ path variable
      | LibdirVar     -- ^ The @$libdir@ path variable
+     | CommonlibdirVar -- ^ The @$commonlibdir@ path variable
+     | HidirVar      -- ^ The @$hidir@ path variable
      | LibsubdirVar  -- ^ The @$libsubdir@ path variable
      | DatadirVar    -- ^ The @$datadir@ path variable
      | DatasubdirVar -- ^ The @$datasubdir@ path variable
@@ -425,7 +452,10 @@ installDirsTemplateEnv dirs =
   [(PrefixVar,     prefix     dirs)
   ,(BindirVar,     bindir     dirs)
   ,(LibdirVar,     libdir     dirs)
-  ,(LibsubdirVar,  libsubdir  dirs)
+  ,(CommonlibdirVar, commonlibdir dirs)
+  ,(HidirVar,      hidir      dirs)
+  ,(LibsubdirVar,  libsubdir  dirs) -- We need to keep this around for Setup's
+                                    -- build against older versions of Cabal
   ,(DatadirVar,    datadir    dirs)
   ,(DatasubdirVar, datasubdir dirs)
   ,(DocdirVar,     docdir     dirs)
@@ -447,6 +477,8 @@ instance Show PathTemplateVariable where
   show LibNameVar    = "libname"
   show BindirVar     = "bindir"
   show LibdirVar     = "libdir"
+  show CommonlibdirVar = "commonlibdir"
+  show HidirVar      = "hidir"
   show LibsubdirVar  = "libsubdir"
   show DatadirVar    = "datadir"
   show DatasubdirVar = "datasubdir"
@@ -475,6 +507,8 @@ instance Read PathTemplateVariable where
     where vars = [("prefix",     PrefixVar)
                  ,("bindir",     BindirVar)
                  ,("libdir",     LibdirVar)
+                 ,("commonlibdir", CommonlibdirVar)
+                 ,("hidir",      HidirVar)
                  ,("libsubdir",  LibsubdirVar)
                  ,("datadir",    DatadirVar)
                  ,("datasubdir", DatasubdirVar)

@@ -60,6 +60,7 @@ install pkg_descr lbi flags = do
       installDirs@(InstallDirs {
          bindir     = binPref,
          libdir     = libPref,
+         hidir      = hiPref,
 --         dynlibdir  = dynlibPref, --see TODO below
          datadir    = dataPref,
          docdir     = docPref,
@@ -130,7 +131,7 @@ install pkg_descr lbi flags = do
 
   withLibLBI pkg_descr lbi $
     case compilerFlavor (compiler lbi) of
-      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
+      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref hiPref buildPref pkg_descr
       GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
       LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
       JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr

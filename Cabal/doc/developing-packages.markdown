@@ -1952,6 +1952,7 @@ version :: Version
 
 getBinDir :: IO FilePath
 getLibDir :: IO FilePath
+getHiDir :: IO FilePath
 getDataDir :: IO FilePath
 getLibexecDir :: IO FilePath
 getSysconfDir :: IO FilePath
