@@ -897,9 +897,14 @@ installDirsOptions =
       libdir (\v flags -> flags { libdir = v })
       installDirArg
 
-  , option "" ["libsubdir"]
-      "subdirectory of libdir in which libs are installed"
-      libsubdir (\v flags -> flags { libsubdir = v })
+  , option "" ["commonlibdir"]
+      "subdirectory of libdir in which the object files of libs are installed"
+      commonlibdir (\v flags -> flags { commonlibdir = v })
+      installDirArg
+
+  , option "" ["hidir"]
+      "installation directory for library interface files"
+      hidir (\v flags -> flags { hidir = v })
       installDirArg
 
   , option "" ["libexecdir"]
@@ -935,6 +940,13 @@ installDirsOptions =
   , option "" ["sysconfdir"]
       "installation directory for configuration files"
       sysconfdir (\v flags -> flags { sysconfdir = v })
+      installDirArg
+
+  , option "" ["libsubdir"]
+      ("subdirectory of libdir in which libs are installed." ++
+       "Only has an effect on Setup files build against Cabal < 1.25"
+      )
+      libsubdir (\v flags -> flags { libsubdir = v })
       installDirArg
   ]
   where

@@ -169,6 +169,7 @@ copyComponent :: Verbosity -> PackageDescription
 copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     let InstallDirs{
             libdir = libPref,
+            hidir = hiPref,
             includedir = incPref
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
@@ -187,7 +188,7 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     installIncludeFiles verbosity lib incPref
 
     case compilerFlavor (compiler lbi) of
-      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
+      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref hiPref buildPref pkg_descr lib clbi
       GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi
       JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr lib clbi

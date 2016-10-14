@@ -1152,12 +1152,13 @@ installLib    :: Verbosity
               -> LocalBuildInfo
               -> FilePath  -- ^install location
               -> FilePath  -- ^install location for dynamic libraries
+              -> FilePath  -- ^install location for interfaces
               -> FilePath  -- ^Build location
               -> PackageDescription
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir hiTargetDir _builtDir _pkg lib clbi = do
   -- copy .hi files over:
   whenVanilla $ copyModuleFiles "hi"
   whenProf    $ copyModuleFiles "p_hi"
@@ -1190,7 +1191,7 @@ installLib verbosity lbi targetDir dynlibTargetDir _builtDir _pkg lib clbi = do
 
     copyModuleFiles ext =
       findModuleFiles [builtDir] [ext] (allLibModules lib clbi)
-      >>= installOrdinaryFiles verbosity targetDir
+      >>= installOrdinaryFiles verbosity hiTargetDir
 
     compiler_id = compilerId (compiler lbi)
     uid = componentUnitId clbi

@@ -2296,6 +2296,7 @@ into (e.g. data files live in ``getDataDir``):
 
     getBinDir :: IO FilePath
     getLibDir :: IO FilePath
+    getHiDir :: IO FilePath
     getDataDir :: IO FilePath
     getLibexecDir :: IO FilePath
     getSysconfDir :: IO FilePath
@@ -2304,7 +2305,7 @@ The actual location of all these directories can be individually
 overridden at runtime using environment variables of the form
 ``pkg_name_var``, where ``pkg_name`` is the name of the package with all
 hyphens converted into underscores, and ``var`` is either ``bindir``,
-``libdir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
+``libdir``, ``hidir``, ``datadir``, ``libexedir`` or ``sysconfdir``. For example,
 the configured data directory for ``pretty-show`` is controlled with the
 ``pretty_show_datadir`` environment variable.
 
