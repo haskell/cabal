@@ -36,7 +36,7 @@ import           Prelude
 -- TODO: introduce Distribution.Compat.Parsec
 import           Distribution.Parsec.Lexer
 import           Distribution.Parsec.LexerMonad
-                 (LexResult (..), LexState (..), LexWarning, unLex)
+                 (LexResult (..), LexState (..), LexWarning (..), LexWarningType (..), unLex)
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field
 import           Distribution.Utils.String
@@ -318,15 +318,25 @@ readFields :: B8.ByteString -> Either ParseError [Field Position]
 readFields s = fmap fst (readFields' s)
 
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
-readFields' s = parse (liftM2 (,) cabalStyleFile getLexerWarnings) "the input" lexSt
+readFields' s = do
+    parse parser "the input" lexSt
   where
-    s' = B.pack . recodeStringUtf8 . B.unpack $ s
+    parser = do
+        fields <- cabalStyleFile
+        ws     <- getLexerWarnings
+        pure (fields, maybeToList w ++ ws)
+
+    (w, s') = fmap B.pack . recodeStringUtf8 . B.unpack $ s
     lexSt = mkLexState' (mkLexState s')
 
 -- TODO: For some reason alex parser cannot handle BOM, is it a bug?
-recodeStringUtf8 :: [Word8] -> [Word8]
-recodeStringUtf8 (0xef : 0xbb : 0xbf : bytes) = encodeStringUtf8 (decodeStringUtf8 bytes)
-recodeStringUtf8 bytes                        = encodeStringUtf8 (decodeStringUtf8 bytes)
+recodeStringUtf8 :: [Word8] -> (Maybe LexWarning, [Word8])
+recodeStringUtf8 (0xef : 0xbb : 0xbf : bytes) =
+    ( Just $ LexWarning LexWarningBOM (Position 1 1) "Byte-order mark found"
+    , encodeStringUtf8 (decodeStringUtf8 bytes)
+    )
+recodeStringUtf8 bytes =
+    (Nothing, encodeStringUtf8 (decodeStringUtf8 bytes))
 
 #ifdef CABAL_PARSEC_DEBUG
 parseTest' :: Show a => Parsec LexState' () a -> SourceName -> B8.ByteString -> IO ()

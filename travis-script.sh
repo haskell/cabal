@@ -49,7 +49,7 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # more efficient (since new-build will uselessly try to rebuild
 # Cabal otherwise).
 if [ "x$PARSEC" = "xYES" ]; then
-  timed cabal new-build -fparsec Cabal Cabal:package-tests Cabal:unit-tests Cabal:parser-tests
+  timed cabal new-build -fparsec Cabal Cabal:package-tests Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
 else
   timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 fi
@@ -63,7 +63,11 @@ fi
 (cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
 
 if [ "x$PARSEC" = "xYES" ]; then
-    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-tests $TEST_OPTIONS) | tail || exit $?
+    # Parser unit tests
+    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-tests $TEST_OPTIONS) || exit $?
+
+    # Test we can parse Hackage
+    (cd Cabal && timed ${CABAL_BDIR}/build/parser-tests/parser-hackage-tests $TEST_OPTIONS) | tail || exit $?
 fi
 
 # Run haddock (hack: use the Setup script from package-tests!)
