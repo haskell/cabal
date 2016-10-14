@@ -6,7 +6,9 @@ travis_retry () {
 }
 
 if [ "$GHCVER" = "none" ]; then
-    exit 0
+    travis_retry sudo add-apt-repository -y ppa:hvr/ghc
+    travis_retry sudo apt-get update
+    travis_retry sudo apt-get install --force-yes ghc-$GHCVER
 fi
 
 if [ -z ${STACKAGE_RESOLVER+x} ]; then
