@@ -42,7 +42,7 @@ module Distribution.Client.BuildTarget (
   ) where
 
 import Distribution.Package
-         ( Package(..), PackageId, PackageName, packageName )
+         ( Package(..), PackageId, packageName )
 import Distribution.Types.UnqualComponentName ( unUnqualComponentName )
 import Distribution.Client.Types
          ( PackageLocation(..) )
@@ -270,7 +270,7 @@ readUserBuildTargets targetStrs = do
 -- a valid target.
 --
 resolveUserBuildTargets :: [(PackageDescription, PackageLocation a)]
-                        -> [UserBuildTarget] -> IO [BuildTarget PackageName]
+                        -> [UserBuildTarget] -> IO [BuildTarget PackageId]
 resolveUserBuildTargets pkgs utargets = do
     utargets' <- mapM getUserTargetFileStatus utargets
     pkgs'     <- mapM (uncurry selectPackageInfo) pkgs
@@ -293,7 +293,7 @@ resolveUserBuildTargets pkgs utargets = do
                   = btargets
 
     reportBuildTargetProblems bproblems
-    return (map (fmap packageName) btargets')
+    return (map (fmap packageId) btargets')
   where
     selectPrimaryLocalPackage :: FilePath
                               -> [PackageInfo]

@@ -402,7 +402,7 @@ selectTargets verbosity targetDefaultComponents targetSpecificComponent
 resolveAndCheckTargets :: PackageTarget
                        -> (ComponentTarget -> PackageTarget)
                        -> ElaboratedInstallPlan
-                       -> [BuildTarget PackageName]
+                       -> [BuildTarget PackageId]
                        -> Either [BuildTargetProblem]
                                  (Map UnitId [PackageTarget])
 resolveAndCheckTargets targetDefaultComponents
@@ -419,51 +419,51 @@ resolveAndCheckTargets targetDefaultComponents
     -- referring to other packages and targets.
 
     -- We can ask to build any whole package, project-local or a dependency
-    checkTarget (BuildTargetPackage pn)
-      | Just ipkgid <- Map.lookup pn projAllPkgs
+    checkTarget (BuildTargetPackage pid)
+      | Just ipkgid <- Map.lookup pid projAllPkgs
       = Right (ipkgid, targetDefaultComponents)
 
     -- But if we ask to build an individual component, then that component
     -- had better be in a package that is local to the project.
     -- TODO: and if it's an optional stanza, then that stanza must be available
-    checkTarget t@(BuildTargetComponent pn cn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
+    checkTarget t@(BuildTargetComponent pid cn)
+      | Just ipkgid <- Map.lookup pid projLocalPkgs
       = Right (ipkgid, targetSpecificComponent
                          (ComponentTarget cn WholeComponent))
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+      | Map.member pid projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal (fmap packageName t))
 
-    checkTarget t@(BuildTargetModule pn cn mn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
+    checkTarget t@(BuildTargetModule pid cn mn)
+      | Just ipkgid <- Map.lookup pid projLocalPkgs
       = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (ModuleTarget mn)))
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+      | Map.member pid projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal (fmap packageName t))
 
-    checkTarget t@(BuildTargetFile pn cn fn)
-      | Just ipkgid <- Map.lookup pn projLocalPkgs
+    checkTarget t@(BuildTargetFile pid cn fn)
+      | Just ipkgid <- Map.lookup pid projLocalPkgs
       = Right (ipkgid, BuildSpecificComponent (ComponentTarget cn (FileTarget fn)))
 
-      | Map.member pn projAllPkgs
-      = Left (BuildTargetComponentNotProjectLocal t)
+      | Map.member pid projAllPkgs
+      = Left (BuildTargetComponentNotProjectLocal (fmap packageName t))
 
     checkTarget t
-      = Left (BuildTargetNotInProject (buildTargetPackage t))
+      = Left (BuildTargetNotInProject (packageName (buildTargetPackage t)))
 
 
     -- NB: It's a list of 'InstalledPackageId', because each component
     -- in the install plan from a single package needs to be associated with
     -- the same 'PackageName'.
-    projAllPkgs, projLocalPkgs :: Map PackageName [UnitId]
+    projAllPkgs, projLocalPkgs :: Map PackageId [UnitId]
     projAllPkgs =
       Map.fromListWith (++)
-        [ (packageName pkg, [installedUnitId pkg])
+        [ (packageId pkg, [installedUnitId pkg])
         | pkg <- InstallPlan.toList installPlan ]
 
     projLocalPkgs =
       Map.fromListWith (++)
-        [ (packageName elab, [installedUnitId elab])
+        [ (packageId elab, [installedUnitId elab])
         | InstallPlan.Configured elab <- InstallPlan.toList installPlan
         , case elabPkgSourceLocation elab of
             LocalUnpackedPackage _ -> True; _ -> False
