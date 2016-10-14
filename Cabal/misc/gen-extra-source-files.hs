@@ -66,7 +66,7 @@ getOtherModulesFiles :: GenericPackageDescription -> [FilePath]
 getOtherModulesFiles gpd = mainModules ++ map fromModuleName otherModules'
   where
     testSuites        :: [TestSuite]
-    testSuites        = map (foldCondTree . snd) (condTestSuites gpd)
+    testSuites        = map (foldMapCondTree id . snd) (condTestSuites gpd)
 
     mainModules       = concatMap (mainModule   . testInterface) testSuites
     otherModules'     = concatMap (otherModules . testBuildInfo) testSuites
@@ -104,11 +104,11 @@ strictReadFile fp = do
   where
     get h = IO.hGetContents h >>= \s -> length s `seq` return s
 
-foldCondTree :: Monoid a => CondTree v c a -> a
-foldCondTree (CondNode x _ cs)
-    = mappend x
-    -- list, 3-tuple, maybe
-    $ (foldMap . foldMapTriple . foldMap) foldCondTree cs
+foldMapCondTree :: Monoid m => (a -> m) -> CondTree v c a -> m
+foldMapCondTree f (CondNode x _ cs)
+    = mappend (f x)
+    -- list, 3-tuple+maybe
+    $ (foldMap . foldMapTriple . foldMapCondTree) f cs
   where
-    foldMapTriple :: (c -> x) -> (a, b, c) -> x
-    foldMapTriple f (_, _, x) = f x
+    foldMapTriple :: Monoid x => (b -> x) -> (a, b, Maybe b) -> x
+    foldMapTriple f (_, x, y) = mappend (f x) (foldMap f y)
