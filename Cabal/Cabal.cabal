@@ -583,9 +583,11 @@ test-suite package-tests
     PackageTests.AutogenModules.Package.Check
     PackageTests.AutogenModules.SrcDist.Check
     PackageTests.BenchmarkStanza.Check
+    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
+    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
     PackageTests.CaretOperator.Check
-    PackageTests.TestStanza.Check
     PackageTests.DeterministicAr.Check
+    PackageTests.TestStanza.Check
     PackageTests.TestSuiteTests.ExeV10.Check
     PackageTests.PackageTester
   hs-source-dirs: tests

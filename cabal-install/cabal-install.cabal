@@ -196,7 +196,6 @@ Extra-Source-Files:
   tests/IntegrationTests/user-config/runs_without_error.sh
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.out
   tests/IntegrationTests/user-config/uses_CABAL_CONFIG.sh
-  tests/IntegrationTests2.hs
   tests/IntegrationTests2/build/keep-going/cabal.project
   tests/IntegrationTests2/build/keep-going/p/P.hs
   tests/IntegrationTests2/build/keep-going/p/p.cabal

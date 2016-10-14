@@ -19,8 +19,9 @@ branches:
 # lines listings versions you don't need/want testing for.
 matrix:
   include:
-   - env: GHCVER=none SCRIPT=meta BUILDER=none
+   - env: GHCVER=8.0.1 SCRIPT=meta BUILDER=none
      os: linux
+     sudo: required
    # These don't have -dyn/-prof whitelisted yet, so we have to
    # do the old-style installation
    - env: GHCVER=7.4.2 SCRIPT=script CABAL_LIB_ONLY=YES
