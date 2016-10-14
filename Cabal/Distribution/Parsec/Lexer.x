@@ -76,7 +76,7 @@ tokens :-
 }
 
 <bol_section, bol_field_layout, bol_field_braces> {
-  $nbspspacetab* @nl         { \_ _ inp -> checkWhitespace inp >> adjustPos retPos >> lexToken }
+  $nbspspacetab* @nl         { \_pos len inp -> checkWhitespace len inp >> adjustPos retPos >> lexToken }
   -- no @nl here to allow for comments on last line of the file with no trailing \n
   $spacetab* "--" $comment*  ;  -- TODO: check the lack of @nl works here
                                 -- including counting line numbers
@@ -84,7 +84,7 @@ tokens :-
 
 <bol_section> {
   $nbspspacetab*  --TODO prevent or record leading tabs
-                   { \pos len inp -> checkWhitespace inp >>
+                   { \pos len inp -> checkWhitespace len inp >>
                                      if B.length inp == len
                                        then return (L pos EOF)
                                        else setStartCode in_section
@@ -162,13 +162,11 @@ toki t pos  len  input = return $! L pos (t (B.take len input))
 tok :: Monad m => Token -> Position -> t -> t1 -> m LToken
 tok  t pos _len _input = return $! L pos t
 
-checkWhitespace :: ByteString -> Lex ()
-checkWhitespace bs
-    | B.any (== 194) bs = addWarning LexWarningNBSP "Non-breaking space found"
-    | otherwise         = return ()
-
-whitespace :: Position -> Int -> ByteString -> Lex ()
-whitespace _ _ = checkWhitespace
+checkWhitespace :: Int -> ByteString -> Lex ()
+checkWhitespace len bs
+    | B.any (== 194) (B.take len bs) =
+          addWarning LexWarningNBSP "Non-breaking space found"
+    | otherwise = return ()
 
 -- -----------------------------------------------------------------------------
 -- The input type

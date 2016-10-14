@@ -304,6 +304,7 @@ extra-source-files:
   tests/PackageTests/UniqueIPID/P2/my.cabal
   tests/PackageTests/multInst/my.cabal
   tests/ParserTests/warnings/bom.cabal
+  tests/ParserTests/warnings/nbsp.cabal
   tests/Setup.hs
   tests/hackage/check.sh
   tests/hackage/download.sh

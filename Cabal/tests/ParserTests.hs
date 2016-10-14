@@ -23,6 +23,7 @@ tests = testGroup "parsec tests"
 warningTests :: TestTree
 warningTests = testGroup "warnings triggered"
     [ warningTest PWTLexBOM "bom.cabal"
+    , warningTest PWTLexNBSP "nbsp.cabal"
     ]
 
 warningTest :: PWarnType -> FilePath -> TestTree
@@ -30,7 +31,7 @@ warningTest wt fp = testCase (show wt) $ do
     contents <- BS.readFile $ "tests" </> "ParserTests" </> "warnings" </> fp
     let res =  parseGenericPackageDescription contents
     let (warns, errs, x) = runParseResult res
-    
+
     assertBool "parses successfully" $ isJust x
     assertBool "parses without errors" $ null errs
 
