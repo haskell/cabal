@@ -32,6 +32,7 @@ import           Distribution.Compat.Prelude
 import qualified Data.ByteString                                   as BS
 import           Data.List                                         (partition)
 import qualified Data.Map                                          as Map
+import qualified Distribution.Compat.SnocList                      as SnocList
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Parsec.FieldDescr
 import           Distribution.Parsec.Class                         (parsec)
@@ -398,43 +399,46 @@ parseCondTree descs unknown cond ini = impl
   where
     impl :: [Field Position] -> ParseResult (CondTree ConfVar c a)
     impl fields = do
-        (x, xs) <- go (ini, []) fields
-        return $ CondNode x (cond x) xs
+        (x, xs) <- goFields (ini, mempty) fields
+        return $ CondNode x (cond x) (SnocList.runSnocList xs)
 
-    --TODO: change to take and return condnode ?
-    --TODO: use dlist to accumulate results?
-    go :: (a, [C c a]) -> [Field Position] -> ParseResult (a, [C c a])
-    go xss [] = return xss
+    goFields
+        :: (a, SnocList.SnocList (C c a))
+        -> [Field Position]
+        -> ParseResult (a, SnocList.SnocList (C c a))
+    goFields xss [] = return xss
 
-    go xxs (Section (Name _pos name) tes con : fields) | name == "if" = do
+    goFields xxs (Section (Name _pos name) tes con : fields) | name == "if" = do
         tes'  <- parseConditionConfVar tes
         con' <- impl con
         -- Jump to 'else' state
         goElse tes' con' xxs fields
 
-    go xxs (Section (Name pos name) _ _ : fields) = do
+    goFields xxs (Section (Name pos name) _ _ : fields) = do
         -- Even we occur a subsection, we can continue parsing
         -- http://hackage.haskell.org/package/constraints-0.1/constraints.cabal
         parseWarning pos PWTInvalidSubsection $ "invalid subsection " ++ show name
-        go xxs fields
+        goFields xxs fields
 
-    go (x, xs) (Field (Name pos name) fieldLines : fields) =
+    goFields (x, xs) (Field (Name pos name) fieldLines : fields) =
         case Map.lookup name fieldParsers of
             Nothing -> fieldlinesToString pos fieldLines >>= \value -> case unknown name value x of
                 Nothing -> do
                     parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                    go (x, xs) fields
+                    goFields (x, xs) fields
                 Just x' -> do
-                    go (x', xs) fields
+                    goFields (x', xs) fields
             Just parser -> do
                 x' <- runFieldParser (parser x) fieldLines
-                go (x', xs) fields
+                goFields (x', xs) fields
 
     -- Try to parse else branch
     goElse
-      :: Condition ConfVar
-      -> CondTree ConfVar c a
-      -> (a, [C c a]) -> [Field Position] -> ParseResult (a, [C c a])
+        :: Condition ConfVar
+        -> CondTree ConfVar c a
+        -> (a, SnocList.SnocList (C c a))
+        -> [Field Position]
+        -> ParseResult (a, SnocList.SnocList (C c a))
     goElse tes con (x, xs) (Section (Name pos name) secArgs alt : fields) | name == "else" = do
         when (not . null $ secArgs) $ do
             parseFailure pos $ "`else` section has section arguments " ++ show secArgs
@@ -442,10 +446,10 @@ parseCondTree descs unknown cond ini = impl
             [] -> pure Nothing
             _  -> Just <$> impl alt
         let ieb = (tes, con, alt')
-        go (x, xs ++ [ieb]) fields
+        goFields (x, SnocList.snoc xs ieb) fields
     goElse tes con (x, xs) fields = do
         let ieb = (tes, con, Nothing)
-        go (x, xs ++ [ieb]) fields
+        goFields (x, SnocList.snoc xs ieb) fields
 
     fieldParsers :: Map FieldName (a -> FieldParser a)
     fieldParsers = Map.fromList $

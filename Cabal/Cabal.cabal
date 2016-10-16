@@ -543,6 +543,7 @@ library
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
     Distribution.Compat.Prelude
+    Distribution.Compat.SnocList
     Distribution.GetOpt
     Distribution.Lex
     Distribution.Utils.String

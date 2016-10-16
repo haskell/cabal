@@ -13,6 +13,7 @@ module Distribution.Compat.DList (
     DList,
     runDList,
     singleton,
+    snoc,
 ) where
 
 import Prelude ()
@@ -27,6 +28,9 @@ runDList (DList run) = run []
 -- | Make 'DList' with containing single element.
 singleton :: a -> DList a
 singleton a = DList (a:)
+
+snoc :: DList a -> a -> DList a
+snoc xs x = xs <> singleton x
 
 instance Monoid (DList a) where
   mempty = DList id
