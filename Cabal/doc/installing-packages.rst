@@ -642,11 +642,12 @@ path options:
 
 .. option:: --commonlibdir=dir
 
-    A subdirectory of *libdir* in which libraries are actually
-    installed. For example, in the simple build system on Unix, the
-    default *libdir* is ``/usr/local/lib``, and *commonlibdir* contains the
-    ABI, e.g. ``x86_64-linux-8.0.1``, so libraries would be installed in
-    ``/usr/local/lib/x86_64-linux-8.0.1``.
+    A subdirectory of *libdir* in which binary libraries are actually
+    installed. It is recommended that a single, common directory to be used to
+    store all installed libraries (as opposed to using ``$pkgid`` or similar
+    variables to create a directory per installed library), as this helps reduce
+    the size of rpath in executables built against dynamic libraries.
+    See <https://github.com/haskell/cabal/pull/3982> for more details.
 
     *dir* may contain the following path variables: ``$pkgid``,
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
@@ -700,9 +701,11 @@ path options:
 
 .. option:: --libsubdir=dir
 
-    For use with Setup.hs files build against a version of Cabal prior to 1.25.
-    For later versions of Cabal, this flag is basically deprecated, and you
-    should use ``--commonlibdir=dir``.
+    For use with Setup.hs files built against a version of Cabal prior to 1.25.
+    With later versions of Cabal, you should prefer :option:`--commonlibdir` and
+    :option:`--hidir`, which let you separately specify where binary libraries
+    and interface files get installed, so that binary libraries can be
+    installed to a shared directory..
 
     A subdirectory of *libdir* in which libraries and interfaces are actually
     installed. For example, in the simple build system on Unix, the

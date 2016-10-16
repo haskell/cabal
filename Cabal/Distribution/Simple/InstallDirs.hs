@@ -82,9 +82,9 @@ data InstallDirs dir = InstallDirs {
         libdir       :: dir,
         commonlibdir :: dir,
         hidir        :: dir,
-        libsubdir    :: dir, -- This field is basically deprecated by the
-                             -- introduction of commonlibdir and hidir. However,
-                             -- We must keep it so that we can still work with
+        libsubdir    :: dir, -- This field is deprecated by the introduction of
+                             -- commonlibdir and hidir. However,
+                             -- we must keep it so that we can still work with
                              -- Setup executables build against an older version
                              -- of Cabal. For the same reason, we cannot
                              -- simply use libsubdir as the commonlibdir,

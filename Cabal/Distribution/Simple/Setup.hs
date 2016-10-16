@@ -898,7 +898,7 @@ installDirsOptions =
       installDirArg
 
   , option "" ["commonlibdir"]
-      "subdirectory of libdir in which the object files of libs are installed"
+      "subdirectory of libdir in which binary libraries are installed"
       commonlibdir (\v flags -> flags { commonlibdir = v })
       installDirArg
 
@@ -944,7 +944,7 @@ installDirsOptions =
 
   , option "" ["libsubdir"]
       ("subdirectory of libdir in which libs are installed." ++
-       "Only has an effect on Setup files build against Cabal < 1.25"
+       "Only has an effect on Setup files built against Cabal < 1.25"
       )
       libsubdir (\v flags -> flags { libsubdir = v })
       installDirArg
