@@ -552,11 +552,9 @@ setupBInfoFieldDescrs =
 -- Utilities
 -------------------------------------------------------------------------------
 
+-- | Predicate to test field names beginning with "x-"
 beginsWithX :: FieldName -> Bool
-beginsWithX bs = case BS.uncons bs of
-    Just (x, _)
-        | x == fromIntegral (ord 'x') -> True
-    _                                 -> False
+beginsWithX bs = BS.take 2 bs == "x-"
 
 -- | Mark the field as deprecated.
 deprecatedField
