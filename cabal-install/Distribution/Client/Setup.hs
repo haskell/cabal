@@ -84,7 +84,7 @@ import Distribution.Simple.Setup
          , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg
          , readPToMaybe, optionNumJobs )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate, InstallDirs(commonlibdir, hidir, sysconfdir)
+         ( PathTemplate, InstallDirs(binlibsubdir, hidir, sysconfdir)
          , toPathTemplate, fromPathTemplate )
 import Distribution.Version
          ( Version(Version), anyVersion, thisVersion )
@@ -374,10 +374,10 @@ filterConfigureFlags flags cabalLibVersion
       configAllowNewer  = Just Cabal.AllowNewerNone
       }
 
-    -- Cabal < 1.24.1 doesn't know about --extra-prog-path and --sysconfdir.
+    -- Cabal < 1.24.1 doesn't know about --binlibsubdir and --hidir.
     flags_1_24_0 = flags_latest { configInstallDirs = configInstallDirs_1_24_0}
     configInstallDirs_1_24_0 = (configInstallDirs flags)
-                                  { commonlibdir = NoFlag
+                                  { binlibsubdir = NoFlag
                                   , hidir        = NoFlag
                                   }
 

@@ -502,7 +502,7 @@ package:
 :  Interface files (.hi) of libraries are installed here.
 
    In the simple build system, *dir* may contain the following path
-   variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`,
+   variables: `$prefix`, `$bindir`, `$libdir`, `$binlibsubdir`,
    `$pkgid`, `$pkg`, `$version`, `$compiler`, `$os`,
    `$arch`, `$abi`, `$abitag`
 
@@ -511,31 +511,32 @@ package:
     are installed here.
 
     In the simple build system, _dir_ may contain the following path
-    variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`,
+    variables: `$prefix`, `$bindir`, `$libdir`, `$binlibsubdir`, `$pkgid`,
     `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--datadir`=_dir_
 :   Architecture-independent data files are installed here.
 
     In the simple build system, _dir_ may contain the following path
-    variables: `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`, `$pkg`,
+    variables: `$prefix`, `$bindir`, `$libdir`, `$binlibsubdir`, `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--sysconfdir=`_dir_
 :   Installation directory for the configuration files.
 
     In the simple build system, _dir_ may contain the following path variables:
-    `$prefix`, `$bindir`, `$libdir`, `$commonlibdir`, `$pkgid`, `$pkg`, `$version`,
+    `$prefix`, `$bindir`, `$libdir`, `$binlibsubdir`, `$pkgid`, `$pkg`, `$version`,
     `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 In addition the simple build system supports the following installation path options:
 
-`--commonlibdir=`_dir_
-:   A subdirectory of _libdir_ in which libraries are actually
-    installed. For example, in the simple build system on Unix, the
-    default _libdir_ is `/usr/local/lib`, and _commonlibdir_ contains the
-    ABI, e.g. `x86_64-linux-ghc-8.0.1`, so
-    libraries would be installed in `/usr/local/lib/x86_64-linux-ghc-8.0.1`.
+`--binlibsubdir=`_dir_
+:   A subdirectory of _libdir_ in which binary libraries are actually
+    installed. It is recommended that a single, common directory to be used to
+    store all installed libraries (as opposed to using `$pkgid` or similar
+    variables to create a directory per installed library), as this helps reduce
+    the size of rpath in executables built against dynamic libraries.
+    See [3982](https://github.com/haskell/cabal/pull/3982) for more details.
 
     _dir_ may contain the following path variables: `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
@@ -551,14 +552,14 @@ In addition the simple build system supports the following installation path opt
 :   Documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
-    `$libdir`, `$commonlibdir`, `$datadir`, `$datasubdir`, `$pkgid`, `$pkg`,
+    `$libdir`, `$binlibsubdir`, `$datadir`, `$datasubdir`, `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--htmldir=`_dir_
 :   HTML documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
-    `$libdir`, `$commonlibdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
+    `$libdir`, `$binlibsubdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
     `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--program-prefix=`_prefix_
@@ -576,14 +577,16 @@ In addition the simple build system supports the following installation path opt
     _suffix_ may contain the following path variables: `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
-`--commonlibdir=`_dir_
-:   For use with Setup.hs files build against a version of Cabal prior to 1.24.1.
-    For later versions of Cabal, this flag is basically deprecated, and you
-    should use `--commonlibdir=`_dir_.
+`--libsubdir=`_dir_
+:    For use with Setup.hs files built against a version of Cabal prior to 1.24.1.
+     With later versions of Cabal, you should prefer `--binlibsubdir` and
+     `--hidir`, which let you separately specify where binary libraries
+     and interface files get installed, so that binary libraries can be
+     installed to a shared directory..
 
     A subdirectory of _libdir_ in which libraries are actually
     installed. For example, in the simple build system on Unix, the
-    default _libdir_ is `/usr/local/lib`, and _commonlibdir_ contains the
+    default _libdir_ is `/usr/local/lib`, and _libsubdir_ contains the
     ABI, e.g. `x86_64-linux-ghc-8.0.1`, so
     libraries would be installed in `/usr/local/lib/x86_64-linux-ghc-8.0.1`.
 
@@ -612,8 +615,8 @@ independence](#prefix-independence)).
 `$libdir`
 :   As above but for `--libdir`
 
-`$commonlibdir`
-:   As above but for `--commonlibdir`
+`$binlibsubdir`
+:   As above but for `--binlibsubdir`
 
 `$hidir`
 :   As above but for `--hidir`
@@ -670,7 +673,7 @@ Option                     Windows Default                                      
 `--prefix` (per-user)      `C:\Documents And Settings\user\Application Data\cabal`   `$HOME/.cabal`
 `--bindir`                 `$prefix\bin`                                             `$prefix/bin`
 `--libdir`                 `$prefix`                                                 `$prefix/lib`
-`--commonlibdir` (others)  `$abi`                                                    `$abi`
+`--binlibsubdir` (others)  `$abi`                                                    `$abi`
 `--hidir`                  `$libdir\$abi\$libname`                                   `$libdir/$abi/$libname`
 `--libexecdir`             `$prefix\$pkgid`                                          `$prefix/libexec`
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
