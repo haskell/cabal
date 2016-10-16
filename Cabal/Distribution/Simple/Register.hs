@@ -409,7 +409,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.hiddenModules      = otherModules bi,
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ hidir installDirs | hasModules ],
-    -- Note. the commonlibdir and datasubdir templates have already been expanded
+    -- Note. the binlibsubdir and datasubdir templates have already been expanded
     -- into libdir and datadir.
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi

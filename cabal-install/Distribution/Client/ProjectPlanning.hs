@@ -1253,7 +1253,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                    platform
                    defaultInstallDirs) {
 
-                  InstallDirs.commonlibdir = "", -- absoluteInstallDirs sets these as
+                  InstallDirs.binlibsubdir = "", -- absoluteInstallDirs sets these as
                   InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
                 }                              -- them as "Setup.hs configure" args
 
@@ -1410,7 +1410,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                platform
                defaultInstallDirs) {
 
-              InstallDirs.commonlibdir = "", -- absoluteInstallDirs sets these as
+              InstallDirs.binlibsubdir = "", -- absoluteInstallDirs sets these as
               InstallDirs.datasubdir = ""  -- 'undefined' but we have to use
             }                              -- them as "Setup.hs configure" args
 
@@ -2520,7 +2520,7 @@ storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
     prefix       = cabalStorePackageDirectory compid ipkgid
     bindir       = prefix </> "bin"
     libdir       = prefix </> "lib"
-    commonlibdir = ""
+    binlibsubdir = ""
     hidir        = libdir
     libsubdir    = ""
     dynlibdir    = libdir

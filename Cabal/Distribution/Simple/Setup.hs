@@ -897,9 +897,9 @@ installDirsOptions =
       libdir (\v flags -> flags { libdir = v })
       installDirArg
 
-  , option "" ["commonlibdir"]
+  , option "" ["binlibsubdir"]
       "subdirectory of libdir in which binary libraries are installed"
-      commonlibdir (\v flags -> flags { commonlibdir = v })
+      binlibsubdir (\v flags -> flags { binlibsubdir = v })
       installDirArg
 
   , option "" ["hidir"]

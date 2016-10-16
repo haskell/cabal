@@ -605,7 +605,7 @@ package:
     Interface files (.hi) of libraries are installed here.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$commonlibdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
@@ -615,7 +615,7 @@ package:
     are installed here.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$commonlibdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
@@ -624,7 +624,7 @@ package:
     Architecture-independent data files are installed here.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$commonlibdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
@@ -633,14 +633,14 @@ package:
     Installation directory for the configuration files.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$commonlibdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
 In addition the simple build system supports the following installation
 path options:
 
-.. option:: --commonlibdir=dir
+.. option:: --binlibsubdir=dir
 
     A subdirectory of *libdir* in which binary libraries are actually
     installed. It is recommended that a single, common directory to be used to
@@ -667,7 +667,7 @@ path options:
     Documentation files are installed relative to this directory.
 
     *dir* may contain the following path variables: ``$prefix``,
-    ``$bindir``, ``$libdir``, ``$commonlibdir``, ``$datadir``,
+    ``$bindir``, ``$libdir``, ``$binlibsubdir``, ``$datadir``,
     ``$datasubdir``, ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``,
     ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
@@ -676,7 +676,7 @@ path options:
     HTML documentation files are installed relative to this directory.
 
     *dir* may contain the following path variables: ``$prefix``,
-    ``$bindir``, ``$libdir``, ``$commonlibdir``, ``$datadir``,
+    ``$bindir``, ``$libdir``, ``$binlibsubdir``, ``$datadir``,
     ``$datasubdir``, ``$docdir``, ``$pkgid``, ``$pkg``, ``$version``,
     ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
@@ -702,7 +702,7 @@ path options:
 .. option:: --libsubdir=dir
 
     For use with Setup.hs files built against a version of Cabal prior to 1.25.
-    With later versions of Cabal, you should prefer :option:`--commonlibdir` and
+    With later versions of Cabal, you should prefer :option:`--binlibsubdir` and
     :option:`--hidir`, which let you separately specify where binary libraries
     and interface files get installed, so that binary libraries can be
     installed to a shared directory..
@@ -737,8 +737,8 @@ $bindir
     configure option (or the default).
 $libdir
     As above but for :option:`--libdir`
-$commonlibdir
-    As above but for :option:`--commonlibdir`
+$binlibsubdir
+    As above but for :option:`--binlibsubdir`
 $hidir
     As above but for :option:`--hidir`
 $datadir
@@ -796,7 +796,7 @@ For the simple build system, the following defaults apply:
     * - :option:`--libdir`
       - ``$prefix/lib``
       - ``$prefix``
-    * - :option:`--commonlibdir` (others)
+    * - :option:`--binlibsubdir` (others)
       - ``$abi``
       - ``$abi``
     * - :option:`--hidir` (others)
