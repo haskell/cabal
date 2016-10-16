@@ -177,12 +177,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case testInterface t of
          TestSuiteExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo bi pps []
-           srcMainFile <- do
-             ppFile <- findFileWithExtension (ppSuffixes pps)
-                       (hsSourceDirs bi) (dropExtension mainPath)
-             case ppFile of
-               Nothing -> findFile (hsSourceDirs bi) mainPath
-               Just pp -> return pp
+           srcMainFile <- findMainExeFile bi pps mainPath
            return (srcMainFile:biSrcs)
          TestSuiteLibV09 _ m ->
            allSourcesBuildInfo bi pps [m]
@@ -196,12 +191,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        case benchmarkInterface bm of
          BenchmarkExeV10 _ mainPath -> do
            biSrcs <- allSourcesBuildInfo bi pps []
-           srcMainFile <- do
-             ppFile <- findFileWithExtension (ppSuffixes pps)
-                       (hsSourceDirs bi) (dropExtension mainPath)
-             case ppFile of
-               Nothing -> findFile (hsSourceDirs bi) mainPath
-               Just pp -> return pp
+           srcMainFile <- findMainExeFile bi pps mainPath
            return (srcMainFile:biSrcs)
          BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
                                     ++ show tp
@@ -427,6 +417,9 @@ allSourcesBuildInfo bi pps modules = do
   let searchDirs = hsSourceDirs bi
   sources <- fmap concat $ sequenceA $
     [ let file = ModuleName.toFilePath module_
+      -- NB: *Not* findFileWithExtension, because the same source
+      -- file may show up in multiple paths due to a conditional;
+      -- we need to package all of them.  See #367.
       in findAllFilesWithExtension suffixes searchDirs file
          >>= nonEmpty (notFound module_) return
     | module_ <- modules ++ otherModules bi ]
