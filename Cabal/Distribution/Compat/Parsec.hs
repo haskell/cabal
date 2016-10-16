@@ -56,7 +56,8 @@ integral = toNumber <$> some d P.<?> "integral"
     f '9' = Just 9
     f _   = Nothing
 
--- | Greedely munch characters while predicate holds.
+-- | Greedily munch characters while predicate holds.
+-- Require at least one character.
 munch1
     :: P.Stream s m Char
     => (Char -> Bool)
@@ -64,6 +65,7 @@ munch1
 munch1 = some . P.satisfy
 
 -- | Greedely munch characters while predicate holds.
+-- Always succeeds.
 munch
     :: P.Stream s m Char
     => (Char -> Bool)

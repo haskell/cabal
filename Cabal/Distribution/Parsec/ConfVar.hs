@@ -2,14 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Distribution.Parsec.ConfVar (parseConditionConfVar) where
 
-import           Distribution.Compat.Prelude
 import           Prelude ()
-
+import           Distribution.Compat.Prelude
 import           Distribution.Compat.Parsec                   (integral)
-import qualified Text.Parsec                                  as P
---import qualified Text.Parsec.Pos                              as P
-import qualified Text.Parsec.Error                            as P
-
 import           Distribution.Parsec.Class                    (Parsec (..))
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field              (SectionArg (..))
@@ -18,20 +13,24 @@ import           Distribution.Simple.Utils                    (fromUTF8BS)
 import           Distribution.Types.GenericPackageDescription
                  (Condition (..), ConfVar (..))
 import           Distribution.Version
-                 (mkVersion, anyVersion, earlierVersion,
-                 intersectVersionRanges, laterVersion, noVersion, majorBoundVersion,
+                 (anyVersion, earlierVersion, intersectVersionRanges,
+                 laterVersion, majorBoundVersion, mkVersion, noVersion,
                  orEarlierVersion, orLaterVersion, thisVersion,
                  unionVersionRanges, withinVersion)
+import qualified Text.Parsec                                  as P
+import qualified Text.Parsec.Error                            as P
 
 -- | Parse @'Condition' 'ConfVar'@ from section arguments provided by parsec
 -- based outline parser.
 parseConditionConfVar :: [SectionArg Position] -> ParseResult (Condition ConfVar)
 parseConditionConfVar args = do
-    -- Warnings!
+    -- preprocess glued operators
     args' <- preprocess args
+    -- The name of the input file is irrelevant, as we reformat the error message.
     case P.runParser (parser <* P.eof) () "<condition>" args' of
         Right x  -> pure x
         Left err -> do
+            -- Mangle the position to the actual one
             let ppos = P.errorPos err
             let epos = Position (P.sourceLine ppos) (P.sourceColumn ppos)
             let msg = P.showErrorMessages
@@ -41,6 +40,9 @@ parseConditionConfVar args = do
             pure $ Lit True
 
 -- This is a hack, as we have "broken" .cabal files on Hackage
+--
+-- There are glued operators "&&!" (no whitespace) in some cabal files.
+-- E.g. http://hackage.haskell.org/package/hblas-0.2.0.0/hblas.cabal
 preprocess :: [SectionArg Position] -> ParseResult [SectionArg Position]
 preprocess (SecArgOther pos "&&!" : rest) = do
     parseWarning pos PWTGluedOperators "Glued operators: &&!"
@@ -100,7 +102,7 @@ parser = condOr
                      ("^>=", majorBoundVersion),
                      ("==", thisVersion) ]
 
-    -- numbers are weird: SecArgNum (Position 65 15) "7.6.1"
+    -- Number token can have many dots in it: SecArgNum (Position 65 15) "7.6.1"
     ident = tokenPrim $ \case
         SecArgName _ s -> Just $ fromUTF8BS s
         SecArgNum  _ s -> Just $ fromUTF8BS s
@@ -125,6 +127,7 @@ parser = condOr
     parens = P.between (oper "(") (oper ")")
 
     tokenPrim = P.tokenPrim prettySectionArg updatePosition
+    -- TODO: check where the errors are reported
     updatePosition x _ _ = x
     prettySectionArg = show
 

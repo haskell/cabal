@@ -11,9 +11,8 @@ module Distribution.Parsec.Types.ParseResult (
     parseWarnings',
     ) where
 
-import           Distribution.Compat.Prelude
 import           Prelude ()
-
+import           Distribution.Compat.Prelude
 import           Distribution.Parsec.Types.Common
                  (PError (..), PWarnType (..), PWarning (..), Position (..))
 
@@ -66,7 +65,7 @@ parseWarning pos t msg = PR $ \(PRState warns errs) ->
 
 parseWarnings' :: [PWarning] -> ParseResult ()
 parseWarnings' newWarns = PR $ \(PRState warns errs) ->
-    (Just (), PRState (warns ++ newWarns) errs) 
+    (Just (), PRState (warns ++ newWarns) errs)
 
 -- | Add an error, but not fail the parser yet.
 --

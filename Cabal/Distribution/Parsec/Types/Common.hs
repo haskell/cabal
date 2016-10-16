@@ -15,12 +15,10 @@ module Distribution.Parsec.Types.Common (
     showPos,
     ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
-
-import System.FilePath (normalise)
-
-import qualified Text.Parsec as Parsec
+import           Prelude ()
+import           Distribution.Compat.Prelude
+import           System.FilePath             (normalise)
+import qualified Text.Parsec                 as Parsec
 
 -- | Parser error.
 data PError = PError Position String

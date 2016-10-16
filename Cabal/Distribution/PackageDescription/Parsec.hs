@@ -1,8 +1,8 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE Rank2Types #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -27,36 +27,34 @@ module Distribution.PackageDescription.Parsec (
     -- parseHookedBuildInfo,
     ) where
 
-import           Distribution.Compat.Prelude
 import           Prelude ()
-
+import           Distribution.Compat.Prelude
 import qualified Data.ByteString                                   as BS
 import           Data.List                                         (partition)
 import qualified Data.Map                                          as Map
-import           System.Directory
-                 (doesFileExist)
-import qualified Text.Parsec                                       as P
-import qualified Text.Parsec.Error                                 as P
-
 import           Distribution.PackageDescription
-import           Distribution.Simple.Utils
-                 (die, fromUTF8BS, warn)
-import           Distribution.Verbosity                            (Verbosity)
-
 import           Distribution.PackageDescription.Parsec.FieldDescr
 import           Distribution.Parsec.Class                         (parsec)
 import           Distribution.Parsec.ConfVar
                  (parseConditionConfVar)
+import           Distribution.Parsec.LexerMonad
+                 (LexWarning, toPWarning)
 import           Distribution.Parsec.Parser
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.Field                   (getName)
 import           Distribution.Parsec.Types.FieldDescr
 import           Distribution.Parsec.Types.ParseResult
-import           Distribution.Parsec.LexerMonad
-                 (LexWarning, toPWarning)
-
-import Distribution.Text (display)
-import Distribution.Version (mkVersion, Version, asVersionIntervals, orLaterVersion, LowerBound (..))
+import           Distribution.Simple.Utils
+                 (die, fromUTF8BS, warn)
+import           Distribution.Text                                 (display)
+import           Distribution.Verbosity                            (Verbosity)
+import           Distribution.Version
+                 (LowerBound (..), Version, asVersionIntervals, mkVersion,
+                 orLaterVersion)
+import           System.Directory
+                 (doesFileExist)
+import qualified Text.Parsec                                       as P
+import qualified Text.Parsec.Error                                 as P
 
 -- ---------------------------------------------------------------
 -- Parsing
@@ -68,9 +66,9 @@ import Distribution.Version (mkVersion, Version, asVersionIntervals, orLaterVers
 --
 -- Argument order is chosen to encourage partial application.
 readAndParseFile
-    :: (BS.ByteString -> ParseResult a)
-    -> Verbosity
-    -> FilePath
+    :: (BS.ByteString -> ParseResult a)  -- ^ File contents to final value parser
+    -> Verbosity                         -- ^ Verbosity level
+    -> FilePath                          -- ^ File to read
     -> IO a
 readAndParseFile parser verbosity fpath = do
     exists <- doesFileExist fpath

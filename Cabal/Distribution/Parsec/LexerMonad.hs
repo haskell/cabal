@@ -31,19 +31,17 @@ module Distribution.Parsec.LexerMonad (
 
   ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
-
-import Distribution.Parsec.Types.Common (Position (..), PWarning (..), PWarnType (..))
-
-import qualified Data.ByteString as B
-
+import           Prelude ()
+import           Distribution.Compat.Prelude
+import qualified Data.ByteString                  as B
+import           Distribution.Parsec.Types.Common
+                 (PWarnType (..), PWarning (..), Position (..))
 
 #ifdef CABAL_PARSEC_DEBUG
 -- testing only:
-import qualified Data.Vector as V
-import qualified Data.Text   as T
-import qualified Data.Text.Encoding as T
+import qualified Data.Text                        as T
+import qualified Data.Text.Encoding               as T
+import qualified Data.Vector                      as V
 #endif
 
 -- simple state monad
@@ -80,12 +78,12 @@ toPWarning (LexWarning t p s) = PWarning t' p s
         LexWarningBOM  -> PWTLexBOM
 
 data LexState = LexState {
-        curPos   :: {-# UNPACK #-} !Position,        -- position at current input location
-        curInput :: {-# UNPACK #-} !InputStream,     -- the current input
-        curCode  :: {-# UNPACK #-} !StartCode,       -- lexer code
+        curPos   :: {-# UNPACK #-} !Position,        -- ^ position at current input location
+        curInput :: {-# UNPACK #-} !InputStream,     -- ^ the current input
+        curCode  :: {-# UNPACK #-} !StartCode,       -- ^ lexer code
         warnings :: [LexWarning]
 #ifdef CABAL_PARSEC_DEBUG
-        , dbgText  :: V.Vector T.Text
+        , dbgText  :: V.Vector T.Text                -- ^ input lines, to print pretty debug info
 #endif
      } --TODO: check if we should cache the first token
        -- since it looks like parsec's uncons can be called many times on the same input

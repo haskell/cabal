@@ -1,9 +1,7 @@
 {-# LANGUAGE CPP                   #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-#ifdef CABAL_PARSEC_DEBUG
 {-# LANGUAGE PatternGuards         #-}
-#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Parsec.Parser
@@ -29,29 +27,23 @@ module Distribution.Parsec.Parser (
 #endif
     ) where
 
+import           Prelude ()
 import           Distribution.Compat.Prelude
-import           Prelude
-                 ()
-
--- TODO: introduce Distribution.Compat.Parsec
-import           Distribution.Parsec.Lexer
-import           Distribution.Parsec.LexerMonad
-                 (LexResult (..), LexState (..), LexWarning (..), LexWarningType (..), unLex)
-import           Distribution.Parsec.Types.Common
-import           Distribution.Parsec.Types.Field
-import           Distribution.Utils.String
-
-import           Control.Monad
-                 (guard)
+import           Control.Monad                    (guard)
 import qualified Data.ByteString                  as B
 import qualified Data.ByteString.Char8            as B8
 import           Data.Functor.Identity
-import           Text.Parsec.Combinator           hiding
-                 (eof, notFollowedBy)
+import           Distribution.Parsec.Lexer
+import           Distribution.Parsec.LexerMonad
+                 (LexResult (..), LexState (..), LexWarning (..),
+                 LexWarningType (..), unLex)
+import           Distribution.Parsec.Types.Common
+import           Distribution.Parsec.Types.Field
+import           Distribution.Utils.String
+import           Text.Parsec.Combinator           hiding (eof, notFollowedBy)
 import           Text.Parsec.Error
 import           Text.Parsec.Pos
-import           Text.Parsec.Prim                 hiding
-                 (many, (<|>))
+import           Text.Parsec.Prim                 hiding (many, (<|>))
 
 #ifdef CABAL_PARSEC_DEBUG
 import qualified Data.Text                        as T
@@ -59,6 +51,8 @@ import qualified Data.Text.Encoding               as T
 import qualified Data.Text.Encoding.Error         as T
 #endif
 
+-- | The 'LexState'' (with a prime) is an instance of parsec's 'Stream'
+-- wrapped around lexer's 'LexState' (without a prime)
 data LexState' = LexState' !LexState (LToken, LexState')
 
 mkLexState' :: LexState -> LexState'
@@ -79,6 +73,7 @@ getLexerWarnings = do
   LexState' (LexState { warnings = ws }) _ <- getInput
   return ws
 
+-- | Set Alex code i.e. the mode "state" lexer is in.
 setLexerMode :: Int -> Parser ()
 setLexerMode code = do
   LexState' ls _ <- getInput
@@ -170,15 +165,17 @@ inLexerMode (LexerMode mode) p =
 -- $grammar
 --
 -- @
--- SecElems      ::= SecElem* '\n'?
--- SecElem       ::= '\n' SecElemLayout | SecElemBraces
--- SecElemLayout ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
--- SecElemBraces ::= FieldInline | FieldBraces |                 SectionBraces
--- FieldLayout   ::= name ':' line? ('\n' line)*
--- FieldBraces   ::= name ':' '\n'? '{' content '}'
--- FieldInline   ::= name ':' content
--- SectionLayout ::= name arg* SecElems
--- SectionBraces ::= name arg* '\n'? '{' SecElems '}'
+-- CabalStyleFile ::= SecElems
+--
+-- SecElems       ::= SecElem* '\n'?
+-- SecElem        ::= '\n' SecElemLayout | SecElemBraces
+-- SecElemLayout  ::= FieldLayout | FieldBraces | SectionLayout | SectionBraces
+-- SecElemBraces  ::= FieldInline | FieldBraces |                 SectionBraces
+-- FieldLayout    ::= name ':' line? ('\n' line)*
+-- FieldBraces    ::= name ':' '\n'? '{' content '}'
+-- FieldInline    ::= name ':' content
+-- SectionLayout  ::= name arg* SecElems
+-- SectionBraces  ::= name arg* '\n'? '{' SecElems '}'
 -- @
 --
 -- and the same thing but left factored...
@@ -276,16 +273,19 @@ elementInNonLayoutContext name =
 -- fieldLayoutOrBraces   ::= '\n'? '{' content '}'
 --                         | line? ('\n' line)*
 fieldLayoutOrBraces :: IndentLevel -> Name Position -> Parser (Field Position)
-fieldLayoutOrBraces ilevel name =
-      (do openBrace
+fieldLayoutOrBraces ilevel name = braces <|> fieldLayout
+  where
+    braces = do
+          openBrace
           ls <- inLexerMode (LexerMode in_field_braces) (many fieldContent)
           closeBrace
-          return (Field name ls))
-  <|> (inLexerMode (LexerMode in_field_layout)
-        (do l  <- option (FieldLine (Position 0 0) B8.empty) fieldContent
-                  --FIXME ^^ having to add an extra empty here is silly!
-            ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
-            return (Field name (l:ls))))
+          return (Field name ls)
+    fieldLayout = inLexerMode (LexerMode in_field_layout) $ do
+          l  <- optionMaybe fieldContent
+          ls <- many (do _ <- indentOfAtLeast ilevel; fieldContent)
+          return $ case l of
+              Nothing -> Field name ls
+              Just l' -> Field name (l' : ls)
 
 -- The body of a section, using either layout style or braces style.
 --
@@ -314,9 +314,11 @@ fieldInlineOrBraces name =
           return (Field name ls))
 
 
+-- | Parse cabal style 'B8.ByteString' into list of 'Field's, i.e. the cabal AST.
 readFields :: B8.ByteString -> Either ParseError [Field Position]
 readFields s = fmap fst (readFields' s)
 
+-- | Like 'readFields' but also return lexer warnings
 readFields' :: B8.ByteString -> Either ParseError ([Field Position], [LexWarning])
 readFields' s = do
     parse parser "the input" lexSt
@@ -329,7 +331,16 @@ readFields' s = do
     (w, s') = fmap B.pack . recodeStringUtf8 . B.unpack $ s
     lexSt = mkLexState' (mkLexState s')
 
--- TODO: For some reason alex parser cannot handle BOM, is it a bug?
+-- TODO: For some reason alex parser cannot handle BOM.
+--
+-- There is $bom token in the lexer, but for some reason it's not matched,
+-- and alex chockes.
+--
+-- It might be that I (phadej) don't have enough alex-fu
+--
+-- Anyway, we probably should operate alex in the byte mode, and do utf8 decoding
+-- later in the fields where it's required (as we actually do atm). We'd need
+-- alex-3.2 for that.
 recodeStringUtf8 :: [Word8] -> (Maybe LexWarning, [Word8])
 recodeStringUtf8 (0xef : 0xbb : 0xbf : bytes) =
     ( Just $ LexWarning LexWarningBOM (Position 1 1) "Byte-order mark found"
@@ -372,6 +383,7 @@ formatError input perr =
                                   "expecting" "unexpected" "end of file"
                                   (errorMessages perr)
 
+-- | Handles windows/osx/unix line breaks uniformly
 lines' :: T.Text -> [T.Text]
 lines' s1
   | T.null s1 = []
@@ -389,5 +401,3 @@ eof = notFollowedBy anyToken <?> "end of file"
     notFollowedBy :: Parser LToken -> Parser ()
     notFollowedBy p = try (    (do L _ t <- try p; unexpected (describeToken t))
                            <|> return ())
---showErrorMessages "or" "unknown parse error"
---                            "expecting" "unexpected" "end of input"

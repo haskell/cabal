@@ -30,11 +30,8 @@ module Distribution.PackageDescription.Parsec.FieldDescr (
     setupBInfoFieldDescrs,
     ) where
 
-import           Distribution.Compat.Prelude
 import           Prelude ()
-
-import           Text.PrettyPrint                      (vcat)
-
+import           Distribution.Compat.Prelude
 import qualified Data.ByteString                       as BS
 import           Data.List                             (dropWhileEnd)
 import qualified Distribution.Compat.Parsec            as Parsec
@@ -49,6 +46,7 @@ import           Distribution.Parsec.Types.ParseResult
 import           Distribution.PrettyUtils
 import           Distribution.Simple.Utils             (fromUTF8BS)
 import           Distribution.Text                     (disp, display)
+import           Text.PrettyPrint                      (vcat)
 
 -------------------------------------------------------------------------------
 -- common FieldParsers

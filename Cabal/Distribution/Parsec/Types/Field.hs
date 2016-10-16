@@ -16,13 +16,11 @@ module Distribution.Parsec.Types.Field (
     nameAnn,
     ) where
 
-import Prelude ()
-import Distribution.Compat.Prelude
-
-import Data.ByteString (ByteString)
-
-import qualified Data.Char as Char
-import qualified Data.ByteString.Char8 as B
+import           Prelude ()
+import           Distribution.Compat.Prelude
+import           Data.ByteString             (ByteString)
+import qualified Data.ByteString.Char8       as B
+import qualified Data.Char                   as Char
 
 -------------------------------------------------------------------------------
 -- Cabal file
@@ -51,7 +49,7 @@ data SectionArg ann
     | SecArgStr   !ann !String
       -- ^ quoted string
     | SecArgNum   !ann !ByteString
-      -- ^ integral number
+      -- ^ Something which loos like number. Also many dot numbers, i.e. "7.6.3"
     | SecArgOther !ann !ByteString
       -- ^ everything else, mm. operators (e.g. in if-section conditionals)
   deriving (Eq, Show, Functor)

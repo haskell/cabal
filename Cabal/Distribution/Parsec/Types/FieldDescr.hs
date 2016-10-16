@@ -32,20 +32,18 @@ module Distribution.Parsec.Types.FieldDescr (
     ignoreUnrec,
     ) where
 
-import           Distribution.Compat.Prelude      hiding (get)
 import           Prelude ()
-
+import           Distribution.Compat.Prelude      hiding (get)
 import qualified Data.ByteString                  as BS
 import           Data.Ord                         (comparing)
-import           Text.PrettyPrint
-                 (Doc, colon, comma, fsep, hsep, isEmpty, nest, punctuate,
-                 text, vcat, ($+$), (<+>))
-
 import qualified Distribution.Compat.Parsec       as P
 import           Distribution.Compiler            (CompilerFlavor)
 import           Distribution.Parsec.Class
 import           Distribution.Parsec.Types.Common
 import           Distribution.PrettyUtils
+import           Text.PrettyPrint
+                 (Doc, colon, comma, fsep, hsep, isEmpty, nest, punctuate,
+                 text, vcat, ($+$), (<+>))
 
 type FieldName = BS.ByteString
 

@@ -16,14 +16,12 @@ module Distribution.Parsec.Class (
     parsecOptCommaList,
     ) where
 
-import           Distribution.Compat.Prelude
 import           Prelude ()
-
+import           Distribution.Compat.Prelude
 import           Data.Functor.Identity                        (Identity)
+import qualified Distribution.Compat.Parsec                   as P
 import           Distribution.Parsec.Types.Common
                  (PWarnType (..), PWarning (..), Position (..))
-
-import qualified Distribution.Compat.Parsec                   as P
 import qualified Text.Parsec                                  as Parsec
 import qualified Text.Parsec.Language                         as Parsec
 import qualified Text.Parsec.Token                            as Parsec
@@ -34,6 +32,7 @@ import           Distribution.Compiler
                  (CompilerFlavor (..), classifyCompilerFlavor)
 import           Distribution.License                         (License (..))
 import           Distribution.ModuleName                      (ModuleName)
+import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.Package
                  (Dependency (..), PackageName, mkPackageName)
 import           Distribution.System
@@ -50,13 +49,12 @@ import           Distribution.Types.SourceRepo
                  (RepoKind, RepoType, classifyRepoKind, classifyRepoType)
 import           Distribution.Types.TestType                  (TestType (..))
 import           Distribution.Version
-                 (Version, mkVersion, VersionRange (..), anyVersion, earlierVersion,
-                 intersectVersionRanges, laterVersion, majorBoundVersion, noVersion,
-                 orEarlierVersion, orLaterVersion, thisVersion,
-                 unionVersionRanges, withinVersion)
+                 (Version, VersionRange (..), anyVersion, earlierVersion,
+                 intersectVersionRanges, laterVersion, majorBoundVersion,
+                 mkVersion, noVersion, orEarlierVersion, orLaterVersion,
+                 thisVersion, unionVersionRanges, withinVersion)
 import           Language.Haskell.Extension
                  (Extension, Language, classifyExtension, classifyLanguage)
-import qualified Distribution.ModuleName as ModuleName
 
 -------------------------------------------------------------------------------
 -- Class
@@ -303,6 +301,7 @@ parsecToken' = parsecHaskellString <|> (P.munch1 (not . isSpace) P.<?> "token")
 parsecFilePath :: P.Stream s Identity Char => P.Parsec s [PWarning] String
 parsecFilePath = parsecToken
 
+-- | Parse a benchmark/test-suite types.
 stdParse
     :: P.Stream s Identity Char
     => (Version -> String -> a)
