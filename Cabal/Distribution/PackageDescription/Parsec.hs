@@ -137,9 +137,11 @@ runFieldParser' (Position row col) p str = case P.runParser p' [] "<field>" str 
   where
     p' = (,) <$ P.spaces <*> p <* P.spaces <* P.eof <*> P.getState
 
-data GPDS = Fields | Sections
-
 -- Note [Accumulating parser]
+--
+-- This parser has two "states":
+-- * first we parse fields of PackageDescription
+-- * then we parse sections (libraries, executables, etc)
 parseGenericPackageDescription'
     :: [LexWarning]
     -> [Field Position]
@@ -147,38 +149,53 @@ parseGenericPackageDescription'
 parseGenericPackageDescription' lexWarnings fs = do
     parseWarnings' (fmap toPWarning lexWarnings)
     let (syntax, fs') = sectionizeFields fs
-    (_, gpd) <- foldM go (Fields, emptyGpd) fs'
+    gpd <-  goFields emptyGpd fs'
     -- Various post checks
     maybeWarnCabalVersion syntax (packageDescription gpd)
     checkForUndefinedFlags gpd
     -- TODO: do other validations
     return gpd
   where
-    go :: (GPDS, GenericPackageDescription)
-       -> Field Position
-       -> ParseResult (GPDS, GenericPackageDescription)
-    go (Fields, gpd)   (Field (Name pos name) fieldLines) =
+    -- First fields
+    goFields
+        :: GenericPackageDescription
+        -> [Field Position]
+        -> ParseResult GenericPackageDescription
+    goFields gpd [] = pure gpd
+    goFields gpd (Field (Name pos name) fieldLines : fields) =
         case Map.lookup name pdFieldParsers of
-            -- TODO: can be more accurate
+            -- TODO: can be more elegant
             Nothing -> fieldlinesToString pos fieldLines >>= \value -> case storeXFieldsPD name value (packageDescription gpd) of
                 Nothing -> do
                     parseWarning pos PWTUnknownField $ "Unknown field: " ++ show name
-                    return (Fields, gpd)
-                Just pd -> return (Fields, gpd { packageDescription = pd })
-            Just parser -> (\pd -> (Fields, gpd { packageDescription = pd }))
-                <$> runFieldParser (parser $ packageDescription gpd) fieldLines
-    go (Sections, gpd) (Field (Name pos _) _) = do
-        parseWarning pos PWTTrailingFields "Ignoring trailing fields after sections"
-        return (Sections, gpd)
-    go (_, gpd)        (Section name args fields) =
-        (,) Sections <$> parseSection gpd name args fields
+                    goFields gpd fields
+                Just pd ->
+                    goFields (gpd { packageDescription = pd }) fields
+            Just parser -> do
+                pd <- runFieldParser (parser $ packageDescription gpd) fieldLines
+                let gpd' = gpd { packageDescription = pd }
+                goFields gpd' fields
+    goFields gpd fields@(Section _ _ _ : _) = goSections gpd fields
+
+    -- Sections
+    goSections
+        :: GenericPackageDescription
+        -> [Field Position]
+        -> ParseResult GenericPackageDescription
+    goSections gpd [] = pure gpd
+    goSections gpd (Field (Name pos name) _ : fields) = do
+        parseWarning pos PWTTrailingFields $ "Ignoring trailing fields after sections: " ++ show name
+        goSections gpd fields
+    goSections gpd (Section name args secFields : fields) = do
+        gpd' <- parseSection gpd name args secFields
+        goSections gpd' fields
+
+    emptyGpd :: GenericPackageDescription
+    emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] []
 
     pdFieldParsers :: Map FieldName (PackageDescription -> FieldParser PackageDescription)
     pdFieldParsers = Map.fromList $
         map (\x -> (fieldName x, fieldParser x)) pkgDescrFieldDescrs
-
-    emptyGpd :: GenericPackageDescription
-    emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] []
 
     parseSection
         :: GenericPackageDescription
@@ -433,48 +450,6 @@ parseCondTree descs unknown cond ini = impl
     fieldParsers :: Map FieldName (a -> FieldParser a)
     fieldParsers = Map.fromList $
         map (\x -> (fieldName x, fieldParser x)) descs
-{-
-    -- Extracts all fields in a block and returns a 'CondTree'.
-    --
-    -- We have to recurse down into conditionals and we treat fields that
-    -- describe dependencies specially.
-    collectFields :: ([Field Position] -> PM a) -> [Field Position]
-                  -> PM (CondTree ConfVar [Dependency] a)
-    collectFields parser allflds = do
-
-        let simplFlds = [ f | f@Field{} <- allflds ]
-            condFlds = [ f | f@IfElseBlock{} <- allflds ]
-            sections = [ s | s@Section{} <- allflds ]
-
-        -- Put these through the normal parsing pass too, so that we
-        -- collect the ModRenamings
-        let depFlds = filter isConstraint simplFlds
-
-        mapM_
-            (\(Section (Name pos n) _ _) -> lift . warning $
-                "Unexpected section '" ++ show n ++ "' on " ++ showPos pos)
-            sections
-
-        a <- parser simplFlds
-        deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
-
-        ifs <- mapM processIfs condFlds
-
-        return (CondNode a deps ifs)
-      where
-        isConstraint (Field (Name _ n) _) = n `elem` constraintFieldNames
-        isConstraint _ = False
-
-        processIfs (IfElseBlock c t e) = do
-            cnd <- lift $ runP undefined "if" parseCondition (undefined c)
-            t' <- collectFields parser t
-            e' <- case e of
-                   [] -> return Nothing
-                   es -> do fs <- collectFields parser es
-                            return (Just fs)
-            return (cnd, t', e')
-        processIfs _ = cabalBug "processIfs called with wrong field type"
--}
 
 {- Note [Accumulating parser]
 
