@@ -40,7 +40,7 @@ matrix:
    - env: GHCVER=7.10.3 SCRIPT=script
      os: linux
      sudo: required
-   - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES
+   - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES TEST_OTHER_VERSIONS=YES
      sudo: required
      os: linux
    - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags

@@ -42,8 +42,11 @@ tests config = do
   -- Test that Cabal parses 'test' sections correctly
   tc "TestStanza"       PackageTests.TestStanza.Check.suite
 
-  -- Test that Cabal parses '^>=' operator correctly
-  tc "CaretOperator"    PackageTests.CaretOperator.Check.suite
+  -- Test that Cabal parses '^>=' operator correctly.
+  -- Don't run this for GHC 7.0/7.2, which doesn't have a recent
+  -- enough version of pretty. (But this is pretty dumb.)
+  tc "CaretOperator" . whenGhcVersion (>= mkVersion [7,3])$
+    PackageTests.CaretOperator.Check.suite
 
   -- Test that Cabal determinstically generates object archives
   tc "DeterministicAr"  PackageTests.DeterministicAr.Check.suite

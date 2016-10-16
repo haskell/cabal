@@ -62,13 +62,14 @@ timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
 
 # Redo the package tests with different versions of GHC
-# TODO: reenable me
-#   if [ "x$TEST_OLDER" = "xYES" -a "x$TRAVIS_OS_NAME" = "xlinux" ]; then
-#       CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc \
-#           ./dist/setup/setup test package-tests --show-details=streaming
-#       CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc \
-#           ./dist/setup/setup test package-tests --show-details=streaming
-#   fi
+if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.0.4/bin/ghc"; \
+        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.2.2/bin/ghc"; \
+        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/head/bin/ghc"; \
+        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+fi
 
 # Check for package warnings
 (cd Cabal && timed cabal check) || exit $?
