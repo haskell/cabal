@@ -43,6 +43,9 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=script DEPLOY_DOCS=YES
      sudo: required
      os: linux
+   - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
+     sudo: required
+     os: linux
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
      sudo: required
      os: linux
