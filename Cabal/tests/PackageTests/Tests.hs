@@ -120,9 +120,17 @@ tests config = do
   -- with the same name and LATER version
   tc "BuildDeps/InternalLibrary3" $ internal_lib_test "internal"
 
-  -- Test that an explicit dependency constraint which doesn't
-  -- match the internal library causes us to use external library
-  tc "BuildDeps/InternalLibrary4" $ internal_lib_test "installed"
+  -- On old versions of Cabal, an explicit dependency constraint which
+  -- doesn't match the internal library causes us to use external
+  -- library.  We got rid of this functionality in 1.25; now, we always
+  -- use internal, and just emit an error if you check.
+  tcs "BuildDeps/InternalLibrary4" "external" $ internal_lib_test "internal"
+
+  -- On a previous buggy version of my patch, the test above passed only
+  -- because the installed library caused Cabal to think that the
+  -- dependency was fulfilled.  Make sure we ignore the dependency
+  -- entirely.
+  tcs "BuildDeps/InternalLibrary4" "ignore" $ cabal_build []
 
   -- Test "old build-dep behavior", where we should get the
   -- same package dependencies on all targets if cabal-version

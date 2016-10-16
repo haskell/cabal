@@ -98,6 +98,10 @@
 	  or greater, respectively).
 	* New `Distribution.Utils.ShortText.ShortText` type for representing
 	  short text strings compactly (#3898)
+	* Cabal no longer supports using a version bound to disambiguate
+	  between an internal and external package (#4020).  This should
+	  not affect many people, as this mode of use already did not
+	  work with the dependency solver.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

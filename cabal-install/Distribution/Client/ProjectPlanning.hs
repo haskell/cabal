@@ -1096,6 +1096,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         -> LogProgress [ElaboratedConfiguredPackage]
     elaborateSolverToComponents mapDep spkg@(SolverPackage _ _ _ deps0 exe_deps0)
         | Right g <- toComponentsGraph (elabEnabledSpec elab0) pd = do
+            infoProgress $ hang (text "Component graph for" <+> disp pkgid <<>> colon)
+                            4 (dispComponentsGraph g)
             (_, comps) <- mapAccumM buildComponent
                             ((Map.empty, Map.empty), Map.empty, Map.empty)
                             (map fst g)
