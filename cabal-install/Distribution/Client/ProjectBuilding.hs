@@ -56,12 +56,15 @@ import           Distribution.Client.FetchUtils
 import           Distribution.Client.GlobalFlags (RepoContext)
 import qualified Distribution.Client.Tar as Tar
 import           Distribution.Client.Setup (filterConfigureFlags)
+import           Distribution.Client.SourceFiles
 import           Distribution.Client.SrcDist (allPackageSourceFiles)
 import           Distribution.Client.Utils (removeExistingFile)
 
 import           Distribution.Package hiding (InstalledPackageId, installedPackageId)
+import qualified Distribution.PackageDescription as PD
 import           Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
+import           Distribution.Types.BuildType
 import           Distribution.Simple.Program
 import qualified Distribution.Simple.Setup as Cabal
 import           Distribution.Simple.Command (CommandUI)
@@ -85,7 +88,6 @@ import qualified Data.ByteString.Lazy as LBS
 
 import           Control.Monad
 import           Control.Exception
-import           Data.List
 import           Data.Maybe
 
 import           System.FilePath
@@ -452,15 +454,14 @@ updatePackageBuildFileMonitor :: PackageFileMonitor
                               -> MonitorTimestamp
                               -> ElaboratedConfiguredPackage
                               -> BuildStatusRebuild
-                              -> [FilePath]
+                              -> [MonitorFilePath]
                               -> BuildResultMisc
                               -> IO ()
 updatePackageBuildFileMonitor PackageFileMonitor{pkgFileMonitorBuild}
                               srcdir timestamp pkg pkgBuildStatus
-                              allSrcFiles buildResult =
+                              monitors buildResult =
     updateFileMonitor pkgFileMonitorBuild srcdir (Just timestamp)
-                      (map monitorFileHashed allSrcFiles)
-                      buildComponents' buildResult
+                      monitors buildComponents' buildResult
   where
     (_pkgconfig, buildComponents) = packageFileMonitorKeyValues pkg
 
@@ -1041,29 +1042,35 @@ buildInplaceUnpackedPackage verbosity
           annotateFailureNoLog BuildFailed $
             setup buildCommand buildFlags buildArgs
 
-          --TODO: [required eventually] this doesn't track file
-          --non-existence, so we could fail to rebuild if someone
-          --adds a new file which changes behavior.
-          allSrcFiles <-
-            let trySdist    = allPackageSourceFiles verbosity scriptOptions srcdir
-                -- This is just a hack, to get semi-reasonable file
-                -- listings for the monitor
-                tryFallback = do
-                    warn verbosity $
-                        "Couldn't use sdist to compute source files; falling " ++
-                        "back on recursive file scan."
-                    filter (not . ("dist" `isPrefixOf`))
-                        `fmap` getDirectoryContentsRecursive srcdir
-            in if elabSetupScriptCliVersion pkg >= mkVersion [1,17]
-                  then do r <- trySdist
-                          if null r
-                            then tryFallback
-                            else return r
-                  else tryFallback
+          let listSimple =
+                execRebuild srcdir (needElaboratedConfiguredPackage pkg)
+              listSdist =
+                fmap (map monitorFileHashed) $
+                    allPackageSourceFiles verbosity scriptOptions srcdir
+              ifNullThen m m' = do xs <- m
+                                   if null xs then m' else return xs
+          monitors <- case PD.buildType (elabPkgDescription pkg) of
+            Just Simple -> listSimple
+            -- If a Custom setup was used, AND the Cabal is recent
+            -- enough to have sdist --list-sources, use that to
+            -- determine the files that we need to track.  This can
+            -- cause unnecessary rebuilding (for example, if README
+            -- is edited, we will try to rebuild) but there isn't
+            -- a more accurate Custom interface we can use to get
+            -- this info.  We prefer not to use listSimple here
+            -- as it can miss extra source files that are considered
+            -- by the Custom setup.
+            _ | elabSetupScriptCliVersion pkg >= mkVersion [1,17]
+              -- However, sometimes sdist --list-sources will fail
+              -- and return an empty list.  In that case, fall
+              -- back on the (inaccurate) simple tracking.
+              -> listSdist `ifNullThen` listSimple
+              | otherwise
+              -> listSimple
 
           updatePackageBuildFileMonitor packageFileMonitor srcdir timestamp
                                         pkg buildStatus
-                                        allSrcFiles buildResult
+                                        monitors buildResult
 
         -- PURPOSELY omitted: no copy!
 

@@ -12,6 +12,7 @@ module Distribution.Client.RebuildMonad (
     -- * Rebuild monad
     Rebuild,
     runRebuild,
+    execRebuild,
     askRoot,
 
     -- * Setting up file monitoring
@@ -44,6 +45,12 @@ module Distribution.Client.RebuildMonad (
     getDirectoryContentsMonitored,
     createDirectoryMonitored,
     monitorDirectoryStatus,
+    doesFileExistMonitored,
+    need,
+    needIfExists,
+    findFileWithExtensionMonitored,
+    findFirstFileMonitored,
+    findFileMonitored,
   ) where
 
 import Prelude ()
@@ -58,7 +65,7 @@ import Distribution.Verbosity    (Verbosity)
 
 import Control.Monad.State as State
 import Control.Monad.Reader as Reader
-import System.FilePath (takeFileName)
+import System.FilePath
 import System.Directory
 
 
@@ -87,6 +94,10 @@ unRebuild rootDir (Rebuild action) = runStateT (runReaderT action rootDir) []
 -- | Run a 'Rebuild' IO action.
 runRebuild :: FilePath -> Rebuild a -> IO a
 runRebuild rootDir (Rebuild action) = evalStateT (runReaderT action rootDir) []
+
+-- | Run a 'Rebuild' IO action.
+execRebuild :: FilePath -> Rebuild a -> IO [MonitorFilePath]
+execRebuild rootDir (Rebuild action) = execStateT (runReaderT action rootDir) []
 
 -- | The root that relative paths are interpreted as being relative to.
 askRoot :: Rebuild FilePath
@@ -166,3 +177,58 @@ monitorDirectoryStatus dir = do
                     then monitorDirectory dir
                     else monitorNonExistentDirectory dir]
 
+-- | Like 'doesFileExist', but in the 'Rebuild' monad.  This does
+-- NOT track the contents of 'FilePath'; use 'need' in that case.
+doesFileExistMonitored :: FilePath -> Rebuild Bool
+doesFileExistMonitored f = do
+    root <- askRoot
+    exists <- liftIO $ doesFileExist (root </> f)
+    monitorFiles [if exists
+                    then monitorFileExistence f
+                    else monitorNonExistentFile f]
+    return exists
+
+-- | Monitor a single file
+need :: FilePath -> Rebuild ()
+need f = monitorFiles [monitorFileHashed f]
+
+-- | Monitor a file if it exists; otherwise check for when it
+-- gets created.  This is a bit better for recompilation avoidance
+-- because sometimes users give bad package metadata, and we don't
+-- want to repeatedly rebuild in this case (which we would if we
+-- need'ed a non-existent file).
+needIfExists :: FilePath -> Rebuild ()
+needIfExists f = do
+    root <- askRoot
+    exists <- liftIO $ doesFileExist (root </> f)
+    monitorFiles [if exists
+                    then monitorFileHashed f
+                    else monitorNonExistentFile f]
+
+-- | Like 'findFileWithExtension', but in the 'Rebuild' monad.
+findFileWithExtensionMonitored
+    :: [String]
+    -> [FilePath]
+    -> FilePath
+    -> Rebuild (Maybe FilePath)
+findFileWithExtensionMonitored extensions searchPath baseName =
+  findFirstFileMonitored id
+    [ path </> baseName <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
+-- | Like 'findFirstFile', but in the 'Rebuild' monad.
+findFirstFileMonitored :: (a -> FilePath) -> [a] -> Rebuild (Maybe a)
+findFirstFileMonitored file = findFirst
+  where findFirst []     = return Nothing
+        findFirst (x:xs) = do exists <- doesFileExistMonitored (file x)
+                              if exists
+                                then return (Just x)
+                                else findFirst xs
+
+-- | Like 'findFile', but in the 'Rebuild' monad.
+findFileMonitored :: [FilePath] -> FilePath -> Rebuild (Maybe FilePath)
+findFileMonitored searchPath fileName =
+  findFirstFileMonitored id
+    [ path </> fileName
+    | path <- nub searchPath]
