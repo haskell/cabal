@@ -26,6 +26,7 @@ import qualified Data.Char                   as Char
 -- Cabal file
 -------------------------------------------------------------------------------
 
+-- | A Cabal-like file consists of a series of fields (@foo: bar@) and sections (@library ...@).
 data Field ann
     = Field   !(Name ann) [FieldLine ann]
     | Section !(Name ann) [SectionArg ann] [Field ann]
