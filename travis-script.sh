@@ -50,28 +50,6 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # Cabal otherwise).
 timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
 
-# NB: the '|| exit $?' workaround is required on old broken versions of bash
-# that ship with OS X. See https://github.com/haskell/cabal/pull/3624 and
-# http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
-
-# Run tests
-(export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
-(cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
-
-# Run haddock (hack: use the Setup script from package-tests!)
-(cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
-
-# Redo the package tests with different versions of GHC
-# TODO: reenable me
-#   if [ "x$TEST_OLDER" = "xYES" -a "x$TRAVIS_OS_NAME" = "xlinux" ]; then
-#       CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.0.4/bin/ghc \
-#           ./dist/setup/setup test package-tests --show-details=streaming
-#       CABAL_PACKAGETESTS_WITH_GHC=/opt/ghc/7.2.2/bin/ghc \
-#           ./dist/setup/setup test package-tests --show-details=streaming
-#   fi
-
-# Check for package warnings
-(cd Cabal && timed cabal check) || exit $?
 
 unset CABAL_BUILDDIR
 
@@ -92,21 +70,6 @@ timed cabal new-build cabal-install:cabal \
                       cabal-install:unit-tests \
                       cabal-install:solver-quickcheck
 
-# The integration-tests2 need the hackage index, and need it in the secure
-# format, which is not necessarily the default format of the bootstrap cabal.
-# If the format does match then this will be very quick.
-timed ${CABAL_INSTALL_BDIR}/build/cabal/cabal update
-
-# Run tests
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/unit-tests/unit-tests         $TEST_OPTIONS) || exit $?
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/solver-quickcheck/solver-quickcheck  $TEST_OPTIONS --quickcheck-tests=1000) || exit $?
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests/integration-tests  $TEST_OPTIONS) || exit $?
-(cd cabal-install && timed ${CABAL_INSTALL_BDIR}/build/integration-tests2/integration-tests2 $TEST_OPTIONS) || exit $?
-
-# Haddock
-(cd cabal-install && timed ${CABAL_INSTALL_SETUP} haddock --builddir=${CABAL_INSTALL_BDIR} ) || exit $?
-
-(cd cabal-install && timed cabal check) || exit $?
 
 unset CABAL_BUILDDIR
 
