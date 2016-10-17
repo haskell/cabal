@@ -53,6 +53,7 @@ matrix:
    # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
    - env: GHCVER=7.8.4 SCRIPT=script
      os: osx
+     osx_image: xcode7.1
    - env: GHCVER=7.10.3 SCRIPT=script
      os: osx
    - env: GHCVER=8.0.1 SCRIPT=script
