@@ -2731,10 +2731,8 @@ setupHsRegisterFlags ElaboratedConfiguredPackage{..} _
                          _                -> toFlag False,
       regPrintId     = mempty,  -- never use
       regDistPref    = toFlag builddir,
-      regVerbosity   = toFlag verbosity,
-      -- Currently not used, because this is per-package.
-      regAssumeDepsUpToDate = toFlag False,
-      regArgs        = []
+      regArgs        = [],
+      regVerbosity   = toFlag verbosity
     }
 
 setupHsHaddockFlags :: ElaboratedConfiguredPackage

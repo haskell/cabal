@@ -55,6 +55,7 @@ import Distribution.Types.ComponentLocalBuildInfo
 
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
+import Distribution.Simple.BuildTarget
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -62,7 +63,6 @@ import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
-import Distribution.Simple.BuildTarget
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Script
@@ -109,20 +109,9 @@ register pkg_descr lbi flags =
             | otherwise = return Nothing
           where clbi = targetCLBI target
 
-    ipis <-
-      if fromFlag (regAssumeDepsUpToDate flags)
-        then
-          case targets of
-            [target] -> do
-                mb_ipi <- maybeGenerateOne target
-                case mb_ipi of
-                    Nothing -> die "Cannot --assume-deps-up-to-date register non-library target"
-                    Just ipi -> return [ipi]
-            [] -> die "In --assume-deps-up-to-date mode you must specify a target"
-            _ -> die "In --assume-deps-up-to-date mode you can only register a single target"
-        else fmap catMaybes
-           . traverse maybeGenerateOne
-           $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
+    ipis <- fmap catMaybes
+          . traverse maybeGenerateOne
+          $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
     registerAll pkg_descr lbi flags ipis
     return ()
    where
