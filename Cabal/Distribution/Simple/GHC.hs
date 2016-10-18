@@ -151,16 +151,21 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   ghcInfo <- Internal.getGhcInfo verbosity implInfo ghcProg
   let ghcInfoMap = Map.fromList ghcInfo
+      extensions = -- workaround https://ghc.haskell.org/ticket/11214
+                   filterExt JavaScriptFFI $
+                   -- see 'filterExtTH' comment below
+                   filterExtTH $ extensions0
 
       -- starting with GHC 8.0, `TemplateHaskell` will be omitted from
       -- `--supported-extensions` when it's not available.
       -- for older GHCs we can use the "Have interpreter" property to
       -- filter out `TemplateHaskell`
-      extensions | ghcVersion < mkVersion [8]
-                 , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap
-                   = filter ((/= EnableExtension TemplateHaskell) . fst)
-                     extensions0
-                 | otherwise = extensions0
+      filterExtTH | ghcVersion < mkVersion [8]
+                   , Just "NO" <- Map.lookup "Have interpreter" ghcInfoMap
+                   = filterExt TemplateHaskell
+                  | otherwise = id
+
+      filterExt ext = filter ((/= EnableExtension ext) . fst)
 
   let comp = Compiler {
         compilerId         = CompilerId GHC ghcVersion,
