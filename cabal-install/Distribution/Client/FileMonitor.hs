@@ -15,6 +15,7 @@ module Distribution.Client.FileMonitor (
   monitorFile,
   monitorFileHashed,
   monitorNonExistentFile,
+  monitorFileExistence,
   monitorDirectory,
   monitorNonExistentDirectory,
   monitorDirectoryExistence,
@@ -122,6 +123,12 @@ monitorFileHashed = MonitorFile FileHashed DirNotExists
 --
 monitorNonExistentFile :: FilePath -> MonitorFilePath
 monitorNonExistentFile = MonitorFile FileNotExists DirNotExists
+
+-- | Monitor a single file for existence only. The monitored file is
+-- considered to have changed if it no longer exists.
+--
+monitorFileExistence :: FilePath -> MonitorFilePath
+monitorFileExistence = MonitorFile FileExists DirNotExists
 
 -- | Monitor a single directory for changes, based on its modification
 -- time. The monitored directory is considered to have changed if it no
