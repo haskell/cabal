@@ -707,9 +707,6 @@ tests config = do
     tc :: FilePath -> TestM a -> TestTreeM ()
     tc name = testTree config name
 
-    mtc :: FilePath -> ((String -> TestM ()) -> TestM a) -> TestTreeM ()
-    mtc name = testTreeSteps config name
-
     tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
     tcs name sub_name m
         = testTreeSub config name sub_name m
