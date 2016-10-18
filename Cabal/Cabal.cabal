@@ -263,9 +263,6 @@ extra-source-files:
   tests/PackageTests/ReexportedModules/p/p.cabal
   tests/PackageTests/ReexportedModules/q/A.hs
   tests/PackageTests/ReexportedModules/q/q.cabal
-  tests/PackageTests/RegisterAssumeDepsUpToDate/P.hs
-  tests/PackageTests/RegisterAssumeDepsUpToDate/RegisterOneShot.cabal
-  tests/PackageTests/RegisterAssumeDepsUpToDate/q/Q.hs
   tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/Regression/T3847/Main.hs
   tests/PackageTests/Regression/T3847/T3847.cabal

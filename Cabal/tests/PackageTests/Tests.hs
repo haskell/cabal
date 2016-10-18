@@ -570,26 +570,6 @@ tests config = do
       runInstalledExe' "myprog" []
         >>= assertOutputContains "aaa"
 
-  -- Test register --assume-deps-up-to-date
-  mtc "RegisterAssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      -- We'll test this by generating registration files and verifying
-      -- that they are indeed files (and not directories)
-      step "Initial build and copy"
-      cabal_build []
-      cabal "copy" []
-
-      step "Register q"
-      let q_reg = "pkg-config-q"
-      cabal "register" ["--assume-deps-up-to-date", "q", "--gen-pkg-config=" ++ q_reg]
-      pkg_dir <- packageDir
-      ghcPkg "register" [pkg_dir </> q_reg]
-
-      step "Register p"
-      let main_reg = "pkg-config-p"
-      cabal "register" ["--assume-deps-up-to-date", "RegisterAssumeDepsUpToDate", "--gen-pkg-config=" ++ main_reg]
-      ghcPkg "register" [pkg_dir </> main_reg]
-
   -- Test error message we report when a non-buildable target is
   -- requested to be built
   -- TODO: We can give a better error message here, see #3858.
