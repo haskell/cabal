@@ -600,13 +600,22 @@ package:
     ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
+.. option:: --hidir=dir
+
+    Interface files (.hi) of libraries are installed here.
+
+    In the simple build system, *dir* may contain the following path
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
+    ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
+    ``$arch``, ``$abi``, ``$abitag``
+
 .. option:: --libexecdir=dir
 
     Executables that are not expected to be invoked directly by the user
     are installed here.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
@@ -615,7 +624,7 @@ package:
     Architecture-independent data files are installed here.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
@@ -624,21 +633,21 @@ package:
     Installation directory for the configuration files.
 
     In the simple build system, *dir* may contain the following path
-    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$libsubdir``,
+    variables: ``$prefix``, ``$bindir``, ``$libdir``, ``$binlibsubdir``,
     ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``, ``$os``,
     ``$arch``, ``$abi``, ``$abitag``
 
 In addition the simple build system supports the following installation
 path options:
 
-.. option:: --libsubdir=dir
+.. option:: --binlibsubdir=dir
 
-    A subdirectory of *libdir* in which libraries are actually
-    installed. For example, in the simple build system on Unix, the
-    default *libdir* is ``/usr/local/lib``, and *libsubdir* contains the
-    package identifier and compiler, e.g. ``mypkg-0.2/ghc-6.4``, so
-    libraries would be installed in
-    ``/usr/local/lib/mypkg-0.2/ghc-6.4``.
+    A subdirectory of *libdir* in which binary libraries are actually
+    installed. It is recommended that a single, common directory to be used to
+    store all installed libraries (as opposed to using ``$pkgid`` or similar
+    variables to create a directory per installed library), as this helps reduce
+    the size of rpath in executables built against dynamic libraries.
+    See <https://github.com/haskell/cabal/pull/3982> for more details.
 
     *dir* may contain the following path variables: ``$pkgid``,
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
@@ -658,7 +667,7 @@ path options:
     Documentation files are installed relative to this directory.
 
     *dir* may contain the following path variables: ``$prefix``,
-    ``$bindir``, ``$libdir``, ``$libsubdir``, ``$datadir``,
+    ``$bindir``, ``$libdir``, ``$binlibsubdir``, ``$datadir``,
     ``$datasubdir``, ``$pkgid``, ``$pkg``, ``$version``, ``$compiler``,
     ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
@@ -667,7 +676,7 @@ path options:
     HTML documentation files are installed relative to this directory.
 
     *dir* may contain the following path variables: ``$prefix``,
-    ``$bindir``, ``$libdir``, ``$libsubdir``, ``$datadir``,
+    ``$bindir``, ``$libdir``, ``$binlibsubdir``, ``$datadir``,
     ``$datasubdir``, ``$docdir``, ``$pkgid``, ``$pkg``, ``$version``,
     ``$compiler``, ``$os``, ``$arch``, ``$abi``, ``$abitag``
 
@@ -687,6 +696,24 @@ path options:
     ``--program-suffix='$version'``.
 
     *suffix* may contain the following path variables: ``$pkgid``,
+    ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
+    ``$abitag``
+
+.. option:: --libsubdir=dir
+
+    For use with Setup.hs files built against a version of Cabal prior to 1.25.
+    With later versions of Cabal, you should prefer :option:`--binlibsubdir` and
+    :option:`--hidir`, which let you separately specify where binary libraries
+    and interface files get installed, so that binary libraries can be
+    installed to a shared directory..
+
+    A subdirectory of *libdir* in which libraries and interfaces are actually
+    installed. For example, in the simple build system on Unix, the
+    default *libdir* is ``/usr/local/lib``, and *libsubdir* contains the
+    ABI, e.g. ``x86_64-linux-8.0.1``, so libraries would be installed in
+    ``/usr/local/lib/x86_64-linux-8.0.1``.
+
+    *dir* may contain the following path variables: ``$pkgid``,
     ``$pkg``, ``$version``, ``$compiler``, ``$os``, ``$arch``, ``$abi``,
     ``$abitag``
 
@@ -710,14 +737,18 @@ $bindir
     configure option (or the default).
 $libdir
     As above but for :option:`--libdir`
-$libsubdir
-    As above but for :option:`--libsubdir`
+$binlibsubdir
+    As above but for :option:`--binlibsubdir`
+$hidir
+    As above but for :option:`--hidir`
 $datadir
     As above but for :option:`--datadir`
 $datasubdir
     As above but for :option:`--datasubdir`
 $docdir
     As above but for :option:`--docdir`
+$libsubdir
+    As above but for :option:`--libsubdir`
 $pkgid
     The name and version of the package, e.g. ``mypkg-0.2``
 $pkg
@@ -765,9 +796,12 @@ For the simple build system, the following defaults apply:
     * - :option:`--libdir`
       - ``$prefix/lib``
       - ``$prefix``
-    * - :option:`--libsubdir` (others)
-      - ``$pkgid/$compiler``
-      - ``$pkgid\$compiler``
+    * - :option:`--binlibsubdir` (others)
+      - ``$abi``
+      - ``$abi``
+    * - :option:`--hidir` (others)
+      - ``$libdir/$abi/$libname``
+      - ``$libdir\$abi\$libname``
     * - :option:`--libexecdir`
       - ``$prefix/libexec``
       - ``$prefix\$pkgid``
@@ -795,6 +829,9 @@ For the simple build system, the following defaults apply:
     * - :option:`--program-suffix`
       - (empty)
       - (empty)
+    * - :option:`--libsubdir` (others)
+      - ``$abi/$libname``
+      - ``$abi\$libname``
 
 Prefix-independence
 """""""""""""""""""

@@ -15,7 +15,7 @@ import Distribution.Types.LocalBuildInfo
 
 import Distribution.Simple.LocalBuildInfo
   ( absoluteComponentInstallDirs
-  , InstallDirs(libdir)
+  , InstallDirs(libdir, hidir)
   , ComponentLocalBuildInfo(componentUnitId), ComponentName(..) )
 import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
@@ -782,8 +782,10 @@ tests config = do
                 uid = componentUnitId (targetCLBI target)
                 dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
                               NoCopyDest)
+                hdir = hidir (absoluteComponentInstallDirs pkg_descr lbi uid
+                              NoCopyDest)
             assertBool "interface files should be installed"
-                =<< liftIO (doesFileExist (dir </> "Foo.hi"))
+                =<< liftIO (doesFileExist (hdir </> "Foo.hi"))
             assertBool "static library should be installed"
                 =<< liftIO (doesFileExist (dir </> mkLibName uid))
             if is_dynamic
