@@ -185,6 +185,11 @@ invariant (PackageIndex pids pnames) =
      , let pinstOk = packageName    pinst == pname
                   && packageVersion pinst == pver
      ]
+  -- If you see this invariant failing (ie the assert in mkPackageIndex below)
+  -- then one thing to check is if it is happening in fromList. Check if the
+  -- second list above (the sort [...] bit) is ending up with duplicates. This
+  -- has been observed in practice once due to a messed up ghc-pkg db. How/why
+  -- it became messed up was not discovered.
 
 
 --
