@@ -16,7 +16,7 @@ if [ -z ${STACKAGE_RESOLVER+x} ]; then
         travis_retry sudo add-apt-repository -y ppa:hvr/ghc
         travis_retry sudo apt-get update
         travis_retry sudo apt-get install --force-yes cabal-install-1.24 happy-1.19.5 ghc-$GHCVER-prof ghc-$GHCVER-dyn
-        if [ "$TEST_OLDER" == "YES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn; fi
+        if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then travis_retry sudo apt-get install --force-yes ghc-7.0.4-prof ghc-7.0.4-dyn ghc-7.2.2-prof ghc-7.2.2-dyn ghc-head-prof ghc-head-dyn; fi
 
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
 
