@@ -66,20 +66,7 @@ install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
-install pkg_descr lbi flags
- | fromFlag (copyAssumeDepsUpToDate flags) = do
-  checkHasLibsOrExes
-  targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
-  case targets of
-    _ | null (copyArgs flags)
-      -> copyPackage verbosity pkg_descr lbi distPref copydest
-    [target] ->
-      let clbi = targetCLBI target
-          comp = targetComponent target
-      in copyComponent verbosity pkg_descr lbi comp clbi copydest
-    _ -> die "In --assume-deps-up-to-date mode you can only copy a single target"
-
- | otherwise = do
+install pkg_descr lbi flags = do
   checkHasLibsOrExes
   targets <- readTargetInfos verbosity pkg_descr lbi (copyArgs flags)
 
