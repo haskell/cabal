@@ -544,32 +544,6 @@ tests config = do
     runExe' "myprog" []
         >>= assertOutputContains "a1 b2"
 
-  -- Test copy --assume-deps-up-to-date
-  mtc "CopyAssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      step "Initial build"
-      cabal_build []
-
-      step "Executable cannot find data file"
-      pkg_dir <- packageDir
-      shouldFail (runExe' "myprog" [])
-        >>= assertOutputContains "does not exist"
-      prefix_dir <- prefixDir
-      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
-
-      step "Install data file"
-      liftIO $ writeFile (pkg_dir </> "data") "aaa"
-      cabal "copy" ["--assume-deps-up-to-date"]
-      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
-      runExe' "myprog" []
-        >>= assertOutputContains "aaa"
-
-      step "Install executable"
-      liftIO $ writeFile (pkg_dir </> "data") "bbb"
-      cabal "copy" ["--assume-deps-up-to-date", "myprog"]
-      runInstalledExe' "myprog" []
-        >>= assertOutputContains "aaa"
-
   -- Test error message we report when a non-buildable target is
   -- requested to be built
   -- TODO: We can give a better error message here, see #3858.
