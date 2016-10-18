@@ -532,9 +532,7 @@ tests config = do
     pkg_dir <- packageDir
     liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
     liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b1\")"
-    cabal "configure" []
-    cabal "build" ["--assume-deps-up-to-date", "BuildAssumeDepsUpToDate"]
-    cabal "build" ["--assume-deps-up-to-date", "myprog"]
+    cabal_build []
     runExe' "myprog" []
         >>= assertOutputContains "a1 b1"
 
