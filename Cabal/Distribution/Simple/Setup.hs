@@ -1598,9 +1598,6 @@ data BuildFlags = BuildFlags {
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
     buildNumJobs     :: Flag (Maybe Int),
-    -- | If this is true, we don't build the dependencies of
-    -- 'buildArgs': only the directly referenced components.
-    buildAssumeDepsUpToDate :: Flag Bool,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1618,7 +1615,6 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
-    buildAssumeDepsUpToDate     = Flag False,
     buildArgs        = []
   }
 
@@ -1666,11 +1662,6 @@ buildOptions :: ProgramDb -> ShowOrParseArgs
 buildOptions progDb showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
-
-  , option "" ["assume-deps-up-to-date"]
-      "One-shot build"
-      buildAssumeDepsUpToDate (\c flags -> flags { buildAssumeDepsUpToDate = c })
-      trueArg
   ]
 
   ++ programDbPaths progDb showOrParseArgs

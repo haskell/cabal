@@ -526,24 +526,6 @@ tests config = do
   tc "Regression/T3847" $ do
     cabal "configure" ["--disable-tests"]
 
-  -- Test build --assume-deps-up-to-date
-  mtc "BuildAssumeDepsUpToDate" $ \step -> do
-    step "Initial build"
-    pkg_dir <- packageDir
-    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
-    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b1\")"
-    cabal_build []
-    runExe' "myprog" []
-        >>= assertOutputContains "a1 b1"
-
-    step "Rebuild executable only"
-    ghcFileModDelay
-    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a2\""
-    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b2\")"
-    cabal "build" ["--assume-deps-up-to-date", "myprog"]
-    runExe' "myprog" []
-        >>= assertOutputContains "a1 b2"
-
   -- Test error message we report when a non-buildable target is
   -- requested to be built
   -- TODO: We can give a better error message here, see #3858.
