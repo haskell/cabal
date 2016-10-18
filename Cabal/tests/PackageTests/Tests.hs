@@ -441,33 +441,6 @@ tests config = do
               runExe' "fooexe" []
                   >>= assertOutputContains "25"
 
-  -- Basic test to make sure we can build internal libraries manually.
-  mtcs "InternalLibraries/Library" "AssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      step "Building foolib"
-      withPackage "foolib" $ do
-        cabal "configure" []
-        let upd = "--assume-deps-up-to-date"
-        step "foolib: copying global data"
-        cabal "copy" [upd]
-        let mk_foolib_internal str = do
-                step $ "foolib: building foolib-internal (" ++ str ++ ")"
-                cabal "build" [upd, "foolib-internal"]
-                cabal "copy" [upd, "foolib-internal"]
-                cabal "register" [upd, "foolib-internal"]
-            mk_foolib str = do
-                step $ "foolib: building foolib (" ++ str ++ ")"
-                cabal "build" [upd, "foolib"]
-                cabal "copy" [upd, "foolib"]
-                cabal "register" [upd, "foolib"]
-        mk_foolib_internal "run 1"
-        mk_foolib "run 1"
-        mk_foolib_internal "run 2"
-        mk_foolib "run 2"
-      withPackage "fooexe" $ do
-        cabal_build []
-        runExe' "fooexe" [] >>= assertOutputContains "25"
-
   -- Test to ensure that cabal_macros.h are computed per-component.
   tc "Macros" $ do
       cabal_build []
@@ -810,6 +783,3 @@ tests config = do
     tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
     tcs name sub_name m
         = testTreeSub config name sub_name m
-
-    mtcs :: FilePath -> FilePath -> ((String -> TestM ()) -> TestM a) -> TestTreeM ()
-    mtcs name sub_name = testTreeSubSteps config name sub_name
