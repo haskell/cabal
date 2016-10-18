@@ -26,7 +26,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Package
          ( PackageName, packageName, packageVersion )
 import Distribution.Version
-         ( VersionRange, thisVersion, unionVersionRanges )
+         ( VersionRange, thisVersion
+         , unionVersionRanges, simplifyVersionRange )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Client.Setup
@@ -151,6 +152,7 @@ projectFreezeConstraints plan =
 
     versionRanges :: Map PackageName VersionRange
     versionRanges =
+      Map.map simplifyVersionRange $
       Map.fromListWith unionVersionRanges $
           [ (packageName pkg, thisVersion (packageVersion pkg))
           | InstallPlan.PreExisting pkg <- InstallPlan.toList plan
