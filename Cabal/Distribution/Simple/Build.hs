@@ -41,6 +41,7 @@ import qualified Distribution.Simple.JHC   as JHC
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
+import qualified Distribution.Simple.PackageIndex as Index
 
 import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
@@ -49,6 +50,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.PackageDescription hiding (Flag)
 import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -69,6 +71,7 @@ import Distribution.Verbosity
 
 import Distribution.Compat.Graph (IsNode(..))
 
+import Control.Monad
 import qualified Data.Set as Set
 import Data.List ( intersect )
 import System.FilePath ( (</>), (<.>), takeDirectory )
@@ -96,7 +99,7 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
-  for_ componentsToBuild $ \target -> do
+  (\f -> foldM_ f (installedPkgs lbi) componentsToBuild) $ \index target -> do
     let comp = targetComponent target
         clbi = targetCLBI target
     initialBuildSteps distPref pkg_descr lbi clbi verbosity
@@ -104,10 +107,13 @@ build pkg_descr lbi flags suffixes = do
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
         lbi'   = lbi {
                    withPrograms  = progs',
-                   withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+                   withPackageDB = withPackageDB lbi ++ [internalPackageDB],
+                   installedPkgs = index
                  }
-    buildComponent verbosity (buildNumJobs flags) pkg_descr
+    mb_ipi <- buildComponent verbosity (buildNumJobs flags) pkg_descr
                    lbi' suffixes comp clbi distPref
+    return (maybe index (Index.insert `flip` index) mb_ipi)
+  return ()
  where
   distPref  = fromFlag (buildDistPref flags)
   verbosity = fromFlag (buildVerbosity flags)
@@ -178,7 +184,7 @@ buildComponent :: Verbosity
                -> Component
                -> ComponentLocalBuildInfo
                -> FilePath
-               -> IO ()
+               -> IO (Maybe InstalledPackageInfo)
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CLib lib) clbi distPref = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
@@ -195,7 +201,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     -- Don't register inplace if we're only building a single component;
     -- it's not necessary because there won't be any subsequent builds
     -- that need to tag us
-    when (not (oneComponentRequested (componentEnabledSpec lbi))) $ do
+    if (not (oneComponentRequested (componentEnabledSpec lbi)))
+      then do
         -- Register the library in-place, so exes can depend
         -- on internally defined libraries.
         pwd <- getCurrentDirectory
@@ -206,6 +213,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
         registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
                         (withPackageDB lbi) installedPkgInfo
+        return (Just installedPkgInfo)
+      else return Nothing
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
@@ -215,6 +224,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
+    return Nothing
 
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
@@ -227,6 +237,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
+    return Nothing
 
 
 buildComponent verbosity numJobs pkg_descr lbi0 suffixes
@@ -253,6 +264,7 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
+    return Nothing -- Can't depend on test suite
 
 
 buildComponent _ _ _ _ _
@@ -271,6 +283,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
+    return Nothing
 
 
 buildComponent _ _ _ _ _

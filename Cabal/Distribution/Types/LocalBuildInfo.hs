@@ -112,7 +112,13 @@ data LocalBuildInfo = LocalBuildInfo {
         installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
-                -- Does NOT include internal dependencies.
+                -- The copy saved on disk does NOT include internal
+                -- dependencies (because we just don't have enough
+                -- information at this point to have an
+                -- 'InstalledPackageInfo' for an internal dep), but we
+                -- will often update it with the internal dependencies;
+                -- see for example 'Distribution.Simple.Build.build'.
+                -- (This admonition doesn't apply for per-component builds.)
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
         localPkgDescr :: PackageDescription,
