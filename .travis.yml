@@ -53,7 +53,7 @@ matrix:
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
    # https://ghc.haskell.org/trac/ghc/ticket/8493
-   - env: GHCVER=7.8.4 SCRIPT=script CABAL_LIB_ONLY=YES
+   - env: GHCVER=7.8.4 SCRIPT=script
      os: osx
      osx_image: xcode6.4 # We need 10.10
 
