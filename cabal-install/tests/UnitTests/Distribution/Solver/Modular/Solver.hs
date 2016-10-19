@@ -139,7 +139,7 @@ tests = [
           testBuildable "avoid building component with unknown dependency" (ExAny "unknown")
         , testBuildable "avoid building component with unknown extension" (ExExt (UnknownExtension "unknown"))
         , testBuildable "avoid building component with unknown language" (ExLang (UnknownLanguage "unknown"))
-        , runTest $ enableAllTests $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
+        , runTest $ mkTest dbBuildable1 "choose flags that set buildable to false" ["pkg"] (solverSuccess [("flag1-false", 1), ("flag2-true", 1), ("pkg", 1)])
         , runTest $ mkTest dbBuildable2 "choose version that sets buildable to false" ["A"] (solverSuccess [("A", 1), ("B", 2)])
          ]
     , testGroup "Pkg-config dependencies" [
@@ -974,23 +974,22 @@ dbLangs1 = [
   , Right $ exAv "C" 1 [ExLang (UnknownLanguage "Haskell3000"), ExAny "B"]
   ]
 
--- | cabal must set enable-lib to false in order to avoid the unavailable
+-- | cabal must set enable-exe to false in order to avoid the unavailable
 -- dependency. Flags are true by default. The flag choice causes "pkg" to
 -- depend on "false-dep".
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
-    runTest $ enableAllTests $
+    runTest $
     mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
-        Right $ exAv "pkg" 1
-            [ unavailableDep
-            , ExFlag "enable-lib" (Buildable []) NotBuildable ]
-         `withTest`
-            ExTest "test" [exFlag "enable-lib"
-                              [ExAny "true-dep"]
-                              [ExAny "false-dep"]]
+        Right $ exAv "pkg" 1 [exFlag "enable-exe"
+                                 [ExAny "true-dep"]
+                                 [ExAny "false-dep"]]
+         `withExe`
+            ExExe "exe" [ unavailableDep
+                        , ExFlag "enable-exe" (Buildable []) NotBuildable ]
       , Right $ exAv "true-dep" 1 []
       , Right $ exAv "false-dep" 1 []
       ]
@@ -1000,18 +999,19 @@ testBuildable testName unavailableDep =
 dbBuildable1 :: ExampleDb
 dbBuildable1 = [
     Right $ exAv "pkg" 1
-        [ ExAny "unknown"
-        , ExFlag "flag1" (Buildable []) NotBuildable
-        , ExFlag "flag2" (Buildable []) NotBuildable]
-     `withTests`
-        [ ExTest "optional-test"
-              [ ExAny "unknown"
-              , ExFlag "flag1"
-                    (Buildable [])
-                    (Buildable [ExFlag "flag2" NotBuildable (Buildable [])])]
-        , ExTest "test" [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
-                        , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
-        ]
+        [ exFlag "flag1" [ExAny "flag1-true"] [ExAny "flag1-false"]
+        , exFlag "flag2" [ExAny "flag2-true"] [ExAny "flag2-false"]]
+     `withExes`
+        [ ExExe "exe1"
+            [ ExAny "unknown"
+            , ExFlag "flag1" (Buildable []) NotBuildable
+            , ExFlag "flag2" (Buildable []) NotBuildable]
+        , ExExe "exe2"
+            [ ExAny "unknown"
+            , ExFlag "flag1"
+                  (Buildable [])
+                  (Buildable [ExFlag "flag2" NotBuildable (Buildable [])])]
+         ]
   , Right $ exAv "flag1-true" 1 []
   , Right $ exAv "flag1-false" 1 []
   , Right $ exAv "flag2-true" 1 []
@@ -1023,9 +1023,11 @@ dbBuildable2 :: ExampleDb
 dbBuildable2 = [
     Right $ exAv "A" 1 [ExAny "B"]
   , Right $ exAv "B" 1 [ExAny "unknown"]
-  , Right $ exAv "B" 2
+  , Right $ exAv "B" 2 []
+     `withExe`
+        ExExe "exe"
         [ ExAny "unknown"
-        , ExFlag "disable-lib" NotBuildable (Buildable [])
+        , ExFlag "disable-exe" NotBuildable (Buildable [])
         ]
   , Right $ exAv "B" 3 [ExAny "unknown"]
   ]
