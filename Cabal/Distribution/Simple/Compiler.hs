@@ -84,9 +84,11 @@ data Compiler = Compiler {
         compilerId              :: CompilerId,
         -- ^ Compiler flavour and version.
         compilerAbiTag          :: AbiTag,
-        -- ^ Tag for distinguishing incompatible ABI's on the same architecture/os.
+        -- ^ Tag for distinguishing incompatible ABI's on the same
+        -- architecture/os.
         compilerCompat          :: [CompilerId],
-        -- ^ Other implementations that this compiler claims to be compatible with.
+        -- ^ Other implementations that this compiler claims to be
+        -- compatible with.
         compilerLanguages       :: [(Language, Flag)],
         -- ^ Supported language standards.
         compilerExtensions      :: [(Extension, Flag)],
@@ -303,7 +305,8 @@ reexportedModulesSupported = ghcSupported "Support reexported-modules"
 
 -- | Does this compiler support thinning/renaming on package flags?
 renamingPackageFlagsSupported :: Compiler -> Bool
-renamingPackageFlagsSupported = ghcSupported "Support thinning and renaming package flags"
+renamingPackageFlagsSupported = ghcSupported
+  "Support thinning and renaming package flags"
 
 -- | Does this compiler have unified IPIDs (so no package keys)
 unifiedIPIDRequired :: Compiler -> Bool
@@ -325,18 +328,18 @@ backpackSupported = ghcSupported "Support Backpack"
 coverageSupported :: Compiler -> Bool
 coverageSupported comp =
   case compilerFlavor comp of
-    GHC -> True
+    GHC   -> True
     GHCJS -> True
-    _ -> False
+    _     -> False
 
 -- | Does this compiler support profiling?
 profilingSupported :: Compiler -> Bool
 profilingSupported comp =
   case compilerFlavor comp of
-    GHC -> True
+    GHC   -> True
     GHCJS -> True
-    LHC -> True
-    _ -> False
+    LHC   -> True
+    _     -> False
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool
