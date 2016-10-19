@@ -526,6 +526,19 @@ tests config = do
   tc "Regression/T3847" $ do
     cabal "configure" ["--disable-tests"]
 
+  -- Test that we don't pick up include-dirs from libraries
+  -- we didn't actually depend on.
+  tc "Regression/T2971" $ do
+    withPackageDb $ do
+      withPackage "p" $ cabal_install []
+      withPackage "q" $ do
+        cabal "configure" []
+        assertOutputContains "T2971test.h"
+            =<< shouldFail (cabal' "build" [])
+
+  -- Test that we pick up include dirs from internal library
+  tc "Regression/T2971a" $ cabal_build []
+
   -- Test error message we report when a non-buildable target is
   -- requested to be built
   -- TODO: We can give a better error message here, see #3858.

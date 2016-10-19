@@ -434,13 +434,16 @@ ppHsc2hs bi lbi clbi =
        ++ ["-o", outFile, inFile]
   }
   where
-    -- TODO: installedPkgs contains ALL dependencies associated with
-    -- the package, but we really only want to look at packages for the
-    -- *current* dependency.  We should use PackageIndex.dependencyClosure
-    -- on the direct depends of the component.  The signature of this
-    -- function was recently refactored, so this should be fixable
-    -- now.  Tracked with #2971 (which has a test case.)
-    pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
+    hacked_index = packageHacks (installedPkgs lbi)
+    -- Look only at the dependencies of the current component
+    -- being built!  This relies on 'installedPkgs' maintaining
+    -- 'InstalledPackageInfo' for internal deps too; see #2971.
+    pkgs = PackageIndex.topologicalOrder $
+           case PackageIndex.dependencyClosure hacked_index
+                    (map fst (componentPackageDeps clbi)) of
+            Left index' -> index'
+            Right inf ->
+                error ("ppHsc2hs: broken closure: " ++ show inf)
     isOSX = case buildOS of OSX -> True; _ -> False
     isELF = case buildOS of OSX -> False; Windows -> False; AIX -> False; _ -> True;
     packageHacks = case compilerFlavor (compiler lbi) of

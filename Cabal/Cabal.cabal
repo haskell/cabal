@@ -260,6 +260,14 @@ extra-source-files:
   tests/PackageTests/ReexportedModules/p/p.cabal
   tests/PackageTests/ReexportedModules/q/A.hs
   tests/PackageTests/ReexportedModules/q/q.cabal
+  tests/PackageTests/Regression/T2971/p/include/T2971test.h
+  tests/PackageTests/Regression/T2971/p/p.cabal
+  tests/PackageTests/Regression/T2971/q/Bar.hsc
+  tests/PackageTests/Regression/T2971/q/Foo.hs
+  tests/PackageTests/Regression/T2971/q/q.cabal
+  tests/PackageTests/Regression/T2971a/Main.hsc
+  tests/PackageTests/Regression/T2971a/T2971a.cabal
+  tests/PackageTests/Regression/T2971a/include/T2971a.h
   tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/Regression/T3847/Main.hs
   tests/PackageTests/Regression/T3847/T3847.cabal
