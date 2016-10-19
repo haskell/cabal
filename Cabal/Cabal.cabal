@@ -107,7 +107,6 @@ extra-source-files:
   tests/PackageTests/BenchmarkOptions/BenchmarkOptions.cabal
   tests/PackageTests/BenchmarkOptions/test-BenchmarkOptions.hs
   tests/PackageTests/BenchmarkStanza/my.cabal
-  tests/PackageTests/BuildAssumeDepsUpToDate/BuildAssumeDepsUpToDate.cabal
   tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/GlobalBuildDepsNotAdditive1.cabal
   tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/MyLibrary.hs
   tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/GlobalBuildDepsNotAdditive2.cabal
@@ -175,9 +174,6 @@ extra-source-files:
   tests/PackageTests/ConfigureComponent/Test/testlib/TestLib.hs
   tests/PackageTests/ConfigureComponent/Test/testlib/testlib.cabal
   tests/PackageTests/ConfigureComponent/Test/tests/Test.hs
-  tests/PackageTests/CopyAssumeDepsUpToDate/CopyAssumeDepsUpToDate.cabal
-  tests/PackageTests/CopyAssumeDepsUpToDate/Main.hs
-  tests/PackageTests/CopyAssumeDepsUpToDate/P.hs
   tests/PackageTests/CopyComponent/Exe/Main.hs
   tests/PackageTests/CopyComponent/Exe/Main2.hs
   tests/PackageTests/CopyComponent/Exe/myprog.cabal
@@ -264,9 +260,6 @@ extra-source-files:
   tests/PackageTests/ReexportedModules/p/p.cabal
   tests/PackageTests/ReexportedModules/q/A.hs
   tests/PackageTests/ReexportedModules/q/q.cabal
-  tests/PackageTests/RegisterAssumeDepsUpToDate/P.hs
-  tests/PackageTests/RegisterAssumeDepsUpToDate/RegisterOneShot.cabal
-  tests/PackageTests/RegisterAssumeDepsUpToDate/q/Q.hs
   tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/Regression/T3847/Main.hs
   tests/PackageTests/Regression/T3847/T3847.cabal

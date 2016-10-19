@@ -206,11 +206,6 @@ generate pkg_descr lbi clbi =
           where var' = pkgPathEnvVar pkg_descr var
 
         -- In several cases we cannot make relocatable installations
-        -- WARNING: The CopyOneShot package test hacks
-        -- @absolute == True@ to disable relocatable programs
-        -- by giving the package a library as well.  If you change
-        -- this logic (e.g., we start to support relocatable libraries
-        -- by default) you will need to update this test.
         absolute =
              hasLibs pkg_descr        -- we can only make progs relocatable
           || isNothing flat_bindirrel -- if the bin dir is an absolute path

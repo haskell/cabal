@@ -441,33 +441,6 @@ tests config = do
               runExe' "fooexe" []
                   >>= assertOutputContains "25"
 
-  -- Basic test to make sure we can build internal libraries manually.
-  mtcs "InternalLibraries/Library" "AssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      step "Building foolib"
-      withPackage "foolib" $ do
-        cabal "configure" []
-        let upd = "--assume-deps-up-to-date"
-        step "foolib: copying global data"
-        cabal "copy" [upd]
-        let mk_foolib_internal str = do
-                step $ "foolib: building foolib-internal (" ++ str ++ ")"
-                cabal "build" [upd, "foolib-internal"]
-                cabal "copy" [upd, "foolib-internal"]
-                cabal "register" [upd, "foolib-internal"]
-            mk_foolib str = do
-                step $ "foolib: building foolib (" ++ str ++ ")"
-                cabal "build" [upd, "foolib"]
-                cabal "copy" [upd, "foolib"]
-                cabal "register" [upd, "foolib"]
-        mk_foolib_internal "run 1"
-        mk_foolib "run 1"
-        mk_foolib_internal "run 2"
-        mk_foolib "run 2"
-      withPackage "fooexe" $ do
-        cabal_build []
-        runExe' "fooexe" [] >>= assertOutputContains "25"
-
   -- Test to ensure that cabal_macros.h are computed per-component.
   tc "Macros" $ do
       cabal_build []
@@ -552,76 +525,6 @@ tests config = do
   -- effect configure step.
   tc "Regression/T3847" $ do
     cabal "configure" ["--disable-tests"]
-
-  -- Test build --assume-deps-up-to-date
-  mtc "BuildAssumeDepsUpToDate" $ \step -> do
-    step "Initial build"
-    pkg_dir <- packageDir
-    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a1\""
-    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b1\")"
-    cabal "configure" []
-    cabal "build" ["--assume-deps-up-to-date", "BuildAssumeDepsUpToDate"]
-    cabal "build" ["--assume-deps-up-to-date", "myprog"]
-    runExe' "myprog" []
-        >>= assertOutputContains "a1 b1"
-
-    step "Rebuild executable only"
-    ghcFileModDelay
-    liftIO $ writeFile (pkg_dir </> "A.hs") "module A where\na = \"a2\""
-    liftIO $ writeFile (pkg_dir </> "myprog/Main.hs") "import A\nmain = print (a ++ \" b2\")"
-    cabal "build" ["--assume-deps-up-to-date", "myprog"]
-    runExe' "myprog" []
-        >>= assertOutputContains "a1 b2"
-
-  -- Test copy --assume-deps-up-to-date
-  -- NB: This test has a HORRIBLE HORRIBLE hack to ensure that
-  -- on Windows, we don't try to make a prefix relative package;
-  -- specifically, we give the package under testing a library
-  -- so that we don't attempt to make it prefix relative.
-  mtc "CopyAssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      step "Initial build"
-      cabal_build []
-
-      step "Executable cannot find data file"
-      pkg_dir <- packageDir
-      shouldFail (runExe' "myprog" [])
-        >>= assertOutputContains "does not exist"
-      prefix_dir <- prefixDir
-      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
-
-      step "Install data file"
-      liftIO $ writeFile (pkg_dir </> "data") "aaa"
-      cabal "copy" ["--assume-deps-up-to-date"]
-      shouldNotExist $ prefix_dir </> "bin" </> "myprog"
-      runExe' "myprog" []
-        >>= assertOutputContains "aaa"
-
-      step "Install executable"
-      liftIO $ writeFile (pkg_dir </> "data") "bbb"
-      cabal "copy" ["--assume-deps-up-to-date", "exe:myprog"]
-      runInstalledExe' "myprog" []
-        >>= assertOutputContains "aaa"
-
-  -- Test register --assume-deps-up-to-date
-  mtc "RegisterAssumeDepsUpToDate" $ \step -> do
-    withPackageDb $ do
-      -- We'll test this by generating registration files and verifying
-      -- that they are indeed files (and not directories)
-      step "Initial build and copy"
-      cabal_build []
-      cabal "copy" []
-
-      step "Register q"
-      let q_reg = "pkg-config-q"
-      cabal "register" ["--assume-deps-up-to-date", "q", "--gen-pkg-config=" ++ q_reg]
-      pkg_dir <- packageDir
-      ghcPkg "register" [pkg_dir </> q_reg]
-
-      step "Register p"
-      let main_reg = "pkg-config-p"
-      cabal "register" ["--assume-deps-up-to-date", "RegisterAssumeDepsUpToDate", "--gen-pkg-config=" ++ main_reg]
-      ghcPkg "register" [pkg_dir </> main_reg]
 
   -- Test error message we report when a non-buildable target is
   -- requested to be built
@@ -804,12 +707,6 @@ tests config = do
     tc :: FilePath -> TestM a -> TestTreeM ()
     tc name = testTree config name
 
-    mtc :: FilePath -> ((String -> TestM ()) -> TestM a) -> TestTreeM ()
-    mtc name = testTreeSteps config name
-
     tcs :: FilePath -> FilePath -> TestM a -> TestTreeM ()
     tcs name sub_name m
         = testTreeSub config name sub_name m
-
-    mtcs :: FilePath -> FilePath -> ((String -> TestM ()) -> TestM a) -> TestTreeM ()
-    mtcs name sub_name = testTreeSubSteps config name sub_name

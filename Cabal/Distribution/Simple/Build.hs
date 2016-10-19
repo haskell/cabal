@@ -82,35 +82,7 @@ build    :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> BuildFlags          -- ^ Flags that the user passed to build
          -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
-build pkg_descr lbi flags suffixes
- | fromFlag (buildAssumeDepsUpToDate flags) = do
-  -- TODO: if checkBuildTargets ignores a target we may accept
-  -- a --assume-deps-up-to-date with multiple arguments. Arguably, we should
-  -- error early in this case.
-  target <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags) >>= \r -> case r of
-      [] -> die "In --assume-deps-up-to-date mode you must specify a target"
-      [target] -> return target
-      _ -> die "In --assume-deps-up-to-date mode you can only build a single target"
-  -- NB: do NOT 'createInternalPackageDB'; we don't want to delete it.
-  -- But this means we have to be careful about unregistering
-  -- ourselves.
-  let dbPath = internalPackageDBPath lbi distPref
-      internalPackageDB = SpecificPackageDB dbPath
-      clbi = targetCLBI target
-      comp = targetComponent target
-  -- TODO: do we need to unregister libraries?  In any case, this would
-  -- need to be done in the buildLib functionality.
-  -- Do the build
-  initialBuildSteps distPref pkg_descr lbi clbi verbosity
-  let bi     = componentBuildInfo comp
-      progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-      lbi'   = lbi {
-                 withPrograms  = progs',
-                 withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-               }
-  buildComponent verbosity (buildNumJobs flags) pkg_descr
-                 lbi' suffixes comp clbi distPref
- | otherwise = do
+build pkg_descr lbi flags suffixes = do
   targets <- readTargetInfos verbosity pkg_descr lbi (buildArgs flags)
   let componentsToBuild = neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
   info verbosity $ "Component build order: "
@@ -514,6 +486,18 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
                 componentIncludes = componentIncludes clbi
               }
 benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
+
+-- | Initialize a new package db file for libraries defined
+-- internally to the package.
+createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
+                        -> IO PackageDB
+createInternalPackageDB verbosity lbi distPref = do
+    existsAlready <- doesPackageDBExist dbPath
+    when existsAlready $ deletePackageDB dbPath
+    createPackageDB verbosity (compiler lbi) (withPrograms lbi) False dbPath
+    return (SpecificPackageDB dbPath)
+  where
+    dbPath = internalPackageDBPath lbi distPref
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb

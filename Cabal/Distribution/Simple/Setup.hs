@@ -961,7 +961,6 @@ data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
     copyVerbosity :: Flag Verbosity,
-    copyAssumeDepsUpToDate   :: Flag Bool,
     -- This is the same hack as in 'buildArgs'.  But I (ezyang) don't
     -- think it's a hack, it's the right way to make hooks more robust
     -- TODO: Stop using this eventually when 'UserHooks' gets changed
@@ -974,7 +973,6 @@ defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = NoFlag,
     copyVerbosity = Flag normal,
-    copyAssumeDepsUpToDate   = Flag False,
     copyArgs      = []
   }
 
@@ -1003,11 +1001,6 @@ copyCommand = CommandUI
       ,optionDistPref
          copyDistPref (\d flags -> flags { copyDistPref = d })
          showOrParseArgs
-
-      , option "" ["assume-deps-up-to-date"]
-          "One-shot copy"
-          copyAssumeDepsUpToDate (\c flags -> flags { copyAssumeDepsUpToDate = c })
-          trueArg
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
@@ -1179,9 +1172,6 @@ data RegisterFlags = RegisterFlags {
     regDistPref    :: Flag FilePath,
     regPrintId     :: Flag Bool,
     regVerbosity   :: Flag Verbosity,
-    -- | If this is true, we don't register all libraries,
-    -- only directly referenced library in 'regArgs'.
-    regAssumeDepsUpToDate     :: Flag Bool,
     -- Same as in 'buildArgs' and 'copyArgs'
     regArgs        :: [String]
   }
@@ -1195,9 +1185,8 @@ defaultRegisterFlags = RegisterFlags {
     regInPlace     = Flag False,
     regDistPref    = NoFlag,
     regPrintId     = Flag False,
-    regVerbosity   = Flag normal,
-    regAssumeDepsUpToDate     = Flag False,
-    regArgs        = []
+    regArgs        = [],
+    regVerbosity   = Flag normal
   }
 
 registerCommand :: CommandUI RegisterFlags
@@ -1226,11 +1215,6 @@ registerCommand = CommandUI
       ,option "" ["inplace"]
          "register the package in the build location, so it can be used without being installed"
          regInPlace (\v flags -> flags { regInPlace = v })
-         trueArg
-
-      ,option "" ["assume-deps-up-to-date"]
-         "One-shot registration"
-         regAssumeDepsUpToDate (\c flags -> flags { regAssumeDepsUpToDate = c })
          trueArg
 
       ,option "" ["gen-script"]
@@ -1614,9 +1598,6 @@ data BuildFlags = BuildFlags {
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
     buildNumJobs     :: Flag (Maybe Int),
-    -- | If this is true, we don't build the dependencies of
-    -- 'buildArgs': only the directly referenced components.
-    buildAssumeDepsUpToDate :: Flag Bool,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1634,7 +1615,6 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
-    buildAssumeDepsUpToDate     = Flag False,
     buildArgs        = []
   }
 
@@ -1682,11 +1662,6 @@ buildOptions :: ProgramDb -> ShowOrParseArgs
 buildOptions progDb showOrParseArgs =
   [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
-
-  , option "" ["assume-deps-up-to-date"]
-      "One-shot build"
-      buildAssumeDepsUpToDate (\c flags -> flags { buildAssumeDepsUpToDate = c })
-      trueArg
   ]
 
   ++ programDbPaths progDb showOrParseArgs
