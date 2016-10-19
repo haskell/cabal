@@ -99,6 +99,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
     Current.depends            = map (Current.mkLegacyUnitId . convertPackageId) (depends ipi),
+    Current.abiDepends         = [],
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

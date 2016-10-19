@@ -35,6 +35,7 @@ module Distribution.InstalledPackageInfo (
         requiredSignatures,
         installedOpenUnitId,
         ExposedModule(..),
+        AbiDependency(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
         parseInstalledPackageInfo,
@@ -111,6 +112,7 @@ data InstalledPackageInfo
         -- INVARIANT: if the package is definite, UnitId is NOT
         -- a ComponentId of an indefinite package
         depends           :: [UnitId],
+        abiDepends        :: [AbiDependency],
         ccOptions         :: [String],
         ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
@@ -199,6 +201,7 @@ emptyInstalledPackageInfo
         includeDirs       = [],
         includes          = [],
         depends           = [],
+        abiDepends        = [],
         ccOptions         = [],
         ldOptions         = [],
         frameworkDirs     = [],
@@ -250,6 +253,36 @@ showExposedModules xs
 
 parseExposedModules :: Parse.ReadP r [ExposedModule]
 parseExposedModules = parseOptCommaList parse
+
+-- -----------------------------------------------------------------------------
+-- ABI dependency
+
+-- | An ABI dependency is a dependency on a library which also
+-- records the ABI hash ('abiHash') of the library it depends
+-- on.
+--
+-- The primary utility of this is to enable an extra sanity when
+-- GHC loads libraries: it can check if the dependency has a matching
+-- ABI and if not, refuse to load this library.  This information
+-- is critical if we are shadowing libraries; differences in the
+-- ABI hash let us know what packages get shadowed by the new version
+-- of a package.
+data AbiDependency = AbiDependency {
+        depUnitId  :: UnitId,
+        depAbiHash :: AbiHash
+    }
+  deriving (Eq, Generic, Read, Show)
+
+instance Text AbiDependency where
+    disp (AbiDependency uid abi) =
+        disp uid <<>> Disp.char '=' <<>> disp abi
+    parse = do
+        uid <- parse
+        _ <- Parse.char '='
+        abi <- parse
+        return (AbiDependency uid abi)
+
+instance Binary AbiDependency
 
 -- -----------------------------------------------------------------------------
 -- Parsing
@@ -380,6 +413,9 @@ installedFieldDescrs = [
  , listField   "depends"
         disp               parse
         depends            (\xs pkg -> pkg{depends=xs})
+ , listField   "abi-depends"
+        disp               parse
+        abiDepends         (\xs pkg -> pkg{abiDepends=xs})
  , listField   "cc-options"
         showToken          parseTokenQ
         ccOptions          (\path  pkg -> pkg{ccOptions=path})

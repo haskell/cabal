@@ -37,6 +37,7 @@ module Distribution.Simple.Register (
     createPackageDB,
     deletePackageDB,
 
+    abiHash,
     invokeHcPkg,
     registerPackage,
     generateRegistrationInfo,
@@ -220,20 +221,7 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
-  --TODO: the method of setting the UnitId is compiler specific
-  --      this aspect should be delegated to a per-compiler helper.
-  let comp = compiler lbi
-      lbi' = lbi {
-                withPackageDB = withPackageDB lbi
-                    ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)]
-             }
-  abi_hash <-
-    case compilerFlavor comp of
-     GHC | compilerVersion comp >= mkVersion [6,11] -> do
-            fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
-     GHCJS -> do
-            fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
-     _ -> return (mkAbiHash "")
+  abi_hash <- abiHash verbosity pkg distPref lbi lib clbi
 
   installedPkgInfo <-
     if inplace
@@ -247,6 +235,28 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 
 
   return installedPkgInfo{ IPI.abiHash = abi_hash }
+
+-- | Compute the 'AbiHash' of a library that we built inplace.
+abiHash :: Verbosity
+        -> PackageDescription
+        -> FilePath
+        -> LocalBuildInfo
+        -> Library
+        -> ComponentLocalBuildInfo
+        -> IO AbiHash
+abiHash verbosity pkg distPref lbi lib clbi =
+    case compilerFlavor comp of
+     GHC | compilerVersion comp >= mkVersion [6,11] -> do
+            fmap mkAbiHash $ GHC.libAbiHash verbosity pkg lbi' lib clbi
+     GHCJS -> do
+            fmap mkAbiHash $ GHCJS.libAbiHash verbosity pkg lbi' lib clbi
+     _ -> return (mkAbiHash "")
+  where
+    comp = compiler lbi
+    lbi' = lbi {
+              withPackageDB = withPackageDB lbi
+                  ++ [SpecificPackageDB (internalPackageDBPath lbi distPref)]
+           }
 
 relocRegistrationInfo :: Verbosity
                       -> PackageDescription
@@ -412,9 +422,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
-                             --TODO: unclear what the root cause of the
-                             -- duplication is, but we nub it here for now:
-    IPI.depends            = ordNub $ map fst (componentPackageDeps clbi),
+    IPI.depends            = depends,
+    IPI.abiDepends         = abi_depends,
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
@@ -427,6 +436,16 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
   }
   where
     bi = libBuildInfo lib
+    --TODO: unclear what the root cause of the
+    -- duplication is, but we nub it here for now:
+    depends = ordNub $ map fst (componentPackageDeps clbi)
+    abi_depends = map add_abi depends
+    add_abi uid = IPI.AbiDependency uid abi
+      where
+        abi = case Index.lookupUnitId (installedPkgs lbi) uid of
+                Nothing -> error $
+                  "generalInstalledPackageInfo: missing IPI for " ++ display uid
+                Just ipi -> IPI.abiHash ipi
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
     hasModules = not $ null (allLibModules lib clbi)
     comp = compiler lbi
