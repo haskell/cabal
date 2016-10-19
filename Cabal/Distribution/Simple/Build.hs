@@ -31,6 +31,7 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
+import Distribution.Types.ComponentRequestedSpec
 
 import Distribution.Package
 import Distribution.Backpack
@@ -217,16 +218,22 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         lib' = lib { libBuildInfo = addExtraCSources libbi extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
 
-    -- Register the library in-place, so exes can depend
-    -- on internally defined libraries.
-    pwd <- getCurrentDirectory
-    let -- The in place registration uses the "-inplace" suffix, not an ABI hash
-        installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       (mkAbiHash "") lib' lbi clbi
+    let oneComponentRequested (OneComponentRequestedSpec _) = True
+        oneComponentRequested _ = False
+    -- Don't register inplace if we're only building a single component;
+    -- it's not necessary because there won't be any subsequent builds
+    -- that need to tag us
+    when (not (oneComponentRequested (componentEnabledSpec lbi))) $ do
+        -- Register the library in-place, so exes can depend
+        -- on internally defined libraries.
+        pwd <- getCurrentDirectory
+        let -- The in place registration uses the "-inplace" suffix, not an ABI hash
+            installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
+                                                           (mkAbiHash "") lib' lbi clbi
 
-    debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
-    registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
-                    (withPackageDB lbi) installedPkgInfo
+        debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
+        registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
+                        (withPackageDB lbi) installedPkgInfo
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
