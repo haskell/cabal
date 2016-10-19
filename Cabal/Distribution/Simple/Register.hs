@@ -61,6 +61,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import qualified Distribution.Simple.LHC   as LHC
 import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
+import qualified Distribution.Simple.PackageIndex as Index
 
 import Distribution.Simple.Compiler
 import Distribution.Simple.Program
@@ -72,6 +73,7 @@ import Distribution.Package
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
+import Distribution.Utils.MapAccum
 import Distribution.System
 import Distribution.Text
 import Distribution.Verbosity as Verbosity
@@ -90,7 +92,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg_descr lbi flags =
+register pkg_descr lbi0 flags =
    -- Duncan originally asked for us to not register/install files
    -- when there was no public library.  But with per-component
    -- configure, we legitimately need to install internal libraries
@@ -98,21 +100,24 @@ register pkg_descr lbi flags =
    doRegister
  where
   doRegister = do
-    targets <- readTargetInfos verbosity pkg_descr lbi (regArgs flags)
+    targets <- readTargetInfos verbosity pkg_descr lbi0 (regArgs flags)
 
     -- It's important to register in build order, because ghc-pkg
     -- will complain if a dependency is not registered.
-    let maybeGenerateOne target
-            | CLib lib <- targetComponent target
-            = fmap Just (generateOne pkg_descr lib lbi clbi flags)
-            | otherwise = return Nothing
-          where clbi = targetCLBI target
+    let componentsToRegister
+            = neededTargetsInBuildOrder' pkg_descr lbi0 (map nodeKey targets)
 
-    ipis <- fmap catMaybes
-          . traverse maybeGenerateOne
-          $ neededTargetsInBuildOrder' pkg_descr lbi (map nodeKey targets)
-    registerAll pkg_descr lbi flags ipis
-    return ()
+    (_, ipi_mbs) <-
+        mapAccumM `flip` installedPkgs lbi0 `flip` componentsToRegister $ \index tgt ->
+            case targetComponent tgt of
+                CLib lib -> do
+                    let clbi = targetCLBI tgt
+                        lbi = lbi0 { installedPkgs = index }
+                    ipi <- generateOne pkg_descr lib lbi clbi flags
+                    return (Index.insert ipi index, Just ipi)
+                _   -> return (index, Nothing)
+
+    registerAll pkg_descr lbi0 flags (catMaybes ipi_mbs)
    where
     verbosity = fromFlag (regVerbosity flags)
 
