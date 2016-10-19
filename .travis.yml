@@ -53,13 +53,9 @@ matrix:
    # We axed GHC 7.6 and earlier because it's not worth the trouble to
    # make older GHC work with clang's cpp.  See
    # https://ghc.haskell.org/trac/ghc/ticket/8493
-
-   # We axed GHC 7.8 on Mac OS X because (1) we're afflicted by the
-   # ar: permission denied bug (#2653) and also the xcode7.1 image
-   # doesn't have enough disk space to actually do our build.
-   #- env: GHCVER=7.8.4 SCRIPT=script
-   #  os: osx
-   #  osx_image: xcode7.1
+   - env: GHCVER=7.8.4 SCRIPT=script
+     os: osx
+     osx_image: xcode6.4 # We need 10.10
 
    # TODO: We might want to specify OSX version
    # https://docs.travis-ci.com/user/osx-ci-environment/#OS-X-Version
