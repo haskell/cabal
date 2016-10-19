@@ -212,7 +212,9 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         pwd <- getCurrentDirectory
         let -- The in place registration uses the "-inplace" suffix, not an ABI hash
             installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                           (mkAbiHash "") lib' lbi clbi
+                                    -- NB: Use a fake ABI hash to avoid
+                                    -- needing to recompute it every build.
+                                    (mkAbiHash "inplace") lib' lbi clbi
 
         debug verbosity $ "Registering inplace:\n" ++ (IPI.showInstalledPackageInfo installedPkgInfo)
         registerPackage verbosity (compiler lbi) (withPrograms lbi) HcPkg.MultiInstance
