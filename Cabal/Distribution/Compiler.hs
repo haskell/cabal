@@ -55,9 +55,10 @@ import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 
-data CompilerFlavor = GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
-                    | HaskellSuite String -- string is the id of the actual compiler
-                    | OtherCompiler String
+data CompilerFlavor =
+  GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
+  | HaskellSuite String -- string is the id of the actual compiler
+  | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary CompilerFlavor
@@ -154,16 +155,19 @@ lowercase = map toLower
 -- * Compiler Info
 -- ------------------------------------------------------------
 
--- | Compiler information used for resolving configurations. Some fields can be
---   set to Nothing to indicate that the information is unknown.
+-- | Compiler information used for resolving configurations. Some
+--   fields can be set to Nothing to indicate that the information is
+--   unknown.
 
 data CompilerInfo = CompilerInfo {
          compilerInfoId         :: CompilerId,
          -- ^ Compiler flavour and version.
          compilerInfoAbiTag     :: AbiTag,
-         -- ^ Tag for distinguishing incompatible ABI's on the same architecture/os.
+         -- ^ Tag for distinguishing incompatible ABI's on the same
+         -- architecture/os.
          compilerInfoCompat     :: Maybe [CompilerId],
-         -- ^ Other implementations that this compiler claims to be compatible with, if known.
+         -- ^ Other implementations that this compiler claims to be
+         -- compatible with, if known.
          compilerInfoLanguages  :: Maybe [Language],
          -- ^ Supported language standards, if known.
          compilerInfoExtensions :: Maybe [Extension]
