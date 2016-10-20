@@ -71,7 +71,7 @@ generate pkg_descr lbi clbi =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
         "    version,\n"++
-        "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
+        "    getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir,\n"++
         "    getDataFileName, getSysconfDir\n"++
         "  ) where\n"++
         "\n"++
@@ -108,9 +108,10 @@ generate pkg_descr lbi clbi =
           "\n\nbindirrel :: FilePath\n" ++
           "bindirrel = " ++ show flat_bindirreloc ++
           "\n"++
-          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
+          "\ngetBinDir, getLibDir, genDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOrReloc "bindir" flat_bindirreloc++"\n"++
           "getLibDir = "++mkGetEnvOrReloc "libdir" flat_libdirreloc++"\n"++
+          "getDynLibDir = "++mkGetEnvOrReloc "libdir" flat_dynlibdirreloc++"\n"++
           "getDataDir = "++mkGetEnvOrReloc "datadir" flat_datadirreloc++"\n"++
           "getLibexecDir = "++mkGetEnvOrReloc "libexecdir" flat_libexecdirreloc++"\n"++
           "getSysconfDir = "++mkGetEnvOrReloc "sysconfdir" flat_sysconfdirreloc++"\n"++
@@ -124,16 +125,18 @@ generate pkg_descr lbi clbi =
           "\n"++
           filename_stuff
         | absolute =
-          "\nbindir, libdir, datadir, libexecdir, sysconfdir :: FilePath\n"++
+          "\nbindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath\n"++
           "\nbindir     = " ++ show flat_bindir ++
           "\nlibdir     = " ++ show flat_libdir ++
+          "\ndynlibdir  = " ++ show flat_dynlibdir ++
           "\ndatadir    = " ++ show flat_datadir ++
           "\nlibexecdir = " ++ show flat_libexecdir ++
           "\nsysconfdir = " ++ show flat_sysconfdir ++
           "\n"++
-          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
+          "\ngetBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
           "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
+          "getDynLibDir = "++mkGetEnvOr "dynlibdir" "return dynlibdir"++"\n"++
           "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
           "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
           "getSysconfDir = "++mkGetEnvOr "sysconfdir" "return sysconfdir"++"\n"++
@@ -151,6 +154,8 @@ generate pkg_descr lbi clbi =
           "getBinDir = getPrefixDirRel bindirrel\n\n"++
           "getLibDir :: IO FilePath\n"++
           "getLibDir = "++mkGetDir flat_libdir flat_libdirrel++"\n\n"++
+          "getDynLibDir :: IO FilePath\n"++
+          "getDynLibDir = "++mkGetDir flat_dynlibdir flat_dynlibdirrel++"\n\n"++
           "getDataDir :: IO FilePath\n"++
           "getDataDir =  "++ mkGetEnvOr "datadir"
                               (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
@@ -175,6 +180,7 @@ generate pkg_descr lbi clbi =
           prefix     = flat_prefix,
           bindir     = flat_bindir,
           libdir     = flat_libdir,
+          dynlibdir  = flat_dynlibdir,
           datadir    = flat_datadir,
           libexecdir = flat_libexecdir,
           sysconfdir = flat_sysconfdir
@@ -182,6 +188,7 @@ generate pkg_descr lbi clbi =
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
+          dynlibdir  = flat_dynlibdirrel,
           datadir    = flat_datadirrel,
           libexecdir = flat_libexecdirrel,
           sysconfdir = flat_sysconfdirrel
@@ -189,6 +196,7 @@ generate pkg_descr lbi clbi =
 
         flat_bindirreloc = shortRelativePath flat_prefix flat_bindir
         flat_libdirreloc = shortRelativePath flat_prefix flat_libdir
+        flat_dynlibdirreloc = shortRelativePath flat_prefix flat_dynlibdir
         flat_datadirreloc = shortRelativePath flat_prefix flat_datadir
         flat_libexecdirreloc = shortRelativePath flat_prefix flat_libexecdir
         flat_sysconfdirreloc = shortRelativePath flat_prefix flat_sysconfdir

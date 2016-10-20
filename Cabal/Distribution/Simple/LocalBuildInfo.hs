@@ -266,10 +266,15 @@ depLibraryPaths inplace relative lbi clbi = do
     -}
         getLibDir sub_clbi
           | inplace    = componentBuildDir lbi sub_clbi
-          | otherwise  = libdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
+          | otherwise  = dynlibdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
     let ipkgs          = allPackages (installedPkgs lbi)
-        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        -- First look for dynamic libraries in `dynamic-library-dirs`, and use
+        -- `library-dirs` as a fall back.
+        getDynDir pkg  = case Installed.libraryDynDirs pkg of
+                           [] -> Installed.libraryDirs pkg
+                           d  -> d
+        allDepLibDirs  = concatMap getDynDir ipkgs
 
         allDepLibDirs' = internalLibs ++ allDepLibDirs
     allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'

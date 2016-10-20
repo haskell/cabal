@@ -156,14 +156,10 @@ copyComponent :: Verbosity -> PackageDescription
 copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
     let InstallDirs{
             libdir = libPref,
+            dynlibdir = dynlibPref,
             includedir = incPref
             } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
         buildPref = componentBuildDir lbi clbi
-    -- TODO: decide if we need the user to be able to control the libdir
-    -- for shared libs independently of the one for static libs. If so
-    -- it should also have a flag in the command line UI
-    -- For the moment use dynlibdir = libdir
-        dynlibPref = libPref
 
     case libName lib of
         Nothing -> notice verbosity ("Installing library in " ++ libPref)

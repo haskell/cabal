@@ -902,6 +902,11 @@ installDirsOptions =
       libsubdir (\v flags -> flags { libsubdir = v })
       installDirArg
 
+  , option "" ["dynlibdir"]
+      "installation directory for dynamic libraries"
+      dynlibdir (\v flags -> flags { dynlibdir = v })
+      installDirArg
+
   , option "" ["libexecdir"]
       "installation directory for program executables"
       libexecdir (\v flags -> flags { libexecdir = v })

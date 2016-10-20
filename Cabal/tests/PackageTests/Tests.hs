@@ -15,7 +15,7 @@ import Distribution.Types.LocalBuildInfo
 
 import Distribution.Simple.LocalBuildInfo
   ( absoluteComponentInstallDirs
-  , InstallDirs(libdir)
+  , InstallDirs (..)
   , ComponentLocalBuildInfo(componentUnitId), ComponentName(..) )
 import Distribution.Simple.InstallDirs ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths  ( mkLibName, mkSharedLibName )
@@ -683,8 +683,8 @@ tests config = do
                 cname = CSubLibName "foo-internal"
                 [target] = componentNameTargets' pkg_descr lbi cname
                 uid = componentUnitId (targetCLBI target)
-                dir = libdir (absoluteComponentInstallDirs pkg_descr lbi uid
-                              NoCopyDest)
+                InstallDirs{libdir=dir,dynlibdir=dyndir} =
+                  absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
             assertBool "interface files should be installed"
                 =<< liftIO (doesFileExist (dir </> "Foo.hi"))
             assertBool "static library should be installed"
@@ -692,11 +692,11 @@ tests config = do
             if is_dynamic
               then
                 assertBool "dynamic library MUST be installed"
-                    =<< liftIO (doesFileExist (dir </> mkSharedLibName
+                    =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
                                                compiler_id uid))
               else
                 assertBool "dynamic library should be installed"
-                    =<< liftIO (doesFileExist (dir </> mkSharedLibName
+                    =<< liftIO (doesFileExist (dyndir </> mkSharedLibName
                                                compiler_id uid))
             shouldFail $ ghcPkg "describe" ["foo"]
             -- clean away the dist directory so that we catch accidental
