@@ -684,6 +684,7 @@ configure (pkg_descr0', pbi) cfg = do
 
     dirinfo "Binaries"         (bindir dirs)     (bindir relative)
     dirinfo "Libraries"        (libdir dirs)     (libdir relative)
+    dirinfo "Dynamic libraries" (dynlibdir dirs) (dynlibdir relative)
     dirinfo "Private binaries" (libexecdir dirs) (libexecdir relative)
     dirinfo "Data files"       (datadir dirs)    (datadir relative)
     dirinfo "Documentation"    (docdir dirs)     (docdir relative)

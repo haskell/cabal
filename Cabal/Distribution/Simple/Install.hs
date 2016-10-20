@@ -60,7 +60,7 @@ install pkg_descr lbi flags = do
       installDirs@(InstallDirs {
          bindir     = binPref,
          libdir     = libPref,
---         dynlibdir  = dynlibPref, --see TODO below
+         dynlibdir  = dynlibPref,
          datadir    = dataPref,
          docdir     = docPref,
          htmldir    = htmlPref,
@@ -70,11 +70,6 @@ install pkg_descr lbi flags = do
              -- binPref should be computed per executable
              = absoluteInstallDirs pkg_descr lbi copydest
 
-      --TODO: decide if we need the user to be able to control the libdir
-      -- for shared libs independently of the one for static libs. If so
-      -- it should also have a flag in the command line UI
-      -- For the moment use dynlibdir = libdir
-      dynlibPref = libPref
       progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
 

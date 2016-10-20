@@ -83,6 +83,7 @@ data InstalledPackageInfo
         trusted           :: Bool,
         importDirs        :: [FilePath],
         libraryDirs       :: [FilePath],
+        libraryDynDirs    :: [FilePath],
         dataDir           :: FilePath,
         hsLibraries       :: [String],
         extraLibraries    :: [String],
@@ -143,6 +144,7 @@ emptyInstalledPackageInfo
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
+        libraryDynDirs    = [],
         dataDir           = "",
         hsLibraries       = [],
         extraLibraries    = [],
@@ -315,6 +317,9 @@ installedFieldDescrs = [
  , listField   "library-dirs"
         showFilePath       parseFilePathQ
         libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
+ , listField   "dynamic-library-dirs"
+        showFilePath       parseFilePathQ
+        libraryDynDirs     (\xs pkg -> pkg{libraryDynDirs=xs})
  , simpleField "data-dir"
         showFilePath       (parseFilePathQ Parse.<++ return "")
         dataDir            (\val pkg -> pkg{dataDir=val})

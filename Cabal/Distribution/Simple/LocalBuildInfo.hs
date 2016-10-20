@@ -441,10 +441,15 @@ depLibraryPaths inplace relative lbi clbi = do
                           ]
 
     let ipkgs          = allPackages (installedPkgs lbi)
-        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        -- First look for dynamic libraries in `dynamic-library-dirs`, and use
+        -- `library-dirs` as a fall back.
+        getDynDir pkg  = case Installed.libraryDynDirs pkg of
+                           [] -> Installed.libraryDirs pkg
+                           d  -> d
+        allDepLibDirs  = concatMap getDynDir ipkgs
         internalLib
           | inplace    = buildDir lbi
-          | otherwise  = libdir installDirs
+          | otherwise  = dynlibdir installDirs
         allDepLibDirs' = if hasInternalDeps
                             then internalLib : allDepLibDirs
                             else allDepLibDirs

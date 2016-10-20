@@ -405,7 +405,7 @@ If a user-supplied `configure` script is run (see the section on
 [system-dependent
 parameters](developing-packages.html#system-dependent-parameters) or on
 [complex packages](developing-packages.html#more-complex-packages)), it
-is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
+is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--dynlibdir`,
 `--datadir`, `--libexecdir` and `--sysconfdir` options. In addition the
 value of the `--with-compiler` option is passed in a `--with-hc` option
 and all options specified with `--configure-option=` are passed on.
@@ -497,6 +497,17 @@ package:
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$pkgid`, `$pkg`, `$version`,
     `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
+
+`--dynlibdir=`_dir_
+:   Dynamic libraries are installed here.
+
+    By default, this is set to `$libdir/$abi`, which is usually not equal to
+    `$libdir/$libsubdir`.
+
+    In the simple build system, _dir_ may contain the following path
+    variables: `$prefix`, `$bindir`, `$libdir`, `$pkgid`, `$pkg`, `$version`,
+    `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
+
 
 `--libexecdir=`_dir_
 :   Executables that are not expected to be invoked directly by the user
@@ -590,6 +601,9 @@ independence](#prefix-independence)).
 `$libdir`
 :   As above but for `--libdir`
 
+`$dynlibdir`
+:   As above but for `--dynlibdir`
+
 `$libsubdir`
 :   As above but for `--libsubdir`
 
@@ -643,6 +657,7 @@ Option                     Windows Default                                      
 `--bindir`                 `$prefix\bin`                                             `$prefix/bin`
 `--libdir`                 `$prefix`                                                 `$prefix/lib`
 `--libsubdir` (others)     `$pkgid\$compiler`                                        `$pkgid/$compiler`
+`--dynlibdir`              `$libdir\$abi`                                            `$libdir/$abi`
 `--libexecdir`             `$prefix\$pkgid`                                          `$prefix/libexec`
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
 `--datadir` (library)      `C:\Program Files\Haskell`                                `$prefix/share`
@@ -666,7 +681,7 @@ install-time, rather than having to bake the path into the binary when it is
 built.
 
 In order to achieve this, we require that for an executable on Windows,
-all of `$bindir`, `$libdir`, `$datadir` and `$libexecdir` begin with
+all of `$bindir`, `$libdir`, `$dynlibdir`, `$datadir` and `$libexecdir` begin with
 `$prefix`. If this is not the case then the compiled executable will
 have baked-in all absolute paths.
 
