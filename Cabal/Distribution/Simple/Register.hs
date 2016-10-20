@@ -215,8 +215,6 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
-  --TODO: the method of setting the UnitId is compiler specific
-  --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
       lbi' = lbi {
                 withPackageDB = withPackageDB lbi
@@ -407,9 +405,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
-                             --TODO: unclear what the root cause of the
-                             -- duplication is, but we nub it here for now:
-    IPI.depends            = ordNub $ map fst (componentPackageDeps clbi),
+    IPI.depends            = map fst (componentPackageDeps clbi),
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
                                  -- to C compilations in other packages.
