@@ -476,15 +476,17 @@ rawCompileSetup verbosity suite e path = do
     r <- rawRun verbosity (Just path) (ghcPath suite) e $
         [ "--make"] ++
         ghcPackageDBParams (ghcVersion suite) (packageDBStack suite) ++
-        [ "-hide-package Cabal"
-        -- This mostly works, UNLESS you've installed a
-        -- version of Cabal with the SAME version number.
-        -- Then old GHCs will incorrectly select the installed
-        -- version (because it prefers the FIRST package it finds.)
-        -- It also semi-works to not specify "-hide-all-packages"
-        -- at all, except if there's a later version of Cabal
-        -- installed GHC will prefer that.
-        , "-package Cabal-" ++ display cabalVersion
+        [
+        -- On old versions of GHC, it's not legal to use the
+        -- store package database unless we specify this; otherwise
+        -- a pile of shadowing takes place.
+          "-hide-all-packages"
+        -- *Assume* that it's named this.  This is not necessarily
+        -- always true, but all of the builders (sandbox and new-build)
+        -- will give this id.
+        -- TODO: Specify this properly via LBI/PACKAGETESTS.
+        , "-package-id Cabal-" ++ display cabalVersion ++ "-inplace"
+        , "-package base"
         , "-O0"
         , "Setup.hs" ]
     unless (resultExitCode r == ExitSuccess) $
