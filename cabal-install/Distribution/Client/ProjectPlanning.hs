@@ -2824,7 +2824,10 @@ packageHashInputs
     }) =
     PackageHashInputs {
       pkgHashPkgId       = packageId elab,
-      pkgHashComponent   = Nothing,
+      pkgHashComponent   =
+        case elabPkgOrComp elab of
+          ElabPackage _ -> Nothing
+          ElabComponent comp -> Just (compSolverName comp),
       pkgHashSourceHash  = srchash,
       pkgHashPkgConfigDeps = Set.fromList (elabPkgConfigDependencies elab),
       pkgHashDirectDeps  =
