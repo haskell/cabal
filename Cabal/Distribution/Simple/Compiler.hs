@@ -340,7 +340,7 @@ libraryDynDirSupported comp = case compilerFlavor comp of
       -} False
   _   -> False
  where
-  v = compilerVersion comp
+  _v = compilerVersion comp
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool
