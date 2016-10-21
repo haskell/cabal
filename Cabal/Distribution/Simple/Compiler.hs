@@ -329,8 +329,14 @@ backpackSupported = ghcSupported "Support Backpack"
 -- "dynamic-library-dirs"?
 libraryDynDirSupported :: Compiler -> Bool
 libraryDynDirSupported comp = case compilerFlavor comp of
-  GHC -> compilerVersion comp >= mkVersion [8,0,1,20161021]
+  GHC ->
+      -- Not just v >= mkVersion [8,0,1,20161021], as there
+      -- are many GHC 8.1 nightlies which don't support this.
+    ((v >= mkVersion [8,0,1,20161021] && v < mkVersion [8,1]) ||
+      v >= mkVersion [8,1,20161021])
   _   -> False
+ where
+  v = compilerVersion comp
 
 -- | Does this compiler support Haskell program coverage?
 coverageSupported :: Compiler -> Bool
