@@ -232,8 +232,9 @@ mkInstallPlan graph indepGoals =
       planIndepGoals = indepGoals
     }
 
-internalError :: String -> a
-internalError msg = error $ "InstallPlan: internal error: " ++ msg
+internalError :: String -> String -> a
+internalError loc msg = error $ "internal error in InstallPlan." ++ loc
+                             ++ if null msg then "" else ": " ++ msg
 
 instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
           Binary ipkg, Binary srcpkg)
@@ -244,8 +245,8 @@ instance (IsNode ipkg, Key ipkg ~ UnitId, IsNode srcpkg, Key srcpkg ~ UnitId,
         } = put (graph, indepGoals)
 
     get = do
-      (index, indepGoals) <- get
-      return $! mkInstallPlan index indepGoals
+      (graph, indepGoals) <- get
+      return $! mkInstallPlan graph indepGoals
 
 showPlanGraph :: (Package ipkg, Package srcpkg,
                   IsUnit ipkg, IsUnit srcpkg)
@@ -273,7 +274,7 @@ showPlanPackageTag (Installed   _)   = "Installed"
 new :: IndependentGoals
     -> Graph (GenericPlanPackage ipkg srcpkg)
     -> GenericInstallPlan ipkg srcpkg
-new indepGoals index = mkInstallPlan index indepGoals
+new indepGoals graph = mkInstallPlan graph indepGoals
 
 toGraph :: GenericInstallPlan ipkg srcpkg
         -> Graph (GenericPlanPackage ipkg srcpkg)
@@ -304,9 +305,9 @@ remove :: (IsUnit ipkg, IsUnit srcpkg)
        -> GenericInstallPlan ipkg srcpkg
        -> GenericInstallPlan ipkg srcpkg
 remove shouldRemove plan =
-    new (planIndepGoals plan) newIndex
+    mkInstallPlan newGraph (planIndepGoals plan)
   where
-    newIndex = Graph.fromList $
+    newGraph = Graph.fromList $
                  filter (not . shouldRemove) (toList plan)
 
 -- | Change a number of packages in the 'Configured' state to the 'Installed'
@@ -349,7 +350,7 @@ directDeps :: GenericInstallPlan ipkg srcpkg
 directDeps plan pkgid =
   case Graph.neighbors (planGraph plan) pkgid of
     Just deps -> deps
-    Nothing   -> internalError "directDeps: package not in graph"
+    Nothing   -> internalError "directDeps" "package not in graph"
 
 -- | Find all the direct reverse dependencies of the given package.
 --
@@ -361,13 +362,7 @@ revDirectDeps :: GenericInstallPlan ipkg srcpkg
 revDirectDeps plan pkgid =
   case Graph.revNeighbors (planGraph plan) pkgid of
     Just deps -> deps
-    Nothing   -> internalError "revDirectDeps: package not in graph"
-
-
-
-
-
-
+    Nothing   -> internalError "revDirectDeps" "package not in graph"
 
 -- | Return all the packages in the 'InstallPlan' in reverse topological order.
 -- That is, for each package, all dependencies of the package appear first.
@@ -612,7 +607,7 @@ completed plan (Processing processingSet completedSet failedSet) pkgid =
     processing'    = Processing processingSet' completedSet' failedSet
 
     asReadyPackage (Configured pkg) = ReadyPackage pkg
-    asReadyPackage _ = error "InstallPlan.completed: internal error"
+    asReadyPackage _ = internalError "completed" ""
 
 failed :: (IsUnit ipkg, IsUnit srcpkg)
        => GenericInstallPlan ipkg srcpkg
@@ -633,12 +628,12 @@ failed plan (Processing processingSet completedSet failedSet) pkgid =
     processingSet' = Set.delete pkgid processingSet
     failedSet'     = failedSet `Set.union` Set.fromList newlyFailedIds
     newlyFailedIds = map nodeKey newlyFailed
-    newlyFailed    = fromMaybe (internalError "package not in graph")
+    newlyFailed    = fromMaybe (internalError "failed" "package not in graph")
                    $ Graph.revClosure (planGraph plan) [pkgid]
     processing'    = Processing processingSet' completedSet failedSet'
 
     asConfiguredPackage (Configured pkg) = pkg
-    asConfiguredPackage _ = internalError "not in configured state"
+    asConfiguredPackage _ = internalError "failed" "not in configured state"
 
 processingInvariant :: (IsUnit ipkg, IsUnit srcpkg)
                     => GenericInstallPlan ipkg srcpkg
@@ -672,7 +667,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
     -- are not currently being processed (ie not in the processing set).
     assert (and [ rdeppkgid `Set.notMember` processingSet
                 | pkgid     <- Set.toList processingSet
-                , rdeppkgid <- maybe (internalError "processingInvariant")
+                , rdeppkgid <- maybe (internalError "processingInvariant" "")
                                      (map nodeKey)
                                      (Graph.revNeighbors (planGraph plan) pkgid)
                 ]) $
@@ -692,7 +687,7 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
   where
     reverseClosure    = Set.fromList
                       . map nodeKey
-                      . fromMaybe (internalError "processingInvariant")
+                      . fromMaybe (internalError "processingInvariant" "")
                       . Graph.revClosure (planGraph plan)
                       . Set.toList
     noIntersection a b = Set.null (Set.intersection a b)
@@ -712,8 +707,8 @@ processingInvariant plan (Processing processingSet completedSet failedSet) =
 -- same ordering as that produced by 'reverseTopologicalOrder'.
 --
 executionOrder :: (IsUnit ipkg, IsUnit srcpkg)
-        => GenericInstallPlan ipkg srcpkg
-        -> [GenericReadyPackage srcpkg]
+               => GenericInstallPlan ipkg srcpkg
+               -> [GenericReadyPackage srcpkg]
 executionOrder plan =
     let (newpkgs, processing) = ready plan
      in tryNewTasks processing newpkgs
