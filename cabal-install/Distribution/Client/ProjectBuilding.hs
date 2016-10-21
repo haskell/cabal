@@ -749,7 +749,7 @@ withTarballLocalDirectory verbosity distDirLayout@DistDirLayout{..}
         -- compatibility we put the dist dir within it
         -- (i.e. tmp/src2345/foo-1.0/dist/).
         --
-        -- Unfortunately. a few custom Setup.hs scripts do not respect
+        -- Unfortunately, a few custom Setup.hs scripts do not respect
         -- the --builddir flag and always look for it at ./dist/ so
         -- this way we avoid breaking those packages
         BuildAndInstall ->
