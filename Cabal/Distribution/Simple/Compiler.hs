@@ -330,10 +330,14 @@ backpackSupported = ghcSupported "Support Backpack"
 libraryDynDirSupported :: Compiler -> Bool
 libraryDynDirSupported comp = case compilerFlavor comp of
   GHC ->
+    -- GHC patch still hasn't landed yet. When it does, update
+    -- this date and uncomment
+    {-
       -- Not just v >= mkVersion [8,0,1,20161021], as there
       -- are many GHC 8.1 nightlies which don't support this.
     ((v >= mkVersion [8,0,1,20161021] && v < mkVersion [8,1]) ||
       v >= mkVersion [8,1,20161021])
+      -} False
   _   -> False
  where
   v = compilerVersion comp
