@@ -717,7 +717,7 @@ readIndexCache verbosity index = do
       Left msg -> do
           warn verbosity $ concat
               [ "Parsing the index cache failed (", msg, "). "
-              , "Trying to regenerated the index cache..."
+              , "Trying to regenerate the index cache..."
               ]
 
           updatePackageIndexCacheFile verbosity index
