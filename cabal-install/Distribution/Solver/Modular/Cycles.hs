@@ -73,7 +73,7 @@ findCycles pkg rdm =
     then let scc :: G.Graph RevDepMapNode
              scc = case G.cycles $ revDepMapToGraph rdm of
                      []    -> findCyclesError "cannot find a strongly connected component"
-                     c : _ -> G.fromList c
+                     c : _ -> G.fromDistinctList c
 
              next :: QPN -> QPN
              next p = case G.neighbors scc p of
@@ -115,5 +115,5 @@ instance G.IsNode RevDepMapNode where
   nodeNeighbors (RevDepMapNode _ ns) = ordNub $ map snd ns
 
 revDepMapToGraph :: RevDepMap -> G.Graph RevDepMapNode
-revDepMapToGraph rdm = G.fromList
+revDepMapToGraph rdm = G.fromDistinctList
                        [RevDepMapNode qpn ns | (qpn, ns) <- M.toList rdm]

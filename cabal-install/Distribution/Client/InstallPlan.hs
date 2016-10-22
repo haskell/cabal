@@ -314,7 +314,7 @@ remove :: (IsUnit ipkg, IsUnit srcpkg)
 remove shouldRemove plan =
     mkInstallPlan "remove" newGraph (planIndepGoals plan)
   where
-    newGraph = Graph.fromList $
+    newGraph = Graph.fromDistinctList $
                  filter (not . shouldRemove) (toList plan)
 
 -- | Change a number of packages in the 'Configured' state to the 'Installed'
@@ -416,7 +416,7 @@ fromSolverInstallPlan ::
     -> GenericInstallPlan ipkg srcpkg
 fromSolverInstallPlan f plan =
     mkInstallPlan "fromSolverInstallPlan"
-      (Graph.fromList pkgs'')
+      (Graph.fromDistinctList pkgs'')
       (SolverInstallPlan.planIndepGoals plan)
   where
     (_, _, pkgs'') = foldl' f' (Map.empty, Map.empty, [])
@@ -453,7 +453,7 @@ fromSolverInstallPlanWithProgress f plan = do
     (_, _, pkgs'') <- foldM f' (Map.empty, Map.empty, [])
                         (SolverInstallPlan.reverseTopologicalOrder plan)
     return $ mkInstallPlan "fromSolverInstallPlanWithProgress"
-               (Graph.fromList pkgs'')
+               (Graph.fromDistinctList pkgs'')
                (SolverInstallPlan.planIndepGoals plan)
   where
     f' (pidMap, ipiMap, pkgs) pkg = do

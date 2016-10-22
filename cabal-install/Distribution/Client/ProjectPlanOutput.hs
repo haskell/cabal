@@ -511,7 +511,7 @@ postBuildProjectStatus plan previousPackagesUpToDate
     -- The plan graph but only counting dependency-on-library edges
     packagesLibDepGraph :: Graph (Node UnitId ElaboratedPlanPackage)
     packagesLibDepGraph =
-      Graph.fromList
+      Graph.fromDistinctList
         [ Graph.N pkg (installedUnitId pkg) libdeps
         | pkg <- InstallPlan.toList plan
         , let libdeps = case pkg of

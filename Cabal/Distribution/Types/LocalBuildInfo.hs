@@ -261,7 +261,7 @@ neededTargetsInBuildOrder' :: PackageDescription -> LocalBuildInfo -> [UnitId] -
 neededTargetsInBuildOrder' pkg_descr lbi uids =
   case Graph.closure (componentGraph lbi) uids of
     Nothing -> error $ "localBuildPlan: missing uids " ++ intercalate ", " (map display uids)
-    Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromList clos))
+    Just clos -> map (mkTargetInfo pkg_descr lbi) (Graph.revTopSort (Graph.fromDistinctList clos))
 
 -- | Execute @f@ for every 'TargetInfo' needed to build @uid@s, respecting
 -- the build dependency order.
