@@ -1779,8 +1779,9 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             profLibFlag  = lookupPerPkgOption pkgid packageConfigProfLib
             --TODO: [code cleanup] unused: the old deprecated packageConfigProfExe
 
-    libDepGraph = Graph.fromList (map NonSetupLibDepSolverPlanPackage
-                                      (SolverInstallPlan.toList solverPlan))
+    libDepGraph = Graph.fromDistinctList $
+                    map NonSetupLibDepSolverPlanPackage
+                        (SolverInstallPlan.toList solverPlan)
 
     packagesWithLibDepsDownwardClosedProperty property =
         Set.fromList
@@ -1830,7 +1831,8 @@ getComponentId (InstallPlan.Installed elab) = elabComponentId elab
 
 instantiateInstallPlan :: ElaboratedInstallPlan -> ElaboratedInstallPlan
 instantiateInstallPlan plan =
-    InstallPlan.new (IndependentGoals False) (Graph.fromList (Map.elems ready_map))
+    InstallPlan.new (IndependentGoals False)
+                    (Graph.fromDistinctList (Map.elems ready_map))
   where
     pkgs = InstallPlan.toList plan
 
@@ -2048,7 +2050,7 @@ pruneInstallPlanToTargets :: Map UnitId [PackageTarget]
                           -> ElaboratedInstallPlan -> ElaboratedInstallPlan
 pruneInstallPlanToTargets perPkgTargetsMap elaboratedPlan =
     InstallPlan.new (InstallPlan.planIndepGoals elaboratedPlan)
-  . Graph.fromList
+  . Graph.fromDistinctList
     -- We have to do this in two passes
   . pruneInstallPlanPass2
   . pruneInstallPlanPass1 perPkgTargetsMap
@@ -2095,7 +2097,7 @@ pruneInstallPlanPass1 perPkgTargetsMap pkgs =
         (fromMaybe [] $ Graph.closure g roots)
   where
     pkgs' = map (mapConfiguredPackage prune) pkgs
-    g = Graph.fromList pkgs'
+    g = Graph.fromDistinctList pkgs'
 
     prune elab =
         let elab' = (pruneOptionalStanzas . setElabBuildTargets) elab
@@ -2349,7 +2351,7 @@ pruneInstallPlanToDependencies pkgTargets installPlan =
 
     fmap (InstallPlan.new (InstallPlan.planIndepGoals installPlan))
   . checkBrokenDeps
-  . Graph.fromList
+  . Graph.fromDistinctList
   . filter (\pkg -> installedUnitId pkg `Set.notMember` pkgTargets)
   . InstallPlan.toList
   $ installPlan

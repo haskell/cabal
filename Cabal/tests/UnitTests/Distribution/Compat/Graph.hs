@@ -72,7 +72,8 @@ hasNoDups = loop Set.empty
 
 -- | Produces a graph of size @len@.  We sample with 'suchThat'; if we
 -- dropped duplicate entries our size could be smaller.
-arbitraryGraph :: (Ord k, Arbitrary k, Arbitrary a) => Int -> Gen (Graph (Node k a))
+arbitraryGraph :: (Ord k, Show k, Arbitrary k, Arbitrary a)
+               => Int -> Gen (Graph (Node k a))
 arbitraryGraph len = do
     -- Careful! Assume k is much larger than size.
     ks <- vectorOf len arbitrary `suchThat` hasNoDups
@@ -81,9 +82,10 @@ arbitraryGraph len = do
         ns <- listOf (elements ks)
         -- Allow duplicates!
         return (N a k ns)
-    return (fromList ns)
+    return (fromDistinctList ns)
 
-instance (Ord k, Arbitrary k, Arbitrary a) => Arbitrary (Graph (Node k a)) where
+instance (Ord k, Show k, Arbitrary k, Arbitrary a)
+      => Arbitrary (Graph (Node k a)) where
     arbitrary = sized $ \n -> do
         len <- choose (0, n)
         arbitraryGraph len

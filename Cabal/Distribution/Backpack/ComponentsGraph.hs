@@ -46,7 +46,8 @@ toComponentsGraph :: ComponentRequestedSpec
                   -> PackageDescription
                   -> Either [ComponentName] ComponentsGraph
 toComponentsGraph enabled pkg_descr =
-    let g = Graph.fromList [ N c (componentName c) (componentDeps c)
+    let g = Graph.fromDistinctList
+                           [ N c (componentName c) (componentDeps c)
                            | c <- pkgBuildableComponents pkg_descr
                            , componentEnabled enabled c ]
     in case Graph.cycles g of

@@ -116,7 +116,7 @@ configureComponentLocalBuildInfos
                                 installedPackageSet (unDefUnitId uid)] ]
         subst = Map.fromList instantiate_with
         graph3 = toReadyComponents pid_map subst graph2
-        graph4 = Graph.revTopSort (Graph.fromList graph3)
+        graph4 = Graph.revTopSort (Graph.fromDistinctList graph3)
 
     infoProgress $ hang (text "Ready component graph:") 4
                         (vcat (map dispReadyComponent graph4))
@@ -146,11 +146,11 @@ toComponentLocalBuildInfos
         -- they are not related to what we are building.  This was true
         -- in the old configure code.
         external_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
-        external_graph = Graph.fromList
+        external_graph = Graph.fromDistinctList
                        . map Left
                        $ PackageIndex.allPackages installedPackageSet
         internal_graph :: Graph (Either InstalledPackageInfo ReadyComponent)
-        internal_graph = Graph.fromList
+        internal_graph = Graph.fromDistinctList
                        . map Right
                        $ graph
         combined_graph = Graph.unionRight external_graph internal_graph
@@ -168,7 +168,7 @@ toComponentLocalBuildInfos
         --        the include paths and everything should be.
         --
         packageDependsIndex = PackageIndex.fromList (lefts local_graph)
-        fullIndex = Graph.fromList local_graph
+        fullIndex = Graph.fromDistinctList local_graph
     case Graph.broken fullIndex of
         [] -> return ()
         broken ->
