@@ -134,6 +134,11 @@ Extra-Source-Files:
   tests/IntegrationTests/new-build/T3460/sub-package-B/B.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/Setup.hs
   tests/IntegrationTests/new-build/T3460/sub-package-B/sub-package-B.cabal
+  tests/IntegrationTests/new-build/T3978.err
+  tests/IntegrationTests/new-build/T3978.sh
+  tests/IntegrationTests/new-build/T3978/cabal.project
+  tests/IntegrationTests/new-build/T3978/p/p.cabal
+  tests/IntegrationTests/new-build/T3978/q/q.cabal
   tests/IntegrationTests/new-build/executable/Main.hs
   tests/IntegrationTests/new-build/executable/Setup.hs
   tests/IntegrationTests/new-build/executable/Test.hs

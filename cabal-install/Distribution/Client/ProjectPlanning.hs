@@ -130,7 +130,7 @@ import           Distribution.Text
 import qualified Distribution.Compat.Graph as Graph
 import           Distribution.Compat.Graph(IsNode(..))
 
-import           Text.PrettyPrint (text, (<+>))
+import           Text.PrettyPrint hiding ((<>))
 import qualified Data.Map as Map
 import           Data.Set (Set)
 import qualified Data.Set as Set
@@ -1142,6 +1142,21 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   Map ComponentId FilePath),
                 ElaboratedConfiguredPackage)
         buildComponent (cc_map, lc_map, exe_map) comp = do
+            -- Before we get too far, check if we depended on something
+            -- unbuildable.  If we did, give a good error.  (If we don't
+            -- check, the 'toConfiguredComponent' will assert fail, see #3978).
+            case unbuildable_external_lib_deps of
+                [] -> return ()
+                deps -> failProgress $
+                            text "The package" <+> disp pkgid <+>
+                            text "depends on unbuildable libraries:" <+>
+                            hsep (punctuate comma (map (disp.solverSrcId) deps))
+            case unbuildable_external_exe_deps of
+                [] -> return ()
+                deps -> failProgress $
+                            text "The package" <+> disp pkgid <+>
+                            text "depends on unbuildable executables:" <+>
+                            hsep (punctuate comma (map (disp.solverSrcId) deps))
             infoProgress $ dispConfiguredComponent cc
             let -- Use of invariant: DefUnitId indicates that if
                 -- there is no hash, it must have an empty
@@ -1269,6 +1284,11 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             external_exe_dep_sids = CD.select (== compSolverName) exe_deps0
             external_cc_map = Map.fromList (map mkPkgNameMapping external_lib_dep_pkgs)
             external_lc_map = Map.fromList (map mkShapeMapping external_lib_dep_pkgs)
+
+            unbuildable_external_lib_deps =
+                filter (null . elaborateLibSolverId mapDep) external_lib_dep_sids
+            unbuildable_external_exe_deps =
+                filter (null . elaborateExeSolverId mapDep) external_exe_dep_sids
 
             mkPkgNameMapping :: ElaboratedPlanPackage
                              -> (PackageName, (ComponentId, PackageId))
