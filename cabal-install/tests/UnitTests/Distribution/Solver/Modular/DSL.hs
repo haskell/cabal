@@ -33,7 +33,7 @@ module UnitTests.Distribution.Solver.Modular.DSL (
 -- base
 import Data.Either (partitionEithers)
 import Data.Maybe (catMaybes, isNothing)
-import Data.List (elemIndex, nub)
+import Data.List (elemIndex, isPrefixOf, nub)
 import Data.Monoid
 import Data.Ord (comparing)
 import qualified Data.Map as Map
@@ -41,12 +41,16 @@ import qualified Data.Map as Map
 -- Cabal
 import qualified Distribution.Compiler                 as C
 import qualified Distribution.InstalledPackageInfo     as IPI
+import           Distribution.License (License(..))
+import qualified Distribution.ModuleName               as Module
 import qualified Distribution.Package                  as C
   hiding (HasUnitId(..))
 import qualified Distribution.PackageDescription       as C
+import qualified Distribution.PackageDescription.Check as C
 import qualified Distribution.Simple.PackageIndex      as C.PackageIndex
 import           Distribution.Simple.Setup (BooleanFlag(..))
 import qualified Distribution.System                   as C
+import           Distribution.Text (display)
 import qualified Distribution.Version                  as C
 import Language.Haskell.Extension (Extension(..), Language(..))
 
@@ -265,7 +269,7 @@ exAvSrcPkg ex =
                             C.setupDepends = mkSetupDeps deps,
                             C.defaultSetupDepends = False
                           }
-    in SourcePackage {
+        package = SourcePackage {
             packageInfoId        = pkgId
           , packageSource        = LocalTarballPackage "<<path>>"
           , packageDescrOverride = Nothing
@@ -279,6 +283,16 @@ exAvSrcPkg ex =
                   , C.benchmarks     = error "not yet configured: benchmarks"
                   , C.buildDepends   = error "not yet configured: buildDepends"
                   , C.setupBuildInfo = setup
+                  , C.license = BSD3
+                  , C.buildType = if isNothing setup
+                                  then Just C.Simple
+                                  else Just C.Custom
+                  , C.category = "category"
+                  , C.maintainer = "maintainer"
+                  , C.description = "description"
+                  , C.synopsis = "synopsis"
+                  , C.licenseFiles = ["LICENSE"]
+                  , C.specVersionRaw = Left $ C.mkVersion [1,12]
                   }
               , C.genPackageFlags = nub $ concatMap extractFlags $
                                     CD.libraryDeps (exAvDeps ex)
@@ -286,21 +300,43 @@ exAvSrcPkg ex =
                                      ++ concatMap snd executables
               , C.condLibrary =
                   let mkLib bi = mempty { C.libBuildInfo = bi }
-                  in Just $ mkCondTree mkLib $ mkBuildInfoTree $
+                  in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
                      Buildable (CD.libraryDeps (exAvDeps ex))
               , C.condSubLibraries = []
               , C.condExecutables =
-                  let mkTree = mkCondTree mkExe . mkBuildInfoTree . Buildable
+                  let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
                       mkExe bi = mempty { C.buildInfo = bi }
                   in map (\(t, deps) -> (t, mkTree deps)) executables
               , C.condTestSuites =
-                  let mkTree = mkCondTree mkTest . mkBuildInfoTree . Buildable
+                  let mkTree = mkCondTree defaultTest mkTest . mkBuildInfoTree . Buildable
                       mkTest bi = mempty { C.testBuildInfo = bi }
                   in map (\(t, deps) -> (t, mkTree deps)) testSuites
               , C.condBenchmarks  = []
               }
             }
+        pkgCheckErrors =
+          let ignore = ["Unknown extensions:", "Unknown languages:"]
+          in [ err | err <- C.checkPackage (packageDescription package) Nothing
+             , not $ any (`isPrefixOf` C.explanation err) ignore ]
+    in if null pkgCheckErrors
+       then package
+       else error $ "invalid GenericPackageDescription for package "
+                 ++ display pkgId ++ ": " ++ show pkgCheckErrors
   where
+    defaultTopLevelBuildInfo :: C.BuildInfo
+    defaultTopLevelBuildInfo = mempty { C.defaultLanguage = Just Haskell98 }
+
+    defaultLib :: C.Library
+    defaultLib = mempty { C.exposedModules = [Module.fromString "Module"] }
+
+    defaultExe :: C.Executable
+    defaultExe = mempty { C.modulePath = "Main.hs" }
+
+    defaultTest :: C.TestSuite
+    defaultTest = mempty {
+        C.testInterface = C.TestSuiteExeV10 (C.mkVersion [1,0]) "Test.hs"
+      }
+
     -- Split the set of dependencies into the set of dependencies of the library,
     -- the dependencies of the test suites and extensions.
     splitTopLevel :: [ExampleDependency]
@@ -354,21 +390,27 @@ exAvSrcPkg ex =
     extractFlags (ExPkg _)      = []
 
     -- Convert a tree of BuildInfos into a tree of a specific component type.
+    -- 'defaultTopLevel' contains the default values for the component, and
+    -- 'mkComponent' creates a component from a 'BuildInfo'.
     mkCondTree :: forall a. Monoid a =>
-                  (C.BuildInfo -> a)
+                  a -> (C.BuildInfo -> a)
                -> DependencyTree C.BuildInfo
                -> DependencyTree a
-    mkCondTree mkComponent (C.CondNode ctData constraints comps) =
+    mkCondTree defaultTopLevel mkComponent (C.CondNode topData topConstraints topComps) =
         C.CondNode {
-            C.condTreeData = mkComponent ctData
-          , C.condTreeConstraints = constraints
-          , C.condTreeComponents = goComponents comps
+            C.condTreeData =
+                defaultTopLevel <> mkComponent (defaultTopLevelBuildInfo <> topData)
+          , C.condTreeConstraints = topConstraints
+          , C.condTreeComponents = goComponents topComps
           }
       where
+        go :: DependencyTree C.BuildInfo -> DependencyTree a
+        go (C.CondNode ctData constraints comps) =
+            C.CondNode (mkComponent ctData) constraints (goComponents comps)
+
         goComponents :: [DependencyComponent C.BuildInfo]
                      -> [DependencyComponent a]
-        goComponents cs =
-            [(cond, mkCondTree mkComponent t, mkCondTree mkComponent <$> me) | (cond, t, me) <- cs]
+        goComponents comps = [(cond, go t, go <$> me) | (cond, t, me) <- comps]
 
     mkBuildInfoTree :: Dependencies -> DependencyTree C.BuildInfo
     mkBuildInfoTree NotBuildable =

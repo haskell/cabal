@@ -980,7 +980,7 @@ dbLangs1 = [
 testBuildable :: String -> ExampleDependency -> TestTree
 testBuildable testName unavailableDep =
     runTest $
-    mkTestExtLangPC (Just []) (Just []) [] db testName ["pkg"] expected
+    mkTestExtLangPC (Just []) (Just [Haskell98]) [] db testName ["pkg"] expected
   where
     expected = solverSuccess [("false-dep", 1), ("pkg", 1)]
     db = [
