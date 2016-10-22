@@ -71,7 +71,7 @@ module Distribution.Compat.Graph (
     -- ** Maps
     toMap,
     -- ** Lists
-    fromList,
+    fromDistinctList,
     toList,
     keys,
     -- ** Sets
@@ -89,7 +89,11 @@ import Distribution.Compat.Prelude hiding (lookup, null, empty)
 
 import Data.Graph (SCC(..))
 import qualified Data.Graph as G
+#if MIN_VERSION_containers(0,5,0)
+import qualified Data.Map.Strict as Map
+#else
 import qualified Data.Map as Map
+#endif
 import qualified Data.Set as Set
 import qualified Data.Array as Array
 import Data.Array ((!))
@@ -121,12 +125,12 @@ data Graph a
 instance Show a => Show (Graph a) where
     show = show . toList
 
-instance (IsNode a, Read a) => Read (Graph a) where
-    readsPrec d s = map (\(a,r) -> (fromList a, r)) (readsPrec d s)
+instance (IsNode a, Read a, Show (Key a)) => Read (Graph a) where
+    readsPrec d s = map (\(a,r) -> (fromDistinctList a, r)) (readsPrec d s)
 
-instance (IsNode a, Binary a) => Binary (Graph a) where
+instance (IsNode a, Binary a, Show (Key a)) => Binary (Graph a) where
     put x = put (toList x)
-    get = fmap fromList get
+    get = fmap fromDistinctList get
 
 instance (Eq (Key a), Eq a) => Eq (Graph a) where
     g1 == g2 = graphMap g1 == graphMap g2
@@ -368,12 +372,14 @@ fromMap m
     nodeTable   = Array.listArray bounds ns
     bounds = (0, Map.size m - 1)
 
--- | /O(V log V)/. Convert a list of nodes into a graph.
-fromList :: IsNode a => [a] -> Graph a
-fromList ns = fromMap
-            . Map.fromList
-            . map (\n -> n `seq` (nodeKey n, n))
-            $ ns
+-- | /O(V log V)/. Convert a list of nodes (with distinct keys) into a graph.
+fromDistinctList :: (IsNode a, Show (Key a)) => [a] -> Graph a
+fromDistinctList = fromMap
+                 . Map.fromListWith (\_ -> duplicateError)
+                 . map (\n -> n `seq` (nodeKey n, n))
+  where
+    duplicateError n = error $ "Graph.fromDistinctList: duplicate key: "
+                            ++ show (nodeKey n)
 
 -- Map-like operations
 
