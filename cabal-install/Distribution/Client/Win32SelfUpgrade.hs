@@ -42,7 +42,7 @@ module Distribution.Client.Win32SelfUpgrade (
     deleteOldExeFile,
   ) where
 
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 
 import qualified System.Win32 as Win32
 import System.Win32 (DWORD, BOOL, HANDLE, LPCTSTR)
