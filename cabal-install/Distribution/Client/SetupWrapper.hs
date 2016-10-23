@@ -85,7 +85,7 @@ import Distribution.Simple.Utils
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath, withExtraPathEnv
          , existsAndIsMoreRecentThan, moreRecentFile, withEnv
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
          , canonicalizePathNoThrow
 #endif
          )
@@ -462,7 +462,7 @@ externalSetupMethod path verbosity options _ args = do
                                     ++ show logHandle
 
   -- See 'Note: win32 clean hack' above.
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
   if useWin32CleanHack options then doWin32CleanHack path else doInvoke path
 #else
   doInvoke path
@@ -483,7 +483,7 @@ externalSetupMethod path verbosity options _ args = do
       exitCode <- waitForProcess process
       unless (exitCode == ExitSuccess) $ exitWith exitCode
 
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
     doWin32CleanHack path' = do
       info verbosity $ "Using the Win32 clean hack."
       -- Recursively removes the temp dir on exit.
@@ -528,7 +528,7 @@ getExternalSetupMethod verbosity options pkg bt = do
   path' <- tryCanonicalizePath path
 
   -- See 'Note: win32 clean hack' above.
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
   -- setupProgFile may not exist if we're using a cached program
   setupProgFile' <- canonicalizePathNoThrow setupProgFile
   let win32CleanHackNeeded = (useWin32CleanHack options)

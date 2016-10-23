@@ -59,7 +59,7 @@ import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 import qualified Prelude
 import Foreign
 import Foreign.C
@@ -553,14 +553,14 @@ instance Read PathTemplate where
 
 getWindowsProgramFilesDir :: NoCallStackIO FilePath
 getWindowsProgramFilesDir = do
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
   m <- shGetFolderPath csidl_PROGRAM_FILES
 #else
   let m = Nothing
 #endif
   return (fromMaybe "C:\\Program Files" m)
 
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 shGetFolderPath :: CInt -> NoCallStackIO (Maybe FilePath)
 shGetFolderPath n =
   allocaArray long_path_size $ \pPath -> do

@@ -11,7 +11,7 @@ import Distribution.Compat.Prelude
 import Distribution.Compat.Stack
 
 -- The mingw32_HOST_OS CPP macro is GHC-specific
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 import qualified Prelude
 import Control.Exception (onException)
 import Foreign.C.Error (throwErrnoIfMinus1_)
@@ -31,7 +31,7 @@ import qualified System.Posix.IO as Posix
 
 createPipe :: IO (Handle, Handle)
 -- The mingw32_HOST_OS CPP macro is GHC-specific
-#if mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
 createPipe = do
     (readfd, writefd) <- allocaArray 2 $ \ pfds -> do
         throwErrnoIfMinus1_ "_pipe" $ c__pipe pfds 2 ({- _O_BINARY -} 32768)
