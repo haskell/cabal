@@ -316,6 +316,9 @@ exAvSrcPkg ex =
               }
             }
         pkgCheckErrors =
+          -- We ignore these warnings because some unit tests test that the
+          -- solver allows unknown extensions/languages when the compiler
+          -- supports them.
           let ignore = ["Unknown extensions:", "Unknown languages:"]
           in [ err | err <- C.checkPackage (packageDescription package) Nothing
              , not $ any (`isPrefixOf` C.explanation err) ignore ]
