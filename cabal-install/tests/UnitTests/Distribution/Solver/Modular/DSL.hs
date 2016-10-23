@@ -30,11 +30,12 @@ module UnitTests.Distribution.Solver.Modular.DSL (
   , runProgress
   ) where
 
+import Prelude ()
+import Distribution.Client.Compat.Prelude
+
 -- base
 import Data.Either (partitionEithers)
-import Data.Maybe (catMaybes, isNothing)
-import Data.List (elemIndex, isPrefixOf, nub)
-import Data.Monoid
+import Data.List (elemIndex)
 import Data.Ord (comparing)
 import qualified Data.Map as Map
 
@@ -392,7 +393,7 @@ exAvSrcPkg ex =
     -- Convert a tree of BuildInfos into a tree of a specific component type.
     -- 'defaultTopLevel' contains the default values for the component, and
     -- 'mkComponent' creates a component from a 'BuildInfo'.
-    mkCondTree :: forall a. Monoid a =>
+    mkCondTree :: forall a. Semigroup a =>
                   a -> (C.BuildInfo -> a)
                -> DependencyTree C.BuildInfo
                -> DependencyTree a
