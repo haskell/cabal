@@ -258,16 +258,18 @@ arbitraryExDep db@(TestDb pkgs) level =
   let flag = ExFlag <$> arbitraryFlagName
                     <*> arbitraryDeps db
                     <*> arbitraryDeps db
-      other = [
-            ExAny . unPN <$> elements (map getName pkgs)
+      other =
+          -- Package checks require dependencies on "base" to have bounds.
+        let notBase = filter ((/= PN "base") . getName) pkgs
+        in  [ExAny . unPN <$> elements (map getName notBase) | not (null notBase)]
+         ++ [
+              -- existing version
+              let fixed pkg = ExFix (unPN $ getName pkg) (unPV $ getVersion pkg)
+              in fixed <$> elements pkgs
 
-          -- existing version
-          , let fixed pkg = ExFix (unPN $ getName pkg) (unPV $ getVersion pkg)
-            in fixed <$> elements pkgs
-
-          -- random version of an existing package
-          , ExFix . unPN . getName <$> elements pkgs <*> (unPV <$> arbitrary)
-          ]
+              -- random version of an existing package
+            , ExFix . unPN . getName <$> elements pkgs <*> (unPV <$> arbitrary)
+            ]
   in oneof $
       case level of
         NonSetupDep -> flag : other
@@ -332,6 +334,7 @@ instance Arbitrary ExampleDependency where
   arbitrary = error "arbitrary not implemented: ExampleDependency"
 
   shrink (ExAny _) = []
+  shrink (ExFix "base" _) = [] -- preserve bounds on base
   shrink (ExFix pn _) = [ExAny pn]
   shrink (ExFlag flag th el) =
          deps th ++ deps el
