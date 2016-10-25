@@ -271,6 +271,9 @@ extra-source-files:
   tests/PackageTests/Regression/T3294/T3294.cabal
   tests/PackageTests/Regression/T3847/Main.hs
   tests/PackageTests/Regression/T3847/T3847.cabal
+  tests/PackageTests/Regression/T4025/A.hs
+  tests/PackageTests/Regression/T4025/T4025.cabal
+  tests/PackageTests/Regression/T4025/exe/Main.hs
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
   tests/PackageTests/TemplateHaskell/dynamic/TH.hs

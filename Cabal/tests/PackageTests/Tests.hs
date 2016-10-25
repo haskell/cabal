@@ -539,6 +539,19 @@ tests config = do
   -- Test that we pick up include dirs from internal library
   tc "Regression/T2971a" $ cabal_build []
 
+  -- Test that we don't accidentally add the inplace directory to
+  -- an executable RPATH.  Don't test on Windows, which doesn't
+  -- support RPATH.
+  unlessWindows $ do
+    tc "Regression/T4025" $ do
+      cabal "configure" ["--enable-executable-dynamic"]
+      cabal "build" []
+      -- This should fail as it we should NOT be able to find the
+      -- dynamic library for the internal library (since we didn't
+      -- install it).  If we incorrectly encoded our local dist
+      -- dir in the RPATH, this will succeed.
+      shouldFail $ runExe' "exe" []
+
   -- Test error message we report when a non-buildable target is
   -- requested to be built
   -- TODO: We can give a better error message here, see #3858.
