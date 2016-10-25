@@ -1,14 +1,19 @@
 #!/usr/bin/env runhaskell
+{-# LANGUAGE PackageImports #-}
+
+-- NB: Force an installed Cabal package to be used, NOT
+-- some local files which have these names (as would be
+-- the case if we were in the Cabal source directory.)
+import "Cabal" Distribution.PackageDescription
+import "Cabal" Distribution.PackageDescription.Parse (ParseResult (..), parsePackageDescription)
+import "Cabal" Distribution.Verbosity                (silent)
+import qualified "Cabal" Distribution.ModuleName as ModuleName
 
 import Data.List                             (isPrefixOf, isSuffixOf, sort)
-import Distribution.PackageDescription
-import Distribution.PackageDescription.Parse (ParseResult (..), parsePackageDescription)
-import Distribution.Verbosity                (silent)
 import System.Environment                    (getArgs, getProgName)
 import System.FilePath                       (takeExtension, takeFileName)
 import System.Process                        (readProcess)
 
-import qualified Distribution.ModuleName as ModuleName
 import qualified System.IO               as IO
 
 main' :: FilePath -> IO ()
