@@ -46,6 +46,9 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
      sudo: required
      os: linux
+   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
+     os: linux
+     sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
      sudo: required
      os: linux
@@ -89,6 +92,7 @@ before_install:
  - export PATH=$HOME/.local/bin:$PATH
  - export PATH=/opt/cabal/1.24/bin:$PATH
  - export PATH=/opt/happy/1.19.5/bin:$PATH
+ - export PATH=/opt/alex/3.1.7/bin:$PATH
  - ./travis-install.sh
 
  # Set up deployment to the haskell/cabal-website repo.

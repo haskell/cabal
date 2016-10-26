@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -65,7 +66,6 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package
 import Distribution.PackageDescription hiding (Flag)
-import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Program
 import Distribution.Simple.Program.Db
@@ -103,6 +103,13 @@ import Distribution.Compat.Environment      (getEnvironment)
 import Distribution.Compat.GetShortPathName (getShortPathName)
 
 import Data.List       (unionBy, (\\))
+
+#ifdef CABAL_PARSEC
+import Distribution.PackageDescription.Parsec
+import Distribution.PackageDescription.Parse (readHookedBuildInfo)
+#else
+import Distribution.PackageDescription.Parse
+#endif
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -228,7 +235,11 @@ confPkgDescr hooks verbosity mb_path = do
         pdfile <- case mb_path of
                     Nothing -> defaultPackageDesc verbosity
                     Just path -> return path
+#ifdef CABAL_PARSEC
+        descr  <- readGenericPackageDescription verbosity pdfile
+#else
         descr  <- readPackageDescription verbosity pdfile
+#endif
         return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
