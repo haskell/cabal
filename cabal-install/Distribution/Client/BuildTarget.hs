@@ -65,14 +65,16 @@ import Distribution.Simple.Utils
 import Distribution.Client.Utils
          ( makeRelativeToCwd )
 
-import Data.List
-         ( nub, nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
-import Data.Maybe
-         ( listToMaybe, maybeToList )
 import Data.Either
          ( partitionEithers )
 import Data.Function
          ( on )
+import Data.List
+         ( nubBy, stripPrefix, partition, intercalate, sortBy, groupBy )
+import Data.Maybe
+         ( listToMaybe, maybeToList )
+import Data.Ord
+         ( comparing )
 import GHC.Generics (Generic)
 #if MIN_VERSION_containers(0,5,0)
 import qualified Data.Map.Lazy   as Map.Lazy
@@ -83,6 +85,8 @@ import qualified Data.Map as Map.Lazy
 import qualified Data.Map as Map
 import Data.Map (Map)
 #endif
+import qualified Data.Set as Set
+import Control.Arrow ((&&&))
 import Control.Monad
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..), (<$>))
@@ -101,7 +105,8 @@ import System.Directory
          , getCurrentDirectory )
 import System.FilePath
          ( (</>), (<.>), normalise )
-
+import Text.EditDistance
+         ( defaultEditCosts, restrictedDamerauLevenshteinDistance )
 
 -- ------------------------------------------------------------
 -- * User build targets
@@ -201,7 +206,7 @@ data UserBuildTarget =
 --
 data BuildTarget pkg =
 
-     -- | A package as a whole 
+     -- | A package as a whole
      --
      BuildTargetPackage pkg
 
@@ -495,17 +500,39 @@ resolveBuildTarget ppinfo opinfo userTarget =
       | otherwise
       = internalError $ "classifyMatchErrors: " ++ show errs
       where
-        expected = [ (thing, got) 
+        expected = [ (thing, got)
                    | (_, MatchErrorExpected thing got)
                            <- map (innerErr Nothing) errs ]
-        nosuch   = [ (inside, thing, got, alts)
-                   | (inside, MatchErrorNoSuch thing got alts)
-                           <- map (innerErr Nothing) errs ]
+        -- Trim the list of alternatives by dropping duplicates and
+        -- retaining only at most three most similar (by edit distance) ones.
+        nosuch   = Map.foldrWithKey genResults [] $ Map.fromListWith Set.union $
+          [ ((inside, thing, got), Set.fromList alts)
+          | (inside, MatchErrorNoSuch thing got alts)
+            <- map (innerErr Nothing) errs
+          ]
+
+        genResults (inside, thing, got) alts acc = (
+            inside
+          , thing
+          , got
+          , take maxResults
+            $ map fst
+            $ takeWhile distanceLow
+            $ sortBy (comparing snd)
+            $ map addLevDist
+            $ Set.toList alts
+          ) : acc
+          where
+            addLevDist = id &&& restrictedDamerauLevenshteinDistance
+                                defaultEditCosts got
+
+            distanceLow (_, dist) = dist < length got `div` 2
+
+            maxResults = 3
 
         innerErr _ (MatchErrorIn kind thing m)
                      = innerErr (Just (kind,thing)) m
         innerErr c m = (c,m)
-
 
 -- | The various ways that trying to resolve a 'UserBuildTarget' to a
 -- 'BuildTarget' can fail.
@@ -538,7 +565,8 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
     -- So, here's the strategy. We take the original match results, and make a
     -- table of all their renderings at all qualification levels.
     -- Note there can be multiple renderings at each qualification level.
-    matchResultsRenderings :: [(BuildTarget PackageInfo, [UserBuildTargetFileStatus])]
+    matchResultsRenderings :: [(BuildTarget PackageInfo,
+                                [UserBuildTargetFileStatus])]
     matchResultsRenderings =
       [ (matchResult, matchRenderings)
       | matchResult <- matchResults
@@ -582,7 +610,7 @@ disambiguateBuildTargets matcher matchInput exactMatch matchResults =
                   , [ (forgetFileStatus rendering, matches)
                     | rendering <- matchRenderings
                     , let (ExactMatch _ matches) =
-                            memoisedMatches Map.! rendering 
+                            memoisedMatches Map.! rendering
                     ] )
 
       | (originalMatch, matchRenderings) <- matchResultsRenderings ]
@@ -709,11 +737,11 @@ reportBuildTargetProblems problems = do
                                     | (thing, got, _alts) <- nosuch' ] ++ "."
               ++ if null alternatives then "" else
                  "\nPerhaps you meant " ++ intercalate ";\nor "
-                 [ "the " ++ thing ++ " " ++ intercalate " or " alts
+                 [ "the " ++ thing ++ " '" ++ intercalate "' or '" alts ++ "'?"
                  | (thing, alts) <- alternatives ]
             | (inside, nosuch') <- groupByContainer nosuch
             , let alternatives =
-                    [ (thing, take 10 alts) --TODO: select best ones
+                    [ (thing, alts)
                     | (thing,_got,alts@(_:_)) <- nosuch' ]
             ]
           | (target, nosuch) <- targets
@@ -804,7 +832,7 @@ matchBuildTarget2 pinfo str1 fstatus1 str2 =
 matchBuildTarget3 :: [PackageInfo] -> String -> FileStatus -> String -> String
                   -> Match (BuildTarget PackageInfo)
 matchBuildTarget3 pinfo str1 fstatus1 str2 str3 =
-        match3PkgKndCmp pinfo str1 fstatus1 str2 str3 
+        match3PkgKndCmp pinfo str1 fstatus1 str2 str3
    <//> match3PkgCmpMod pinfo str1 fstatus1 str2 str3
    <//> match3PkgCmpFil pinfo str1 fstatus1 str2 str3
    <//> match3KndCmpMod cinfo str1          str2 str3
@@ -1051,7 +1079,7 @@ selectPackageInfo pkg loc = do
     (pkgdir, pkgfile) <-
       case loc of
         --TODO: local tarballs, remote tarballs etc
-        LocalUnpackedPackage dir -> do 
+        LocalUnpackedPackage dir -> do
           dirabs <- canonicalizePath dir
           dirrel <- makeRelativeToCwd dirabs
           --TODO: ought to get this earlier in project reading
@@ -1216,7 +1244,7 @@ matchPackageDir :: [PackageInfo]
                 -> String -> FileStatus -> Match PackageInfo
 matchPackageDir ps = \str fstatus ->
     case fstatus of
-      FileStatusExistsDir canondir -> 
+      FileStatusExistsDir canondir ->
         orNoSuchThing "package directory" str (map (snd . fst) dirs) $
           increaseConfidenceFor $
             fmap snd $ matchExactly (fst . fst) dirs canondir
@@ -1229,7 +1257,7 @@ matchPackageDir ps = \str fstatus ->
 matchPackageFile :: [PackageInfo] -> String -> FileStatus -> Match PackageInfo
 matchPackageFile ps = \str fstatus -> do
     case fstatus of
-      FileStatusExistsFile canonfile -> 
+      FileStatusExistsFile canonfile ->
         orNoSuchThing "package .cabal file" str (map (snd . fst) files) $
           increaseConfidenceFor $
             fmap snd $ matchExactly (fst . fst) files canonfile
@@ -1502,11 +1530,6 @@ nubMatchesBy _  (NoMatch      d msgs) = NoMatch      d msgs
 nubMatchesBy eq (ExactMatch   d xs)   = ExactMatch   d (nubBy eq xs)
 nubMatchesBy eq (InexactMatch d xs)   = InexactMatch d (nubBy eq xs)
 
-nubMatchErrors :: Match a -> Match a
-nubMatchErrors (NoMatch      d msgs) = NoMatch      d (nub msgs)
-nubMatchErrors (ExactMatch   d xs)   = ExactMatch   d xs
-nubMatchErrors (InexactMatch d xs)   = InexactMatch d xs
-
 -- | Lift a list of matches to an exact match.
 --
 exactMatches, inexactMatches :: [a] -> Match a
@@ -1530,15 +1553,14 @@ tryEach = exactMatches
 -- you may have an 'Ambiguous' match with several possibilities.
 --
 findMatch :: Match a -> MaybeAmbiguous a
-findMatch match =
-    case nubMatchErrors match of
-      NoMatch    _ msgs -> None msgs
-      ExactMatch   _ [x] -> Unambiguous x
-      InexactMatch _ [x] -> Unambiguous x
-      ExactMatch   _  [] -> error "findMatch: impossible: ExactMatch []"
-      InexactMatch _  [] -> error "findMatch: impossible: InexactMatch []"
-      ExactMatch   _  xs -> Ambiguous True  xs
-      InexactMatch _  xs -> Ambiguous False xs
+findMatch match = case match of
+  NoMatch    _ msgs  -> None msgs
+  ExactMatch   _ [x] -> Unambiguous x
+  InexactMatch _ [x] -> Unambiguous x
+  ExactMatch   _  [] -> error "findMatch: impossible: ExactMatch []"
+  InexactMatch _  [] -> error "findMatch: impossible: InexactMatch []"
+  ExactMatch   _  xs -> Ambiguous True  xs
+  InexactMatch _  xs -> Ambiguous False xs
 
 data MaybeAmbiguous a = None [MatchError] | Unambiguous a | Ambiguous Bool [a]
   deriving Show
@@ -1639,4 +1661,3 @@ ex_cs =
     pkgid :: PackageIdentifier
     Just pkgid = simpleParse "thelib"
 -}
-
