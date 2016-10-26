@@ -520,6 +520,14 @@ checkFields pkg =
         ++ "different versions of the same compiler use multiple entries, "
         ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
         ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
+
+  , check (not (null buildDependsRangeOnInternalLibrary)) $
+      PackageBuildWarning $
+           "The package has a version range for a dependency on an "
+        ++ "internal library: "
+        ++ commaSep (map display buildDependsRangeOnInternalLibrary)
+        ++ ". This version range has no semantic meaning and can be "
+        ++ "removed."
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
@@ -541,6 +549,17 @@ checkFields pkg =
       [ Dependency (mkPackageName (display compiler)) vr
       | (compiler, vr) <- testedWith pkg
       , isNoVersion vr ]
+
+    internalLibraries =
+        map (maybe (packageName pkg) mkPackageName . libName)
+            (allLibraries pkg)
+    buildDependsRangeOnInternalLibrary =
+      [ dep
+      | bi <- allBuildInfo pkg
+      , dep@(Dependency name versionRange) <- targetBuildDepends bi
+      , not (isAnyVersion versionRange)
+      , name `elem` internalLibraries
+      ]
 
 
 checkLicense :: PackageDescription -> [PackageCheck]

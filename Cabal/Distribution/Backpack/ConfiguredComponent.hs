@@ -126,22 +126,16 @@ toConfiguredComponent pkg_descr this_cid
        lib_deps exe_deps component
   where
     bi = componentBuildInfo component
-    find_it :: PackageName -> VersionRange -> (ComponentId, PackageId)
-    find_it name reqVer =
-        fromMaybe (error ("toConfiguredComponent: " ++ display name)) $
-            lookup_name lib_map <|>
-            lookup_name external_lib_map
-      where
-        lookup_name m =
-            case Map.lookup name m of
-                Just (cid, pkgid)
-                    | packageVersion pkgid `withinRange` reqVer
-                    -> Just (cid, pkgid)
-                _ -> Nothing
+    find_it :: PackageName -> (ComponentId, PackageId)
+    find_it name =
+        fromMaybe (error ("toConfiguredComponent: " ++ display (packageName pkg_descr) ++
+                            " " ++ display name)) $
+            Map.lookup name lib_map <|>
+            Map.lookup name external_lib_map
     lib_deps
         | newPackageDepsBehaviour pkg_descr
-        = [ (name, find_it name reqVer)
-          | Dependency name reqVer <- targetBuildDepends bi ]
+        = [ (name, find_it name)
+          | Dependency name _ <- targetBuildDepends bi ]
         | otherwise
         = Map.toList external_lib_map
     exe_deps = [ cid

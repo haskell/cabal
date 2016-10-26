@@ -817,8 +817,8 @@ dependencySatisfiable
     -> Map PackageName InstalledPackageInfo -- ^ required dependencies
     -> (Dependency -> Bool)
 dependencySatisfiable
-    exact_config pkg_ver installedPackageSet internalPackageSet requiredDepsMap
-    d@(Dependency depName verRange)
+    exact_config _ installedPackageSet internalPackageSet requiredDepsMap
+    d@(Dependency depName _)
       | exact_config =
         -- When we're given '--exact-configuration', we assume that all
         -- dependencies and flags are exactly specified on the command
@@ -838,17 +838,12 @@ dependencySatisfiable
         -- when it actually isn't.
         (depName `Map.member` requiredDepsMap) || isInternalDep
 
-      | isInternalDep
-      , pkg_ver `withinRange` verRange =
-        -- If a 'PackageName' is defined by an internal component,
-        -- and the user didn't specify a version range which is
-        -- incompatible with the package version, the dep is
-        -- satisfiable (and we are going to use the internal
-        -- dependency.)  Note that this doesn't mean we are
-        -- actually going to SUCCEED when we configure the package,
-        -- if UseExternalInternalDeps is True.  NB: if
-        -- the version bound fails we want to fall through to the
-        -- next case.
+      | isInternalDep =
+        -- If a 'PackageName' is defined by an internal component, the
+        -- dep is satisfiable (and we are going to use the internal
+        -- dependency.)  Note that this doesn't mean we are actually
+        -- going to SUCCEED when we configure the package, if
+        -- UseExternalInternalDeps is True.
         True
 
       | otherwise =
@@ -1164,13 +1159,11 @@ selectDependency pkgid internalIndex installedIndex requiredDepsMap
   --
   -- We want "build-depends: MyLibrary" always to match the internal library
   -- even if there is a newer installed library "MyLibrary-0.2".
-  -- However, "build-depends: MyLibrary >= 0.2" should match the installed one.
   case Map.lookup dep_pkgname internalIndex of
-    Just cname | packageVersion pkgid `withinRange` vr
-           -> if use_external_internal_deps
-                then do_external (Just cname)
-                else do_internal
-    _      -> do_external Nothing
+    Just cname -> if use_external_internal_deps
+                    then do_external (Just cname)
+                    else do_internal
+    _          -> do_external Nothing
   where
     do_internal = Right (InternalDependency dep
                     (PackageIdentifier dep_pkgname (packageVersion pkgid)))
