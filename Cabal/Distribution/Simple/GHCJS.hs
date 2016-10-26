@@ -2,7 +2,10 @@
 {-# LANGUAGE RankNTypes #-}
 
 module Distribution.Simple.GHCJS (
-        configure, getInstalledPackages, getPackageDBContents,
+        configure,
+        getInstalledPackages,
+        getInstalledPackagesMonitorFiles,
+        getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
         startInterpreter,
@@ -48,7 +51,7 @@ import Distribution.Text
 import Language.Haskell.Extension
 
 import qualified Data.Map as Map
-import System.Directory         ( doesFileExist )
+import System.Directory         ( doesFileExist, getAppUserDataDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension
                                 , takeDirectory, replaceExtension )
 
@@ -254,6 +257,57 @@ getGlobalPackageDB verbosity ghcjsProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
      getProgramOutput verbosity ghcjsProg ["--print-global-package-db"]
     --TODO: this is available from the "Global Package DB" in compilerProperties
+
+-- | Return the 'FilePath' to the per-user GHC package database.
+getUserPackageDB :: Verbosity -> Compiler -> Platform -> NoCallStackIO FilePath
+getUserPackageDB _verbosity ghcjs platform = do
+    -- It's rather annoying that we have to reconstruct this, because ghc
+    -- hides this information from us otherwise. But for certain use cases
+    -- like change monitoring it really can't remain hidden.
+    appdir <- getAppUserDataDirectory "ghcjs"
+    return (appdir </> ghcjsPlatformAndVersionString platform ghcjs
+                   </> "package.conf.d")
+
+-- | GHCJS's rendering of it's platform and compiler version string as used in
+-- certain file locations (such as user package db location).
+-- For example @86_64-linux-0.2.1-8.0.1@
+--
+ghcjsPlatformAndVersionString :: Platform -> Compiler -> String
+ghcjsPlatformAndVersionString (Platform arch os) comp =
+    intercalate "-" [ Internal.ghcArchString arch, Internal.ghcOsString os
+                    , display ghcjsVersion, display ghcVersion ]
+  where
+    ghcjsVersion                = compilerVersion comp
+    [CompilerId GHC ghcVersion] = compilerCompat comp
+
+getInstalledPackagesMonitorFiles :: Verbosity -> Platform
+                                 -> Compiler
+                                 -> ProgramDb
+                                 -> [PackageDB]
+                                 -> IO [FilePath]
+getInstalledPackagesMonitorFiles verbosity platform comp progdb =
+    traverse getPackageDBPath
+  where
+    getPackageDBPath :: PackageDB -> IO FilePath
+    getPackageDBPath GlobalPackageDB =
+      selectMonitorFile `fmap` getGlobalPackageDB verbosity ghcjsProg
+
+    getPackageDBPath UserPackageDB =
+      selectMonitorFile `fmap` getUserPackageDB verbosity comp platform
+
+    getPackageDBPath (SpecificPackageDB path) = return (selectMonitorFile path)
+
+    -- GHCJS only has new style directory dbs.
+    -- Note that for dir style dbs, we only need to monitor the cache file, not
+    -- the whole directory. The ghcjs program itself only reads the cache file
+    -- so it's safe to only monitor this one file.
+    selectMonitorFile path = path </> "package.cache"
+
+    Just ghcjsProg = lookupProgram ghcjsProgram progdb
+
+
+-- -----------------------------------------------------------------------------
+-- Building
 
 toJSLibName :: String -> String
 toJSLibName lib
