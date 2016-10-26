@@ -334,11 +334,15 @@ getLibDir verbosity lbi =
     dropWhileEndLE isSpace `fmap`
      getDbProgramOutput verbosity ghcProgram
      (withPrograms lbi) ["--print-libdir"]
+    --TODO: this is available directly from the "LibDir" in compilerProperties
+    -- but check the oldest ghc that provides this method
 
 getLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 getLibDir' verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      getProgramOutput verbosity ghcProg ["--print-libdir"]
+    --TODO: this is available directly from the "LibDir" in compilerProperties
+    -- but check the oldest ghc that provides this method
 
 
 -- | Return the 'FilePath' to the global GHC package database.
@@ -346,6 +350,8 @@ getGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      getProgramOutput verbosity ghcProg ["--print-global-package-db"]
+    --TODO: this is available from the "Global Package DB" in compilerProperties
+    -- but check the oldest ghc that provides this method
 
 -- | Return the 'FilePath' to the per-user GHC package database.
 getUserPackageDB :: Verbosity -> ConfiguredProgram -> Platform -> NoCallStackIO FilePath
