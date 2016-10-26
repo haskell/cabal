@@ -737,7 +737,7 @@ reportBuildTargetProblems problems = do
                                     | (thing, got, _alts) <- nosuch' ] ++ "."
               ++ if null alternatives then "" else
                  "\nPerhaps you meant " ++ intercalate ";\nor "
-                 [ "the " ++ thing ++ " " ++ intercalate " or " alts
+                 [ "the " ++ thing ++ " '" ++ intercalate "' or '" alts ++ "'?"
                  | (thing, alts) <- alternatives ]
             | (inside, nosuch') <- groupByContainer nosuch
             , let alternatives =
