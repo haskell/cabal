@@ -67,6 +67,7 @@ import           Distribution.Solver.Types.OptionalStanza
 import           Distribution.Solver.Types.PackageConstraint
 import           Distribution.Solver.Types.PackageIndex (PackageIndex)
 import qualified Distribution.Solver.Types.PackageIndex as PackageIndex
+import           Distribution.Solver.Types.PackagePath
 import           Distribution.Solver.Types.SourcePackage
 
 import qualified Distribution.Client.World as World
@@ -203,8 +204,9 @@ pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
     [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
-    pc = PackageConstraintVersion (packageName pkg)
-         (thisVersion (packageVersion pkg))
+    pc = PackageConstraint (Q (PackagePath DefaultNamespace Unqualified)
+                              (packageName pkg)) $
+         PackagePropertyVersion (thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
 -- * Parsing and checking user targets
@@ -414,6 +416,12 @@ data PackageTarget pkg =
 -- * Converting user targets to package targets
 -- ------------------------------------------------------------
 
+dependencyToConstraints :: Dependency -> [PackageConstraint]
+dependencyToConstraints (Dependency name vrange) =
+  [ PackageConstraint (Q defaultPackagePath name) $
+    PackagePropertyVersion vrange
+  | not (isAnyVersion vrange) ]
+
 -- | Given a user-specified target, expand it to a bunch of package targets
 -- (each of which refers to only one package).
 --
@@ -422,19 +430,17 @@ expandUserTarget :: FilePath
                  -> IO [PackageTarget (PackageLocation ())]
 expandUserTarget worldFile userTarget = case userTarget of
 
-    UserTargetNamed (Dependency name vrange) ->
-      let constraints = [ PackageConstraintVersion name vrange
-                        | not (isAnyVersion vrange) ]
-      in  return [PackageTargetNamedFuzzy name constraints userTarget]
+    UserTargetNamed dep@(Dependency name _) ->
+      return [PackageTargetNamedFuzzy name (dependencyToConstraints dep) userTarget]
 
     UserTargetWorld -> do
       worldPkgs <- World.getContents worldFile
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name constraints userTarget
-             | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
-             , let constraints = [ PackageConstraintVersion name vrange
-                                 | not (isAnyVersion vrange) ]
-                              ++ [ PackageConstraintFlags name flags
+             | World.WorldPkgInfo dep@(Dependency name _) flags <- worldPkgs
+             , let constraints = dependencyToConstraints dep
+                              ++ [ PackageConstraint (Q defaultPackagePath name) $
+                                   PackagePropertyFlags flags
                                  | not (null flags) ] ]
 
     UserTargetLocalDir dir ->
@@ -701,40 +707,75 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
 -- * Package constraints
 -- ------------------------------------------------------------
 
-data UserConstraint =
-     UserConstraintVersion   PackageName VersionRange
-   | UserConstraintInstalled PackageName
-   | UserConstraintSource    PackageName
-   | UserConstraintFlags     PackageName FlagAssignment
-   | UserConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Eq, Show, Generic)
+-- | Restricted version of 'Qualifier' that a user may specify on the command line.
+data UserQualifier =
+  -- | Top-level dependency.
+  UserUnqualified
 
-instance Binary UserConstraint
+  -- | Setup dependency.
+  | UserSetup PackageName
+
+  -- | Executable dependency.
+  | UserExe PackageName PackageName
+
+fromUserQualifier :: UserQualifier -> Qualifier
+fromUserQualifier UserUnqualified = Unqualified
+fromUserQualifier (UserSetup name) = Setup name
+fromUserQualifier (UserExe name1 name2) = Exe name1 name2
+
+-- | A version of 'PackageProperty' that a user may specify on the command
+-- line (currently, it has identical representation to 'PackageProperty').
+newtype UserProperty = UserProperty PackageProperty
+
+-- | Per-package constraints. Package constraints must be respected by the
+-- solver. Multiple constraints for each package can be given, though obviously
+-- it is possible to construct conflicting constraints (eg impossible version
+-- range or inconsistent flag assignment).
+--
+instance Text UserProperty where
+  disp (PackagePropertyVersion   verrange) = disp verrange
+  disp PackagePropertyInstalled            = Disp.text "installed"
+  disp PackagePropertySource               = Disp.text "source"
+  disp (PackagePropertyFlags     flags)    = dispFlagAssignment flags
+  disp (PackagePropertyStanzas   stanzas)  = dispStanzas stanzas
+    where
+      dispStanzas = Disp.hsep . map dispStanza
+      dispStanza TestStanzas  = Disp.text "test"
+      dispStanza BenchStanzas = Disp.text "bench"
+
+  parse =
+    ((parse >>= return . PackagePropertyVersion)
+      +++ (do skipSpaces1
+                _ <- Parse.string "installed"
+                return (PackagePropertyInstalled))
+      +++ (do skipSpaces1
+                _ <- Parse.string "source"
+                return (PackagePropertySource))
+      +++ (do skipSpaces1
+                _ <- Parse.string "test"
+                return (PackagePropertyStanzas [TestStanzas]))
+      +++ (do skipSpaces1
+                _ <- Parse.string "bench"
+                return (PackagePropertyStanzas [BenchStanzas])))
+      <++ (do skipSpaces1
+                flags <- parseFlagAssignment
+                return (PackagePropertyFlags flags))
+
+-- | A restricted version of PackageConstraint that the user can specify on the
+-- command line.
+newtype UserConstraint = UserConstraint UserQualifier PackageName PackageProperty
+  deriving (Eq, Show)
 
 userConstraintPackageName :: UserConstraint -> PackageName
-userConstraintPackageName uc = case uc of
-  UserConstraintVersion   name _ -> name
-  UserConstraintInstalled name   -> name
-  UserConstraintSource    name   -> name
-  UserConstraintFlags     name _ -> name
-  UserConstraintStanzas   name _ -> name
+userConstraintPackageName (UserConstraint _ name _ = name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
--- At the moment, the types happen to be directly equivalent
-userToPackageConstraint uc = case uc of
-  UserConstraintVersion   name ver   -> PackageConstraintVersion    name ver
-  UserConstraintInstalled name       -> PackageConstraintInstalled  name
-  UserConstraintSource    name       -> PackageConstraintSource     name
-  UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
-  UserConstraintStanzas   name stanzas -> PackageConstraintStanzas  name stanzas
+userToPackageConstraint (UserConstraint qual name pp) =
+  PackageConstraint (Q (fromUserQualifier qual) name) pp
 
 renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
-renamePackageConstraint name pc = case pc of
-  PackageConstraintVersion   _ ver   -> PackageConstraintVersion    name ver
-  PackageConstraintInstalled _       -> PackageConstraintInstalled  name
-  PackageConstraintSource    _       -> PackageConstraintSource     name
-  PackageConstraintFlags     _ flags -> PackageConstraintFlags      name flags
-  PackageConstraintStanzas   _ stanzas -> PackageConstraintStanzas   name stanzas
+renamePackageConstraint name (PackageConstraint (Q path _) pp) =
+  PackageConstraint (Q path name) pp
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =

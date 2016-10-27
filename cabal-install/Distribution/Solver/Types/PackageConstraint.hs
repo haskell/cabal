@@ -1,35 +1,54 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.PackageConstraint (
+    PackageProperty(..),
     PackageConstraint(..),
-    showPackageConstraint,
+--    showPackageConstraint,
   ) where
 
 import Distribution.Compat.Binary (Binary(..))
 import Distribution.PackageDescription (FlagAssignment, FlagName(..))
 import Distribution.Package (PackageName)
 import Distribution.Solver.Types.OptionalStanza
-import Distribution.Text (display)
+import Distribution.Solver.Types.PackagePath (Qualified)
+import Distribution.Text (Text(..), display)
 import Distribution.Version (VersionRange, simplifyVersionRange)
 import GHC.Generics (Generic)
 
--- | Per-package constraints. Package constraints must be respected by the
--- solver. Multiple constraints for each package can be given, though obviously
--- it is possible to construct conflicting constraints (eg impossible version
--- range or inconsistent flag assignment).
---
+
+data PackageProperty
+   = PackagePropertyVersion   VersionRange
+   | PackagePropertyInstalled
+   | PackagePropertySource
+   | PackagePropertyFlags     FlagAssignment
+   | PackagePropertyStanzas   [OptionalStanza]
+  deriving (Eq, Show, Generic)
+
+instance Binary PackageProperty
+
 data PackageConstraint
-   = PackageConstraintVersion   PackageName VersionRange
-   | PackageConstraintInstalled PackageName
-   | PackageConstraintSource    PackageName
-   | PackageConstraintFlags     PackageName FlagAssignment
-   | PackageConstraintStanzas   PackageName [OptionalStanza]
+  = PackageConstraint (Qualified PackageName) PackageProperty
   deriving (Eq, Show, Generic)
 
 instance Binary PackageConstraint
 
+dispPackageProperty :: PackageProperty -> Disp.Doc
+  disp (PackagePropertyVersion   verrange) = disp verrange
+  disp PackagePropertyInstalled            = Disp.text "installed"
+  disp PackagePropertySource               = Disp.text "source"
+  disp (PackagePropertyFlags     flags)    = dispFlagAssignment flags
+  disp (PackagePropertyStanzas   stanzas)  = dispStanzas stanzas
+    where
+      dispStanzas = Disp.hsep . map dispStanza
+      dispStanza TestStanzas  = Disp.text "test"
+      dispStanza BenchStanzas = Disp.text "bench"
+
+dispPackageConstraint :: PackageConstraint -> Disp.Doc
+dispPackageConstraint (PackageConstraint (Q path name) pp) =
+
+
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.
---
+
 showPackageConstraint :: PackageConstraint -> String
 showPackageConstraint (PackageConstraintVersion pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)

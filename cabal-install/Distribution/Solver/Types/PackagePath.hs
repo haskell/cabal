@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Distribution.Solver.Types.PackagePath
     ( PackagePath(..)
     , Namespace(..)
@@ -5,15 +6,20 @@ module Distribution.Solver.Types.PackagePath
     , QPN
     , Qualified(..)
     , showQPN
+    , defaultPackagePath
     ) where
 
+import Distribution.Compat.Binary (Binary(..))
 import Distribution.Package
-import Distribution.Text
+import GHC.Generics (Generic)
+import qualified Text.PrettyPrint as Disp
 
 -- | A package path consists of a namespace and a package path inside that
 -- namespace.
 data PackagePath = PackagePath Namespace Qualifier
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary PackagePath
 
 -- | Top-level namespace
 --
@@ -27,7 +33,9 @@ data Namespace =
     --
     -- For now we just number these (rather than giving them more structure).
   | Independent Int
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary Namespace
 
 -- | Qualifier of a package within a namespace (see 'PackagePath')
 data Qualifier =
@@ -59,17 +67,15 @@ data Qualifier =
     -- tracked only @pn2@, that would require us to pick only one
     -- version of an executable over the entire install plan.)
   | Exe PackageName PackageName
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Generic, Ord, Show)
 
--- | String representation of a package path.
---
--- NOTE: The result of 'showPP' is either empty or results in a period, so that
--- it can be prepended to a package name.
-showPP :: PackagePath -> String
-showPP (PackagePath ns q) =
+instance Binary Qualifier
+
+dispPP :: PackagePath -> Disp.Doc
+dispPP (PackagePath ns q) =
     case ns of
       DefaultNamespace -> go q
-      Independent i    -> show i ++ "." ++ go q
+      Independent i    -> Disp.int i <> Disp.char '.' <> go q
   where
     -- Print the qualifier
     --
@@ -78,14 +84,23 @@ showPP (PackagePath ns q) =
     -- So we want to print something like @"A.base"@, where the @"A."@ part
     -- is the qualifier and @"base"@ is the actual dependency (which, for the
     -- 'Base' qualifier, will always be @base@).
-    go Unqualified = ""
-    go (Setup pn)  = display pn ++ "-setup."
-    go (Exe   pn pn2) = display pn ++ "-" ++ display pn2 ++ "-exe."
-    go (Base  pn)  = display pn ++ "."
+    go Unqualified = empty
+    go (Setup pn)  = disp pn <> Disp.text ":setup."
+    go (Exe   pn pn2) = disp pn <> Disp.char ':' <> disp pn2 <> Disp.text ":exe."
+    go (Base  pn)  = display pn <> Disp.char '.'
+
+-- | String representation of a package path.
+--
+-- NOTE: The result of 'showPP' is either empty or results in a period, so that
+-- it can be prepended to a package name.
+showPP :: PackagePath -> String
+showPP = display . dispPP
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Qualified a = Q PackagePath a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary a => Binary (Qualified a)
 
 -- | Standard string representation of a qualified entity.
 showQ :: (a -> String) -> (Qualified a -> String)
@@ -97,3 +112,6 @@ type QPN = Qualified PackageName
 -- | String representation of a qualified package path.
 showQPN :: QPN -> String
 showQPN = showQ display
+
+defaultPackagePath :: PackagePath
+defaultPackagePath = PackagePath DefaultNamespace Unqualified
