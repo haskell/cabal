@@ -411,6 +411,7 @@ library
     Distribution.Compat.Semigroup
     Distribution.Compat.Stack
     Distribution.Compat.Time
+    Distribution.Compat.DList
     Distribution.Compiler
     Distribution.InstalledPackageInfo
     Distribution.License
@@ -540,7 +541,6 @@ library
     Distribution.Utils.UnionFind
     Distribution.Utils.Base62
     Distribution.Compat.CopyFile
-    Distribution.Compat.DList
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
     Distribution.Compat.Prelude
