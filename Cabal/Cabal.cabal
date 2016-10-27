@@ -529,9 +529,6 @@ library
       Distribution.Parsec.Types.Field
       Distribution.Parsec.Types.FieldDescr
       Distribution.Parsec.Types.ParseResult
-      Distribution.Compat.DList
-
-  -- Move DList to other-module if/when D.C.Lens is done
 
   other-modules:
     Distribution.Backpack.PreExistingComponent
@@ -543,6 +540,7 @@ library
     Distribution.Utils.UnionFind
     Distribution.Utils.Base62
     Distribution.Compat.CopyFile
+    Distribution.Compat.DList
     Distribution.Compat.GetShortPathName
     Distribution.Compat.MonadFail
     Distribution.Compat.Prelude
