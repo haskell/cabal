@@ -268,13 +268,23 @@ depLibraryPaths inplace relative lbi clbi = do
           | inplace    = componentBuildDir lbi sub_clbi
           | otherwise  = dynlibdir (absoluteComponentInstallDirs pkgDescr lbi (componentUnitId sub_clbi) NoCopyDest)
 
-    let ipkgs          = allPackages (installedPkgs lbi)
+    -- Why do we go through all the trouble of a hand-crafting
+    -- internalLibs, when 'installedPkgs' actually contains the
+    -- internal libraries?  The trouble is that 'installedPkgs'
+    -- may contain *inplace* entries, which we must NOT use for
+    -- not inplace 'depLibraryPaths' (e.g., for RPATH calculation).
+    -- See #4025 for more details. This is all horrible but it
+    -- is a moot point if you are using a per-component build,
+    -- because you never have any internal libraries in this case;
+    -- they're all external.
+    let external_ipkgs = filter is_external (allPackages (installedPkgs lbi))
+        is_external ipkg = not (installedUnitId ipkg `elem` internalDeps)
         -- First look for dynamic libraries in `dynamic-library-dirs`, and use
         -- `library-dirs` as a fall back.
         getDynDir pkg  = case Installed.libraryDynDirs pkg of
                            [] -> Installed.libraryDirs pkg
                            d  -> d
-        allDepLibDirs  = concatMap getDynDir ipkgs
+        allDepLibDirs  = concatMap getDynDir external_ipkgs
 
         allDepLibDirs' = internalLibs ++ allDepLibDirs
     allDepLibDirsC <- traverse canonicalizePathNoFail allDepLibDirs'
