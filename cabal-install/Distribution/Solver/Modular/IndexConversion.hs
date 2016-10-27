@@ -16,6 +16,7 @@ import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
+import Distribution.Version
 
 import           Distribution.Solver.Types.ComponentDeps (Component(..))
 import           Distribution.Solver.Types.OptionalStanza
@@ -126,7 +127,33 @@ convGPD os arch cinfo strfl sexes pi
     conv :: Mon.Monoid a => Component -> (a -> BuildInfo) ->
             CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
     conv comp getInfo = convCondTree os arch cinfo pi fds comp getInfo ipns sexes .
-                        PDC.addBuildableCondition getInfo
+                        setBuildable comp getInfo
+
+    -- Like 'addBuildableCondition' but if a library is marked as un-buildable,
+    -- that is a hard failure for dependency solving.  This is a hack,
+    -- and the error message you get in this case is not great.
+    setBuildable :: (Monoid a) =>
+                    Component
+                 -> (a -> BuildInfo)
+                 -> CondTree ConfVar [Dependency] a
+                 -> CondTree ConfVar [Dependency] a
+    setBuildable comp getInfo t =
+      case extractCondition (buildable . getInfo) t of
+        Lit True  -> t
+        Lit False | softFail  -> CondNode mempty mempty []
+                  | otherwise -> failTree
+        c         -> CondNode mempty mempty
+                        [(c, t, if softFail
+                                    then Nothing
+                                    else Just failTree)]
+     where
+      softFail = case comp of
+                    ComponentLib      -> False
+                    ComponentSubLib _ -> False
+                    ComponentSetup    -> False
+                    _                 -> True
+      failTree = CondNode mempty [failDep] []
+      failDep  = Dependency (mkPackageName "unbuildable") (anyVersion)
 
     flagged_deps
         = concatMap (\ds -> conv ComponentLib libBuildInfo ds) (maybeToList mlib)
