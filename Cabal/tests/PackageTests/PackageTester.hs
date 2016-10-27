@@ -649,7 +649,7 @@ record res = do
     liftIO $ C.appendFile test_sh
                 (C.pack
                   (case resultDirectory res of
-                    Nothing -> resultCommand res
+                    Nothing -> resultCommand res ++ "\n"
                     Just d -> "(cd " ++ show d ++ " && " ++ resultCommand res ++ ")\n"))
 
 ------------------------------------------------------------------------
