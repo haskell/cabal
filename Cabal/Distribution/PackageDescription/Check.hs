@@ -1259,7 +1259,7 @@ checkCabalVersion pkg =
     depsUsingMajorBoundSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                   , usesMajorBoundSyntax vr ]
 
-    usesBackpackIncludes = any (not . null . backpackIncludes) (allBuildInfo pkg)
+    usesBackpackIncludes = any (not . null . mixins) (allBuildInfo pkg)
 
     testedWithUsingWildcardSyntax =
       [ Dependency (mkPackageName (display compiler)) vr

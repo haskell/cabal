@@ -50,6 +50,9 @@ import           Distribution.Types.SourceRepo
 import           Distribution.Types.TestType                  (TestType (..))
 import           Distribution.Types.ForeignLibType            (ForeignLibType (..))
 import           Distribution.Types.ForeignLibOption          (ForeignLibOption (..))
+import           Distribution.Types.ModuleRenaming
+import           Distribution.Types.IncludeRenaming
+import           Distribution.Types.Mixin
 import           Distribution.Version
                  (Version, VersionRange (..), anyVersion, earlierVersion,
                  intersectVersionRanges, laterVersion, majorBoundVersion,
@@ -276,6 +279,49 @@ instance Parsec ModuleReexport where
             P.spaces
             parsec
         return (ModuleReexport mpkgname origname newname)
+
+instance Parsec ModuleRenaming where
+    -- NB: try not necessary as the first token is obvious
+    parsec = P.choice [ parseRename, parseHiding, return DefaultRenaming ]
+      where
+        parseRename = do
+            rns <- P.between (P.char '(') (P.char ')') parseList
+            P.spaces
+            return (ModuleRenaming rns)
+        parseHiding = do
+            _ <- P.string "hiding"
+            P.spaces
+            hides <- P.between (P.char '(') (P.char ')')
+                        (P.sepBy parsec (P.char ',' >> P.spaces))
+            return (HidingRenaming hides)
+        parseList =
+            P.sepBy parseEntry (P.char ',' >> P.spaces)
+        parseEntry = do
+            orig <- parsec
+            P.spaces
+            P.option (orig, orig) $ do
+                _ <- P.string "as"
+                P.spaces
+                new <- parsec
+                P.spaces
+                return (orig, new)
+
+instance Parsec IncludeRenaming where
+    parsec = do
+        prov_rn <- parsec
+        req_rn <- P.option defaultRenaming $ P.try $ do
+            P.spaces
+            _ <- P.string "requires"
+            P.spaces
+            parsec
+        return (IncludeRenaming prov_rn req_rn)
+
+instance Parsec Mixin where
+    parsec = do
+        mod_name <- parsec
+        P.spaces
+        incl <- parsec
+        return (Mixin mod_name incl)
 
 -------------------------------------------------------------------------------
 -- Utilities
