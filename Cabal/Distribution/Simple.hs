@@ -236,6 +236,7 @@ confPkgDescr hooks verbosity mb_path = do
                     Nothing -> defaultPackageDesc verbosity
                     Just path -> return path
 #ifdef CABAL_PARSEC
+        info verbosity "Using Parsec parser"
         descr  <- readGenericPackageDescription verbosity pdfile
 #else
         descr  <- readPackageDescription verbosity pdfile
