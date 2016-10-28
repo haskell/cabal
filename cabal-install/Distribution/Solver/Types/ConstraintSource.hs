@@ -45,6 +45,9 @@ data ConstraintSource =
 
   -- | The source of the constraint is not specified.
   | ConstraintSourceUnknown
+
+  -- | Custom setup requires a minimum lower bound on Cabal
+  | ConstraintNewBuildCustomSetupLowerBoundCabal
   deriving (Eq, Show, Generic)
 
 instance Binary ConstraintSource
@@ -68,3 +71,4 @@ showConstraintSource ConstraintSourceFreeze = "cabal freeze"
 showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"
 showConstraintSource ConstraintSourceUnknown = "unknown source"
+showConstraintSource ConstraintNewBuildCustomSetupLowerBoundCabal = "new-build's support of Custom Setup (issue #3932)"
