@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE BangPatterns #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -51,6 +52,7 @@ module Distribution.Utils.Generic (
         listUnion,
         listUnionRight,
         ordNub,
+        ordNubBy,
         ordNubRight,
         safeTail,
         unintersperse,
@@ -305,15 +307,24 @@ takeWhileEndLE p = fst . foldr go ([], False)
       | not done && p x = (x:rest, False)
       | otherwise = (rest, True)
 
--- | Like "Data.List.nub", but has @O(n log n)@ complexity instead of
+-- | Like 'Data.List.nub', but has @O(n log n)@ complexity instead of
 -- @O(n^2)@. Code for 'ordNub' and 'listUnion' taken from Niklas Hambüchen's
 -- <http://github.com/nh2/haskell-ordnub ordnub> package.
-ordNub :: (Ord a) => [a] -> [a]
-ordNub l = go Set.empty l
+ordNub :: Ord a => [a] -> [a]
+ordNub = ordNubBy id
+
+-- | Like 'ordNub' and 'Data.List.nubBy'. Selects a key for each element and
+-- takes the nub based on that key.
+ordNubBy :: Ord b => (a -> b) -> [a] -> [a]
+ordNubBy f l = go Set.empty l
   where
-    go _ [] = []
-    go s (x:xs) = if x `Set.member` s then go s xs
-                                      else x : go (Set.insert x s) xs
+    go !_ [] = []
+    go !s (x:xs)
+      | y `Set.member` s = go s xs
+      | otherwise        = let !s' = Set.insert y s
+                            in x : go s' xs
+      where
+        y = f x
 
 -- | Like "Data.List.union", but has @O(n log n)@ complexity instead of
 -- @O(n^2)@.
