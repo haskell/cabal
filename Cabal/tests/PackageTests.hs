@@ -177,7 +177,7 @@ main = do
     -- as, unlike in the case of the GHC used to build Cabal, we don't
     -- expect htere to be a Cabal available.
     with_ghc_db_stack_env :: Maybe String
-        <- lookupEnv "CABAL_PACKAGETESTS_WITH_GHC_DB_STACK"
+        <- lookupEnv "CABAL_PACKAGETESTS_WITH_DB_STACK"
     let withGhcDBStack0 :: PackageDBStack
         withGhcDBStack0 =
               interpretPackageDbFlags True
