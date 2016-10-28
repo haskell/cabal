@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE BangPatterns #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -144,6 +145,7 @@ module Distribution.Simple.Utils (
         listUnion,
         listUnionRight,
         ordNub,
+        ordNubBy,
         ordNubRight,
         safeTail,
         unintersperse,
