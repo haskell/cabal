@@ -17,7 +17,7 @@ module Distribution.Types.BuildInfo (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Types.IncludeRenaming
+import Distribution.Types.Mixin
 
 import Distribution.Package
 import Distribution.ModuleName
@@ -59,7 +59,7 @@ data BuildInfo = BuildInfo {
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
         targetBuildDepends :: [Dependency], -- ^ Dependencies specific to a library or executable target
-        backpackIncludes :: [(PackageName, IncludeRenaming)]
+        mixins :: [Mixin]
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -96,7 +96,7 @@ instance Monoid BuildInfo where
     sharedOptions       = [],
     customFieldsBI      = [],
     targetBuildDepends  = [],
-    backpackIncludes    = []
+    mixins    = []
   }
   mappend = (<>)
 
@@ -131,7 +131,7 @@ instance Semigroup BuildInfo where
     sharedOptions       = combine    sharedOptions,
     customFieldsBI      = combine    customFieldsBI,
     targetBuildDepends  = combineNub targetBuildDepends,
-    backpackIncludes    = combine backpackIncludes
+    mixins    = combine mixins
   }
     where
       combine    field = field a `mappend` field b

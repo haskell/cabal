@@ -19,6 +19,7 @@ import Distribution.Compat.Prelude hiding ((<>))
 import Distribution.Backpack.Id
 
 import Distribution.Types.IncludeRenaming
+import Distribution.Types.Mixin
 import Distribution.Package
 import Distribution.PackageDescription as PD hiding (Flag)
 import Distribution.Simple.Setup as Setup
@@ -89,7 +90,7 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
     -- from @lib_deps@.
     explicit_includes
         = [ (cid, pid { pkgName = name }, rns)
-        | (name, rns) <- backpackIncludes bi
+        | Mixin name rns <- mixins bi
         , Just (cid, pid) <- [Map.lookup name deps_map] ]
 
     -- Any @build-depends@ which is not explicitly mentioned in

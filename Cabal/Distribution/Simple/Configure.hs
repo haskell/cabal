@@ -84,6 +84,7 @@ import Distribution.Types.ComponentRequestedSpec
 import Distribution.Types.ForeignLib
 import Distribution.Types.ForeignLibType
 import Distribution.Types.ForeignLibOption
+import Distribution.Types.Mixin
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
@@ -951,7 +952,7 @@ configureFinalizedPackage verbosity cfg enabled
 checkCompilerProblems :: Compiler -> PackageDescription -> ComponentRequestedSpec -> IO ()
 checkCompilerProblems comp pkg_descr enabled = do
     unless (renamingPackageFlagsSupported comp ||
-                all (all (isDefaultIncludeRenaming . snd) . backpackIncludes)
+                all (all (isDefaultIncludeRenaming . mixinIncludeRenaming) . mixins)
                          (enabledBuildInfos pkg_descr enabled)) $
         die $ "Your compiler does not support thinning and renaming on "
            ++ "package flags.  To use this feature you must use "
