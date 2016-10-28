@@ -9,10 +9,6 @@ module Distribution.Solver.Modular
 -- and finally, we have to convert back the resulting install
 -- plan.
 
-import Data.Function
-         ( on )
-import Data.List
-         ( nubBy )
 import Data.Map as M
          ( fromListWith )
 import Distribution.Compat.Graph
@@ -34,6 +30,9 @@ import Distribution.Solver.Types.PackageConstraint
 import Distribution.Solver.Types.DependencyResolver
 import Distribution.System
          ( Platform(..) )
+import Distribution.Simple.Utils
+         ( ordNubBy )
+
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
@@ -53,8 +52,7 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pkgConfigDB pprefs pcs pns
       -- Results have to be converted into an install plan. 'convCP' removes
       -- package qualifiers, which means that linked packages become duplicates
       -- and can be removed.
-      -- TODO: Use ordNubBy instead of nubBy.
-      postprocess a rdm = nubBy ((==) `on` nodeKey) $
+      postprocess a rdm = ordNubBy nodeKey $
                           map (convCP iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.
