@@ -46,7 +46,7 @@ matrix:
    - env: GHCVER=8.0.1 SCRIPT=solver-debug-flags
      sudo: required
      os: linux
-   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES
+   - env: GHCVER=8.0.1 SCRIPT=script PARSEC=YES TEST_OTHER_VERSIONS=YES
      os: linux
      sudo: required
    - env: GHCVER=8.0.1 SCRIPT=bootstrap
