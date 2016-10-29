@@ -75,11 +75,12 @@ fi
 
 # Redo the package tests with different versions of GHC
 if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.0.4/bin/ghc"; \
+    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
         cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.2.2/bin/ghc"; \
+    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
         cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/head/bin/ghc"; \
+    GHC_HEAD_VER=$(ghc-head --version 8 | cut -d' ' -f 8)
+    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
         cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
 fi
 

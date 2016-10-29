@@ -182,11 +182,9 @@ libFieldDescrs =
     , commaListFieldWithSep vcat "reexported-modules" disp parsec
         reexportedModules (\mods lib -> lib{reexportedModules=mods})
 
-{-
-  , listFieldWithSep vcat "required-signatures" disp parseModuleNameQ
-      requiredSignatures (\mods lib -> lib{requiredSignatures=mods})
+  , listFieldWithSep vcat "signatures" disp (parsecMaybeQuoted parsec)
+      signatures (\mods lib -> lib{signatures=mods})
 
--}
     , boolField "exposed"
         libExposed     (\val lib -> lib{libExposed=val})
     ] ++ map biToLib binfoFieldDescrs
@@ -422,6 +420,9 @@ binfoFieldDescrs =
  , commaListFieldWithSep vcat "build-depends"
        disp               parsec
        targetBuildDepends (\xs binfo -> binfo{targetBuildDepends=xs})
+ , commaListFieldWithSep vcat "mixins"
+       disp               parsec
+       mixins (\xs binfo -> binfo{mixins=xs})
  , spaceListField "cpp-options"
            showToken          parsecToken'
            cppOptions          (\val binfo -> binfo{cppOptions=val})

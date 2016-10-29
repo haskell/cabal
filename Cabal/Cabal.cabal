@@ -496,6 +496,7 @@ library
     Distribution.Types.ModuleReexport
     Distribution.Types.ModuleRenaming
     Distribution.Types.IncludeRenaming
+    Distribution.Types.Mixin
     Distribution.Types.SetupBuildInfo
     Distribution.Types.TestSuite
     Distribution.Types.TestSuiteInterface
