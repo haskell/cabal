@@ -18,6 +18,7 @@
 
 module Distribution.Package (
         -- * Package ids
+        UnqualComponentName, unUnqualComponentName, mkUnqualComponentName,
         PackageName, unPackageName, mkPackageName,
         PackageIdentifier(..),
         PackageId,
@@ -70,6 +71,44 @@ import Distribution.ModuleName
 
 import Text.PrettyPrint ((<+>), text)
 
+-- | A Component name, or other similarly-parsed identifier.
+--
+newtype UnqualComponentName = UnqualComponentName ShortText
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data,
+              Semigroup, Monoid) -- TODO: bad enabler of bad monoids
+
+-- | Convert 'UnqualComponentName' to 'String'
+unUnqualComponentName :: UnqualComponentName -> String
+unUnqualComponentName (UnqualComponentName s) = fromShortText s
+
+-- | Construct a 'UnqualComponentName' from a 'String'
+--
+-- 'mkUnqualComponentName' is the inverse to 'unUnqualComponentName'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'UnqualComponentName' is valid
+--
+-- @since 2.0
+mkUnqualComponentName :: String -> UnqualComponentName
+mkUnqualComponentName = UnqualComponentName . toShortText
+
+instance Binary UnqualComponentName
+
+instance Text UnqualComponentName where
+  disp = Disp.text . unUnqualComponentName
+  parse = do
+    ns <- Parse.sepBy1 component (Parse.char '-')
+    return (mkUnqualComponentName (intercalate "-" ns))
+    where
+      component = do
+        cs <- Parse.munch1 isAlphaNum
+        if all isDigit cs then Parse.pfail else return cs
+        -- each component must contain an alphabetic character, to avoid
+        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
+instance NFData UnqualComponentName where
+    rnf (UnqualComponentName pkg) = rnf pkg
+
 -- | A package name.
 --
 -- Use 'mkPackageName' and 'unPackageName' to convert from/to a
@@ -78,12 +117,13 @@ import Text.PrettyPrint ((<+>), text)
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0
-newtype PackageName = PackageName ShortText
-    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+newtype PackageName = PackageName UnqualComponentName
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data,
+              Binary, Text, NFData)
 
 -- | Convert 'PackageName' to 'String'
 unPackageName :: PackageName -> String
-unPackageName (PackageName s) = fromShortText s
+unPackageName (PackageName n) = unUnqualComponentName n
 
 -- | Construct a 'PackageName' from a 'String'
 --
@@ -94,24 +134,7 @@ unPackageName (PackageName s) = fromShortText s
 --
 -- @since 2.0
 mkPackageName :: String -> PackageName
-mkPackageName = PackageName . toShortText
-
-instance Binary PackageName
-
-instance Text PackageName where
-  disp = Disp.text . unPackageName
-  parse = do
-    ns <- Parse.sepBy1 component (Parse.char '-')
-    return (mkPackageName (intercalate "-" ns))
-    where
-      component = do
-        cs <- Parse.munch1 isAlphaNum
-        if all isDigit cs then Parse.pfail else return cs
-        -- each component must contain an alphabetic character, to avoid
-        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
-
-instance NFData PackageName where
-    rnf (PackageName pkg) = rnf pkg
+mkPackageName = PackageName . mkUnqualComponentName
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
@@ -296,7 +319,7 @@ data Dependency = Dependency PackageName VersionRange
 --
 data ExeDependency = ExeDependency
                      PackageName
-                     String -- ^ name of executable component of package
+                     UnqualComponentName -- ^ name of executable component of package
                      VersionRange
                      deriving (Generic, Read, Show, Eq, Typeable, Data)
 
@@ -315,11 +338,11 @@ instance Text Dependency where
 
 instance Text ExeDependency where
   disp (ExeDependency name exe ver) =
-    (disp name <<>> Disp.text ":" <<>> Disp.text exe) <+> disp ver
+    (disp name <<>> Disp.text ":" <<>> disp exe) <+> disp ver
 
   parse = do name <- parse
              _ <- Parse.char ':'
-             exe <- Parse.munch1 isAlphaNum
+             exe <- parse
              Parse.skipSpaces
              ver <- parse <++ return anyVersion
              Parse.skipSpaces

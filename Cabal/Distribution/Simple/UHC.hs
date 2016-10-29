@@ -202,7 +202,7 @@ buildExe verbosity _pkg_descr lbi exe clbi = do
                                        lbi (buildInfo exe) clbi
                                        (buildDir lbi) verbosity
                    -- output file
-                ++ ["--output", buildDir lbi </> exeName exe]
+                ++ ["--output", buildDir lbi </> display (exeName exe)]
                    -- main source module
                 ++ [modulePath exe]
   runUhcProg uhcArgs

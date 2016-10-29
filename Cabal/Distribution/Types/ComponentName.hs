@@ -20,10 +20,10 @@ import Text.PrettyPrint as Disp
 
 -- Libraries live in a separate namespace, so must distinguish
 data ComponentName = CLibName
-                   | CSubLibName String
-                   | CExeName   String
-                   | CTestName  String
-                   | CBenchName String
+                   | CSubLibName UnqualComponentName
+                   | CExeName    UnqualComponentName
+                   | CTestName   UnqualComponentName
+                   | CBenchName  UnqualComponentName
                    deriving (Eq, Generic, Ord, Read, Show)
 
 instance Binary ComponentName
@@ -31,10 +31,10 @@ instance Binary ComponentName
 -- Build-target-ish syntax
 instance Text ComponentName where
     disp CLibName = Disp.text "lib"
-    disp (CSubLibName str) = Disp.text ("lib:" ++ str)
-    disp (CExeName str) = Disp.text ("exe:" ++ str)
-    disp (CTestName str) = Disp.text ("test:" ++ str)
-    disp (CBenchName str) = Disp.text ("bench:" ++ str)
+    disp (CSubLibName str) = Disp.text "lib:" <<>> disp str
+    disp (CExeName str) = Disp.text "exe:" <<>> disp str
+    disp (CTestName str) = Disp.text "test:" <<>> disp str
+    disp (CBenchName str) = Disp.text "bench:" <<>> disp str
 
     parse = parseComposite <++ parseSingle
      where
@@ -44,26 +44,23 @@ instance Text ComponentName where
                              , Parse.string "exe:" >> return CExeName
                              , Parse.string "bench:" >> return CBenchName
                              , Parse.string "test:" >> return CTestName ]
-        -- For now, component names coincide with package name syntax
-        -- (since they can show up in build-depends, which are parsed
-        -- as package names.)
-        fmap (ctor . unPackageName) parse
+        ctor <$> parse
 
 defaultLibName :: ComponentName
 defaultLibName = CLibName
 
 showComponentName :: ComponentName -> String
 showComponentName CLibName          = "library"
-showComponentName (CSubLibName name) = "library '" ++ name ++ "'"
-showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
-showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
-showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
+showComponentName (CSubLibName name) = "library '" ++ unUnqualComponentName name ++ "'"
+showComponentName (CExeName   name) = "executable '" ++ unUnqualComponentName name ++ "'"
+showComponentName (CTestName  name) = "test suite '" ++ unUnqualComponentName name ++ "'"
+showComponentName (CBenchName name) = "benchmark '" ++ unUnqualComponentName name ++ "'"
 
--- | This gets the 'String' component name. In fact, it is
+-- | This gets the underlying unqualified component name. In fact, it is
 -- guaranteed to uniquely identify a component, returning
 -- @Nothing@ if the 'ComponentName' was for the public
 -- library.
-componentNameString :: ComponentName -> Maybe String
+componentNameString :: ComponentName -> Maybe UnqualComponentName
 componentNameString CLibName = Nothing
 componentNameString (CSubLibName n) = Just n
 componentNameString (CExeName   n) = Just n

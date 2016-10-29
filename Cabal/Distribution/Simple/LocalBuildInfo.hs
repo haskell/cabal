@@ -111,11 +111,11 @@ componentBuildDir lbi clbi
                     else display (componentUnitId clbi)
             CSubLibName s ->
                 if display (componentUnitId clbi) == display (componentComponentId clbi)
-                    then s
+                    then unUnqualComponentName s
                     else display (componentUnitId clbi)
-            CExeName s   -> s
-            CTestName s  -> s
-            CBenchName s -> s
+            CExeName s   -> unUnqualComponentName s
+            CTestName s  -> unUnqualComponentName s
+            CBenchName s -> unUnqualComponentName s
 
 {-# DEPRECATED getComponentLocalBuildInfo "This function is not well-defined, because a 'ComponentName' does not uniquely identify a 'ComponentLocalBuildInfo'.  If you have a 'TargetInfo', you should use 'targetCLBI' to get the 'ComponentLocalBuildInfo'.  Otherwise, use 'componentNameTargets' to get all possible 'ComponentLocalBuildInfo's.  This will be removed in Cabal 2.2." #-}
 getComponentLocalBuildInfo :: LocalBuildInfo -> ComponentName -> ComponentLocalBuildInfo

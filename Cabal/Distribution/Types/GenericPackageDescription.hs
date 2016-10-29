@@ -41,10 +41,10 @@ data GenericPackageDescription =
         packageDescription :: PackageDescription,
         genPackageFlags    :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
-        condSubLibraries   :: [(String, CondTree ConfVar [Dependency] Library)],
-        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
-        condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
-        condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
+        condSubLibraries   :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)],
+        condExecutables    :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)],
+        condTestSuites     :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)],
+        condBenchmarks     :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)]
       }
     deriving (Show, Eq, Typeable, Data, Generic)
 

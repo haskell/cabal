@@ -450,8 +450,8 @@ constrainBy left extra =
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged ->
         (Maybe Library
-        , [(String, Library)], [(String, Executable)], [(String, TestSuite)]
-        , [(String, Benchmark)])
+        , [(UnqualComponentName, Library)], [(UnqualComponentName, Executable)]
+        , [(UnqualComponentName, TestSuite)], [(UnqualComponentName, Benchmark)])
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], []) targets
   where
     untag (_, Lib _) (Just _, _, _, _, _) = userBug "Only one library expected"
@@ -463,7 +463,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
             }
     untag (deps, SubLib n l) (mb_lib, libs, exes, tests, bms)
         | any ((== n) . fst) libs =
-          userBug $ "There exist several libs with the same name: '" ++ n ++ "'"
+          userBug $ "There exist several libs with the same name: '" ++ unUnqualComponentName n ++ "'"
         -- NB: libraries live in a different namespace than everything else
         -- TODO: no, (new-style) TESTS live in same namespace!!
         | otherwise = (mb_lib, (n, l'):libs, exes, tests, bms)
@@ -473,11 +473,11 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
             }
     untag (deps, Exe n e) (mb_lib, libs, exes, tests, bms)
         | any ((== n) . fst) exes =
-          userBug $ "There exist several exes with the same name: '" ++ n ++ "'"
+          userBug $ "There exist several exes with the same name: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) tests =
-          userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
+          userBug $ "There exists a test with the same name as an exe: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) bms =
-          userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
+          userBug $ "There exists a benchmark with the same name as an exe: '" ++ unUnqualComponentName n ++ "'"
         | otherwise = (mb_lib, libs, (n, e'):exes, tests, bms)
       where
         e' = e {
@@ -485,11 +485,11 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
             }
     untag (deps, Test n t) (mb_lib, libs, exes, tests, bms)
         | any ((== n) . fst) tests =
-          userBug $ "There exist several tests with the same name: '" ++ n ++ "'"
+          userBug $ "There exist several tests with the same name: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) exes =
-          userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
+          userBug $ "There exists an exe with the same name as the test: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) bms =
-          userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
+          userBug $ "There exists a benchmark with the same name as the test: '" ++ unUnqualComponentName n ++ "'"
         | otherwise = (mb_lib, libs, exes, (n, t'):tests, bms)
       where
         t' = t {
@@ -498,11 +498,11 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
             }
     untag (deps, Bench n b) (mb_lib, libs, exes, tests, bms)
         | any ((== n) . fst) bms =
-          userBug $ "There exist several benchmarks with the same name: '" ++ n ++ "'"
+          userBug $ "There exist several benchmarks with the same name: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) exes =
-          userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
+          userBug $ "There exists an exe with the same name as the benchmark: '" ++ unUnqualComponentName n ++ "'"
         | any ((== n) . fst) tests =
-          userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
+          userBug $ "There exists a test with the same name as the benchmark: '" ++ unUnqualComponentName n ++ "'"
         | otherwise = (mb_lib, libs, exes, tests, (n, b'):bms)
       where
         b' = b {
@@ -520,10 +520,10 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
 --      data PDTagged = PDComp Component
 --                    | PDNull
 data PDTagged = Lib Library
-              | SubLib String Library
-              | Exe String Executable
-              | Test String TestSuite
-              | Bench String Benchmark
+              | SubLib UnqualComponentName Library
+              | Exe UnqualComponentName Executable
+              | Test UnqualComponentName TestSuite
+              | Bench UnqualComponentName Benchmark
               | PDNull
               deriving Show
 

@@ -13,9 +13,10 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.BuildInfo
 import Distribution.ModuleName
+import Distribution.Package
 
 data Executable = Executable {
-        exeName    :: String,
+        exeName    :: UnqualComponentName,
         modulePath :: FilePath,
         buildInfo  :: BuildInfo
     }
@@ -34,10 +35,10 @@ instance Semigroup Executable where
     buildInfo  = combine buildInfo
   }
     where combine field = field a `mappend` field b
-          combine' field = case (field a, field b) of
-                      ("","") -> ""
-                      ("", x) -> x
-                      (x, "") -> x
+          combine' field = case ( unUnqualComponentName $ field a
+                                , unUnqualComponentName $ field b) of
+                      ("", _) -> field b
+                      (_, "") -> field a
                       (x, y) -> error $ "Ambiguous values for executable field: '"
                                   ++ x ++ "' and '" ++ y ++ "'"
 

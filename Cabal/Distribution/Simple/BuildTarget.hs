@@ -473,10 +473,10 @@ pkgComponentInfo pkg =
 
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
 componentStringName pkg CLibName          = display (packageName pkg)
-componentStringName _   (CSubLibName name) = name
-componentStringName _   (CExeName   name) = name
-componentStringName _   (CTestName  name) = name
-componentStringName _   (CBenchName name) = name
+componentStringName _   (CSubLibName name) = display name
+componentStringName _   (CExeName   name) = display name
+componentStringName _   (CTestName  name) = display name
+componentStringName _   (CBenchName name) = display name
 
 componentModules :: Component -> [ModuleName]
 -- TODO: Use of 'explicitLibModules' here is a bit wrong:
