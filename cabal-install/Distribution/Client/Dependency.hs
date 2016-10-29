@@ -56,6 +56,7 @@ module Distribution.Client.Dependency (
     removeLowerBounds,
     removeUpperBounds,
     addDefaultSetupDependencies,
+    addSetupCabalMinVersionConstraint,
   ) where
 
 import Distribution.Solver.Modular
@@ -84,9 +85,9 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
-         ( mkVersion, VersionRange, anyVersion, thisVersion, orLaterVersion
-         , withinRange, simplifyVersionRange
-         , removeLowerBound, removeUpperBound )
+         ( Version, mkVersion
+         , VersionRange, anyVersion, thisVersion, orLaterVersion, withinRange
+         , simplifyVersionRange, removeLowerBound, removeUpperBound )
 import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.System
@@ -465,6 +466,22 @@ addDefaultSetupDependencies defaultSetupDeps params =
       where
         gpkgdesc = packageDescription srcpkg
         pkgdesc  = PD.packageDescription gpkgdesc
+
+-- | There If a package has a custom setup then we need to add a setup-depends
+-- on Cabal. For now it's easier to add this unconditionally.  Once
+-- qualified constraints land we can turn this into a custom setup
+-- only constraint.
+--
+addSetupCabalMinVersionConstraint :: Version
+                                  -> DepResolverParams -> DepResolverParams
+addSetupCabalMinVersionConstraint minVersion =
+    addConstraints
+      [ LabeledPackageConstraint
+          (PackageConstraintVersion cabalPkgname (orLaterVersion minVersion))
+          ConstraintSetupCabalMinVersion
+      ]
+  where
+    cabalPkgname = mkPackageName "Cabal"
 
 
 upgradeDependencies :: DepResolverParams -> DepResolverParams

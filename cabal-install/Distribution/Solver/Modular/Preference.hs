@@ -156,6 +156,9 @@ processPackageConstraintP pp _ _ (LabeledPackageConstraint _ src) r
   | src == ConstraintSourceUserTarget && not (primaryPP pp)         = r
     -- the constraints arising from targets, like "foo-1.0" only apply to
     -- the main packages in the solution, they don't constrain setup deps
+  | src == ConstraintSetupCabalMinVersion && not (setupPP pp)       = r
+    -- the internal constraints on the Setup.hs CLI version don't apply to
+    -- the main packages in the solution, they only constrain setup deps
 
 processPackageConstraintP _ c i (LabeledPackageConstraint pc src) r = go i pc
   where
