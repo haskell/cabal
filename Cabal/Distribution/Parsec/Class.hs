@@ -34,7 +34,7 @@ import           Distribution.License                         (License (..))
 import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.Package
-                 (Dependency (..), PackageName, mkPackageName)
+                 (Dependency (..), ExeDependency (..), PackageName, mkPackageName)
 import           Distribution.System
                  (Arch (..), ClassificationStrictness (..), OS (..),
                  classifyArch, classifyOS)
@@ -114,6 +114,14 @@ instance Parsec Dependency where
         name <- lexemeParsec
         ver  <- parsec <|> pure anyVersion
         return (Dependency name ver)
+
+instance Parsec ExeDependency where
+    parsec = do
+        name <- lexemeParsec
+        _    <- P.char ':'
+        exe  <- P.munch1 isAlphaNum
+        ver  <- parsec <|> pure anyVersion
+        return (ExeDependency name exe ver)
 
 instance Parsec Version where
     parsec = mkVersion <$>

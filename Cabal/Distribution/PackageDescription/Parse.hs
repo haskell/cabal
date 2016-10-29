@@ -532,8 +532,11 @@ sourceRepoFieldDescrs =
 setupBInfoFieldDescrs :: [FieldDescr SetupBuildInfo]
 setupBInfoFieldDescrs =
     [ commaListFieldWithSep vcat "setup-depends"
-        disp         parse
-        setupDepends (\xs binfo -> binfo{setupDepends=xs})
+        disp                parse
+        setupDepends (\xs sbinfo  -> sbinfo { setupDepends = xs })
+    , simpleField "setup-tool"
+        (maybe mempty disp) (fmap Just parse)
+        setupTool    (\val sbinfo -> sbinfo { setupTool = val })
     ]
 
 -- ---------------------------------------------------------------
