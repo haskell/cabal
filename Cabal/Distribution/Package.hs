@@ -41,6 +41,7 @@ module Distribution.Package (
 
         -- * Package source dependencies
         Dependency(..),
+        ExeDependency(..),
         thisPackageVersion,
         notThisPackageVersion,
         simplifyDependency,
@@ -291,7 +292,16 @@ mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 data Dependency = Dependency PackageName VersionRange
                   deriving (Generic, Read, Show, Eq, Typeable, Data)
 
+-- | Describes a dependency on an executable from a package
+--
+data ExeDependency = ExeDependency
+                     PackageName
+                     String -- ^ name of executable component of package
+                     VersionRange
+                     deriving (Generic, Read, Show, Eq, Typeable, Data)
+
 instance Binary Dependency
+instance Binary ExeDependency
 
 instance Text Dependency where
   disp (Dependency name ver) =
@@ -303,7 +313,20 @@ instance Text Dependency where
              Parse.skipSpaces
              return (Dependency name ver)
 
+instance Text ExeDependency where
+  disp (ExeDependency name exe ver) =
+    (disp name <<>> Disp.text ":" <<>> Disp.text exe) <+> disp ver
+
+  parse = do name <- parse
+             _ <- Parse.char ':'
+             exe <- Parse.munch1 isAlphaNum
+             Parse.skipSpaces
+             ver <- parse <++ return anyVersion
+             Parse.skipSpaces
+             return (ExeDependency name exe ver)
+
 instance NFData Dependency where rnf = genericRnf
+instance NFData ExeDependency where rnf = genericRnf
 
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =

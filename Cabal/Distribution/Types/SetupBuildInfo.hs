@@ -19,6 +19,7 @@ import Distribution.Package
 
 data SetupBuildInfo = SetupBuildInfo {
         setupDepends        :: [Dependency],
+        setupTool           :: Maybe ExeDependency,
         defaultSetupDepends :: Bool
         -- ^ Is this a default 'custom-setup' section added by the cabal-install
         -- code (as opposed to user-provided)? This field is only used
@@ -30,9 +31,16 @@ data SetupBuildInfo = SetupBuildInfo {
 instance Binary SetupBuildInfo
 
 instance Monoid SetupBuildInfo where
-  mempty  = SetupBuildInfo [] False
+  mempty  = SetupBuildInfo [] Nothing False
   mappend = (<>)
 
 instance Semigroup SetupBuildInfo where
-  a <> b = SetupBuildInfo (setupDepends a <> setupDepends b)
-           (defaultSetupDepends a || defaultSetupDepends b)
+  a <> b = SetupBuildInfo {
+    setupDepends        = combine setupDepends,
+    setupTool           = combineMby setupTool,
+    defaultSetupDepends = defaultSetupDepends a || defaultSetupDepends b
+  }
+    where
+      combine    field = field a `mappend` field b
+      combineNub field = nub (combine field)
+      combineMby field = field b `mplus` field a

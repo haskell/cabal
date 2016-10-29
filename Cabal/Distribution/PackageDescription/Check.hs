@@ -206,6 +206,7 @@ checkSanity pkg =
   ++ concatMap (checkExecutable pkg) (executables pkg)
   ++ concatMap (checkTestSuite  pkg) (testSuites pkg)
   ++ concatMap (checkBenchmark  pkg) (benchmarks pkg)
+  ++ concatMap (checkSetup      pkg) (maybeToList $ setupBuildInfo pkg)
 
   ++ catMaybes [
 
@@ -404,6 +405,16 @@ checkBenchmark _pkg bm =
     mainIsWrongExt = case benchmarkInterface bm of
       BenchmarkExeV10 _ f -> takeExtension f `notElem` [".hs", ".lhs"]
       _                   -> False
+
+checkSetup :: PackageDescription -> SetupBuildInfo -> [PackageCheck]
+checkSetup _pkg sbinfo =
+  catMaybes [
+
+    check (not $ null (setupDepends sbinfo) && null (setupTool sbinfo)) $
+      PackageBuildImpossible $
+           "Cannot specify both setup-depends and setup-tool"
+
+    ]
 
 -- ------------------------------------------------------------
 -- * Additional pure checks
