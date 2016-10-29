@@ -952,6 +952,17 @@ planPackages comp platform solver SolverSettings{..}
           | Dependency name ver <- solverSettingPreferences ]
 
       . addConstraints
+
+          -- If a package has a custom setup then we need to add a setup-depends
+          -- on Cabal. For now it's easier to add this unconditionally.  Once
+          -- qualified constraints land we can turn this into a custom setup
+          -- only constraint.
+          --
+          -- TODO: use a qualified constraint
+            [ LabeledPackageConstraint (PackageConstraintVersion cabalPkgname
+                                       (orLaterVersion (mkVersion [1,20])))
+                                       ConstraintNewBuildCustomSetupLowerBoundCabal
+                                       ] . addConstraints
           -- version constraints from the config file or command line
             [ LabeledPackageConstraint (userToPackageConstraint pc) src
             | (pc, src) <- solverSettingConstraints ]
@@ -2392,6 +2403,17 @@ defaultSetupDeps compiler platform pkg =
           -- * We omit the dep for the Cabal lib itself, since it bootstraps.
           -- * We constrain it to be >= 1.18 < 2
           --
+          -- Note: cabalCompatMinVer only gets applied WHEN WE ARE ADDING a
+          -- default setup build info, i.e., when there is no custom-setup
+          -- stanza. If there is a custom-setup stanza, this codepath never gets
+          -- invoked (that's why there's an error case for
+          -- SetupCustomExplicitDeps).
+          --
+          -- One way we could solve this problem is by also modifying
+          -- custom-setup stanzas when they exist, but we're going to take a
+          -- different approach: add an extra constraint on Cabal globally to
+          -- make sure the solver respects it regardless of whether or not there
+          -- is an explicit setup build info or not. See planPackages.
           cabalConstraint   = orLaterVersion cabalCompatMinVer
                                 `intersectVersionRanges`
                               orLaterVersion (PD.specVersion pkg)
@@ -2421,6 +2443,8 @@ defaultSetupDeps compiler platform pkg =
       -- The internal setup wrapper method has no deps at all.
       SetupNonCustomInternalLib -> Just []
 
+      -- This case gets ruled out by the caller, planPackages, see the note
+      -- above in the SetupCustomIplicitDeps case.
       SetupCustomExplicitDeps ->
         error $ "defaultSetupDeps: called for a package with explicit "
              ++ "setup deps: " ++ display (packageId pkg)
