@@ -40,13 +40,15 @@ import Distribution.Client.HttpUtils
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
-         ( notice, info, debug, setupMessage )
+         ( notice, info, debug )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
+import Distribution.Client.Utils
+         ( progressMessage, ProgressPhase(..) )
 
 import Data.Maybe
 import Data.Map (Map)
@@ -157,8 +159,10 @@ fetchRepoTarball verbosity repoCtxt repo pkgid = do
   if fetched
     then do info verbosity $ display pkgid ++ " has already been downloaded."
             return (packageFile repo pkgid)
-    else do setupMessage verbosity "Downloading" pkgid
-            downloadRepoPackage
+    else do progressMessage verbosity ProgressDownloading (display pkgid)
+            res <- downloadRepoPackage
+            progressMessage verbosity ProgressDownloaded (display pkgid)
+            return res
   where
     downloadRepoPackage = case repo of
       RepoLocal{..} -> return (packageFile repo pkgid)
