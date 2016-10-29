@@ -371,17 +371,17 @@ tests config = do
       tc "GhcPkgGuess/Symlink" $ do
         -- We don't want to distribute a tarball with symlinks. See #3190.
         withSymlink "bin/ghc"
-                    "tests/PackageTests/GhcPkgGuess/Symlink/ghc" $
+                    "PackageTests/GhcPkgGuess/Symlink/ghc" $
                     ghc_pkg_guess "ghc"
 
       tc "GhcPkgGuess/SymlinkVersion" $ do
         withSymlink "bin/ghc-7.10"
-                    "tests/PackageTests/GhcPkgGuess/SymlinkVersion/ghc" $
+                    "PackageTests/GhcPkgGuess/SymlinkVersion/ghc" $
                     ghc_pkg_guess "ghc"
 
       tc "GhcPkgGuess/SymlinkGhcVersion" $ do
         withSymlink "bin/ghc-7.10"
-                    "tests/PackageTests/GhcPkgGuess/SymlinkGhcVersion/ghc" $
+                    "PackageTests/GhcPkgGuess/SymlinkGhcVersion/ghc" $
                     ghc_pkg_guess "ghc"
 
   -- Basic test for internal libraries (in p); package q is to make

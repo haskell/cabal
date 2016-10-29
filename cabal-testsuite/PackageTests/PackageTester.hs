@@ -293,14 +293,14 @@ type PackageSpec = FilePath
 simpleSetupPath :: TestM FilePath
 simpleSetupPath = do
     (suite, _) <- ask
-    return (absoluteCWD suite </> "tests/Setup")
+    return (absoluteCWD suite </> "Setup")
 
 -- | The absolute path to the directory containing the files for
 -- this tests; usually @Check.hs@ and any test packages.
 testDir :: TestM FilePath
 testDir = do
     (suite, test) <- ask
-    return $ absoluteCWD suite </> "tests/PackageTests" </> testMainName test
+    return $ absoluteCWD suite </> "PackageTests" </> testMainName test
 
 -- | The absolute path to the root of the package directory; it's
 -- where the Cabal file lives.  This is what you want the CWD of cabal
