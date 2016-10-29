@@ -242,7 +242,7 @@ main = do
 
     -- Create a shared Setup executable to speed up Simple tests
     putStrLn $ "Building shared ./Setup executable"
-    rawCompileSetup verbosity suite [] "tests"
+    rawCompileSetup verbosity suite [] "."
 
     defaultMainWithIngredients options $
         runTestTree "Package Tests" (tests suite)

@@ -28,8 +28,8 @@ main' fp = do
     let testModuleFiles = getOtherModulesFiles cabal
     let skipPredicates' = skipPredicates ++ map (==) testModuleFiles
 
-    -- Read all files git knows about under tests/
-    files0 <- lines <$> readProcess "git" ["ls-files", "tests"] ""
+    -- Read all files git knows about under "tests" and "PackageTests" (cabal-testsuite)
+    files0 <- lines <$> readProcess "git" ["ls-files", "tests", "PackageTests"] ""
 
     -- Filter
     let files1 = filter (\f -> takeExtension f `elem` whitelistedExtensionss ||
@@ -98,7 +98,7 @@ main = do
             progName <- getProgName
             putStrLn "Error too few arguments!"
             putStrLn $ "Usage: " ++ progName ++ " FILE"
-            putStrLn "  where FILE is Cabal.cabal or cabal-install.cabal"
+            putStrLn "  where FILE is Cabal.cabal, cabal-testsuite.cabal or cabal-install.cabal"
 
 strictReadFile :: FilePath -> IO String
 strictReadFile fp = do

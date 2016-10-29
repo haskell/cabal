@@ -1,4 +1,4 @@
-packages: Cabal/ cabal-install/
+packages: Cabal/ cabal-testsuite/ cabal-install/
 constraints: unix >= 2.7.1.0
 
 -- Uncomment to allow picking up extra local unpacked deps:
@@ -10,6 +10,8 @@ program-options
   -- ghc-options: -fno-ignore-asserts
   -- as a workaround we specify it for each package individually:
 package Cabal
+  ghc-options: -fno-ignore-asserts
+package cabal-testsuite
   ghc-options: -fno-ignore-asserts
 package cabal-install
   ghc-options: -fno-ignore-asserts

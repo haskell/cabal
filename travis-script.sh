@@ -12,6 +12,7 @@
 CABAL_STORE_DB="${HOME}/.cabal/store/ghc-${GHCVER}/package.db"
 CABAL_LOCAL_DB="${PWD}/dist-newstyle/packagedb/ghc-${GHCVER}"
 CABAL_BDIR="${PWD}/dist-newstyle/build/Cabal-${CABAL_VERSION}"
+CABAL_TESTSUITE_BDIR="${PWD}/dist-newstyle/build/cabal-testsuite-${CABAL_VERSION}"
 CABAL_INSTALL_BDIR="${PWD}/dist-newstyle/build/cabal-install-${CABAL_VERSION}"
 CABAL_INSTALL_SETUP="${CABAL_INSTALL_BDIR}/setup/setup"
 # --hide-successes uses terminal control characters which mess up
@@ -49,9 +50,9 @@ export CABAL_BUILDDIR="${CABAL_BDIR}"
 # more efficient (since new-build will uselessly try to rebuild
 # Cabal otherwise).
 if [ "x$PARSEC" = "xYES" ]; then
-  timed cabal new-build -fparsec Cabal Cabal:package-tests Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
+  timed cabal new-build -fparsec Cabal Cabal:unit-tests Cabal:parser-tests Cabal:parser-hackage-tests
 else
-  timed cabal new-build Cabal Cabal:package-tests Cabal:unit-tests
+  timed cabal new-build Cabal Cabal:unit-tests
 fi
 
 # NB: the '|| exit $?' workaround is required on old broken versions of bash
@@ -59,7 +60,6 @@ fi
 # http://stackoverflow.com/questions/14970663/why-doesnt-bash-flag-e-exit-when-a-subshell-fails
 
 # Run tests
-(export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
 (cd Cabal && timed ${CABAL_BDIR}/build/unit-tests/unit-tests       $TEST_OPTIONS) || exit $?
 
 if [ "x$PARSEC" = "xYES" ]; then
@@ -73,19 +73,28 @@ fi
 # Run haddock (hack: use the Setup script from package-tests!)
 (cd Cabal && timed cabal act-as-setup --build-type=Simple -- haddock --builddir=${CABAL_BDIR}) || exit $?
 
-# Redo the package tests with different versions of GHC
-if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
-    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
-        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
-        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-    GHC_HEAD_VER=$(ghc-head --version 8 | cut -d' ' -f 8)
-    (export CABAL_PACKAGETESTS_DB_STACK="clear:global:${CABAL_STORE_DB}:${CABAL_LOCAL_DB}"; \
-        cd Cabal && timed ${CABAL_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
-fi
-
 # Check for package warnings
 (cd Cabal && timed cabal check) || exit $?
+
+unset CABAL_BUILDDIR
+
+# Build and run the package tests
+
+export CABAL_BUILDDIR="${CABAL_TESTSUITE_BDIR}"
+
+timed cabal new-build cabal-testsuite:package-tests
+
+(cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS) || exit $?
+
+# Redo the package tests with different versions of GHC
+if [ "x$TEST_OTHER_VERSIONS" = "xYES" ]; then
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.0.4/bin/ghc"; \
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/7.2.2/bin/ghc"; \
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+    (export CABAL_PACKAGETESTS_WITH_GHC="/opt/ghc/head/bin/ghc"; \
+        cd cabal-testsuite && timed ${CABAL_TESTSUITE_BDIR}/build/package-tests/package-tests $TEST_OPTIONS)
+fi
 
 unset CABAL_BUILDDIR
 
