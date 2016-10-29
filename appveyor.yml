@@ -20,6 +20,12 @@ build_script:
   - Setup build
   - Setup test --show-details=streaming --test-option=--hide-successes
   - Setup install
+  - cd ..\cabal-testsuite
+  - echo "" | ..\cabal install --only-dependencies --enable-tests
+  - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
+  - Setup configure --user --ghc-option=-Werror --enable-tests
+  - Setup build
+  - Setup test --show-details=streaming --test-option=--hide-successes
   - cd ..\cabal-install
   - ghc --make -threaded -i -i. Setup.hs -Wall -Werror
   - echo "" | ..\cabal install happy
