@@ -11,6 +11,7 @@ module Distribution.Types.ForeignLib(
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Package
 import Distribution.ModuleName
 
 import Distribution.Types.BuildInfo
@@ -21,7 +22,7 @@ import Distribution.Types.ForeignLibOption
 -- the built code is intended for consumption by a non-Haskell client.
 data ForeignLib = ForeignLib {
       -- | Name of the foreign library
-      foreignLibName       :: String
+      foreignLibName       :: UnqualComponentName
       -- | What kind of foreign library is this (static or dynamic).
     , foreignLibType       :: ForeignLibType
       -- | What options apply to this foreign library (e.g., are we
@@ -49,12 +50,12 @@ instance Semigroup ForeignLib where
     , foreignLibModDefFile = combine  foreignLibModDefFile
     }
     where combine field = field a `mappend` field b
-          combine' field = case (field a, field b) of
-            ("","") -> ""
-            ("", x) -> x
-            (x, "") -> x
-            (x, y) -> error $ "Ambiguous values for foreign library field: '"
-                        ++ x ++ "' and '" ++ y ++ "'"
+          combine' field = case ( unUnqualComponentName $ field a
+                                , unUnqualComponentName $ field b) of
+            ("", _) -> field b
+            (_, "") -> field a
+            (x, y) -> error $ "Ambiguous values for executable field: '"
+                                  ++ x ++ "' and '" ++ y ++ "'"
 
 instance Monoid ForeignLib where
   mempty = ForeignLib {

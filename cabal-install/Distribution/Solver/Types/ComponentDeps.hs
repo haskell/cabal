@@ -37,6 +37,7 @@ module Distribution.Solver.Types.ComponentDeps (
   ) where
 
 import Prelude ()
+import Distribution.Package (UnqualComponentName)
 import Distribution.Client.Compat.Prelude hiding (empty,zip)
 
 import qualified Data.Map as Map
@@ -51,11 +52,11 @@ import qualified Distribution.Types.ComponentName as CN
 -- | Component of a package.
 data Component =
     ComponentLib
-  | ComponentSubLib String
-  | ComponentFLib  String
-  | ComponentExe   String
-  | ComponentTest  String
-  | ComponentBench String
+  | ComponentSubLib UnqualComponentName
+  | ComponentFLib   UnqualComponentName
+  | ComponentExe    UnqualComponentName
+  | ComponentTest   UnqualComponentName
+  | ComponentBench  UnqualComponentName
   | ComponentSetup
   deriving (Show, Eq, Ord, Generic)
 

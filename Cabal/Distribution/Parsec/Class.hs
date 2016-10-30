@@ -34,7 +34,9 @@ import           Distribution.License                         (License (..))
 import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.Package
-                 (Dependency (..), PackageName, mkPackageName)
+                 (Dependency (..),
+                 UnqualComponentName, mkUnqualComponentName,
+                 PackageName, mkPackageName)
 import           Distribution.System
                  (Arch (..), ClassificationStrictness (..), OS (..),
                  classifyArch, classifyOS)
@@ -86,14 +88,22 @@ parsecWarning t w =
 
 -- TODO: use lexemeParsec
 
+-- TODO avoid String
+parsecUnqualComponentName :: P.Stream s Identity Char => P.Parsec s [PWarning] String
+parsecUnqualComponentName = intercalate "-" <$> P.sepBy1 component (P.char '-')
+  where
+    component :: P.Stream s Identity Char => P.Parsec s [PWarning] String
+    component = do
+      cs <- P.munch1 isAlphaNum
+      if all isDigit cs
+        then fail "all digits in portion of unqualified component name"
+        else return cs
+
+instance Parsec UnqualComponentName where
+  parsec = mkUnqualComponentName <$> parsecUnqualComponentName
+
 instance Parsec PackageName where
-    -- todo
-    parsec = mkPackageName . intercalate "-" <$> P.sepBy1 component (P.char '-')
-      where
-        component :: P.Stream s Identity Char => P.Parsec s [PWarning] String
-        component = do
-          cs <- P.munch1 isAlphaNum
-          if all isDigit cs then fail "all digits PackageName" else return cs
+  parsec = mkPackageName <$> parsecUnqualComponentName
 
 instance Parsec ModuleName where
     parsec = ModuleName.fromComponents <$> P.sepBy1 component (P.char '.')

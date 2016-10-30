@@ -26,6 +26,8 @@ import Distribution.Client.Dependency.Types
          ( Solver(..) )
 import Distribution.Client.Setup (defaultMaxBackjumps)
 
+import           Distribution.Package (UnqualComponentName, mkUnqualComponentName)
+
 import qualified Distribution.Solver.Types.ComponentDeps as CD
 import           Distribution.Solver.Types.ComponentDeps
                    ( Component(..), ComponentDep, ComponentDeps )
@@ -234,7 +236,7 @@ arbitraryComponentDeps db =
     dedupComponentNames =
         nubBy ((\x y -> isJust x && isJust y && x == y) `on` componentName . fst)
 
-    componentName :: Component -> Maybe String
+    componentName :: Component -> Maybe UnqualComponentName
     componentName ComponentLib        = Nothing
     componentName ComponentSetup      = Nothing
     componentName (ComponentSubLib n) = Just n
@@ -285,9 +287,6 @@ arbitraryDeps db = frequency
 arbitraryFlagName :: Gen String
 arbitraryFlagName = (:[]) <$> elements ['A'..'E']
 
-arbitraryComponentName :: Gen String
-arbitraryComponentName = (:[]) <$> elements "ABC"
-
 instance Arbitrary ReorderGoals where
   arbitrary = ReorderGoals <$> arbitrary
 
@@ -303,12 +302,15 @@ instance Arbitrary Solver where
 
   shrink Modular = []
 
+instance Arbitrary UnqualComponentName where
+  arbitrary = mkUnqualComponentName <$> (:[]) <$> elements "ABC"
+
 instance Arbitrary Component where
   arbitrary = oneof [ return ComponentLib
-                    , ComponentSubLib <$> arbitraryComponentName
-                    , ComponentExe <$> arbitraryComponentName
-                    , ComponentTest <$> arbitraryComponentName
-                    , ComponentBench <$> arbitraryComponentName
+                    , ComponentSubLib <$> arbitrary
+                    , ComponentExe <$> arbitrary
+                    , ComponentTest <$> arbitrary
+                    , ComponentBench <$> arbitrary
                     , return ComponentSetup
                     ]
 

@@ -18,6 +18,9 @@ import Distribution.Types.LocalBuildInfo (componentNameTargets')
 
 import Distribution.Client.Utils             (tryCanonicalizePath)
 
+import Distribution.Package                  (UnqualComponentName,
+                                              mkUnqualComponentName,
+                                              unUnqualComponentName)
 import Distribution.PackageDescription       (Executable (..),
                                               TestSuite(..),
                                               Benchmark(..),
@@ -34,6 +37,7 @@ import Distribution.Simple.Utils             (die, notice, warn,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
 import Distribution.Verbosity                (Verbosity)
+import Distribution.Text                     (display)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -69,14 +73,14 @@ splitRunArgs verbosity lbi args =
       ([]   , _)           -> Left "Couldn't find any enabled executables."
       ([exe], [])          -> return (False, exe, [])
       ([exe], (x:xs))
-        | x == exeName exe -> return (True, exe, xs)
-        | otherwise        -> return (False, exe, args)
-      (_    , [])          -> Left
+        | x == unUnqualComponentName (exeName exe) -> return (True, exe, xs)
+        | otherwise                                -> return (False, exe, args)
+      (_    , [])                                  -> Left
         $ "This package contains multiple executables. "
         ++ "You must pass the executable name as the first argument "
         ++ "to 'cabal run'."
       (_    , (x:xs))      ->
-        case find (\exe -> exeName exe == x) enabledExes of
+        case find (\exe -> unUnqualComponentName (exeName exe) == x) enabledExes of
           Nothing  -> Left $ "No executable named '" ++ x ++ "'."
           Just exe -> return (True, exe, xs)
       where
@@ -85,20 +89,20 @@ splitRunArgs verbosity lbi args =
     maybeWarning :: Maybe String
     maybeWarning = case args of
       []    -> Nothing
-      (x:_) -> lookup x components
+      (x:_) -> lookup (mkUnqualComponentName x) components
       where
-        components :: [(String, String)] -- Component name, message.
+        components :: [(UnqualComponentName, String)] -- Component name, message.
         components =
-          [ (name, "The executable '" ++ name ++ "' is disabled.")
+          [ (name, "The executable '" ++ display name ++ "' is disabled.")
           | e <- executables pkg_descr
           , not . buildable . buildInfo $ e, let name = exeName e]
 
-          ++ [ (name, "There is a test-suite '" ++ name ++ "',"
+          ++ [ (name, "There is a test-suite '" ++ display name ++ "',"
                       ++ " but the `run` command is only for executables.")
              | t <- testSuites pkg_descr
              , let name = testName t]
 
-          ++ [ (name, "There is a benchmark '" ++ name ++ "',"
+          ++ [ (name, "There is a benchmark '" ++ display name ++ "',"
                       ++ " but the `run` command is only for executables.")
              | b <- benchmarks pkg_descr
              , let name = benchmarkName b]
@@ -113,16 +117,17 @@ run verbosity lbi exe exeArgs = do
                        curDir </> dataDir pkg_descr)
 
   (path, runArgs) <-
-    case compilerFlavor (compiler lbi) of
+    let exeName' = display $ exeName exe
+    in case compilerFlavor (compiler lbi) of
       GHCJS -> do
         let (script, cmd, cmdArgs) =
               GHCJS.runCmd (withPrograms lbi)
-                           (buildPref </> exeName exe </> exeName exe)
+                           (buildPref </> exeName' </> exeName')
         script' <- tryCanonicalizePath script
         return (cmd, cmdArgs ++ [script'])
       _     -> do
          p <- tryCanonicalizePath $
-            buildPref </> exeName exe </> (exeName exe <.> exeExtension)
+            buildPref </> exeName' </> (exeName' <.> exeExtension)
          return (p, [])
 
   env  <- (dataDirEnvVar:) <$> getEnvironment
@@ -136,5 +141,5 @@ run verbosity lbi exe exeArgs = do
                      paths <- depLibraryPaths True False lbi clbi
                      return (addLibraryPath os paths env)
              else return env
-  notice verbosity $ "Running " ++ exeName exe ++ "..."
+  notice verbosity $ "Running " ++ display (exeName exe) ++ "..."
   rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env'

@@ -452,7 +452,7 @@ constrainBy left extra =
 
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
-flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(String, Component)])
+flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(UnqualComponentName, Component)])
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
   where
     untag (_, Lib _) (Just _, _) = userBug "Only one library expected"
@@ -464,7 +464,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
             }
     untag (deps, SubComp n c) (mb_lib, comps)
         | any ((== n) . fst) comps =
-          userBug $ "There exist several components with the same name: '" ++ n ++ "'"
+          userBug $ "There exist several components with the same name: '" ++ unUnqualComponentName n ++ "'"
 
         | otherwise = (mb_lib, (n, c') : comps)
       where
@@ -484,7 +484,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
 --
 
 data PDTagged = Lib Library
-              | SubComp String Component
+              | SubComp UnqualComponentName Component
               | PDNull
               deriving Show
 

@@ -34,6 +34,7 @@ import qualified Data.ByteString                                   as BS
 import           Data.List                                         (partition)
 import qualified Data.Map                                          as Map
 import qualified Distribution.Compat.SnocList                      as SnocList
+import           Distribution.Package
 import           Distribution.PackageDescription
 import           Distribution.PackageDescription.Parsec.FieldDescr
 import           Distribution.Parsec.Class                         (parsec)
@@ -215,21 +216,21 @@ parseGenericPackageDescription' lexWarnings fs = do
 
         -- Sublibraries
         | name == "library" = do
-            name' <- parseName pos args
+            name' <- parseUnqualComponentName pos args
             lib <- parseCondTree libFieldDescrs storeXFieldsLib (targetBuildDepends . libBuildInfo) emptyLibrary fields
             -- TODO check duplicate name here?
             let gpd' = gpd { condSubLibraries = condSubLibraries gpd ++ [(name', lib)] }
             pure gpd'
 
         | name == "foreign-library" = do
-            name' <- parseName pos args
+            name' <- parseUnqualComponentName pos args
             flib <- parseCondTree foreignLibFieldDescrs storeXFieldsForeignLib (targetBuildDepends . foreignLibBuildInfo) emptyForeignLib fields
             -- TODO check duplicate name here?
             let gpd' = gpd { condForeignLibs = condForeignLibs gpd ++ [(name', flib)] }
             pure gpd'
 
         | name == "executable" = do
-            name' <- parseName pos args
+            name' <- parseUnqualComponentName pos args
             -- Note: we don't parse the "executable" field here, hence the tail hack. Duncan 2010
             exe <- parseCondTree (tail executableFieldDescrs) storeXFieldsExe (targetBuildDepends . buildInfo) emptyExecutable fields
             -- TODO check duplicate name here?
@@ -237,7 +238,7 @@ parseGenericPackageDescription' lexWarnings fs = do
             pure gpd'
 
         | name == "test-suite" = do
-            name' <- parseName pos args
+            name' <- parseUnqualComponentName pos args
             testStanza <- parseCondTree testSuiteFieldDescrs storeXFieldsTest (targetBuildDepends . testStanzaBuildInfo) emptyTestStanza fields
             testSuite <- traverse (validateTestSuite pos) testStanza
             -- TODO check duplicate name here?
@@ -245,7 +246,7 @@ parseGenericPackageDescription' lexWarnings fs = do
             pure gpd'
 
         | name == "benchmark" = do
-            name' <- parseName pos args
+            name' <- parseUnqualComponentName pos args
             benchStanza <- parseCondTree benchmarkFieldDescrs storeXFieldsBenchmark (targetBuildDepends . benchmarkStanzaBuildInfo) emptyBenchmarkStanza fields
             bench <- traverse (validateBenchmark pos) benchStanza
             -- TODO check duplicate name here?
@@ -362,6 +363,10 @@ parseName pos args = case args of
          -- TODO: pretty print args
          parseFailure pos $ "Invalid name " ++ show args
          pure ""
+
+parseUnqualComponentName :: Position -> [SectionArg Position] -> ParseResult UnqualComponentName
+parseUnqualComponentName pos args = mkUnqualComponentName <$> parseName pos args
+
 
 -- | Parse a non-recursive list of fields, given a list of field descriptions,
 --   a structure to accumulate the parsed fields, and a function

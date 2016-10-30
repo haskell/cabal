@@ -17,7 +17,7 @@ import           System.Environment                     (getArgs)
 import           System.Exit                            (exitFailure)
 import           System.FilePath                        ((</>))
 
-import           Distribution.Package (Dependency)
+import           Distribution.Package (Dependency, UnqualComponentName)
 import           Distribution.PackageDescription
 
 import qualified Codec.Archive.Tar                      as Tar
@@ -330,7 +330,7 @@ packageDescription_ = lens packageDescription $ \s a -> s { packageDescription =
 condLibrary_ :: Lens' GenericPackageDescription (Maybe (CondTree ConfVar [Dependency] Library))
 condLibrary_ = lens condLibrary $ \s a -> s { condLibrary = a}
 
-condExecutables_ :: Lens' GenericPackageDescription [(String, CondTree ConfVar [Dependency] Executable)]
+condExecutables_ :: Lens' GenericPackageDescription [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
 condExecutables_ = lens condExecutables $ \s a -> s { condExecutables = a }
 
 condTreeData_ :: Lens' (CondTree v c a) a

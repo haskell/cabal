@@ -474,11 +474,11 @@ pkgComponentInfo pkg =
 
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
 componentStringName pkg CLibName          = display (packageName pkg)
-componentStringName _   (CSubLibName name) = name
-componentStringName _   (CFLibName  name) = name
-componentStringName _   (CExeName   name) = name
-componentStringName _   (CTestName  name) = name
-componentStringName _   (CBenchName name) = name
+componentStringName _   (CSubLibName name) = unUnqualComponentName name
+componentStringName _   (CFLibName  name) = unUnqualComponentName name
+componentStringName _   (CExeName   name) = unUnqualComponentName name
+componentStringName _   (CTestName  name) = unUnqualComponentName name
+componentStringName _   (CBenchName name) = unUnqualComponentName name
 
 componentModules :: Component -> [ModuleName]
 -- TODO: Use of 'explicitLibModules' here is a bit wrong:

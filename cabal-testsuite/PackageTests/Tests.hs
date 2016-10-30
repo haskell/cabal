@@ -14,6 +14,7 @@ import qualified PackageTests.ForeignLibs.Check
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 
+import Distribution.Package
 import Distribution.Simple.LocalBuildInfo
   ( absoluteComponentInstallDirs
   , InstallDirs (..)
@@ -25,7 +26,6 @@ import Distribution.System (buildOS, OS(Windows))
 import Distribution.Version
 
 import Control.Monad
-
 import System.Directory
 import Test.Tasty (mkTimeout, localOption)
 
@@ -718,7 +718,7 @@ tests config = do
             lbi <- liftIO $ getPersistBuildConfig dist_dir
             let pkg_descr = localPkgDescr lbi
                 compiler_id = compilerId (compiler lbi)
-                cname = CSubLibName "foo-internal"
+                cname = CSubLibName $ mkUnqualComponentName "foo-internal"
                 [target] = componentNameTargets' pkg_descr lbi cname
                 uid = componentUnitId (targetCLBI target)
                 InstallDirs{libdir=dir,dynlibdir=dyndir} =

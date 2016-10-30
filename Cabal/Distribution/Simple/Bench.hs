@@ -21,6 +21,7 @@ module Distribution.Simple.Bench
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler
@@ -52,11 +53,9 @@ bench args pkg_descr lbi flags = do
         doBench bm =
             case PD.benchmarkInterface bm of
               PD.BenchmarkExeV10 _ _ -> do
-                  let cmd = LBI.buildDir lbi </> PD.benchmarkName bm
-                            </> PD.benchmarkName bm <.> exeExtension
+                  let cmd = LBI.buildDir lbi </> name </> name <.> exeExtension
                       options = map (benchOption pkg_descr lbi bm) $
                                 benchmarkOptions flags
-                      name = PD.benchmarkName bm
                   -- Check that the benchmark executable exists.
                   exists <- doesFileExist cmd
                   unless exists $ die $
@@ -72,9 +71,10 @@ bench args pkg_descr lbi flags = do
 
               _ -> do
                   notice verbosity $ "No support for running "
-                      ++ "benchmark " ++ PD.benchmarkName bm ++ " of type: "
-                      ++ show (disp $ PD.benchmarkType bm)
+                      ++ "benchmark " ++ name ++ " of type: "
+                      ++ display (PD.benchmarkType bm)
                   exitFailure
+          where name = unUnqualComponentName $ PD.benchmarkName bm
 
     unless (PD.hasBenchmarks pkg_descr) $ do
         notice verbosity "Package has no benchmarks."
@@ -90,9 +90,9 @@ bench args pkg_descr lbi flags = do
                 let benchmarkMap = zip enabledNames enabledBenchmarks
                     enabledNames = map PD.benchmarkName enabledBenchmarks
                     allNames = map PD.benchmarkName pkgBenchmarks
-                in case lookup bmName benchmarkMap of
+                in case lookup (mkUnqualComponentName bmName) benchmarkMap of
                     Just t -> return t
-                    _ | bmName `elem` allNames ->
+                    _ | mkUnqualComponentName bmName `elem` allNames ->
                           die $ "Package configured with benchmark "
                                 ++ bmName ++ " disabled."
                       | otherwise -> die $ "no such benchmark: " ++ bmName
@@ -123,4 +123,4 @@ benchOption pkg_descr lbi bm template =
     env = initialPathTemplateEnv
           (PD.package pkg_descr) (LBI.localUnitId lbi)
           (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
-          [(BenchmarkNameVar, toPathTemplate $ PD.benchmarkName bm)]
+          [(BenchmarkNameVar, toPathTemplate $ unUnqualComponentName $ PD.benchmarkName bm)]

@@ -10,6 +10,7 @@ module Distribution.Simple.Test.LibV09
        ) where
 
 import Prelude ()
+import Distribution.Package
 import Distribution.Compat.Prelude
 
 import Distribution.Compat.CreatePipe
@@ -64,15 +65,15 @@ runTest pkg_descr lbi clbi flags suite = do
 
     -- Remove old .tix files if appropriate.
     unless (fromFlag $ testKeepTix flags) $ do
-        let tDir = tixDir distPref way $ PD.testName suite
+        let tDir = tixDir distPref way testName'
         exists' <- doesDirectoryExist tDir
         when exists' $ removeDirectoryRecursive tDir
 
     -- Create directory for HPC files.
-    createDirectoryIfMissing True $ tixDir distPref way $ PD.testName suite
+    createDirectoryIfMissing True $ tixDir distPref way testName'
 
     -- Write summary notices indicating start of test suite
-    notice verbosity $ summarizeSuiteStart $ PD.testName suite
+    notice verbosity $ summarizeSuiteStart testName'
 
     suiteLog <- CE.bracket openCabalTemp deleteIfExists $ \tempLog -> do
 
@@ -82,7 +83,7 @@ runTest pkg_descr lbi clbi flags suite = do
         (Just wIn, _, _, process) <- do
                 let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
                     dataDirPath = pwd </> PD.dataDir pkg_descr
-                    tixFile = pwd </> tixFilePath distPref way (PD.testName suite)
+                    tixFile = pwd </> tixFilePath distPref way testName'
                     pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
                                : existingEnv
                     shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
@@ -116,14 +117,14 @@ runTest pkg_descr lbi clbi flags suite = do
         let finalLogName l = testLogDir
                              </> testSuiteLogPath
                                  (fromFlag $ testHumanLog flags) pkg_descr lbi
-                                 (testSuiteName l) (testLogs l)
+                                 (unUnqualComponentName $ testSuiteName l) (testLogs l)
         -- Generate TestSuiteLog from executable exit code and a machine-
         -- readable test log
         suiteLog <- fmap ((\l -> l { logFile = finalLogName l }) . read) -- TODO: eradicateNoParse
                     $ readFile tempLog
 
         -- Write summary notice to log file indicating start of test suite
-        appendFile (logFile suiteLog) $ summarizeSuiteStart $ PD.testName suite
+        appendFile (logFile suiteLog) $ summarizeSuiteStart testName'
 
         appendFile (logFile suiteLog) logText
 
@@ -148,6 +149,8 @@ runTest pkg_descr lbi clbi flags suite = do
 
     return suiteLog
   where
+    testName' = unUnqualComponentName $ PD.testName suite
+    
     deleteIfExists file = do
         exists <- doesFileExist file
         when exists $ removeFile file
@@ -173,13 +176,13 @@ testOption pkg_descr lbi suite template =
     env = initialPathTemplateEnv
           (PD.package pkg_descr) (LBI.localUnitId lbi)
           (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
-          [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)]
+          [(TestSuiteNameVar, toPathTemplate $ unUnqualComponentName $ PD.testName suite)]
 
 -- Test stub ----------
 
 -- | The name of the stub executable associated with a library 'TestSuite'.
 stubName :: PD.TestSuite -> FilePath
-stubName t = PD.testName t ++ "Stub"
+stubName t = unUnqualComponentName (PD.testName t) ++ "Stub"
 
 -- | The filename of the source file for the stub executable associated with a
 -- library 'TestSuite'.
@@ -260,7 +263,7 @@ stubRunTests tests = do
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
 -- Cabal process to read.
-stubWriteLog :: FilePath -> String -> TestLogs -> NoCallStackIO ()
+stubWriteLog :: FilePath -> UnqualComponentName -> TestLogs -> NoCallStackIO ()
 stubWriteLog f n logs = do
     let testLog = TestSuiteLog { testSuiteName = n, testLogs = logs, logFile = f }
     writeFile (logFile testLog) $ show testLog

@@ -521,14 +521,15 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       runGhcjsProg = runGHC verbosity ghcjsProg comp platform
       exeBi        = buildInfo exe
 
+  let exeName'' = unUnqualComponentName exeName'
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
-  let exeNameReal = exeName' <.>
-                    (if takeExtension exeName' /= ('.':exeExtension)
+  let exeNameReal = exeName'' <.>
+                    (if takeExtension exeName'' /= ('.':exeExtension)
                        then exeExtension
                        else "")
 
-  let targetDir = (buildDir lbi) </> exeName'
-  let exeDir    = targetDir </> (exeName' ++ "-tmp")
+  let targetDir = (buildDir lbi) </> exeName''
+  let exeDir    = targetDir </> (exeName'' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
@@ -539,7 +540,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   let isCoverageEnabled = exeCoverage lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
-        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
+        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName''
         | otherwise = mempty
 
   -- build executables
@@ -755,12 +756,13 @@ installExe verbosity lbi installDirs buildPref
            (progprefix, progsuffix) _pkg exe = do
   let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = exeName exe
-      fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
+  let exeName' = unUnqualComponentName $ exeName exe
+      exeFileName = exeName'
+      fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
       installBinary dest = do
         runDbProgram verbosity ghcjsProgram (withPrograms lbi) $
           [ "--install-executable"
-          , buildPref </> exeName exe </> exeFileName
+          , buildPref </> exeName' </> exeFileName
           , "-o", dest
           ] ++
           case (stripExes lbi, lookupProgram stripProgram $ withPrograms lbi) of

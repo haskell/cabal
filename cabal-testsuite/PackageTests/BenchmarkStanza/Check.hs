@@ -14,7 +14,7 @@ suite = do
     dist_dir <- distDir
     lbi <- liftIO $ getPersistBuildConfig dist_dir
     let anticipatedBenchmark = emptyBenchmark
-            { benchmarkName = "dummy"
+            { benchmarkName = mkUnqualComponentName "dummy"
             , benchmarkInterface = BenchmarkExeV10 (mkVersion [1,0])
                                                    "dummy.hs"
             , benchmarkBuildInfo = emptyBuildInfo

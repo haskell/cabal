@@ -8,6 +8,7 @@ module Distribution.Types.HookedBuildInfo (
 
 -- import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
+import Distribution.Package
 
 -- | 'HookedBuildInfo' is mechanism that hooks can use to
 -- override the 'BuildInfo's inside packages.  One example
@@ -59,7 +60,7 @@ import Distribution.Types.BuildInfo
 -- are obligated to apply any new 'HookedBuildInfo' and then we'd
 -- get the effect twice.  But this does mean we have to re-apply
 -- it every time. Hey, it's more flexibility.
-type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
+type HookedBuildInfo = (Maybe BuildInfo, [(UnqualComponentName, BuildInfo)])
 
 emptyHookedBuildInfo :: HookedBuildInfo
 emptyHookedBuildInfo = (Nothing, [])

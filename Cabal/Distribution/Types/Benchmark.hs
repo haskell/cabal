@@ -17,11 +17,12 @@ import Distribution.Types.BenchmarkType
 import Distribution.Types.BenchmarkInterface
 
 import Distribution.ModuleName
+import Distribution.Package
 
 -- | A \"benchmark\" stanza in a cabal file.
 --
 data Benchmark = Benchmark {
-        benchmarkName      :: String,
+        benchmarkName      :: UnqualComponentName,
         benchmarkInterface :: BenchmarkInterface,
         benchmarkBuildInfo :: BuildInfo
     }
@@ -43,11 +44,12 @@ instance Semigroup Benchmark where
         benchmarkInterface = combine  benchmarkInterface,
         benchmarkBuildInfo = combine  benchmarkBuildInfo
     }
-        where combine   field = field a `mappend` field b
-              combine' f = case (f a, f b) of
-                        ("", x) -> x
-                        (x, "") -> x
-                        (x, y) -> error "Ambiguous values for benchmark field: '"
+        where combine  field = field a `mappend` field b
+              combine' field = case ( unUnqualComponentName $ field a
+                                    , unUnqualComponentName $ field b) of
+                        ("", _) -> field b
+                        (_, "") -> field a
+                        (x, y) -> error $ "Ambiguous values for test field: '"
                             ++ x ++ "' and '" ++ y ++ "'"
 
 emptyBenchmark :: Benchmark

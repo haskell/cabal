@@ -15,9 +15,10 @@ import Distribution.Compat.Prelude
 import Distribution.Types.BuildInfo
 import Distribution.Types.ModuleReexport
 import Distribution.ModuleName
+import Distribution.Package
 
 data Library = Library {
-        libName :: Maybe String,
+        libName :: Maybe UnqualComponentName,
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
         signatures:: [ModuleName], -- ^ What sigs need implementations?

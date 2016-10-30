@@ -192,7 +192,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     extras <- preprocessExtras comp lbi
     case libName lib of
         Nothing -> info verbosity $ "Building library..."
-        Just n -> info verbosity $ "Building library " ++ n ++ "..."
+        Just n -> info verbosity $ "Building library " ++ display n ++ "..."
     let libbi = libBuildInfo lib
         lib' = lib { libBuildInfo = addExtraCSources libbi extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
@@ -220,7 +220,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CFLib flib) clbi _distPref = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
-    info verbosity $ "Building foreign library " ++ foreignLibName flib ++ "..."
+    info verbosity $ "Building foreign library " ++ display (foreignLibName flib) ++ "..."
     buildFLib verbosity numJobs pkg_descr lbi flib clbi
     return Nothing
 
@@ -228,7 +228,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building executable " ++ exeName exe ++ "..."
+    info verbosity $ "Building executable " ++ display (exeName exe) ++ "..."
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
@@ -241,7 +241,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let exe = testSuiteExeV10AsExe test
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building test suite " ++ testName test ++ "..."
+    info verbosity $ "Building test suite " ++ display (testName test) ++ "..."
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' clbi
@@ -262,7 +262,7 @@ buildComponent verbosity numJobs pkg_descr lbi0 suffixes
           testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building test suite " ++ testName test ++ "..."
+    info verbosity $ "Building test suite " ++ display (testName test) ++ "..."
     buildLib verbosity numJobs pkg lbi lib libClbi
     -- NB: need to enable multiple instances here, because on 7.10+
     -- the package name is the same as the library, and we still
@@ -287,7 +287,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     let (exe, exeClbi) = benchmarkExeV10asExe bm clbi
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
-    info verbosity $ "Building benchmark " ++ benchmarkName bm ++ "..."
+    info verbosity $ "Building benchmark " ++ display (benchmarkName bm) ++ "..."
     let ebi = buildInfo exe
         exe' = exe { buildInfo = addExtraCSources ebi extras }
     buildExe verbosity numJobs pkg_descr lbi exe' exeClbi
@@ -458,7 +458,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
     exe = Executable {
-            exeName    = stubName test,
+            exeName    = mkUnqualComponentName $ stubName test,
             modulePath = stubFilePath test,
             buildInfo  = (testBuildInfo test) {
                            hsSourceDirs       = [ testDir ],
@@ -479,7 +479,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 componentComponentId = mkComponentId (stubName test),
                 componentInternalDeps = [componentUnitId clbi],
                 componentExeDeps = [],
-                componentLocalName = CExeName (stubName test),
+                componentLocalName = CExeName $ mkUnqualComponentName $ stubName test,
                 componentPackageDeps = deps,
                 -- Assert DefUnitId invariant!
                 -- Executable can't be indefinite, so dependencies must
@@ -535,7 +535,7 @@ addInternalBuildTools pkg lbi bi progs =
       | toolName <- toolNames
       , let toolLocation = buildDir lbi </> toolName </> toolName <.> exeExtension ]
     toolNames = intersect buildToolNames internalExeNames
-    internalExeNames = map exeName (executables pkg)
+    internalExeNames = map (unUnqualComponentName . exeName) (executables pkg)
     buildToolNames   = map buildToolName (buildTools bi)
       where
         buildToolName (Dependency pname _ ) = unPackageName pname

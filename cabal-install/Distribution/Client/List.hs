@@ -14,7 +14,8 @@ module Distribution.Client.List (
   ) where
 
 import Distribution.Package
-         ( PackageName, Package(..), packageName, packageVersion
+         ( PackageName, UnqualComponentName
+         , Package(..), packageName, packageVersion
          , Dependency(..), simplifyDependency
          , UnitId )
 import Distribution.ModuleName (ModuleName)
@@ -287,7 +288,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
     flags             :: [Flag],
     hasLib            :: Bool,
     hasExe            :: Bool,
-    executables       :: [String],
+    executables       :: [UnqualComponentName],
     modules           :: [ModuleName],
     haddockHtml       :: FilePath,
     haveTarball       :: Bool
@@ -348,7 +349,7 @@ showPackageDetailedInfo pkginfo =
    , entry "Author"        author       hideIfNull     reflowLines
    , entry "Maintainer"    maintainer   hideIfNull     reflowLines
    , entry "Source repo"   sourceRepo   orNotSpecified text
-   , entry "Executables"   executables  hideIfNull     (commaSep text)
+   , entry "Executables"   executables  hideIfNull     (commaSep disp)
    , entry "Flags"         flags        hideIfNull     (commaSep dispFlag)
    , entry "Dependencies"  dependencies hideIfNull     (commaSep dispExtDep)
    , entry "Documentation" haddockHtml  showIfInstalled text

@@ -161,19 +161,19 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         ["bin-file" J..= J.String bin]
        where
         bin = if elabBuildStyle elab == BuildInplaceOnly
-               then dist_dir </> "build" </> s </> s
-               else InstallDirs.bindir (elabInstallDirs elab) </> s
+               then dist_dir </> "build" </> display s </> display s
+               else InstallDirs.bindir (elabInstallDirs elab) </> display s
 
     -- TODO: maybe move this helper to "ComponentDeps" module?
     --       Or maybe define a 'Text' instance?
     comp2str :: ComponentDeps.Component -> String
     comp2str c = case c of
         ComponentDeps.ComponentLib     -> "lib"
-        ComponentDeps.ComponentSubLib s -> "lib:"   <> s
-        ComponentDeps.ComponentFLib s  -> "flib:"  <> s
-        ComponentDeps.ComponentExe s   -> "exe:"   <> s
-        ComponentDeps.ComponentTest s  -> "test:"  <> s
-        ComponentDeps.ComponentBench s -> "bench:" <> s
+        ComponentDeps.ComponentSubLib s -> "lib:"   <> display s
+        ComponentDeps.ComponentFLib s  -> "flib:"  <> display s
+        ComponentDeps.ComponentExe s   -> "exe:"   <> display s
+        ComponentDeps.ComponentTest s  -> "test:"  <> display s
+        ComponentDeps.ComponentBench s -> "bench:" <> display s
         ComponentDeps.ComponentSetup   -> "setup"
 
     style2str :: Bool -> BuildStyle -> String

@@ -621,7 +621,8 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   let extraArgs'
         | null extraArgs = case names of
           ComponentNamesUnknown -> []
-          ComponentNames names' -> [ name | LBI.CTestName name <- names' ]
+          ComponentNames names' -> [ Make.unUnqualComponentName name
+                                   | LBI.CTestName name <- names' ]
         | otherwise      = extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -703,7 +704,8 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   let extraArgs'
         | null extraArgs = case names of
           ComponentNamesUnknown -> []
-          ComponentNames names' -> [name | LBI.CBenchName name <- names']
+          ComponentNames names' -> [ Make.unUnqualComponentName name
+                                   | LBI.CBenchName name <- names']
         | otherwise      = extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -1012,7 +1014,7 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   (exe, exeArgs) <- splitRunArgs verbosity lbi extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config' distPref buildFlags ["exe:" ++ exeName exe]
+    build verbosity config' distPref buildFlags ["exe:" ++ display (exeName exe)]
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     run verbosity lbi exe exeArgs

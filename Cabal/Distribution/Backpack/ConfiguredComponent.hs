@@ -104,7 +104,7 @@ mkConfiguredComponent this_pid this_cid lib_deps exe_deps component =
 
 type ConfiguredComponentMap =
         (Map PackageName (ComponentId, PackageId), -- libraries
-         Map String ComponentId)                   -- executables
+         Map UnqualComponentName ComponentId)      -- executables
 
 -- Executable map must be different because an executable can
 -- have the same name as a library. Ew.
@@ -141,7 +141,7 @@ toConfiguredComponent pkg_descr this_cid
         = Map.toList external_lib_map
     exe_deps = [ cid
                | Dependency pkgname _ <- buildTools bi
-               , let name = unPackageName pkgname
+               , let name = packageNameToUnqualComponentName pkgname
                , Just cid <- [ Map.lookup name exe_map ] ]
 
 -- | Also computes the 'ComponentId', and sets cc_public if necessary.
@@ -183,7 +183,7 @@ extendConfiguredComponentMap cc (lib_map, exe_map) =
             Map.insert (pkgName (cc_pkgid cc))
                        (cc_cid cc, cc_pkgid cc) lib_map
           CSubLibName str ->
-            Map.insert (mkPackageName str)
+            Map.insert (unqualComponentNameToPackageName str)
                        (cc_cid cc, cc_pkgid cc) lib_map
           _ -> lib_map
     exe_map'

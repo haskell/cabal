@@ -889,11 +889,11 @@ parsePackageDescription file = do
             -> PM ([SourceRepo], [Flag]
                   ,Maybe SetupBuildInfo
                   ,(Maybe (CondTree ConfVar [Dependency] Library))
-                  ,[(String, CondTree ConfVar [Dependency] Library)]
-                  ,[(String, CondTree ConfVar [Dependency] ForeignLib)]
-                  ,[(String, CondTree ConfVar [Dependency] Executable)]
-                  ,[(String, CondTree ConfVar [Dependency] TestSuite)]
-                  ,[(String, CondTree ConfVar [Dependency] Benchmark)])
+                  ,[(UnqualComponentName, CondTree ConfVar [Dependency] Library)]
+                  ,[(UnqualComponentName, CondTree ConfVar [Dependency] ForeignLib)]
+                  ,[(UnqualComponentName, CondTree ConfVar [Dependency] Executable)]
+                  ,[(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)]
+                  ,[(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)])
     getBody pkg = peekField >>= \mf -> case mf of
       Just (Section line_no sec_type sec_label sec_fields)
         | sec_type == "executable" -> do
@@ -903,7 +903,7 @@ parsePackageDescription file = do
             flds <- collectFields parseExeFields sec_fields
             skipField
             (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
-            return (repos, flags, csetup, mlib, sub_libs, flibs, (exename, flds): exes, tests, bms)
+            return (repos, flags, csetup, mlib, sub_libs, flibs, (mkUnqualComponentName exename, flds): exes, tests, bms)
 
         | sec_type == "foreign-library" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -922,7 +922,7 @@ parsePackageDescription file = do
                 then do
                     skipField
                     (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
-                    return (repos, flags, csetup, mlib, sub_libs, (libname, flds):flibs, exes, tests, bms)
+                    return (repos, flags, csetup, mlib, sub_libs, (mkUnqualComponentName libname, flds):flibs, exes, tests, bms)
                 else lift $ syntaxError line_no $
                          "Foreign library \"" ++ libname
                       ++ "\" is missing required field \"type\" or the field "
@@ -948,7 +948,7 @@ parsePackageDescription file = do
                     skipField
                     (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
                     return (repos, flags, csetup, mlib, sub_libs, flibs, exes,
-                            (testname, flds) : tests, bms)
+                            (mkUnqualComponentName testname, flds) : tests, bms)
                 else lift $ syntaxError line_no $
                          "Test suite \"" ++ testname
                       ++ "\" is missing required field \"type\" or the field "
@@ -974,7 +974,7 @@ parsePackageDescription file = do
                     skipField
                     (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
                     return (repos, flags, csetup, mlib, sub_libs, flibs, exes,
-                            tests, (benchname, flds) : bms)
+                            tests, (mkUnqualComponentName benchname, flds) : bms)
                 else lift $ syntaxError line_no $
                          "Benchmark \"" ++ benchname
                       ++ "\" is missing required field \"type\" or the field "
@@ -994,7 +994,7 @@ parsePackageDescription file = do
             (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
             case mb_libname of
                 Just libname ->
-                    return (repos, flags, csetup, mlib, (libname, flds) : sub_libs, flibs, exes, tests, bms)
+                    return (repos, flags, csetup, mlib, (mkUnqualComponentName libname, flds) : sub_libs, flibs, exes, tests, bms)
                 Nothing -> do
                     when (isJust mlib) $ lift $ syntaxError line_no
                       "There can only be one (public) library section in a package description."
@@ -1141,9 +1141,9 @@ parsePackageDescription file = do
     checkForUndefinedFlags ::
         [Flag] ->
         Maybe (CondTree ConfVar [Dependency] Library) ->
-        [(String, CondTree ConfVar [Dependency] Library)] ->
-        [(String, CondTree ConfVar [Dependency] Executable)] ->
-        [(String, CondTree ConfVar [Dependency] TestSuite)] ->
+        [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] ->
+        [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] ->
+        [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] ->
         PM ()
     checkForUndefinedFlags flags mlib sub_libs exes tests = do
         let definedFlags = map flagName flags
@@ -1252,11 +1252,11 @@ parseHookedBuildInfo inp = do
         | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
 
-    parseExe :: [Field] -> ParseResult (String, BuildInfo)
+    parseExe :: [Field] -> ParseResult (UnqualComponentName, BuildInfo)
     parseExe (F line inFieldName mName:bi)
         | lowercase inFieldName == "executable"
             = do bis <- parseBI bi
-                 return (mName, bis)
+                 return (mkUnqualComponentName mName, bis)
         | otherwise = syntaxError line "expecting 'executable' at top of stanza"
     parseExe (_:_) = cabalBug "`parseExe' called on a non-field"
     parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
