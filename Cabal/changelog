@@ -55,7 +55,7 @@
 	* Backwards incompatible change to 'AbiHash' (#3921):
 	  'AbiHash' is now opaque; conversion to/from 'String' now works
 	  via 'unAbiHash' and 'mkAbiHash' functions.
-	* Backwards incompatible change to 'FlagName' (#xxxx):
+	* Backwards incompatible change to 'FlagName' (#4062):
 	  'FlagName' is now opaque; conversion to/from 'String' now works
 	  via 'unFlagName' and 'mkFlagName' functions.
 	* Backwards incompatible change to 'Version' (#3905):
