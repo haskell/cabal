@@ -357,7 +357,7 @@ parsecBuildTool :: P.Stream s Identity Char => P.Parsec s [PWarning] Dependency
 parsecBuildTool = do
     name <- parsecMaybeQuoted nameP
     P.spaces
-    verRange <- parsec <|> pure anyVersion
+    verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
     pure $ Dependency (mkPackageName name) verRange
   where
     nameP = intercalate "-" <$> P.sepBy1 component (P.char '-')
