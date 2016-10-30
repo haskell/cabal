@@ -182,6 +182,7 @@ extra-source-files:
   PackageTests/ForeignLibs/UseLib.c
   PackageTests/ForeignLibs/csrc/MyForeignLibWrapper.c
   PackageTests/ForeignLibs/my-foreign-lib.cabal
+  PackageTests/ForeignLibs/src/MyForeignLib/AnotherVal.hs
   PackageTests/ForeignLibs/src/MyForeignLib/Hello.hs
   PackageTests/ForeignLibs/src/MyForeignLib/SomeBindings.hsc
   PackageTests/GhcPkgGuess/SameDirectory/SameDirectory.cabal
