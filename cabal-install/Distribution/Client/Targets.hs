@@ -79,7 +79,7 @@ import Distribution.Client.GlobalFlags
          ( RepoContext(..) )
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription, FlagName(..), FlagAssignment )
+         ( GenericPackageDescription, mkFlagName, unFlagName, FlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
@@ -788,7 +788,7 @@ dispFlagAssignment = Disp.hsep . map dispFlagValue
   where
     dispFlagValue (f, True)   = Disp.char '+' <<>> dispFlagName f
     dispFlagValue (f, False)  = Disp.char '-' <<>> dispFlagName f
-    dispFlagName (FlagName f) = Disp.text f
+    dispFlagName = Disp.text . unFlagName
 
 parseFlagAssignment :: Parse.ReadP r FlagAssignment
 parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
@@ -800,7 +800,7 @@ parseFlagAssignment = Parse.sepBy1 parseFlagValue skipSpaces1
       +++ (do _ <- Parse.char '-'
               f <- parseFlagName
               return (f, False))
-    parseFlagName = liftM (FlagName . lowercase) ident
+    parseFlagName = liftM (mkFlagName . lowercase) ident
 
     ident :: Parse.ReadP r String
     ident = Parse.munch1 identChar >>= \s -> check s >> return s

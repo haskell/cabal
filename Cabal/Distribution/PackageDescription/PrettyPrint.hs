@@ -228,7 +228,7 @@ ppConfVar (Flag name)                    = text "flag" <<>> parens (ppFlagName n
 ppConfVar (Impl c v)                     = text "impl" <<>> parens (disp c <+> disp v)
 
 ppFlagName :: FlagName -> Doc
-ppFlagName (FlagName name)               = text name
+ppFlagName                               = text . unFlagName
 
 ppCondTree :: CondTree ConfVar [Dependency] a -> Maybe a -> (a -> Maybe a -> Doc) ->  Doc
 ppCondTree ct@(CondNode it _ ifs) mbIt ppIt =

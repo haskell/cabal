@@ -36,7 +36,7 @@ import qualified Paths_cabal_install (version)
 import Distribution.Package
          ( PackageIdentifier(..), mkPackageName )
 import Distribution.PackageDescription
-         ( FlagName(..), FlagAssignment )
+         ( FlagName, mkFlagName, unFlagName, FlagAssignment )
 import Distribution.Version
          ( mkVersion' )
 import Distribution.System
@@ -264,15 +264,15 @@ sortedFieldDescrs :: [FieldDescr BuildReport]
 sortedFieldDescrs = sortBy (comparing fieldName) fieldDescrs
 
 dispFlag :: (FlagName, Bool) -> Disp.Doc
-dispFlag (FlagName name, True)  =                  Disp.text name
-dispFlag (FlagName name, False) = Disp.char '-' <> Disp.text name
+dispFlag (fname, True)  =                  Disp.text (unFlagName fname)
+dispFlag (fname, False) = Disp.char '-' <> Disp.text (unFlagName fname)
 
 parseFlag :: Parse.ReadP r (FlagName, Bool)
 parseFlag = do
   name <- Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
   case name of
-    ('-':flag) -> return (FlagName flag, False)
-    flag       -> return (FlagName flag, True)
+    ('-':flag) -> return (mkFlagName flag, False)
+    flag       -> return (mkFlagName flag, True)
 
 instance Text.Text InstallOutcome where
   disp PlanningFailed  = Disp.text "PlanningFailed"

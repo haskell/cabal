@@ -565,7 +565,7 @@ printPlan verbosity
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
-    showFlagName (PD.FlagName f) = f
+    showFlagName = PD.unFlagName
 
     showConfigureFlags elab =
         let fullConfigureFlags

@@ -22,7 +22,7 @@ import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription   as Source
 import Distribution.PackageDescription
-         ( Flag(..), FlagName(..) )
+         ( Flag(..), unFlagName )
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 
@@ -380,7 +380,7 @@ showPackageDetailedInfo pkginfo =
     orNotSpecified = altText null "[ Not specified ]"
 
     commaSep f = Disp.fsep . Disp.punctuate (Disp.char ',') . map f
-    dispFlag f = case flagName f of FlagName n -> text n
+    dispFlag = text . unFlagName . flagName
     dispYesNo True  = text "Yes"
     dispYesNo False = text "No"
 

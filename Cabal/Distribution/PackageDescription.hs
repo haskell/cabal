@@ -90,7 +90,9 @@ module Distribution.PackageDescription (
 
         -- * package configuration
         GenericPackageDescription(..),
-        Flag(..), emptyFlag, FlagName(..), FlagAssignment,
+        Flag(..), emptyFlag,
+        FlagName, mkFlagName, unFlagName,
+        FlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
         cNot, cAnd, cOr,
 

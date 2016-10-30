@@ -930,8 +930,8 @@ configureFinalizedPackage verbosity cfg enabled
 
     when (not (null flags)) $
       info verbosity $ "Flags chosen: "
-                    ++ intercalate ", " [ name ++ "=" ++ display value
-                                        | (FlagName name, value) <- flags ]
+                    ++ intercalate ", " [ unFlagName fn ++ "=" ++ display value
+                                        | (fn, value) <- flags ]
 
     return (pkg_descr, flags)
   where

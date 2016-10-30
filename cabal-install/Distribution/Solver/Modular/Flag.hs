@@ -33,10 +33,10 @@ data FN qpn = FN (PI qpn) Flag
 type Flag = FlagName
 
 unFlag :: Flag -> String
-unFlag (FlagName fn) = fn
+unFlag = unFlagName
 
 mkFlag :: String -> Flag
-mkFlag fn = FlagName fn
+mkFlag = mkFlagName
 
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.

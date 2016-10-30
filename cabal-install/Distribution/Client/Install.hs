@@ -150,7 +150,7 @@ import Distribution.Package
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
-         , FlagName(..), FlagAssignment )
+         , unFlagName, FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePD )
 import Distribution.ParseUtils
@@ -703,7 +703,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
-    showFlagName (FlagName f) = f
+    showFlagName = unFlagName
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "

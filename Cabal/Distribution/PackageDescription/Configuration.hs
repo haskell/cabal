@@ -144,7 +144,7 @@ parseCondition = condOr
     boolLiteral   = fmap Lit  parse
     archIdent     = fmap Arch parse
     osIdent       = fmap OS   parse
-    flagIdent     = fmap (Flag . FlagName . lowercase) (munch1 isIdentChar)
+    flagIdent     = fmap (Flag . mkFlagName . lowercase) (munch1 isIdentChar)
     isIdentChar c = isAlphaNum c || c == '_' || c == '-'
     oper s        = sp >> string s >> sp
     sp            = skipSpaces

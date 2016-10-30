@@ -32,7 +32,7 @@ module Distribution.Client.World (
 import Distribution.Package
          ( Dependency(..) )
 import Distribution.PackageDescription
-         ( FlagAssignment, FlagName(FlagName) )
+         ( FlagAssignment, mkFlagName, unFlagName )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
@@ -128,10 +128,10 @@ instance Text WorldPkgInfo where
       dispFlags [] = Disp.empty
       dispFlags fs = Disp.text "--flags="
                   <> Disp.doubleQuotes (flagAssToDoc fs)
-      flagAssToDoc = foldr (\(FlagName fname,val) flagAssDoc ->
+      flagAssToDoc = foldr (\(fname,val) flagAssDoc ->
                              (if not val then Disp.char '-'
                                          else Disp.empty)
-                             Disp.<> Disp.text fname
+                             Disp.<> Disp.text (unFlagName fname)
                              Disp.<+> flagAssDoc)
                            Disp.empty
   parse = do
@@ -156,7 +156,7 @@ instance Text WorldPkgInfo where
             val <- negative Parse.+++ positive
             name <- ident
             Parse.skipSpaces
-            return (FlagName name,val)
+            return (mkFlagName name,val)
           negative = do
             _ <- Parse.char '-'
             return False

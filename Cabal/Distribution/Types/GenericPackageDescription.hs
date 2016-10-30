@@ -8,7 +8,9 @@ module Distribution.Types.GenericPackageDescription (
     GenericPackageDescription(..),
     Flag(..),
     emptyFlag,
-    FlagName(..),
+    FlagName,
+    mkFlagName,
+    unFlagName,
     FlagAssignment,
     ConfVar(..),
     Condition(..),
@@ -77,8 +79,31 @@ emptyFlag name = MkFlag
     }
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
+--
+-- Use 'mkFlagName' and 'unFlagName' to convert from/to a 'String'.
+--
+-- This type is opaque since @Cabal-2.0@
+--
+-- @since 2.0
 newtype FlagName = FlagName String
     deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+
+-- | Construct a 'FlagName' from a 'String'
+--
+-- 'mkFlagName' is the inverse to 'unFlagName'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'FlagName' is valid
+--
+-- @since 2.0
+mkFlagName :: String -> FlagName
+mkFlagName = FlagName
+
+-- | Convert 'FlagName' to 'String'
+--
+-- @since 2.0
+unFlagName :: FlagName -> String
+unFlagName (FlagName s) = s
 
 instance Binary FlagName
 
