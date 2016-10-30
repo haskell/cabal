@@ -254,7 +254,7 @@ parseGenericPackageDescription' lexWarnings fs = do
 
         | name == "flag" = do
             name' <- parseName pos args
-            name'' <- runFieldParser' pos parsec name' `recoverWith` FlagName ""
+            name'' <- runFieldParser' pos parsec name' `recoverWith` mkFlagName ""
             flag <- parseFields flagFieldDescrs warnUnrec (emptyFlag name'') fields
             -- Check default flag
             let gpd' = gpd { genPackageFlags = genPackageFlags gpd ++ [flag] }

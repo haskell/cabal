@@ -119,9 +119,8 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
         [ "type"       J..= J.String (if isInstalled then "installed"
                                                      else "configured")
         , "id"         J..= (jdisplay . installedUnitId) elab
-        , "flags"      J..= J.object [ fn J..= v
-                                     | (PD.FlagName fn,v) <-
-                                            elabFlagAssignment elab ]
+        , "flags"      J..= J.object [ PD.unFlagName fn J..= v
+                                     | (fn,v) <- elabFlagAssignment elab ]
         , "style"      J..= J.String (style2str (elabLocalToProject elab) (elabBuildStyle elab))
         ] ++
         (case elabBuildStyle elab of

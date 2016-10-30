@@ -5,7 +5,7 @@ module Distribution.Solver.Types.PackageConstraint (
   ) where
 
 import Distribution.Compat.Binary (Binary(..))
-import Distribution.PackageDescription (FlagAssignment, FlagName(..))
+import Distribution.PackageDescription (FlagAssignment, unFlagName)
 import Distribution.Package (PackageName)
 import Distribution.Solver.Types.OptionalStanza
 import Distribution.Text (display)
@@ -40,8 +40,8 @@ showPackageConstraint (PackageConstraintSource pn) =
 showPackageConstraint (PackageConstraintFlags pn fs) =
   "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
   where
-    showFlag (FlagName f) True  = "+" ++ f
-    showFlag (FlagName f) False = "-" ++ f
+    showFlag f True  = "+" ++ unFlagName f
+    showFlag f False = "-" ++ unFlagName f
 showPackageConstraint (PackageConstraintStanzas pn ss) =
   "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
   where

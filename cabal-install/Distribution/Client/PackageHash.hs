@@ -33,7 +33,7 @@ import Distribution.Package
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
 import Distribution.PackageDescription
-         ( FlagName(..), FlagAssignment )
+         ( unFlagName, FlagAssignment )
 import Distribution.Simple.Compiler
          ( CompilerId, OptimisationLevel(..), DebugInfoLevel(..)
          , ProfDetailLevel(..), showProfDetailLevel )
@@ -261,8 +261,8 @@ renderPackageHashInputs PackageHashInputs{
 
     showFlagAssignment = unwords . map showEntry . sortBy (compare `on` fst)
       where
-        showEntry (FlagName name, False) = '-' : name
-        showEntry (FlagName name, True)  = '+' : name
+        showEntry (fname, False) = '-' : unFlagName fname
+        showEntry (fname, True)  = '+' : unFlagName fname
 
 -----------------------------------------------
 -- The specific choice of hash implementation

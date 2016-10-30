@@ -1006,7 +1006,7 @@ parsePackageDescription file = do
             flag <- lift $ parseFields
                     flagFieldDescrs
                     warnUnrec
-                    (emptyFlag (FlagName (lowercase sec_label)))
+                    (emptyFlag (mkFlagName (lowercase sec_label)))
                     sec_fields
             skipField
             (repos, flags, csetup, mlib, sub_libs, flibs, exes, tests, bms) <- getBody pkg
@@ -1157,7 +1157,7 @@ parsePackageDescription file = do
         let fv = nub $ freeVars ct
         unless (all (`elem` definedFlags) fv) $
             fail $ "These flags are used without having been defined: "
-                ++ intercalate ", " [ n | FlagName n <- fv \\ definedFlags ]
+                ++ intercalate ", " [ unFlagName fn | fn <- fv \\ definedFlags ]
 
 -- Check that a property holds on all branches of a condition tree
 onAllBranches :: forall v c a. Monoid a => (a -> Bool) -> CondTree v c a -> Bool

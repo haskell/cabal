@@ -42,7 +42,7 @@ import           Distribution.Text                            (display)
 import           Distribution.Types.BenchmarkType
                  (BenchmarkType (..))
 import           Distribution.Types.BuildType                 (BuildType (..))
-import           Distribution.Types.GenericPackageDescription (FlagName (..))
+import           Distribution.Types.GenericPackageDescription (FlagName, mkFlagName)
 import           Distribution.Types.ModuleReexport
                  (ModuleReexport (..))
 import           Distribution.Types.SourceRepo
@@ -107,7 +107,7 @@ instance Parsec ModuleName where
         validModuleChar c = isAlphaNum c || c == '_' || c == '\''
 
 instance Parsec FlagName where
-    parsec = FlagName . map toLower . intercalate "-" <$> P.sepBy1 component (P.char '-')
+    parsec = mkFlagName . map toLower . intercalate "-" <$> P.sepBy1 component (P.char '-')
       where
         -- http://hackage.haskell.org/package/cabal-debian-4.24.8/cabal-debian.cabal
         -- has flag with all digit component: pretty-112

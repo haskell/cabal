@@ -202,8 +202,8 @@ hackProjectConfigShared config =
       --TODO: [required eventually] parse ambiguity in constraint
       -- "pkgname -any" as either any version or disabled flag "any".
         let ambiguous ((UserConstraintFlags _pkg flags), _) =
-              (not . null) [ () | (FlagName name, False) <- flags
-                                , "any" `isPrefixOf` name ]
+              (not . null) [ () | (name, False) <- flags
+                                , "any" `isPrefixOf` unFlagName name ]
             ambiguous _ = False
          in filter (not . ambiguous) (projectConfigConstraints config)
     }
@@ -576,7 +576,7 @@ instance Arbitrary OptionalStanza where
     arbitrary = elements [minBound..maxBound]
 
 instance Arbitrary FlagName where
-    arbitrary = FlagName <$> flagident
+    arbitrary = mkFlagName <$> flagident
       where
         flagident   = lowercase <$> shortListOf1 5 (elements flagChars)
                       `suchThat` (("-" /=) . take 1)

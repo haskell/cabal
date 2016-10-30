@@ -374,7 +374,7 @@ exAvSrcPkg ex =
     extractFlags (ExBuildToolAny _)   = []
     extractFlags (ExBuildToolFix _ _) = []
     extractFlags (ExFlag f a b) = C.MkFlag {
-                                      C.flagName        = C.FlagName f
+                                      C.flagName        = C.mkFlagName f
                                     , C.flagDescription = ""
                                     , C.flagDefault     = True
                                     , C.flagManual      = False
@@ -446,7 +446,7 @@ exAvSrcPkg ex =
               -> ( C.Condition C.ConfVar
                  , DependencyTree C.BuildInfo
                  , Maybe (DependencyTree C.BuildInfo))
-    mkFlagged (f, a, b) = ( C.Var (C.Flag (C.FlagName f))
+    mkFlagged (f, a, b) = ( C.Var (C.Flag (C.mkFlagName f))
                                     , mkBuildInfoTree a
                                     , Just (mkBuildInfoTree b)
                                     )
@@ -563,7 +563,7 @@ exResolve db exts langs pkgConfigDb targets solver mbj indepGoals reorder
 
     toVariable :: ExampleVar -> Variable P.QPN
     toVariable (P q pn)        = PackageVar (toQPN q pn)
-    toVariable (F q pn fn)     = FlagVar    (toQPN q pn) (C.FlagName fn)
+    toVariable (F q pn fn)     = FlagVar    (toQPN q pn) (C.mkFlagName fn)
     toVariable (S q pn stanza) = StanzaVar  (toQPN q pn) stanza
 
     toQPN :: ExampleQualifier -> ExamplePkgName -> P.QPN

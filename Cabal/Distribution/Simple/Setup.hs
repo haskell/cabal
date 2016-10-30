@@ -841,12 +841,12 @@ configureOptions showOrParseArgs =
   where
     readFlagList :: String -> FlagAssignment
     readFlagList = map tagWithValue . words
-      where tagWithValue ('-':fname) = (FlagName (lowercase fname), False)
-            tagWithValue fname       = (FlagName (lowercase fname), True)
+      where tagWithValue ('-':fname) = (mkFlagName (lowercase fname), False)
+            tagWithValue fname       = (mkFlagName (lowercase fname), True)
 
     showFlagList :: FlagAssignment -> [String]
-    showFlagList fs = [ if not set then '-':fname else fname
-                      | (FlagName fname, set) <- fs]
+    showFlagList fs = [ if not set then '-':unFlagName fname else unFlagName fname
+                      | (fname, set) <- fs]
 
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
