@@ -76,6 +76,32 @@ Unlike sandboxes, there is no need to setup a sandbox or ``add-source``
 projects; just check in ``cabal.project`` to your repository and
 ``new-build`` will just work.
 
+Cookbook
+========
+
+How can I profile my library/application?
+-----------------------------------------
+
+First, make sure you have HEAD; 1.24 is affected by :issue:`3790`,
+which means that if any project which transitively depends on a
+package which has a Custom setup built against Cabal 1.22 or earlier
+will silently not work.
+
+Create or edit your ``cabal.project.local``, adding the following
+line::
+
+    profiling: True
+
+Now, ``cabal new-build`` will automatically build all libraries and
+executables with profiling.  You can fine-tune the profiling settings
+for each package using :cfg-field:`profiling-detail`::
+
+    package p
+        profiling-detail: toplevel-functions
+
+Alternately, you can call ``cabal new-build --enable-profiling`` to
+temporarily build with profiling.
+
 How it works
 ============
 
@@ -387,8 +413,8 @@ which live inside stanzas:
 
 In general, the accepted field names coincide with the accepted command
 line flags that ``cabal install`` and other commands take. For example,
-``cabal new-configure --library-profiling`` will write out a project
-file with ``library-profiling: True``.
+``cabal new-configure --enable-profiling`` will write out a project
+file with ``profiling: True``.
 
 The full configuration of a project is determined by combining the
 following sources (later entries override earlier ones):
@@ -755,7 +781,7 @@ an external dependency) should be built with ``-fno-state-hack``::
 but is one of many fields for configuring programs.  They take the form
 ``progname-options`` and ``progname-location``, and
 can only be set inside package stanzas.  (TODO: They are not supported
-at top-level, see :issue:`3579`.
+at top-level, see :issue:`3579`.)
 
 At the moment, there is no way to specify an option to apply to all
 external packages or all inplace packages. Additionally, it is only
@@ -1213,47 +1239,6 @@ Profiling options
     The command line variant of this flag is ``--enable-profiling`` and
     ``--disable-profiling``.
 
-.. cfg-field:: library-vanilla: boolean
-               --enable-library-vanilla
-               --disable-library-vanilla
-    :synopsis: Build libraries without profiling.
-
-    :default: True
-
-    Build ordinary libraries (as opposed to profiling libraries).
-    Mostly, you can set this to False to avoid building ordinary
-    libraries when you are profiling.
-
-    The command line variant of this flag is
-    ``--enable-library-vanilla`` and ``--disable-library-vanilla``.
-
-.. cfg-field:: library-profiling: boolean
-               --enable-library-profiling
-               --disable-library-profiling
-    :synopsis: Build libraries with profiling enabled.
-    :since: 1.21
-
-    :default: False
-
-    Build libraries with profiling enabled.
-
-    The command line variant of this flag is
-    ``--enable-library-profiling`` and ``--disable-library-profiling``.
-
-.. cfg-field:: executable-profiling: boolean
-               --enable-executable-profiling
-               --disable-executable-profiling
-    :synopsis: Build executables with profiling enabled.
-    :since: 1.21
-
-    :default: False
-
-    Build executables with profiling enabled.
-
-    The command line variant of this flag is
-    ``--enable-executable-profiling`` and
-    ``--disable-executable-profiling``.
-
 .. cfg-field:: profiling-detail: level
                --profiling-detail=level
     :synopsis: Profiling detail level.
@@ -1278,18 +1263,18 @@ Profiling options
         No costs will be assigned to any code within this component.
     exported-functions
         Costs will be assigned at the granularity of all top level
-        functions exported from each module. In GHC specifically, this
-        is for non-inline functions.
+        functions exported from each module. In GHC, this
+        is for non-inline functions.  Corresponds to ``-fprof-auto-exported``.
     toplevel-functions
         Costs will be assigned at the granularity of all top level
         functions in each module, whether they are exported from the
         module or not. In GHC specifically, this is for non-inline
-        functions.
+        functions.  Corresponds to ``-fprof-auto-top``.
     all-functions
         Costs will be assigned at the granularity of all functions in
         each module, whether top level or local. In GHC specifically,
         this is for non-inline toplevel or where-bound functions or
-        values.
+        values.  Corresponds to ``-fprof-auto``.
 
     The command line variant of this flag is
     ``--profiling-detail=none``.
@@ -1303,6 +1288,49 @@ Profiling options
 
     The command line variant of this flag is
     ``--library-profiling-detail=none``.
+
+.. cfg-field:: library-vanilla: boolean
+               --enable-library-vanilla
+               --disable-library-vanilla
+    :synopsis: Build libraries without profiling.
+
+    :default: True
+
+    Build ordinary libraries (as opposed to profiling libraries).
+    Mostly, you can set this to False to avoid building ordinary
+    libraries when you are profiling.
+
+    The command line variant of this flag is
+    ``--enable-library-vanilla`` and ``--disable-library-vanilla``.
+
+.. cfg-field:: library-profiling: boolean
+               --enable-library-profiling
+               --disable-library-profiling
+    :synopsis: Build libraries with profiling enabled.
+    :since: 1.21
+
+    :default: False
+
+    Build libraries with profiling enabled.  You probably want
+    to use :cfg-field:`profiling` instead.
+
+    The command line variant of this flag is
+    ``--enable-library-profiling`` and ``--disable-library-profiling``.
+
+.. cfg-field:: executable-profiling: boolean
+               --enable-executable-profiling
+               --disable-executable-profiling
+    :synopsis: Build executables with profiling enabled.
+    :since: 1.21
+
+    :default: False
+
+    Build executables with profiling enabled. You probably want
+    to use :cfg-field:`profiling` instead.
+
+    The command line variant of this flag is
+    ``--enable-executable-profiling`` and
+    ``--disable-executable-profiling``.
 
 Coverage options
 ^^^^^^^^^^^^^^^^
