@@ -19,6 +19,7 @@
 -- This module is meant to be local-only to Distribution...
 
 {-# OPTIONS_HADDOCK hide #-}
+{-# LANGUAGE Rank2Types #-}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
@@ -611,7 +612,7 @@ ifelse (f:fs) = do fs' <- ifelse fs
 
 -- |parse a module name
 parseModuleNameQ :: ReadP r ModuleName
-parseModuleNameQ = parseQuoted parse <++ parse
+parseModuleNameQ = parseMaybeQuoted parse
 
 parseFilePathQ :: ReadP r FilePath
 parseFilePathQ = parseTokenQ
@@ -631,7 +632,7 @@ parseBuildTool = do name <- parseBuildToolNameQ
                     return $ Dependency name ver
 
 parseBuildToolNameQ :: ReadP r PackageName
-parseBuildToolNameQ = parseQuoted parseBuildToolName <++ parseBuildToolName
+parseBuildToolNameQ = parseMaybeQuoted parseBuildToolName
 
 -- like parsePackageName but accepts symbols in components
 parseBuildToolName :: ReadP r PackageName
@@ -652,15 +653,15 @@ parsePkgconfigDependency = do name <- munch1
                               return $ Dependency (mkPackageName name) ver
 
 parsePackageNameQ :: ReadP r PackageName
-parsePackageNameQ = parseQuoted parse <++ parse
+parsePackageNameQ = parseMaybeQuoted parse
 
 parseOptVersion :: ReadP r Version
-parseOptVersion = parseQuoted ver <++ ver
+parseOptVersion = parseMaybeQuoted ver
   where ver :: ReadP r Version
         ver = parse <++ return nullVersion
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
-parseTestedWithQ = parseQuoted tw <++ tw
+parseTestedWithQ = parseMaybeQuoted tw
   where
     tw :: ReadP r (CompilerFlavor,VersionRange)
     tw = do compiler <- parseCompilerFlavorCompat
@@ -668,7 +669,7 @@ parseTestedWithQ = parseQuoted tw <++ tw
             return (compiler,version)
 
 parseLicenseQ :: ReadP r License
-parseLicenseQ = parseQuoted parse <++ parse
+parseLicenseQ = parseMaybeQuoted parse
 
 -- urgh, we can't define optQuotes :: ReadP r a -> ReadP r a
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
@@ -676,10 +677,10 @@ parseLicenseQ = parseQuoted parse <++ parse
 -- Hence the trick above to make 'lic' polymorphic.
 
 parseLanguageQ :: ReadP r Language
-parseLanguageQ = parseQuoted parse <++ parse
+parseLanguageQ = parseMaybeQuoted parse
 
 parseExtensionQ :: ReadP r Extension
-parseExtensionQ = parseQuoted parse <++ parse
+parseExtensionQ = parseMaybeQuoted parse
 
 parseHaskellString :: ReadP r String
 parseHaskellString = readS_to_P reads
@@ -710,6 +711,9 @@ parseOptCommaList = parseSepList (optional (ReadP.char ','))
 
 parseQuoted :: ReadP r a -> ReadP r a
 parseQuoted = between (ReadP.char '"') (ReadP.char '"')
+
+parseMaybeQuoted :: (forall r. ReadP r a) -> ReadP r' a
+parseMaybeQuoted p = parseQuoted p <++ p
 
 parseFreeText :: ReadP.ReadP s String
 parseFreeText = ReadP.munch (const True)
