@@ -29,10 +29,11 @@ import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
 import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) )
 import Distribution.Simple.Utils       (die, warn)
 
-import Distribution.System    (Platform)
+import Distribution.System    (Platform(..), OS(..))
 import Distribution.Verbosity (Verbosity)
 
 import System.Directory ( doesDirectoryExist )
+import System.Environment (lookupEnv)
 import System.FilePath (searchPathSeparator, (</>))
 
 
@@ -81,6 +82,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
       _     -> die "exec only works with GHC and GHCJS"
   where
+    (Platform _ os) = platform
     env getGlobalPackageDB hcProgram packagePathEnvVar = do
         let Just program = lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
@@ -92,10 +94,18 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
         exists <- doesDirectoryExist sandboxPackagePath
         unless exists $ warn verbosity $ "Package database is not a directory: "
                                            ++ sandboxPackagePath
+        let ldPath = case os of
+                       OSX -> "DYLD_LIBRARY_PATH"
+                       _   -> "LD_LIBRARY_PATH"
+        currentLibraryPath <- lookupEnv ldPath
+        let newLibraryPath = case currentLibraryPath of
+                               Nothing -> sandboxDir </> "lib"
+                               Just paths -> sandboxDir </> "lib" ++ searchPathSeparator:paths
         -- Build the environment
         return [ (packagePathEnvVar, Just compilerPackagePaths)
                , ("CABAL_SANDBOX_PACKAGE_PATH", Just compilerPackagePaths)
                , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
+               , (ldPath, Just newLibraryPath)
                ]
 
     prependToSearchPath path newValue =
