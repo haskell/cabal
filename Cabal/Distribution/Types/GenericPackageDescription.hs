@@ -22,6 +22,7 @@ module Distribution.Types.GenericPackageDescription (
 
 import Prelude ()
 import Distribution.Compat.Prelude
+import Distribution.Utils.ShortText
 
 import Distribution.Types.PackageDescription
 
@@ -85,7 +86,7 @@ emptyFlag name = MkFlag
 -- This type is opaque since @Cabal-2.0@
 --
 -- @since 2.0
-newtype FlagName = FlagName String
+newtype FlagName = FlagName ShortText
     deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
 -- | Construct a 'FlagName' from a 'String'
@@ -97,13 +98,13 @@ newtype FlagName = FlagName String
 --
 -- @since 2.0
 mkFlagName :: String -> FlagName
-mkFlagName = FlagName
+mkFlagName = FlagName . toShortText
 
 -- | Convert 'FlagName' to 'String'
 --
 -- @since 2.0
 unFlagName :: FlagName -> String
-unFlagName (FlagName s) = s
+unFlagName (FlagName s) = fromShortText s
 
 instance Binary FlagName
 
