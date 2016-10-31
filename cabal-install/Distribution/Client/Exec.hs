@@ -95,8 +95,9 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
         unless exists $ warn verbosity $ "Package database is not a directory: "
                                            ++ sandboxPackagePath
         let ldPath = case os of
-                       OSX -> "DYLD_LIBRARY_PATH"
-                       _   -> "LD_LIBRARY_PATH"
+                       OSX     -> "DYLD_LIBRARY_PATH"
+                       Windows -> "PATH"
+                       _       -> "LD_LIBRARY_PATH"
         currentLibraryPath <- lookupEnv ldPath
         let newLibraryPath = case currentLibraryPath of
                                Nothing -> sandboxDir </> "lib"
