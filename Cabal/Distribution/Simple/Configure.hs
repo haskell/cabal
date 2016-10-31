@@ -1369,6 +1369,12 @@ configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramDb
 configureRequiredPrograms verbosity deps progdb =
   foldM (configureRequiredProgram verbosity) progdb deps
 
+-- | Configure a required program, ensuring that it exists in the PATH
+-- (or where the user has specified the program must live) and making it
+-- available for use via the 'ProgramDb' interface.  If the program is
+-- known (exists in the input 'ProgramDb'), we will make sure that the
+-- program matches the required version; otherwise we will accept
+-- any version of the program and assume that it is a simpleProgram.
 configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
                             -> IO ProgramDb
 configureRequiredProgram verbosity progdb
@@ -1376,6 +1382,41 @@ configureRequiredProgram verbosity progdb
   case lookupKnownProgram progName progdb of
     Nothing ->
       -- Try to configure it as a 'simpleProgram' automatically
+      --
+      -- There's a bit of a story behind this line.  In old versions
+      -- of Cabal, there were only internal build-tools dependencies.  So the
+      -- behavior in this case was:
+      --
+      --    - If a build-tool dependency was internal, don't do
+      --      any checking.
+      --
+      --    - If it was external, call 'configureRequiredProgram' to
+      --      "configure" the executable.  In particular, if
+      --      the program was not "known" (present in 'ProgramDb'),
+      --      then we would just error.  This was fine, because
+      --      the only way a program could be executed from 'ProgramDb'
+      --      is if some library code from Cabal actually called it,
+      --      and the pre-existing Cabal code only calls known
+      --      programs from 'defaultProgramDb', and so if it
+      --      is calling something else, you have a Custom setup
+      --      script, and in that case you are expected to register
+      --      the program you want to call in the ProgramDb.
+      --
+      -- OK, so that was fine, until I (ezyang, in 2016) refactored
+      -- Cabal to support per-component builds.  In this case, what
+      -- was previously an internal build-tool dependency now became
+      -- an external one, and now previously "internal" dependencies
+      -- are now external.  But these are permitted to exist even
+      -- when they are not previously configured (something that
+      -- can only occur by a Custom script.)
+      --
+      -- So, I decided, "Fine, let's just accept these in any
+      -- case."  Thus this line.  The alternative would have been to
+      -- somehow detect when a build-tools dependency was "internal" (by
+      -- looking at the unflattened package description) but this
+      -- would also be incompatible with future work to support
+      -- external executable dependencies: we definitely cannot
+      -- assume they will be preinitialized in the 'ProgramDb'.
       configureProgram verbosity (simpleProgram progName) progdb
     Just prog
       -- requireProgramVersion always requires the program have a version
