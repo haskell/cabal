@@ -167,6 +167,29 @@ Conventions
   that provides a compatibility layer and exports some commonly
   used additional functions. Use it in all new modules.
 
+* As far as possible, please do not use CPP. If you must use it,
+  try to put it in a `Compat` module, and minimize the amount of code
+  that is enclosed by CPP.  For example, prefer:
+  ```
+  f :: Int -> Int
+  #ifdef mingw32_HOST_OS
+  f = (+1)
+  #else
+  f = (+2)
+  #endif
+  ```
+
+  over:
+  ```
+  #ifdef mingw32_HOST_OS
+  f :: Int -> Int
+  f = (+1)
+  #else
+  f :: Int -> Int
+  f = (+2)
+  #endif
+  ```
+
 We like [this style guide][guide].
 
 [guide]: https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
