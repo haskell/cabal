@@ -1847,8 +1847,8 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
   where
     go :: CompilerFlavor -> Maybe String
     go GHC
-      | compilerVersion comp < mkVersion [7,4] = unsupported [
-        "Building foreign libraires is only supported with GHC >= 7.4"
+      | compilerVersion comp < mkVersion [7,8] = unsupported [
+        "Building foreign libraires is only supported with GHC >= 7.8"
       ]
       | otherwise = goGhcPlatform platform
     go _   = unsupported [
@@ -1867,10 +1867,6 @@ checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
       ]
 
     goGhcOsx :: ForeignLibType -> Maybe String
-    goGhcOsx _ | compilerVersion comp < mkVersion [7,8] = unsupported [
-        "Building foreign libraries on OSX is only supported with GHC >= 7.8"
-      ]
-
     goGhcOsx ForeignLibNativeShared
       | standalone = unsupported [
             "We cannot build standalone libraries on OSX"

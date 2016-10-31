@@ -41,10 +41,11 @@ suite = whenGhcVersion (>= mkVersion [7,4]) . withPackageDb $ do
                    Platform _ _other  -> "LD_LIBRARY_PATH"
     oldLdPath <- liftIO $ getEnv' ldPath
     withEnv [ (ldPath, Just $ flibdir installDirs ++ [searchPathSeparator] ++ oldLdPath) ] $ do
-        run (Just pkg_dir)
-            (pkg_dir </> "uselib")
-            []
-            >>= assertOutputContains "5678"
+        result <- run (Just pkg_dir)
+                      (pkg_dir </> "uselib")
+                      []
+        assertOutputContains "5678" result
+        assertOutputContains "189" result
 
 getEnv' :: String -> IO String
 getEnv' = handle handler . getEnv
