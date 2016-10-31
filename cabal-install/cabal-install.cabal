@@ -80,6 +80,12 @@ Extra-Source-Files:
   tests/IntegrationTests/custom/segfault/plain.cabal
   tests/IntegrationTests/exec/Foo.hs
   tests/IntegrationTests/exec/My.hs
+  tests/IntegrationTests/exec/T4049.sh
+  tests/IntegrationTests/exec/T4049/UseLib.c
+  tests/IntegrationTests/exec/T4049/csrc/MyForeignLibWrapper.c
+  tests/IntegrationTests/exec/T4049/my-foreign-lib.cabal
+  tests/IntegrationTests/exec/T4049/src/MyForeignLib/Hello.hs
+  tests/IntegrationTests/exec/T4049/src/MyForeignLib/SomeBindings.hsc
   tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.out
   tests/IntegrationTests/exec/adds_sandbox_bin_directory_to_path.sh
   tests/IntegrationTests/exec/auto_configures_on_exec.out
