@@ -28,7 +28,7 @@ module Distribution.ParseUtils (
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
-        parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
+        parseOptVersion, parsePackageNameQ,
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
@@ -627,7 +627,7 @@ betweenSpaces act = do skipSpaces
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ
                     ver <- betweenSpaces $
-                           parseVersionRangeQ <++ return anyVersion
+                           parse <++ return anyVersion
                     return $ Dependency name ver
 
 parseBuildToolNameQ :: ReadP r PackageName
@@ -648,14 +648,11 @@ parsePkgconfigDependency :: ReadP r Dependency
 parsePkgconfigDependency = do name <- munch1
                                       (\c -> isAlphaNum c || c `elem` "+-._")
                               ver <- betweenSpaces $
-                                     parseVersionRangeQ <++ return anyVersion
+                                     parse <++ return anyVersion
                               return $ Dependency (mkPackageName name) ver
 
 parsePackageNameQ :: ReadP r PackageName
 parsePackageNameQ = parseQuoted parse <++ parse
-
-parseVersionRangeQ :: ReadP r VersionRange
-parseVersionRangeQ = parseQuoted parse <++ parse
 
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
