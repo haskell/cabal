@@ -5,8 +5,6 @@ module Distribution.Parsec.Class (
     parsecWarning,
     -- * Utilities
     parsecTestedWith,
-    parsecPkgconfigDependency,
-    parsecBuildTool,
     parsecToken,
     parsecToken',
     parsecFilePath,
@@ -35,8 +33,10 @@ import           Distribution.ModuleName                      (ModuleName)
 import qualified Distribution.ModuleName                      as ModuleName
 import           Distribution.Package
                  (Dependency (..),
+                 LegacyExeDependency (..), PkgconfigDependency (..),
                  UnqualComponentName, mkUnqualComponentName,
-                 PackageName, mkPackageName)
+                 PackageName, mkPackageName,
+                 PkgconfigName, mkPkgconfigName)
 import           Distribution.System
                  (Arch (..), ClassificationStrictness (..), OS (..),
                  classifyArch, classifyOS)
@@ -105,6 +105,9 @@ instance Parsec UnqualComponentName where
 instance Parsec PackageName where
   parsec = mkPackageName <$> parsecUnqualComponentName
 
+instance Parsec PkgconfigName where
+  parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+
 instance Parsec ModuleName where
     parsec = ModuleName.fromComponents <$> P.sepBy1 component (P.char '.')
       where
@@ -129,6 +132,25 @@ instance Parsec Dependency where
         name <- lexemeParsec
         ver  <- parsec <|> pure anyVersion
         return (Dependency name ver)
+
+instance Parsec LegacyExeDependency where
+    parsec = do
+        name <- parsecMaybeQuoted nameP
+        P.spaces
+        verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
+        pure $ LegacyExeDependency name verRange
+      where
+        nameP = intercalate "-" <$> P.sepBy1 component (P.char '-')
+        component = do
+            cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
+            if all isDigit cs then fail "invalid component" else return cs
+
+instance Parsec PkgconfigDependency where
+    parsec = do
+        name <- parsec
+        P.spaces
+        verRange <- parsec <|> pure anyVersion
+        pure $ PkgconfigDependency name verRange
 
 instance Parsec Version where
     parsec = mkVersion <$>
@@ -345,25 +367,6 @@ parsecTestedWith = do
     name <- lexemeParsec
     ver  <- parsec <|> pure anyVersion
     return (name, ver)
-
-parsecPkgconfigDependency :: P.Stream s Identity Char => P.Parsec s [PWarning] Dependency
-parsecPkgconfigDependency = do
-    name <- P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
-    P.spaces
-    verRange <- parsec <|> pure anyVersion
-    pure $ Dependency (mkPackageName name) verRange
-
-parsecBuildTool :: P.Stream s Identity Char => P.Parsec s [PWarning] Dependency
-parsecBuildTool = do
-    name <- parsecMaybeQuoted nameP
-    P.spaces
-    verRange <- parsecMaybeQuoted parsec <|> pure anyVersion
-    pure $ Dependency (mkPackageName name) verRange
-  where
-    nameP = intercalate "-" <$> P.sepBy1 component (P.char '-')
-    component = do
-        cs <- P.munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
-        if all isDigit cs then fail "invalid component" else return cs
 
 parsecToken :: P.Stream s Identity Char => P.Parsec s [PWarning] String
 parsecToken = parsecHaskellString <|> (P.munch1 (\x -> not (isSpace x) && x /= ',')  P.<?> "identifier" )

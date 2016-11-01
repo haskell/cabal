@@ -28,14 +28,14 @@ module Distribution.ParseUtils (
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
-        parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
+        parseModuleNameQ,
         parseOptVersion, parsePackageNameQ,
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, listFieldWithSep, spaceListField,
         commaListField, commaListFieldWithSep, commaNewLineListField,
-        optsField, liftField, boolField, parseQuoted, indentWith,
+        optsField, liftField, boolField, parseQuoted, parseMaybeQuoted, indentWith,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -624,33 +624,6 @@ betweenSpaces act = do skipSpaces
                        res <- act
                        skipSpaces
                        return res
-
-parseBuildTool :: ReadP r Dependency
-parseBuildTool = do name <- parseBuildToolNameQ
-                    ver <- betweenSpaces $
-                           parse <++ return anyVersion
-                    return $ Dependency name ver
-
-parseBuildToolNameQ :: ReadP r PackageName
-parseBuildToolNameQ = parseMaybeQuoted parseBuildToolName
-
--- like parsePackageName but accepts symbols in components
-parseBuildToolName :: ReadP r PackageName
-parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
-                        return (mkPackageName (intercalate "-" ns))
-  where component = do
-          cs <- munch1 (\c -> isAlphaNum c || c == '+' || c == '_')
-          if all isDigit cs then pfail else return cs
-
--- pkg-config allows versions and other letters in package names,
--- eg "gtk+-2.0" is a valid pkg-config package _name_.
--- It then has a package version number like 2.10.13
-parsePkgconfigDependency :: ReadP r Dependency
-parsePkgconfigDependency = do name <- munch1
-                                      (\c -> isAlphaNum c || c `elem` "+-._")
-                              ver <- betweenSpaces $
-                                     parse <++ return anyVersion
-                              return $ Dependency (mkPackageName name) ver
 
 parsePackageNameQ :: ReadP r PackageName
 parsePackageNameQ = parseMaybeQuoted parse

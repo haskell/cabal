@@ -88,7 +88,7 @@ import Distribution.Solver.Types.PkgConfigDb (PkgConfigDb, pkgConfigPkgIsPresent
 data ValidateState = VS {
   supportedExt  :: Extension -> Bool,
   supportedLang :: Language  -> Bool,
-  presentPkgs   :: PN -> VR  -> Bool,
+  presentPkgs   :: PkgconfigName -> VR  -> Bool,
   index :: Index,
   saved :: Map QPN (FlaggedDeps Component QPN), -- saved, scoped, dependencies
   pa    :: PreAssignment,

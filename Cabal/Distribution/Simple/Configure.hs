@@ -565,10 +565,10 @@ configure (pkg_descr0', pbi) cfg = do
           [ buildTool
           | let exeNames = map (unUnqualComponentName . exeName) (executables pkg_descr)
           , bi <- enabledBuildInfos pkg_descr enabled
-          , buildTool@(Dependency toolPName reqVer)
+          , buildTool@(LegacyExeDependency toolPName reqVer)
             <- buildTools bi
           , let isInternal =
-                    unPackageName toolPName `elem` exeNames
+                    toolPName `elem` exeNames
                     -- we assume all internal build-tools are
                     -- versioned with the package:
                  && packageVersion pkg_descr `withinRange` reqVer
@@ -1364,7 +1364,7 @@ combinedConstraints constraints dependencies installedPackages = do
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
-configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramDb
+configureRequiredPrograms :: Verbosity -> [LegacyExeDependency] -> ProgramDb
                              -> IO ProgramDb
 configureRequiredPrograms verbosity deps progdb =
   foldM (configureRequiredProgram verbosity) progdb deps
@@ -1375,10 +1375,10 @@ configureRequiredPrograms verbosity deps progdb =
 -- known (exists in the input 'ProgramDb'), we will make sure that the
 -- program matches the required version; otherwise we will accept
 -- any version of the program and assume that it is a simpleProgram.
-configureRequiredProgram :: Verbosity -> ProgramDb -> Dependency
+configureRequiredProgram :: Verbosity -> ProgramDb -> LegacyExeDependency
                             -> IO ProgramDb
 configureRequiredProgram verbosity progdb
-  (Dependency progPkgName verRange) =
+  (LegacyExeDependency progName verRange) =
   case lookupKnownProgram progName progdb of
     Nothing ->
       -- Try to configure it as a 'simpleProgram' automatically
@@ -1428,8 +1428,6 @@ configureRequiredProgram verbosity progdb
       | otherwise -> do
           (_, _, progdb') <- requireProgramVersion verbosity prog verRange progdb
           return progdb'
-  where
-    progName = unPackageName progPkgName
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
@@ -1459,7 +1457,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     pkgconfig = getDbProgramOutput (lessVerbose verbosity)
                   pkgConfigProgram progdb
 
-    requirePkg dep@(Dependency pkgn range) = do
+    requirePkg dep@(PkgconfigDependency pkgn range) = do
       version <- pkgconfig ["--modversion", pkg]
                  `catchIO`   (\_ -> die notFound)
                  `catchExit` (\_ -> die notFound)
@@ -1482,7 +1480,7 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
           | isAnyVersion range = ""
           | otherwise          = " version " ++ display range
 
-        pkg = unPackageName pkgn
+        pkg = unPkgconfigName pkgn
 
     -- Adds pkgconfig dependencies to the build info for a component
     addPkgConfigBI compBI setCompBI comp = do
@@ -1505,10 +1503,10 @@ configurePkgconfigPackages verbosity pkg_descr progdb enabled
     addPkgConfigBIBench = addPkgConfigBI benchmarkBuildInfo $
                           \bench bi -> bench { benchmarkBuildInfo = bi }
 
-    pkgconfigBuildInfo :: [Dependency] -> NoCallStackIO BuildInfo
+    pkgconfigBuildInfo :: [PkgconfigDependency] -> NoCallStackIO BuildInfo
     pkgconfigBuildInfo []      = return mempty
     pkgconfigBuildInfo pkgdeps = do
-      let pkgs = nub [ display pkg | Dependency pkg _ <- pkgdeps ]
+      let pkgs = nub [ display pkg | PkgconfigDependency pkg _ <- pkgdeps ]
       ccflags <- pkgconfig ("--cflags" : pkgs)
       ldflags <- pkgconfig ("--libs"   : pkgs)
       return (ccLdOptionsBuildInfo (words ccflags) (words ldflags))

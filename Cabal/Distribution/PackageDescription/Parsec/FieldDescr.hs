@@ -41,6 +41,7 @@ import qualified Distribution.Compat.Parsec            as Parsec
 import           Distribution.Compiler                 (CompilerFlavor (..))
 import           Distribution.ModuleName               (ModuleName)
 import           Distribution.Package
+import           Distribution.Package.TextClass        ()
 import           Distribution.PackageDescription
 import           Distribution.Types.ForeignLib
 import           Distribution.Parsec.Class
@@ -415,7 +416,7 @@ binfoFieldDescrs =
  [ boolField "buildable"
            buildable          (\val binfo -> binfo{buildable=val})
  , commaListField  "build-tools"
-           disp               parsecBuildTool
+           disp               parsec
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
  , commaListFieldWithSep vcat "build-depends"
        disp               parsec
@@ -433,7 +434,7 @@ binfoFieldDescrs =
            showToken          parsecToken'
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
-           disp               parsecPkgconfigDependency
+           disp               parsec
            pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
  , listField "frameworks"
            showToken          parsecToken

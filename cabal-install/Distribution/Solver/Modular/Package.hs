@@ -5,6 +5,7 @@ module Distribution.Solver.Modular.Package
   , PackageId
   , PackageIdentifier(..)
   , PackageName, mkPackageName, unPackageName
+  , PkgconfigName, mkPkgconfigName, unPkgconfigName
   , PI(..)
   , PN
   , QPV

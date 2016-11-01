@@ -23,6 +23,7 @@ module Distribution.Package (
         packageNameToUnqualComponentName, unqualComponentNameToPackageName,
         PackageIdentifier(..),
         PackageId,
+        PkgconfigName, unPkgconfigName, mkPkgconfigName,
 
         -- * Package keys/installed package IDs (used for linker symbols)
         ComponentId, unComponentId, mkComponentId,
@@ -43,6 +44,8 @@ module Distribution.Package (
 
         -- * Package source dependencies
         Dependency(..),
+        LegacyExeDependency(..),
+        PkgconfigDependency(..),
         thisPackageVersion,
         notThisPackageVersion,
         simplifyDependency,
@@ -59,7 +62,7 @@ import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
 import Distribution.Version
-         ( Version, VersionRange, anyVersion, thisVersion
+         ( Version, VersionRange, thisVersion
          , notThisVersion, simplifyVersionRange
          , nullVersion )
 
@@ -69,7 +72,7 @@ import Distribution.Compat.ReadP
 import Distribution.Text
 import Distribution.ModuleName
 
-import Text.PrettyPrint ((<+>), text)
+import Text.PrettyPrint (text)
 
 -- | An unqualified component name, for any kind of component.
 --
@@ -174,6 +177,44 @@ instance Text PackageName where
 
 instance NFData PackageName where
     rnf (PackageName pkg) = rnf pkg
+
+-- | A pkg-config library name
+--
+-- This is parsed as any valid argument to the pkg-config utility.
+--
+-- @since 2.0
+newtype PkgconfigName = PkgconfigName ShortText
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+-- | Convert 'PkgconfigName' to 'String'
+--
+-- @since 2.0
+unPkgconfigName :: PkgconfigName -> String
+unPkgconfigName (PkgconfigName s) = fromShortText s
+
+-- | Construct a 'PkgconfigName' from a 'String'
+--
+-- 'mkPkgconfigName' is the inverse to 'unPkgconfigName'
+--
+-- Note: No validations are performed to ensure that the resulting
+-- 'PkgconfigName' is valid
+--
+-- @since 2.0
+mkPkgconfigName :: String -> PkgconfigName
+mkPkgconfigName = PkgconfigName . toShortText
+
+instance Binary PkgconfigName
+
+-- pkg-config allows versions and other letters in package names, eg
+-- "gtk+-2.0" is a valid pkg-config package _name_.  It then has a package
+-- version number like 2.10.13
+instance Text PkgconfigName where
+  disp = Disp.text . unPkgconfigName
+  parse = mkPkgconfigName
+          <$> munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+
+instance NFData PkgconfigName where
+    rnf (PkgconfigName pkg) = rnf pkg
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
@@ -354,19 +395,33 @@ mkLegacyUnitId = newSimpleUnitId . mkComponentId . display
 data Dependency = Dependency PackageName VersionRange
                   deriving (Generic, Read, Show, Eq, Typeable, Data)
 
+-- | Describes a legacy `build-tools`-style dependency on an executable
+--
+-- It is "legacy" because we do not know what the build-tool referred to. It
+-- could refer to a pkg-config executable (PkgconfigName), or an internal
+-- executable (UnqualComponentName). Thus the name is stringly typed.
+--
+-- @since 2.0
+data LegacyExeDependency = LegacyExeDependency
+                           String
+                           VersionRange
+                         deriving (Generic, Read, Show, Eq, Typeable, Data)
+
+-- | Describes a dependency on a pkg-config library
+--
+-- @since 2.0
+data PkgconfigDependency = PkgconfigDependency
+                           PkgconfigName
+                           VersionRange
+                         deriving (Generic, Read, Show, Eq, Typeable, Data)
+
 instance Binary Dependency
-
-instance Text Dependency where
-  disp (Dependency name ver) =
-    disp name <+> disp ver
-
-  parse = do name <- parse
-             Parse.skipSpaces
-             ver <- parse <++ return anyVersion
-             Parse.skipSpaces
-             return (Dependency name ver)
+instance Binary LegacyExeDependency
+instance Binary PkgconfigDependency
 
 instance NFData Dependency where rnf = genericRnf
+instance NFData LegacyExeDependency where rnf = genericRnf
+instance NFData PkgconfigDependency where rnf = genericRnf
 
 thisPackageVersion :: PackageIdentifier -> Dependency
 thisPackageVersion (PackageIdentifier n v) =

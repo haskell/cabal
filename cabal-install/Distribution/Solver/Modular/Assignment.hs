@@ -65,7 +65,7 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 -- or the successfully extended assignment.
 extend :: (Extension -> Bool) -- ^ is a given extension supported
        -> (Language  -> Bool) -- ^ is a given language supported
-       -> (PN -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
+       -> (PkgconfigName -> VR  -> Bool) -- ^ is a given pkg-config requirement satisfiable
        -> Var QPN
        -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
 extend extSupported langSupported pkgPresent var = foldM extendSingle

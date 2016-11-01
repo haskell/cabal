@@ -143,6 +143,7 @@ library
     Distribution.Make
     Distribution.ModuleName
     Distribution.Package
+    Distribution.Package.TextClass
     Distribution.PackageDescription
     Distribution.PackageDescription.Check
     Distribution.PackageDescription.Configuration

@@ -1270,7 +1270,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                                             ++ display pn ++ " from "
                                             ++ display (elabPkgSourceId elab1))
                                  (pkgConfigDbPkgVersion pkgConfigDB pn))
-                | Dependency pn _ <- PD.pkgconfigDepends bi ]
+                | PkgconfigDependency pn _ <- PD.pkgconfigDepends bi ]
 
             compSetupDependencies = concatMap (elaborateLibSolverId mapDep) (CD.setupDeps deps0)
 
@@ -1429,8 +1429,8 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
             $ [ (pn, fromMaybe (error $ "pkgPkgConfigDependencies: impossible! "
                                           ++ display pn ++ " from " ++ display pkgid)
                                (pkgConfigDbPkgVersion pkgConfigDB pn))
-              | Dependency pn _ <- concatMap PD.pkgconfigDepends
-                                        (PD.allBuildInfo elabPkgDescription)
+              | PkgconfigDependency pn _ <- concatMap PD.pkgconfigDepends
+                                                (PD.allBuildInfo elabPkgDescription)
               ]
 
         -- Filled in later

@@ -538,7 +538,7 @@ addInternalBuildTools pkg lbi bi progs =
     internalExeNames = map (unUnqualComponentName . exeName) (executables pkg)
     buildToolNames   = map buildToolName (buildTools bi)
       where
-        buildToolName (Dependency pname _ ) = unPackageName pname
+        buildToolName (LegacyExeDependency pname _) = pname
 
 
 -- TODO: build separate libs in separate dirs so that we can build

@@ -49,6 +49,7 @@ import Distribution.Compat.Prelude
 import Distribution.ParseUtils
 import Distribution.License
 import Distribution.Package hiding (installedUnitId, installedPackageId)
+import Distribution.Package.TextClass ()
 import Distribution.Backpack
 import qualified Distribution.Package as Package
 import Distribution.ModuleName

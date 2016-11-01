@@ -85,6 +85,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.Package
+import Distribution.Package.TextClass ()
 import Distribution.PackageDescription hiding (Flag)
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
