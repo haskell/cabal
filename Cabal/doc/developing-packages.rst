@@ -1443,7 +1443,7 @@ executables when the executable is run (or even lazily during
 execution), while static libraries (``.a`` files on Linux/OSX, ``.lib``
 files on Windows) get linked against the executable at compile time.
 
-Foreign libraries only work with GHC 7.4 and later.
+Foreign libraries only work with GHC 7.8 and later.
 
 A typical stanza for a foreign library looks like
 
