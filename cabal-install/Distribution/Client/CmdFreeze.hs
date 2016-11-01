@@ -33,7 +33,7 @@ import Distribution.PackageDescription
 import Distribution.Client.Setup
          ( GlobalFlags, ConfigFlags(..), ConfigExFlags, InstallFlags )
 import Distribution.Simple.Setup
-         ( HaddockFlags, fromFlagOrDefault )
+         ( HaddockFlags, fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils
          ( die, notice )
 import Distribution.Verbosity
@@ -47,6 +47,8 @@ import System.FilePath
 
 import Distribution.Simple.Command
          ( CommandUI(..), usageAlternatives )
+import Distribution.Simple.Compiler
+         ( showCompilerId )
 import Distribution.Simple.Utils
          ( wrapText )
 import qualified Distribution.Client.Setup as Client
@@ -94,12 +96,12 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
                       installFlags haddockFlags
 
 
-    (_, elaboratedPlan, _, _) <-
+    (_, elaboratedPlan, elaboratedSharedConfig, _) <-
       rebuildInstallPlan verbosity
                          projectRootDir distDirLayout cabalDirLayout
                          cliConfig
 
-    let freezeConfig = projectFreezeConfig elaboratedPlan
+    let freezeConfig = projectFreezeConfig elaboratedPlan elaboratedSharedConfig
     writeProjectLocalFreezeConfig projectRootDir freezeConfig
     notice verbosity $
       "Wrote freeze file: " ++ projectRootDir </> "cabal.project.freeze"
@@ -112,10 +114,12 @@ freezeAction (configFlags, configExFlags, installFlags, haddockFlags)
 -- | Given the install plan, produce a config value with constraints that
 -- freezes the versions of packages used in the plan.
 --
-projectFreezeConfig :: ElaboratedInstallPlan -> ProjectConfig
-projectFreezeConfig elaboratedPlan =
+projectFreezeConfig :: ElaboratedInstallPlan -> ElaboratedSharedConfig -> ProjectConfig
+projectFreezeConfig elaboratedPlan elaboratedSharedConfig =
     Monoid.mempty {
       projectConfigShared = Monoid.mempty {
+        projectConfigHcPath =
+          toFlag (showCompilerId . pkgConfigCompiler $ elaboratedSharedConfig),
         projectConfigConstraints =
           concat (Map.elems (projectFreezeConstraints elaboratedPlan))
       }
