@@ -107,6 +107,7 @@
 	  work with the dependency solver.
 	* Support for "foreign libraries" (#2540), which are Haskell
 	  libraries intended to be used by foreign languages like C.
+	  Foreign libraries only work with GHC 7.8 and later.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.
