@@ -209,6 +209,9 @@ foreignLibFieldDescrs =
     , listField "options"
       disp                   parsec
       foreignLibOptions      (\x flib -> flib { foreignLibOptions = x })
+    , simpleField "elf-version"
+      (maybe mempty disp)    (Just <$> parsec)
+      foreignLibELFVersion   (\x flib -> flib { foreignLibELFVersion = x })
     , listField "mod-def-file"
       showFilePath           parsecFilePath
       foreignLibModDefFile   (\x flib -> flib { foreignLibModDefFile = x })

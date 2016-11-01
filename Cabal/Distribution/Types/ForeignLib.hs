@@ -12,6 +12,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 
 import Distribution.ModuleName
+import Distribution.Version
 
 import Distribution.Types.BuildInfo
 import Distribution.Types.ForeignLibType
@@ -30,6 +31,8 @@ data ForeignLib = ForeignLib {
     , foreignLibOptions    :: [ForeignLibOption]
       -- | Build information for this foreign library.
     , foreignLibBuildInfo  :: BuildInfo
+      -- | Version information for unix style libraries.
+    , foreignLibELFVersion :: Maybe Version
 
       -- | (Windows-specific) module definition files
       --
@@ -43,11 +46,12 @@ instance Binary ForeignLib
 
 instance Semigroup ForeignLib where
   a <> b = ForeignLib {
-      foreignLibName       = combine' foreignLibName
-    , foreignLibType       = combine  foreignLibType
-    , foreignLibOptions    = combine  foreignLibOptions
-    , foreignLibBuildInfo  = combine  foreignLibBuildInfo
-    , foreignLibModDefFile = combine  foreignLibModDefFile
+      foreignLibName       = combine'  foreignLibName
+    , foreignLibType       = combine   foreignLibType
+    , foreignLibOptions    = combine   foreignLibOptions
+    , foreignLibBuildInfo  = combine   foreignLibBuildInfo
+    , foreignLibELFVersion = combine'' foreignLibELFVersion
+    , foreignLibModDefFile = combine   foreignLibModDefFile
     }
     where combine field = field a `mappend` field b
           combine' field = case ( unUnqualComponentName $ field a
@@ -56,6 +60,7 @@ instance Semigroup ForeignLib where
             (_, "") -> field a
             (x, y) -> error $ "Ambiguous values for executable field: '"
                                   ++ x ++ "' and '" ++ y ++ "'"
+          combine'' field = field b
 
 instance Monoid ForeignLib where
   mempty = ForeignLib {
@@ -63,6 +68,7 @@ instance Monoid ForeignLib where
     , foreignLibType       = ForeignLibTypeUnknown
     , foreignLibOptions    = []
     , foreignLibBuildInfo  = mempty
+    , foreignLibELFVersion = Nothing
     , foreignLibModDefFile = []
     }
   mappend = (<>)

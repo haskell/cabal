@@ -207,6 +207,9 @@ foreignLibFieldDescrs =
   , listField "options"
       disp                   parse
       foreignLibOptions      (\x flib -> flib { foreignLibOptions = x })
+  , simpleField "elf-version"
+      (maybe mempty disp)    (fmap Just parse)
+      foreignLibELFVersion   (\x flib -> flib { foreignLibELFVersion = x })
   , listField "mod-def-file"
       showFilePath           parseFilePathQ
       foreignLibModDefFile   (\x flib -> flib { foreignLibModDefFile = x })
