@@ -15,7 +15,7 @@ module Distribution.Client.PackageUtils (
   ) where
 
 import Distribution.Package
-         ( packageVersion, packageName, Dependency(..), unPackageName )
+         ( packageVersion, packageName, Dependency(..), packageNameToUnqualComponentName )
 import Distribution.PackageDescription
          ( PackageDescription(..), libName )
 import Distribution.Version
@@ -32,5 +32,5 @@ externalBuildDepends pkg = filter (not . internal) (buildDepends pkg)
     internal (Dependency depName versionRange) =
            (depName == packageName pkg &&
             packageVersion pkg `withinRange` versionRange) ||
-           (Just (unPackageName depName) `elem` map libName (subLibraries pkg) &&
+           (Just (packageNameToUnqualComponentName depName) `elem` map libName (subLibraries pkg) &&
             isAnyVersion versionRange)

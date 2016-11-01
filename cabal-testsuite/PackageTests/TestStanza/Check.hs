@@ -14,7 +14,7 @@ suite = do
     dist_dir <- distDir
     lbi <- liftIO $ getPersistBuildConfig dist_dir
     let anticipatedTestSuite = emptyTestSuite
-            { testName = "dummy"
+            { testName = mkUnqualComponentName "dummy"
             , testInterface = TestSuiteExeV10 (mkVersion [1,0]) "dummy.hs"
             , testBuildInfo = emptyBuildInfo
                     { targetBuildDepends =

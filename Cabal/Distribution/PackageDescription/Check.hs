@@ -185,13 +185,15 @@ checkSanity pkg =
         ++ "Only the non-internal library can have the same name as the package."
 
   , check (not (null duplicateNames)) $
-      PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
+      PackageBuildImpossible $ "Duplicate sections: "
+        ++ commaSep (map unUnqualComponentName duplicateNames)
         ++ ". The name of every library, executable, test suite,"
         ++ " and benchmark section in"
         ++ " the package must be unique."
 
   -- NB: but it's OK for executables to have the same name!
-  , check (any (== display (packageName pkg)) subLibNames) $
+  -- TODO shouldn't need to compare on the string level
+  , check (any (== display (packageName pkg)) (display <$> subLibNames)) $
       PackageBuildImpossible $ "Illegal internal library name "
         ++ display (packageName pkg)
         ++ ". Internal libraries cannot have the same name as the package."
@@ -239,7 +241,7 @@ checkLibrary pkg lib =
       PackageDistSuspiciousWarn $
            "Library " ++ (case libName lib of
                             Nothing -> ""
-                            Just n -> n
+                            Just n -> display n
                             ) ++ "does not expose any modules"
 
     -- check use of signatures sections
@@ -273,7 +275,7 @@ checkExecutable pkg exe =
 
     check (null (modulePath exe)) $
       PackageBuildImpossible $
-        "No 'main-is' field found for executable " ++ exeName exe
+        "No 'main-is' field found for executable " ++ display (exeName exe)
 
   , check (not (null (modulePath exe))
        && (not $ fileExtensionSupportedLanguage $ modulePath exe)) $
@@ -291,14 +293,14 @@ checkExecutable pkg exe =
 
   , check (not (null moduleDuplicates)) $
        PackageBuildImpossible $
-            "Duplicate modules in executable '" ++ exeName exe ++ "': "
+            "Duplicate modules in executable '" ++ display (exeName exe) ++ "': "
          ++ commaSep (map display moduleDuplicates)
 
     -- check that all autogen-modules appear on other-modules
   , check
       (not $ and $ map (flip elem (exeModules exe)) (exeModulesAutogen exe)) $
       PackageBuildImpossible $
-           "On executable '" ++ exeName exe ++ "' an 'autogen-module' is not "
+           "On executable '" ++ display (exeName exe) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
 
   ]
@@ -325,7 +327,7 @@ checkTestSuite pkg test =
 
   , check (not $ null moduleDuplicates) $
       PackageBuildImpossible $
-           "Duplicate modules in test suite '" ++ testName test ++ "': "
+           "Duplicate modules in test suite '" ++ display (testName test) ++ "': "
         ++ commaSep (map display moduleDuplicates)
 
   , check mainIsWrongExt $
@@ -346,7 +348,7 @@ checkTestSuite pkg test =
         (testModulesAutogen test)
       ) $
       PackageBuildImpossible $
-           "On test suite '" ++ testName test ++ "' an 'autogen-module' is not "
+           "On test suite '" ++ display (testName test) ++ "' an 'autogen-module' is not "
         ++ "on 'other-modules'"
   ]
   where
@@ -380,7 +382,7 @@ checkBenchmark _pkg bm =
 
   , check (not $ null moduleDuplicates) $
       PackageBuildImpossible $
-           "Duplicate modules in benchmark '" ++ benchmarkName bm ++ "': "
+           "Duplicate modules in benchmark '" ++ display (benchmarkName bm) ++ "': "
         ++ commaSep (map display moduleDuplicates)
 
   , check mainIsWrongExt $
@@ -395,7 +397,7 @@ checkBenchmark _pkg bm =
         (benchmarkModulesAutogen bm)
       ) $
       PackageBuildImpossible $
-             "On benchmark '" ++ benchmarkName bm ++ "' an 'autogen-module' is "
+             "On benchmark '" ++ display (benchmarkName bm) ++ "' an 'autogen-module' is "
           ++ "not on 'other-modules'"
   ]
   where
@@ -552,7 +554,7 @@ checkFields pkg =
       , isNoVersion vr ]
 
     internalLibraries =
-        map (maybe (packageName pkg) mkPackageName . libName)
+        map (maybe (packageName pkg) (unqualComponentNameToPackageName) . libName)
             (allLibraries pkg)
     buildDependsRangeOnInternalLibrary =
       [ dep

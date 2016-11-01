@@ -121,9 +121,9 @@ defaultDistDirLayout projectRootDirectory =
         display (distParamCompilerId params) </>
         display (distParamPackageId params) </>
         (case fmap componentNameString (distParamComponentName params) of
-            Nothing         -> ""
-            Just Nothing    -> ""
-            Just (Just str) -> "c" </> str) </>
+            Nothing          -> ""
+            Just Nothing     -> ""
+            Just (Just name) -> "c" </> display name) </>
         (case distParamOptimization params of
             NoOptimisation -> "noopt"
             NormalOptimisation -> ""

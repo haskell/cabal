@@ -126,11 +126,10 @@ ppCondLibrary :: Maybe (CondTree ConfVar [Dependency] Library) -> Doc
 ppCondLibrary Nothing = mempty
 ppCondLibrary (Just condTree) =
     emptyLine $ text "library"
-        $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
-
-ppCondSubLibraries :: [(String, CondTree ConfVar [Dependency] Library)] -> Doc
+        $+$ nest indentWith (ppCondTree condTree Nothing ppLib) 
+ppCondSubLibraries :: [(UnqualComponentName, CondTree ConfVar [Dependency] Library)] -> Doc
 ppCondSubLibraries libs                           =
-    vcat [emptyLine $ text ("library " ++ n)
+    vcat [emptyLine $ (text "library " <+> disp n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppLib)| (n,condTree) <- libs]
 
 ppLib :: Library -> Maybe Library -> Doc
@@ -139,9 +138,9 @@ ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
 ppLib lib (Just plib) = ppDiffFields libFieldDescrs lib plib
                         $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
 
-ppCondExecutables :: [(String, CondTree ConfVar [Dependency] Executable)] -> Doc
+ppCondExecutables :: [(UnqualComponentName, CondTree ConfVar [Dependency] Executable)] -> Doc
 ppCondExecutables exes                       =
-    vcat [emptyLine $ text ("executable " ++ n)
+    vcat [emptyLine $ (text "executable " <+> disp n)
               $+$ nest indentWith (ppCondTree condTree Nothing ppExe)| (n,condTree) <- exes]
   where
     ppExe (Executable _ modulePath' buildInfo') Nothing =
@@ -155,9 +154,9 @@ ppCondExecutables exes                       =
             $+$ ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
 
-ppCondTestSuites :: [(String, CondTree ConfVar [Dependency] TestSuite)] -> Doc
+ppCondTestSuites :: [(UnqualComponentName, CondTree ConfVar [Dependency] TestSuite)] -> Doc
 ppCondTestSuites suites =
-    emptyLine $ vcat [     text ("test-suite " ++ n)
+    emptyLine $ vcat [     (text "test-suite " <+> disp n)
                        $+$ nest indentWith (ppCondTree condTree Nothing ppTestSuite)
                      | (n,condTree) <- suites]
   where
@@ -187,9 +186,9 @@ ppCondTestSuites suites =
       TestSuiteLibV09 _ m -> Just m
       _                   -> Nothing
 
-ppCondBenchmarks :: [(String, CondTree ConfVar [Dependency] Benchmark)] -> Doc
+ppCondBenchmarks :: [(UnqualComponentName, CondTree ConfVar [Dependency] Benchmark)] -> Doc
 ppCondBenchmarks suites =
-    emptyLine $ vcat [     text ("benchmark " ++ n)
+    emptyLine $ vcat [     (text "benchmark " <+> disp n)
                        $+$ nest indentWith (ppCondTree condTree Nothing ppBenchmark)
                      | (n,condTree) <- suites]
   where
@@ -299,25 +298,25 @@ ppMaybeLibrary (Just lib) =
 
 ppSubLibraries :: [Library] -> Doc
 ppSubLibraries libs = vcat [
-    emptyLine $ text "library" <+> text libname
+    emptyLine $ text "library" <+> disp libname
         $+$ nest indentWith (ppFields libFieldDescrs lib)
     | lib@Library{ libName = Just libname } <- libs ]
 
 ppForeignLibs :: [ForeignLib] -> Doc
 ppForeignLibs flibs = vcat [
-    emptyLine $ text "foreign library" <+> text flibname
+    emptyLine $ text "foreign library" <+> disp flibname
         $+$ nest indentWith (ppFields foreignLibFieldDescrs flib)
     | flib@ForeignLib{ foreignLibName = flibname } <- flibs ]
 
 ppExecutables :: [Executable] -> Doc
 ppExecutables exes = vcat [
-    emptyLine $ text "executable" <+> text (exeName exe)
+    emptyLine $ text "executable" <+> disp (exeName exe)
         $+$ nest indentWith (ppFields executableFieldDescrs exe)
     | exe <- exes ]
 
 ppTestSuites :: [TestSuite] -> Doc
 ppTestSuites tests = vcat [
-    emptyLine $ text "test-suite" <+> text (testName test)
+    emptyLine $ text "test-suite" <+> disp (testName test)
         $+$ nest indentWith (ppFields testSuiteFieldDescrs test_stanza)
     | test <- tests
     , let test_stanza
@@ -346,7 +345,7 @@ testSuiteInterfaceToMaybeModule TestSuiteUnsupported{} = Nothing
 
 ppBenchmarks :: [Benchmark] -> Doc
 ppBenchmarks benchs = vcat [
-    emptyLine $ text "benchmark" <+> text (benchmarkName bench)
+    emptyLine $ text "benchmark" <+> disp (benchmarkName bench)
         $+$ nest indentWith (ppFields benchmarkFieldDescrs bench_stanza)
     | bench <- benchs
     , let bench_stanza = BenchmarkStanza {
@@ -377,7 +376,7 @@ showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
         Nothing -> mempty
         Just bi -> ppBuildInfo bi)
    $$ vcat [    space
-             $$ text "executable:" <+> text name
+             $$ (text "executable:" <+> disp name)
              $$ ppBuildInfo bi
            | (name, bi) <- ex_bis ]
   where

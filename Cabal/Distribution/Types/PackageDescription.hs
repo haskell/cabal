@@ -344,14 +344,14 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
       updateLibrary Nothing   mb_lib     = mb_lib
       updateLibrary (Just _)  Nothing    = Nothing
 
-      updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
-                        -> [Executable]          -- ^list of executables to update
-                        -> [Executable]          -- ^list with exeNames updated
+      updateExecutables :: [(UnqualComponentName, BuildInfo)] -- ^[(exeName, new buildinfo)]
+        -> [Executable]                                       -- ^list of executables to update
+        -> [Executable]                                       -- ^list with exeNames updated
       updateExecutables exe_bi' executables' = foldr updateExecutable executables' exe_bi'
 
-      updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
-                       -> [Executable]        -- ^list of executables to update
-                       -> [Executable]        -- ^list with exeName updated
+      updateExecutable :: (UnqualComponentName, BuildInfo) -- ^(exeName, new buildinfo)
+                       -> [Executable]                     -- ^list of executables to update
+                       -> [Executable]                     -- ^list with exeName updated
       updateExecutable _                 []         = []
       updateExecutable exe_bi'@(name,bi) (exe:exes)
         | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes

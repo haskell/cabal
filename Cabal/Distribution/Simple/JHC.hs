@@ -134,7 +134,7 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildExe verbosity _pkg_descr lbi exe clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let exeBi = buildInfo exe
-  let out   = buildDir lbi </> exeName exe
+  let out   = buildDir lbi </> display (exeName exe)
   let args  = constructJHCCmdLine lbi exeBi clbi (buildDir lbi) verbosity
   runProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
@@ -185,7 +185,7 @@ installLib verb _lbi dest _dyn_dest build_dir pkg_descr _lib _clbi = do
 
 installExe :: Verbosity -> FilePath -> FilePath -> (FilePath,FilePath) -> PackageDescription -> Executable -> IO ()
 installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
-    let exe_name = exeName exe
+    let exe_name = display $ exeName exe
         src = exe_name </> exeExtension
         out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension
     createDirectoryIfMissingVerbose verb True dest

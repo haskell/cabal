@@ -1208,7 +1208,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                   = distBuildDirectory
                         (elabDistDirParams elaboratedSharedConfig elab) </>
                         "build" </> case Cabal.componentNameString cname of
-                                        Just n -> n
+                                        Just n -> display n
                                         Nothing -> ""
                   | otherwise
                   = InstallDirs.bindir install_dirs
@@ -1234,7 +1234,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                         display pkgid ++ "-inplace" ++
                           (case Cabal.componentNameString cname of
                               Nothing -> ""
-                              Just s -> "-" ++ s)
+                              Just s -> "-" ++ display s)
                     BuildAndInstall ->
                       hashedInstalledPackageId
                         (packageHashInputs
@@ -1374,7 +1374,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
                             ElabComponent comp ->
                                 case fmap Cabal.componentNameString
                                           (compComponentName comp) of
-                                    Just (Just n) -> n
+                                    Just (Just n) -> display n
                                     _ -> ""
               else InstallDirs.bindir (elabInstallDirs elab)]
         get_exe_path (InstallPlan.Installed _) = unexpectedState
@@ -2196,7 +2196,9 @@ pruneInstallPlanPass2 pkgs =
         exeTargetsRequiredForRevDeps =
           -- TODO: allow requesting executable with different name
           -- than package name
-          [ ComponentTarget (Cabal.CExeName (unPackageName (packageName (elabPkgSourceId elab))))
+          [ ComponentTarget (Cabal.CExeName
+                             $ packageNameToUnqualComponentName
+                             $ packageName $ elabPkgSourceId elab)
                             WholeComponent
           | installedUnitId elab `Set.member` hasReverseExeDeps
           ]

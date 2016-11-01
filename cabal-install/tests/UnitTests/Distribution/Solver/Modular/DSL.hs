@@ -210,7 +210,7 @@ withTest ex test = withTests ex [test]
 
 withTests :: ExampleAvailable -> [ExTest] -> ExampleAvailable
 withTests ex tests =
-  let testCDs = CD.fromList [(CD.ComponentTest name, deps)
+  let testCDs = CD.fromList [(CD.ComponentTest $ C.mkUnqualComponentName name, deps)
                             | ExTest name deps <- tests]
   in ex { exAvDeps = exAvDeps ex <> testCDs }
 
@@ -219,7 +219,7 @@ withExe ex exe = withExes ex [exe]
 
 withExes :: ExampleAvailable -> [ExExe] -> ExampleAvailable
 withExes ex exes =
-  let exeCDs = CD.fromList [(CD.ComponentExe name, deps)
+  let exeCDs = CD.fromList [(CD.ComponentExe $ C.mkUnqualComponentName name, deps)
                            | ExExe name deps <- exes]
   in ex { exAvDeps = exAvDeps ex <> exeCDs }
 

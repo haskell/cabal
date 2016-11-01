@@ -835,10 +835,10 @@ gbuildInfo (GBuildFLib flib) = foreignLibBuildInfo flib
 gbuildInfo (GReplFLib  flib) = foreignLibBuildInfo flib
 
 gbuildName :: GBuildMode -> String
-gbuildName (GBuildExe  exe)  = exeName exe
-gbuildName (GReplExe   exe)  = exeName exe
-gbuildName (GBuildFLib flib) = foreignLibName flib
-gbuildName (GReplFLib  flib) = foreignLibName flib
+gbuildName (GBuildExe  exe)  = unUnqualComponentName $ exeName exe
+gbuildName (GReplExe   exe)  = unUnqualComponentName $ exeName exe
+gbuildName (GBuildFLib flib) = unUnqualComponentName $ foreignLibName flib
+gbuildName (GReplFLib  flib) = unUnqualComponentName $ foreignLibName flib
 
 gbuildTargetName :: LocalBuildInfo -> GBuildMode -> String
 gbuildTargetName _lbi (GBuildExe  exe)  = exeTargetName exe
@@ -847,7 +847,7 @@ gbuildTargetName  lbi (GBuildFLib flib) = flibTargetName lbi flib
 gbuildTargetName  lbi (GReplFLib  flib) = flibTargetName lbi flib
 
 exeTargetName :: Executable -> String
-exeTargetName exe = exeName exe `withExt` exeExtension
+exeTargetName exe = unUnqualComponentName (exeName exe) `withExt` exeExtension
 
 -- | Target name for a foreign library (the actual file name)
 --
@@ -868,7 +868,7 @@ flibTargetName lbi flib =
       (_any,    ForeignLibTypeUnknown)  -> cabalBug "unknown foreign lib type"
   where
     nm :: String
-    nm = foreignLibName flib
+    nm = unUnqualComponentName $ foreignLibName flib
 
     platformOS :: Platform -> OS
     platformOS (Platform _arch os) = os
@@ -945,7 +945,6 @@ gbuild verbosity numJobs _pkg_descr lbi bm clbi = do
   let targetName = gbuildTargetName lbi bm
   let targetDir  = buildDir lbi </> (gbuildName bm)
   let tmpDir     = targetDir    </> (gbuildName bm ++ "-tmp")
-
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True tmpDir
 
@@ -1415,11 +1414,12 @@ installExe verbosity lbi installDirs buildPref
   (progprefix, progsuffix) _pkg exe = do
   let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = exeTargetName exe
-      fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
+  let exeName' = unUnqualComponentName $ exeName exe
+      exeFileName = exeTargetName exe
+      fixedExeBaseName = progprefix ++ exeName' ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
-            (buildPref </> exeName exe </> exeFileName)
+            (buildPref </> exeName' </> exeFileName)
             (dest <.> exeExtension)
           when (stripExes lbi) $
             Strip.stripExe verbosity (hostPlatform lbi) (withPrograms lbi)

@@ -21,6 +21,7 @@ module Distribution.Simple.Test
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Package
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
 import Distribution.Simple.Hpc
@@ -70,7 +71,7 @@ test args pkg_descr lbi flags = do
               _ -> return TestSuiteLog
                   { testSuiteName = PD.testName suite
                   , testLogs = TestLog
-                      { testName = PD.testName suite
+                      { testName = unUnqualComponentName $ PD.testName suite
                       , testOptionsReturned = []
                       , testResult =
                           Error $ "No support for running test suite type: "
@@ -93,9 +94,10 @@ test args pkg_descr lbi flags = do
                 let testMap = zip enabledNames enabledTests
                     enabledNames = map (PD.testName . fst) enabledTests
                     allNames = map PD.testName pkgTests
-                in case lookup tName testMap of
+                    tCompName = mkUnqualComponentName tName
+                in case lookup tCompName testMap of
                     Just t -> return (t, Nothing)
-                    _ | tName `elem` allNames ->
+                    _ | tCompName `elem` allNames ->
                           die $ "Package configured with test suite "
                                 ++ tName ++ " disabled."
                       | otherwise -> die $ "no such test: " ++ tName

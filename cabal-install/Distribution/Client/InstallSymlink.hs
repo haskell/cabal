@@ -18,7 +18,7 @@ module Distribution.Client.InstallSymlink (
 
 #ifdef mingw32_HOST_OS
 
-import Distribution.Package (PackageIdentifier)
+import Distribution.Package (PackageIdentifier, UnqualComponentName)
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types (BuildOutcomes)
 import Distribution.Client.Setup (InstallFlags)
@@ -31,10 +31,10 @@ symlinkBinaries :: Platform -> Compiler
                 -> InstallFlags
                 -> InstallPlan
                 -> BuildOutcomes
-                -> IO [(PackageIdentifier, String, FilePath)]
+                -> IO [(PackageIdentifier, UnqualComponentName, FilePath)]
 symlinkBinaries _ _ _ _ _ _ = return []
 
-symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
+symlinkBinary :: FilePath -> FilePath -> UnqualComponentName -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 
 #else
@@ -50,7 +50,8 @@ import Distribution.Solver.Types.SourcePackage
 import Distribution.Solver.Types.OptionalStanza
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), UnitId, installedUnitId )
+         ( PackageIdentifier, UnqualComponentName, unUnqualComponentName
+         , Package(packageId), UnitId, installedUnitId )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -65,6 +66,8 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, CompilerInfo(..) )
 import Distribution.System
          ( Platform )
+import Distribution.Text
+         ( display )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
@@ -108,7 +111,7 @@ symlinkBinaries :: Platform -> Compiler
                 -> InstallFlags
                 -> InstallPlan
                 -> BuildOutcomes
-                -> IO [(PackageIdentifier, String, FilePath)]
+                -> IO [(PackageIdentifier, UnqualComponentName, FilePath)]
 symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
@@ -132,7 +135,7 @@ symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
               -- This is a bit dodgy; probably won't work for Backpack packages
               ipid = installedUnitId rpkg
               publicExeName  = PackageDescription.exeName exe
-              privateExeName = prefix ++ publicExeName ++ suffix
+              privateExeName = prefix ++ unUnqualComponentName publicExeName ++ suffix
               prefix = substTemplate pkgid ipid prefixTemplate
               suffix = substTemplate pkgid ipid suffixTemplate ]
   where
@@ -182,30 +185,32 @@ symlinkBinaries platform comp configFlags installFlags plan buildOutcomes =
     cinfo            = compilerInfo comp
     (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
-symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
-                          --   eg @/home/user/bin@
-              -> FilePath -- ^ The canonical path of the private bin dir
-                          --   eg @/home/user/.cabal/bin@
-              -> String   -- ^ The name of the executable to go in the public
-                          --   bin dir, eg @foo@
-              -> String   -- ^ The name of the executable to in the private bin
-                          --   dir, eg @foo-1.0@
-              -> IO Bool  -- ^ If creating the symlink was successful. @False@
-                          --   if there was another file there already that we
-                          --   did not own. Other errors like permission errors
-                          --   just propagate as exceptions.
+symlinkBinary ::
+  FilePath               -- ^ The canonical path of the public bin dir eg
+                         --   @/home/user/bin@
+  -> FilePath            -- ^ The canonical path of the private bin dir eg
+                         --   @/home/user/.cabal/bin@
+  -> UnqualComponentName -- ^ The name of the executable to go in the public bin
+                         --   dir, eg @foo@
+  -> String              -- ^ The name of the executable to in the private bin
+                         --   dir, eg @foo-1.0@
+  -> IO Bool             -- ^ If creating the symlink was successful. @False@ if
+                         --   there was another file there already that we did
+                         --   not own. Other errors like permission errors just
+                         --   propagate as exceptions.
 symlinkBinary publicBindir privateBindir publicName privateName = do
-  ok <- targetOkToOverwrite (publicBindir </> publicName)
+  ok <- targetOkToOverwrite (publicBindir </> publicName')
                             (privateBindir </> privateName)
   case ok of
     NotOurFile    ->                     return False
     NotExists     ->           mkLink >> return True
     OkToOverwrite -> rmLink >> mkLink >> return True
   where
+    publicName' = display publicName
     relativeBindir = makeRelative publicBindir privateBindir
     mkLink = createSymbolicLink (relativeBindir </> privateName)
-                                (publicBindir   </> publicName)
-    rmLink = removeLink (publicBindir </> publicName)
+                                (publicBindir   </> publicName')
+    rmLink = removeLink (publicBindir </> publicName')
 
 -- | Check a file path of a symlink that we would like to create to see if it
 -- is OK. For it to be OK to overwrite it must either not already exist yet or

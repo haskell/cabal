@@ -231,7 +231,7 @@ executableFieldDescrs =
     [ -- note ordering: configuration must come first, for
       -- showPackageDescription.
       simpleField "executable"
-        showToken          parsecToken
+        disp               parsec
         exeName            (\xs    exe -> exe{exeName=xs})
     , simpleField "main-is"
         showFilePath       parsecFilePath

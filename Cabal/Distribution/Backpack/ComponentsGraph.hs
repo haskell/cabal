@@ -51,24 +51,22 @@ toComponentsGraph enabled pkg_descr =
   where
     -- The dependencies for the given component
     componentDeps component =
-         [ CExeName toolname | Dependency pkgname _
-                               <- buildTools bi
-                             , let toolname = unPackageName pkgname
-                             , toolname `elem` map exeName
-                               (executables pkg_descr) ]
+         [ CExeName toolname
+         | Dependency pkgname _ <- buildTools bi
+         , let toolname = packageNameToUnqualComponentName pkgname
+         , toolname `elem` map exeName (executables pkg_descr) ]
 
       ++ [ if pkgname == packageName pkg_descr
-            then CLibName
-            else CSubLibName toolname
-            | Dependency pkgname _
-                               <- targetBuildDepends bi
-                             , pkgname `elem` internalPkgDeps
-            , let toolname = unPackageName pkgname ]
+           then CLibName
+           else CSubLibName toolname
+         | Dependency pkgname _ <- targetBuildDepends bi
+         , let toolname = packageNameToUnqualComponentName pkgname
+         , toolname `elem` internalPkgDeps ]
       where
         bi = componentBuildInfo component
         internalPkgDeps = map (conv . libName) (allLibraries pkg_descr)
-        conv Nothing = packageName pkg_descr
-        conv (Just s) = mkPackageName s
+        conv Nothing = packageNameToUnqualComponentName $ packageName pkg_descr
+        conv (Just s) = s
 
 -- | Error message when there is a cycle; takes the SCC of components.
 componentCycleMsg :: [ComponentName] -> Doc

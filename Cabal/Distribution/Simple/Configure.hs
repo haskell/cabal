@@ -563,7 +563,7 @@ configure (pkg_descr0', pbi) cfg = do
     -- TODO: Factor this into a helper package.
     let requiredBuildTools =
           [ buildTool
-          | let exeNames = map exeName (executables pkg_descr)
+          | let exeNames = map (unUnqualComponentName . exeName) (executables pkg_descr)
           , bi <- enabledBuildInfos pkg_descr enabled
           , buildTool@(Dependency toolPName reqVer)
             <- buildTools bi
@@ -813,7 +813,7 @@ getInternalPackages pkg_descr0 =
     let pkg_descr = flattenPackageDescription pkg_descr0
         f lib = case libName lib of
                     Nothing -> (packageName pkg_descr, CLibName)
-                    Just n' -> (mkPackageName n', CSubLibName n')
+                    Just n' -> (unqualComponentNameToPackageName n', CSubLibName n')
     in Map.fromList (map f (allLibraries pkg_descr))
 
 -- | Returns true if a dependency is satisfiable.  This function

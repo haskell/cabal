@@ -963,14 +963,14 @@ symlinkBinaries verbosity platform comp configFlags installFlags
     [(_, exe, path)] ->
       warn verbosity $
            "could not create a symlink in " ++ bindir ++ " for "
-        ++ exe ++ " because the file exists there already but is not "
+        ++ display exe ++ " because the file exists there already but is not "
         ++ "managed by cabal. You can create a symlink for this executable "
         ++ "manually if you wish. The executable file has been installed at "
         ++ path
     exes ->
       warn verbosity $
            "could not create symlinks in " ++ bindir ++ " for "
-        ++ intercalate ", " [ exe | (_, exe, _) <- exes ]
+        ++ intercalate ", " [ display exe | (_, exe, _) <- exes ]
         ++ " because the files exist there already and are not "
         ++ "managed by cabal. You can create symlinks for these executables "
         ++ "manually if you wish. The executable files have been installed at "
@@ -1590,7 +1590,7 @@ withWin32SelfUpgrade verbosity uid configFlags cinfo platform pkg action = do
       [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
       | exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe)
-      , let exeName = prefix ++ PackageDescription.exeName exe ++ suffix
+      , let exeName = prefix ++ display (PackageDescription.exeName exe) ++ suffix
             prefix  = substTemplate prefixTemplate
             suffix  = substTemplate suffixTemplate ]
       where

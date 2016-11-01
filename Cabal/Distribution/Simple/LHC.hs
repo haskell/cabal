@@ -459,6 +459,7 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe verbosity _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
+  let exeName'' = unUnqualComponentName exeName'
   let pref = buildDir lbi
       runGhcProg = runDbProgram verbosity lhcProgram (withPrograms lbi)
 
@@ -466,11 +467,11 @@ buildExe verbosity _pkg_descr lbi
              (compiler lbi) (withProfExe lbi) (buildInfo exe)
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
-  let exeNameReal = exeName' <.>
-                    (if null $ takeExtension exeName' then exeExtension else "")
+  let exeNameReal = exeName'' <.>
+                    (if null $ takeExtension exeName'' then exeExtension else "")
 
-  let targetDir = pref </> exeName'
-  let exeDir    = targetDir </> (exeName' ++ "-tmp")
+  let targetDir = pref </> exeName''
+  let exeDir    = targetDir </> (exeName'' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
@@ -675,11 +676,11 @@ installExe :: Verbosity
 installExe verbosity lbi installDirs buildPref (progprefix, progsuffix) _pkg exe = do
   let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
-  let exeFileName = exeName exe <.> exeExtension
-      fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
+  let exeFileName = unUnqualComponentName (exeName exe) <.> exeExtension
+      fixedExeBaseName = progprefix ++ unUnqualComponentName (exeName exe) ++ progsuffix
       installBinary dest = do
           installExecutableFile verbosity
-            (buildPref </> exeName exe </> exeFileName)
+            (buildPref </> unUnqualComponentName (exeName exe) </> exeFileName)
             (dest <.> exeExtension)
           stripExe verbosity lbi exeFileName (dest <.> exeExtension)
   installBinary (binDir </> fixedExeBaseName)

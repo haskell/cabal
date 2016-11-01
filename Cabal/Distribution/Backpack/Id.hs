@@ -63,7 +63,7 @@ computeComponentId mb_ipid mb_cid pid cname mb_details =
           NoFlag -> mkComponentId $ actual_base
                         ++ (case componentNameString cname of
                                 Nothing -> ""
-                                Just s -> "-" ++ s)
+                                Just s -> "-" ++ unUnqualComponentName s)
 
 -- | Computes the package name for a library.  If this is the public
 -- library, it will just be the original package name; otherwise,
@@ -102,7 +102,8 @@ computeCompatPackageName pkg_name CLibName = pkg_name
 computeCompatPackageName pkg_name cname
     = mkPackageName $ "z-" ++ zdashcode (display pkg_name)
                  ++ (case componentNameString cname of
-                        Just cname_str -> "-z-" ++ zdashcode cname_str
+                        Just cname_u -> "-z-" ++ zdashcode cname_str
+                          where cname_str = unUnqualComponentName cname_u
                         Nothing -> "")
 
 zdashcode :: String -> String

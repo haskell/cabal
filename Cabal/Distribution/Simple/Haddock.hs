@@ -359,8 +359,8 @@ fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
     args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
                  haddockVersion inFiles (buildInfo exe)
     return args {
-      argOutputDir  = Dir  (exeName exe),
-      argTitle      = Flag (exeName exe)
+      argOutputDir  = Dir  $ unUnqualComponentName $ exeName exe,
+      argTitle      = Flag $ unUnqualComponentName $ exeName exe
     }
 
 fromForeignLib :: Verbosity
@@ -376,8 +376,8 @@ fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
     args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
                  haddockVersion inFiles (foreignLibBuildInfo flib)
     return args {
-      argOutputDir  = Dir  (foreignLibName flib),
-      argTitle      = Flag (foreignLibName flib)
+      argOutputDir  = Dir  $ unUnqualComponentName $ foreignLibName flib,
+      argTitle      = Flag $ unUnqualComponentName $ foreignLibName flib
     }
 
 compToExe :: Component -> Maybe Executable
@@ -687,7 +687,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
           doExe com = case (compToExe com) of
             Just exe -> do
               let outputDir = hscolourPref haddockTarget distPref pkg_descr
-                              </> exeName exe </> "src"
+                              </> unUnqualComponentName (exeName exe) </> "src"
               runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe clbi
             Nothing -> do
               warn (fromFlag $ hscolourVerbosity flags)
@@ -699,7 +699,7 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
             runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib clbi
           CFLib flib -> do
             let outputDir = hscolourPref haddockTarget distPref pkg_descr
-                              </> foreignLibName flib </> "src"
+                              </> unUnqualComponentName (foreignLibName flib) </> "src"
             runHsColour hscolourProg outputDir =<< getFLibSourceFiles lbi flib clbi
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
@@ -793,13 +793,13 @@ getSourceFiles dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
 exeBuildDir lbi exe = buildDir lbi </> nm </> nm ++ "-tmp"
   where
-    nm = exeName exe
+    nm = unUnqualComponentName $ exeName exe
 
 -- | The directory where we put build results for a foreign library
 flibBuildDir :: LocalBuildInfo -> ForeignLib -> FilePath
 flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
   where
-    nm = foreignLibName flib
+    nm = unUnqualComponentName $ foreignLibName flib
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.
