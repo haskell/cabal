@@ -58,8 +58,7 @@ tests config = do
   tc "AutogenModules/SrcDist" PackageTests.AutogenModules.SrcDist.Check.suite
 
   -- Test that foreign libraries work
-  tc "ForeignLibs" . whenGhcVersion (>= mkVersion [7,8]) $
-    PackageTests.ForeignLibs.Check.suite
+  tc "ForeignLibs" PackageTests.ForeignLibs.Check.suite
 
   ---------------------------------------------------------------------
   -- * Test suite tests

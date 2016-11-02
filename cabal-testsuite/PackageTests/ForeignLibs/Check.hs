@@ -16,9 +16,9 @@ import Distribution.Version
 
 import PackageTests.PackageTester
 
--- Foreign libraries don't work with GHC 7.2 and earlier
+-- Foreign libraries don't work with GHC 7.6 and earlier
 suite :: TestM ()
-suite = whenGhcVersion (>= mkVersion [7,4]) . withPackageDb $ do
+suite = whenGhcVersion (>= mkVersion [7,8]) . withPackageDb $ do
     cabal_install []
     dist_dir <- distDir
     pkg_dir <- packageDir
