@@ -90,4 +90,3 @@ buildAction (configFlags, configExFlags, installFlags, haddockFlags)
     runProjectPostBuildPhase verbosity buildCtx buildOutcomes
   where
     verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-
